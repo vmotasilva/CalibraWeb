@@ -102,18 +102,80 @@
         background-color: #fdf6ea; /* Tom acolhedor padrão XMind */
         background-image: radial-gradient(#e5d8c3 1.2px, transparent 1.2px);
         background-size: 24px 24px;
-        overflow: hidden;
+        overflow: auto;
         cursor: grab;
         user-select: none;
+        outline: none;
     }
 
-    .canvas-viewport:active {
-        cursor: grabbing;
+    .canvas-viewport:active,
+    .canvas-viewport.is-panning {
+        cursor: grabbing !important;
+    }
+
+    .canvas-viewport.is-space-held {
+        cursor: grab !important;
+    }
+
+    .canvas-viewport.is-space-held.is-panning {
+        cursor: grabbing !important;
     }
 
     .canvas-viewport.clean-bg {
         background-color: #f8fafc;
         background-image: radial-gradient(#cbd5e1 1.2px, transparent 1.2px);
+    }
+
+    /* Scrollbars elegantes e discretas */
+    .canvas-viewport::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    .canvas-viewport::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.02);
+    }
+
+    .canvas-viewport::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.5);
+        border-radius: 4px;
+    }
+
+    .canvas-viewport::-webkit-scrollbar-thumb:hover {
+        background: rgba(100, 116, 139, 0.8);
+    }
+
+    .canvas-sizer {
+        width: 5000px;
+        height: 5000px;
+        position: relative;
+        transform-origin: 0 0;
+    }
+
+    .canvas-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5000px;
+        height: 5000px;
+        transform-origin: 0 0;
+        transition: transform 0.05s ease-out;
+    }
+
+    .canvas-nav-hint {
+        position: absolute;
+        bottom: 16px;
+        right: 16px;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(6px);
+        border: 1px solid #e2e8f0;
+        padding: 4px 12px;
+        border-radius: 20px;
+        color: #64748b;
+        font-size: 11px;
+        pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        z-index: 15;
     }
 
     /* SVG Connections Layer */
@@ -602,32 +664,54 @@
     <div class="editor-body-wrapper">
         <!-- VISTA 1: MODO CANVAS (VISUAL) -->
         <div id="viewCanvasContainer" class="flex-grow-1 position-relative d-flex flex-column h-100">
-            <div id="canvasViewport" class="canvas-viewport w-100 h-100">
-                <!-- Raias (Swimlanes) -->
-                <div id="swimlanesLayer" class="swimlanes-layer"></div>
+            <div id="canvasViewport" class="canvas-viewport w-100 h-100" tabindex="0">
+                <div id="canvasSizer" class="canvas-sizer">
+                    <div id="canvasContent" class="canvas-content">
+                        <!-- Raias (Swimlanes) -->
+                        <div id="swimlanesLayer" class="swimlanes-layer"></div>
 
-                <!-- Conexões SVG (Arestas / Setas) -->
-                <svg id="connectionsLayer" class="connections-layer">
-                    <defs>
-                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                            <polygon points="0 0, 10 3.5, 0 7" fill="#475569" />
-                        </marker>
-                        <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                            <polygon points="0 0, 10 3.5, 0 7" fill="#10b981" />
-                        </marker>
-                        <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-                            <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
-                        </marker>
-                    </defs>
-                </svg>
+                        <!-- Conexões SVG (Arestas / Setas) -->
+                        <svg id="connectionsLayer" class="connections-layer">
+                            <defs>
+                                <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#475569" />
+                                </marker>
+                                <marker id="arrowhead-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#10b981" />
+                                </marker>
+                                <marker id="arrowhead-red" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                    <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" />
+                                </marker>
+                            </defs>
+                        </svg>
 
-                <!-- Container de Nós Arrastáveis -->
-                <div id="nodesContainer" class="nodes-container"></div>
+                        <!-- Container de Nós Arrastáveis -->
+                        <div id="nodesContainer" class="nodes-container"></div>
+                    </div>
+                </div>
 
-                <!-- Toolbar Flutuante com Automações -->
+                <!-- Toolbar Flutuante com Zoom e Automações -->
                 <div class="canvas-toolbar">
-                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="recentralizarCanvas()" title="Centralizar e Enquadrar Visualização (Fit View)">
-                        <i class="bi bi-arrows-fullscreen text-primary"></i> <span class="d-none d-md-inline small">Centralizar Visão</span>
+                    <!-- Controles de Zoom -->
+                    <div class="btn-group btn-group-sm shadow-sm" role="group">
+                        <button type="button" class="btn btn-light border" onclick="alterarZoomRelativo(-0.1)" title="Diminuir Zoom (Ctrl + Roda / -)">
+                            <i class="bi bi-dash-lg"></i>
+                        </button>
+                        <button type="button" id="btnZoomLabel" class="btn btn-light border fw-bold font-monospace px-2" onclick="aplicarZoom(1.0)" title="Restaurar Zoom para 100%">
+                            100%
+                        </button>
+                        <button type="button" class="btn btn-light border" onclick="alterarZoomRelativo(0.1)" title="Aumentar Zoom (Ctrl + Roda / +)">
+                            <i class="bi bi-plus-lg"></i>
+                        </button>
+                    </div>
+
+                    <div class="vr my-1"></div>
+
+                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="enquadrarVisaoCompleta()" title="Ajustar e Enquadrar Todo o Diagrama na Tela (Fit View)">
+                        <i class="bi bi-aspect-ratio text-primary"></i> <span class="d-none d-md-inline small">Enquadrar</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="recentralizarCanvas()" title="Centralizar Visualização nos Blocos">
+                        <i class="bi bi-crosshair text-primary"></i> <span class="d-none d-md-inline small">Centralizar</span>
                     </button>
                     <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
                         <i class="bi bi-distribute-horizontal text-primary"></i> <span class="d-none d-md-inline small">Alinhar por Raias</span>
@@ -641,6 +725,11 @@
                         <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline small">Nova Raia</span>
                     </button>
                     {% endif %}
+                </div>
+
+                <!-- Dica rápida de movimentação e atalhos -->
+                <div class="canvas-nav-hint d-none d-lg-block">
+                    <span><i class="bi bi-arrows-move me-1"></i> Arraste o fundo &bull; <kbd class="px-1 py-0 bg-light text-dark border rounded font-monospace">Espaço</kbd> Pan &bull; <kbd class="px-1 py-0 bg-light text-dark border rounded font-monospace">Ctrl</kbd> + Roda Zoom</span>
                 </div>
             </div>
         </div>
@@ -938,8 +1027,14 @@
     let dragOffset = { x: 0, y: 0 };
     let modoAtual = 'canvas';
 
+    // Variáveis de Navegação e Zoom
+    let zoomLevel = 1.0;
+    let isPanning = false;
+    let panStart = { x: 0, y: 0, scrollLeft: 0, scrollTop: 0 };
+    let isSpacePressed = false;
+
     // =========================================================================
-    // INICIALIZAÇÃO E ATALHOS DE TECLADO (ENTER / TAB / DEL / ESC)
+    // INICIALIZAÇÃO E ATALHOS DE TECLADO (ENTER / TAB / DEL / ESC / ZOOM / PAN)
     // =========================================================================
     document.addEventListener('DOMContentLoaded', () => {
         if (topologia.nodes.length === 0 && topologia.grid_data.length > 0) {
@@ -951,10 +1046,32 @@
         renderizarCanvas();
         renderizarGrelha();
         renderizarOutliner();
+        setupCanvasNavigation();
+
+        // Enquadra suavemente a visão inicial nos blocos
+        setTimeout(() => {
+            enquadrarVisaoCompleta();
+        }, 150);
 
         // Atalhos de Teclado Globais no Canvas
         window.addEventListener('keydown', (e) => {
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+            // Atalhos de Zoom Globais
+            if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+                e.preventDefault();
+                alterarZoomRelativo(0.1);
+                return;
+            } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+                e.preventDefault();
+                alterarZoomRelativo(-0.1);
+                return;
+            } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+                e.preventDefault();
+                aplicarZoom(1.0);
+                return;
+            }
+
             if (IS_APPROVED) return;
 
             if (e.key === 'Enter') {
@@ -1007,7 +1124,7 @@
 
     function alternarModoZen() {
         document.getElementById('editorMainContainer').classList.toggle('zen-mode');
-        setTimeout(recentralizarCanvas, 200);
+        setTimeout(enquadrarVisaoCompleta, 200);
     }
 
     function alternarFundoCanvas() {
@@ -1202,18 +1319,23 @@
     }
 
     // =========================================================================
-    // ARRASTO DE NÓS (DRAG & DROP)
+    // ARRASTO DE NÓS (DRAG & DROP COM SUPORTE A ZOOM)
     // =========================================================================
     function iniciarArrasto(e, node) {
         if (e.target.classList.contains('handle')) return;
+        if (isSpacePressed || e.button === 1) return; // Não arrasta se estiver em modo pan
         isDragging = true;
         activeNode = node;
         selecionarNo(node.id);
 
-        const nodeEl = document.getElementById(`node-${node.id}`);
-        const rect = nodeEl.getBoundingClientRect();
-        dragOffset.x = e.clientX - rect.left;
-        dragOffset.y = e.clientY - rect.top;
+        const canvasViewport = document.getElementById('canvasViewport');
+        const canvasRect = canvasViewport.getBoundingClientRect();
+
+        const mouseCanvasX = (e.clientX - canvasRect.left + canvasViewport.scrollLeft) / zoomLevel;
+        const mouseCanvasY = (e.clientY - canvasRect.top + canvasViewport.scrollTop) / zoomLevel;
+
+        dragOffset.x = mouseCanvasX - node.position.x;
+        dragOffset.y = mouseCanvasY - node.position.y;
 
         window.addEventListener('mousemove', onArrasto);
         window.addEventListener('mouseup', pararArrasto);
@@ -1225,8 +1347,11 @@
         const canvasViewport = document.getElementById('canvasViewport');
         const canvasRect = canvasViewport.getBoundingClientRect();
 
-        const x = Math.max(20, e.clientX - canvasRect.left - dragOffset.x + canvasViewport.scrollLeft);
-        const y = Math.max(20, e.clientY - canvasRect.top - dragOffset.y + canvasViewport.scrollTop);
+        const mouseCanvasX = (e.clientX - canvasRect.left + canvasViewport.scrollLeft) / zoomLevel;
+        const mouseCanvasY = (e.clientY - canvasRect.top + canvasViewport.scrollTop) / zoomLevel;
+
+        const x = Math.max(20, Math.round(mouseCanvasX - dragOffset.x));
+        const y = Math.max(20, Math.round(mouseCanvasY - dragOffset.y));
 
         activeNode.position.x = x;
         activeNode.position.y = y;
@@ -1717,6 +1842,168 @@
         dispararAutoSave();
     }
 
+    // =========================================================================
+    // NAVEGAÇÃO FLUIDA: PAN (ARRASTAR FUNDO/ESPAÇO) E ZOOM INTELIGENTE
+    // =========================================================================
+    function setupCanvasNavigation() {
+        const viewport = document.getElementById('canvasViewport');
+        if (!viewport) return;
+
+        // Início do Pan (Arrasto livre no fundo do Canvas)
+        viewport.addEventListener('mousedown', (e) => {
+            const isMiddleClick = e.button === 1;
+            const isLeftClick = e.button === 0;
+            if (!isLeftClick && !isMiddleClick) return;
+
+            const target = e.target;
+            const isNode = target.closest('.flow-node');
+            const isToolbar = target.closest('.canvas-toolbar');
+            const isSwimlaneHeader = target.closest('.swimlane-header-container');
+
+            if (isToolbar || (isSwimlaneHeader && !isSpacePressed && !isMiddleClick)) {
+                return;
+            }
+
+            if (isNode && !isSpacePressed && !isMiddleClick) {
+                return; // Deixa o arrasto do nó agir
+            }
+
+            // Inicia Panning livre
+            isPanning = true;
+            panStart = {
+                x: e.clientX,
+                y: e.clientY,
+                scrollLeft: viewport.scrollLeft,
+                scrollTop: viewport.scrollTop
+            };
+            viewport.classList.add('is-panning');
+            e.preventDefault();
+        });
+
+        // Movimentação durante Pan
+        window.addEventListener('mousemove', (e) => {
+            if (!isPanning) return;
+            const dx = e.clientX - panStart.x;
+            const dy = e.clientY - panStart.y;
+            viewport.scrollLeft = panStart.scrollLeft - dx;
+            viewport.scrollTop = panStart.scrollTop - dy;
+        });
+
+        // Fim do Pan
+        window.addEventListener('mouseup', (e) => {
+            if (isPanning) {
+                isPanning = false;
+                viewport.classList.remove('is-panning');
+            }
+        });
+
+        // Zoom com Roda do Mouse (Ctrl + Roda ou Pinch Trackpad)
+        viewport.addEventListener('wheel', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.08 : -0.08;
+                const newZoom = Math.min(2.0, Math.max(0.25, Math.round((zoomLevel + delta) * 100) / 100));
+                if (newZoom !== zoomLevel) {
+                    aplicarZoom(newZoom, e.clientX, e.clientY);
+                }
+            }
+        }, { passive: false });
+
+        // Atalho de Tecla Espaço (Spacebar Pan)
+        window.addEventListener('keydown', (e) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+            if (e.code === 'Space' && !isSpacePressed) {
+                isSpacePressed = true;
+                viewport.classList.add('is-space-held');
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space') {
+                isSpacePressed = false;
+                viewport.classList.remove('is-space-held');
+            }
+        });
+    }
+
+    function aplicarZoom(newZoom, clientX, clientY) {
+        const viewport = document.getElementById('canvasViewport');
+        if (!viewport) return;
+        const rect = viewport.getBoundingClientRect();
+
+        const mouseX = (clientX !== undefined ? clientX : rect.left + rect.width / 2) - rect.left + viewport.scrollLeft;
+        const mouseY = (clientY !== undefined ? clientY : rect.top + rect.height / 2) - rect.top + viewport.scrollTop;
+
+        const contentX = mouseX / zoomLevel;
+        const contentY = mouseY / zoomLevel;
+
+        zoomLevel = Math.max(0.25, Math.min(2.0, Math.round(newZoom * 100) / 100));
+
+        const canvasContent = document.getElementById('canvasContent');
+        const canvasSizer = document.getElementById('canvasSizer');
+        if (canvasContent) canvasContent.style.transform = `scale(${zoomLevel})`;
+        if (canvasSizer) {
+            canvasSizer.style.width = `${5000 * zoomLevel}px`;
+            canvasSizer.style.height = `${5000 * zoomLevel}px`;
+        }
+
+        const newScrollLeft = contentX * zoomLevel - (clientX !== undefined ? clientX - rect.left : rect.width / 2);
+        const newScrollTop = contentY * zoomLevel - (clientY !== undefined ? clientY - rect.top : rect.height / 2);
+        viewport.scrollLeft = Math.max(0, newScrollLeft);
+        viewport.scrollTop = Math.max(0, newScrollTop);
+
+        atualizarIndicadorZoom();
+    }
+
+    function alterarZoomRelativo(delta) {
+        const newZoom = Math.min(2.0, Math.max(0.25, Math.round((zoomLevel + delta) * 10) / 10));
+        aplicarZoom(newZoom);
+    }
+
+    function atualizarIndicadorZoom() {
+        const btn = document.getElementById('btnZoomLabel');
+        if (btn) {
+            btn.textContent = `${Math.round(zoomLevel * 100)}%`;
+        }
+    }
+
+    function enquadrarVisaoCompleta() {
+        const viewport = document.getElementById('canvasViewport');
+        if (!viewport || topologia.nodes.length === 0) {
+            aplicarZoom(1.0);
+            viewport?.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        const xs = topologia.nodes.map(n => n.position.x);
+        const ys = topologia.nodes.map(n => n.position.y);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs) + 200;
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys) + 120;
+
+        const diagramWidth = Math.max(400, maxX - minX + 120);
+        const diagramHeight = Math.max(300, maxY - minY + 120);
+
+        const availableWidth = viewport.clientWidth - 40;
+        const availableHeight = viewport.clientHeight - 40;
+
+        const scaleX = availableWidth / diagramWidth;
+        const scaleY = availableHeight / diagramHeight;
+        let targetZoom = Math.min(1.0, Math.min(scaleX, scaleY));
+        targetZoom = Math.max(0.35, Math.min(1.2, Math.round(targetZoom * 20) / 20));
+
+        aplicarZoom(targetZoom);
+
+        setTimeout(() => {
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const scrollX = Math.max(0, centerX * zoomLevel - viewport.clientWidth / 2);
+            const scrollY = Math.max(0, centerY * zoomLevel - viewport.clientHeight / 2);
+            viewport.scrollTo({ left: scrollX, top: scrollY, behavior: 'smooth' });
+        }, 40);
+    }
+
     function recentralizarCanvas() {
         const viewport = document.getElementById('canvasViewport');
         if (!viewport || topologia.nodes.length === 0) {
@@ -1734,8 +2021,8 @@
         const centerX = (minX + maxX) / 2;
         const centerY = (minY + maxY) / 2;
 
-        const scrollX = Math.max(0, centerX - viewport.clientWidth / 2);
-        const scrollY = Math.max(0, centerY - viewport.clientHeight / 2);
+        const scrollX = Math.max(0, centerX * zoomLevel - viewport.clientWidth / 2);
+        const scrollY = Math.max(0, centerY * zoomLevel - viewport.clientHeight / 2);
 
         viewport.scrollTo({ left: scrollX, top: scrollY, behavior: 'smooth' });
     }
