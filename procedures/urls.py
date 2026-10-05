@@ -357,9 +357,11 @@ urlpatterns = [
 
     # API Endpoints
     path('api/diagramas/', diagram_views.api_diagramas_list_create, name='api_diagramas_list_create'),
+    path('api/diagramas/templates/', diagram_views.api_diagramas_templates, name='api_diagramas_templates'),
     path('api/diagramas/<uuid:diagrama_id>/', diagram_views.api_diagrama_detail, name='api_diagrama_detail'),
     path('api/diagramas-versoes/<uuid:versao_id>/', diagram_views.api_diagrama_versao_detail, name='api_diagrama_versao_detail'),
     path('api/diagramas-versoes/<uuid:versao_id>/auto-save/', diagram_views.api_diagrama_versao_autosave, name='api_diagrama_versao_autosave'),
+    path('api/diagramas-versoes/<uuid:versao_id>/aplicar-template/', diagram_views.api_diagrama_versao_aplicar_template, name='api_diagrama_versao_aplicar_template'),
     path('api/diagramas-versoes/<uuid:versao_id>/submeter/', diagram_views.api_diagrama_versao_submeter, name='api_diagrama_versao_submeter'),
     path('api/diagramas-versoes/<uuid:versao_id>/aprovar/', diagram_views.api_diagrama_versao_aprovar, name='api_diagrama_versao_aprovar'),
     path('api/diagramas-versoes/<uuid:versao_id>/criar-nova-revisao/', diagram_views.api_diagrama_versao_criar_nova_revisao, name='api_diagrama_versao_criar_nova_revisao'),

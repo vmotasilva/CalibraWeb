@@ -123,3 +123,29 @@ class DiagramaQMSTestCase(TestCase):
         self.assertEqual(d2.numero, d1.numero + 1)
         self.assertEqual(d2.identificador, f"#{d2.numero:03d}")
 
+    def test_catalogo_templates_e_aplicacao(self):
+        """Valida que o catálogo de modelos (Organograma, Mind Map, Ishikawa) gera nós e conexões corretamente."""
+        from procedures.services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id
+
+        catalogo = obter_catalogo_templates()
+        self.assertGreaterEqual(len(catalogo), 5)
+        ids = [t['id'] for t in catalogo]
+        self.assertIn('organograma', ids)
+        self.assertIn('mapa_mental', ids)
+        self.assertIn('ishikawa', ids)
+
+        topologia_org = obter_topologia_por_template_id('organograma', 'Metrologia')
+        self.assertIn('nodes', topologia_org)
+        self.assertIn('edges', topologia_org)
+        self.assertGreater(len(topologia_org['nodes']), 3)
+
+        # Testa aplicação de template via API
+        response = self.client.post(
+            f'/procedures/api/diagramas-versoes/{self.versao_r00.id}/aplicar-template/',
+            data=json.dumps({"template_id": "organograma"}),
+            content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 200)
+        self.versao_r00.refresh_from_db()
+        self.assertEqual(len(self.versao_r00.dados_topologia['nodes']), len(topologia_org['nodes']))
+

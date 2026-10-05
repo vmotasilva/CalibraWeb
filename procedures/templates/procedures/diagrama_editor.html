@@ -340,6 +340,9 @@
             {% endif %}
 
             {% if not is_approved %}
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAplicarTemplate" title="Aplicar Modelo / Estrutura">
+                    <i class="bi bi-grid-1x2-fill"></i> Modelos
+                </button>
                 <button type="button" id="btnSubmeter" class="btn btn-outline-warning btn-sm" onclick="submeterParaAprovacao()">
                     <i class="bi bi-send"></i> Submeter
                 </button>
@@ -480,6 +483,47 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="confirmarNovaRevisao()">Criar Revisão</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Seleção e Aplicação de Templates -->
+<div class="modal fade" id="modalAplicarTemplate" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                    <i class="bi bi-grid-1x2-fill text-primary"></i> Catálogo de Modelos de Base
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="alert alert-warning d-flex align-items-center small py-2 mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                    <div><strong>Atenção:</strong> Aplicar um modelo substituirá a topologia e nós atuais deste rascunho.</div>
+                </div>
+
+                <div class="row g-3">
+                    {% for tpl in templates %}
+                    <div class="col-md-6">
+                        <div class="card h-100 border p-3 hover-shadow cursor-pointer transition-all" style="cursor: pointer; border-radius: 10px;" onclick="aplicarTemplateSelecionado('{{ tpl.id }}')">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ tpl.categoria }}</span>
+                                <i class="{{ tpl.icone }} text-muted fs-5"></i>
+                            </div>
+                            <h6 class="fw-bold text-dark mb-1">{{ tpl.nome }}</h6>
+                            <p class="text-muted small mb-3">{{ tpl.descricao }}</p>
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-auto w-100">
+                                <i class="bi bi-check2"></i> Aplicar Este Modelo
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
@@ -993,6 +1037,36 @@
         } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
+        }
+    }
+
+    async function aplicarTemplateSelecionado(templateId) {
+        if (!confirm("Deseja aplicar esta estrutura ao diagrama? A topologia atual não salva será substituída pelo modelo.")) return;
+
+        try {
+            const resp = await fetch(`/procedures/api/diagramas-versoes/${VERSAO_ID}/aplicar-template/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': CSRF_TOKEN
+                },
+                body: JSON.stringify({ template_id: templateId })
+            });
+
+            if (resp.ok) {
+                const versaoAtualizada = await resp.json();
+                topologia = versaoAtualizada.dados_topologia || { nodes: [], edges: [], grid_data: [] };
+                renderizarCanvas();
+                renderizarGrelha();
+                const modalEl = document.getElementById('modalAplicarTemplate');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            } else {
+                const data = await resp.json();
+                alert("Erro ao aplicar modelo: " + (data.error || "Tente novamente."));
+            }
+        } catch (e) {
+            alert("Erro de conexão ao carregar modelo.");
         }
     }
 </script>

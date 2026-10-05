@@ -17,6 +17,7 @@ from ..models import Procedimento
 from ..models_diagram import Diagrama, DiagramaVersao, StatusDiagrama
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
+from ..services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id
 
 
 def serialize_diagrama_versao(versao: DiagramaVersao) -> dict:
@@ -101,6 +102,7 @@ def api_diagramas_list_create(request):
         titulo = payload.get("titulo", "").strip()
         departamento = payload.get("departamento", "").strip()
         procedimento_id = payload.get("procedimento_id")
+        template_id = payload.get("template_id", "fluxograma_padrao")
 
         if not titulo:
             return JsonResponse({"error": "Título é obrigatório."}, status=400)
@@ -115,13 +117,14 @@ def api_diagramas_list_create(request):
                 matriz_procedimento_id=payload.get("matriz_procedimento_id"),
                 codigo=payload.get("codigo", ""),
             )
-            # Versão R00 inicial
+            topologia_inicial = obter_topologia_por_template_id(template_id, departamento or "Metrologia")
+            # Versão R00 inicial com a topologia do template
             DiagramaVersao.objects.create(
                 diagrama=diagrama,
                 revisao=0,
                 status=StatusDiagrama.RASCUNHO,
-                dados_topologia={"nodes": [], "edges": [], "grid_data": []},
-                motivo_revisao="Criação inicial do fluxograma."
+                dados_topologia=topologia_inicial,
+                motivo_revisao="Criação inicial a partir de modelo de estrutura."
             )
 
         return JsonResponse(serialize_diagrama(diagrama, include_versoes=True), status=201)
@@ -283,6 +286,36 @@ def api_diagrama_versao_exportar_pdf(request, versao_id):
     return response
 
 
+@require_http_methods(["GET"])
+def api_diagramas_templates(request):
+    """Retorna o catálogo completo de templates disponíveis."""
+    templates = obter_catalogo_templates()
+    return JsonResponse({"templates": templates}, status=200)
+
+
+@require_http_methods(["POST"])
+def api_diagrama_versao_aplicar_template(request, versao_id):
+    """Aplica a topologia de um template à versão em rascunho."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Autenticação necessária."}, status=401)
+
+    versao = get_object_or_404(DiagramaVersao.objects.select_related('diagrama'), id=versao_id)
+    if versao.status != StatusDiagrama.RASCUNHO:
+        return JsonResponse({"error": "Apenas versões em rascunho podem receber novos templates."}, status=423)
+
+    try:
+        payload = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"error": "JSON inválido."}, status=400)
+
+    template_id = payload.get("template_id", "fluxograma_padrao")
+    nova_topologia = obter_topologia_por_template_id(template_id, versao.diagrama.departamento)
+    versao.dados_topologia = nova_topologia
+    versao.save(update_fields=['dados_topologia', 'atualizado_em'])
+
+    return JsonResponse(serialize_diagrama_versao(versao), status=200)
+
+
 # ==============================================================================
 # HTML TEMPLATE VIEWS (INTERFACE DO USUÁRIO)
 # ==============================================================================
@@ -319,23 +352,27 @@ def diagramas_lista_view(request):
 
 @login_required
 def diagrama_novo_view(request):
-    """Tela/Formulário para criar um novo fluxograma com numeração sequencial e vínculo opcional."""
+    """Tela/Formulário para criar um novo fluxograma com catálogo de modelos visuais e vínculo opcional."""
     procedimentos = Procedimento.objects.filter(codigo__isnull=False).order_by('codigo')
+    templates = obter_catalogo_templates()
 
     if request.method == 'POST':
         titulo = request.POST.get('titulo', '').strip()
         departamento = request.POST.get('departamento', '').strip()
         procedimento_id = request.POST.get('procedimento_id') or None
         descricao = request.POST.get('descricao', '').strip()
+        template_id = request.POST.get('template_id', 'fluxograma_padrao')
 
         if not titulo:
             return render(request, 'procedures/diagrama_form.html', {
-                'error': 'O Título do Processo é obrigatório.',
+                'error': 'O Título do Processo / Diagrama é obrigatório.',
                 'titulo': titulo,
                 'departamento': departamento,
                 'descricao': descricao,
                 'procedimento_id': procedimento_id,
+                'template_id_selecionado': template_id,
                 'procedimentos': procedimentos,
+                'templates': templates,
             })
 
         with transaction.atomic():
@@ -346,35 +383,22 @@ def diagrama_novo_view(request):
                 descricao=descricao,
                 criado_por=request.user
             )
+            topologia_inicial = obter_topologia_por_template_id(template_id, departamento or "Metrologia")
             versao = DiagramaVersao.objects.create(
                 diagrama=diagrama,
                 revisao=0,
                 status=StatusDiagrama.RASCUNHO,
-                dados_topologia={
-                    "nodes": [
-                        {"id": "1", "type": "start", "position": {"x": 80, "y": 80}, "data": {"label": "Início do Processo", "stepId": "1", "lane": departamento or "Metrologia"}},
-                        {"id": "2", "type": "process", "position": {"x": 340, "y": 80}, "data": {"label": "Executar Atividade", "stepId": "2", "lane": departamento or "Metrologia"}},
-                        {"id": "3", "type": "decision", "position": {"x": 600, "y": 60}, "data": {"label": "Conforme?", "stepId": "3", "lane": departamento or "Metrologia"}},
-                        {"id": "4", "type": "end", "position": {"x": 860, "y": 80}, "data": {"label": "Fim do Processo", "stepId": "4", "lane": departamento or "Metrologia"}}
-                    ],
-                    "edges": [
-                        {"id": "e-1-2", "source": "1", "target": "2", "sourceHandle": "bottom", "targetHandle": "top"},
-                        {"id": "e-2-3", "source": "2", "target": "3", "sourceHandle": "bottom", "targetHandle": "top"},
-                        {"id": "e-3-4", "source": "3", "target": "4", "sourceHandle": "bottom", "targetHandle": "top", "label": "Sim"}
-                    ],
-                    "grid_data": [
-                        {"stepId": "1", "lane": departamento or "Metrologia", "type": "start", "label": "Início do Processo", "next": [{"targetId": "2"}]},
-                        {"stepId": "2", "lane": departamento or "Metrologia", "type": "process", "label": "Executar Atividade", "next": [{"targetId": "3"}]},
-                        {"stepId": "3", "lane": departamento or "Metrologia", "type": "decision", "label": "Conforme?", "next": [{"targetId": "4", "condition": "Sim"}]},
-                        {"stepId": "4", "lane": departamento or "Metrologia", "type": "end", "label": "Fim do Processo", "next": []}
-                    ]
-                },
-                motivo_revisao="Criação inicial do fluxograma."
+                dados_topologia=topologia_inicial,
+                motivo_revisao=f"Criação inicial baseada no modelo '{template_id}'."
             )
 
         return redirect('procedures:diagrama_editor', versao_id=versao.id)
 
-    return render(request, 'procedures/diagrama_form.html', {'procedimentos': procedimentos})
+    return render(request, 'procedures/diagrama_form.html', {
+        'procedimentos': procedimentos,
+        'templates': templates,
+        'template_id_selecionado': 'fluxograma_padrao',
+    })
 
 
 @login_required
@@ -383,11 +407,13 @@ def diagrama_editor_view(request, versao_id):
     versao = get_object_or_404(DiagramaVersao.objects.select_related('diagrama', 'diagrama__procedimento', 'aprovado_por'), id=versao_id)
     diagrama = versao.diagrama
     todas_versoes = diagrama.versoes.all().order_by('-revisao')
+    templates = obter_catalogo_templates()
 
     context = {
         'versao': versao,
         'diagrama': diagrama,
         'todas_versoes': todas_versoes,
+        'templates': templates,
         'topologia_json': json.dumps(versao.dados_topologia or {"nodes": [], "edges": [], "grid_data": []}),
         'is_approved': versao.status == StatusDiagrama.APROVADO,
         'is_locked': versao.status != StatusDiagrama.RASCUNHO,

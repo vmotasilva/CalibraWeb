@@ -1,7 +1,7 @@
 {% extends "procedures/procedimento_base.html" %}
 
-{% block title %}Novo Fluxograma de Processo (DOC.071){% endblock %}
-{% block header_title %}Novo Fluxograma de Processo (DOC.071){% endblock %}
+{% block title %}Novo Diagrama / Fluxograma{% endblock %}
+{% block header_title %}Novo Diagrama / Fluxograma{% endblock %}
 
 {% block header_actions %}
 <a href="{% url 'procedures:diagramas_lista' %}" class="btn btn-outline-secondary">
@@ -9,30 +9,276 @@
 </a>
 {% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Galeria de Modelos de Base */
+    .template-card {
+        cursor: pointer;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        background: #ffffff;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .template-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+        border-color: #93c5fd;
+    }
+
+    .template-card.active {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18), 0 8px 20px rgba(37, 99, 235, 0.12);
+        background: #f8faff;
+    }
+
+    .template-badge-check {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 26px;
+        height: 26px;
+        background: #2563eb;
+        color: #ffffff;
+        border-radius: 50%;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+        z-index: 5;
+    }
+
+    .template-card.active .template-badge-check {
+        display: flex;
+    }
+
+    .template-preview-box {
+        background-color: #fdf6ea;
+        height: 140px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-bottom: 1px solid #f1e4ce;
+        padding: 12px;
+        position: relative;
+    }
+
+    .template-card-body {
+        padding: 14px 16px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-btn {
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        padding: 6px 16px;
+        transition: all 0.2s;
+    }
+
+    .filter-btn.active {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        border-color: #1e293b !important;
+    }
+</style>
+{% endblock %}
+
 {% block main_content %}
 <div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card border-0 shadow-sm p-4 bg-white">
-            {% if error %}
-                <div class="alert alert-danger d-flex align-items-center mb-4">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <div>{{ error }}</div>
-                </div>
-            {% endif %}
+    <div class="col-xl-10 col-lg-11">
+        {% if error %}
+            <div class="alert alert-danger d-flex align-items-center mb-4 shadow-sm">
+                <i class="bi bi-exclamation-triangle-fill fs-5 me-2"></i>
+                <div>{{ error }}</div>
+            </div>
+        {% endif %}
 
-            <div class="alert alert-light border d-flex align-items-center mb-4 py-2 px-3">
-                <i class="bi bi-info-circle-fill text-primary fs-5 me-3"></i>
-                <div class="small text-secondary">
-                    Os fluxogramas recebem uma <strong>numeração sequencial automática</strong> (ex: #001, #002) e podem ser associados opcionalmente a um <strong>Procedimento Operacional</strong> existente no CalibraWeb.
+        <form method="POST" id="novoDiagramaForm">
+            {% csrf_token %}
+            <input type="hidden" name="template_id" id="selectedTemplateId" value="{{ template_id_selecionado|default:'fluxograma_padrao' }}">
+
+            <!-- SEÇÃO 1: GALERIA DE MODELOS VISUAIS -->
+            <div class="card border-0 shadow-sm p-4 bg-white mb-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
+                            <i class="bi bi-grid-1x2-fill text-primary"></i> Escolha um Modelo Base para o Diagrama
+                        </h5>
+                        <p class="text-muted small mb-0">Selecione uma estrutura inicial inspirada em mapeamento visual (Organograma, Mapa Mental, Ishikawa, etc.)</p>
+                    </div>
+
+                    <!-- Filtros por Categoria -->
+                    <div class="d-flex flex-wrap gap-1" id="categoryFilters">
+                        <button type="button" class="btn btn-sm btn-light border filter-btn active" data-filter="all">Todos</button>
+                        <button type="button" class="btn btn-sm btn-light border filter-btn" data-filter="processos">Processos</button>
+                        <button type="button" class="btn btn-sm btn-light border filter-btn" data-filter="estruturas">Organogramas</button>
+                        <button type="button" class="btn btn-sm btn-light border filter-btn" data-filter="mapas_mentais">Mapas Mentais</button>
+                        <button type="button" class="btn btn-sm btn-light border filter-btn" data-filter="qualidade">Causa & Efeito (6M)</button>
+                        <button type="button" class="btn btn-sm btn-light border filter-btn" data-filter="projetos">Linha do Tempo</button>
+                    </div>
+                </div>
+
+                <!-- Grid de Cards de Templates -->
+                <div class="row g-3" id="templateGrid">
+                    {% for tpl in templates %}
+                    <div class="col-lg-4 col-md-6 template-item" data-category="{{ tpl.categoria_slug }}">
+                        <div class="template-card {% if tpl.id == template_id_selecionado|default:'fluxograma_padrao' %}active{% endif %}" onclick="selectTemplate('{{ tpl.id }}', this)">
+                            <div class="template-badge-check">
+                                <i class="bi bi-check-lg"></i>
+                            </div>
+
+                            <!-- Preview Ilustrativo SVG -->
+                            <div class="template-preview-box">
+                                {% if tpl.svg_tipo == 'flowchart' %}
+                                    <svg viewBox="0 0 240 100" width="100%" height="90">
+                                        <rect x="15" y="38" width="45" height="24" rx="12" fill="#2563eb" />
+                                        <text x="37" y="54" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">Início</text>
+                                        <line x1="60" y1="50" x2="85" y2="50" stroke="#cbd5e1" stroke-width="2" />
+                                        <rect x="85" y="38" width="55" height="24" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" />
+                                        <text x="112" y="53" fill="#334155" font-size="9" text-anchor="middle">Atividade</text>
+                                        <line x1="140" y1="50" x2="165" y2="50" stroke="#cbd5e1" stroke-width="2" />
+                                        <polygon points="180,35 198,50 180,65 162,50" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5" />
+                                        <text x="180" y="53" fill="#92400e" font-size="8" font-weight="bold" text-anchor="middle">OK?</text>
+                                        <line x1="198" y1="50" x2="215" y2="50" stroke="#cbd5e1" stroke-width="2" />
+                                        <rect x="215" y="38" width="20" height="24" rx="10" fill="#10b981" />
+                                    </svg>
+                                {% elif tpl.svg_tipo == 'orgchart' %}
+                                    <svg viewBox="0 0 240 100" width="100%" height="90">
+                                        <rect x="85" y="10" width="70" height="22" rx="4" fill="#2563eb" />
+                                        <text x="120" y="24" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">Diretoria</text>
+                                        <line x1="120" y1="32" x2="120" y2="44" stroke="#d97706" stroke-width="2" />
+                                        <line x1="45" y1="44" x2="195" y2="44" stroke="#d97706" stroke-width="2" />
+                                        <line x1="45" y1="44" x2="45" y2="54" stroke="#d97706" stroke-width="2" />
+                                        <line x1="120" y1="44" x2="120" y2="54" stroke="#d97706" stroke-width="2" />
+                                        <line x1="195" y1="44" x2="195" y2="54" stroke="#d97706" stroke-width="2" />
+                                        <rect x="20" y="54" width="50" height="18" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+                                        <text x="45" y="66" fill="#334155" font-size="7" text-anchor="middle">Qualidade</text>
+                                        <rect x="95" y="54" width="50" height="18" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+                                        <text x="120" y="66" fill="#334155" font-size="7" text-anchor="middle">Metrologia</text>
+                                        <rect x="170" y="54" width="50" height="18" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+                                        <text x="195" y="66" fill="#334155" font-size="7" text-anchor="middle">Operação</text>
+                                        <line x1="120" y1="72" x2="120" y2="82" stroke="#cbd5e1" stroke-width="1.5" />
+                                        <rect x="100" y="82" width="40" height="14" rx="3" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
+                                        <text x="120" y="92" fill="#64748b" font-size="6" text-anchor="middle">Técnicos</text>
+                                    </svg>
+                                {% elif tpl.svg_tipo == 'mindmap' %}
+                                    <svg viewBox="0 0 240 100" width="100%" height="90">
+                                        <rect x="85" y="38" width="70" height="24" rx="6" fill="#2563eb" />
+                                        <text x="120" y="53" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">Tópico Central</text>
+                                        <!-- Lado Direito -->
+                                        <path d="M 155 50 C 175 50, 175 25, 190 25" stroke="#f59e0b" stroke-width="2" fill="none" />
+                                        <rect x="190" y="16" width="45" height="18" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+                                        <text x="212" y="28" fill="#334155" font-size="7" text-anchor="middle">Tópico 1</text>
+                                        <path d="M 155 50 C 175 50, 175 75, 190 75" stroke="#f59e0b" stroke-width="2" fill="none" />
+                                        <rect x="190" y="66" width="45" height="18" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+                                        <text x="212" y="78" fill="#334155" font-size="7" text-anchor="middle">Tópico 2</text>
+                                        <!-- Lado Esquerdo -->
+                                        <path d="M 85 50 C 65 50, 65 25, 50 25" stroke="#10b981" stroke-width="2" fill="none" />
+                                        <rect x="5" y="16" width="45" height="18" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+                                        <text x="27" y="28" fill="#334155" font-size="7" text-anchor="middle">Tópico 3</text>
+                                        <path d="M 85 50 C 65 50, 65 75, 50 75" stroke="#10b981" stroke-width="2" fill="none" />
+                                        <rect x="5" y="66" width="45" height="18" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+                                        <text x="27" y="78" fill="#334155" font-size="7" text-anchor="middle">Tópico 4</text>
+                                    </svg>
+                                {% elif tpl.svg_tipo == 'fishbone' %}
+                                    <svg viewBox="0 0 240 100" width="100%" height="90">
+                                        <polygon points="215,38 235,50 215,62" fill="#2563eb" />
+                                        <text x="220" y="75" fill="#1e293b" font-size="7" font-weight="bold" text-anchor="middle">Efeito</text>
+                                        <!-- Linha Central -->
+                                        <line x1="20" y1="50" x2="215" y2="50" stroke="#64748b" stroke-width="2.5" />
+                                        <!-- Espinhas Superiores -->
+                                        <line x1="60" y1="50" x2="85" y2="20" stroke="#f59e0b" stroke-width="2" />
+                                        <text x="85" y="15" fill="#92400e" font-size="7" font-weight="bold" text-anchor="middle">Método</text>
+                                        <line x1="120" y1="50" x2="145" y2="20" stroke="#f59e0b" stroke-width="2" />
+                                        <text x="145" y="15" fill="#92400e" font-size="7" font-weight="bold" text-anchor="middle">Máquina</text>
+                                        <line x1="175" y1="50" x2="195" y2="20" stroke="#f59e0b" stroke-width="2" />
+                                        <text x="195" y="15" fill="#92400e" font-size="7" font-weight="bold" text-anchor="middle">Material</text>
+                                        <!-- Espinhas Inferiores -->
+                                        <line x1="60" y1="50" x2="85" y2="80" stroke="#0ea5e9" stroke-width="2" />
+                                        <text x="85" y="92" fill="#0369a1" font-size="7" font-weight="bold" text-anchor="middle">Mão de Obra</text>
+                                        <line x1="120" y1="50" x2="145" y2="80" stroke="#0ea5e9" stroke-width="2" />
+                                        <text x="145" y="92" fill="#0369a1" font-size="7" font-weight="bold" text-anchor="middle">Meio Amb.</text>
+                                        <line x1="175" y1="50" x2="195" y2="80" stroke="#0ea5e9" stroke-width="2" />
+                                        <text x="195" y="92" fill="#0369a1" font-size="7" font-weight="bold" text-anchor="middle">Medição</text>
+                                    </svg>
+                                {% elif tpl.svg_tipo == 'timeline' %}
+                                    <svg viewBox="0 0 240 100" width="100%" height="90">
+                                        <line x1="20" y1="50" x2="220" y2="50" stroke="#cbd5e1" stroke-width="3" />
+                                        <!-- Marco 1 -->
+                                        <circle cx="45" cy="50" r="7" fill="#2563eb" />
+                                        <line x1="45" y1="50" x2="45" y2="25" stroke="#2563eb" stroke-width="1.5" />
+                                        <rect x="20" y="12" width="50" height="15" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+                                        <text x="45" y="22" fill="#334155" font-size="7" text-anchor="middle">Fase 1</text>
+                                        <!-- Marco 2 -->
+                                        <circle cx="100" cy="50" r="7" fill="#f59e0b" />
+                                        <line x1="100" y1="50" x2="100" y2="75" stroke="#f59e0b" stroke-width="1.5" />
+                                        <rect x="75" y="75" width="50" height="15" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+                                        <text x="100" y="85" fill="#334155" font-size="7" text-anchor="middle">Fase 2</text>
+                                        <!-- Marco 3 -->
+                                        <circle cx="155" cy="50" r="7" fill="#06b6d4" />
+                                        <line x1="155" y1="50" x2="155" y2="25" stroke="#06b6d4" stroke-width="1.5" />
+                                        <rect x="130" y="12" width="50" height="15" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
+                                        <text x="155" y="22" fill="#334155" font-size="7" text-anchor="middle">Fase 3</text>
+                                        <!-- Marco 4 -->
+                                        <circle cx="205" cy="50" r="7" fill="#10b981" />
+                                        <text x="205" y="70" fill="#047857" font-size="7" font-weight="bold" text-anchor="middle">Go-Live</text>
+                                    </svg>
+                                {% else %}
+                                    <svg viewBox="0 0 240 100" width="100%" height="90">
+                                        <rect x="10" y="38" width="60" height="24" rx="4" fill="#2563eb" />
+                                        <text x="40" y="53" fill="#ffffff" font-size="8" font-weight="bold" text-anchor="middle">Raiz</text>
+                                        <line x1="70" y1="50" x2="95" y2="30" stroke="#cbd5e1" stroke-width="2" />
+                                        <line x1="70" y1="50" x2="95" y2="70" stroke="#cbd5e1" stroke-width="2" />
+                                        <rect x="95" y="20" width="55" height="20" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+                                        <text x="122" y="33" fill="#334155" font-size="7" text-anchor="middle">Item A</text>
+                                        <rect x="95" y="60" width="55" height="20" rx="3" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
+                                        <text x="122" y="73" fill="#334155" font-size="7" text-anchor="middle">Item B</text>
+                                        <line x1="150" y1="30" x2="175" y2="30" stroke="#cbd5e1" stroke-width="1.5" />
+                                        <rect x="175" y="22" width="50" height="16" rx="3" fill="#ffffff" stroke="#e2e8f0" stroke-width="1" />
+                                        <text x="200" y="33" fill="#64748b" font-size="6" text-anchor="middle">Sub-item</text>
+                                    </svg>
+                                {% endif %}
+                            </div>
+
+                            <div class="template-card-body">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <span class="badge bg-light text-secondary border small">{{ tpl.categoria }}</span>
+                                </div>
+                                <h6 class="fw-bold text-dark mb-1">{{ tpl.nome }}</h6>
+                                <p class="text-muted small mb-0 flex-grow-1">{{ tpl.descricao }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
 
-            <form method="POST">
-                {% csrf_token %}
+            <!-- SEÇÃO 2: DADOS DO FLUXOGRAMA -->
+            <div class="card border-0 shadow-sm p-4 bg-white mb-4">
+                <h5 class="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-card-heading text-primary"></i> Identificação e Dados do Diagrama
+                </h5>
+
+                <div class="alert alert-light border d-flex align-items-center mb-4 py-2 px-3">
+                    <i class="bi bi-info-circle-fill text-primary fs-5 me-3"></i>
+                    <div class="small text-secondary">
+                        A numeração será gerada <strong>sequencialmente de forma automática</strong> (ex: #001, #002) e o diagrama pode ser vinculado opcionalmente a um <strong>Procedimento Operacional</strong> existente.
+                    </div>
+                </div>
+
                 <div class="row g-3">
                     <div class="col-md-12">
                         <label class="form-label fw-semibold text-dark">Título do Processo / Diagrama <span class="text-danger">*</span></label>
-                        <input type="text" name="titulo" value="{{ titulo|default:'' }}" class="form-control" placeholder="Ex: Fluxo de Calibração de Manômetros e Vacuômetros" required autofocus>
+                        <input type="text" name="titulo" value="{{ titulo|default:'' }}" class="form-control" placeholder="Ex: Organograma do Laboratório, Fluxo de Calibração, Análise de Falhas..." required autofocus>
                     </div>
 
                     <div class="col-md-6">
@@ -50,7 +296,7 @@
 
                     <div class="col-md-6">
                         <label class="form-label fw-semibold text-dark">Departamento / Setor Responsável</label>
-                        <input type="text" name="departamento" value="{{ departamento|default:'Metrologia' }}" class="form-control" placeholder="Ex: Metrologia, Qualidade, Engenharia">
+                        <input type="text" name="departamento" value="{{ departamento|default:'Metrologia' }}" class="form-control" placeholder="Ex: Metrologia, Qualidade, Engenharia, Diretoria">
                     </div>
 
                     <div class="col-md-12">
@@ -61,12 +307,42 @@
                     <div class="col-12 mt-4 pt-3 border-top d-flex justify-content-end gap-2">
                         <a href="{% url 'procedures:diagramas_lista' %}" class="btn btn-light">Cancelar</a>
                         <button type="submit" class="btn btn-primary px-4 shadow-sm">
-                            <i class="bi bi-check2"></i> Criar e Abrir no Editor
+                            <i class="bi bi-check2"></i> Criar com Modelo e Abrir no Editor
                         </button>
                     </div>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
     </div>
 </div>
+
+<script>
+    function selectTemplate(templateId, element) {
+        document.getElementById('selectedTemplateId').value = templateId;
+        document.querySelectorAll('.template-card').forEach(card => card.classList.remove('active'));
+        element.classList.add('active');
+    }
+
+    // Filtro de categorias dos templates
+    document.addEventListener('DOMContentLoaded', function() {
+        const filterButtons = document.querySelectorAll('#categoryFilters button');
+        const templateItems = document.querySelectorAll('.template-item');
+
+        filterButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                filterButtons.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+
+                const filter = this.getAttribute('data-filter');
+                templateItems.forEach(item => {
+                    if (filter === 'all' || item.getAttribute('data-category') === filter) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        });
+    });
+</script>
 {% endblock %}
