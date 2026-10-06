@@ -130,6 +130,11 @@ class Colaborador(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Colaborador Ativo (RH)")
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        permissions = [
+            ("pode_alterar_foto_colaborador", "Pode alterar foto do colaborador"),
+        ]
+
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 

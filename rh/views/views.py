@@ -2669,8 +2669,10 @@ def api_colaboradores_filtrados(request):
 @require_http_methods(["POST"])
 def api_upload_foto_colaborador(request, colab_id):
     alvo = get_object_or_404(Colaborador, id=colab_id)
+    if not request.user.has_perm('rh.pode_alterar_foto_colaborador'):
+        return JsonResponse({"error": "Acesso negado: você não tem permissão para alterar a foto."}, status=403)
     if not can_user_access_colaborador(request.user, alvo):
-        return JsonResponse({"error": "Acesso negado"}, status=403)
+        return JsonResponse({"error": "Acesso negado ao colaborador"}, status=403)
     
     foto_b64 = request.POST.get('foto_b64')
     if foto_b64:
