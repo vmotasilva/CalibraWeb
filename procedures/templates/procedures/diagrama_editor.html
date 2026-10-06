@@ -479,7 +479,7 @@
         border-color: #bfdbfe;
     }
 
-    /* Modo Outliner */
+    /* Modo Outliner Moderno e Fluido */
     .outliner-container {
         background: #ffffff;
         padding: 24px;
@@ -490,22 +490,117 @@
     .outliner-item {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 6px 8px;
-        border-radius: 6px;
-        transition: background 0.15s;
+        gap: 10px;
+        padding: 5px 10px;
+        border-radius: 8px;
+        position: relative;
+        transition: background 0.15s, box-shadow 0.15s;
     }
 
     .outliner-item:hover {
         background: #f8fafc;
     }
 
+    .outliner-item:focus-within {
+        background: #f0f7ff;
+        box-shadow: 0 0 0 1px #bfdbfe;
+    }
+
     .outliner-bullet {
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
         background: #2563eb;
         flex-shrink: 0;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        transition: transform 0.15s, background 0.15s;
+        cursor: pointer;
+    }
+
+    .outliner-bullet.sub-bullet {
+        width: 8px;
+        height: 8px;
+        background: #0284c7;
+        box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+    }
+
+    .outliner-item:hover .outliner-bullet {
+        transform: scale(1.25);
+    }
+
+    .outliner-guide-line {
+        position: absolute;
+        top: -6px;
+        bottom: -6px;
+        width: 1.5px;
+        background: #e2e8f0;
+        pointer-events: none;
+    }
+
+    .outliner-input {
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        border-radius: 6px !important;
+        padding: 5px 8px !important;
+        font-size: 14px;
+        color: #1e293b;
+        transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+    }
+
+    .outliner-input:focus {
+        background: #ffffff !important;
+        border-color: #93c5fd !important;
+        box-shadow: 0 0 0 2.5px rgba(59, 130, 246, 0.18) !important;
+    }
+
+    .outliner-lane-badge {
+        font-size: 11px !important;
+        font-weight: 600 !important;
+        color: #475569 !important;
+        background-color: #f1f5f9 !important;
+        border-radius: 20px !important;
+        white-space: nowrap;
+        max-width: 140px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .outliner-lane-badge:hover {
+        background-color: #e2e8f0 !important;
+        color: #1e293b !important;
+    }
+
+    .outliner-del-btn {
+        opacity: 0.25;
+        transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .outliner-item:hover .outliner-del-btn,
+    .outliner-item:focus-within .outliner-del-btn {
+        opacity: 1;
+    }
+
+    .outliner-del-btn:hover {
+        transform: scale(1.2);
+    }
+
+    .outliner-kbd-badge {
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-size: 11px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-weight: 600;
+        color: #334155;
+    }
+
+    .outliner-raw-textarea {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 13.5px;
+        line-height: 1.6;
+        tab-size: 4;
+        white-space: pre;
     }
 </style>
 {% endblock %}
@@ -752,36 +847,87 @@
             </div>
         </div>
 
-        <!-- VISTA 2: MODO OUTLINER (LISTA ESTRUTURADA) -->
+        <!-- VISTA 2: MODO OUTLINER (LISTA ESTRUTURADA E TEXTO INDENTADO) -->
         <div id="viewOutlinerContainer" class="flex-grow-1 p-4 bg-white overflow-auto d-none" style="height: 100%;">
-            <div class="max-w-700 mx-auto" style="max-width: 750px;">
-                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+            <div class="max-w-700 mx-auto" style="max-width: 800px;">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 pb-3 border-bottom gap-2">
                     <div>
                         <h5 class="fw-bold mb-1 text-dark d-flex align-items-center gap-2">
-                            <i class="bi bi-list-task text-primary"></i> Modo Outliner (Edição Estruturada em Lista)
+                            <i class="bi bi-list-task text-primary"></i> Modo Outliner (Edição Estruturada)
                         </h5>
-                        <small class="text-muted">Edite a hierarquia e os tópicos como texto. A sincronização com o Canvas é automática.</small>
+                        <small class="text-muted">Digitação rápida com recuo por tabulação. Use <kbd class="outliner-kbd-badge">Tab</kbd> e <kbd class="outliner-kbd-badge">Enter</kbd> para estruturar.</small>
                     </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <!-- Alternador entre Lista Interativa e Texto Livre -->
+                        <div class="btn-group btn-group-sm p-1 bg-light border rounded-pill shadow-xs" role="group">
+                            <button type="button" id="btnOutlinerVisaoLista" class="btn btn-sm btn-white active rounded-pill fw-semibold px-3" onclick="alternarVisualizacaoOutliner('lista')">
+                                <i class="bi bi-list-ul me-1"></i> Lista Interativa
+                            </button>
+                            <button type="button" id="btnOutlinerVisaoTexto" class="btn btn-sm btn-light rounded-pill text-secondary fw-semibold px-3" onclick="alternarVisualizacaoOutliner('texto')">
+                                <i class="bi bi-file-earmark-code me-1"></i> Texto com Tabs
+                            </button>
+                        </div>
+
+                        {% if not is_approved %}
+                            <div class="d-flex gap-1 ms-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="outdentOutlinerItem()" title="Desrecuar Nível (Shift+Tab)">
+                                    <i class="bi bi-arrow-left"></i> Desrecuar
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="indentOutlinerItem()" title="Recuar / Subtópico (Tab)">
+                                    <i class="bi bi-arrow-right"></i> Recuar
+                                </button>
+                                <button type="button" class="btn btn-sm btn-primary shadow-sm" onclick="criarProximoItemOutliner(selectedNodeId)" title="Adicionar Linha (Enter)">
+                                    <i class="bi bi-plus-lg"></i> + Novo Tópico
+                                </button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Visão 1: Lista Interativa (Inputs fluidos com atalhos de teclado) -->
+                <div id="outlinerListWrapper" class="d-flex flex-column gap-3">
+                    <div id="outlinerList" class="d-flex flex-column gap-1">
+                        <!-- Gerado dinamicamente via renderizarOutliner() -->
+                    </div>
+
+                    <!-- Barra de Dicas de Atalhos de Teclado -->
+                    <div class="p-2 px-3 bg-light rounded-3 border d-flex flex-wrap align-items-center justify-content-between text-secondary small">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <span><kbd class="outliner-kbd-badge">Enter</kbd> Nova linha</span>
+                            <span><kbd class="outliner-kbd-badge">Tab</kbd> Recuar (Criar Subtópico)</span>
+                            <span><kbd class="outliner-kbd-badge">Shift + Tab</kbd> Desrecuar</span>
+                            <span><kbd class="outliner-kbd-badge">Backspace</kbd> Desrecuar / Excluir</span>
+                            <span><kbd class="outliner-kbd-badge">↑ / ↓</kbd> Navegar</span>
+                        </div>
+                        <span class="text-primary fw-medium"><i class="bi bi-lightning-charge-fill me-1"></i>100% via teclado</span>
+                    </div>
+                </div>
+
+                <!-- Visão 2: Editor de Texto com Tabulações (Bulk Text / Markdown) -->
+                <div id="outlinerTextWrapper" class="d-flex flex-column gap-3 d-none">
+                    <div class="alert alert-info py-2 px-3 mb-0 small d-flex align-items-center gap-2 border-0 bg-info-subtle text-info-emphasis">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div>
+                            Digite ou cole sua estrutura aqui. Cada <kbd class="outliner-kbd-badge">Tab</kbd> no início da linha cria um nível de subtópico.
+                        </div>
+                    </div>
+                    <textarea id="outlinerRawTextarea" class="form-control outliner-raw-textarea p-3 border shadow-sm" rows="14" placeholder="Direção / Gerência Geral&#10;&#9;Coordenação da Qualidade&#10;&#9;&#9;Supervisão do Laboratório&#10;&#9;&#9;&#9;Analista da Qualidade&#10;&#9;Engenharia &amp; Métodos" {% if is_approved %}disabled{% endif %}></textarea>
+                    
                     {% if not is_approved %}
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="outdentOutlinerItem()" title="Desrecuar (Shift+Tab)">
-                                <i class="bi bi-arrow-left"></i> Desrecuar
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="exportarOutlinerParaTexto()">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Recarregar do Diagrama
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="indentOutlinerItem()" title="Recuar / Criar Subtópico (Tab)">
-                                <i class="bi bi-arrow-right"></i> Recuar
-                            </button>
-                            <button type="button" class="btn btn-sm btn-primary" onclick="adicionarItemOutliner()">
-                                <i class="bi bi-plus-lg"></i> + Novo Tópico
+                            <button type="button" class="btn btn-sm btn-success fw-semibold shadow-sm px-3" onclick="importarTextoParaOutliner()">
+                                <i class="bi bi-check-lg me-1"></i> Aplicar Texto ao Diagrama
                             </button>
                         </div>
                     {% endif %}
                 </div>
 
-                <div id="outlinerList" class="d-flex flex-column gap-2">
-                    <!-- Gerado dinamicamente via JS -->
-                </div>
-
-                <div class="mt-4 pt-3 border-top text-end">
+                <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
+                    <small class="text-muted"><i class="bi bi-shield-check text-success me-1"></i>Alterações sincronizadas em tempo real com o Canvas e Grelha DOC.071.</small>
                     <button type="button" class="btn btn-primary" onclick="alternarModoEditor('canvas')">
                         <i class="bi bi-diagram-3-fill me-1"></i> Concluir e Visualizar no Canvas
                     </button>
@@ -1767,51 +1913,605 @@
     }
 
     // =========================================================================
-    // MODO OUTLINER (ESTRUTURA EM LISTA)
+    // MODO OUTLINER (MOTOR HIERÁRQUICO 100% ORIENTADO A DIGITAÇÃO E TABULAÇÕES)
     // =========================================================================
-    function renderizarOutliner() {
+
+    /**
+     * Calcula a lista linear ordenada da árvore hierárquica (Nós Raízes -> Filhos em profundidade).
+     */
+    function obterEstruturaOutliner() {
+        const childrenMap = new Map();
+        const parentMap = new Map();
+        const inDegree = new Map();
+
+        (topologia.nodes || []).forEach(n => {
+            childrenMap.set(n.id, []);
+            inDegree.set(n.id, 0);
+        });
+
+        (topologia.edges || []).forEach(e => {
+            if (childrenMap.has(e.source) && inDegree.has(e.target)) {
+                if (!childrenMap.get(e.source).includes(e.target)) {
+                    childrenMap.get(e.source).push(e.target);
+                    parentMap.set(e.target, e.source);
+                    inDegree.set(e.target, (inDegree.get(e.target) || 0) + 1);
+                }
+            }
+        });
+
+        const items = [];
+        const visited = new Set();
+
+        function traverse(nodeId, level) {
+            if (visited.has(nodeId)) return;
+            visited.add(nodeId);
+            const node = topologia.nodes.find(n => n.id === nodeId);
+            if (node) {
+                items.push({
+                    node: node,
+                    id: node.id,
+                    level: level,
+                    parentId: parentMap.get(nodeId) || null
+                });
+                const children = childrenMap.get(nodeId) || [];
+                children.forEach(childId => traverse(childId, level + 1));
+            }
+        }
+
+        // Percorre nós de primeiro nível (sem pai) na ordem definida
+        (topologia.nodes || []).forEach(n => {
+            if ((inDegree.get(n.id) || 0) === 0) {
+                traverse(n.id, 0);
+            }
+        });
+
+        // Caso haja nós soltos ou loops, inclui no nível raiz
+        (topologia.nodes || []).forEach(n => {
+            if (!visited.has(n.id)) {
+                traverse(n.id, 0);
+            }
+        });
+
+        return items;
+    }
+
+    /**
+     * Renderiza a lista interativa de tópicos com recuos, guias de alinhamento e badges de raia.
+     */
+    function renderizarOutliner(focusNodeId = null, cursorPosition = null) {
         const listEl = document.getElementById('outlinerList');
+        if (!listEl) return;
         listEl.innerHTML = '';
 
-        topologia.nodes.forEach((node, idx) => {
-            const hasParent = topologia.edges.some(e => e.target === node.id);
-            const indentLevel = hasParent ? 1 : 0;
+        const items = obterEstruturaOutliner();
+        const lanes = obterListaRaiasOrdenada();
+
+        if (items.length === 0) {
+            listEl.innerHTML = `
+                <div class="text-center py-5 text-muted border rounded-3 bg-light">
+                    <i class="bi bi-list-task fs-1 d-block mb-2 text-primary opacity-50"></i>
+                    <p class="mb-2 fw-semibold">Nenhum tópico no diagrama ainda.</p>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="criarProximoItemOutliner(null)">
+                        <i class="bi bi-plus-lg me-1"></i> Adicionar Primeiro Tópico
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        items.forEach((item, idx) => {
+            const node = item.node;
+            const level = item.level;
+            const safeLabel = escapeHtml(node.data?.label || '');
+            const currentLane = node.data?.lane || (lanes[0] || 'Geral');
 
             const itemEl = document.createElement('div');
-            itemEl.className = 'outliner-item';
-            itemEl.style.paddingLeft = `${indentLevel * 32 + 8}px`;
+            itemEl.className = `outliner-item outliner-level-${Math.min(level, 6)}`;
+            itemEl.id = `outliner-row-${node.id}`;
+            itemEl.style.paddingLeft = `${level * 28 + 8}px`;
+
+            // Linhas guia de hierarquia para níveis indentados
+            let guideLinesHtml = '';
+            for (let l = 0; l < level; l++) {
+                guideLinesHtml += `<span class="outliner-guide-line" style="left: ${l * 28 + 16}px;"></span>`;
+            }
+
             itemEl.innerHTML = `
-                <div class="outliner-bullet"></div>
-                <input type="text" class="form-control form-control-sm border-0 shadow-none fw-semibold" 
-                    value="${escapeHtml(node.data?.label || '')}" 
+                ${guideLinesHtml}
+                <div class="outliner-bullet ${level > 0 ? 'sub-bullet' : ''}" title="Nível ${level + 1} (${currentLane})" onclick="selecionarNo('${node.id}')"></div>
+                <input type="text" 
+                    id="outliner-input-${node.id}" 
+                    class="form-control form-control-sm outliner-input flex-grow-1 ${level === 0 ? 'fw-bold text-dark' : 'fw-medium text-secondary-emphasis'}" 
+                    value="${safeLabel}" 
+                    placeholder="Digite o nome do tópico / etapa..."
                     ${IS_APPROVED ? 'disabled' : ''}
-                    onchange="atualizarTextoOutliner('${node.id}', this.value)">
-                <span class="badge bg-light text-secondary border small font-monospace">${node.data?.lane || 'Geral'}</span>
+                    oninput="onOutlinerInput('${node.id}', this.value)"
+                    onkeydown="onOutlinerKeydown(event, '${node.id}', ${idx})"
+                    onclick="selecionarNo('${node.id}')"
+                >
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border py-0 px-2 outliner-lane-badge dropdown-toggle" type="button" data-bs-toggle="dropdown" ${IS_APPROVED ? 'disabled' : ''} title="Raia / Setor Responsável">
+                        ${escapeHtml(currentLane)}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                        <li><h6 class="dropdown-header small text-uppercase">Raia / Setor</h6></li>
+                        ${lanes.map(l => `
+                            <li>
+                                <a class="dropdown-item small d-flex align-items-center justify-content-between ${l === currentLane ? 'active fw-bold' : ''}" href="javascript:void(0)" onclick="alterarRaiaNo('${node.id}', '${escapeHtml(l)}')">
+                                    ${escapeHtml(l)}
+                                    ${l === currentLane ? '<i class="bi bi-check2"></i>' : ''}
+                                </a>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
                 ${!IS_APPROVED ? `
-                    <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="selectedNodeId='${node.id}'; excluirNoSelecionado();">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 outliner-del-btn" onclick="excluirItemOutlinerETrazerFocoAnterior('${node.id}')" title="Excluir este item">
                         <i class="bi bi-x-circle"></i>
                     </button>
                 ` : ''}
             `;
             listEl.appendChild(itemEl);
         });
+
+        // Restauração de foco e posição de cursor sem interrupção da digitação
+        if (focusNodeId) {
+            setTimeout(() => {
+                const targetInput = document.getElementById(`outliner-input-${focusNodeId}`);
+                if (targetInput) {
+                    targetInput.focus();
+                    if (cursorPosition !== null && typeof cursorPosition === 'number') {
+                        try {
+                            targetInput.setSelectionRange(cursorPosition, cursorPosition);
+                        } catch (e) {}
+                    }
+                }
+            }, 10);
+        }
     }
 
-    function atualizarTextoOutliner(nodeId, novoTexto) {
+    /**
+     * Atualização em tempo real conforme o usuário digita (sem perda de foco ou delay).
+     */
+    function onOutlinerInput(nodeId, novoTexto) {
         const node = topologia.nodes.find(n => n.id === nodeId);
         if (node) {
+            if (!node.data) node.data = {};
             node.data.label = novoTexto;
+
+            // Atualiza visualmente o nó no Canvas se renderizado
+            const nodeEl = document.getElementById(`node-${nodeId}`);
+            if (nodeEl) {
+                const contentEl = nodeEl.querySelector('.fw-semibold') || nodeEl.querySelector('.diamond-content') || nodeEl.querySelector('span');
+                if (contentEl) contentEl.textContent = novoTexto || 'Novo Tópico';
+            }
         }
+
         const gridRow = topologia.grid_data.find(r => r.stepId === nodeId);
         if (gridRow) {
             gridRow.label = novoTexto;
         }
+
         dispararAutoSave();
     }
 
-    function adicionarItemOutliner() {
-        adicionarTopicoIrmao();
-        renderizarOutliner();
+    /**
+     * Interceptador de teclado para navegação, recuos por Tab e criação ágil de tópicos.
+     */
+    function onOutlinerKeydown(e, nodeId, idx) {
+        const input = e.target;
+        const cursorPos = input.selectionStart;
+
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.shiftKey) {
+                desrecuarItemOutliner(nodeId, cursorPos);
+            } else {
+                recuarItemOutliner(nodeId, cursorPos);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            criarProximoItemOutliner(nodeId);
+        } else if (e.key === 'Backspace') {
+            const items = obterEstruturaOutliner();
+            const curItem = items.find(it => it.id === nodeId);
+            if (cursorPos === 0 && input.selectionEnd === 0) {
+                if (curItem && curItem.level > 0) {
+                    // Se estiver indentado, o primeiro Backspace no início da linha desrecua
+                    e.preventDefault();
+                    e.stopPropagation();
+                    desrecuarItemOutliner(nodeId, 0);
+                } else if (!input.value.trim() && items.length > 1) {
+                    // Se o item estiver vazio no nível raiz, exclui e move o cursor para o anterior
+                    e.preventDefault();
+                    e.stopPropagation();
+                    excluirItemOutlinerETrazerFocoAnterior(nodeId);
+                }
+            }
+        } else if (e.key === 'ArrowUp') {
+            if (cursorPos === 0 || e.ctrlKey || e.altKey) {
+                e.preventDefault();
+                focarItemOutlinerVizinho(nodeId, -1);
+            }
+        } else if (e.key === 'ArrowDown') {
+            if (cursorPos === input.value.length || e.ctrlKey || e.altKey) {
+                e.preventDefault();
+                focarItemOutlinerVizinho(nodeId, 1);
+            }
+        }
+    }
+
+    /**
+     * Recua o item (aumenta o nível de hierarquia / torna subtópico do item imediatamente anterior).
+     */
+    function recuarItemOutliner(nodeId, cursorPos = null) {
+        if (IS_APPROVED) return;
+        const items = obterEstruturaOutliner();
+        const curIdx = items.findIndex(it => it.id === nodeId);
+        if (curIdx <= 0) return; // O primeiro item da lista não pode ser recuado
+
+        const prevItem = items[curIdx - 1];
+        const prevNodeId = prevItem.id;
+
+        // Remove conexões de entrada existentes
+        topologia.edges = (topologia.edges || []).filter(e => e.target !== nodeId);
+
+        // Cria nova aresta pai -> filho
+        topologia.edges.push({
+            id: `e-${prevNodeId}-${nodeId}`,
+            source: prevNodeId,
+            target: nodeId,
+            sourceHandle: 'right',
+            targetHandle: 'left'
+        });
+
+        // Sincroniza topologia e reorganiza canvas
+        sincronizarEdgesComGridData();
+        recalcularPosicoesCanvasHierarquico();
+
+        renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner(nodeId, cursorPos);
+        dispararAutoSave();
+    }
+
+    /**
+     * Desrecua o item (diminui o nível de hierarquia / sobe um nível).
+     */
+    function desrecuarItemOutliner(nodeId, cursorPos = null) {
+        if (IS_APPROVED) return;
+        const items = obterEstruturaOutliner();
+        const curItem = items.find(it => it.id === nodeId);
+        if (!curItem || curItem.level === 0) return; // Já está na raiz
+
+        const parentId = curItem.parentId;
+        const parentItem = items.find(it => it.id === parentId);
+        const grandParentId = parentItem ? parentItem.parentId : null;
+
+        // Remove conexão pai -> nó atual
+        topologia.edges = (topologia.edges || []).filter(e => e.target !== nodeId);
+
+        if (grandParentId) {
+            // Liga ao avô
+            topologia.edges.push({
+                id: `e-${grandParentId}-${nodeId}`,
+                source: grandParentId,
+                target: nodeId,
+                sourceHandle: 'right',
+                targetHandle: 'left'
+            });
+        }
+
+        sincronizarEdgesComGridData();
+        recalcularPosicoesCanvasHierarquico();
+
+        renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner(nodeId, cursorPos);
+        dispararAutoSave();
+    }
+
+    /**
+     * Cria um novo item logo abaixo do nó de referência (ao pressionar Enter).
+     */
+    function criarProximoItemOutliner(refNodeId = null) {
+        if (IS_APPROVED) return;
+        const items = obterEstruturaOutliner();
+        let parentId = null;
+        let lane = 'Geral';
+        let insertIndexInNodes = topologia.nodes.length;
+
+        if (refNodeId) {
+            const curItem = items.find(it => it.id === refNodeId);
+            if (curItem) {
+                parentId = curItem.parentId;
+                lane = curItem.node.data?.lane || 'Geral';
+                const nodeIdx = topologia.nodes.findIndex(n => n.id === refNodeId);
+                if (nodeIdx !== -1) insertIndexInNodes = nodeIdx + 1;
+            }
+        } else if (items.length > 0) {
+            const lastItem = items[items.length - 1];
+            parentId = lastItem.parentId;
+            lane = lastItem.node.data?.lane || 'Geral';
+        }
+
+        const nextId = gerarProximoNodeId();
+        const newNode = {
+            id: nextId,
+            type: 'process',
+            position: { x: 100, y: 100 },
+            data: { stepId: nextId, lane: lane, label: '' }
+        };
+
+        topologia.nodes.splice(insertIndexInNodes, 0, newNode);
+
+        if (parentId) {
+            topologia.edges.push({
+                id: `e-${parentId}-${nextId}`,
+                source: parentId,
+                target: nextId,
+                sourceHandle: 'right',
+                targetHandle: 'left'
+            });
+        }
+
+        sincronizarEdgesComGridData();
+        recalcularPosicoesCanvasHierarquico();
+
+        renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner(nextId, 0);
+        dispararAutoSave();
+    }
+
+    /**
+     * Exclui um item e move o foco para o item anterior.
+     */
+    function excluirItemOutlinerETrazerFocoAnterior(nodeId) {
+        if (IS_APPROVED) return;
+        const items = obterEstruturaOutliner();
+        const curIdx = items.findIndex(it => it.id === nodeId);
+        const prevNodeId = curIdx > 0 ? items[curIdx - 1].id : (items[curIdx + 1]?.id || null);
+
+        topologia.nodes = (topologia.nodes || []).filter(n => n.id !== nodeId);
+        topologia.edges = (topologia.edges || []).filter(e => e.source !== nodeId && e.target !== nodeId);
+        topologia.grid_data = (topologia.grid_data || []).filter(r => r.stepId !== nodeId);
+
+        sincronizarEdgesComGridData();
+        recalcularPosicoesCanvasHierarquico();
+
+        renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner(prevNodeId, 9999);
+        dispararAutoSave();
+    }
+
+    /**
+     * Move o foco do teclado para o item acima (-1) ou abaixo (+1).
+     */
+    function focarItemOutlinerVizinho(nodeId, offset) {
+        const items = obterEstruturaOutliner();
+        const curIdx = items.findIndex(it => it.id === nodeId);
+        if (curIdx === -1) return;
+
+        const targetIdx = curIdx + offset;
+        if (targetIdx >= 0 && targetIdx < items.length) {
+            const targetId = items[targetIdx].id;
+            const targetInput = document.getElementById(`outliner-input-${targetId}`);
+            if (targetInput) {
+                targetInput.focus();
+                const len = targetInput.value.length;
+                targetInput.setSelectionRange(len, len);
+            }
+        }
+    }
+
+    function indentOutlinerItem() {
+        if (selectedNodeId) {
+            recuarItemOutliner(selectedNodeId);
+        } else {
+            const items = obterEstruturaOutliner();
+            if (items.length > 1) {
+                recuarItemOutliner(items[items.length - 1].id);
+            }
+        }
+    }
+
+    function outdentOutlinerItem() {
+        if (selectedNodeId) {
+            desrecuarItemOutliner(selectedNodeId);
+        } else {
+            const items = obterEstruturaOutliner();
+            if (items.length > 1) {
+                desrecuarItemOutliner(items[items.length - 1].id);
+            }
+        }
+    }
+
+    function alterarRaiaNo(nodeId, novaRaia) {
+        if (IS_APPROVED) return;
+        const node = topologia.nodes.find(n => n.id === nodeId);
+        if (node) {
+            if (!node.data) node.data = {};
+            node.data.lane = novaRaia;
+        }
+        const gridRow = topologia.grid_data.find(r => r.stepId === nodeId);
+        if (gridRow) {
+            gridRow.lane = novaRaia;
+        }
+        renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner(nodeId);
+        dispararAutoSave();
+    }
+
+    function gerarProximoNodeId() {
+        let maxId = 0;
+        (topologia.nodes || []).forEach(n => {
+            const num = parseInt(n.id, 10);
+            if (!isNaN(num) && num > maxId) maxId = num;
+        });
+        return String(maxId + 1);
+    }
+
+    function sincronizarEdgesComGridData() {
+        gerarGridDataPorNodes();
+    }
+
+    function recalcularPosicoesCanvasHierarquico() {
+        const items = obterEstruturaOutliner();
+        const lanes = obterListaRaiasOrdenada();
+        const laneYMap = new Map();
+        lanes.forEach((l, idx) => laneYMap.set(l, 40 + idx * 240 + 60));
+
+        items.forEach((it, idx) => {
+            const lane = it.node.data?.lane || (lanes[0] || 'Geral');
+            const baseY = laneYMap.get(lane) || (100 + idx * 70);
+            it.node.position.x = 100 + it.level * 220;
+            it.node.position.y = baseY;
+        });
+    }
+
+    // =========================================================================
+    // VISÃO ALTERNATIVA EM TEXTO BRUTO (BULK TEXT COM TABULAÇÕES)
+    // =========================================================================
+    function alternarVisualizacaoOutliner(modoVisao) {
+        const listContainer = document.getElementById('outlinerListWrapper');
+        const textContainer = document.getElementById('outlinerTextWrapper');
+        const btnLista = document.getElementById('btnOutlinerVisaoLista');
+        const btnTexto = document.getElementById('btnOutlinerVisaoTexto');
+
+        if (modoVisao === 'texto') {
+            btnLista.classList.remove('active', 'btn-white');
+            btnLista.classList.add('btn-light', 'text-secondary');
+            btnTexto.classList.remove('btn-light', 'text-secondary');
+            btnTexto.classList.add('active', 'btn-white');
+
+            listContainer.classList.add('d-none');
+            textContainer.classList.remove('d-none');
+            exportarOutlinerParaTexto();
+            setupOutlinerRawTextarea();
+        } else {
+            btnTexto.classList.remove('active', 'btn-white');
+            btnTexto.classList.add('btn-light', 'text-secondary');
+            btnLista.classList.remove('btn-light', 'text-secondary');
+            btnLista.classList.add('active', 'btn-white');
+
+            textContainer.classList.add('d-none');
+            listContainer.classList.remove('d-none');
+            renderizarOutliner();
+        }
+    }
+
+    function exportarOutlinerParaTexto() {
+        const items = obterEstruturaOutliner();
+        const lines = items.map(it => {
+            const tabs = '\t'.repeat(it.level);
+            return `${tabs}${it.node.data?.label || ''}`;
+        });
+        const textarea = document.getElementById('outlinerRawTextarea');
+        if (textarea) {
+            textarea.value = lines.join('\n');
+        }
+    }
+
+    function importarTextoParaOutliner() {
+        if (IS_APPROVED) return;
+        const textarea = document.getElementById('outlinerRawTextarea');
+        if (!textarea) return;
+        const text = textarea.value;
+        const rawLines = text.split('\n');
+
+        const lines = [];
+        rawLines.forEach(l => {
+            if (!l.trim()) return;
+            let indent = 0;
+            if (l.startsWith('\t')) {
+                indent = (l.match(/^\t+/) || [''])[0].length;
+            } else if (l.startsWith('    ')) {
+                indent = Math.floor((l.match(/^ +/) || [''])[0].length / 4);
+            } else if (l.startsWith('  ')) {
+                indent = Math.floor((l.match(/^ +/) || [''])[0].length / 2);
+            }
+            lines.push({ indent: indent, content: l.trim() });
+        });
+
+        if (lines.length === 0) return;
+
+        const lanes = obterListaRaiasOrdenada();
+        const defaultLane = lanes[0] || 'Geral';
+
+        const newNodes = [];
+        const newEdges = [];
+        const stack = []; // pilha de { id, level }
+
+        lines.forEach((line, idx) => {
+            const nodeId = String(idx + 1);
+            const node = {
+                id: nodeId,
+                type: 'process',
+                position: { x: 100 + line.indent * 220, y: 100 + idx * 70 },
+                data: { stepId: nodeId, lane: defaultLane, label: line.content }
+            };
+            newNodes.push(node);
+
+            while (stack.length > 0 && stack[stack.length - 1].level >= line.indent) {
+                stack.pop();
+            }
+
+            if (stack.length > 0) {
+                const parent = stack[stack.length - 1];
+                newEdges.push({
+                    id: `e-${parent.id}-${nodeId}`,
+                    source: parent.id,
+                    target: nodeId,
+                    sourceHandle: 'right',
+                    targetHandle: 'left'
+                });
+            }
+
+            stack.push({ id: nodeId, level: line.indent });
+        });
+
+        topologia.nodes = newNodes;
+        topologia.edges = newEdges;
+        sincronizarEdgesComGridData();
+        recalcularPosicoesCanvasHierarquico();
+
+        renderizarCanvas();
+        renderizarGrelha();
+        alternarVisualizacaoOutliner('lista');
+        dispararAutoSave();
+    }
+
+    let outlinerTextareaInitialized = false;
+    function setupOutlinerRawTextarea() {
+        const textarea = document.getElementById('outlinerRawTextarea');
+        if (!textarea || outlinerTextareaInitialized) return;
+        outlinerTextareaInitialized = true;
+
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+
+                if (!e.shiftKey) {
+                    this.value = this.value.substring(0, start) + "\t" + this.value.substring(end);
+                    this.selectionStart = this.selectionEnd = start + 1;
+                } else {
+                    const before = this.value.substring(0, start);
+                    const lastBreak = before.lastIndexOf('\n');
+                    const lineStart = lastBreak === -1 ? 0 : lastBreak + 1;
+                    if (this.value[lineStart] === '\t') {
+                        this.value = this.value.substring(0, lineStart) + this.value.substring(lineStart + 1);
+                        this.selectionStart = this.selectionEnd = Math.max(lineStart, start - 1);
+                    }
+                }
+            }
+        });
     }
 
     // =========================================================================
