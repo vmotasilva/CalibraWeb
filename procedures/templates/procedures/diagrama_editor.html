@@ -647,6 +647,42 @@
 
         <!-- Ações de Visualização & Painel -->
         <div class="d-flex align-items-center gap-2">
+            <!-- Seletor de Estilo das Linhas de Conexão -->
+            <div class="dropdown">
+                <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Configurar Estilo das Linhas / Conectores">
+                    <i class="bi bi-bezier2 text-primary"></i> <span id="labelEstiloLinha">Linhas 90°</span>
+                </button>
+                <ul class="dropdown-menu shadow-sm">
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="alterarEstiloLinha('ortogonal')">
+                            <i class="bi bi-bezier2 text-primary fs-5"></i>
+                            <div>
+                                <div class="fw-bold small">Ortogonal / Perpendicular (90°)</div>
+                                <div class="text-muted" style="font-size: 11px;">Linhas retas e quebras perpendiculares (Padrão QMS)</div>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="alterarEstiloLinha('curva')">
+                            <i class="bi bi-activity text-success fs-5"></i>
+                            <div>
+                                <div class="fw-bold small">Curva Suave (Bézier)</div>
+                                <div class="text-muted" style="font-size: 11px;">Linhas curvas orgânicas estilo Mapa Mental</div>
+                            </div>
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="alterarEstiloLinha('reta')">
+                            <i class="bi bi-slash-lg text-secondary fs-5"></i>
+                            <div>
+                                <div class="fw-bold small">Reta Direta</div>
+                                <div class="text-muted" style="font-size: 11px;">Segmentos lineares retos ponto a ponto</div>
+                            </div>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
             <button type="button" class="ribbon-btn" onclick="alternarFundoCanvas()" title="Alternar entre fundo acolhedor e fundo claro">
                 <i class="bi bi-palette2"></i> Fundo
             </button>
@@ -1021,6 +1057,7 @@
     if (!topologia.nodes) topologia.nodes = [];
     if (!topologia.edges) topologia.edges = [];
     if (!topologia.grid_data) topologia.grid_data = [];
+    if (!topologia.estilo_linha) topologia.estilo_linha = 'ortogonal'; // Padrão 90° para fluxogramas e organogramas
 
     let autoSaveTimer = null;
     let isDragging = false;
@@ -1049,6 +1086,7 @@
         renderizarGrelha();
         renderizarOutliner();
         setupCanvasNavigation();
+        atualizarLabelEstiloLinha();
 
         // Enquadra suavemente a visão inicial nos blocos
         setTimeout(() => {
@@ -1376,13 +1414,186 @@
     }
 
     // =========================================================================
-    // DESENHO DE ARESTAS SVG (CONEXÕES / SETAS COM BÉZIER SUAVE)
+    // CONFIGURAÇÃO E DESENHO DE ARESTAS SVG (LINHAS ORTOGONAIS 90° E CURVAS)
     // =========================================================================
+    function alterarEstiloLinha(estilo) {
+        topologia.estilo_linha = estilo;
+        atualizarLabelEstiloLinha();
+        desenharConexoes();
+        dispararAutoSave();
+    }
+
+    function atualizarLabelEstiloLinha() {
+        const label = document.getElementById('labelEstiloLinha');
+        if (!label) return;
+        const estilo = topologia.estilo_linha || 'ortogonal';
+        if (estilo === 'ortogonal') {
+            label.textContent = 'Linhas 90° (Ortogonal)';
+        } else if (estilo === 'curva') {
+            label.textContent = 'Curvas Suaves';
+        } else if (estilo === 'reta') {
+            label.textContent = 'Linhas Retas';
+        }
+    }
+
+    function gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, estilo = 'ortogonal') {
+        const sW = sourceEl.offsetWidth || 180;
+        const sH = sourceEl.offsetHeight || 70;
+        const tW = targetEl.offsetWidth || 180;
+        const tH = targetEl.offsetHeight || 70;
+
+        const sLeft = sourceNode.position.x;
+        const sTop = sourceNode.position.y;
+        const sRight = sLeft + sW;
+        const sBottom = sTop + sH;
+        const sMidX = sLeft + sW / 2;
+        const sMidY = sTop + sH / 2;
+
+        const tLeft = targetNode.position.x;
+        const tTop = targetNode.position.y;
+        const tRight = tLeft + tW;
+        const tBottom = tTop + tH;
+        const tMidX = tLeft + tW / 2;
+        const tMidY = tTop + tH / 2;
+
+        let startX, startY, endX, endY;
+        let flowType = 'vertical';
+
+        // Determinação inteligente dos pontos de ancoragem
+        if (edge.sourceHandle === 'right' || (sourceNode.type === 'decision' && edge.label?.toLowerCase() === 'não')) {
+            startX = sRight;
+            startY = sMidY;
+            endX = tLeft;
+            endY = tMidY;
+            flowType = 'horizontal';
+        } else if (tTop >= sBottom - 10) {
+            // Fluxo padrão hierárquico (Pai acima de Filho)
+            startX = sMidX;
+            startY = sBottom;
+            endX = tMidX;
+            endY = tTop;
+            flowType = 'vertical';
+        } else if (tBottom <= sTop + 10) {
+            // Loopback / Retorno para etapa anterior acima
+            startX = sRight;
+            startY = sMidY;
+            endX = tRight;
+            endY = tMidY;
+            flowType = 'loopback';
+        } else {
+            // Mesma linha horizontal / lateral
+            if (tLeft >= sRight) {
+                startX = sRight;
+                startY = sMidY;
+                endX = tLeft;
+                endY = tMidY;
+            } else {
+                startX = sLeft;
+                startY = sMidY;
+                endX = tRight;
+                endY = tMidY;
+            }
+            flowType = 'horizontal';
+        }
+
+        // Estilo 1: Curva Suave Bézier
+        if (estilo === 'curva') {
+            const deltaX = (endX - startX) * 0.5;
+            const deltaY = (endY - startY) * 0.5;
+            return {
+                pathData: `M ${startX} ${startY} C ${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}, ${endX} ${endY}`,
+                labelPos: { x: (startX + endX) / 2, y: (startY + endY) / 2 }
+            };
+        }
+
+        // Estilo 2: Reta Direta
+        if (estilo === 'reta') {
+            return {
+                pathData: `M ${startX} ${startY} L ${endX} ${endY}`,
+                labelPos: { x: (startX + endX) / 2, y: (startY + endY) / 2 }
+            };
+        }
+
+        // Estilo 3 (Padrão): Ortogonal com quebras perpendiculares a 90° e cantos arredondados elegantes
+        const r = 6;
+
+        if (flowType === 'vertical') {
+            if (Math.abs(startX - endX) < 4) {
+                return {
+                    pathData: `M ${startX} ${startY} L ${endX} ${endY}`,
+                    labelPos: { x: startX + 16, y: (startY + endY) / 2 }
+                };
+            }
+
+            const midY = Math.round(startY + (endY - startY) / 2);
+            const dirX = endX > startX ? 1 : -1;
+            const rad = Math.min(r, Math.abs(endX - startX) / 2, Math.abs(midY - startY), Math.abs(endY - midY));
+
+            const pathData = [
+                `M ${startX} ${startY}`,
+                `L ${startX} ${midY - rad}`,
+                `Q ${startX} ${midY} ${startX + rad * dirX} ${midY}`,
+                `L ${endX - rad * dirX} ${midY}`,
+                `Q ${endX} ${midY} ${endX} ${midY + rad}`,
+                `L ${endX} ${endY}`
+            ].join(' ');
+
+            return {
+                pathData: pathData,
+                labelPos: { x: (startX + endX) / 2, y: midY - 6 }
+            };
+        } else if (flowType === 'horizontal') {
+            if (Math.abs(startY - endY) < 4) {
+                return {
+                    pathData: `M ${startX} ${startY} L ${endX} ${endY}`,
+                    labelPos: { x: (startX + endX) / 2, y: startY - 8 }
+                };
+            }
+
+            const midX = Math.round(startX + (endX - startX) / 2);
+            const dirY = endY > startY ? 1 : -1;
+            const dirX = endX > startX ? 1 : -1;
+            const rad = Math.min(r, Math.abs(midX - startX), Math.abs(endY - startY) / 2);
+
+            const pathData = [
+                `M ${startX} ${startY}`,
+                `L ${midX - rad * dirX} ${startY}`,
+                `Q ${midX} ${startY} ${midX} ${startY + rad * dirY}`,
+                `L ${midX} ${endY - rad * dirY}`,
+                `Q ${midX} ${endY} ${midX + rad * dirX} ${endY}`,
+                `L ${endX} ${endY}`
+            ].join(' ');
+
+            return {
+                pathData: pathData,
+                labelPos: { x: midX + 10, y: (startY + endY) / 2 }
+            };
+        } else {
+            // Loopback (Retorno superior)
+            const loopX = Math.max(sRight, tRight) + 40;
+            const pathData = [
+                `M ${startX} ${startY}`,
+                `L ${loopX - r} ${startY}`,
+                `Q ${loopX} ${startY} ${loopX} ${startY - r}`,
+                `L ${loopX} ${tMidY + r}`,
+                `Q ${loopX} ${tMidY} ${loopX - r} ${tMidY}`,
+                `L ${endX} ${endY}`
+            ].join(' ');
+
+            return {
+                pathData: pathData,
+                labelPos: { x: loopX + 12, y: (startY + tMidY) / 2 }
+            };
+        }
+    }
+
     function desenharConexoes() {
         const svg = document.getElementById('connectionsLayer');
         const defs = svg.querySelector('defs');
         svg.innerHTML = '';
         svg.appendChild(defs);
+
+        const estilo = topologia.estilo_linha || 'ortogonal';
 
         topologia.edges.forEach(edge => {
             const sourceNode = topologia.nodes.find(n => n.id === edge.source);
@@ -1393,27 +1604,8 @@
             const targetEl = document.getElementById(`node-${targetNode.id}`);
             if (!sourceEl || !targetEl) return;
 
-            const sW = sourceEl.offsetWidth || 180;
-            const sH = sourceEl.offsetHeight || 70;
-            const tW = targetEl.offsetWidth || 180;
-            const tH = targetEl.offsetHeight || 70;
-
-            let startX = sourceNode.position.x + sW / 2;
-            let startY = sourceNode.position.y + sH;
             let marker = 'url(#arrowhead)';
-            let strokeColor = '#64748b';
-
-            if (edge.sourceHandle === 'right' || sourceNode.position.x < targetNode.position.x - 100) {
-                startX = sourceNode.position.x + sW;
-                startY = sourceNode.position.y + sH / 2;
-            }
-
-            let endX = targetNode.position.x + tW / 2;
-            let endY = targetNode.position.y;
-            if (targetNode.position.x > sourceNode.position.x + 100) {
-                endX = targetNode.position.x;
-                endY = targetNode.position.y + tH / 2;
-            }
+            let strokeColor = '#475569';
 
             if (edge.label?.toLowerCase() === 'sim') {
                 marker = 'url(#arrowhead-green)';
@@ -1423,29 +1615,44 @@
                 strokeColor = '#ef4444';
             }
 
-            // Traçado Bézier Suave estilo Mind Map
-            const deltaX = (endX - startX) * 0.5;
-            const deltaY = (endY - startY) * 0.5;
-            const pathData = `M ${startX} ${startY} C ${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}, ${endX} ${endY}`;
+            const { pathData, labelPos } = gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, estilo);
 
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', pathData);
             path.setAttribute('fill', 'none');
             path.setAttribute('stroke', strokeColor);
             path.setAttribute('stroke-width', '2.2');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
             path.setAttribute('marker-end', marker);
             svg.appendChild(path);
 
             if (edge.label) {
+                const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+                const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                const textLen = Math.max(26, edge.label.length * 8 + 12);
+                labelBg.setAttribute('x', labelPos.x - textLen / 2);
+                labelBg.setAttribute('y', labelPos.y - 8);
+                labelBg.setAttribute('width', textLen);
+                labelBg.setAttribute('height', 16);
+                labelBg.setAttribute('rx', 4);
+                labelBg.setAttribute('fill', '#ffffff');
+                labelBg.setAttribute('stroke', strokeColor);
+                labelBg.setAttribute('stroke-width', '1');
+
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', (startX + endX) / 2);
-                text.setAttribute('y', (startY + endY) / 2 - 4);
+                text.setAttribute('x', labelPos.x);
+                text.setAttribute('y', labelPos.y + 3.5);
                 text.setAttribute('fill', strokeColor);
                 text.setAttribute('font-size', '10px');
                 text.setAttribute('font-weight', 'bold');
                 text.setAttribute('text-anchor', 'middle');
                 text.textContent = edge.label;
-                svg.appendChild(text);
+
+                textGroup.appendChild(labelBg);
+                textGroup.appendChild(text);
+                svg.appendChild(textGroup);
             }
         });
     }
