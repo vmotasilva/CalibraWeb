@@ -2666,6 +2666,21 @@ def api_colaboradores_filtrados(request):
 
 @login_required
 @require_http_methods(["POST"])
+def api_upload_foto_colaborador(request, colab_id):
+    alvo = get_object_or_404(Colaborador, id=colab_id)
+    if not can_user_access_colaborador(request.user, alvo):
+        return JsonResponse({"error": "Acesso negado"}, status=403)
+    
+    foto = request.FILES.get('foto')
+    if foto:
+        alvo.foto = foto
+        alvo.save()
+        return JsonResponse({"success": True, "url": alvo.foto.url})
+    return JsonResponse({"error": "Nenhuma foto enviada"}, status=400)
+
+
+@login_required
+@require_http_methods(["POST"])
 @csrf_exempt
 def api_delete_colaborador(request, colab_id):
     """

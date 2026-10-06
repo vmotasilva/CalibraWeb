@@ -16,6 +16,7 @@ from rh.views.views import (
     excluir_vencimento_ferias_view,
     api_colaboradores,
     api_colaboradores_filtrados,
+    api_upload_foto_colaborador,
     api_delete_colaborador,
     api_delete_colaboradores_multiple,
     api_setores,
@@ -92,6 +93,7 @@ urlpatterns = [
     # API Endpoints
     path('api/colaboradores/', api_colaboradores, name='api_colaboradores'),
     path('api/colaboradores-filtrados/', api_colaboradores_filtrados, name='api_colaboradores_filtrados'),
+    path('api/colaborador/<int:colab_id>/foto/', api_upload_foto_colaborador, name='api_upload_foto_colaborador'),
     path('api/colaborador/<int:colab_id>/delete/', api_delete_colaborador, name='api_delete_colaborador'),
     path('api/colaboradores/delete-multiple/', api_delete_colaboradores_multiple, name='api_delete_colaboradores_multiple'),
     path('api/setores/', api_setores, name='api_setores'),
