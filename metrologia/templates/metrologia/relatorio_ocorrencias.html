@@ -1,0 +1,766 @@
+{% extends "base_desktop.html" %}
+{% load static %}
+
+{% block title %}Relatório de Ocorrências & Tratativa por Setores — CalibraWEB{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-md-4">
+    <!-- BREADCRUMB & HEADER -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4 pb-2 border-bottom">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 small">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}" class="text-decoration-none"><i class="bi bi-house-door me-1"></i>Início</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'modulo_metrologia' %}" class="text-decoration-none">Metrologia</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Relatório de Ocorrências & Tratativas</li>
+                </ol>
+            </nav>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <h1 class="h3 fw-bold mb-0 text-dark">
+                    <i class="bi bi-exclamation-octagon text-danger me-2"></i>Relatório de Ocorrências & Tratativas por Setores
+                </h1>
+                <span class="badge bg-danger rounded-pill px-2.5 py-1.5 fw-semibold shadow-sm">
+                    {{ total_abertas }} Aberta{{ total_abertas|pluralize }}
+                </span>
+            </div>
+            <p class="text-muted small mb-0 mt-1">
+                Acompanhamento gerencial e operacional de desvios, RNCs e manutenções de instrumentos para tratativa direta com as lideranças dos setores.
+            </p>
+        </div>
+
+        <!-- AÇÕES DO TOPO -->
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button type="button" class="btn btn-warning btn-sm shadow-sm text-dark fw-bold d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill" data-bs-toggle="modal" data-bs-target="#modalNovaOcorrenciaRelatorio">
+                <i class="bi bi-plus-circle-fill"></i> Nova Ocorrência
+            </button>
+            <a href="?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}formato=excel" class="btn btn-outline-success btn-sm shadow-sm d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill">
+                <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
+            </a>
+            <button type="button" class="btn btn-outline-secondary btn-sm shadow-sm d-inline-flex align-items-center gap-1.5 px-3 py-1.5 rounded-pill" onclick="window.print()">
+                <i class="bi bi-printer"></i> Imprimir
+            </button>
+            <a href="{% url 'modulo_metrologia' %}" class="btn btn-light btn-sm border shadow-sm px-3 py-1.5 rounded-pill">
+                <i class="bi bi-arrow-left me-1"></i> Voltar à Metrologia
+            </a>
+        </div>
+    </div>
+
+    <!-- CARDS DE KPIS E RESUMO EXECUTIVO -->
+    <div class="row g-3 mb-4">
+        <!-- 1. TOTAL DE OCORRÊNCIAS -->
+        <div class="col-6 col-md-3 col-xl">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white border-start border-4 border-primary">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block mb-1" style="font-size: 0.72rem;">Total Registradas</span>
+                        <h3 class="fw-bold mb-0 text-dark">{{ total_ocorrencias }}</h3>
+                    </div>
+                    <div class="p-2.5 bg-primary bg-opacity-10 text-primary rounded-circle">
+                        <i class="bi bi-card-checklist fs-5"></i>
+                    </div>
+                </div>
+                <small class="text-muted mt-2 d-block" style="font-size: 0.75rem;">Histórico completo</small>
+            </div>
+        </div>
+
+        <!-- 2. OCORRÊNCIAS ABERTAS (RNCs) -->
+        <div class="col-6 col-md-3 col-xl">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white border-start border-4 border-danger">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block mb-1" style="font-size: 0.72rem;">Ocorrências Abertas</span>
+                        <h3 class="fw-bold mb-0 text-danger">{{ total_abertas }}</h3>
+                    </div>
+                    <div class="p-2.5 bg-danger bg-opacity-10 text-danger rounded-circle animate-pulse">
+                        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                    </div>
+                </div>
+                <small class="text-danger mt-2 d-block fw-semibold" style="font-size: 0.75rem;">Requer tratativa com setores</small>
+            </div>
+        </div>
+
+        <!-- 3. PENDENTES DE RESPONSÁVEL -->
+        <div class="col-6 col-md-3 col-xl">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white border-start border-4 border-warning">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block mb-1" style="font-size: 0.72rem;">Sem Responsável</span>
+                        <h3 class="fw-bold mb-0 text-warning">{{ sem_responsavel_count }}</h3>
+                    </div>
+                    <div class="p-2.5 bg-warning bg-opacity-10 text-warning rounded-circle">
+                        <i class="bi bi-person-x-fill fs-5"></i>
+                    </div>
+                </div>
+                <small class="text-muted mt-2 d-block" style="font-size: 0.75rem;">Aguardando direcionamento</small>
+            </div>
+        </div>
+
+        <!-- 4. MINHAS TRATATIVAS -->
+        <div class="col-6 col-md-3 col-xl">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white border-start border-4 border-info">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block mb-1" style="font-size: 0.72rem;">Minhas Tratativas</span>
+                        <h3 class="fw-bold mb-0 text-info">{{ minhas_tratativas_count }}</h3>
+                    </div>
+                    <div class="p-2.5 bg-info bg-opacity-10 text-info rounded-circle">
+                        <i class="bi bi-person-check-fill fs-5"></i>
+                    </div>
+                </div>
+                <small class="text-muted mt-2 d-block" style="font-size: 0.75rem;">Atribuídas a você</small>
+            </div>
+        </div>
+
+        <!-- 5. OCORRÊNCIAS ENCERRADAS -->
+        <div class="col-6 col-md-3 col-xl">
+            <div class="card border-0 shadow-sm rounded-4 h-100 p-3 bg-white border-start border-4 border-success">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <span class="text-muted small fw-bold text-uppercase d-block mb-1" style="font-size: 0.72rem;">Encerradas</span>
+                        <h3 class="fw-bold mb-0 text-success">{{ total_encerradas }}</h3>
+                    </div>
+                    <div class="p-2.5 bg-success bg-opacity-10 text-success rounded-circle">
+                        <i class="bi bi-check-circle-fill fs-5"></i>
+                    </div>
+                </div>
+                <small class="text-muted mt-2 d-block" style="font-size: 0.75rem;">Tratativas concluídas</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTROS AVANÇADOS -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4 bg-white">
+        <div class="card-body p-3 p-md-4">
+            <form method="get" class="row g-3 align-items-end" id="formFiltrosOcorrencias">
+                <!-- 1. Setor -->
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Setor do Instrumento</label>
+                    <select name="setor" class="form-select form-select-sm rounded-3">
+                        <option value="">Todos os Setores</option>
+                        <option value="sem_setor" {% if setor_filtro == 'sem_setor' %}selected{% endif %}>[Sem Setor Definido]</option>
+                        {% for s in todos_setores %}
+                            <option value="{{ s.id }}" {% if setor_filtro == s.id|stringformat:"s" %}selected{% endif %}>
+                                {{ s.nome }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 2. Status -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Status</label>
+                    <select name="status" class="form-select form-select-sm rounded-3">
+                        <option value="ABERTA" {% if status_filtro == 'ABERTA' %}selected{% endif %}>Aberta (Pendente)</option>
+                        <option value="ENCERRADA" {% if status_filtro == 'ENCERRADA' %}selected{% endif %}>Encerrada</option>
+                        <option value="TODAS" {% if status_filtro == 'TODAS' %}selected{% endif %}>Todas as Ocorrências</option>
+                    </select>
+                </div>
+
+                <!-- 3. Tipo -->
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Tipo de Ocorrência</label>
+                    <select name="tipo" class="form-select form-select-sm rounded-3">
+                        <option value="">Todos os Tipos</option>
+                        {% for k, v in tipos_ocorrencia %}
+                            <option value="{{ k }}" {% if tipo_filtro == k %}selected{% endif %}>{{ v }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 4. Responsável -->
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label small fw-bold text-muted mb-1">Responsável pela Tratativa</label>
+                    <select name="responsavel" class="form-select form-select-sm rounded-3">
+                        <option value="">Todos os Responsáveis</option>
+                        <option value="meus" {% if responsavel_filtro == 'meus' %}selected{% endif %}>★ Minhas Atribuições ({{ request.user.username }})</option>
+                        <option value="sem_responsavel" {% if responsavel_filtro == 'sem_responsavel' %}selected{% endif %}>[Sem Responsável Atribuído]</option>
+                        {% for u in usuarios_responsaveis %}
+                            <option value="{{ u.id }}" {% if responsavel_filtro == u.id|stringformat:"s" %}selected{% endif %}>
+                                {% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}
+                                {% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- 5. Busca Textual -->
+                <div class="col-md-2 col-sm-12">
+                    <label class="form-label small fw-bold text-muted mb-1">Busca Rápida</label>
+                    <input type="text" name="search" value="{{ search }}" class="form-control form-control-sm rounded-3" placeholder="Tag, descrição...">
+                </div>
+
+                <!-- 6. Datas e Botões -->
+                <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <div class="d-flex align-items-center gap-1">
+                            <small class="text-muted fw-bold">Data De:</small>
+                            <input type="date" name="data_inicio" value="{{ data_inicio }}" class="form-control form-control-sm rounded-3" style="width: 140px;">
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <small class="text-muted fw-bold">Até:</small>
+                            <input type="date" name="data_fim" value="{{ data_fim }}" class="form-control form-control-sm rounded-3" style="width: 140px;">
+                        </div>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <a href="{% url 'metrologia:relatorio_ocorrencias' %}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                            <i class="bi bi-x-circle me-1"></i>Limpar
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-semibold shadow-sm">
+                            <i class="bi bi-funnel-fill me-1"></i>Filtrar
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ABAS DE NAVEGAÇÃO DO RELATÓRIO -->
+    <ul class="nav nav-pills mb-3 gap-2 bg-light p-1.5 rounded-4 d-inline-flex border" id="relatorioTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill fw-bold small px-3 py-1.5 d-flex align-items-center gap-2" id="tab-setores-btn" data-bs-toggle="pill" data-bs-target="#tab-setores" type="button" role="tab">
+                <i class="bi bi-building"></i> Tratativa por Setores
+                <span class="badge bg-secondary rounded-pill">{{ setores_dados|length }}</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill fw-bold small px-3 py-1.5 d-flex align-items-center gap-2" id="tab-tabela-btn" data-bs-toggle="pill" data-bs-target="#tab-tabela" type="button" role="tab">
+                <i class="bi bi-table"></i> Tabela Geral Consolidada
+                <span class="badge bg-secondary rounded-pill">{{ ocorrencias|length }}</span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="relatorioTabsContent">
+        <!-- ========================================================================= -->
+        <!-- ABA 1: TRATATIVA POR SETORES (VISÃO DE REUNIÃO COM SETORES) -->
+        <!-- ========================================================================= -->
+        <div class="tab-pane fade show active" id="tab-setores" role="tabpanel">
+            {% if not setores_dados %}
+                <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+                    <div class="p-3 bg-light rounded-circle d-inline-block mx-auto mb-3 text-muted">
+                        <i class="bi bi-check2-circle fs-1 text-success"></i>
+                    </div>
+                    <h5 class="fw-bold text-dark">Nenhuma ocorrência encontrada para os filtros selecionados</h5>
+                    <p class="text-muted small mb-3">Não há desvios ou RNCs pendentes no momento para os critérios informados.</p>
+                    <div>
+                        <a href="{% url 'metrologia:relatorio_ocorrencias' %}" class="btn btn-outline-primary btn-sm rounded-pill px-4">
+                            Ver todas as ocorrências
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <div class="d-flex flex-column gap-3">
+                    {% for item in setores_dados %}
+                        <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white {% if item.abertas > 0 %}border-start border-4 border-danger{% else %}border-start border-4 border-success{% endif %}">
+                            <!-- CABEÇALHO DO SETOR -->
+                            <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2 border-bottom">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="p-2.5 rounded-3 {% if item.abertas > 0 %}bg-danger bg-opacity-10 text-danger{% else %}bg-success bg-opacity-10 text-success{% endif %} fw-bold fs-5">
+                                        <i class="bi bi-diagram-3-fill"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                                            {{ item.nome }}
+                                            {% if item.abertas > 0 %}
+                                                <span class="badge bg-danger rounded-pill px-2.5 py-1 small" style="font-size: 0.75rem;">
+                                                    {{ item.abertas }} RNC{{ item.abertas|pluralize }} Aberta{{ item.abertas|pluralize }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-success rounded-pill px-2.5 py-1 small" style="font-size: 0.75rem;">
+                                                    <i class="bi bi-check-lg me-1"></i>100% Em dia
+                                                </span>
+                                            {% endif %}
+                                        </h5>
+                                        <small class="text-muted">
+                                            Total no setor: <strong>{{ item.total }}</strong> ocorrência{{ item.total|pluralize }} 
+                                            {% if item.sem_responsavel > 0 %}
+                                                • <span class="text-warning fw-bold"><i class="bi bi-person-x-fill me-1"></i>{{ item.sem_responsavel }} sem responsável</span>
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-light border rounded-pill px-3 py-1 fw-semibold small" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSetor{{ forloop.counter }}" aria-expanded="true">
+                                        <i class="bi bi-chevron-expand me-1"></i>Expandir / Recolher
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- CORPO / TABELA DE OCORRÊNCIAS DO SETOR -->
+                            <div class="collapse show" id="collapseSetor{{ forloop.counter }}">
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="bg-light small text-uppercase text-muted" style="font-size: 0.72rem;">
+                                            <tr>
+                                                <th class="ps-4 py-2.5" style="width: 140px;">Instrumento</th>
+                                                <th class="py-2.5" style="width: 130px;">Tipo</th>
+                                                <th class="py-2.5" style="width: 110px;">Data Reg.</th>
+                                                <th class="py-2.5" style="width: 250px;">Responsável pela Tratativa</th>
+                                                <th class="py-2.5">Descrição do Desvio / Ação</th>
+                                                <th class="py-2.5 text-center" style="width: 110px;">Status</th>
+                                                <th class="pe-4 py-2.5 text-end" style="width: 150px;">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for oc in item.ocorrencias %}
+                                                <tr class="{% if oc.status == 'ABERTA' %}bg-danger bg-opacity-10{% endif %}">
+                                                    <!-- TAG / INSTRUMENTO -->
+                                                    <td class="ps-4 py-3">
+                                                        {% if oc.instrumento %}
+                                                            <a href="{% url 'visualizar_instrumento' oc.instrumento.id %}" class="fw-bold font-monospace text-decoration-none text-primary d-block">
+                                                                {{ oc.instrumento.tag }}
+                                                            </a>
+                                                            <small class="text-muted d-block" style="font-size: 0.75rem;">
+                                                                {{ oc.instrumento.descricao|default:"-"|truncatechars:25 }}
+                                                            </small>
+                                                        {% else %}
+                                                            <span class="text-muted font-monospace">Sem instrumento</span>
+                                                        {% endif %}
+                                                    </td>
+
+                                                    <!-- TIPO -->
+                                                    <td class="py-3">
+                                                        <span class="badge bg-light text-dark border fw-semibold px-2 py-1" style="font-size: 0.75rem;">
+                                                            {{ oc.get_tipo_display }}
+                                                        </span>
+                                                    </td>
+
+                                                    <!-- DATA -->
+                                                    <td class="py-3 small fw-bold text-dark">
+                                                        <i class="bi bi-calendar3 me-1 text-primary"></i>{{ oc.data_ocorrencia|date:"d/m/Y" }}
+                                                    </td>
+
+                                                    <!-- RESPONSÁVEL PELA TRATATIVA -->
+                                                    <td class="py-3">
+                                                        {% if oc.usuario_responsavel %}
+                                                            <div class="d-flex align-items-center justify-content-between gap-2 p-1.5 rounded-3 bg-white border shadow-sm">
+                                                                <div class="d-flex align-items-center gap-2 overflow-hidden">
+                                                                    <div class="avatar-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 26px; height: 26px; font-size: 0.72rem;">
+                                                                        {{ oc.usuario_responsavel.first_name|default:oc.usuario_responsavel.username|slice:":1"|upper }}
+                                                                    </div>
+                                                                    <div class="text-truncate">
+                                                                        <span class="fw-bold small text-dark d-block text-truncate" style="font-size: 0.80rem;">
+                                                                            {% if oc.usuario_responsavel.get_full_name %}{{ oc.usuario_responsavel.get_full_name }}{% else %}{{ oc.usuario_responsavel.username }}{% endif %}
+                                                                        </span>
+                                                                        <small class="text-muted d-block" style="font-size: 0.68rem;">@{{ oc.usuario_responsavel.username }}</small>
+                                                                    </div>
+                                                                </div>
+                                                                <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-1.5 rounded-pill flex-shrink-0" title="Trocar Responsável" onclick="abrirModalAtribuir('{{ oc.id }}', '{{ oc.instrumento.tag }}', '{{ oc.usuario_responsavel.id }}')" style="font-size: 0.72rem;">
+                                                                    <i class="bi bi-arrow-repeat"></i>
+                                                                </button>
+                                                            </div>
+                                                        {% else %}
+                                                            <!-- SEM RESPONSÁVEL: FORMULÁRIO INLINE DIRETO PARA DIRECIONAR NA HORA! -->
+                                                            <form method="post" action="{% url 'metrologia:atribuir_responsavel_ocorrencia' oc.id %}" class="d-flex align-items-center gap-1">
+                                                                {% csrf_token %}
+                                                                <select name="usuario_responsavel" class="form-select form-select-sm py-1 ps-2 pe-4 rounded-3 border-warning" style="font-size: 0.78rem;" required>
+                                                                    <option value="">Atribuir pessoa...</option>
+                                                                    {% for u in usuarios_responsaveis %}
+                                                                        <option value="{{ u.id }}">
+                                                                            {% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}
+                                                                        </option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                                <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold px-2 py-1 rounded-3 shadow-sm text-nowrap" title="Direcionar tratativa para este usuário">
+                                                                    <i class="bi bi-person-plus-fill"></i>
+                                                                </button>
+                                                            </form>
+                                                        {% endif %}
+                                                    </td>
+
+                                                    <!-- DESCRIÇÃO -->
+                                                    <td class="py-3">
+                                                        <div class="small text-dark" style="max-width: 380px; line-height: 1.4;">
+                                                            {{ oc.descricao }}
+                                                        </div>
+                                                    </td>
+
+                                                    <!-- STATUS -->
+                                                    <td class="py-3 text-center">
+                                                        {% if oc.status == 'ABERTA' %}
+                                                            <span class="badge bg-danger px-2.5 py-1 rounded-pill fw-semibold">
+                                                                <i class="bi bi-exclamation-circle me-1"></i>Aberta
+                                                            </span>
+                                                        {% else %}
+                                                            <span class="badge bg-success px-2.5 py-1 rounded-pill fw-semibold">
+                                                                <i class="bi bi-check2-circle me-1"></i>Encerrada
+                                                            </span>
+                                                            {% if oc.data_encerramento %}
+                                                                <small class="text-muted d-block" style="font-size: 0.68rem;">{{ oc.data_encerramento|date:"d/m/Y" }}</small>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    </td>
+
+                                                    <!-- AÇÕES -->
+                                                    <td class="pe-4 py-3 text-end text-nowrap">
+                                                        <div class="btn-group btn-group-sm shadow-sm" role="group">
+                                                            {% if oc.status == 'ABERTA' %}
+                                                                <form method="post" action="{% url 'metrologia:encerrar_ocorrencia' oc.id %}" class="d-inline" onsubmit="return confirm('Deseja marcar esta ocorrência como ENCERRADA?');">
+                                                                    {% csrf_token %}
+                                                                    <button type="submit" class="btn btn-success btn-sm px-2.5 py-1 fw-semibold" title="Encerrar Ocorrência">
+                                                                        <i class="bi bi-check-lg me-1"></i>Encerrar
+                                                                    </button>
+                                                                </form>
+                                                            {% else %}
+                                                                <form method="post" action="{% url 'metrologia:reabrir_ocorrencia' oc.id %}" class="d-inline" onsubmit="return confirm('Deseja REABRIR esta ocorrência?');">
+                                                                    {% csrf_token %}
+                                                                    <button type="submit" class="btn btn-outline-warning btn-sm px-2.5 py-1 fw-semibold" title="Reabrir Ocorrência">
+                                                                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reabrir
+                                                                    </button>
+                                                                </form>
+                                                            {% endif %}
+
+                                                            <button type="button" class="btn btn-light border btn-sm px-2" title="Editar Ocorrência" onclick="abrirModalEditarOcorrencia('{{ oc.id }}', '{{ oc.tipo }}', '{{ oc.data_ocorrencia|date:'Y-m-d' }}', '{{ oc.usuario_responsavel.id|default:'' }}', '{{ oc.status }}', `{{ oc.descricao|escapejs }}`)">
+                                                                <i class="bi bi-pencil"></i>
+                                                            </button>
+                                                            <form method="post" action="{% url 'metrologia:deletar_ocorrencia' oc.id %}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR permanentemente esta ocorrência?');">
+                                                                {% csrf_token %}
+                                                                <button type="submit" class="btn btn-light border text-danger btn-sm px-2" title="Excluir Ocorrência">
+                                                                    <i class="bi bi-trash"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- ABA 2: TABELA GERAL CONSOLIDADA -->
+        <!-- ========================================================================= -->
+        <div class="tab-pane fade" id="tab-tabela" role="tabpanel">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-list-check me-2 text-primary"></i>Listagem Geral de Ocorrências
+                    </h5>
+                    <span class="text-muted small">Exibindo <strong>{{ ocorrencias|length }}</strong> registro{{ ocorrencias|length|pluralize }}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="tabelaGeralOcorrencias">
+                        <thead class="bg-light small text-uppercase text-muted" style="font-size: 0.72rem;">
+                            <tr>
+                                <th class="ps-4 py-3" style="width: 80px;">ID</th>
+                                <th class="py-3" style="width: 140px;">Instrumento</th>
+                                <th class="py-3" style="width: 140px;">Setor</th>
+                                <th class="py-3" style="width: 130px;">Tipo</th>
+                                <th class="py-3" style="width: 110px;">Data</th>
+                                <th class="py-3" style="width: 240px;">Responsável Tratativa</th>
+                                <th class="py-3">Descrição Completa</th>
+                                <th class="py-3 text-center" style="width: 110px;">Status</th>
+                                <th class="pe-4 py-3 text-end" style="width: 140px;">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for oc in ocorrencias %}
+                                <tr class="{% if oc.status == 'ABERTA' %}bg-danger bg-opacity-10{% endif %}">
+                                    <td class="ps-4 py-2.5 font-monospace text-muted small">#{{ oc.id }}</td>
+                                    <td class="py-2.5">
+                                        {% if oc.instrumento %}
+                                            <a href="{% url 'visualizar_instrumento' oc.instrumento.id %}" class="fw-bold font-monospace text-decoration-none text-primary">
+                                                {{ oc.instrumento.tag }}
+                                            </a>
+                                            <small class="text-muted d-block" style="font-size: 0.72rem;">{{ oc.instrumento.descricao|default:"-"|truncatechars:20 }}</small>
+                                        {% else %}
+                                            <span class="text-muted font-monospace">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-2.5 small fw-semibold text-dark">
+                                        {% if oc.instrumento and oc.instrumento.setor %}
+                                            <span class="badge bg-secondary bg-opacity-10 text-dark border">{{ oc.instrumento.setor.nome }}</span>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-2.5">
+                                        <span class="badge bg-light text-dark border">{{ oc.get_tipo_display }}</span>
+                                    </td>
+                                    <td class="py-2.5 small text-dark fw-bold">
+                                        {{ oc.data_ocorrencia|date:"d/m/Y" }}
+                                    </td>
+                                    <td class="py-2.5">
+                                        {% if oc.usuario_responsavel %}
+                                            <div class="d-flex align-items-center gap-1.5">
+                                                <div class="avatar-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width: 24px; height: 24px; font-size: 0.70rem;">
+                                                    {{ oc.usuario_responsavel.first_name|default:oc.usuario_responsavel.username|slice:":1"|upper }}
+                                                </div>
+                                                <span class="small fw-semibold text-dark text-truncate" style="max-width: 170px;">
+                                                    {% if oc.usuario_responsavel.get_full_name %}{{ oc.usuario_responsavel.get_full_name }}{% else %}{{ oc.usuario_responsavel.username }}{% endif %}
+                                                </span>
+                                            </div>
+                                        {% else %}
+                                            <span class="badge bg-warning-subtle text-dark border border-warning-subtle small" style="font-size: 0.70rem;">
+                                                <i class="bi bi-clock-history me-1"></i>Não atribuído
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-2.5 small text-dark" style="max-width: 320px;">
+                                        {{ oc.descricao }}
+                                    </td>
+                                    <td class="py-2.5 text-center">
+                                        {% if oc.status == 'ABERTA' %}
+                                            <span class="badge bg-danger px-2 py-0.5 rounded-pill">Aberta</span>
+                                        {% else %}
+                                            <span class="badge bg-success px-2 py-0.5 rounded-pill">Encerrada</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="pe-4 py-2.5 text-end text-nowrap">
+                                        <div class="btn-group btn-group-sm">
+                                            {% if oc.status == 'ABERTA' %}
+                                                <form method="post" action="{% url 'metrologia:encerrar_ocorrencia' oc.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-success px-2 py-0.5" title="Encerrar">
+                                                        <i class="bi bi-check-lg"></i>
+                                                    </button>
+                                                </form>
+                                            {% else %}
+                                                <form method="post" action="{% url 'metrologia:reabrir_ocorrencia' oc.id %}" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning px-2 py-0.5" title="Reabrir">
+                                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-sm btn-light border px-2 py-0.5" title="Editar" onclick="abrirModalEditarOcorrencia('{{ oc.id }}', '{{ oc.tipo }}', '{{ oc.data_ocorrencia|date:'Y-m-d' }}', '{{ oc.usuario_responsavel.id|default:'' }}', '{{ oc.status }}', `{{ oc.descricao|escapejs }}`)">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <form method="post" action="{% url 'metrologia:deletar_ocorrencia' oc.id %}" class="d-inline" onsubmit="return confirm('Deseja excluir esta ocorrência?');">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-light border text-danger px-2 py-0.5" title="Excluir">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-5 text-muted">
+                                        Nenhuma ocorrência encontrada para os filtros aplicados.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAIS DO RELATÓRIO -->
+<!-- ========================================================================= -->
+
+<!-- 1. MODAL NOVA OCORRÊNCIA (COMPLETO) -->
+<div class="modal fade" id="modalNovaOcorrenciaRelatorio" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-4 border-0">
+            <form method="post" action="{% url 'metrologia:registrar_ocorrencia' %}">
+                {% csrf_token %}
+                <div class="modal-header bg-warning text-dark rounded-top-4 py-3 px-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Registrar Nova Ocorrência
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <!-- Instrumento -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase mb-1">Instrumento <span class="text-danger">*</span></label>
+                        <select name="instrumento_id" class="form-select form-select-sm rounded-3" required>
+                            <option value="">Selecione o Instrumento...</option>
+                            {% for inst in todos_instrumentos %}
+                                <option value="{{ inst.id }}">
+                                    {{ inst.tag }} - {{ inst.descricao|truncatechars:35 }} {% if inst.setor %}({{ inst.setor.nome }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Tipo da Ocorrência -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase mb-1">Tipo de Ocorrência <span class="text-danger">*</span></label>
+                        <select name="tipo" class="form-select form-select-sm rounded-3" required>
+                            <option value="">Selecione o tipo...</option>
+                            {% for k, v in tipos_ocorrencia %}
+                                <option value="{{ k }}">{{ v }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Responsável pela Tratativa -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase mb-1">
+                            Responsável pela Tratativa <span class="text-muted fw-normal">(Notificação automática)</span>
+                        </label>
+                        <select name="usuario_responsavel" class="form-select form-select-sm rounded-3">
+                            <option value="">-- Selecione o Responsável (Opcional) --</option>
+                            {% for u in usuarios_responsaveis %}
+                                <option value="{{ u.id }}">
+                                    {% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}
+                                    {% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                            <i class="bi bi-bell-fill text-warning me-1"></i>O usuário associado receberá um aviso imediato na barra de notificações e Inbox.
+                        </small>
+                    </div>
+
+                    <!-- Data da Ocorrência -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase mb-1">Data da Ocorrência <span class="text-danger">*</span></label>
+                        <input type="date" name="data_ocorrencia" class="form-control form-control-sm rounded-3" value="{{ hoje|date:'Y-m-d' }}" required>
+                    </div>
+
+                    <!-- Descrição -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase mb-1">Descrição Detalhada do Desvio / Ação <span class="text-danger">*</span></label>
+                        <textarea name="descricao" class="form-control form-control-sm rounded-3" rows="3" placeholder="Descreva o problema identificado e as ações necessárias..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light rounded-bottom-4 py-2.5 px-4">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning text-dark fw-bold btn-sm rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-check2-circle me-1"></i>Salvar Ocorrência
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. MODAL ATRIBUIR / TRANSFERIR RESPONSÁVEL -->
+<div class="modal fade" id="modalAtribuirResponsavel" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content shadow-lg rounded-4 border-0">
+            <form method="post" id="formAtribuirResponsavelAction" action="">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white rounded-top-4 py-2.5 px-3">
+                    <h6 class="modal-title fw-bold">
+                        <i class="bi bi-person-check-fill me-1"></i>Direcionar Tratativa
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <p class="small text-muted mb-2">Instrumento: <strong id="modalAtribuirTag" class="text-dark font-monospace"></strong></p>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold text-muted mb-1">Selecionar Pessoa Responsável</label>
+                        <select name="usuario_responsavel" id="modalAtribuirSelect" class="form-select form-select-sm rounded-3" required>
+                            <option value="">Selecione o responsável...</option>
+                            {% for u in usuarios_responsaveis %}
+                                <option value="{{ u.id }}">
+                                    {% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}
+                                    {% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light rounded-bottom-4 py-2 px-3">
+                    <button type="button" class="btn btn-outline-secondary btn-xs py-1 px-2.5 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm py-1 px-3 rounded-pill fw-semibold">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. MODAL EDITAR OCORRÊNCIA -->
+<div class="modal fade" id="modalEditarOcorrenciaRelatorio" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg rounded-4 border-0">
+            <form method="post" id="formEditarOcorrenciaAction" action="">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white rounded-top-4 py-3 px-4">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-pencil-square me-2"></i>Editar Ocorrência
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Tipo de Ocorrência</label>
+                        <select name="tipo" id="edit_tipo" class="form-select form-select-sm rounded-3" required>
+                            {% for k, v in tipos_ocorrencia %}
+                                <option value="{{ k }}">{{ v }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Responsável pela Tratativa</label>
+                        <select name="usuario_responsavel" id="edit_usuario_responsavel" class="form-select form-select-sm rounded-3">
+                            <option value="">-- Sem responsável atribuído --</option>
+                            {% for u in usuarios_responsaveis %}
+                                <option value="{{ u.id }}">
+                                    {% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}
+                                    {% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Status da Ocorrência</label>
+                        <select name="status" id="edit_status" class="form-select form-select-sm rounded-3" required>
+                            <option value="ABERTA">Aberta</option>
+                            <option value="ENCERRADA">Encerrada</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Data da Ocorrência</label>
+                        <input type="date" name="data_ocorrencia" id="edit_data_ocorrencia" class="form-control form-control-sm rounded-3" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted text-uppercase mb-1">Descrição</label>
+                        <textarea name="descricao" id="edit_descricao" class="form-control form-control-sm rounded-3" rows="4" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light rounded-bottom-4 py-2.5 px-4">
+                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-semibold shadow-sm">
+                        <i class="bi bi-check2 me-1"></i>Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalAtribuir(ocorrenciaId, tag, responsavelId) {
+    const form = document.getElementById('formAtribuirResponsavelAction');
+    form.action = '/metrologia/atribuir-responsavel-ocorrencia/' + ocorrenciaId + '/';
+    document.getElementById('modalAtribuirTag').textContent = tag || ('#' + ocorrenciaId);
+    document.getElementById('modalAtribuirSelect').value = responsavelId || '';
+    const modal = new bootstrap.Modal(document.getElementById('modalAtribuirResponsavel'));
+    modal.show();
+}
+
+function abrirModalEditarOcorrencia(id, tipo, dataOc, respId, status, descricao) {
+    const form = document.getElementById('formEditarOcorrenciaAction');
+    form.action = '/metrologia/editar-ocorrencia/' + id + '/';
+    document.getElementById('edit_tipo').value = tipo;
+    document.getElementById('edit_data_ocorrencia').value = dataOc;
+    document.getElementById('edit_usuario_responsavel').value = respId || '';
+    document.getElementById('edit_status').value = status;
+    document.getElementById('edit_descricao').value = descricao;
+    const modal = new bootstrap.Modal(document.getElementById('modalEditarOcorrenciaRelatorio'));
+    modal.show();
+}
+</script>
+{% endblock %}

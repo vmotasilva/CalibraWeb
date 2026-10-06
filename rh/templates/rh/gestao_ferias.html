@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Gestão de Férias - Calibra QMS{% endblock %}
+{% block title %}Lista de Férias - Calibra QMS{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -66,7 +66,7 @@
         <div class="col-md-8">
             <h1 class="h3 d-flex align-items-center gap-2">
                 <i class="fas fa-calendar-days text-primary"></i>
-                Gestão de Férias
+                Lista de Férias
             </h1>
         </div>
         <div class="col-md-4">
@@ -111,7 +111,7 @@
                 </a>
                 {% endcomment %}
                 <a href="{% url 'rh:projecao_mensal_ferias' %}" class="btn btn-outline-primary">
-                    <i class="bi bi-calendar3"></i> Projeção Mensal
+                    <i class="bi bi-arrow-left"></i> Projeção Mensal
                 </a>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
                     <i class="fas fa-plus"></i> Registrar Férias

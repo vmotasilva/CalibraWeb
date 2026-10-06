@@ -296,8 +296,9 @@ NAV_STRUCTURE = [
                     {"nome": "Importar Instrumentos", "view_name": ["qms:importar_instrumentos", "dl_template_instr"], "perm": "core.nav_metrologia_importar_instrumentos"},
                     {"nome": "Acompanhar Importações (Jobs)", "view_name": ["import_jobs", "import_jobs_json"], "perm": "core.nav_metrologia_import_jobs"},
                     {"nome": "Registrar Ocorrência do Instrumento", "view_name": "metrologia:registrar_ocorrencia", "perm": "core.nav_metrologia_ocorrencia_registrar"},
-                    {"nome": "Editar/Encerrar Ocorrência do Instrumento", "view_name": ["metrologia:editar_ocorrencia", "metrologia:encerrar_ocorrencia"], "perm": "core.nav_metrologia_ocorrencia_editar"},
+                    {"nome": "Editar/Encerrar Ocorrência do Instrumento", "view_name": ["metrologia:editar_ocorrencia", "metrologia:encerrar_ocorrencia", "metrologia:reabrir_ocorrencia", "metrologia:atribuir_responsavel_ocorrencia"], "perm": "core.nav_metrologia_ocorrencia_editar"},
                     {"nome": "Excluir Ocorrência do Instrumento", "view_name": "metrologia:deletar_ocorrencia", "perm": "core.nav_metrologia_ocorrencia_excluir"},
+                    {"nome": "Relatório de Ocorrências (Tratativas)", "view_name": "metrologia:relatorio_ocorrencias", "perm": "core.nav_metrologia_ocorrencias_relatorio"},
                 ],
             },
             {

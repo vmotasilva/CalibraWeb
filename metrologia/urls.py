@@ -90,9 +90,12 @@ urlpatterns = [
     path('atendimento/<int:atendimento_id>/iniciar-substituicao/', views.atendimento_iniciar_substituicao, name='atendimento_iniciar_substituicao'),
     path('registrar-historico-massa/', views.registrar_historico_massa, name='registrar_historico_massa'),
     path('registrar-ocorrencia/', views.registrar_ocorrencia, name='registrar_ocorrencia'),
+    path('atribuir-responsavel-ocorrencia/<int:ocorrencia_id>/', views.atribuir_responsavel_ocorrencia, name='atribuir_responsavel_ocorrencia'),
     path('encerrar-ocorrencia/<int:ocorrencia_id>/', views.encerrar_ocorrencia, name='encerrar_ocorrencia'),
+    path('reabrir-ocorrencia/<int:ocorrencia_id>/', views.reabrir_ocorrencia, name='reabrir_ocorrencia'),
     path('editar-ocorrencia/<int:ocorrencia_id>/', views.editar_ocorrencia, name='editar_ocorrencia'),
     path('deletar-ocorrencia/<int:ocorrencia_id>/', views.deletar_ocorrencia, name='deletar_ocorrencia'),
+    path('relatorio-ocorrencias/', views.relatorio_ocorrencias_view, name='relatorio_ocorrencias'),
 
     # API ENDPOINTS
     path('api/dashboard-overview/', views.api_dashboard_overview, name='api_dashboard_overview'),

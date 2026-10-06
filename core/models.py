@@ -96,6 +96,7 @@ class NavigationPermission(models.Model):
             ("nav_metrologia_ocorrencia_registrar", "NAV: Metrologia / Registrar Ocorrência do Instrumento"),
             ("nav_metrologia_ocorrencia_editar", "NAV: Metrologia / Editar/Encerrar Ocorrência do Instrumento"),
             ("nav_metrologia_ocorrencia_excluir", "NAV: Metrologia / Excluir Ocorrência do Instrumento"),
+            ("nav_metrologia_ocorrencias_relatorio", "NAV: Metrologia / Relatório de Ocorrências e Tratativas"),
             ("nav_metrologia_historicos_bloco", "NAV: Metrologia / Bloco Históricos de Calibração"),
             ("nav_metrologia_historicos_calibracao", "NAV: Metrologia / Históricos de Calibração"),
             ("nav_metrologia_registrar_historico", "NAV: Metrologia / Registrar Histórico de Calibração"),

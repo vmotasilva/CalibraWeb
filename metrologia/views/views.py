@@ -331,10 +331,14 @@ def modulo_metrologia_view(request):
 
     templates_etiquetas = TemplateEtiquetaInstrumento.objects.filter(ativo=True).defer('arquivo_base64').order_by('tipo_variacao', '-padrao', 'nome')
 
+    from django.contrib.auth.models import User
+    usuarios_responsaveis = User.objects.filter(is_active=True).select_related('colaborador', 'colaborador__setor').order_by('first_name', 'username')
+
     ctx = {
         "instrumentos": instrumentos,
         "setores_filtro": setores_filtro,
         "categorias_filtro": categorias_filtro,
+        "usuarios_responsaveis": usuarios_responsaveis,
         "hoje": hoje,
         "alerta_30d": alerta_30d,
         "alerta_60d": alerta_60d,
@@ -733,6 +737,9 @@ def detalhe_instrumento_view(request, instrumento_id):
         solicitacoes_cotacao = []
         logger.error(f"Erro ao buscar solicitações de cotação para instrumento {instrumento_id}: {str(e)}")
 
+    from django.contrib.auth.models import User
+    usuarios_responsaveis = User.objects.filter(is_active=True).select_related('colaborador', 'colaborador__setor').order_by('first_name', 'username')
+
     return render(
         request,
         "metrologia/instrumento_detalhe.html",
@@ -742,6 +749,7 @@ def detalhe_instrumento_view(request, instrumento_id):
             "calibracoes": calibracoes,
             "ocorrencias": ocorrencias,
             "faixas": faixas,
+            "usuarios_responsaveis": usuarios_responsaveis,
             "form_ocorrencia": form_ocorrencia,
             "today": date.today(),
             "edit_url": f"/instrumento/{inst.id}/editar/",
@@ -1273,6 +1281,8 @@ def registrar_historico_massa(request):
 def registrar_ocorrencia(request):
     from qms.models import OcorrenciaInstrumento
     from metrologia.models import Instrumento
+    from django.contrib.auth.models import User
+    from shared.inbox import invalidar_cache_inbox
     from django.shortcuts import redirect, get_object_or_404
     from django.contrib import messages
     from datetime import datetime
@@ -1282,44 +1292,137 @@ def registrar_ocorrencia(request):
         tipo = request.POST.get('tipo')
         descricao = request.POST.get('descricao')
         data_ocorrencia = request.POST.get('data_ocorrencia')
+        usuario_responsavel_id = request.POST.get('usuario_responsavel')
 
         instrumento = get_object_or_404(Instrumento, pk=instrumento_id)
-        OcorrenciaInstrumento.objects.create(
+        
+        usuario_responsavel = None
+        if usuario_responsavel_id:
+            try:
+                usuario_responsavel = User.objects.get(pk=usuario_responsavel_id)
+            except User.DoesNotExist:
+                pass
+
+        oc = OcorrenciaInstrumento.objects.create(
             instrumento=instrumento,
             tipo=tipo,
             descricao=descricao,
             data_ocorrencia=data_ocorrencia or datetime.now().date(),
+            usuario_responsavel=usuario_responsavel,
             status='ABERTA'
         )
-        messages.success(request, 'Ocorrência registrada com sucesso.')
+
+        invalidar_cache_inbox(request.user)
+        if usuario_responsavel:
+            invalidar_cache_inbox(usuario_responsavel)
+
+        if usuario_responsavel:
+            resp_nome = usuario_responsavel.get_full_name() or usuario_responsavel.username
+            messages.success(request, f'Ocorrência registrada e direcionada para {resp_nome} com sucesso.')
+        else:
+            messages.success(request, 'Ocorrência registrada com sucesso.')
+
+    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+
+@login_required
+def atribuir_responsavel_ocorrencia(request, ocorrencia_id):
+    """Permite associar ou transferir rapidamente o responsável por uma ocorrência."""
+    from qms.models import OcorrenciaInstrumento
+    from django.contrib.auth.models import User
+    from shared.inbox import invalidar_cache_inbox
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+
+    if request.method == 'POST':
+        ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        usuario_antigo = ocorrencia.usuario_responsavel
+        usuario_responsavel_id = request.POST.get('usuario_responsavel')
+
+        if usuario_responsavel_id:
+            try:
+                novo_responsavel = User.objects.get(pk=usuario_responsavel_id)
+                ocorrencia.usuario_responsavel = novo_responsavel
+                ocorrencia.save(update_fields=['usuario_responsavel'])
+                
+                invalidar_cache_inbox(request.user)
+                if usuario_antigo:
+                    invalidar_cache_inbox(usuario_antigo)
+                invalidar_cache_inbox(novo_responsavel)
+
+                resp_nome = novo_responsavel.get_full_name() or novo_responsavel.username
+                messages.success(request, f'Tratativa da ocorrência #{ocorrencia.id} direcionada com sucesso para {resp_nome}.')
+            except User.DoesNotExist:
+                messages.error(request, 'Usuário selecionado não encontrado.')
+        else:
+            ocorrencia.usuario_responsavel = None
+            ocorrencia.save(update_fields=['usuario_responsavel'])
+            invalidar_cache_inbox(request.user)
+            if usuario_antigo:
+                invalidar_cache_inbox(usuario_antigo)
+            messages.info(request, f'Responsável da ocorrência #{ocorrencia.id} foi desatribuído.')
+
     return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
 
 @login_required
 def encerrar_ocorrencia(request, ocorrencia_id):
     from qms.models import OcorrenciaInstrumento
+    from shared.inbox import invalidar_cache_inbox
     from django.shortcuts import redirect, get_object_or_404
     from django.contrib import messages
     from datetime import datetime
 
     if request.method == 'POST':
         ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        usuario_antigo = ocorrencia.usuario_responsavel
         ocorrencia.status = 'ENCERRADA'
         ocorrencia.data_encerramento = datetime.now().date()
         ocorrencia.save()
+
+        invalidar_cache_inbox(request.user)
+        if usuario_antigo:
+            invalidar_cache_inbox(usuario_antigo)
+
         messages.success(request, 'Ocorrência encerrada com sucesso.')
     return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
 
 @login_required
-def editar_ocorrencia(request, ocorrencia_id):
+def reabrir_ocorrencia(request, ocorrencia_id):
+    """Reabre uma ocorrência anteriormente encerrada."""
     from qms.models import OcorrenciaInstrumento
+    from shared.inbox import invalidar_cache_inbox
     from django.shortcuts import redirect, get_object_or_404
     from django.contrib import messages
 
     if request.method == 'POST':
         ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        ocorrencia.status = 'ABERTA'
+        ocorrencia.data_encerramento = None
+        ocorrencia.save()
+
+        invalidar_cache_inbox(request.user)
+        if ocorrencia.usuario_responsavel:
+            invalidar_cache_inbox(ocorrencia.usuario_responsavel)
+
+        messages.success(request, f'Ocorrência #{ocorrencia.id} reaberta com sucesso.')
+    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+
+@login_required
+def editar_ocorrencia(request, ocorrencia_id):
+    from qms.models import OcorrenciaInstrumento
+    from django.contrib.auth.models import User
+    from shared.inbox import invalidar_cache_inbox
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+
+    if request.method == 'POST':
+        ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        usuario_antigo = ocorrencia.usuario_responsavel
+        
         tipo = request.POST.get('tipo')
         descricao = request.POST.get('descricao')
         data_ocorrencia = request.POST.get('data_ocorrencia')
+        usuario_responsavel_id = request.POST.get('usuario_responsavel')
+        status = request.POST.get('status')
 
         if tipo:
             ocorrencia.tipo = tipo
@@ -1327,22 +1430,266 @@ def editar_ocorrencia(request, ocorrencia_id):
             ocorrencia.descricao = descricao
         if data_ocorrencia:
             ocorrencia.data_ocorrencia = data_ocorrencia
+        if status in ['ABERTA', 'ENCERRADA']:
+            ocorrencia.status = status
+            if status == 'ENCERRADA' and not ocorrencia.data_encerramento:
+                from datetime import date
+                ocorrencia.data_encerramento = date.today()
+            elif status == 'ABERTA':
+                ocorrencia.data_encerramento = None
+
+        if usuario_responsavel_id is not None:
+            if usuario_responsavel_id != '':
+                try:
+                    ocorrencia.usuario_responsavel = User.objects.get(pk=usuario_responsavel_id)
+                except User.DoesNotExist:
+                    pass
+            else:
+                ocorrencia.usuario_responsavel = None
 
         ocorrencia.save()
+
+        invalidar_cache_inbox(request.user)
+        if usuario_antigo:
+            invalidar_cache_inbox(usuario_antigo)
+        if ocorrencia.usuario_responsavel:
+            invalidar_cache_inbox(ocorrencia.usuario_responsavel)
+
         messages.success(request, 'Ocorrência atualizada com sucesso.')
     return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
 
 @login_required
 def deletar_ocorrencia(request, ocorrencia_id):
     from qms.models import OcorrenciaInstrumento
+    from shared.inbox import invalidar_cache_inbox
     from django.shortcuts import redirect, get_object_or_404
     from django.contrib import messages
 
     if request.method == 'POST':
         ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        usuario_antigo = ocorrencia.usuario_responsavel
         ocorrencia.delete()
+
+        invalidar_cache_inbox(request.user)
+        if usuario_antigo:
+            invalidar_cache_inbox(usuario_antigo)
+
         messages.success(request, 'Ocorrência excluída com sucesso.')
     return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+
+
+@login_required
+def relatorio_ocorrencias_view(request):
+    """
+    Relatório de Ocorrências e Tratativas por Setores.
+    Permite filtrar, analisar, exportar para Excel e tratar diretamente com os setores
+    atribuindo responsáveis e acompanhando status.
+    """
+    from qms.models import OcorrenciaInstrumento
+    from metrologia.models import Instrumento
+    from organization.models import Setor
+    from django.contrib.auth.models import User
+    from django.db.models import Q
+    from datetime import datetime, date
+
+    # Filtros
+    setor_filtro = request.GET.get('setor', '').strip()
+    status_filtro = request.GET.get('status', 'ABERTA').strip()
+    tipo_filtro = request.GET.get('tipo', '').strip()
+    responsavel_filtro = request.GET.get('responsavel', '').strip()
+    data_inicio = request.GET.get('data_inicio', '').strip()
+    data_fim = request.GET.get('data_fim', '').strip()
+    search = request.GET.get('search', '').strip()
+    ocorrencia_id = request.GET.get('ocorrencia_id', '').strip()
+    formato = request.GET.get('formato', '').strip()
+
+    qs = OcorrenciaInstrumento.objects.select_related(
+        'instrumento',
+        'instrumento__setor',
+        'instrumento__categoria',
+        'usuario_responsavel'
+    ).order_by('-data_ocorrencia', '-id')
+
+    if status_filtro and status_filtro != 'TODAS':
+        qs = qs.filter(status=status_filtro)
+
+    if setor_filtro:
+        if setor_filtro == 'sem_setor':
+            qs = qs.filter(instrumento__setor__isnull=True)
+        elif setor_filtro.isdigit():
+            qs = qs.filter(instrumento__setor_id=int(setor_filtro))
+
+    if tipo_filtro:
+        qs = qs.filter(tipo=tipo_filtro)
+
+    if responsavel_filtro:
+        if responsavel_filtro == 'sem_responsavel':
+            qs = qs.filter(usuario_responsavel__isnull=True)
+        elif responsavel_filtro == 'meus':
+            qs = qs.filter(usuario_responsavel=request.user)
+        elif responsavel_filtro.isdigit():
+            qs = qs.filter(usuario_responsavel_id=int(responsavel_filtro))
+
+    if data_inicio:
+        try:
+            dt_ini = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            qs = qs.filter(data_ocorrencia__gte=dt_ini)
+        except ValueError:
+            pass
+
+    if data_fim:
+        try:
+            dt_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+            qs = qs.filter(data_ocorrencia__lte=dt_fim)
+        except ValueError:
+            pass
+
+    if search:
+        qs = qs.filter(
+            Q(instrumento__tag__icontains=search) |
+            Q(instrumento__codigo__icontains=search) |
+            Q(instrumento__descricao__icontains=search) |
+            Q(descricao__icontains=search) |
+            Q(usuario_responsavel__first_name__icontains=search) |
+            Q(usuario_responsavel__username__icontains=search)
+        )
+
+    # Exportação Excel
+    if formato == 'excel':
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from django.http import HttpResponse
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Ocorrências e Tratativas"
+
+        headers = [
+            "ID", "Tag Instrumento", "Descrição Instrumento", "Setor",
+            "Tipo", "Data Ocorrência", "Status", "Data Encerramento",
+            "Responsável Tratativa", "Descrição / Desvio"
+        ]
+
+        header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+        alignment_center = Alignment(horizontal="center", vertical="center")
+        border_thin = Border(
+            left=Side(style="thin", color="E2E8F0"),
+            right=Side(style="thin", color="E2E8F0"),
+            top=Side(style="thin", color="E2E8F0"),
+            bottom=Side(style="thin", color="E2E8F0")
+        )
+
+        ws.append(headers)
+        for col_num in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = alignment_center
+
+        for oc in qs:
+            inst = oc.instrumento
+            inst_tag = inst.tag if inst else "N/A"
+            inst_desc = inst.descricao if inst else "-"
+            setor_nome = inst.setor.nome if (inst and inst.setor) else "Sem Setor"
+            tipo_display = oc.get_tipo_display() if hasattr(oc, 'get_tipo_display') else oc.tipo
+            resp_nome = oc.usuario_responsavel.get_full_name() or oc.usuario_responsavel.username if oc.usuario_responsavel else "Não atribuído"
+            data_oc_str = oc.data_ocorrencia.strftime('%d/%m/%Y') if oc.data_ocorrencia else "-"
+            data_enc_str = oc.data_encerramento.strftime('%d/%m/%Y') if oc.data_encerramento else "-"
+
+            row = [
+                oc.id,
+                inst_tag,
+                inst_desc,
+                setor_nome,
+                tipo_display,
+                data_oc_str,
+                oc.status,
+                data_enc_str,
+                resp_nome,
+                oc.descricao
+            ]
+            ws.append(row)
+
+        for row_cells in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+            for cell in row_cells:
+                cell.border = border_thin
+                cell.alignment = Alignment(vertical="center")
+
+        for col in ws.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            col_letter = openpyxl.utils.get_column_letter(col[0].column)
+            ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+
+        response = HttpResponse(
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response["Content-Disposition"] = f'attachment; filename="relatorio_ocorrencias_{date.today().strftime("%Y%m%d")}.xlsx"'
+        wb.save(response)
+        return response
+
+    # Estatísticas Globais
+    total_ocorrencias = OcorrenciaInstrumento.objects.count()
+    total_abertas = OcorrenciaInstrumento.objects.filter(status='ABERTA').count()
+    total_encerradas = OcorrenciaInstrumento.objects.filter(status='ENCERRADA').count()
+    sem_responsavel_count = OcorrenciaInstrumento.objects.filter(status='ABERTA', usuario_responsavel__isnull=True).count()
+    minhas_tratativas_count = OcorrenciaInstrumento.objects.filter(status='ABERTA', usuario_responsavel=request.user).count()
+
+    # Agrupamento por Setores para Tratativa Direta
+    todos_setores = list(Setor.objects.all().order_by('nome'))
+
+    ocorrencias_por_setor_map = {}
+    for oc in qs:
+        setor_obj = oc.instrumento.setor if (oc.instrumento and oc.instrumento.setor) else None
+        setor_key = setor_obj.id if setor_obj else 0
+        if setor_key not in ocorrencias_por_setor_map:
+            ocorrencias_por_setor_map[setor_key] = {
+                'setor': setor_obj,
+                'nome': setor_obj.nome if setor_obj else "Sem Setor Definido",
+                'ocorrencias': [],
+                'total': 0,
+                'abertas': 0,
+                'encerradas': 0,
+                'sem_responsavel': 0,
+            }
+        ocorrencias_por_setor_map[setor_key]['ocorrencias'].append(oc)
+        ocorrencias_por_setor_map[setor_key]['total'] += 1
+        if oc.status == 'ABERTA':
+            ocorrencias_por_setor_map[setor_key]['abertas'] += 1
+            if not oc.usuario_responsavel:
+                ocorrencias_por_setor_map[setor_key]['sem_responsavel'] += 1
+        else:
+            ocorrencias_por_setor_map[setor_key]['encerradas'] += 1
+
+    setores_dados = list(ocorrencias_por_setor_map.values())
+    setores_dados.sort(key=lambda s: (-s['abertas'], -s['total'], s['nome']))
+
+    usuarios_responsaveis = User.objects.filter(is_active=True).select_related('colaborador', 'colaborador__setor').order_by('first_name', 'username')
+    todos_instrumentos = Instrumento.objects.filter(ativo=True).select_related('setor').order_by('tag')
+
+    context = {
+        'ocorrencias': qs,
+        'setores_dados': setores_dados,
+        'todos_setores': todos_setores,
+        'todos_instrumentos': todos_instrumentos,
+        'usuarios_responsaveis': usuarios_responsaveis,
+        'tipos_ocorrencia': OcorrenciaInstrumento.TIPO_OCORRENCIA,
+        'status_filtro': status_filtro,
+        'setor_filtro': setor_filtro,
+        'tipo_filtro': tipo_filtro,
+        'responsavel_filtro': responsavel_filtro,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'search': search,
+        'ocorrencia_id_foco': ocorrencia_id,
+        'total_ocorrencias': total_ocorrencias,
+        'total_abertas': total_abertas,
+        'total_encerradas': total_encerradas,
+        'sem_responsavel_count': sem_responsavel_count,
+        'minhas_tratativas_count': minhas_tratativas_count,
+        'hoje': date.today(),
+    }
+    return render(request, 'metrologia/relatorio_ocorrencias.html', context)
 @login_required
 def salvar_edicao_historico_modal_view(request, historico_id):
     """Atualiza o histórico e as medições por faixa diretamente pelo modal pop-up."""
@@ -1593,6 +1940,8 @@ def get_metrologia_dashboard_data():
                     'tipo_display': o.get_tipo_display() if hasattr(o, 'get_tipo_display') else o.tipo,
                     'data_ocorrencia': o.data_ocorrencia.strftime('%d/%m/%Y') if o.data_ocorrencia else '-',
                     'descricao': o.descricao,
+                    'usuario_responsavel_id': o.usuario_responsavel_id,
+                    'usuario_responsavel_nome': (o.usuario_responsavel.get_full_name() or o.usuario_responsavel.username) if o.usuario_responsavel else None,
                 }
                 for o in abertas
             ],
@@ -1704,6 +2053,9 @@ def get_metrologia_dashboard_data():
         }
     }
     
+    from django.contrib.auth.models import User
+    usuarios_responsaveis = list(User.objects.filter(is_active=True).select_related('colaborador', 'colaborador__setor').order_by('first_name', 'username'))
+
     return {
         'kpis': kpis,
         'instrumentos': instrumentos_list,
@@ -1715,6 +2067,7 @@ def get_metrologia_dashboard_data():
         'categorias_filtro': categorias_list,
         'setores_filtro': setores_list,
         'periodos_filtro': periodos_filtro,
+        'usuarios_responsaveis': usuarios_responsaveis,
         'hoje': hoje.strftime('%Y-%m-%d'),
         'hoje_display': hoje.strftime('%d/%m/%Y'),
     }

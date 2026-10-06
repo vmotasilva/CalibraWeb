@@ -20,12 +20,27 @@ class InboxItem:
     sub_type: str = ""      # Sub-aba / Origem específica
 
 
+def invalidar_cache_inbox(user: Optional[Any] = None) -> None:
+    """Invalida caches de inbox para um usuário ou todos."""
+    try:
+        if user:
+            user_id = getattr(user, "pk", user)
+            cache.delete(f"inbox_items:v9:user:{user_id}:global:False")
+            cache.delete(f"inbox_items:v9:user:{user_id}:global:True")
+            cache.delete(f"inbox_items:v10:user:{user_id}:global:False")
+            cache.delete(f"inbox_items:v10:user:{user_id}:global:True")
+        if hasattr(cache, "delete_pattern"):
+            cache.delete_pattern("inbox_items:*")
+    except Exception:
+        pass
+
+
 def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     """Retorna uma lista individual de pendências reais para formar a Inbox e as Notificações por Origem."""
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v9:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v10:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -209,51 +224,73 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
         pass
 
     # =========================================================================
-    # 4. METROLOGIA - OCORRÊNCIAS EM ABERTO
+    # 4. METROLOGIA - OCORRÊNCIAS EM ABERTO & TRATATIVAS
     # =========================================================================
     try:
-        if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
-            from qms.models import OcorrenciaInstrumento
+        from qms.models import OcorrenciaInstrumento
+        from django.db.models import Q
 
+        has_metro_access = has_module_access(user, "metrologia") or user.is_superuser or user.is_staff
+
+        if is_global_viewer:
             ocorrencias_abertas = OcorrenciaInstrumento.objects.filter(
                 status="ABERTA"
-            ).select_related("instrumento", "usuario_responsavel").order_by("-data_ocorrencia")
+            ).select_related("instrumento", "instrumento__setor", "usuario_responsavel").order_by("-data_ocorrencia")
+        elif has_metro_access:
+            ocorrencias_abertas = OcorrenciaInstrumento.objects.filter(
+                status="ABERTA"
+            ).select_related("instrumento", "instrumento__setor", "usuario_responsavel").order_by("-data_ocorrencia")
+        else:
+            # Notificação para o usuário associado (mesmo sem permissão global de metrologia)
+            ocorrencias_abertas = OcorrenciaInstrumento.objects.filter(
+                status="ABERTA",
+                usuario_responsavel=user
+            ).select_related("instrumento", "instrumento__setor", "usuario_responsavel").order_by("-data_ocorrencia")
 
-            for oc in ocorrencias_abertas[:50]:
-                inst = oc.instrumento
-                inst_tag = (inst.tag or inst.codigo or f"ID {inst.id}") if inst else "Instrumento"
-                inst_desc = f"{inst.descricao} — " if inst and inst.descricao else ""
-                tipo_nome = oc.get_tipo_display() if hasattr(oc, 'get_tipo_display') else oc.tipo
-                
+        for oc in ocorrencias_abertas[:50]:
+            inst = oc.instrumento
+            inst_tag = (inst.tag or inst.codigo or f"ID {inst.id}") if inst else "Instrumento"
+            inst_desc = f"{inst.descricao} — " if inst and inst.descricao else ""
+            setor_nome = f" ({inst.setor.nome})" if inst and inst.setor else ""
+            tipo_nome = oc.get_tipo_display() if hasattr(oc, 'get_tipo_display') else oc.tipo
+            
+            is_minha_tratativa = (oc.usuario_responsavel_id == getattr(user, 'id', None))
+            
+            if is_minha_tratativa:
+                sub_tipo_name = "Minhas Tratativas"
+                titulo_item = f"Tratativa de Ocorrência ({tipo_nome}): {inst_tag}{setor_nome}"
+                acao_texto = "Tratar"
+            else:
+                sub_tipo_name = "Ocorrências em Aberto"
+                titulo_item = f"Ocorrência Aberta ({tipo_nome}): {inst_tag}{setor_nome}"
+                acao_texto = "Visualizar"
+            
+            try:
+                target_url = reverse("metrologia:relatorio_ocorrencias") + f"?ocorrencia_id={oc.id}"
+            except Exception:
                 try:
                     if inst:
-                        target_url = reverse("detalhe_instrumento", args=[inst.id])
+                        target_url = reverse("visualizar_instrumento", args=[inst.id])
                     else:
                         target_url = "/metrologia/"
                 except Exception:
-                    try:
-                        if inst:
-                            target_url = reverse("visualizar_instrumento", args=[inst.id])
-                        else:
-                            target_url = "/metrologia/"
-                    except Exception:
-                        target_url = "/metrologia/"
+                    target_url = "/metrologia/"
 
-                data_oc = oc.data_ocorrencia or hoje
-                items.append(
-                    InboxItem(
-                        id=f"ocorrencia_{oc.id}",
-                        title=f"Ocorrência Aberta ({tipo_nome}): {inst_tag}",
-                        description=f"{inst_desc}{oc.descricao}",
-                        module="Metrologia",
-                        icon="bi-exclamation-octagon",
-                        url=target_url,
-                        action_text="Resolver",
-                        date=data_oc,
-                        is_urgent=True,
-                        sub_type="Ocorrências em Aberto"
-                    )
+            data_oc = oc.data_ocorrencia or hoje
+            items.append(
+                InboxItem(
+                    id=f"ocorrencia_{oc.id}",
+                    title=titulo_item,
+                    description=f"{inst_desc}{oc.descricao}",
+                    module="Metrologia",
+                    icon="bi-exclamation-octagon",
+                    url=target_url,
+                    action_text=acao_texto,
+                    date=data_oc,
+                    is_urgent=True,
+                    sub_type=sub_tipo_name
                 )
+            )
     except Exception:
         pass
 

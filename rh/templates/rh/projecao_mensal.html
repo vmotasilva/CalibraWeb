@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
 {% load static %}
 
+{% block title %}Gestão de Férias - Calibra QMS{% endblock %}
+
 {% block extra_css %}
 <style>
     .mes-card {
@@ -108,8 +110,8 @@
     <!-- Cabecalho -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1"><i class="bi bi-calendar3 text-success"></i> Projecao Mensal de Ferias</h2>
-            <span class="text-muted small">Visao geral das ferias planejadas por mes &mdash; {{ ano }}</span>
+            <h2 class="mb-1"><i class="bi bi-calendar3 text-success"></i> Gestão de Férias</h2>
+            <span class="text-muted small">Projeção mensal das férias planejadas &mdash; {{ ano }}</span>
         </div>
         <div class="d-flex gap-2 align-items-center">
             <span class="stat-pill"><i class="bi bi-people-fill"></i> {{ total_ano }} registro{{ total_ano|pluralize:"s" }} no ano</span>
@@ -119,7 +121,7 @@
             <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalSelecionarColaborador">
                 <i class="bi bi-calendar-plus"></i> Registrar Férias
             </button>
-            <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
+            <a href="{% url 'rh:gestao_ferias' %}" class="btn btn-outline-primary btn-sm" title="Lista completa, importação, exportação e status"><i class="bi bi-list-ul"></i> Lista de Férias</a>
         </div>
     </div>
 
@@ -144,9 +146,9 @@
                 </select>
             </div>
             <div class="col-md-3">
-                <label class="form-label small fw-semibold">Lideranca</label>
+                <label class="form-label small fw-semibold">Liderança</label>
                 <select name="lider_id" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">Todas as Liderancas</option>
+                    <option value="">Todas as Lideranças</option>
                     {% for l in lideres_filtro %}
                     <option value="{{ l.id }}" {% if l.id|stringformat:"s" == lider_id %}selected{% endif %}>{{ l.nome_completo }}</option>
                     {% endfor %}
@@ -213,7 +215,7 @@
                 </div>
                 <div class="card-body p-0">
                     {% if card.total == 0 %}
-                        <div class="vazio-msg"><i class="bi bi-moon-stars"></i><br>Nenhuma ferias neste mes</div>
+                        <div class="vazio-msg"><i class="bi bi-moon-stars"></i><br>Nenhuma férias neste mês</div>
                     {% elif card.grupos %}
                         {% for g1 in card.grupos %}
                         <div class="grupo-header">

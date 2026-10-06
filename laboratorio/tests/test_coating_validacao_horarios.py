@@ -246,6 +246,14 @@ class CoatingSugestaoCorrecaoTests(TestCase):
         self.assertEqual([a["codigo"] for a in data["anomalias"]], ["missing"])
         self.assertEqual(data["sugestoes"], [])
 
+    def test_lote_em_andamento_com_vizinhos_nao_quebra_analise(self):
+        agora = timezone.now().replace(second=0, microsecond=0)
+        self._criar(13858, "CC", agora - timedelta(hours=3), agora - timedelta(hours=2))
+        atual = self._criar(13859, "CC", agora - timedelta(hours=1), None)
+
+        self.assertEqual(self._analisar(atual, agora - timedelta(hours=1), None)["anomalias"], [])
+        self.assertEqual(self._analisar(atual, None, None)["anomalias"], [])
+
     def test_conflito_de_horario_e_anomalia(self):
         self._criar(13859, "CX", self._dt(0, 3, 0), self._dt(0, 3, 50))
         atual = self._criar(13859, "CC", self._dt(0, 2, 37), None)

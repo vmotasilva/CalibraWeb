@@ -124,6 +124,11 @@
                             <i class="bi bi-plus-circle me-2 text-primary"></i>Novo Instrumento
                         </a>
                     </li>
+                    <li>
+                        <a href="{% url 'metrologia:relatorio_ocorrencias' %}" class="dropdown-item fw-semibold text-danger">
+                            <i class="bi bi-exclamation-octagon me-2 text-danger"></i>Relatório de Ocorrências (Tratativas)
+                        </a>
+                    </li>
                     <li><hr class="dropdown-divider"></li>
 
                     <!-- Opção de Registrar Histórico no Dropdown para Mobile -->
@@ -656,6 +661,80 @@
                                                             <div class="mb-3">
                                                                 <label class="form-label fw-bold small text-muted text-uppercase mb-1" style="font-size: 0.72rem;">Descrição Completa</label>
                                                                 <div class="p-3 bg-light rounded border text-dark" style="white-space: pre-wrap; font-size: 0.88rem; line-height: 1.5;">{{ oc.descricao }}</div>
+                                                            </div>
+
+                                                            <!-- Seção de Responsável pela Tratativa -->
+                                                            <div class="mb-3 p-2.5 rounded bg-light border">
+                                                                <div class="d-flex justify-content-between align-items-center mb-1.5">
+                                                                    <label class="form-label fw-bold small text-muted text-uppercase mb-0" style="font-size: 0.72rem;">
+                                                                        <i class="bi bi-person-check-fill text-primary me-1"></i> Responsável pela Tratativa
+                                                                    </label>
+                                                                    {% if oc.usuario_responsavel %}
+                                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 small" style="font-size: 0.72rem;">
+                                                                            <i class="bi bi-check2 me-1"></i>Atribuído
+                                                                        </span>
+                                                                    {% else %}
+                                                                        <span class="badge bg-warning-subtle text-dark border border-warning-subtle px-2 py-0.5 small" style="font-size: 0.72rem;">
+                                                                            <i class="bi bi-exclamation-triangle me-1"></i>Pendente de Atribuição
+                                                                        </span>
+                                                                    {% endif %}
+                                                                </div>
+
+                                                                {% if oc.usuario_responsavel %}
+                                                                    <div class="d-flex justify-content-between align-items-center">
+                                                                        <div class="d-flex align-items-center gap-2">
+                                                                            <div class="avatar-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center rounded-circle" style="width: 28px; height: 28px; font-size: 0.75rem;">
+                                                                                {{ oc.usuario_responsavel.first_name|default:oc.usuario_responsavel.username|slice:":1"|upper }}
+                                                                            </div>
+                                                                            <div>
+                                                                                <span class="fw-bold small text-dark d-block">
+                                                                                    {% if oc.usuario_responsavel.get_full_name %}{{ oc.usuario_responsavel.get_full_name }}{% else %}{{ oc.usuario_responsavel.username }}{% endif %}
+                                                                                </span>
+                                                                                <small class="text-muted" style="font-size: 0.72rem;">@{{ oc.usuario_responsavel.username }}</small>
+                                                                            </div>
+                                                                        </div>
+                                                                        <button type="button" class="btn btn-xs btn-outline-secondary py-0.5 px-2 rounded-pill" onclick="document.getElementById('form-trocar-resp-{{ oc.id }}').classList.toggle('d-none');" style="font-size: 0.75rem;">
+                                                                            <i class="bi bi-arrow-repeat me-1"></i>Alterar
+                                                                        </button>
+                                                                    </div>
+
+                                                                    <form method="post" action="{% url 'metrologia:atribuir_responsavel_ocorrencia' oc.id %}" id="form-trocar-resp-{{ oc.id }}" class="mt-2 pt-2 border-top d-none">
+                                                                        {% csrf_token %}
+                                                                        <div class="input-group input-group-sm">
+                                                                            <select name="usuario_responsavel" class="form-select form-select-sm" required>
+                                                                                <option value="">Selecione outro responsável...</option>
+                                                                                {% for u in usuarios_responsaveis %}
+                                                                                    <option value="{{ u.id }}" {% if oc.usuario_responsavel_id == u.id %}selected{% endif %}>
+                                                                                        {% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}
+                                                                                        {% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}
+                                                                                    </option>
+                                                                                {% endfor %}
+                                                                            </select>
+                                                                            <button type="submit" class="btn btn-sm btn-primary">Salvar</button>
+                                                                        </div>
+                                                                    </form>
+                                                                {% else %}
+                                                                    <form method="post" action="{% url 'metrologia:atribuir_responsavel_ocorrencia' oc.id %}" class="mt-1">
+                                                                        {% csrf_token %}
+                                                                        <div class="input-group input-group-sm">
+                                                                            <select name="usuario_responsavel" class="form-select form-select-sm" required>
+                                                                                <option value="">Selecione o responsável para tratativa...</option>
+                                                                                {% for u in usuarios_responsaveis %}
+                                                                                    <option value="{{ u.id }}">
+                                                                                        {% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}
+                                                                                        {% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}
+                                                                                    </option>
+                                                                                {% endfor %}
+                                                                            </select>
+                                                                            <button type="submit" class="btn btn-sm btn-warning text-dark fw-bold">
+                                                                                <i class="bi bi-person-plus me-1"></i>Direcionar
+                                                                            </button>
+                                                                        </div>
+                                                                        <small class="text-muted d-block mt-1" style="font-size: 0.70rem;">
+                                                                            <i class="bi bi-info-circle me-1"></i>Ao direcionar, o responsável receberá uma notificação direta no painel.
+                                                                        </small>
+                                                                    </form>
+                                                                {% endif %}
                                                             </div>
 
                                                             <div class="d-flex justify-content-between align-items-center pt-2 border-top">
@@ -1503,6 +1582,21 @@ function selectAllInCategory(category) {
                     <div class="mb-3">
                         <label class="form-label fw-bold mb-1 small">Descrição Detalhada</label>
                         <textarea name="descricao" class="form-control form-control-sm" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold mb-1 small">Responsável pela Tratativa <span class="text-muted fw-normal">(Opcional)</span></label>
+                        <select name="usuario_responsavel" class="form-select form-select-sm">
+                            <option value="">-- Selecione o Responsável (Opcional) --</option>
+                            {% for u in usuarios_responsaveis %}
+                                <option value="{{ u.id }}">
+                                    {% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}
+                                    {% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted d-block mt-1" style="font-size: 0.70rem;">
+                            <i class="bi bi-bell me-1"></i>O usuário associado receberá uma notificação na sua Inbox.
+                        </small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold mb-1 small">Data da Ocorrência</label>

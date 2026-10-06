@@ -489,7 +489,8 @@ def analisar_horarios(registro, entrada, saida, maquina=None, tratamento=None, l
     tipica, base_tipica, _ = ctx.tipica(atual.tratamento)
 
     anomalias = validar_horarios(entrada, saida, registro.lado)
-    if not anomalias:
+    # Lote em andamento (sem saída) ou sem horários não tem intervalo para comparar
+    if not anomalias and atual.valido:
         anomalias = [
             _anomalia_conflito(entrada, saida, a) for a in ctx.ancoras(atual)
             if _sobreposicao(entrada, saida, a.entrada, a.saida) > TOLERANCIA_SOBREPOSICAO

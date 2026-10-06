@@ -1360,6 +1360,7 @@ def dashboard_view(request):
             "setores_filtro": data.get("setores_filtro", []),
             "periodos_filtro": data.get("periodos_filtro", []),
             "fornecedores": data.get("fornecedores", []),
+            "usuarios_responsaveis": data.get("usuarios_responsaveis", []),
         }
     except Exception as e:
         from datetime import date
@@ -1369,6 +1370,7 @@ def dashboard_view(request):
             "kpis": {"todos": {}, "externo": {}, "interno": {}},
             "instrumentos": [],
             "solicitacoes_cotacao": [],
+            "usuarios_responsaveis": [],
             "qtd_pendentes": 0,
             "today": date.today().strftime('%Y-%m-%d'),
             "hoje_display": date.today().strftime('%d/%m/%Y'),

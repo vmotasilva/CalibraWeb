@@ -35,9 +35,12 @@ from .views import (
     
     # Ocorrências
     registrar_ocorrencia,
+    atribuir_responsavel_ocorrencia,
     encerrar_ocorrencia,
+    reabrir_ocorrencia,
     editar_ocorrencia,
     deletar_ocorrencia,
+    relatorio_ocorrencias_view,
     
     # Dashboard Overview & API
     get_metrologia_dashboard_data,
@@ -96,9 +99,12 @@ __all__ = [
     'api_faixa_medicao_view',
     'registrar_historico_massa',
     'registrar_ocorrencia',
+    'atribuir_responsavel_ocorrencia',
     'encerrar_ocorrencia',
+    'reabrir_ocorrencia',
     'editar_ocorrencia',
     'deletar_ocorrencia',
+    'relatorio_ocorrencias_view',
     # NOVO FLUXO
     'solicitacao_list',
     'solicitacao_create',
