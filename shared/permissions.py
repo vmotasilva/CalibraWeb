@@ -188,7 +188,7 @@ NAV_STRUCTURE = [
     {
         "key": "diagramas",
         "nome": "Diagramas",
-        "cor": "purple",
+        "cor": "teal",
         "icone": "bi bi-diagram-3-fill",
         "module_perm": "core.nav_mod_diagramas",
         "blocos": [
@@ -831,6 +831,7 @@ NAV_STRUCTURE = [
                     {"nome": "Novo Colaborador", "view_name": "rh:criar_colaborador", "perm": "core.nav_pessoas_novo_colaborador"},
                     {"nome": "Detalhe do Colaborador", "view_name": ["rh:detalhe_colaborador", "detalhe_colaborador"], "perm": "core.nav_pessoas_detalhe_colaborador"},
                     {"nome": "Editar Colaborador", "view_name": "editar_colaborador", "perm": "core.nav_pessoas_editar_colaborador"},
+                    {"nome": "Alterar Foto do Colaborador", "perm": "rh.pode_alterar_foto_colaborador", "descricao": "Permite fazer o upload/corte e alterar a foto de perfil do colaborador."},
                     {"nome": "Excluir Colaborador", "view_name": "rh:api_delete_colaborador", "perm": "core.nav_pessoas_api_delete_colaborador"},
                     {"nome": "Excluir Colaboradores em Massa", "view_name": "rh:api_delete_colaboradores_multiple", "perm": "core.nav_pessoas_api_delete_colaboradores_multiple"},
                     {"nome": "Importar Pessoas", "view_name": ["qms:importar_colaboradores", "dl_template_colab", "dl_template_colab_dados"], "perm": "core.nav_pessoas_importar_pessoas"},
