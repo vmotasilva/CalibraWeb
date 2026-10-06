@@ -412,20 +412,6 @@
         margin-right: 4px;
     }
 
-    /* Barra Inferior Dedicada de Status, Layout e Zoom (Fora da área útil do diagrama) */
-    .canvas-footer-bar {
-        background: #ffffff;
-        border-top: 1px solid #e2e8f0;
-        padding: 8px 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        z-index: 10;
-        flex-shrink: 0;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
-    }
 
     /* Painel Lateral Direito (Inspector de Estilos e Marcadores) */
     .inspector-panel {
@@ -612,10 +598,10 @@
         </div>
     </div>
 
-    <!-- 2. Ribbon Toolbar (Barra de Ferramentas com Atalhos Enter / Tab / Zen / Inspector) -->
+    <!-- 2. Ribbon Toolbar (Barra de Ferramentas Superior Unificada com Modos, Criação, Layout e Zoom) -->
     <div class="editor-ribbon">
-        <!-- Alternador de Modos (Canvas, Outliner, Grelha) -->
-        <div class="d-flex align-items-center gap-1 border-end pe-3">
+        <!-- Grupo 1: Alternador de Modos (Canvas, Outliner, Grelha) -->
+        <div class="d-flex align-items-center gap-1 border-end pe-2">
             <button type="button" class="ribbon-btn active" id="btnModoCanvas" onclick="alternarModoEditor('canvas')" title="Visualização Canvas / Mapa Mental">
                 <i class="bi bi-diagram-3-fill text-primary"></i> Canvas
             </button>
@@ -627,8 +613,8 @@
             </button>
         </div>
 
-        <!-- Ações Rápidas de Criação com Teclado -->
-        <div class="d-flex align-items-center gap-2">
+        <!-- Grupo 2: Ações Rápidas de Criação com Teclado -->
+        <div class="d-flex align-items-center gap-1 border-end pe-2">
             {% if not is_approved %}
                 <button type="button" class="ribbon-btn border" onclick="adicionarTopicoIrmao()" title="Adicionar Tópico Irmão (Atalho: Enter)">
                     <i class="bi bi-plus-square text-success"></i> + Tópico <span class="ribbon-kbd">Enter</span>
@@ -645,14 +631,52 @@
             {% endif %}
         </div>
 
-        <!-- Ações de Visualização & Painel -->
-        <div class="d-flex align-items-center gap-2">
+        <!-- Grupo 3: Automações de Layout, Alinhamento e Raias (Imagem 01) -->
+        <div class="d-flex align-items-center gap-1 border-end pe-2">
+            <button type="button" class="btn btn-sm btn-primary border shadow-sm px-2 py-1" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
+                <i class="bi bi-magic"></i> <span class="small fw-semibold">Auto-Layout</span>
+            </button>
+            <button type="button" class="ribbon-btn border" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
+                <i class="bi bi-distribute-horizontal text-primary"></i> Alinhar Raias
+            </button>
+            {% if not is_approved %}
+                <button type="button" class="ribbon-btn border" onclick="adicionarNovaRaia()" title="Adicionar Nova Raia de Setor / Departamento">
+                    <i class="bi bi-plus-circle text-primary"></i> + Raia
+                </button>
+            {% endif %}
+        </div>
+
+        <!-- Grupo 4: Visualização, Centralização e Zoom (Imagem 01) -->
+        <div class="d-flex align-items-center gap-1 border-end pe-2">
+            <button type="button" class="ribbon-btn border" onclick="recentralizarCanvas()" title="Centralizar Visualização nos Blocos">
+                <i class="bi bi-crosshair text-primary"></i> Centralizar
+            </button>
+            <button type="button" class="ribbon-btn border" onclick="enquadrarVisaoCompleta()" title="Ajustar e Enquadrar Todo o Diagrama na Tela (Fit View)">
+                <i class="bi bi-aspect-ratio text-primary"></i> Enquadrar
+            </button>
+
+            <!-- Controles de Zoom -->
+            <div class="btn-group btn-group-sm shadow-sm ms-1" role="group">
+                <button type="button" class="btn btn-light border py-1 px-2" onclick="alterarZoomRelativo(-0.1)" title="Diminuir Zoom (Ctrl + -)">
+                    <i class="bi bi-dash-lg"></i>
+                </button>
+                <button type="button" id="btnZoomLabel" class="btn btn-light border fw-bold font-monospace px-2 py-1" onclick="aplicarZoom(1.0)" title="Restaurar Zoom para 100%">
+                    100%
+                </button>
+                <button type="button" class="btn btn-light border py-1 px-2" onclick="alterarZoomRelativo(0.1)" title="Aumentar Zoom (Ctrl + +)">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Grupo 5: Estilo de Linhas, Fundo, ZEN e Painel Lateral -->
+        <div class="d-flex align-items-center gap-1">
             <!-- Seletor de Estilo das Linhas de Conexão -->
             <div class="dropdown">
                 <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Configurar Estilo das Linhas / Conectores">
                     <i class="bi bi-bezier2 text-primary"></i> <span id="labelEstiloLinha">Linhas 90°</span>
                 </button>
-                <ul class="dropdown-menu shadow-sm">
+                <ul class="dropdown-menu shadow-sm dropdown-menu-end">
                     <li>
                         <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="alterarEstiloLinha('ortogonal')">
                             <i class="bi bi-bezier2 text-primary fs-5"></i>
@@ -699,8 +723,8 @@
     <div class="editor-body-wrapper">
         <!-- VISTA 1: MODO CANVAS (VISUAL) -->
         <div id="viewCanvasContainer" class="flex-grow-1 position-relative d-flex flex-column h-100 overflow-hidden">
-            <!-- 1. Viewport do Diagrama (Área útil livre e desobstruída) -->
-            <div id="canvasViewport" class="canvas-viewport flex-grow-1 w-100" tabindex="0">
+            <!-- Viewport do Diagrama (100% da área útil visual, livre e desobstruída) -->
+            <div id="canvasViewport" class="canvas-viewport flex-grow-1 w-100 h-100" tabindex="0">
                 <div id="canvasSizer" class="canvas-sizer">
                     <div id="canvasContent" class="canvas-content">
                         <!-- Raias (Swimlanes) -->
@@ -723,50 +747,6 @@
 
                         <!-- Container de Nós Arrastáveis -->
                         <div id="nodesContainer" class="nodes-container"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 2. Barra Inferior Dedicada de Ferramentas, Layout e Zoom (FORA DA ÁREA DO DIAGRAMA) -->
-            <div class="canvas-footer-bar">
-                <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-sm btn-primary border shadow-sm" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
-                        <i class="bi bi-magic"></i> <span class="small fw-semibold">Auto-Layout</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
-                        <i class="bi bi-distribute-horizontal text-primary"></i> <span class="d-none d-md-inline small">Alinhar por Raias</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="recentralizarCanvas()" title="Centralizar Visualização nos Blocos">
-                        <i class="bi bi-crosshair text-primary"></i> <span class="d-none d-md-inline small">Centralizar</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="enquadrarVisaoCompleta()" title="Ajustar e Enquadrar Todo o Diagrama na Tela (Fit View)">
-                        <i class="bi bi-aspect-ratio text-primary"></i> <span class="d-none d-md-inline small">Enquadrar Tudo</span>
-                    </button>
-                    {% if not is_approved %}
-                    <div class="vr my-1"></div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adicionarNovaRaia()" title="Adicionar Nova Raia de Setor / Departamento">
-                        <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline small">Nova Raia</span>
-                    </button>
-                    {% endif %}
-                </div>
-
-                <div class="d-flex align-items-center gap-3">
-                    <!-- Dica rápida de navegação -->
-                    <div class="text-muted small d-none d-lg-block font-monospace" style="font-size: 11px;">
-                        <i class="bi bi-arrows-move me-1"></i> Arraste o fundo &bull; <kbd class="px-1 py-0 bg-light text-dark border rounded font-monospace">Espaço</kbd> Pan &bull; <kbd class="px-1 py-0 bg-light text-dark border rounded font-monospace">Ctrl</kbd> + Roda Zoom
-                    </div>
-
-                    <!-- Controles de Zoom -->
-                    <div class="btn-group btn-group-sm shadow-sm" role="group">
-                        <button type="button" class="btn btn-light border" onclick="alterarZoomRelativo(-0.1)" title="Diminuir Zoom (Ctrl + Roda / -)">
-                            <i class="bi bi-dash-lg"></i>
-                        </button>
-                        <button type="button" id="btnZoomLabel" class="btn btn-light border fw-bold font-monospace px-2" onclick="aplicarZoom(1.0)" title="Restaurar Zoom para 100%">
-                            100%
-                        </button>
-                        <button type="button" class="btn btn-light border" onclick="alterarZoomRelativo(0.1)" title="Aumentar Zoom (Ctrl + Roda / +)">
-                            <i class="bi bi-plus-lg"></i>
-                        </button>
                     </div>
                 </div>
             </div>
