@@ -801,7 +801,7 @@ def editar_colaborador_view(request, colab_id):
         pass
 
     if request.method == "POST":
-        form = ColaboradorForm(request.POST, instance=alvo)
+        form = ColaboradorForm(request.POST, request.FILES, instance=alvo)
         if form.is_valid():
             form.save()
             messages.success(request, "Colaborador atualizado com sucesso!")
@@ -833,7 +833,7 @@ def criar_colaborador_view(request):
         pass
 
     if request.method == "POST":
-        form = ColaboradorForm(request.POST)
+        form = ColaboradorForm(request.POST, request.FILES)
         if form.is_valid():
             novo_colaborador = form.save()
             messages.success(request, f"Colaborador {novo_colaborador.nome_completo} criado com sucesso!")

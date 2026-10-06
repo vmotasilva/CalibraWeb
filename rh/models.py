@@ -29,6 +29,12 @@ class Colaborador(models.Model):
         blank=True,
         verbose_name="Usuário de Acesso (Login)",
     )
+    foto = models.ImageField(
+        upload_to="fotos_colaboradores/",
+        null=True,
+        blank=True,
+        verbose_name="Foto do Colaborador",
+    )
     matricula = models.CharField(max_length=20, unique=True, verbose_name="Matrícula")
     matricula_global = models.CharField(
         max_length=50, null=True, blank=True, db_index=True, verbose_name="Matrícula Global"

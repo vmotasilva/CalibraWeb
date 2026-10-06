@@ -9,12 +9,16 @@
                     <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Novo Colaborador</h5>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         
                         <div class="row g-3">
                             <div class="col-md-12"><h6 class="text-success border-bottom pb-2">Dados Pessoais</h6></div>
                             
+                            <div class="col-12">
+                                <label class="form-label">Foto do Colaborador</label>
+                                {{ form.foto }}
+                            </div>
                             <div class="col-md-8">
                                 <label class="form-label">Nome Completo *</label>
                                 {% if form.nome_completo.errors %}
