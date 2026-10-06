@@ -2671,11 +2671,11 @@ def api_upload_foto_colaborador(request, colab_id):
     if not can_user_access_colaborador(request.user, alvo):
         return JsonResponse({"error": "Acesso negado"}, status=403)
     
-    foto = request.FILES.get('foto')
-    if foto:
-        alvo.foto = foto
+    foto_b64 = request.POST.get('foto_b64')
+    if foto_b64:
+        alvo.foto = foto_b64
         alvo.save()
-        return JsonResponse({"success": True, "url": alvo.foto.url})
+        return JsonResponse({"success": True})
     return JsonResponse({"error": "Nenhuma foto enviada"}, status=400)
 
 
