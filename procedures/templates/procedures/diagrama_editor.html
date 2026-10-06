@@ -410,7 +410,61 @@
         display: inline-flex;
         align-items: center;
         margin-right: 4px;
+        background: #f1f5f9;
+        padding: 1px 4px;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
     }
+
+    /* Mais Formatos (Círculo, Paralelogramo, Hexágono) */
+    .node-circle {
+        border-radius: 50% !important;
+        width: 130px !important;
+        height: 130px !important;
+        padding: 10px !important;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .node-parallelogram {
+        transform: skew(-15deg);
+    }
+    .node-parallelogram > * {
+        transform: skew(15deg);
+    }
+
+    /* Botões Rápidos de Adição (handle-add) */
+    .handle-add {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #3b82f6;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 11;
+        opacity: 0;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    .flow-node:hover .handle-add {
+        opacity: 1;
+    }
+    .handle-add:hover {
+        transform: scale(1.2);
+        background: #1d4ed8;
+    }
+    .handle-add-right { right: -28px; top: calc(50% - 10px); }
+    .handle-add-bottom { bottom: -28px; left: calc(50% - 10px); }
+    .handle-add-left { left: -28px; top: calc(50% - 10px); }
 
 
     /* Painel Lateral Direito (Inspector de Estilos e Marcadores) */
@@ -1015,6 +1069,13 @@
                             <input type="text" id="inspNodeLabel" class="form-control form-control-sm" oninput="aplicarEstiloNoSelecionado('label', this.value)">
                         </div>
 
+                        <!-- Título da Etapa / Passo -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Título do Passo</label>
+                            <input type="text" id="inspNodeStepTitle" class="form-control form-control-sm" placeholder="Ex: Passo 1, Etapa A" oninput="aplicarEstiloNoSelecionado('stepTitle', this.value)">
+                            <small class="text-muted" style="font-size:10px;">(Padrão: "Passo X")</small>
+                        </div>
+
                         <!-- Raia / Setor -->
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold mb-1">Raia / Setor</label>
@@ -1033,6 +1094,12 @@
                                 </button>
                                 <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="aplicarEstiloNoSelecionado('shape', 'decision')" title="Decisão / Losango">
                                     <i class="bi bi-diamond"></i> Decisão
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="aplicarEstiloNoSelecionado('shape', 'circle')" title="Círculo">
+                                    <i class="bi bi-circle"></i> Círculo
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light border py-1 px-2" onclick="aplicarEstiloNoSelecionado('shape', 'parallelogram')" title="Paralelogramo">
+                                    <i class="bi bi-slash-square"></i> Paralelogramo
                                 </button>
                             </div>
                         </div>
@@ -1069,33 +1136,33 @@
 
                 <!-- ABA MARCADORES -->
                 <div class="tab-pane fade" id="inspTabMarkers">
-                    <div id="inspectorMarkersControls">
+                    <div id="inspectorMarkersControls" class="pt-2">
                         <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold mb-1">Prioridade QMS</label>
-                            <div class="d-flex gap-1 flex-wrap">
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('priority', '1')">❶ Alta</button>
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('priority', '2')">❷ Média</button>
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('priority', '3')">❸ Normal</button>
-                                <button type="button" class="marker-pill-btn text-muted" onclick="aplicarMarcadorNoSelecionado('priority', null)">Remover</button>
+                            <label class="form-label text-muted small fw-bold mb-1">Etiquetas / Tags</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('emojiPickerList').classList.toggle('d-none')" id="btnEmojiToggle">😀</button>
+                                <input type="text" id="inspNodeCustomTag" class="form-control" placeholder="Adicionar Etiqueta..." onkeypress="if(event.key === 'Enter') adicionarTagPersonalizada()">
+                                <button class="btn btn-primary" type="button" onclick="adicionarTagPersonalizada()">Add</button>
                             </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold mb-1">Status / Progresso</label>
-                            <div class="d-flex gap-1 flex-wrap">
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('status', '⏳')">⏳ Pendente</button>
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('status', '🔄')">🔄 Em Andamento</button>
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('status', '✅')">✅ Concluído</button>
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('status', '⚠️')">⚠️ Crítico</button>
+                            
+                            <div id="emojiPickerList" class="d-none border p-2 bg-white position-absolute shadow-sm rounded" style="z-index: 100; max-width: 260px; display:flex; flex-wrap:wrap; gap:5px;">
+                                <!-- Emojis básicos -->
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('⚠️')">⚠️</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('✅')">✅</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('⏳')">⏳</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('🔄')">🔄</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('🚩')">🚩</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('🔴')">🔴</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('🟡')">🟡</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('🟢')">🟢</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('📝')">📝</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('🔍')">🔍</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('🔥')">🔥</span>
+                                <span style="cursor:pointer" onclick="inserirEmojiNaTag('⭐')">⭐</span>
                             </div>
-                        </div>
 
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold mb-1">Bandeiras de Auditoria</label>
-                            <div class="d-flex gap-1 flex-wrap">
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('flag', '🚩')">🚩 Risco ISO</button>
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('flag', '🟡')">🟡 Atenção</button>
-                                <button type="button" class="marker-pill-btn" onclick="aplicarMarcadorNoSelecionado('flag', '🟢')">🟢 Conforme</button>
+                            <div id="customTagsList" class="d-flex flex-wrap gap-1 mt-2">
+                                <!-- Tags renderizadas dinamicamente -->
                             </div>
                         </div>
                     </div>
@@ -1189,6 +1256,7 @@
     let isDragging = false;
     let activeNode = null;
     let selectedNodeId = null;
+    let selectedNodeIds = new Set(); // Para multi-seleção e alinhamento
     let dragOffset = { x: 0, y: 0 };
     let modoAtual = 'canvas';
 
@@ -1313,14 +1381,31 @@
         nodesContainer.innerHTML = '';
         swimlanesLayer.innerHTML = '';
 
-        // 1. Renderiza Raias (Swimlanes) com Ações Interativas
+        // 1. Renderiza Raias (Swimlanes) dinamicamente (Alturas ajustáveis)
         const lanes = obterListaRaiasOrdenada();
+        let currentY = 40;
+        
+        // Calcula a altura necessária para cada raia
+        const laneHeights = {};
+        lanes.forEach(lane => {
+            const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+            if (nodesInLane.length > 0) {
+                // Encontra a maior posição Y + altura estimada do nó (cerca de 100px)
+                const minPos = Math.min(...nodesInLane.map(n => n.position.y));
+                const maxPos = Math.max(...nodesInLane.map(n => n.position.y));
+                laneHeights[lane] = Math.max(220, (maxPos - minPos) + 160);
+            } else {
+                laneHeights[lane] = 220; // altura mínima
+            }
+        });
+
         lanes.forEach((lane, idx) => {
-            const yPos = 40 + idx * 240;
+            const yPos = currentY;
+            const h = laneHeights[lane];
             const laneEl = document.createElement('div');
             laneEl.className = 'swimlane-row';
             laneEl.style.top = `${yPos}px`;
-            laneEl.style.height = '220px';
+            laneEl.style.height = `${h}px`;
 
             const safeLane = escapeHtml(lane);
             laneEl.innerHTML = `
@@ -1342,6 +1427,7 @@
                 </div>
             `;
             swimlanesLayer.appendChild(laneEl);
+            currentY += h; // Avança o Y base para a próxima raia
         });
 
         // 2. Renderiza Nós
@@ -1351,15 +1437,17 @@
             nodeEl.style.left = `${node.position.x}px`;
             nodeEl.style.top = `${node.position.y}px`;
 
-            if (node.id === selectedNodeId) {
+            if (selectedNodeIds.has(node.id)) {
                 nodeEl.classList.add('selected');
             }
 
-            // Marcadores (Priority / Status / Flag)
+            // Marcadores Personalizados (Tags / Etiquetas)
             let markersHtml = '';
-            if (node.data?.status) markersHtml += `<span class="node-marker-badge">${node.data.status}</span>`;
-            if (node.data?.priority) markersHtml += `<span class="badge bg-danger rounded-pill px-1 py-0 me-1" style="font-size: 9px;">${node.data.priority}</span>`;
-            if (node.data?.flag) markersHtml += `<span class="node-marker-badge">${node.data.flag}</span>`;
+            if (node.data?.customTags && Array.isArray(node.data.customTags)) {
+                node.data.customTags.forEach(tag => {
+                    markersHtml += `<span class="node-marker-badge">${escapeHtml(tag)}</span>`;
+                });
+            }
 
             // Cores e Estilos Customizados
             if (node.data?.bgColor) {
@@ -1387,21 +1475,43 @@
                     <div class="handle handle-left"></div>
                 `;
             } else {
-                const shapeClass = node.data?.shape === 'pill' ? 'node-pill' : (node.data?.isCentral ? 'node-central' : '');
+                const shapeClass = node.data?.shape === 'pill' ? 'node-pill' : 
+                                  (node.data?.shape === 'circle' ? 'node-circle' : 
+                                  (node.data?.shape === 'parallelogram' ? 'node-parallelogram' : 
+                                  (node.data?.isCentral ? 'node-central' : '')));
+                                  
+                let stepTitleDisplay = node.data?.stepTitle ? escapeHtml(node.data.stepTitle) : `Passo ${node.data.stepId || node.id}`;
+                
                 nodeEl.className = `flow-node node-process ${shapeClass}`;
                 nodeEl.innerHTML = `
-                    <span class="badge-step">${markersHtml}Passo ${node.data.stepId || node.id}</span>
-                    <div class="fw-semibold small leading-tight">${escapeHtml(node.data.label)}</div>
+                    <span class="badge-step">${stepTitleDisplay}</span>
+                    <div class="fw-semibold small leading-tight">${markersHtml} ${escapeHtml(node.data.label)}</div>
                     ${node.data.documentRef ? `<span class="badge-doc">📄 ${escapeHtml(node.data.documentRef)}</span>` : ''}
                     <div class="handle handle-top"></div>
                     <div class="handle handle-bottom"></div>
+                    ${!IS_APPROVED ? `
+                        <div class="handle-add handle-add-right" onclick="adicionarSubtopicoA(event, '${node.id}', 'right')" title="Adicionar à Direita">+</div>
+                        <div class="handle-add handle-add-bottom" onclick="adicionarSubtopicoA(event, '${node.id}', 'bottom')" title="Adicionar Abaixo">+</div>
+                        <div class="handle-add handle-add-left" onclick="adicionarSubtopicoA(event, '${node.id}', 'left')" title="Adicionar à Esquerda">+</div>
+                    ` : ''}
                 `;
             }
 
-            // Clique para Seleção
+            // Clique para Seleção (Com Shift para Multi-Seleção)
             nodeEl.addEventListener('click', (e) => {
                 e.stopPropagation();
-                selecionarNo(node.id);
+                if (e.shiftKey) {
+                    if (selectedNodeIds.has(node.id)) {
+                        selectedNodeIds.delete(node.id);
+                        if (selectedNodeId === node.id) selectedNodeId = Array.from(selectedNodeIds)[0] || null;
+                    } else {
+                        selectedNodeIds.add(node.id);
+                        selectedNodeId = node.id;
+                    }
+                    atualizarSelecoesVisuais();
+                } else {
+                    selecionarNo(node.id);
+                }
             });
 
             // Eventos de Arrasto
@@ -1415,73 +1525,129 @@
         desenharConexoes();
     }
 
-    function selecionarNo(nodeId) {
-        selectedNodeId = nodeId;
+    function atualizarSelecoesVisuais() {
         document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
-        const el = document.getElementById(`node-${nodeId}`);
-        if (el) el.classList.add('selected');
+        selectedNodeIds.forEach(id => {
+            const el = document.getElementById(`node-${id}`);
+            if (el) el.classList.add('selected');
+        });
+        
+        if (selectedNodeId) {
+            const node = topologia.nodes.find(n => n.id === selectedNodeId);
+            if (node) {
+                document.getElementById('inspectorEmptyState').classList.add('d-none');
+                document.getElementById('inspectorControls').classList.remove('d-none');
+                document.getElementById('inspNodeLabel').value = node.data?.label || '';
+                document.getElementById('inspNodeStepTitle').value = node.data?.stepTitle || '';
+                document.getElementById('inspNodeLane').value = node.data?.lane || '';
+                document.getElementById('inspNodeDocRef').value = node.data?.documentRef || '';
+                renderizarTagsInspector(node);
 
-        // Atualiza o Inspector Lateral
-        const node = topologia.nodes.find(n => n.id === nodeId);
-        if (node) {
-            document.getElementById('inspectorEmptyState').classList.add('d-none');
-            document.getElementById('inspectorControls').classList.remove('d-none');
-            document.getElementById('inspNodeLabel').value = node.data?.label || '';
-            document.getElementById('inspNodeLane').value = node.data?.lane || '';
-            document.getElementById('inspNodeDocRef').value = node.data?.documentRef || '';
-
-            // Abre o painel lateral se estiver fechado
-            const panel = document.getElementById('inspectorPanel');
-            if (panel.classList.contains('collapsed')) {
-                toggleInspectorPanel();
+                const panel = document.getElementById('inspectorPanel');
+                if (panel.classList.contains('collapsed')) {
+                    toggleInspectorPanel();
+                }
             }
+        } else {
+            document.getElementById('inspectorEmptyState').classList.remove('d-none');
+            document.getElementById('inspectorControls').classList.add('d-none');
         }
+    }
+
+    function selecionarNo(nodeId) {
+        selectedNodeIds.clear();
+        selectedNodeIds.add(nodeId);
+        selectedNodeId = nodeId;
+        atualizarSelecoesVisuais();
     }
 
     function desmarcarTodosNos() {
         selectedNodeId = null;
-        document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
-        document.getElementById('inspectorEmptyState').classList.remove('d-none');
-        document.getElementById('inspectorControls').classList.add('d-none');
+        selectedNodeIds.clear();
+        atualizarSelecoesVisuais();
     }
 
     function aplicarEstiloNoSelecionado(prop, valor) {
-        if (!selectedNodeId) return;
-        const node = topologia.nodes.find(n => n.id === selectedNodeId);
-        if (!node) return;
+        if (selectedNodeIds.size === 0) return;
+        
+        selectedNodeIds.forEach(id => {
+            const node = topologia.nodes.find(n => n.id === id);
+            if (!node) return;
 
-        if (!node.data) node.data = {};
+            if (!node.data) node.data = {};
 
-        if (prop === 'shape') {
-            node.data.shape = valor;
-            if (valor === 'decision') node.type = 'decision';
-            else if (node.type === 'decision') node.type = 'process';
-        } else {
-            node.data[prop] = valor;
-        }
+            if (prop === 'shape') {
+                node.data.shape = valor;
+                if (valor === 'decision') node.type = 'decision';
+                else if (node.type === 'decision') node.type = 'process';
+            } else {
+                node.data[prop] = valor;
+            }
 
-        // Sincroniza com o grid_data
-        const gridRow = topologia.grid_data.find(r => r.stepId === node.id);
-        if (gridRow) {
-            if (prop === 'label') gridRow.label = valor;
-            if (prop === 'lane') gridRow.lane = valor;
-            if (prop === 'documentRef') gridRow.documentRef = valor;
-        }
+            // Sincroniza com o grid_data
+            const gridRow = topologia.grid_data.find(r => r.stepId === node.id);
+            if (gridRow) {
+                if (prop === 'label') gridRow.label = valor;
+                if (prop === 'lane') gridRow.lane = valor;
+                if (prop === 'documentRef') gridRow.documentRef = valor;
+            }
+        });
 
         renderizarCanvas();
         dispararAutoSave();
     }
 
-    function aplicarMarcadorNoSelecionado(tipo, valor) {
+    function inserirEmojiNaTag(emoji) {
+        const input = document.getElementById('inspNodeCustomTag');
+        input.value += emoji;
+        input.focus();
+    }
+
+    function adicionarTagPersonalizada() {
+        const input = document.getElementById('inspNodeCustomTag');
+        const tag = input.value.trim();
+        if (!tag || selectedNodeIds.size === 0) return;
+
+        selectedNodeIds.forEach(id => {
+            const node = topologia.nodes.find(n => n.id === id);
+            if (node) {
+                if (!node.data) node.data = {};
+                if (!node.data.customTags) node.data.customTags = [];
+                if (!node.data.customTags.includes(tag)) {
+                    node.data.customTags.push(tag);
+                }
+            }
+        });
+
+        input.value = '';
+        renderizarCanvas();
+        atualizarSelecoesVisuais();
+        dispararAutoSave();
+    }
+
+    function removerTagPersonalizada(tagIdStr) {
         if (!selectedNodeId) return;
         const node = topologia.nodes.find(n => n.id === selectedNodeId);
-        if (!node) return;
-
-        if (!node.data) node.data = {};
-        node.data[tipo] = valor;
-
+        if (node && node.data?.customTags) {
+            node.data.customTags = node.data.customTags.filter(t => t !== tagIdStr);
+        }
         renderizarCanvas();
+        atualizarSelecoesVisuais();
         dispararAutoSave();
+    }
+
+    function renderizarTagsInspector(node) {
+        const list = document.getElementById('customTagsList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (node.data?.customTags && Array.isArray(node.data.customTags)) {
+            node.data.customTags.forEach(tag => {
+                const btn = document.createElement('span');
+                btn.className = 'badge bg-light text-dark border';
+                btn.innerHTML = `${escapeHtml(tag)} <i class="bi bi-x-circle text-danger" style="cursor:pointer" onclick="removerTagPersonalizada('${escapeHtml(tag)}')"></i>`;
+                list.appendChild(btn);
+            });
+        }
     }
 
     // =========================================================================
@@ -1519,13 +1685,31 @@
         const x = Math.max(20, Math.round(mouseCanvasX - dragOffset.x));
         const y = Math.max(20, Math.round(mouseCanvasY - dragOffset.y));
 
-        activeNode.position.x = x;
-        activeNode.position.y = y;
+        const dx = x - activeNode.position.x;
+        const dy = y - activeNode.position.y;
 
-        const nodeEl = document.getElementById(`node-${activeNode.id}`);
-        if (nodeEl) {
-            nodeEl.style.left = `${x}px`;
-            nodeEl.style.top = `${y}px`;
+        // Se múltiplos selecionados, move todos juntos
+        if (selectedNodeIds.size > 1 && selectedNodeIds.has(activeNode.id)) {
+            selectedNodeIds.forEach(id => {
+                const n = topologia.nodes.find(nd => nd.id === id);
+                if (n) {
+                    n.position.x += dx;
+                    n.position.y += dy;
+                    const nodeEl = document.getElementById(`node-${n.id}`);
+                    if (nodeEl) {
+                        nodeEl.style.left = `${n.position.x}px`;
+                        nodeEl.style.top = `${n.position.y}px`;
+                    }
+                }
+            });
+        } else {
+            activeNode.position.x = x;
+            activeNode.position.y = y;
+            const nodeEl = document.getElementById(`node-${activeNode.id}`);
+            if (nodeEl) {
+                nodeEl.style.left = `${x}px`;
+                nodeEl.style.top = `${y}px`;
+            }
         }
 
         desenharConexoes();
@@ -1784,83 +1968,193 @@
     }
 
     // =========================================================================
-    // CRIAÇÃO RÁPIDA DE TÓPICOS (ATALHOS ENTER E TAB)
+    // CRIAÇÃO RÁPIDA DE TÓPICOS (ATALHOS ENTER E TAB) E MODAL ORGANOGRAMA
     // =========================================================================
-    function adicionarTopicoIrmao() {
+    let ctxNovoBloco = null;
+
+    function abrirModalNovoBloco(ctx) {
         if (IS_APPROVED) return;
+        ctxNovoBloco = ctx;
+        document.getElementById('inputNomeNovoBloco').value = 'Nova Etapa';
+        document.getElementById('inputBuscaColab').value = '';
+        document.getElementById('listaColaboradoresBusca').innerHTML = '';
+        if(ctxNovoBloco.colabSelecionado) delete ctxNovoBloco.colabSelecionado;
+        setModoNovoBloco('generico');
+        const modalEl = document.getElementById('modalNovoBloco');
+        if(!modalEl) return;
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    function setModoNovoBloco(modo) {
+        if (modo === 'generico') {
+            document.getElementById('btnModoGenerico').classList.add('active', 'btn-primary');
+            document.getElementById('btnModoGenerico').classList.remove('btn-outline-secondary');
+            document.getElementById('btnModoColab').classList.remove('active', 'btn-primary');
+            document.getElementById('btnModoColab').classList.add('btn-outline-secondary');
+            document.getElementById('containerBlocoGenerico').classList.remove('d-none');
+            document.getElementById('containerBlocoColab').classList.add('d-none');
+        } else {
+            document.getElementById('btnModoColab').classList.add('active', 'btn-primary');
+            document.getElementById('btnModoColab').classList.remove('btn-outline-secondary');
+            document.getElementById('btnModoGenerico').classList.remove('active', 'btn-primary');
+            document.getElementById('btnModoGenerico').classList.add('btn-outline-secondary');
+            document.getElementById('containerBlocoGenerico').classList.add('d-none');
+            document.getElementById('containerBlocoColab').classList.remove('d-none');
+            document.getElementById('inputBuscaColab').focus();
+        }
+    }
+
+    let searchColabTimeout = null;
+    async function buscarColaboradoresParaBloco(termo) {
+        if (termo.length < 2) return;
+        clearTimeout(searchColabTimeout);
+        searchColabTimeout = setTimeout(async () => {
+            try {
+                const res = await fetch(`/rh/api/colaboradores/?q=${encodeURIComponent(termo)}`);
+                const data = await res.json();
+                const items = data.results || data;
+                const lista = document.getElementById('listaColaboradoresBusca');
+                lista.innerHTML = '';
+                if (items && Array.isArray(items)) {
+                    items.slice(0, 10).forEach(colab => {
+                        const btn = document.createElement('button');
+                        btn.className = 'list-group-item list-group-item-action py-1';
+                        const cargoDesc = colab.cargo_nome || colab.cargo || '';
+                        const setorDesc = colab.setor_nome || colab.setor || '';
+                        btn.innerHTML = `<div class="fw-bold small">${escapeHtml(colab.nome_completo || colab.nome || '')}</div><div class="text-muted" style="font-size:10px;">${escapeHtml(cargoDesc)} - ${escapeHtml(setorDesc)}</div>`;
+                        btn.onclick = () => {
+                            document.getElementById('inputBuscaColab').value = colab.nome_completo || colab.nome;
+                            ctxNovoBloco.colabSelecionado = {
+                                nome: colab.nome_completo || colab.nome,
+                                cargo: cargoDesc,
+                                setor: setorDesc
+                            };
+                            lista.innerHTML = '';
+                        };
+                        lista.appendChild(btn);
+                    });
+                }
+            } catch (e) { console.error('Erro na busca de colaboradores', e); }
+        }, 300);
+    }
+
+    function confirmarAdicionarBloco() {
+        const modo = document.getElementById('btnModoGenerico').classList.contains('active') ? 'generico' : 'colab';
+        let labelText = 'Nova Etapa';
+        let laneText = null;
+        let cargoTag = null;
+
+        if (modo === 'generico') {
+            labelText = document.getElementById('inputNomeNovoBloco').value.trim() || 'Nova Etapa';
+        } else {
+            if (!ctxNovoBloco.colabSelecionado) {
+                alert('Selecione um colaborador da lista primeiro.');
+                return;
+            }
+            labelText = ctxNovoBloco.colabSelecionado.nome;
+            laneText = ctxNovoBloco.colabSelecionado.setor || null;
+            cargoTag = ctxNovoBloco.colabSelecionado.cargo || null;
+        }
+
         const nextId = String(topologia.nodes.length + 1);
-        const refNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[topologia.nodes.length - 1];
-        const lane = refNode?.data?.lane || 'Geral';
 
-        const posX = refNode ? refNode.position.x + 220 : 100;
-        const posY = refNode ? refNode.position.y : 100;
+        if (ctxNovoBloco.type === 'irmao') {
+            const refNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[topologia.nodes.length - 1];
+            const lane = laneText || refNode?.data?.lane || 'Geral';
+            const posX = refNode ? refNode.position.x + 220 : 100;
+            const posY = refNode ? refNode.position.y : 100;
+            
+            _pushNodeAndGrid(nextId, posX, posY, lane, labelText, cargoTag);
+        } else if (ctxNovoBloco.type === 'filho') {
+            const parentNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[0];
+            if (!parentNode) return;
+            const posX = parentNode.position.x + 220;
+            const posY = parentNode.position.y + 70;
+            const lane = laneText || parentNode.data?.lane || 'Geral';
+            
+            _pushNodeAndGrid(nextId, posX, posY, lane, labelText, cargoTag);
 
-        topologia.nodes.push({
-            id: nextId,
-            type: 'process',
-            position: { x: posX, y: posY },
-            data: { stepId: nextId, lane: lane, label: `Novo Tópico ${nextId}` }
-        });
+            topologia.edges.push({
+                id: `e-${parentNode.id}-${nextId}`,
+                source: parentNode.id,
+                target: nextId,
+                sourceHandle: 'right',
+                targetHandle: 'left'
+            });
 
-        topologia.grid_data.push({
-            stepId: nextId,
-            lane: lane,
-            type: 'process',
-            label: `Novo Tópico ${nextId}`,
-            next: []
-        });
+            const parentGrid = topologia.grid_data.find(r => r.stepId === parentNode.id);
+            if (parentGrid) {
+                if (!parentGrid.next) parentGrid.next = [];
+                parentGrid.next.push({ targetId: nextId });
+            }
+        } else if (ctxNovoBloco.type === 'adjacente') {
+            const parentNode = topologia.nodes.find(n => n.id === ctxNovoBloco.sourceId);
+            if (!parentNode) return;
+            let posX = parentNode.position.x;
+            let posY = parentNode.position.y;
+            const dir = ctxNovoBloco.dir;
+            
+            if (dir === 'right') posX += 220;
+            if (dir === 'bottom') posY += 120;
+            if (dir === 'left') posX -= 220;
+
+            const lane = laneText || parentNode.data?.lane || 'Geral';
+            _pushNodeAndGrid(nextId, posX, posY, lane, labelText, cargoTag);
+
+            topologia.edges.push({
+                id: `e-${parentNode.id}-${nextId}`,
+                source: parentNode.id,
+                target: nextId,
+                sourceHandle: dir === 'bottom' ? 'bottom' : (dir === 'left' ? 'left' : 'right'),
+                targetHandle: dir === 'bottom' ? 'top' : (dir === 'left' ? 'right' : 'left')
+            });
+
+            const parentGrid = topologia.grid_data.find(r => r.stepId === parentNode.id);
+            if (parentGrid) {
+                if (!parentGrid.next) parentGrid.next = [];
+                parentGrid.next.push({ targetId: nextId });
+            }
+        }
 
         renderizarCanvas();
         selecionarNo(nextId);
         dispararAutoSave();
+
+        const modalEl = document.getElementById('modalNovoBloco');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+
+    function _pushNodeAndGrid(id, x, y, lane, label, cargoTag) {
+        const customTags = cargoTag ? [cargoTag] : [];
+        topologia.nodes.push({
+            id: id,
+            type: 'process',
+            position: { x: x, y: y },
+            data: { stepId: id, lane: lane, label: label, customTags: customTags }
+        });
+        topologia.grid_data.push({
+            stepId: id,
+            lane: lane,
+            type: 'process',
+            label: label,
+            next: []
+        });
+    }
+
+    function adicionarTopicoIrmao() {
+        if (IS_APPROVED) return;
+        abrirModalNovoBloco({ type: 'irmao' });
     }
 
     function adicionarSubtopicoFilho() {
         if (IS_APPROVED) return;
-        const parentNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[0];
-        if (!parentNode) {
+        if (!selectedNodeId || !topologia.nodes.length) {
             adicionarTopicoIrmao();
             return;
         }
-
-        const nextId = String(topologia.nodes.length + 1);
-        const posX = parentNode.position.x + 220;
-        const posY = parentNode.position.y + 70;
-
-        topologia.nodes.push({
-            id: nextId,
-            type: 'process',
-            position: { x: posX, y: posY },
-            data: { stepId: nextId, lane: parentNode.data?.lane || 'Geral', label: `Subtópico ${nextId}` }
-        });
-
-        // Cria a aresta pai -> filho
-        topologia.edges.push({
-            id: `e-${parentNode.id}-${nextId}`,
-            source: parentNode.id,
-            target: nextId,
-            sourceHandle: 'right',
-            targetHandle: 'left'
-        });
-
-        topologia.grid_data.push({
-            stepId: nextId,
-            lane: parentNode.data?.lane || 'Geral',
-            type: 'process',
-            label: `Subtópico ${nextId}`,
-            next: []
-        });
-
-        // Atualiza no grid do pai
-        const parentGrid = topologia.grid_data.find(r => r.stepId === parentNode.id);
-        if (parentGrid) {
-            if (!parentGrid.next) parentGrid.next = [];
-            parentGrid.next.push({ targetId: nextId });
-        }
-
-        renderizarCanvas();
-        selecionarNo(nextId);
-        dispararAutoSave();
+        abrirModalNovoBloco({ type: 'filho' });
     }
 
     function conectarNosSelecionados() {
@@ -1898,18 +2192,25 @@
     }
 
     function excluirNoSelecionado() {
-        if (IS_APPROVED || !selectedNodeId) return;
-        const id = selectedNodeId;
-
-        topologia.nodes = topologia.nodes.filter(n => n.id !== id);
-        topologia.edges = topologia.edges.filter(e => e.source !== id && e.target !== id);
-        topologia.grid_data = topologia.grid_data.filter(r => r.stepId !== id);
+        if (IS_APPROVED || selectedNodeIds.size === 0) return;
+        
+        selectedNodeIds.forEach(id => {
+            topologia.nodes = topologia.nodes.filter(n => n.id !== id);
+            topologia.edges = topologia.edges.filter(e => e.source !== id && e.target !== id);
+            topologia.grid_data = topologia.grid_data.filter(r => r.stepId !== id);
+        });
 
         desmarcarTodosNos();
         renderizarCanvas();
         renderizarGrelha();
         renderizarOutliner();
         dispararAutoSave();
+    }
+
+    function adicionarSubtopicoA(e, sourceId, dir) {
+        if (IS_APPROVED) return;
+        e.stopPropagation();
+        abrirModalNovoBloco({ type: 'adjacente', sourceId: sourceId, dir: dir });
     }
 
     // =========================================================================
@@ -2708,24 +3009,57 @@
     }
 
     function alinharNosPorRaias() {
-        const lanes = obterListaRaiasOrdenada();
-        lanes.forEach((lane, lIdx) => {
-            const yBase = 40 + lIdx * 240 + 60;
-            const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
-            if (nodesInLane.length === 0) return;
-
-            nodesInLane.forEach(n => {
-                n.position.y = yBase;
+        // Se houver multi-seleção, alinha os blocos selecionados em relação ao primeiro selecionado
+        if (selectedNodeIds.size > 1) {
+            const arrIds = Array.from(selectedNodeIds);
+            const refNode = topologia.nodes.find(n => n.id === arrIds[0]);
+            if (refNode) {
+                const alignY = refNode.position.y;
+                arrIds.forEach(id => {
+                    const n = topologia.nodes.find(node => node.id === id);
+                    if (n) {
+                        n.position.y = alignY; // Mantém o X (configuração) e alinha o Y
+                    }
+                });
+            }
+        } else {
+            // Comportamento original de alinhar todos por raia
+            const lanes = obterListaRaiasOrdenada();
+            
+            // Calcula Y bases dinamicamente para preservar as alturas das raias
+            let currentY = 40;
+            const laneYBase = {};
+            lanes.forEach(lane => {
+                laneYBase[lane] = currentY + 60; // Margem superior
+                
+                const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+                if (nodesInLane.length > 0) {
+                    const minPos = Math.min(...nodesInLane.map(n => n.position.y));
+                    const maxPos = Math.max(...nodesInLane.map(n => n.position.y));
+                    currentY += Math.max(220, (maxPos - minPos) + 160);
+                } else {
+                    currentY += 220;
+                }
             });
 
-            nodesInLane.sort((a, b) => a.position.x - b.position.x);
-            const startX = Math.min(...nodesInLane.map(n => n.position.x));
-            const gap = 60;
-            const width = 190;
-            nodesInLane.forEach((n, i) => {
-                n.position.x = startX + i * (width + gap);
+            lanes.forEach(lane => {
+                const yBase = laneYBase[lane];
+                const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+                if (nodesInLane.length === 0) return;
+
+                nodesInLane.forEach(n => {
+                    n.position.y = yBase;
+                });
+
+                nodesInLane.sort((a, b) => a.position.x - b.position.x);
+                const startX = Math.min(...nodesInLane.map(n => n.position.x));
+                const gap = 60;
+                const width = 190;
+                nodesInLane.forEach((n, i) => {
+                    n.position.x = startX + i * (width + gap);
+                });
             });
-        });
+        }
 
         renderizarCanvas();
         dispararAutoSave();
@@ -3183,4 +3517,45 @@
         }
     }
 </script>
+
+<!-- MODAL NOVO BLOCO (ORGANOGRAMA/GERAL) -->
+<div class="modal fade" id="modalNovoBloco" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-light border-bottom-0 py-2">
+                <h6 class="modal-title fw-bold">Adicionar Bloco</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <div class="d-flex gap-2 mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill active fw-bold" id="btnModoGenerico" onclick="setModoNovoBloco('generico')">
+                        Genérico
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary flex-fill fw-bold" id="btnModoColab" onclick="setModoNovoBloco('colab')">
+                        Colaborador
+                    </button>
+                </div>
+
+                <!-- Painel Genérico -->
+                <div id="containerBlocoGenerico">
+                    <label class="form-label text-muted small fw-bold mb-1">Nome da Etapa / Bloco</label>
+                    <input type="text" id="inputNomeNovoBloco" class="form-control form-control-sm" placeholder="Ex: Etapa A" onkeypress="if(event.key==='Enter') confirmarAdicionarBloco()">
+                </div>
+
+                <!-- Painel Colaborador -->
+                <div id="containerBlocoColab" class="d-none">
+                    <label class="form-label text-muted small fw-bold mb-1">Buscar Colaborador (RH)</label>
+                    <input type="text" id="inputBuscaColab" class="form-control form-control-sm mb-2" placeholder="Digite o nome..." onkeyup="buscarColaboradoresParaBloco(this.value)">
+                    <div class="list-group list-group-flush" id="listaColaboradoresBusca" style="max-height: 180px; overflow-y: auto;">
+                        <!-- Resultados -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-1 border-top-0">
+                <button type="button" class="btn btn-sm btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-primary px-3" onclick="confirmarAdicionarBloco()">Criar Bloco</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
