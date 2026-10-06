@@ -412,20 +412,19 @@
         margin-right: 4px;
     }
 
-    /* Floating Canvas Toolbar */
-    .canvas-toolbar {
-        position: absolute;
-        bottom: 20px;
-        left: 20px;
+    /* Barra Inferior Dedicada de Status, Layout e Zoom (Fora da área útil do diagrama) */
+    .canvas-footer-bar {
         background: #ffffff;
-        padding: 6px;
-        border-radius: 8px;
-        box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-        border: 1px solid #e2e8f0;
+        border-top: 1px solid #e2e8f0;
+        padding: 8px 16px;
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        gap: 6px;
-        z-index: 20;
+        gap: 12px;
+        flex-wrap: wrap;
+        z-index: 10;
+        flex-shrink: 0;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.03);
     }
 
     /* Painel Lateral Direito (Inspector de Estilos e Marcadores) */
@@ -663,8 +662,9 @@
     <!-- 3. Corpo Principal do Editor -->
     <div class="editor-body-wrapper">
         <!-- VISTA 1: MODO CANVAS (VISUAL) -->
-        <div id="viewCanvasContainer" class="flex-grow-1 position-relative d-flex flex-column h-100">
-            <div id="canvasViewport" class="canvas-viewport w-100 h-100" tabindex="0">
+        <div id="viewCanvasContainer" class="flex-grow-1 position-relative d-flex flex-column h-100 overflow-hidden">
+            <!-- 1. Viewport do Diagrama (Área útil livre e desobstruída) -->
+            <div id="canvasViewport" class="canvas-viewport flex-grow-1 w-100" tabindex="0">
                 <div id="canvasSizer" class="canvas-sizer">
                     <div id="canvasContent" class="canvas-content">
                         <!-- Raias (Swimlanes) -->
@@ -689,9 +689,37 @@
                         <div id="nodesContainer" class="nodes-container"></div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Toolbar Flutuante com Zoom e Automações -->
-                <div class="canvas-toolbar">
+            <!-- 2. Barra Inferior Dedicada de Ferramentas, Layout e Zoom (FORA DA ÁREA DO DIAGRAMA) -->
+            <div class="canvas-footer-bar">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-primary border shadow-sm" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
+                        <i class="bi bi-magic"></i> <span class="small fw-semibold">Auto-Layout</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
+                        <i class="bi bi-distribute-horizontal text-primary"></i> <span class="d-none d-md-inline small">Alinhar por Raias</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="recentralizarCanvas()" title="Centralizar Visualização nos Blocos">
+                        <i class="bi bi-crosshair text-primary"></i> <span class="d-none d-md-inline small">Centralizar</span>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="enquadrarVisaoCompleta()" title="Ajustar e Enquadrar Todo o Diagrama na Tela (Fit View)">
+                        <i class="bi bi-aspect-ratio text-primary"></i> <span class="d-none d-md-inline small">Enquadrar Tudo</span>
+                    </button>
+                    {% if not is_approved %}
+                    <div class="vr my-1"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adicionarNovaRaia()" title="Adicionar Nova Raia de Setor / Departamento">
+                        <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline small">Nova Raia</span>
+                    </button>
+                    {% endif %}
+                </div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <!-- Dica rápida de navegação -->
+                    <div class="text-muted small d-none d-lg-block font-monospace" style="font-size: 11px;">
+                        <i class="bi bi-arrows-move me-1"></i> Arraste o fundo &bull; <kbd class="px-1 py-0 bg-light text-dark border rounded font-monospace">Espaço</kbd> Pan &bull; <kbd class="px-1 py-0 bg-light text-dark border rounded font-monospace">Ctrl</kbd> + Roda Zoom
+                    </div>
+
                     <!-- Controles de Zoom -->
                     <div class="btn-group btn-group-sm shadow-sm" role="group">
                         <button type="button" class="btn btn-light border" onclick="alterarZoomRelativo(-0.1)" title="Diminuir Zoom (Ctrl + Roda / -)">
@@ -704,32 +732,6 @@
                             <i class="bi bi-plus-lg"></i>
                         </button>
                     </div>
-
-                    <div class="vr my-1"></div>
-
-                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="enquadrarVisaoCompleta()" title="Ajustar e Enquadrar Todo o Diagrama na Tela (Fit View)">
-                        <i class="bi bi-aspect-ratio text-primary"></i> <span class="d-none d-md-inline small">Enquadrar</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="recentralizarCanvas()" title="Centralizar Visualização nos Blocos">
-                        <i class="bi bi-crosshair text-primary"></i> <span class="d-none d-md-inline small">Centralizar</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-light border shadow-sm" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
-                        <i class="bi bi-distribute-horizontal text-primary"></i> <span class="d-none d-md-inline small">Alinhar por Raias</span>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-primary border shadow-sm" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
-                        <i class="bi bi-magic"></i> <span class="small">Auto-Layout</span>
-                    </button>
-                    {% if not is_approved %}
-                    <div class="vr my-1"></div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="adicionarNovaRaia()" title="Adicionar Nova Raia de Setor / Departamento">
-                        <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline small">Nova Raia</span>
-                    </button>
-                    {% endif %}
-                </div>
-
-                <!-- Dica rápida de movimentação e atalhos -->
-                <div class="canvas-nav-hint d-none d-lg-block">
-                    <span><i class="bi bi-arrows-move me-1"></i> Arraste o fundo &bull; <kbd class="px-1 py-0 bg-light text-dark border rounded font-monospace">Espaço</kbd> Pan &bull; <kbd class="px-1 py-0 bg-light text-dark border rounded font-monospace">Ctrl</kbd> + Roda Zoom</span>
                 </div>
             </div>
         </div>
@@ -1857,10 +1859,9 @@
 
             const target = e.target;
             const isNode = target.closest('.flow-node');
-            const isToolbar = target.closest('.canvas-toolbar');
             const isSwimlaneHeader = target.closest('.swimlane-header-container');
 
-            if (isToolbar || (isSwimlaneHeader && !isSpacePressed && !isMiddleClick)) {
+            if (isSwimlaneHeader && !isSpacePressed && !isMiddleClick) {
                 return;
             }
 
