@@ -568,9 +568,13 @@
                                     {% endif %}
                                     <td class="ps-4 py-2">
                                         <div class="d-flex align-items-center">
+                                            {% if f.foto %}
+                                            <img src="{{ f.foto }}" alt="Foto de {{ f.nome_completo }}" class="rounded-circle me-3 shadow-sm border" style="width: 38px; height: 38px; object-fit: cover; flex-shrink: 0;">
+                                            {% else %}
                                             <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
                                                 {{ f.nome_completo|slice:":1" }}
                                             </div>
+                                            {% endif %}
                                             <div>
                                                 <a href="{% url 'detalhe_colaborador' f.id %}" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">{{ f.nome_completo }}</a>
                                                 <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
@@ -639,9 +643,13 @@
                 <div class="colaborador-mobile-card">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div class="d-flex align-items-center gap-2">
+                            {% if f.foto %}
+                            <img src="{{ f.foto }}" alt="Foto de {{ f.nome_completo }}" class="rounded-circle border shadow-sm" style="width: 38px; height: 38px; object-fit: cover; flex-shrink: 0;">
+                            {% else %}
                             <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem; flex-shrink: 0;">
                                 {{ f.nome_completo|slice:":1" }}
                             </div>
+                            {% endif %}
                             <div>
                                 <a href="{% url 'detalhe_colaborador' f.id %}" class="fw-bold text-primary small text-uppercase text-decoration-none d-block">
                                     {{ f.nome_completo }}
@@ -874,9 +882,13 @@ function renderTable(colaboradores) {
                 ` : ''}
                 <td class="py-2">
                     <div class="d-flex align-items-center">
+                        ${c.foto ? `
+                        <img src="${c.foto}" alt="Foto" class="rounded-circle me-3 shadow-sm border" style="width: 38px; height: 38px; object-fit: cover; flex-shrink: 0;">
+                        ` : `
                         <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-3 text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem;">
                             ${(c.nome[0] || 'C').toUpperCase()}
                         </div>
+                        `}
                         <div>
                             <a href="/rh/colaborador/${c.id}/" class="fw-bold text-primary small text-uppercase text-decoration-none" style="cursor: pointer; display: block; transition: all 0.2s;">${c.nome}</a>
                             <div class="text-muted d-flex align-items-center flex-wrap" style="font-size: 0.7rem;">
@@ -915,9 +927,13 @@ function renderTable(colaboradores) {
             <div class="colaborador-mobile-card">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <div class="d-flex align-items-center gap-2">
+                        ${c.foto ? `
+                        <img src="${c.foto}" alt="Foto" class="rounded-circle shadow-sm border" style="width: 38px; height: 38px; object-fit: cover; flex-shrink: 0;">
+                        ` : `
                         <div class="bg-light rounded-circle d-flex align-items-center justify-content-center text-primary fw-bold border shadow-sm" style="width: 38px; height: 38px; font-size: 0.9rem; flex-shrink: 0;">
                             ${(c.nome[0] || 'C').toUpperCase()}
                         </div>
+                        `}
                         <div>
                             <a href="/rh/colaborador/${c.id}/" class="fw-bold text-primary small text-uppercase text-decoration-none d-block">
                                 ${c.nome}

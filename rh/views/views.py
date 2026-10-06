@@ -2646,6 +2646,7 @@ def api_colaboradores_filtrados(request):
             'id': colab.id,
             'nome': colab.nome_completo,
             'matricula': colab.matricula or '',
+            'foto': colab.foto if colab.foto else '',
             'cargo': str(colab.cargo) if colab.cargo else '',
             'setor': colab.setor.nome if colab.setor else '',
             'centro_custo': colab.centro_custo.codigo if colab.centro_custo else '',
