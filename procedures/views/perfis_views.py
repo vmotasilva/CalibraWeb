@@ -84,27 +84,40 @@ def associar_perfil_colaborador_view(request, colaborador_id):
     
     perfil = get_object_or_404(PerfilTreinamento, id=perfil_id)
     
-    # Verificar se já existe associação
-    if ColaboradorPerfil.objects.filter(colaborador=colaborador, perfil=perfil, ativo=True).exists():
-        messages.warning(request, f"O colaborador já está associado ao perfil {perfil.codigo}.")
-        return redirect('detalhe_colaborador', colab_id=colaborador_id)
-    
     # Converter IDs para inteiros
     grupos_ids = [int(g) for g in grupos_selecionados if g]
     subgrupos_ids = [int(s) for s in subgrupos_selecionados if s]
+
+    # Verificar se já existe associação
+    colaborador_perfil = ColaboradorPerfil.objects.filter(colaborador=colaborador, perfil=perfil).first()
     
-    # Criar associação
-    colaborador_perfil = ColaboradorPerfil.objects.create(
-        colaborador=colaborador,
-        perfil=perfil,
-        grupos_selecionados={
-            'grupos': grupos_ids,
-            'subgrupos': subgrupos_ids
-        },
-        data_atribuicao=date.today(),
-        ativo=True,
-        observacoes=f"Associado via página do colaborador em {date.today().strftime('%d/%m/%Y')}"
-    )
+    if colaborador_perfil:
+        if colaborador_perfil.ativo:
+            messages.warning(request, f"O colaborador já está associado ao perfil {perfil.codigo}.")
+            return redirect('detalhe_colaborador', colab_id=colaborador_id)
+        else:
+            # Reativar associação inativa
+            colaborador_perfil.ativo = True
+            colaborador_perfil.grupos_selecionados = {
+                'grupos': grupos_ids,
+                'subgrupos': subgrupos_ids
+            }
+            colaborador_perfil.data_atribuicao = date.today()
+            colaborador_perfil.observacoes = f"Reassociado via página do colaborador em {date.today().strftime('%d/%m/%Y')}"
+            colaborador_perfil.save()
+    else:
+        # Criar associação
+        colaborador_perfil = ColaboradorPerfil.objects.create(
+            colaborador=colaborador,
+            perfil=perfil,
+            grupos_selecionados={
+                'grupos': grupos_ids,
+                'subgrupos': subgrupos_ids
+            },
+            data_atribuicao=date.today(),
+            ativo=True,
+            observacoes=f"Associado via página do colaborador em {date.today().strftime('%d/%m/%Y')}"
+        )
     
     # Coletar procedimentos dos subgrupos selecionados
     procedimentos = []
