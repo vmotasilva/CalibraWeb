@@ -812,9 +812,12 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
     perguntas = _obter_perguntas_treinamento(planejamento, perguntas_selecionadas=perguntas_selecionadas)
     if hasattr(planejamento, '_mock_procs') and planejamento._mock_procs:
         procs = list(planejamento._mock_procs)
-        # Modo por procedimento: Título do Treinamento + (Código - Nome do Procedimento)
-        proc_nomes = ", ".join([f"{p.codigo} - {p.nome}" for p in procs])
-        proc_str = f"{planejamento.titulo or '-'} ({proc_nomes})"
+        # Modo por procedimento: Código + Nome + Revisão
+        nomes_com_rev = []
+        for p in procs:
+            rev = f" - Rev {p.numero_revisao}" if getattr(p, 'numero_revisao', None) else ""
+            nomes_com_rev.append(f"{p.codigo} - {p.nome}{rev}")
+        proc_str = ", ".join(nomes_com_rev)
     else:
         # Modo único ou sem procedimentos: apenas o Título do Treinamento
         procs = list(planejamento.procedimentos.all()) if hasattr(planejamento, 'procedimentos') else []
