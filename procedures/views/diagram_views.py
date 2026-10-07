@@ -12,9 +12,11 @@ from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, render, redirect
 from django.core.exceptions import ValidationError
+from django.utils.dateparse import parse_datetime
 
 from ..models import Procedimento
 from ..models_diagram import Diagrama, DiagramaVersao, StatusDiagrama
+from ..services.diagram_validation import validar_topologia
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
 from ..services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id
@@ -203,6 +205,21 @@ def api_diagrama_versao_autosave(request, versao_id):
     topologia = payload.get("dados_topologia")
     if topologia is None or not isinstance(topologia, dict):
         return JsonResponse({"error": "Campo 'dados_topologia' obrigatório e deve ser objeto JSON."}, status=400)
+
+    # Controle otimista de concorrência: o cliente informa a versão (atualizado_em) em que se baseou.
+    base_ts = parse_datetime(payload.get("base_atualizado_em") or "")
+    if base_ts is not None and base_ts != versao.atualizado_em:
+        return JsonResponse(
+            {
+                "error": "Este diagrama foi alterado em outra sessão/aba. Recarregue a página para não sobrescrever as alterações.",
+                "atualizado_em": versao.atualizado_em.isoformat(),
+            },
+            status=409
+        )
+
+    erros = validar_topologia(topologia)
+    if erros:
+        return JsonResponse({"error": "Topologia inválida: " + "; ".join(erros), "detalhes": erros}, status=400)
 
     versao.dados_topologia = topologia
     versao.save(update_fields=['dados_topologia', 'atualizado_em'])

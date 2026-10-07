@@ -1243,6 +1243,8 @@
     const VERSAO_ID = "{{ versao.id }}";
     const IS_APPROVED = {{ is_approved|yesno:"true,false" }};
     const CSRF_TOKEN = "{{ csrf_token }}";
+    let versaoAtualizadoEm = "{{ versao.atualizado_em.isoformat }}"; // base para controle de concorrência no auto-save
+    let autoSaveConflito = false;
 
     // Estado da Topologia
     let topologia = {{ topologia_json|safe }};
@@ -2100,7 +2102,7 @@
             cargoTag = ctxNovoBloco.colabSelecionado.cargo || null;
         }
 
-        const nextId = String(topologia.nodes.length + 1);
+        const nextId = gerarProximoNodeId();
 
         if (ctxNovoBloco.type === 'irmao') {
             const refNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[topologia.nodes.length - 1];
@@ -2436,8 +2438,138 @@
             gridRow.label = novoTexto;
         }
 
+        // Verifica autocompletar de colaborador (comando @)
+        const inputEl = document.getElementById(`outliner-input-${nodeId}`);
+        if (inputEl) {
+            checkOutlinerMention(nodeId, novoTexto, inputEl);
+        }
+
         dispararAutoSave();
     }
+
+    // --- Sistema de Autocompletar Colaboradores via Comando @ ---
+    let outlinerMentionTimeout = null;
+    let outlinerMentionNodeId = null;
+
+    function checkOutlinerMention(nodeId, text, inputEl) {
+        const lastAt = text.lastIndexOf('@');
+        if (lastAt >= 0) {
+            const termo = text.substring(lastAt + 1);
+            if (termo.length >= 2 && !termo.includes(',') && !termo.includes(';')) {
+                outlinerMentionNodeId = nodeId;
+                clearTimeout(outlinerMentionTimeout);
+                outlinerMentionTimeout = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`/rh/api/colaboradores/?q=${encodeURIComponent(termo)}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            const items = data.results || data;
+                            renderizarDropdownMentionOutliner(inputEl, items, text, lastAt);
+                        }
+                    } catch (e) {}
+                }, 400);
+                return;
+            }
+        }
+        esconderDropdownMentionOutliner();
+    }
+
+    function renderizarDropdownMentionOutliner(inputEl, items, fullText, atIndex) {
+        let dropdown = document.getElementById('outlinerMentionDropdown');
+        if (!dropdown) {
+            dropdown = document.createElement('div');
+            dropdown.id = 'outlinerMentionDropdown';
+            dropdown.className = 'list-group shadow-lg position-absolute bg-white rounded-3 border';
+            dropdown.style.zIndex = '9999';
+            dropdown.style.maxHeight = '240px';
+            dropdown.style.overflowY = 'auto';
+            dropdown.style.minWidth = '300px';
+            document.body.appendChild(dropdown);
+            
+            document.addEventListener('click', (e) => {
+                if (dropdown && !dropdown.contains(e.target) && !e.target.classList.contains('outliner-input')) {
+                    esconderDropdownMentionOutliner();
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') esconderDropdownMentionOutliner();
+            });
+        }
+        
+        dropdown.innerHTML = '';
+        if (!items || items.length === 0) {
+            esconderDropdownMentionOutliner();
+            return;
+        }
+
+        dropdown.innerHTML = `<div class="bg-light px-3 py-2 small fw-bold text-muted border-bottom"><i class="bi bi-people-fill me-1"></i> Sugestões de Colaboradores</div>`;
+
+        items.slice(0, 6).forEach(colab => {
+            const btn = document.createElement('button');
+            btn.className = 'list-group-item list-group-item-action py-2 px-3 border-0 border-bottom';
+            const cargoDesc = colab.cargo_nome || colab.cargo || '';
+            const setorDesc = colab.setor_nome || colab.setor || '';
+            const nome = colab.nome_completo || colab.nome || '';
+            
+            btn.innerHTML = `<div class="fw-bold text-primary mb-1">${escapeHtml(nome)}</div><div class="text-muted lh-1" style="font-size:11px;">${escapeHtml(cargoDesc)} &bull; ${escapeHtml(setorDesc)}</div>`;
+            
+            btn.onmousedown = (e) => { // onmousedown dispara antes do blur do input
+                e.preventDefault();
+                aplicarColaboradorNoOutliner(outlinerMentionNodeId, colab, fullText, atIndex);
+            };
+            dropdown.appendChild(btn);
+        });
+
+        const rect = inputEl.getBoundingClientRect();
+        dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
+        dropdown.style.left = `${rect.left + window.scrollX}px`;
+        dropdown.style.width = `${Math.max(300, rect.width)}px`;
+        dropdown.classList.remove('d-none');
+    }
+
+    function esconderDropdownMentionOutliner() {
+        const d = document.getElementById('outlinerMentionDropdown');
+        if (d) d.classList.add('d-none');
+    }
+
+    function aplicarColaboradorNoOutliner(nodeId, colab, fullText, atIndex) {
+        esconderDropdownMentionOutliner();
+        const node = topologia.nodes.find(n => n.id === nodeId);
+        if (!node) return;
+        
+        const cargoDesc = colab.cargo_nome || colab.cargo || '';
+        const setorDesc = colab.setor_nome || colab.setor || '';
+        const nome = colab.nome_completo || colab.nome;
+        
+        // Substitui o comando @nome pelo nome real do colaborador
+        const novoTexto = fullText.substring(0, atIndex) + nome;
+        
+        node.data.label = novoTexto;
+        
+        // Atribui características: Tag do cargo
+        if (!node.data.customTags) node.data.customTags = [];
+        if (cargoDesc && !node.data.customTags.includes(cargoDesc)) {
+            node.data.customTags.push(cargoDesc);
+        }
+        
+        // Se a raia for Geral ou inexistente, joga para a raia do setor do colaborador
+        if (setorDesc && (!node.data.lane || node.data.lane === 'Geral')) {
+            node.data.lane = setorDesc;
+            const gridRow = topologia.grid_data.find(r => r.stepId === nodeId);
+            if (gridRow) gridRow.lane = setorDesc;
+        }
+        
+        // Atualiza no canvas e no próprio input para refletir a tag e o nome
+        const inputEl = document.getElementById(`outliner-input-${nodeId}`);
+        if (inputEl) inputEl.value = novoTexto;
+        
+        onOutlinerInput(nodeId, novoTexto); 
+        renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner(nodeId, novoTexto.length);
+        dispararAutoSave();
+    }
+    // --- Fim Sistema de Autocompletar Colaboradores ---
 
     /**
      * Interceptador de teclado para navegação, recuos por Tab e criação ágil de tópicos.
@@ -2692,12 +2824,18 @@
     }
 
     function gerarProximoNodeId() {
+        // Considera nós e linhas da grelha para nunca reutilizar um ID existente (mesmo após exclusões)
+        const usados = new Set();
         let maxId = 0;
-        (topologia.nodes || []).forEach(n => {
-            const num = parseInt(n.id, 10);
+        [...(topologia.nodes || []).map(n => n.id), ...(topologia.grid_data || []).map(r => r.stepId)].forEach(id => {
+            if (id === undefined || id === null) return;
+            usados.add(String(id));
+            const num = parseInt(id, 10);
             if (!isNaN(num) && num > maxId) maxId = num;
         });
-        return String(maxId + 1);
+        let candidato = maxId + 1;
+        while (usados.has(String(candidato))) candidato++;
+        return String(candidato);
     }
 
     function sincronizarEdgesComGridData() {
@@ -2917,7 +3055,7 @@
     }
 
     function adicionarLinhaGrelha() {
-        const nextId = String(topologia.grid_data.length + 1);
+        const nextId = gerarProximoNodeId();
         topologia.grid_data.push({
             stepId: nextId,
             lane: topologia.grid_data[topologia.grid_data.length - 1]?.lane || 'Geral',
@@ -2963,16 +3101,20 @@
     function gerarNodesPorGridData() {
         const existingMap = new Map();
         topologia.nodes.forEach(n => existingMap.set(n.id, n));
+        const oldEdges = topologia.edges || [];
 
         const lanes = obterListaRaiasOrdenada();
 
         topologia.nodes = topologia.grid_data.map(r => {
             const existing = existingMap.get(r.stepId);
             return {
+                ...(existing || {}),
                 id: r.stepId,
                 type: r.type,
                 position: existing ? { ...existing.position } : { x: 100, y: 100 },
+                // Preserva estilo/marcadores (bgColor, customTags, etc.) e sobrescreve só o que a grelha controla
                 data: {
+                    ...(existing?.data || {}),
                     stepId: r.stepId,
                     lane: r.lane || (lanes[0] || 'Geral'),
                     label: r.label,
@@ -2981,12 +3123,16 @@
             };
         });
 
-        topologia.edges = [];
+        // Reaproveita arestas existentes (id, handles, rótulo) e cria apenas as novas conexões
+        const novasEdges = [];
         topologia.grid_data.forEach(r => {
-            if (r.next && r.next.length > 0) {
-                r.next.forEach((conn, cIdx) => {
-                    if (!conn.targetId) return;
-                    topologia.edges.push({
+            (r.next || []).forEach((conn, cIdx) => {
+                if (!conn.targetId) return;
+                const antiga = oldEdges.find(e => e.source === r.stepId && e.target === conn.targetId);
+                if (antiga) {
+                    novasEdges.push({ ...antiga, label: conn.condition !== undefined ? (conn.condition || '') : (antiga.label || '') });
+                } else {
+                    novasEdges.push({
                         id: `e-${r.stepId}-${conn.targetId}-${cIdx}`,
                         source: r.stepId,
                         target: conn.targetId,
@@ -2994,9 +3140,10 @@
                         targetHandle: 'top',
                         label: conn.condition || ''
                     });
-                });
-            }
+                }
+            });
         });
+        topologia.edges = novasEdges;
     }
 
     function gerarGridDataPorNodes() {
@@ -3381,7 +3528,7 @@
         if (!nomeRaia || !nomeRaia.trim()) return;
 
         const nomeLimpo = nomeRaia.trim();
-        const nextId = String(topologia.nodes.length + 1);
+        const nextId = gerarProximoNodeId();
         const lanes = obterListaRaiasOrdenada();
         const newY = 40 + lanes.length * 240 + 60;
 
@@ -3431,7 +3578,7 @@
     // AUTO-SAVE DE ALTA FREQUÊNCIA (DEBOUNCE 800ms)
     // =========================================================================
     function dispararAutoSave() {
-        if (IS_APPROVED) return;
+        if (IS_APPROVED || autoSaveConflito) return;
 
         const indicator = document.getElementById('saveIndicator');
         indicator.innerHTML = '<span class="text-warning"><i class="bi bi-arrow-repeat spin"></i> Salvando...</span>';
@@ -3446,11 +3593,17 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': CSRF_TOKEN
                     },
-                    body: JSON.stringify({ dados_topologia: topologia })
+                    body: JSON.stringify({ dados_topologia: topologia, base_atualizado_em: versaoAtualizadoEm })
                 });
 
                 if (resp.ok) {
+                    const resultado = await resp.json();
+                    if (resultado.atualizado_em) versaoAtualizadoEm = resultado.atualizado_em;
                     indicator.innerHTML = '<span class="text-success"><i class="bi bi-check2-circle"></i> Sincronizado</span>';
+                } else if (resp.status === 409) {
+                    autoSaveConflito = true;
+                    indicator.innerHTML = '<span class="text-danger"><i class="bi bi-exclamation-octagon-fill"></i> Conflito de edição</span>';
+                    alert("Este diagrama foi alterado em outra aba ou por outro usuário. Para não sobrescrever aquelas alterações, o salvamento foi pausado. Recarregue a página para continuar.");
                 } else if (resp.status === 423) {
                     indicator.innerHTML = '<span class="text-secondary"><i class="bi bi-lock-fill"></i> Bloqueado (Aprovado)</span>';
                 } else {
@@ -3573,6 +3726,7 @@
             if (resp.ok) {
                 const versaoAtualizada = await resp.json();
                 topologia = versaoAtualizada.dados_topologia || { nodes: [], edges: [], grid_data: [] };
+                if (versaoAtualizada.atualizado_em) versaoAtualizadoEm = versaoAtualizada.atualizado_em;
                 renderizarCanvas();
                 renderizarGrelha();
                 renderizarOutliner();

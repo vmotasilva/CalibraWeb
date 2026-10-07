@@ -149,3 +149,53 @@ class DiagramaQMSTestCase(TestCase):
         self.versao_r00.refresh_from_db()
         self.assertEqual(len(self.versao_r00.dados_topologia['nodes']), len(topologia_org['nodes']))
 
+
+
+class DiagramaAutoSaveValidacaoTestCase(TestCase):
+    """Validação de schema e controle de concorrência do auto-save."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='editor.fluxo', password='password123')
+        self.client = Client()
+        self.client.force_login(self.user)
+        self.diagrama = Diagrama.objects.create(titulo='Fluxo X', criado_por=self.user)
+        self.versao = DiagramaVersao.objects.create(
+            diagrama=self.diagrama, revisao=0, status=StatusDiagrama.RASCUNHO,
+            dados_topologia={"nodes": [], "edges": [], "grid_data": []},
+        )
+        self.url = f"/procedures/api/diagramas-versoes/{self.versao.id}/auto-save/"
+
+    def _patch(self, body):
+        return self.client.patch(self.url, data=json.dumps(body), content_type='application/json')
+
+    def _no(self, nid):
+        return {"id": nid, "type": "process", "position": {"x": 1, "y": 2}, "data": {"label": nid}}
+
+    def test_rejeita_ids_de_no_duplicados(self):
+        resp = self._patch({"dados_topologia": {"nodes": [self._no("1"), self._no("1")], "edges": []}})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_rejeita_no_sem_posicao_valida(self):
+        resp = self._patch({"dados_topologia": {"nodes": [{"id": "1", "position": None}], "edges": []}})
+        self.assertEqual(resp.status_code, 400)
+
+    def test_preserva_chaves_extras_do_editor(self):
+        resp = self._patch({"dados_topologia": {"nodes": [self._no("1")], "edges": [], "estilo_linha": "curva"}})
+        self.assertEqual(resp.status_code, 200)
+        self.versao.refresh_from_db()
+        self.assertEqual(self.versao.dados_topologia["estilo_linha"], "curva")
+
+    def test_conflito_de_concorrencia_retorna_409(self):
+        resp = self._patch({"dados_topologia": {"nodes": [self._no("1")], "edges": []},
+                            "base_atualizado_em": "2000-01-01T00:00:00+00:00"})
+        self.assertEqual(resp.status_code, 409)
+        self.versao.refresh_from_db()
+        self.assertEqual(self.versao.dados_topologia["nodes"], [])
+
+    def test_salvamento_com_base_correta_funciona_em_sequencia(self):
+        base = self.versao.atualizado_em.isoformat()
+        r1 = self._patch({"dados_topologia": {"nodes": [self._no("1")], "edges": []}, "base_atualizado_em": base})
+        self.assertEqual(r1.status_code, 200)
+        r2 = self._patch({"dados_topologia": {"nodes": [self._no("1"), self._no("2")], "edges": []},
+                          "base_atualizado_em": r1.json()["atualizado_em"]})
+        self.assertEqual(r2.status_code, 200)
