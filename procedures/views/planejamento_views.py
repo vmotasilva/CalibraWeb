@@ -1518,7 +1518,8 @@ def _extrair_perguntas_ids_requisicao(request) -> list:
 @login_required
 def exportar_auto_avaliacao_for141_view(request, planejamento_id):
     """
-    Exporta a Auto-Avaliação de Treinamento Crítico (FOR.141.r02) em Excel (.xlsx) com até 5 perguntas selecionadas.
+    Exporta a Auto-Avaliação de Treinamento Crítico (FOR.141.r02) em Excel (.xlsx).
+    Se mode == 'por_procedimento', gera um arquivo .ZIP contendo um Excel para cada procedimento selecionado.
     """
     planejamento = get_object_or_404(
         PlanejamentoTreinamento.objects.prefetch_related('colaboradores', 'procedimentos'),
@@ -1531,27 +1532,71 @@ def exportar_auto_avaliacao_for141_view(request, planejamento_id):
         colaborador_id = None
 
     perguntas_ids = _extrair_perguntas_ids_requisicao(request)
+    mode = request.GET.get('mode', 'unico')
 
     from procedures.services.treinamento_excel_export_service import gerar_auto_avaliacao_for141_xlsx
+    
+    if mode == 'por_procedimento':
+        import zipfile
+        from io import BytesIO
+        
+        zip_buffer = BytesIO()
+        try:
+            with zipfile.ZipFile(zip_buffer, 'w') as zf:
+                for proc in planejamento.procedimentos.all():
+                    # Filtrar apenas as perguntas deste procedimento que foram selecionadas
+                    proc_perguntas_selecionadas = [
+                        str(p.id) for p in proc.perguntas_avaliacao.all() if str(p.id) in perguntas_ids
+                    ]
+                    
+                    if not proc_perguntas_selecionadas:
+                        continue # Se não selecionou perguntas para este proc, ignora
+                    
+                    # Mockar o planejamento para que o Excel ache que só tem esse procedimento
+                    planejamento._mock_procs = [proc]
+                    excel_buffer = gerar_auto_avaliacao_for141_xlsx(
+                        planejamento,
+                        colaborador_id=colaborador_id,
+                        perguntas_selecionadas=proc_perguntas_selecionadas
+                    )
+                    
+                    # Nome amigável no zip
+                    nome_arq = f"FOR.141.r02_{proc.codigo}_{planejamento.id}.xlsx"
+                    zf.writestr(nome_arq, excel_buffer.getvalue())
+            
+            # Se o ZIP estiver vazio porque nenhuma pergunta foi selecionada
+            if len(zip_buffer.getvalue()) < 30:
+                messages.warning(request, "Nenhuma pergunta foi selecionada para os procedimentos.")
+                return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+                
+            filename = f"FOR.141.r02_Multiplos_{planejamento.id}.zip"
+            response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
+            return response
+            
+        except Exception as e:
+            messages.error(request, f"Erro ao gerar autoavaliação em lote (FOR.141 ZIP): {str(e)}")
+            return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
+    else:
+        try:
+            excel_buffer = gerar_auto_avaliacao_for141_xlsx(
+                planejamento,
+                colaborador_id=colaborador_id,
+                perguntas_selecionadas=perguntas_ids
+            )
+        except Exception as e:
+            messages.error(request, f"Erro ao gerar autoavaliação Excel (FOR.141): {str(e)}")
+            return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
 
-    try:
-        excel_buffer = gerar_auto_avaliacao_for141_xlsx(
-            planejamento,
-            colaborador_id=colaborador_id,
-            perguntas_selecionadas=perguntas_ids
+        filename = f"FOR.141.r02_Auto_Avaliacao_Treinamento_{planejamento.id}.xlsx"
+        response = HttpResponse(
+            excel_buffer.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-    except Exception as e:
-        messages.error(request, f"Erro ao gerar autoavaliação Excel (FOR.141): {str(e)}")
-        return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
-
-    filename = f"FOR.141.r02_Auto_Avaliacao_Treinamento_{planejamento.id}.xlsx"
-    response = HttpResponse(
-        excel_buffer.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    response["Content-Disposition"] = f'attachment; filename="{filename}"'
-    response["Access-Control-Expose-Headers"] = "Content-Disposition"
-    return response
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        response["Access-Control-Expose-Headers"] = "Content-Disposition"
+        return response
 
 
 @login_required

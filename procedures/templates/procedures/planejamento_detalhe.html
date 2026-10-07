@@ -1281,7 +1281,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <!-- Body -->
             <div class="modal-body p-4">
                 <!-- Banner Informativo -->
-                <div class="alert alert-info border-info border-opacity-25 d-flex flex-wrap align-items-center justify-content-between mb-4 shadow-sm">
+                <div class="alert alert-info border-info border-opacity-25 d-flex flex-wrap align-items-center justify-content-between mb-3 shadow-sm">
                     <div class="d-flex align-items-center">
                         <i class="bi bi-info-circle-fill text-info fs-4 me-3"></i>
                         <div>
@@ -1293,6 +1293,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div id="colaborador-destaque-badge" class="mt-2 mt-md-0" style="display: none;">
                         <span class="badge bg-primary px-3 py-2 shadow-sm" id="lbl-colaborador-avaliado-nome"></span>
+                    </div>
+                </div>
+
+                <!-- Controle de Modo -->
+                <div class="mb-4">
+                    <div class="form-check form-switch form-check-inline border rounded px-3 py-2 bg-light shadow-sm w-100 mb-1">
+                        <input class="form-check-input ms-0 me-2 mt-1" type="checkbox" role="switch" id="switch-modo-procedimento" onchange="toggleModoAutoAvaliacao()" style="transform: scale(1.3); cursor: pointer;">
+                        <label class="form-check-label fw-bold text-primary cursor-pointer mt-1 ms-1" for="switch-modo-procedimento">
+                            Gerar uma Auto-Avaliação separada para CADA procedimento (Múltiplas Impressões em .ZIP)
+                        </label>
+                    </div>
+                    <div class="small text-muted mt-1 ms-1" id="lbl-modo-hint">
+                        <i class="bi bi-arrow-right-short"></i> <strong>Modo Atual:</strong> Única avaliação (selecione até 5 perguntas no TOTAL).
                     </div>
                 </div>
 
@@ -1486,7 +1499,7 @@ function renderizarProcedimentosEPerguntas(data) {
 
                 htmlPerguntas += `
                     <div class="list-group-item d-flex align-items-start gap-3 py-2 border-0 bg-transparent item-pergunta" id="item-pergunta-${pergunta.id}">
-                        <input class="form-check-input mt-1 chk-pergunta-item" type="checkbox" value="${pergunta.id}" id="chk-p-${pergunta.id}" ${isChecked ? 'checked' : ''} onchange="onTogglePergunta(this, ${pergunta.id})">
+                        <input class="form-check-input mt-1 chk-pergunta-item" type="checkbox" value="${pergunta.id}" id="chk-p-${pergunta.id}" ${isChecked ? 'checked' : ''} onchange="onTogglePergunta(this, ${pergunta.id}, ${proc.id})">
                         <label class="form-check-label flex-grow-1 cursor-pointer" for="chk-p-${pergunta.id}">
                             <div class="fw-semibold text-dark">${pergunta.enunciado}</div>
                         </label>
@@ -1549,12 +1562,41 @@ function renderizarProcedimentosEPerguntas(data) {
     atualizarContadorPerguntas();
 }
 
-function onTogglePergunta(checkbox, perguntaId) {
+let modoPorProcedimento = false;
+
+function toggleModoAutoAvaliacao() {
+    modoPorProcedimento = document.getElementById('switch-modo-procedimento').checked;
+    const hint = document.getElementById('lbl-modo-hint');
+    
+    perguntasSelecionadas.clear();
+    document.querySelectorAll('.chk-pergunta-item').forEach(chk => chk.checked = false);
+    
+    if (modoPorProcedimento) {
+        hint.innerHTML = '<i class="bi bi-arrow-right-short"></i> <strong>Modo Atual:</strong> Múltiplas avaliações (selecione até 5 perguntas POR procedimento). O sistema irá gerar um arquivo .ZIP com os arquivos.';
+    } else {
+        hint.innerHTML = '<i class="bi bi-arrow-right-short"></i> <strong>Modo Atual:</strong> Única avaliação (selecione até 5 perguntas no TOTAL).';
+    }
+    atualizarContadorPerguntas();
+}
+
+function onTogglePergunta(checkbox, perguntaId, procId) {
     if (checkbox.checked) {
-        if (perguntasSelecionadas.size >= MAX_PERGUNTAS) {
-            checkbox.checked = false;
-            alert(`Você já selecionou o limite máximo de ${MAX_PERGUNTAS} perguntas para o Gráfico Radar (FOR.141). Desmarque uma pergunta antes de selecionar outra.`);
-            return;
+        if (modoPorProcedimento) {
+            const procContainer = document.getElementById(`lista-perguntas-proc-${procId}`);
+            if (procContainer) {
+                const selecionadasProc = procContainer.querySelectorAll('.chk-pergunta-item:checked').length;
+                if (selecionadasProc > MAX_PERGUNTAS) {
+                    checkbox.checked = false;
+                    alert(`Você já selecionou o limite de 5 perguntas para o procedimento selecionado.`);
+                    return;
+                }
+            }
+        } else {
+            if (perguntasSelecionadas.size >= MAX_PERGUNTAS) {
+                checkbox.checked = false;
+                alert(`Você já selecionou o limite máximo de ${MAX_PERGUNTAS} perguntas no total. Desmarque uma pergunta antes de selecionar outra.`);
+                return;
+            }
         }
         perguntasSelecionadas.add(perguntaId);
     } else {
@@ -1620,7 +1662,7 @@ function salvarNovaPergunta(procId) {
         novoItem.className = 'list-group-item d-flex align-items-start gap-3 py-2 border-0 bg-transparent item-pergunta animate__animated animate__fadeIn';
         novoItem.id = `item-pergunta-${novaP.id}`;
         novoItem.innerHTML = `
-            <input class="form-check-input mt-1 chk-pergunta-item" type="checkbox" value="${novaP.id}" id="chk-p-${novaP.id}" ${isChecked ? 'checked' : ''} onchange="onTogglePergunta(this, ${novaP.id})">
+            <input class="form-check-input mt-1 chk-pergunta-item" type="checkbox" value="${novaP.id}" id="chk-p-${novaP.id}" ${isChecked ? 'checked' : ''} onchange="onTogglePergunta(this, ${novaP.id}, ${procId})">
             <label class="form-check-label flex-grow-1 cursor-pointer" for="chk-p-${novaP.id}">
                 <div class="fw-semibold text-dark">${novaP.enunciado} <span class="badge bg-success small ms-1">Nova</span></div>
             </label>
@@ -1651,6 +1693,9 @@ function montarUrlComPerguntas(baseUrl) {
     const params = new URLSearchParams();
     if (colaboradorIdAtual) {
         params.append('colaborador_id', colaboradorIdAtual);
+    }
+    if (modoPorProcedimento) {
+        params.append('mode', 'por_procedimento');
     }
     if (perguntasSelecionadas.size > 0) {
         perguntasSelecionadas.forEach(pId => {
