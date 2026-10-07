@@ -5,6 +5,7 @@ Compatível nativamente com Django 5.0 sem dependência externa obrigatória.
 """
 
 import json
+import re
 from django.db import models, transaction
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -22,6 +23,20 @@ from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
 from ..services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id
 
 
+PERM_SUBMETER = 'core.nav_diagramas_submeter'
+PERM_APROVAR = 'core.nav_diagramas_aprovar'
+PERM_NOVA_REVISAO = 'core.nav_diagramas_nova_revisao'
+PERM_EXPORT_PDF = 'core.nav_diagramas_export_pdf'
+
+
+def _tem_permissao(user, perm: str) -> bool:
+    return bool(user.is_superuser or user.has_perm(perm))
+
+
+def _negar_permissao(acao: str):
+    return JsonResponse({"error": f"Você não tem permissão para {acao}."}, status=403)
+
+
 def serialize_diagrama_versao(versao: DiagramaVersao) -> dict:
     """Serializa uma versão do diagrama para JSON."""
     aprovador_nome = None
@@ -36,6 +51,9 @@ def serialize_diagrama_versao(versao: DiagramaVersao) -> dict:
         "status_display": versao.get_status_display(),
         "dados_topologia": versao.dados_topologia or {"nodes": [], "edges": [], "grid_data": []},
         "motivo_revisao": versao.motivo_revisao,
+        "motivo_devolucao": versao.motivo_devolucao,
+        "submetido_por_id": versao.submetido_por_id,
+        "data_submissao": versao.data_submissao.isoformat() if versao.data_submissao else None,
         "aprovado_por_id": versao.aprovado_por_id,
         "aprovado_por_nome": aprovador_nome,
         "data_aprovacao": versao.data_aprovacao.isoformat() if versao.data_aprovacao else None,
@@ -143,6 +161,15 @@ def api_diagrama_detail(request, diagrama_id):
     if request.method == "GET":
         return JsonResponse(serialize_diagrama(diagrama, include_versoes=True), status=200)
 
+    elif (request.method in ["PUT", "PATCH", "DELETE"]
+          and not request.user.is_superuser
+          and diagrama.versoes.filter(status=StatusDiagrama.APROVADO).exists()):
+        # Documento controlado: cabeçalho de diagrama com revisão aprovada só muda por nova revisão (ou administrador)
+        return JsonResponse(
+            {"error": "Diagrama com revisão aprovada não pode ter o cabeçalho alterado ou ser desativado. Crie uma nova revisão."},
+            status=423
+        )
+
     elif request.method in ["PUT", "PATCH"]:
         try:
             payload = json.loads(request.body)
@@ -236,6 +263,9 @@ def api_diagrama_versao_submeter(request, versao_id):
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Autenticação necessária."}, status=401)
 
+    if not _tem_permissao(request.user, PERM_SUBMETER):
+        return _negar_permissao("submeter diagramas para aprovação")
+
     versao = get_object_or_404(DiagramaVersao, id=versao_id)
     try:
         versao_atualizada = DiagramaQMSService.submeter_para_aprovacao(versao, request.user)
@@ -251,9 +281,34 @@ def api_diagrama_versao_aprovar(request, versao_id):
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Autenticação necessária."}, status=401)
 
+    if not _tem_permissao(request.user, PERM_APROVAR):
+        return _negar_permissao("aprovar diagramas")
+
     versao = get_object_or_404(DiagramaVersao, id=versao_id)
     try:
         versao_atualizada = DiagramaQMSService.aprovar_versao(versao, request.user)
+        return JsonResponse(serialize_diagrama_versao(versao_atualizada), status=200)
+    except ValidationError as e:
+        msg = e.messages[0] if hasattr(e, 'messages') else str(e)
+        return JsonResponse({"error": msg}, status=400)
+
+
+@require_http_methods(["POST"])
+def api_diagrama_versao_devolver(request, versao_id):
+    """Reprova a revisão em aprovação, devolvendo-a ao elaborador como Rascunho (exige motivo)."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Autenticação necessária."}, status=401)
+    if not _tem_permissao(request.user, PERM_APROVAR):
+        return _negar_permissao("devolver diagramas para ajustes")
+
+    versao = get_object_or_404(DiagramaVersao, id=versao_id)
+    try:
+        payload = json.loads(request.body) if request.body else {}
+    except Exception:
+        payload = {}
+
+    try:
+        versao_atualizada = DiagramaQMSService.devolver_para_ajustes(versao, request.user, payload.get("motivo", ""))
         return JsonResponse(serialize_diagrama_versao(versao_atualizada), status=200)
     except ValidationError as e:
         msg = e.messages[0] if hasattr(e, 'messages') else str(e)
@@ -265,6 +320,9 @@ def api_diagrama_versao_criar_nova_revisao(request, versao_id):
     """Clona versão vigente para iniciar nova revisão em rascunho."""
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Autenticação necessária."}, status=401)
+
+    if not _tem_permissao(request.user, PERM_NOVA_REVISAO):
+        return _negar_permissao("criar novas revisões")
 
     versao = get_object_or_404(DiagramaVersao, id=versao_id)
     try:
@@ -287,6 +345,9 @@ def api_diagrama_versao_exportar_pdf(request, versao_id):
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Autenticação necessária."}, status=401)
 
+    if not _tem_permissao(request.user, PERM_EXPORT_PDF):
+        return _negar_permissao("exportar o PDF DOC.071")
+
     versao = get_object_or_404(DiagramaVersao.objects.select_related('diagrama', 'aprovado_por'), id=versao_id)
     try:
         payload = json.loads(request.body) if request.body else {}
@@ -296,7 +357,7 @@ def api_diagrama_versao_exportar_pdf(request, versao_id):
     image_base64 = payload.get("image_base64")
     pdf_bytes = gerar_pdf_diagrama_doc071(versao, image_base64=image_base64)
 
-    nome_doc = versao.diagrama.codigo_exibicao.replace(" ", "_").replace("/", "-")
+    nome_doc = re.sub(r'[^A-Za-z0-9#._-]+', '_', versao.diagrama.codigo_exibicao).strip('_')
     filename = f"DOC.071_{nome_doc}_Rev{versao.revisao:02d}.pdf"
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -434,5 +495,14 @@ def diagrama_editor_view(request, versao_id):
         'topologia_json': json.dumps(versao.dados_topologia or {"nodes": [], "edges": [], "grid_data": []}),
         'is_approved': versao.status == StatusDiagrama.APROVADO,
         'is_locked': versao.status != StatusDiagrama.RASCUNHO,
+        'is_rascunho': versao.status == StatusDiagrama.RASCUNHO,
+        'is_em_aprovacao': versao.status == StatusDiagrama.EM_APROVACAO,
+        'revisao_em_andamento': any(
+            v.status in (StatusDiagrama.RASCUNHO, StatusDiagrama.EM_APROVACAO) for v in todas_versoes
+        ),
+        'pode_submeter': _tem_permissao(request.user, PERM_SUBMETER),
+        'pode_aprovar': _tem_permissao(request.user, PERM_APROVAR),
+        'pode_nova_revisao': _tem_permissao(request.user, PERM_NOVA_REVISAO),
+        'pode_exportar_pdf': _tem_permissao(request.user, PERM_EXPORT_PDF),
     }
     return render(request, 'procedures/diagrama_editor.html', context)

@@ -146,6 +146,21 @@ class DiagramaVersao(models.Model):
         null=True,
         verbose_name="Motivo da Revisão / Alteração"
     )
+    submetido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='diagramas_revisoes_submetidas',
+        verbose_name="Submetido por"
+    )
+    data_submissao = models.DateTimeField(null=True, blank=True, verbose_name="Data da Submissão")
+    motivo_devolucao = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Motivo da Última Devolução",
+        help_text="Justificativa do aprovador quando a revisão é devolvida ao elaborador."
+    )
     aprovado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

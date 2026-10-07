@@ -688,7 +688,7 @@
         <!-- Botões de Ação QMS -->
         <div class="d-flex align-items-center gap-2">
             <div id="saveIndicator" class="text-muted small me-2 font-monospace">
-                {% if is_approved %}
+                {% if is_locked %}
                     <span class="text-secondary"><i class="bi bi-lock-fill"></i> Somente Leitura</span>
                 {% else %}
                     <span class="text-success"><i class="bi bi-check2-circle"></i> Sincronizado</span>
@@ -713,27 +713,49 @@
                 </div>
             {% endif %}
 
-            {% if not is_approved %}
+            {% if is_rascunho %}
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalAplicarTemplate" title="Aplicar Modelo / Estrutura">
                     <i class="bi bi-grid-1x2-fill"></i> Modelos
                 </button>
+                {% if pode_submeter %}
                 <button type="button" id="btnSubmeter" class="btn btn-outline-warning btn-sm" onclick="submeterParaAprovacao()">
                     <i class="bi bi-send"></i> Submeter
+                </button>
+                {% endif %}
+            {% elif is_em_aprovacao %}
+                {% if pode_aprovar %}
+                <button type="button" id="btnDevolver" class="btn btn-outline-danger btn-sm" onclick="devolverParaAjustes()">
+                    <i class="bi bi-arrow-return-left"></i> Devolver
                 </button>
                 <button type="button" id="btnAprovar" class="btn btn-outline-success btn-sm" onclick="aprovarVersao()">
                     <i class="bi bi-check-circle"></i> Aprovar (QMS)
                 </button>
-            {% else %}
+                {% endif %}
+            {% elif is_approved and pode_nova_revisao and not revisao_em_andamento %}
                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="modalNovaRevisao()">
                     <i class="bi bi-plus-circle"></i> Criar Nova Revisão
                 </button>
             {% endif %}
 
+            {% if pode_exportar_pdf %}
             <button type="button" class="btn btn-danger btn-sm shadow-sm" onclick="exportarPDFDoc071()">
                 <i class="bi bi-file-earmark-pdf-fill"></i> Gerar PDF DOC.071
             </button>
+            {% endif %}
         </div>
     </div>
+
+    {% if is_rascunho and versao.motivo_devolucao %}
+    <div class="alert alert-warning py-2 px-3 mb-2 small d-flex align-items-start gap-2" role="alert">
+        <i class="bi bi-arrow-return-left mt-1"></i>
+        <div><strong>Revisão devolvida pelo aprovador:</strong> {{ versao.motivo_devolucao }}</div>
+    </div>
+    {% elif is_em_aprovacao %}
+    <div class="alert alert-info py-2 px-3 mb-2 small" role="alert">
+        <i class="bi bi-hourglass-split"></i> Esta revisão aguarda aprovação e está em modo somente leitura.
+        {% if versao.submetido_por %}Submetida por {{ versao.submetido_por.get_full_name|default:versao.submetido_por.username }}.{% endif %}
+    </div>
+    {% endif %}
 
     <!-- 2. Ribbon Toolbar (Barra de Ferramentas Superior Unificada com Modos, Criação, Layout e Zoom) -->
     <div class="editor-ribbon">
@@ -1241,7 +1263,8 @@
 {% block extra_js %}
 <script>
     const VERSAO_ID = "{{ versao.id }}";
-    const IS_APPROVED = {{ is_approved|yesno:"true,false" }};
+    // Nome histórico: significa "somente leitura" (Em Aprovação, Aprovado ou Obsoleto) — o servidor bloqueia o auto-save nesses status
+    const IS_APPROVED = {{ is_locked|yesno:"true,false" }};
     const CSRF_TOKEN = "{{ csrf_token }}";
     let versaoAtualizadoEm = "{{ versao.atualizado_em.isoformat }}"; // base para controle de concorrência no auto-save
     let autoSaveConflito = false;
@@ -3650,6 +3673,28 @@
         }
     }
 
+    async function devolverParaAjustes() {
+        const motivo = prompt("Informe o motivo da devolução ao elaborador (obrigatório):");
+        if (motivo === null) return;
+        if (motivo.trim().length < 5) {
+            alert("Informe um motivo com pelo menos 5 caracteres.");
+            return;
+        }
+
+        const resp = await fetch(`/procedures/api/diagramas-versoes/${VERSAO_ID}/devolver/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+            body: JSON.stringify({ motivo: motivo.trim() })
+        });
+
+        if (resp.ok) {
+            location.reload();
+        } else {
+            const data = await resp.json();
+            alert("Erro: " + (data.error || "Não foi possível devolver."));
+        }
+    }
+
     function modalNovaRevisao() {
         const modal = new bootstrap.Modal(document.getElementById('modalNovaRevisao'));
         modal.show();
@@ -3695,12 +3740,16 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `DOC.071_{{ diagrama.codigo }}_Rev{{ versao.revisao|stringformat:"02d" }}.pdf`;
+                const cd = resp.headers.get('Content-Disposition') || '';
+                const m = cd.match(/filename="([^"]+)"/);
+                a.download = m ? m[1] : `DOC.071_Rev{{ versao.revisao|stringformat:"02d" }}.pdf`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
             } else {
-                alert("Erro ao gerar PDF.");
+                let msg = "Erro ao gerar PDF.";
+                try { msg = (await resp.json()).error || msg; } catch (e) {}
+                alert(msg);
             }
         } catch (err) {
             alert("Erro de comunicação ao gerar o relatório.");

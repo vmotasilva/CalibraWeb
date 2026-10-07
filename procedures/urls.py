@@ -364,8 +364,9 @@ urlpatterns = [
     path('api/diagramas-versoes/<uuid:versao_id>/aplicar-template/', diagram_views.api_diagrama_versao_aplicar_template, name='api_diagrama_versao_aplicar_template'),
     path('api/diagramas-versoes/<uuid:versao_id>/submeter/', diagram_views.api_diagrama_versao_submeter, name='api_diagrama_versao_submeter'),
     path('api/diagramas-versoes/<uuid:versao_id>/aprovar/', diagram_views.api_diagrama_versao_aprovar, name='api_diagrama_versao_aprovar'),
+    path('api/diagramas-versoes/<uuid:versao_id>/devolver/', diagram_views.api_diagrama_versao_devolver, name='api_diagrama_versao_devolver'),
     path('api/diagramas-versoes/<uuid:versao_id>/criar-nova-revisao/', diagram_views.api_diagrama_versao_criar_nova_revisao, name='api_diagrama_versao_criar_nova_revisao'),
     path('api/diagramas-versoes/<uuid:versao_id>/exportar-pdf-doc071/', diagram_views.api_diagrama_versao_exportar_pdf, name='api_diagrama_versao_exportar_pdf'),
 ]
 
-
+

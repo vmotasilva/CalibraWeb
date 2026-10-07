@@ -18,6 +18,7 @@ User = get_user_model()
 class DiagramaQMSTestCase(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='auditor.qualidade', password='password123', email='auditor@calibraweb.com')
+        self.aprovador = User.objects.create_user(username='aprovador.qms', password='password123')
         self.client = Client()
         self.client.force_login(self.user)
 
@@ -71,7 +72,8 @@ class DiagramaQMSTestCase(TestCase):
     def test_bloqueio_de_edicao_quando_aprovado(self):
         """Valida que versões aprovadas rejeitam edições (HTTP 423 Locked)."""
         # Aprova a versão
-        DiagramaQMSService.aprovar_versao(self.versao_r00, self.user)
+        DiagramaQMSService.submeter_para_aprovacao(self.versao_r00, self.user)
+        DiagramaQMSService.aprovar_versao(self.versao_r00, self.aprovador)
         self.versao_r00.refresh_from_db()
         self.assertEqual(self.versao_r00.status, StatusDiagrama.APROVADO)
 
@@ -85,7 +87,8 @@ class DiagramaQMSTestCase(TestCase):
 
     def test_fluxo_de_revisao_qms(self):
         """Valida ciclo R00 -> Aprovado -> R01 (Rascunho) com herança de topologia."""
-        DiagramaQMSService.aprovar_versao(self.versao_r00, self.user)
+        DiagramaQMSService.submeter_para_aprovacao(self.versao_r00, self.user)
+        DiagramaQMSService.aprovar_versao(self.versao_r00, self.aprovador)
 
         # Cria nova revisão R01
         nova_versao = DiagramaQMSService.criar_nova_revisao(
@@ -199,3 +202,121 @@ class DiagramaAutoSaveValidacaoTestCase(TestCase):
         r2 = self._patch({"dados_topologia": {"nodes": [self._no("1"), self._no("2")], "edges": []},
                           "base_atualizado_em": r1.json()["atualizado_em"]})
         self.assertEqual(r2.status_code, 200)
+
+
+class DiagramaGovernancaTestCase(TestCase):
+    """Permissões, segregação de funções, devolução, nova revisão e PDF."""
+
+    def setUp(self):
+        self.autor = User.objects.create_user(username='autor', password='x')
+        self.aprovador = User.objects.create_user(username='aprovador', password='x')
+        self.diagrama = Diagrama.objects.create(titulo='Calibração & Ensaios <A>', criado_por=self.autor)
+        self.versao = DiagramaVersao.objects.create(
+            diagrama=self.diagrama, revisao=0, status=StatusDiagrama.RASCUNHO,
+            dados_topologia={
+                "nodes": [
+                    {"id": "1", "type": "start", "position": {"x": 100, "y": 60}, "data": {"label": "Início", "lane": "Lab"}},
+                    {"id": "2", "type": "decision", "position": {"x": 100, "y": 200}, "data": {"label": "Conforme? 😀", "lane": "Lab"}},
+                    {"id": "3", "type": "process", "position": {"x": 400, "y": 200}, "data": {"label": "Liberar", "lane": "Qualidade", "customTags": ["Tag"]}},
+                ],
+                "edges": [
+                    {"id": "e-1-2", "source": "1", "target": "2"},
+                    {"id": "e-2-3", "source": "2", "target": "3", "label": "Sim", "sourceHandle": "right"},
+                ],
+                "grid_data": [],
+            },
+        )
+
+    def _aprovar(self, aprovador=None):
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        DiagramaQMSService.aprovar_versao(self.versao, aprovador or self.aprovador)
+        self.versao.refresh_from_db()
+
+    def _cliente(self, user, *perms):
+        from django.contrib.auth.models import Permission
+        for codename in perms:
+            user.user_permissions.add(Permission.objects.get(codename=codename))
+        user = User.objects.get(pk=user.pk)  # limpa cache de permissões
+        c = Client()
+        c.force_login(user)
+        return c
+
+    def test_nao_aprova_rascunho_sem_submeter(self):
+        with self.assertRaises(ValidationError):
+            DiagramaQMSService.aprovar_versao(self.versao, self.aprovador)
+
+    def test_segregacao_de_funcoes(self):
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        with self.assertRaises(ValidationError):
+            DiagramaQMSService.aprovar_versao(self.versao, self.autor)
+
+    def test_devolucao_exige_motivo_e_volta_para_rascunho(self):
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        with self.assertRaises(ValidationError):
+            DiagramaQMSService.devolver_para_ajustes(self.versao, self.aprovador, "")
+        DiagramaQMSService.devolver_para_ajustes(self.versao, self.aprovador, "Falta a etapa de calibração")
+        self.versao.refresh_from_db()
+        self.assertEqual(self.versao.status, StatusDiagrama.RASCUNHO)
+        self.assertEqual(self.versao.motivo_devolucao, "Falta a etapa de calibração")
+
+    def test_nova_revisao_somente_de_versao_aprovada_e_sem_revisao_aberta(self):
+        with self.assertRaises(ValidationError):
+            DiagramaQMSService.criar_nova_revisao(self.versao, self.autor, "Ajuste de processo")
+        self._aprovar()
+        r01 = DiagramaQMSService.criar_nova_revisao(self.versao, self.autor, "Ajuste de processo")
+        self.assertEqual(r01.revisao, 1)
+        with self.assertRaises(ValidationError):
+            DiagramaQMSService.criar_nova_revisao(self.versao, self.autor, "Outra revisão paralela")
+
+    def test_endpoints_exigem_permissao(self):
+        c = self._cliente(self.autor)
+        url = f'/procedures/api/diagramas-versoes/{self.versao.id}/submeter/'
+        self.assertEqual(c.post(url).status_code, 403)
+        c = self._cliente(self.autor, 'nav_diagramas_submeter')
+        self.assertEqual(c.post(url).status_code, 200)
+
+        c_apr = self._cliente(self.aprovador)
+        self.assertEqual(c_apr.post(f'/procedures/api/diagramas-versoes/{self.versao.id}/aprovar/').status_code, 403)
+        self.assertEqual(c_apr.post(f'/procedures/api/diagramas-versoes/{self.versao.id}/exportar-pdf-doc071/').status_code, 403)
+
+    def test_cabecalho_de_diagrama_aprovado_e_travado(self):
+        self._aprovar()
+        c = self._cliente(self.autor)
+        resp = c.patch(f'/procedures/api/diagramas/{self.diagrama.id}/', data=json.dumps({"titulo": "Novo"}),
+                       content_type='application/json')
+        self.assertEqual(resp.status_code, 423)
+        self.diagrama.refresh_from_db()
+        self.assertEqual(self.diagrama.titulo, 'Calibração & Ensaios <A>')
+
+    def test_pdf_renderiza_diagrama_e_aceita_caracteres_especiais(self):
+        self._aprovar()
+        pdf = gerar_pdf_diagrama_doc071(self.versao)
+        self.assertTrue(pdf.startswith(b'%PDF-'))
+        # Sem diagrama a página 1 seria bem menor: o desenho vetorial aumenta o conteúdo
+        vazio = DiagramaVersao.objects.create(
+            diagrama=Diagrama.objects.create(titulo='Vazio', criado_por=self.autor), revisao=0, dados_topologia={"nodes": [], "edges": []})
+        self.assertGreater(len(pdf), len(gerar_pdf_diagrama_doc071(vazio)))
+
+    def test_editor_exibe_botoes_conforme_status_e_permissao(self):
+        url = f'/procedures/diagramas/editor/{self.versao.id}/'
+        # Rascunho: usuário sem permissões não vê Submeter/PDF
+        html = self._cliente(self.autor).get(url).content.decode()
+        self.assertNotIn('btnSubmeter', html)
+        self.assertNotIn('exportarPDFDoc071()">', html)
+        # Rascunho com permissão de submeter
+        html = self._cliente(self.autor, 'nav_diagramas_submeter').get(url).content.decode()
+        self.assertIn('btnSubmeter', html)
+        self.assertIn('const IS_APPROVED = false', html)
+
+        # Em aprovação: somente leitura; aprovador vê Aprovar/Devolver
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        html = self._cliente(self.aprovador, 'nav_diagramas_aprovar').get(url).content.decode()
+        self.assertIn('btnAprovar', html)
+        self.assertIn('btnDevolver', html)
+        self.assertNotIn('btnSubmeter', html)
+        self.assertIn('const IS_APPROVED = true', html)
+
+        # Aprovado: Nova Revisão aparece só com permissão e sem revisão em andamento
+        DiagramaQMSService.aprovar_versao(self.versao, self.aprovador)
+        html = self._cliente(self.autor, 'nav_diagramas_nova_revisao').get(url).content.decode()
+        self.assertIn('onclick="modalNovaRevisao()"', html)
