@@ -3034,7 +3034,8 @@
         const lanes = obterListaRaiasOrdenada();
         const nodeWidth = 190;
         const gap = 60;
-        const canvasTargetWidth = 1150;
+        const viewport = document.getElementById('canvasViewport');
+        const canvasTargetWidth = viewport ? (viewport.clientWidth / zoomLevel) : 1150;
 
         lanes.forEach((lane, lIdx) => {
             const yBase = 40 + lIdx * 240;
@@ -3049,7 +3050,10 @@
             });
 
             const totalWidth = nodesInLane.length * nodeWidth + (nodesInLane.length - 1) * gap;
-            const startX = centralizar ? Math.max(80, Math.round((canvasTargetWidth - totalWidth) / 2)) : 80;
+            
+            // Para garantir que a visualização não quebre caso a tela seja muito pequena
+            const targetW = Math.max(canvasTargetWidth, totalWidth + 160);
+            const startX = centralizar ? Math.max(80, Math.round((targetW - totalWidth) / 2)) : 80;
 
             nodesInLane.forEach((node, i) => {
                 node.position.x = startX + i * (nodeWidth + gap);
@@ -3127,12 +3131,15 @@
         const viewport = document.getElementById('canvasViewport');
         const viewCenterX = viewport.scrollLeft / zoomLevel + (viewport.clientWidth / 2) / zoomLevel;
         
-        const xs = topologia.nodes.map(n => n.position.x);
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs) + 180;
-        const diagramCenterX = (minX + maxX) / 2;
+        // Centraliza baseado no "Ponto de Partida" (Nó Raiz / Primeiro Nó) para manter a estrutura do organograma alinhada
+        const rootNode = topologia.nodes[0];
         
-        const shiftX = Math.round(viewCenterX - diagramCenterX);
+        // Pega a largura do elemento se renderizado, ou assume 190 (nodeWidth padrão)
+        const el = document.getElementById(`node-${rootNode.id}`);
+        const rootW = el ? el.offsetWidth : 190;
+        
+        const rootCenterX = rootNode.position.x + (rootW / 2);
+        const shiftX = Math.round(viewCenterX - rootCenterX);
         
         if (shiftX !== 0) {
             topologia.nodes.forEach(n => {
