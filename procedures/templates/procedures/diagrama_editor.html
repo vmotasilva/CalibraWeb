@@ -1706,7 +1706,11 @@
         if (isSpacePressed || e.button === 1) return; // Não arrasta se estiver em modo pan
         isDragging = true;
         activeNode = node;
-        selecionarNo(node.id);
+        
+        // Se não for multi-seleção e o nó não estiver selecionado, seleciona ele
+        if (!e.shiftKey && !selectedNodeIds.has(node.id)) {
+            selecionarNo(node.id);
+        }
 
         const canvasViewport = document.getElementById('canvasViewport');
         const canvasRect = canvasViewport.getBoundingClientRect();
