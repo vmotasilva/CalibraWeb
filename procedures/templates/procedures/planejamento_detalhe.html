@@ -1791,17 +1791,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     const baseUrl = "{% url 'procedures:exportar_auto_avaliacao_for141' planejamento.id %}";
                     const url = `${baseUrl}?${params.toString()}`;
                     
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.style.display = 'none';
-                    // Open in new tab/window to prevent browser from cancelling previous downloads
-                    a.target = '_blank';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                    try {
+                        const response = await fetch(url);
+                        if (response.ok) {
+                            const blob = await response.blob();
+                            let filename = `FOR.141.r02_Auto_Avaliacao_${procId}.xlsx`;
+                            const disposition = response.headers.get('Content-Disposition');
+                            if (disposition && disposition.includes('filename=')) {
+                                const match = disposition.match(/filename="?([^"]+)"?/);
+                                if (match && match[1]) filename = match[1];
+                            }
+                            
+                            const blobUrl = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = blobUrl;
+                            a.download = filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            window.URL.revokeObjectURL(blobUrl);
+                        } else {
+                            console.error("Falha no download para procedimento", procId);
+                        }
+                    } catch (e) {
+                        console.error("Erro na requisição de download", e);
+                    }
                     
-                    // Delay para não sobrecarregar o servidor e evitar block de popup/downloads
-                    await new Promise(r => setTimeout(r, 1000));
+                    // Delay para processamento seguro e não engasgar o JS
+                    await new Promise(r => setTimeout(r, 600));
                 }
                 
                 btnExcel.innerHTML = btnOriginalText;
