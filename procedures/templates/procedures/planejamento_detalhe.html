@@ -1301,7 +1301,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="form-check form-switch form-check-inline border rounded px-3 py-2 bg-light shadow-sm w-100 mb-1">
                         <input class="form-check-input ms-0 me-2 mt-1" type="checkbox" role="switch" id="switch-modo-procedimento" onchange="toggleModoAutoAvaliacao()" style="transform: scale(1.3); cursor: pointer;">
                         <label class="form-check-label fw-bold text-primary cursor-pointer mt-1 ms-1" for="switch-modo-procedimento">
-                            Gerar uma Auto-Avaliação separada para CADA procedimento (Múltiplas Impressões em .ZIP)
+                            Múltiplas Auto-Avaliações (.ZIP com os formulários de cada procedimento)
                         </label>
                     </div>
                     <div class="small text-muted mt-1 ms-1" id="lbl-modo-hint">
@@ -1518,6 +1518,7 @@ function renderizarProcedimentosEPerguntas(data) {
         procCard.innerHTML = `
             <div class="card-header bg-danger bg-opacity-10 text-danger d-flex flex-wrap justify-content-between align-items-center py-2 px-3">
                 <div class="d-flex align-items-center gap-2">
+                    <input class="form-check-input chk-proc-master border-danger cursor-pointer" type="checkbox" style="display: none; transform: scale(1.3);" id="chk-master-proc-${proc.id}" onchange="onToggleProcMaster(this, ${proc.id})" title="Selecionar este procedimento">
                     <span class="badge bg-primary badge-code fw-bold">${proc.codigo}</span>
                     <strong class="text-dark">${proc.nome}</strong>
                     ${badgeCriticidade}
@@ -1569,12 +1570,54 @@ function toggleModoAutoAvaliacao() {
     const hint = document.getElementById('lbl-modo-hint');
     
     perguntasSelecionadas.clear();
-    document.querySelectorAll('.chk-pergunta-item').forEach(chk => chk.checked = false);
+    
+    // Configura o visual e desabilita checks individuais se no modo de procedimento
+    document.querySelectorAll('.chk-pergunta-item').forEach(chk => {
+        chk.checked = false;
+        chk.disabled = modoPorProcedimento;
+    });
+    
+    // Exibe ou oculta o checkbox master de cada procedimento
+    document.querySelectorAll('.chk-proc-master').forEach(chk => {
+        chk.style.display = modoPorProcedimento ? 'block' : 'none';
+        chk.checked = false;
+    });
     
     if (modoPorProcedimento) {
-        hint.innerHTML = '<i class="bi bi-arrow-right-short"></i> <strong>Modo Atual:</strong> Múltiplas avaliações (selecione até 5 perguntas POR procedimento). O sistema irá gerar um arquivo .ZIP com os arquivos.';
+        hint.innerHTML = '<i class="bi bi-arrow-right-short"></i> <strong>Modo Atual:</strong> Múltiplas avaliações (.ZIP). Selecione os procedimentos desejados (As perguntas são marcadas automaticamente).';
     } else {
         hint.innerHTML = '<i class="bi bi-arrow-right-short"></i> <strong>Modo Atual:</strong> Única avaliação (selecione até 5 perguntas no TOTAL).';
+    }
+    atualizarContadorPerguntas();
+}
+
+function onToggleProcMaster(masterCheckbox, procId) {
+    const procContainer = document.getElementById(`lista-perguntas-proc-${procId}`);
+    if (!procContainer) return;
+    
+    const checkboxes = procContainer.querySelectorAll('.chk-pergunta-item');
+    
+    if (masterCheckbox.checked) {
+        let marcadas = 0;
+        checkboxes.forEach(chk => {
+            if (marcadas < MAX_PERGUNTAS) {
+                chk.checked = true;
+                perguntasSelecionadas.add(parseInt(chk.value));
+                marcadas++;
+            } else {
+                chk.checked = false;
+                perguntasSelecionadas.delete(parseInt(chk.value));
+            }
+        });
+        if (marcadas === 0) {
+            alert('Este procedimento não possui perguntas cadastradas. Adicione pelo menos uma pergunta para poder exportá-lo.');
+            masterCheckbox.checked = false;
+        }
+    } else {
+        checkboxes.forEach(chk => {
+            chk.checked = false;
+            perguntasSelecionadas.delete(parseInt(chk.value));
+        });
     }
     atualizarContadorPerguntas();
 }
@@ -1653,7 +1696,7 @@ function salvarNovaPergunta(procId) {
         const noMsg = document.getElementById(`no-perguntas-${procId}`);
         if (noMsg) noMsg.remove();
 
-        const isChecked = perguntasSelecionadas.size < MAX_PERGUNTAS;
+        const isChecked = !modoPorProcedimento && perguntasSelecionadas.size < MAX_PERGUNTAS;
         if (isChecked) {
             perguntasSelecionadas.add(novaP.id);
         }
@@ -1662,7 +1705,7 @@ function salvarNovaPergunta(procId) {
         novoItem.className = 'list-group-item d-flex align-items-start gap-3 py-2 border-0 bg-transparent item-pergunta animate__animated animate__fadeIn';
         novoItem.id = `item-pergunta-${novaP.id}`;
         novoItem.innerHTML = `
-            <input class="form-check-input mt-1 chk-pergunta-item" type="checkbox" value="${novaP.id}" id="chk-p-${novaP.id}" ${isChecked ? 'checked' : ''} onchange="onTogglePergunta(this, ${novaP.id}, ${procId})">
+            <input class="form-check-input mt-1 chk-pergunta-item" type="checkbox" value="${novaP.id}" id="chk-p-${novaP.id}" ${isChecked ? 'checked' : ''} ${modoPorProcedimento ? 'disabled' : ''} onchange="onTogglePergunta(this, ${novaP.id}, ${procId})">
             <label class="form-check-label flex-grow-1 cursor-pointer" for="chk-p-${novaP.id}">
                 <div class="fw-semibold text-dark">${novaP.enunciado} <span class="badge bg-success small ms-1">Nova</span></div>
             </label>
