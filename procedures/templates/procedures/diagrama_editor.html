@@ -214,6 +214,7 @@
         left: 20px;
         width: 4800px;
         border-bottom: 2px dashed #cbd5e1;
+        border-left: 40px solid #334155;
         background: rgba(241, 245, 249, 0.45);
         box-sizing: border-box;
         pointer-events: none;
@@ -221,24 +222,25 @@
 
     .swimlane-header-container {
         position: absolute;
-        top: 10px;
-        left: 20px;
+        top: 50%;
+        left: -20px;
+        transform: translate(-50%, -50%) rotate(-90deg);
         display: inline-flex;
         align-items: center;
         gap: 6px;
         pointer-events: auto;
         z-index: 10;
-        background: #f8fafc;
-        padding: 3px 8px;
+        background: #1e293b;
+        color: #f8fafc;
+        padding: 6px 12px;
         border-radius: 6px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
 
     .swimlane-label-btn {
         background: transparent;
         border: none;
-        color: #334155;
+        color: #f8fafc;
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
@@ -250,14 +252,14 @@
     }
 
     .swimlane-label-btn:hover {
-        background: #e2e8f0;
-        color: #1d4ed8;
+        background: rgba(255, 255, 255, 0.15);
+        color: #60a5fa;
     }
 
     .swimlane-action-btn {
-        background: #ffffff;
-        border: 1px solid #cbd5e1;
-        color: #64748b;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #cbd5e1;
         border-radius: 4px;
         font-size: 10px;
         padding: 1px 5px;
@@ -267,9 +269,9 @@
     }
 
     .swimlane-action-btn:hover {
-        background: #f1f5f9;
-        color: #0f172a;
-        border-color: #94a3b8;
+        background: rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        border-color: rgba(255, 255, 255, 0.4);
     }
 
     /* Flow Nodes Styles */
@@ -800,6 +802,9 @@
             </div>
             <button type="button" class="ribbon-btn border" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
                 <i class="bi bi-distribute-horizontal text-primary"></i> Alinhar Raias
+            </button>
+            <button type="button" class="ribbon-btn border" onclick="centralizarEixoXDaTela()" title="Centralizar Todos os Blocos Horizontalmente na Tela">
+                <i class="bi bi-arrows-collapse text-primary"></i> Mover p/ Centro
             </button>
             {% if not is_approved %}
                 <button type="button" class="ribbon-btn border" onclick="adicionarNovaRaia()" title="Adicionar Nova Raia de Setor / Departamento">
@@ -3115,6 +3120,27 @@
 
         renderizarCanvas();
         dispararAutoSave();
+    }
+
+    function centralizarEixoXDaTela() {
+        if (topologia.nodes.length === 0) return;
+        const viewport = document.getElementById('canvasViewport');
+        const viewCenterX = viewport.scrollLeft / zoomLevel + (viewport.clientWidth / 2) / zoomLevel;
+        
+        const xs = topologia.nodes.map(n => n.position.x);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs) + 180;
+        const diagramCenterX = (minX + maxX) / 2;
+        
+        const shiftX = Math.round(viewCenterX - diagramCenterX);
+        
+        if (shiftX !== 0) {
+            topologia.nodes.forEach(n => {
+                n.position.x += shiftX;
+            });
+            renderizarCanvas();
+            dispararAutoSave();
+        }
     }
 
     // =========================================================================
