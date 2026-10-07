@@ -469,7 +469,7 @@
 
     /* Painel Lateral Direito (Inspector de Estilos e Marcadores) */
     .inspector-panel {
-        width: 300px;
+        width: 400px;
         background: #ffffff;
         border-left: 1px solid #e2e8f0;
         display: flex;
@@ -785,6 +785,19 @@
             <button type="button" class="btn btn-sm btn-primary border shadow-sm px-2 py-1" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
                 <i class="bi bi-magic"></i> <span class="small fw-semibold">Auto-Layout</span>
             </button>
+            <div class="dropdown">
+                <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Alinhar Blocos Selecionados">
+                    <i class="bi bi-align-end text-primary"></i> Alinhar
+                </button>
+                <ul class="dropdown-menu shadow-sm dropdown-menu-end">
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('top')"><i class="bi bi-align-top"></i> Linha Superior</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('bottom')"><i class="bi bi-align-bottom"></i> Linha Inferior</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('left')"><i class="bi bi-align-start"></i> Lateral Esquerda</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('right')"><i class="bi bi-align-end"></i> Lateral Direita</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-h')"><i class="bi bi-align-center"></i> Centro Vertical (Coluna)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-v')"><i class="bi bi-align-middle"></i> Centro Horizontal (Linha)</a></li>
+                </ul>
+            </div>
             <button type="button" class="ribbon-btn border" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
                 <i class="bi bi-distribute-horizontal text-primary"></i> Alinhar Raias
             </button>
@@ -1069,12 +1082,7 @@
                             <input type="text" id="inspNodeLabel" class="form-control form-control-sm" oninput="aplicarEstiloNoSelecionado('label', this.value)">
                         </div>
 
-                        <!-- Título da Etapa / Passo -->
-                        <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold mb-1">Título do Passo</label>
-                            <input type="text" id="inspNodeStepTitle" class="form-control form-control-sm" placeholder="Ex: Passo 1, Etapa A" oninput="aplicarEstiloNoSelecionado('stepTitle', this.value)">
-                            <small class="text-muted" style="font-size:10px;">(Padrão: "Passo X")</small>
-                        </div>
+                        <!-- Título da Etapa removido conforme solicitado -->
 
                         <!-- Raia / Setor -->
                         <div class="mb-3">
@@ -1480,12 +1488,9 @@
                                   (node.data?.shape === 'parallelogram' ? 'node-parallelogram' : 
                                   (node.data?.isCentral ? 'node-central' : '')));
                                   
-                let stepTitleDisplay = node.data?.stepTitle ? escapeHtml(node.data.stepTitle) : `Passo ${node.data.stepId || node.id}`;
-                
                 nodeEl.className = `flow-node node-process ${shapeClass}`;
                 nodeEl.innerHTML = `
-                    <span class="badge-step">${stepTitleDisplay}</span>
-                    <div class="fw-semibold small leading-tight">${markersHtml} ${escapeHtml(node.data.label)}</div>
+                    <div class="fw-semibold small leading-tight mt-1">${markersHtml} ${escapeHtml(node.data.label)}</div>
                     ${node.data.documentRef ? `<span class="badge-doc">📄 ${escapeHtml(node.data.documentRef)}</span>` : ''}
                     <div class="handle handle-top"></div>
                     <div class="handle handle-bottom"></div>
@@ -1538,7 +1543,6 @@
                 document.getElementById('inspectorEmptyState').classList.add('d-none');
                 document.getElementById('inspectorControls').classList.remove('d-none');
                 document.getElementById('inspNodeLabel').value = node.data?.label || '';
-                document.getElementById('inspNodeStepTitle').value = node.data?.stepTitle || '';
                 document.getElementById('inspNodeLane').value = node.data?.lane || '';
                 document.getElementById('inspNodeDocRef').value = node.data?.documentRef || '';
                 renderizarTagsInspector(node);
@@ -1565,6 +1569,50 @@
         selectedNodeId = null;
         selectedNodeIds.clear();
         atualizarSelecoesVisuais();
+    }
+
+    function alinharSelecionados(direcao) {
+        if (selectedNodeIds.size < 2) {
+            alert('Selecione pelo menos 2 blocos (Shift + Click) para alinhar.');
+            return;
+        }
+        
+        const nosSelecionados = Array.from(selectedNodeIds).map(id => topologia.nodes.find(n => n.id === id)).filter(n => n);
+        
+        // Pega o primeiro selecionado como referência
+        const refNode = nosSelecionados[0];
+        const refX = refNode.position.x;
+        const refY = refNode.position.y;
+        
+        // Use a default size for reference if offsetWidth is 0
+        const refEl = document.getElementById(`node-${refNode.id}`);
+        const refW = refEl ? refEl.offsetWidth : 180;
+        const refH = refEl ? refEl.offsetHeight : 70;
+        
+        nosSelecionados.forEach(node => {
+            if (node.id === refNode.id) return;
+            
+            const el = document.getElementById(`node-${node.id}`);
+            const w = el ? el.offsetWidth : 180;
+            const h = el ? el.offsetHeight : 70;
+            
+            if (direcao === 'top') {
+                node.position.y = refY;
+            } else if (direcao === 'bottom') {
+                node.position.y = refY + refH - h;
+            } else if (direcao === 'left') {
+                node.position.x = refX;
+            } else if (direcao === 'right') {
+                node.position.x = refX + refW - w;
+            } else if (direcao === 'center-h') {
+                node.position.x = refX + (refW / 2) - (w / 2);
+            } else if (direcao === 'center-v') {
+                node.position.y = refY + (refH / 2) - (h / 2);
+            }
+        });
+        
+        renderizarCanvas();
+        dispararAutoSave();
     }
 
     function aplicarEstiloNoSelecionado(prop, valor) {
