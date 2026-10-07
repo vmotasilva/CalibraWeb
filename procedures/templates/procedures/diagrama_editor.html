@@ -456,6 +456,7 @@
     /* Painel Lateral Direito (Inspector de Estilos e Marcadores) */
     .inspector-panel {
         width: 400px;
+        flex-shrink: 0;
         background: #ffffff;
         border-left: 1px solid #e2e8f0;
         display: flex;
@@ -469,6 +470,7 @@
         margin-right: -1px;
         overflow: hidden;
         border-left: none;
+        flex-shrink: 1;
     }
 
     .inspector-header {
@@ -873,7 +875,7 @@
     <!-- 3. Corpo Principal do Editor -->
     <div class="editor-body-wrapper">
         <!-- VISTA 1: MODO CANVAS (VISUAL) -->
-        <div id="viewCanvasContainer" class="flex-grow-1 position-relative d-flex flex-column h-100 overflow-hidden">
+        <div id="viewCanvasContainer" class="flex-grow-1 position-relative d-flex flex-column h-100 overflow-hidden" style="min-width: 0;">
             <!-- Viewport do Diagrama (100% da área útil visual, livre e desobstruída) -->
             <div id="canvasViewport" class="canvas-viewport flex-grow-1 w-100 h-100" tabindex="0">
                 <div id="canvasSizer" class="canvas-sizer">
