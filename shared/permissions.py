@@ -194,7 +194,7 @@ NAV_STRUCTURE = [
         "blocos": [
             {
                 "key": "fluxogramas",
-                "nome": "Fluxogramas de Processos (DOC.071)",
+                "nome": "Fluxogramas de Processos",
                 "perm": "core.nav_diagramas_fluxos_bloco",
                 "funcoes": [
                     {

@@ -1206,6 +1206,97 @@ function teclaBuscaColaborador(e) {
     }
 }
 
+// =========================================================================
+// POSICIONAMENTO AUTOMÁTICO DE DESCENDENTES (lado a lado, centralizados sob o pai)
+// =========================================================================
+const GAP_VERTICAL_FILHOS = 90;
+const GAP_HORIZONTAL_FILHOS = 40;
+
+function larguraDoNo(node) {
+    const el = document.getElementById(`node-${node.id}`);
+    if (el && el.offsetWidth) return el.offsetWidth;
+    if (node.type === 'start' || node.type === 'end') return 140;
+    if (node.type === 'decision') return 110;
+    return node.data?.colab ? 200 : 180;
+}
+
+function alturaDoNo(node) {
+    const el = document.getElementById(`node-${node.id}`);
+    if (el && el.offsetHeight) return el.offsetHeight;
+    return node.type === 'decision' ? 110 : (node.type === 'start' || node.type === 'end' ? 48 : 64);
+}
+
+function filhosDoNo(parentId) {
+    const vistos = new Set();
+    return topologia.edges
+        .filter(e => e.source === parentId)
+        .map(e => topologia.nodes.find(n => n.id === e.target))
+        .filter(n => n && !vistos.has(n.id) && vistos.add(n.id));
+}
+
+// Distribui os filhos em linha, centralizados sob o pai (o bloco novo entra por último)
+function alinharFilhosDe(parentId, novoId = null) {
+    const parent = topologia.nodes.find(n => n.id === parentId);
+    if (!parent) return;
+    const filhos = filhosDoNo(parentId);
+    if (filhos.length === 0) return;
+
+    filhos.sort((a, b) => ((a.id === novoId) - (b.id === novoId)) || (a.position.x - b.position.x));
+    const larguras = filhos.map(larguraDoNo);
+    const total = larguras.reduce((soma, w) => soma + w, 0) + GAP_HORIZONTAL_FILHOS * (filhos.length - 1);
+    const centroDoPai = parent.position.x + larguraDoNo(parent) / 2;
+
+    let x = Math.max(80, Math.round(centroDoPai - total / 2));
+    filhos.forEach((filho, i) => {
+        filho.position.x = x;
+        x += larguras[i] + GAP_HORIZONTAL_FILHOS;
+    });
+}
+
+// Coloca um bloco recém-criado como filho de `parent`: mesma linha dos irmãos da mesma raia, abaixo do pai
+// (ou dentro da faixa da própria raia) e acomoda as faixas que cresceram (as de baixo descem com seus blocos).
+// `faixasAntes` = calcularFaixasRaias(...) obtido ANTES de inserir o bloco.
+function inserirFilhoNoLayout(parent, novo, faixasAntes) {
+    const lane = novo.data?.lane || 'Geral';
+    const laneDoPai = parent.data?.lane || 'Geral';
+    const irmaoNaRaia = filhosDoNo(parent.id).find(n => n.id !== novo.id && (n.data?.lane || 'Geral') === lane);
+
+    if (irmaoNaRaia) {
+        novo.position.y = irmaoNaRaia.position.y;
+    } else if (lane === laneDoPai || !faixasAntes[lane]) {
+        novo.position.y = parent.position.y + alturaDoNo(parent) + GAP_VERTICAL_FILHOS;
+    } else {
+        novo.position.y = Math.round(faixasAntes[lane].top + faixasAntes[lane].height / 2 - 32);
+    }
+
+    alinharFilhosDe(parent.id, novo.id);
+
+    // faixas que cresceram empurram as de baixo, junto com os blocos delas
+    const depois = calcularFaixasRaias(obterListaRaiasOrdenada());
+    topologia.nodes.forEach(n => {
+        const l = n.data?.lane || 'Geral';
+        if (faixasAntes[l] && depois[l]) n.position.y += depois[l].top - faixasAntes[l].top;
+    });
+    if (!faixasAntes[lane] && lane !== laneDoPai && !irmaoNaRaia && depois[lane]) {
+        novo.position.y = Math.round(depois[lane].top + depois[lane].height / 2 - 32);
+    }
+}
+
+function ligarFilhoAoPai(parent, novoId) {
+    topologia.edges.push({
+        id: `e-${parent.id}-${novoId}`,
+        source: parent.id,
+        target: novoId,
+        sourceHandle: 'bottom',
+        targetHandle: 'top'
+    });
+    const parentGrid = topologia.grid_data.find(r => r.stepId === parent.id);
+    if (parentGrid) {
+        if (!parentGrid.next) parentGrid.next = [];
+        parentGrid.next.push({ targetId: novoId });
+    }
+}
+
 function confirmarAdicionarBloco() {
     const modo = document.getElementById('btnModoGenerico').classList.contains('active') ? 'generico' : 'colab';
     let labelText = 'Nova Etapa';
@@ -1226,36 +1317,33 @@ function confirmarAdicionarBloco() {
     }
 
     const nextId = gerarProximoNodeId();
+    const faixasAntes = calcularFaixasRaias(obterListaRaiasOrdenada());
 
     if (ctxNovoBloco.type === 'irmao') {
         const refNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[topologia.nodes.length - 1];
         const lane = laneText || refNode?.data?.lane || 'Geral';
-        const posX = refNode ? refNode.position.x + 220 : 100;
-        const posY = refNode ? refNode.position.y : 100;
-        
-        _pushNodeAndGrid(nextId, posX, posY, lane, labelText, colabData);
+        const arestaDoPai = refNode ? topologia.edges.find(e => e.target === refNode.id) : null;
+        const pai = arestaDoPai ? topologia.nodes.find(n => n.id === arestaDoPai.source) : null;
+
+        if (pai) {
+            // irmão = outro filho do mesmo pai: entra na mesma linha, lado a lado e centralizado sob o pai
+            _pushNodeAndGrid(nextId, refNode.position.x + 220, refNode.position.y, lane, labelText, colabData);
+            ligarFilhoAoPai(pai, nextId);
+            inserirFilhoNoLayout(pai, topologia.nodes.find(n => n.id === nextId), faixasAntes);
+        } else {
+            // sem pai (bloco raiz): fica à direita, na mesma linha
+            const posX = refNode ? refNode.position.x + 220 : 100;
+            const posY = refNode ? refNode.position.y : 100;
+            _pushNodeAndGrid(nextId, posX, posY, lane, labelText, colabData);
+        }
     } else if (ctxNovoBloco.type === 'filho') {
         const parentNode = topologia.nodes.find(n => n.id === selectedNodeId) || topologia.nodes[0];
         if (!parentNode) return;
-        const posX = parentNode.position.x + 220;
-        const posY = parentNode.position.y + 70;
         const lane = laneText || parentNode.data?.lane || 'Geral';
-        
-        _pushNodeAndGrid(nextId, posX, posY, lane, labelText, colabData);
 
-        topologia.edges.push({
-            id: `e-${parentNode.id}-${nextId}`,
-            source: parentNode.id,
-            target: nextId,
-            sourceHandle: 'right',
-            targetHandle: 'left'
-        });
-
-        const parentGrid = topologia.grid_data.find(r => r.stepId === parentNode.id);
-        if (parentGrid) {
-            if (!parentGrid.next) parentGrid.next = [];
-            parentGrid.next.push({ targetId: nextId });
-        }
+        _pushNodeAndGrid(nextId, parentNode.position.x, parentNode.position.y + 160, lane, labelText, colabData);
+        ligarFilhoAoPai(parentNode, nextId);
+        inserirFilhoNoLayout(parentNode, topologia.nodes.find(n => n.id === nextId), faixasAntes);
     } else if (ctxNovoBloco.type === 'adjacente') {
         const parentNode = topologia.nodes.find(n => n.id === ctxNovoBloco.sourceId);
         if (!parentNode) return;
@@ -1269,6 +1357,18 @@ function confirmarAdicionarBloco() {
 
         const lane = laneText || parentNode.data?.lane || 'Geral';
         _pushNodeAndGrid(nextId, posX, posY, lane, labelText, colabData);
+
+        if (dir === 'bottom') {
+            // "+" de baixo é um filho: alinhado lado a lado com os demais filhos do bloco
+            ligarFilhoAoPai(parentNode, nextId);
+            inserirFilhoNoLayout(parentNode, topologia.nodes.find(n => n.id === nextId), faixasAntes);
+            renderizarCanvas();
+            selecionarNo(nextId);
+            dispararAutoSave();
+            const modalBaixo = bootstrap.Modal.getInstance(document.getElementById('modalNovoBloco'));
+            if (modalBaixo) modalBaixo.hide();
+            return;
+        }
 
         topologia.edges.push({
             id: `e-${parentNode.id}-${nextId}`,

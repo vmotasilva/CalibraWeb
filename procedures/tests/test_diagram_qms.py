@@ -786,3 +786,38 @@ class DiagramaModalColaboradorTestCase(TestCase):
         self.assertIn('confirmarAdicionarBloco()', trecho)          # clicar no resultado cria o bloco
         self.assertIn('/procedures/api/diagramas/colaboradores/', trecho)
         self.assertNotIn('/rh/api/colaboradores/', js)              # formato antigo/incorreto não é mais usado
+
+
+class DiagramaAlinhamentoDescendentesTestCase(TestCase):
+    def test_editor_alinha_descendentes_lado_a_lado(self):
+        from pathlib import Path
+        js = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js').read_text(encoding='utf-8')
+        for funcao in ('function alinharFilhosDe', 'function inserirFilhoNoLayout', 'function ligarFilhoAoPai'):
+            self.assertIn(funcao, js)
+        trecho = js[js.index('function confirmarAdicionarBloco'):js.index('function _pushNodeAndGrid')]
+        # filho, irmão (com pai) e o "+" de baixo usam o alinhamento automático
+        self.assertGreaterEqual(trecho.count('inserirFilhoNoLayout('), 3)
+        # conexões de filhos saem por baixo e chegam por cima (traçado vertical)
+        corpo = js[js.index('function ligarFilhoAoPai'):js.index('function confirmarAdicionarBloco')]
+        self.assertIn("sourceHandle: 'bottom'", corpo)
+        self.assertIn("targetHandle: 'top'", corpo)
+
+
+class TelaDePermissoesDiagramasTestCase(TestCase):
+    def test_card_do_modulo_diagramas_tem_cor_legivel_e_bloco_renomeado(self):
+        admin = User.objects.create_superuser(username='admin.perm', password='x', email='a@b.com')
+        alvo = User.objects.create_user(username='alvo.perm', password='x')
+        c = Client()
+        c.force_login(admin)
+        resp = c.get(f'/rh/usuarios/{alvo.id}/')
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+
+        # cabeçalho do módulo usa uma cor que tem CSS definido na própria tela
+        self.assertIn('card-header bg-purple text-white module-header', html)
+        self.assertIn('.bg-purple {', html)
+        self.assertNotIn('bg-teal', html)
+
+        # bloco sem o sufixo (DOC.071)
+        self.assertIn('Fluxogramas de Processos', html)
+        self.assertNotIn('Fluxogramas de Processos (DOC.071)', html)
