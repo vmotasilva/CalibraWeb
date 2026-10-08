@@ -35,10 +35,12 @@ class DiagramaQMSTestCase(TestCase):
             dados_topologia={
                 "nodes": [
                     {"id": "1", "type": "start", "position": {"x": 100, "y": 100}, "data": {"label": "Início"}},
-                    {"id": "2", "type": "process", "position": {"x": 300, "y": 100}, "data": {"label": "Receber Instrumento"}}
+                    {"id": "2", "type": "process", "position": {"x": 300, "y": 100}, "data": {"label": "Receber Instrumento"}},
+                    {"id": "3", "type": "end", "position": {"x": 500, "y": 100}, "data": {"label": "Fim"}}
                 ],
                 "edges": [
-                    {"id": "e-1-2", "source": "1", "target": "2"}
+                    {"id": "e-1-2", "source": "1", "target": "2"},
+                    {"id": "e-2-3", "source": "2", "target": "3"}
                 ],
                 "grid_data": []
             }
@@ -99,7 +101,7 @@ class DiagramaQMSTestCase(TestCase):
 
         self.assertEqual(nova_versao.revisao, 1)
         self.assertEqual(nova_versao.status, StatusDiagrama.RASCUNHO)
-        self.assertEqual(len(nova_versao.dados_topologia['nodes']), 2)
+        self.assertEqual(len(nova_versao.dados_topologia['nodes']), 3)
 
     def test_gerador_pdf_doc071(self):
         """Valida que o serviço ReportLab gera bytes de PDF válidos com cabeçalho DOC.071."""
@@ -218,10 +220,12 @@ class DiagramaGovernancaTestCase(TestCase):
                     {"id": "1", "type": "start", "position": {"x": 100, "y": 60}, "data": {"label": "Início", "lane": "Lab"}},
                     {"id": "2", "type": "decision", "position": {"x": 100, "y": 200}, "data": {"label": "Conforme? 😀", "lane": "Lab"}},
                     {"id": "3", "type": "process", "position": {"x": 400, "y": 200}, "data": {"label": "Liberar", "lane": "Qualidade", "customTags": ["Tag"]}},
+                    {"id": "4", "type": "end", "position": {"x": 400, "y": 340}, "data": {"label": "Fim", "lane": "Qualidade"}},
                 ],
                 "edges": [
                     {"id": "e-1-2", "source": "1", "target": "2"},
                     {"id": "e-2-3", "source": "2", "target": "3", "label": "Sim", "sourceHandle": "right"},
+                    {"id": "e-2-4", "source": "2", "target": "4", "label": "Não"},
                 ],
                 "grid_data": [],
             },
