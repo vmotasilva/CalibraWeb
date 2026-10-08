@@ -39,14 +39,24 @@ PERM_NOVA_REVISAO = 'core.nav_diagramas_nova_revisao'
 PERM_EXPORT_PDF = 'core.nav_diagramas_export_pdf'
 
 
+# Módulos JS do editor, na ordem de carregamento (scripts clássicos que compartilham o escopo global)
+EDITOR_JS_MODULOS = [
+    'estado', 'layout_arvore', 'inicializacao', 'canvas', 'inspetor', 'blocos', 'arvore', 'edicao_inline',
+    'outliner_grelha', 'raias_layout', 'persistencia', 'acoes_qms',
+]
+
+
 @lru_cache(maxsize=1)
 def _versao_js_editor() -> str:
-    """Hash do JS do editor para invalidar o cache do navegador a cada alteração do arquivo."""
-    caminho = Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js'
-    try:
-        return hashlib.md5(caminho.read_bytes()).hexdigest()[:10]
-    except OSError:
-        return '0'
+    """Hash de todos os módulos JS do editor para invalidar o cache do navegador a cada alteração."""
+    pasta = Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama'
+    resumo = hashlib.md5()
+    for nome in EDITOR_JS_MODULOS:
+        try:
+            resumo.update((pasta / f'{nome}.js').read_bytes())
+        except OSError:
+            resumo.update(nome.encode())
+    return resumo.hexdigest()[:10]
 
 
 def _tem_permissao(user, perm: str) -> bool:
@@ -687,6 +697,7 @@ def diagrama_editor_view(request, versao_id):
         'is_approved': versao.status == StatusDiagrama.APROVADO,
         'is_locked': versao.status != StatusDiagrama.RASCUNHO,
         'editor_js_version': _versao_js_editor(),
+        'editor_js_modulos': EDITOR_JS_MODULOS,
         'raias_catalogo': raias_catalogo_para_editor(),
         'pode_gerenciar_raias': pode_gerenciar_raias(request.user),
         'is_rascunho': versao.status == StatusDiagrama.RASCUNHO,

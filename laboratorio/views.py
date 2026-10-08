@@ -28,6 +28,8 @@ from .forms import (
     NovoLoteCoatingForm,
     TurnoCoatingForm,
     EquipeCoatingForm,
+    FluxoProcessoTMSForm,
+    EtapaProcessoTMSForm,
 )
 from django.db.models import Q
 from .models import (
@@ -43,6 +45,8 @@ from .models import (
     EquipeCoating,
     ItemChecklistCiclo,
     RespostaChecklistManutencao,
+    FluxoProcessoTMS,
+    EtapaProcessoTMS,
 )
 from maquinas.models import Maquina
 from .coating_horarios import (
@@ -3248,3 +3252,412 @@ def api_verificar_lote_coating(request):
         return JsonResponse({'exists': exists})
     except ValueError:
         return JsonResponse({'exists': False})
+
+
+# ==============================================================================
+# TMS - TEMPOS E MOVIMENTOS / PREVISÃO DE PRODUÇÃO & ANÁLISE DE GARGALOS
+# ==============================================================================
+
+@login_required
+def tms_dashboard(request):
+    """
+    Cockpit Principal do TMS: visualização do fluxo, identificação do gargalo,
+    gráficos de balanceamento e calculadora de previsão de produção interativa.
+    """
+    fluxos = FluxoProcessoTMS.objects.filter(ativo=True).order_by("nome")
+    
+    # Se não houver fluxos ativos, buscar todos os cadastrados
+    if not fluxos.exists():
+        fluxos = FluxoProcessoTMS.objects.all().order_by("nome")
+    
+    fluxo_id = request.GET.get("fluxo_id")
+    fluxo_selecionado = None
+
+    if fluxo_id:
+        fluxo_selecionado = FluxoProcessoTMS.objects.filter(id=fluxo_id).first()
+    
+    if not fluxo_selecionado and fluxos.exists():
+        fluxo_selecionado = fluxos.first()
+
+    metricas = None
+    previsao_exemplo = None
+
+    if fluxo_selecionado:
+        metricas = fluxo_selecionado.calcular_metricas()
+        # Previsão padrão de 500 peças
+        demanda_padrao = float(request.GET.get("demanda", 500))
+        tipo_unidade_padrao = request.GET.get("tipo_unidade", fluxo_selecionado.unidade_medida)
+        previsao_exemplo = fluxo_selecionado.simular_previsao(
+            demanda_unidades=demanda_padrao,
+            tipo_unidade=tipo_unidade_padrao
+        )
+
+    context = {
+        "fluxos": fluxos,
+        "fluxo_selecionado": fluxo_selecionado,
+        "metricas": metricas,
+        "previsao_exemplo": previsao_exemplo,
+        "metricas_json": json.dumps(metricas) if metricas else "null",
+    }
+    return render(request, "laboratorio/tms_dashboard.html", context)
+
+
+@login_required
+def api_tms_simular(request):
+    """
+    Endpoint AJAX para cálculo em tempo real de Previsão de Produção,
+    detecção de Gargalos e simulação 'What-If' com ajustes nos postos/tempos.
+    """
+    if request.method not in ["GET", "POST"]:
+        return JsonResponse({"error": "Método não permitido"}, status=405)
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body or "{}")
+        except Exception:
+            data = request.POST.dict()
+    else:
+        data = request.GET.dict()
+
+    fluxo_id = data.get("fluxo_id")
+    fluxo = get_object_or_404(FluxoProcessoTMS, id=fluxo_id)
+
+    demanda = float(data.get("demanda") or 0.0)
+    tipo_unidade = data.get("tipo_unidade") or fluxo.unidade_medida
+    horas_dia = float(data.get("horas_dia") or fluxo.horas_trabalho_dia or 8.8)
+    etapas_override = data.get("etapas_override") or {}
+
+    # Se etapas_override vier como string JSON
+    if isinstance(etapas_override, str):
+        try:
+            etapas_override = json.loads(etapas_override)
+        except Exception:
+            etapas_override = {}
+
+    resultado = fluxo.simular_previsao(
+        demanda_unidades=demanda,
+        tipo_unidade=tipo_unidade,
+        horas_dia_simulada=horas_dia,
+        etapas_override=etapas_override
+    )
+
+    return JsonResponse({"success": True, "resultado": resultado})
+
+
+@login_required
+def tms_fluxos_list(request):
+    """Lista e gerenciamento de Linhas/Fluxos de Produção do TMS."""
+    fluxos_qs = FluxoProcessoTMS.objects.all().prefetch_related("etapas")
+    
+    lista_fluxos = []
+    for fl in fluxos_qs:
+        m = fl.calcular_metricas()
+        lista_fluxos.append({
+            "obj": fl,
+            "total_etapas": m["total_etapas"],
+            "gargalo": m["gargalo"],
+            "capacidade_dia_pecas": m["capacidade_maxima_dia_pecas"],
+            "capacidade_dia_pares": m["capacidade_maxima_dia_pares"],
+            "eficiencia_linha": m["eficiencia_balanceamento_pct"],
+            "lead_time_min": m["lead_time_teorico_unitario_min"],
+        })
+
+    context = {
+        "fluxos": lista_fluxos,
+        "total_fluxos": len(lista_fluxos),
+    }
+    return render(request, "laboratorio/tms_fluxos_list.html", context)
+
+
+@login_required
+def tms_fluxo_create(request):
+    """Criação de novo Fluxo de Produção TMS."""
+    if request.method == "POST":
+        form = FluxoProcessoTMSForm(request.POST)
+        if form.is_valid():
+            fluxo = form.save()
+            messages.success(request, f"Fluxo '{fluxo.nome}' criado com sucesso!")
+            return redirect("laboratorio:tms_etapas_list", fluxo_id=fluxo.id)
+    else:
+        form = FluxoProcessoTMSForm()
+
+    return render(request, "laboratorio/tms_fluxo_form.html", {
+        "form": form,
+        "titulo": "Novo Fluxo de Produção TMS",
+        "acao": "Criar Fluxo",
+    })
+
+
+@login_required
+def tms_fluxo_update(request, pk):
+    """Edição de Fluxo de Produção TMS."""
+    fluxo = get_object_or_404(FluxoProcessoTMS, pk=pk)
+    if request.method == "POST":
+        form = FluxoProcessoTMSForm(request.POST, instance=fluxo)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Fluxo '{fluxo.nome}' atualizado com sucesso!")
+            return redirect("laboratorio:tms_fluxos_list")
+    else:
+        form = FluxoProcessoTMSForm(instance=fluxo)
+
+    return render(request, "laboratorio/tms_fluxo_form.html", {
+        "form": form,
+        "fluxo": fluxo,
+        "titulo": f"Editar Fluxo: {fluxo.nome}",
+        "acao": "Salvar Alterações",
+    })
+
+
+@login_required
+@require_POST
+def tms_fluxo_delete(request, pk):
+    """Exclusão de Fluxo de Produção TMS."""
+    fluxo = get_object_or_404(FluxoProcessoTMS, pk=pk)
+    nome = fluxo.nome
+    fluxo.delete()
+    messages.success(request, f"Fluxo '{nome}' excluído com sucesso.")
+    return redirect("laboratorio:tms_fluxos_list")
+
+
+@login_required
+@require_POST
+def tms_fluxo_duplicar(request, pk):
+    """Duplica um fluxo e todas as suas etapas (útil para simulações Kaizen)."""
+    origem = get_object_or_404(FluxoProcessoTMS, pk=pk)
+    
+    novo_nome = f"{origem.nome} (Cópia)"
+    contador = 1
+    while FluxoProcessoTMS.objects.filter(nome=novo_nome).exists():
+        contador += 1
+        novo_nome = f"{origem.nome} (Cópia {contador})"
+
+    novo_fluxo = FluxoProcessoTMS.objects.create(
+        nome=novo_nome,
+        codigo=f"{origem.codigo}-COP" if origem.codigo else "",
+        descricao=f"Cópia criada a partir de '{origem.nome}'. {origem.descricao}",
+        horas_trabalho_dia=origem.horas_trabalho_dia,
+        dias_trabalho_mes=origem.dias_trabalho_mes,
+        unidade_medida=origem.unidade_medida,
+        fator_conversao_par=origem.fator_conversao_par,
+        tamanho_padrao_lote=origem.tamanho_padrao_lote,
+        ativo=origem.ativo,
+    )
+
+    for etapa in origem.etapas.all():
+        EtapaProcessoTMS.objects.create(
+            fluxo=novo_fluxo,
+            ordem=etapa.ordem,
+            nome=etapa.nome,
+            codigo=etapa.codigo,
+            tipo_posto=etapa.tipo_posto,
+            maquina=etapa.maquina,
+            tempo_ciclo_segundos=etapa.tempo_ciclo_segundos,
+            tempo_setup_minutos=etapa.tempo_setup_minutos,
+            postos_paralelos=etapa.postos_paralelos,
+            eficiencia_oee=etapa.eficiencia_oee,
+            perda_refugo_pct=etapa.perda_refugo_pct,
+            observacoes=etapa.observacoes,
+            ativo=etapa.ativo,
+        )
+
+    messages.success(request, f"Fluxo duplicado como '{novo_nome}' com {origem.etapas.count()} etapas.")
+    return redirect("laboratorio:tms_etapas_list", fluxo_id=novo_fluxo.id)
+
+
+@login_required
+def tms_etapas_list(request, fluxo_id):
+    """Listagem e configuração das etapas de um fluxo de produção específico."""
+    fluxo = get_object_or_404(FluxoProcessoTMS, id=fluxo_id)
+    metricas = fluxo.calcular_metricas()
+
+    context = {
+        "fluxo": fluxo,
+        "metricas": metricas,
+        "etapas": metricas["etapas"],
+    }
+    return render(request, "laboratorio/tms_etapas_list.html", context)
+
+
+@login_required
+def tms_etapa_create(request, fluxo_id):
+    """Adiciona uma nova etapa a um fluxo de produção."""
+    fluxo = get_object_or_404(FluxoProcessoTMS, id=fluxo_id)
+    if request.method == "POST":
+        form = EtapaProcessoTMSForm(request.POST, fluxo_id=fluxo.id)
+        if form.is_valid():
+            etapa = form.save(commit=False)
+            etapa.fluxo = fluxo
+            etapa.save()
+            messages.success(request, f"Etapa '{etapa.nome}' cadastrada com sucesso!")
+            return redirect("laboratorio:tms_etapas_list", fluxo_id=fluxo.id)
+    else:
+        form = EtapaProcessoTMSForm(fluxo_id=fluxo.id)
+
+    return render(request, "laboratorio/tms_etapa_form.html", {
+        "form": form,
+        "fluxo": fluxo,
+        "titulo": f"Nova Etapa - {fluxo.nome}",
+        "acao": "Adicionar Etapa",
+    })
+
+
+@login_required
+def tms_etapa_update(request, pk):
+    """Edição de uma etapa de processo existente."""
+    etapa = get_object_or_404(EtapaProcessoTMS, pk=pk)
+    fluxo = etapa.fluxo
+    if request.method == "POST":
+        form = EtapaProcessoTMSForm(request.POST, instance=etapa)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Etapa '{etapa.nome}' atualizada com sucesso!")
+            return redirect("laboratorio:tms_etapas_list", fluxo_id=fluxo.id)
+    else:
+        form = EtapaProcessoTMSForm(instance=etapa)
+
+    return render(request, "laboratorio/tms_etapa_form.html", {
+        "form": form,
+        "etapa": etapa,
+        "fluxo": fluxo,
+        "titulo": f"Editar Etapa: {etapa.nome}",
+        "acao": "Salvar Alterações",
+    })
+
+
+@login_required
+@require_POST
+def tms_etapa_delete(request, pk):
+    """Exclusão de uma etapa de processo."""
+    etapa = get_object_or_404(EtapaProcessoTMS, pk=pk)
+    fluxo_id = etapa.fluxo_id
+    nome = etapa.nome
+    etapa.delete()
+    messages.success(request, f"Etapa '{nome}' removida.")
+    return redirect("laboratorio:tms_etapas_list", fluxo_id=fluxo_id)
+
+
+@login_required
+@require_POST
+def api_tms_reordenar_etapas(request):
+    """Reordena as etapas via AJAX (drag & drop ou botões)."""
+    try:
+        data = json.loads(request.body or "{}")
+        ordem_ids = data.get("ordem_ids", [])
+        for index, etapa_id in enumerate(ordem_ids, start=1):
+            EtapaProcessoTMS.objects.filter(id=etapa_id).update(ordem=index)
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=400)
+
+
+@login_required
+def tms_exportar_excel(request, fluxo_id):
+    """Exporta o estudo completo de TMS e capacidade para planilha Excel."""
+    import pandas as pd
+
+    fluxo = get_object_or_404(FluxoProcessoTMS, id=fluxo_id)
+    metricas = fluxo.calcular_metricas()
+
+    dados_etapas = []
+    for e in metricas["etapas"]:
+        dados_etapas.append({
+            "Ordem": e["ordem"],
+            "Etapa": e["nome"],
+            "Código": e["codigo"] or "-",
+            "Tipo de Posto": e["tipo_posto_display"],
+            "Máquina": e["maquina_codigo"] or "-",
+            "Tempo Ciclo (s)": e["tempo_ciclo_segundos"],
+            "Setup (min)": e["tempo_setup_minutos"],
+            "Postos Paralelos": e["postos_paralelos"],
+            "Eficiência OEE (%)": f"{e['eficiencia_oee']}%",
+            "Refugo (%)": f"{e['perda_refugo_pct']}%",
+            "TC Efetivo (s)": e["tc_efetivo_segundos"],
+            "Capacidade (Pçs/Hora)": e["capacidade_hora_pecas"],
+            "Capacidade (Pçs/Dia)": e["capacidade_dia_pecas"],
+            "Capacidade (Pares/Dia)": e["capacidade_dia_pares"],
+            "Capacidade (Pçs/Mês)": e["capacidade_mes_pecas"],
+            "Taxa de Utilização (%)": f"{e['utilizacao_pct']}%",
+            "Status": "GARGALO (RESTRIÇÃO)" if e["is_gargalo"] else "Operacional",
+        })
+
+    df_etapas = pd.DataFrame(dados_etapas)
+
+    # Resumo Geral
+    df_resumo = pd.DataFrame([
+        {"Indicador": "Linha / Fluxo", "Valor": fluxo.nome},
+        {"Indicador": "Jornada de Trabalho (h/dia)", "Valor": f"{fluxo.horas_trabalho_dia} h"},
+        {"Indicador": "Dias Úteis no Mês", "Valor": f"{fluxo.dias_trabalho_mes} dias"},
+        {"Indicador": "Posto Gargalo", "Valor": metricas["gargalo"]["nome"] if metricas["gargalo"] else "Nenhum"},
+        {"Indicador": "Capacidade Máxima da Linha (Peças/Hora)", "Valor": metricas["capacidade_maxima_hora_pecas"]},
+        {"Indicador": "Capacidade Máxima da Linha (Peças/Dia)", "Valor": metricas["capacidade_maxima_dia_pecas"]},
+        {"Indicador": "Capacidade Máxima da Linha (Pares/Dia)", "Valor": metricas["capacidade_maxima_dia_pares"]},
+        {"Indicador": "Capacidade Máxima da Linha (Peças/Mês)", "Valor": metricas["capacidade_maxima_mes_pecas"]},
+        {"Indicador": "Eficiência de Balanceamento da Linha", "Valor": f"{metricas['eficiencia_balanceamento_pct']}%"},
+        {"Indicador": "Lead Time Teórico Unitário (Minutos)", "Valor": f"{metricas['lead_time_teorico_unitario_min']} min"},
+    ])
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df_resumo.to_excel(writer, sheet_name="Resumo Geral", index=False)
+        df_etapas.to_excel(writer, sheet_name="Detalhamento Etapas TMS", index=False)
+
+    output.seek(0)
+    nome_arquivo = f"TMS_{fluxo.nome.replace(' ', '_')}_{timezone.now().strftime('%Y%m%d')}.xlsx"
+    response = HttpResponse(
+        output.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="{nome_arquivo}"'
+    return response
+
+
+@login_required
+def tms_carregar_template_exemplo(request):
+    """Cria um fluxo de exemplo completo e realista de Laboratório de Lentes/Coating."""
+    nome_padrao = "Linha de Produção - Lentes & Coating AR"
+    
+    if FluxoProcessoTMS.objects.filter(nome=nome_padrao).exists():
+        messages.info(request, f"O fluxo de exemplo '{nome_padrao}' já existe.")
+        fluxo = FluxoProcessoTMS.objects.get(nome=nome_padrao)
+        return redirect("laboratorio:tms_dashboard")
+
+    fluxo = FluxoProcessoTMS.objects.create(
+        nome=nome_padrao,
+        codigo="LINHA-LAB-01",
+        descricao="Fluxo padrão de fabricação e tratamento antirreflexo de lentes oftálmicas com balanceamento de postos.",
+        horas_trabalho_dia=8.8,
+        dias_trabalho_mes=22,
+        unidade_medida=FluxoProcessoTMS.UNIDADE_PECAS,
+        fator_conversao_par=2.0,
+        tamanho_padrao_lote=60,
+    )
+
+    etapas_modelo = [
+        {"ordem": 1, "nome": "01 - Triagem e Bloqueio de Lentes", "codigo": "ET-01", "tipo_posto": "MANUAL", "tc": 25.0, "setup": 5.0, "postos": 2, "oee": 90.0, "refugo": 0.5},
+        {"ordem": 2, "nome": "02 - Gerador de Curvas / Surfaçagem", "codigo": "ET-02", "tipo_posto": "MAQUINA", "tc": 45.0, "setup": 10.0, "postos": 3, "oee": 88.0, "refugo": 1.2},
+        {"ordem": 3, "nome": "03 - Polimento e Desbloqueio", "codigo": "ET-03", "tipo_posto": "MAQUINA", "tc": 50.0, "setup": 8.0, "postos": 3, "oee": 85.0, "refugo": 0.8},
+        {"ordem": 4, "nome": "04 - Lavagem e Ultrassom", "codigo": "ET-04", "tipo_posto": "HIBRIDO", "tc": 30.0, "setup": 15.0, "postos": 1, "oee": 92.0, "refugo": 0.3},
+        {"ordem": 5, "nome": "05 - Montagem nos Anéis de Coating", "codigo": "ET-05", "tipo_posto": "MANUAL", "tc": 18.0, "setup": 5.0, "postos": 2, "oee": 90.0, "refugo": 0.4},
+        {"ordem": 6, "nome": "06 - Câmara de Alto Vácuo (Coating AR)", "codigo": "ET-06", "tipo_posto": "MAQUINA", "tc": 80.0, "setup": 20.0, "postos": 2, "oee": 82.0, "refugo": 2.0},
+        {"ordem": 7, "nome": "07 - Controle de Qualidade & Inspeção", "codigo": "ET-07", "tipo_posto": "MANUAL", "tc": 35.0, "setup": 0.0, "postos": 2, "oee": 95.0, "refugo": 1.5},
+        {"ordem": 8, "nome": "08 - Embalagem e Etiquetagem", "codigo": "ET-08", "tipo_posto": "MANUAL", "tc": 20.0, "setup": 2.0, "postos": 1, "oee": 92.0, "refugo": 0.1},
+    ]
+
+    for item in etapas_modelo:
+        EtapaProcessoTMS.objects.create(
+            fluxo=fluxo,
+            ordem=item["ordem"],
+            nome=item["nome"],
+            codigo=item["codigo"],
+            tipo_posto=item["tipo_posto"],
+            tempo_ciclo_segundos=item["tc"],
+            tempo_setup_minutos=item["setup"],
+            postos_paralelos=item["postos"],
+            eficiencia_oee=item["oee"],
+            perda_refugo_pct=item["refugo"],
+        )
+
+    messages.success(request, f"Fluxo de exemplo '{nome_padrao}' criado com 8 etapas completas!")
+    return redirect("laboratorio:tms_dashboard")
+

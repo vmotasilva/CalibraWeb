@@ -307,6 +307,24 @@
                                 {% if nav_coating_equipe %}<li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>{% endif %}
                             {% endif %}
                         {% endif %}
+
+                        {% can_nav_block user 'laboratorio' 'tms' as nav_lab_tms %}
+                        {% if nav_lab_tms %}
+                            {% can_nav_view user 'laboratorio:tms_dashboard' 'laboratorio' as nav_tms_dash %}
+                            {% can_nav_view user 'laboratorio:tms_fluxos_list' 'laboratorio' as nav_tms_fluxos %}
+                            {% if nav_tms_dash or nav_tms_fluxos %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTMSMobile" style="cursor: pointer;">
+                                        TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    </h6>
+                                    <ul class="list-unstyled collapse show" id="collapseTMSMobile">
+                                {% if nav_tms_dash %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:tms_dashboard' %}"><i class="bi bi-stopwatch me-1"></i> Previsão & Gargalos</a></li>{% endif %}
+                                {% if nav_tms_fluxos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tms_fluxos_list' %}"><i class="bi bi-diagram-3 me-1"></i> Linhas de Produção</a></li>{% endif %}
+                                    </ul>
+                                </li>
+                            {% endif %}
+                        {% endif %}
                     </ul>
                 </li>
                 {% endif %}

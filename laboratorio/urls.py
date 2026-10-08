@@ -97,4 +97,21 @@ urlpatterns = [
     path("coating/api/recalcular-turno/", views.api_recalcular_turno_registro, name="api_recalcular_turno_registro"),
     path("coating/api/recalcular-todos-turnos/", views.api_recalcular_todos_turnos, name="api_recalcular_todos_turnos"),
     path("coating/api/verificar-lote/", views.api_verificar_lote_coating, name="api_verificar_lote_coating"),
+
+    # Rotas para TMS - Tempos e Movimentos & Previsão de Produção
+    path("tms/", views.tms_dashboard, name="tms_dashboard"),
+    path("tms/fluxos/", views.tms_fluxos_list, name="tms_fluxos_list"),
+    path("tms/fluxos/novo/", views.tms_fluxo_create, name="tms_fluxo_create"),
+    path("tms/fluxos/<int:pk>/editar/", views.tms_fluxo_update, name="tms_fluxo_update"),
+    path("tms/fluxos/<int:pk>/excluir/", views.tms_fluxo_delete, name="tms_fluxo_delete"),
+    path("tms/fluxos/<int:pk>/duplicar/", views.tms_fluxo_duplicar, name="tms_fluxo_duplicar"),
+    path("tms/fluxos/<int:fluxo_id>/etapas/", views.tms_etapas_list, name="tms_etapas_list"),
+    path("tms/fluxos/<int:fluxo_id>/etapas/nova/", views.tms_etapa_create, name="tms_etapa_create"),
+    path("tms/etapas/<int:pk>/editar/", views.tms_etapa_update, name="tms_etapa_update"),
+    path("tms/etapas/<int:pk>/excluir/", views.tms_etapa_delete, name="tms_etapa_delete"),
+    path("tms/api/reordenar-etapas/", views.api_tms_reordenar_etapas, name="api_tms_reordenar_etapas"),
+    path("tms/api/simular/", views.api_tms_simular, name="api_tms_simular"),
+    path("tms/fluxos/<int:fluxo_id>/excel/", views.tms_exportar_excel, name="tms_exportar_excel"),
+    path("tms/carregar-exemplo/", views.tms_carregar_template_exemplo, name="tms_carregar_exemplo"),
 ]
+

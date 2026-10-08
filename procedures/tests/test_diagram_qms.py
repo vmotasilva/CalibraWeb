@@ -15,6 +15,14 @@ from procedures.services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
 User = get_user_model()
 
 
+def ler_js_editor() -> str:
+    """Conteúdo de todos os módulos JS do editor, na ordem de carregamento."""
+    from pathlib import Path
+    from procedures.views.diagram_views import EDITOR_JS_MODULOS
+    pasta = Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama'
+    return '\n'.join((pasta / f'{m}.js').read_text(encoding='utf-8') for m in EDITOR_JS_MODULOS)
+
+
 class DiagramaQMSTestCase(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='auditor.qualidade', password='password123', email='auditor@calibraweb.com')
@@ -329,12 +337,12 @@ class DiagramaGovernancaTestCase(TestCase):
         url = f'/procedures/diagramas/editor/{self.versao.id}/'
         html = self._cliente(self.autor).get(url).content.decode()
         for marcador in ('id="btnDesfazer"', 'id="btnRefazer"', 'onclick="excluirSelecao()"',
-                         'Organizar', 'id="labelEstiloLinha"', 'procedures/js/diagrama_editor.js'):
+                         'Organizar', 'id="labelEstiloLinha"', 'procedures/js/diagrama/estado.js'):
             self.assertIn(marcador, html)
 
         # A lógica do editor fica no arquivo estático
         from pathlib import Path
-        js = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js').read_text(encoding='utf-8')
+        js = ler_js_editor()
         for funcao in ('function editarRotuloAresta', 'function desfazer()', 'function dispararAutoSave'):
             self.assertIn(funcao, js)
 
@@ -781,7 +789,7 @@ class DiagramaModalColaboradorTestCase(TestCase):
         self.assertIn('oninput="buscarColaboradoresParaBloco(this.value)"', html)
         self.assertIn('onkeydown="teclaBuscaColaborador(event)"', html)
 
-        js = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js').read_text(encoding='utf-8')
+        js = ler_js_editor()
         trecho = js[js.index('function escolherColaboradorParaBloco'):js.index('function confirmarAdicionarBloco')]
         self.assertIn('confirmarAdicionarBloco()', trecho)          # clicar no resultado cria o bloco
         self.assertIn('/procedures/api/diagramas/colaboradores/', trecho)
@@ -791,7 +799,7 @@ class DiagramaModalColaboradorTestCase(TestCase):
 class DiagramaAlinhamentoDescendentesTestCase(TestCase):
     def test_editor_alinha_descendentes_lado_a_lado(self):
         from pathlib import Path
-        js = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js').read_text(encoding='utf-8')
+        js = ler_js_editor()
         for funcao in ('function alinharFilhosDe', 'function inserirFilhoNoLayout', 'function ligarFilhoAoPai'):
             self.assertIn(funcao, js)
         trecho = js[js.index('function confirmarAdicionarBloco'):js.index('function _pushNodeAndGrid')]
@@ -839,11 +847,165 @@ class DiagramaAtalhosPorModoTestCase(TestCase):
         self.assertEqual(html.count('somente-canvas"'), 7)  # 4 botões + grupos Layout, Visão e Exibição
         self.assertIn('.modo-nao-canvas .somente-canvas', html)
 
-        js = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js').read_text(encoding='utf-8')
+        js = ler_js_editor()
         trecho = js[js.index('function tratarAtalhosGlobais'):js.index('// ===', js.index('function tratarAtalhosGlobais'))]
         self.assertIn("e.defaultPrevented || modalAberto() || !foraDeCampoDeEdicao()", trecho)
         self.assertIn("if (ctrl && modoAtual === 'canvas')", trecho)               # zoom do navegador livre nos outros modos
-        self.assertIn("if (modoAtual !== 'canvas' || focoEmControleInterativo() || !focoNoCanvasOuLivre()) return;", trecho)
+        # edição de blocos só no Canvas, com o foco no canvas (ou solto) e sem botões/links focados
+        self.assertIn("const noCanvasComFoco = modoAtual === 'canvas' && !focoEmControleInterativo() && focoNoCanvasOuLivre();", trecho)
+        self.assertIn("if (!noCanvasComFoco) return;", trecho)
         troca = js[js.index('function alternarModoEditor'):js.index('function alternarModoZen')]
         self.assertIn("if (modo !== 'canvas') desmarcarTodosNos();", troca)        # sem seleção "invisível" para excluir
         self.assertIn("el.inert = modo !== 'canvas'", troca)
+
+
+class DiagramaFase1ArvoreTestCase(TestCase):
+    """Fase 0/1 do plano XMind: módulos JS, motor de layout em árvore, modos em árvore e paridade no PDF."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='arvore', password='x')
+        self.diagrama = Diagrama.objects.create(titulo='Organograma', criado_por=self.user)
+
+    @staticmethod
+    def _topologia(modo='organograma', recolhido=False):
+        def no(i, x=0, y=0, extra=None):
+            n = {"id": str(i), "type": "process", "position": {"x": x, "y": y}, "data": {"label": f"Bloco {i}", "lane": "Geral"}}
+            if extra:
+                n["data"].update(extra)
+            return n
+        return {
+            "schema_version": 2,
+            "layout_modo": modo,
+            "nodes": [no(1, 300, 60), no(2, 80, 214, {"collapsed": recolhido}), no(3, 520, 214), no(4, 80, 368), no(5, 300, 368)],
+            "edges": [
+                {"id": "e-1-2", "source": "1", "target": "2", "sourceHandle": "bottom", "targetHandle": "top"},
+                {"id": "e-1-3", "source": "1", "target": "3", "sourceHandle": "bottom", "targetHandle": "top"},
+                {"id": "e-2-4", "source": "2", "target": "4", "sourceHandle": "bottom", "targetHandle": "top"},
+                {"id": "e-2-5", "source": "2", "target": "5", "sourceHandle": "bottom", "targetHandle": "top"},
+                {"id": "e-3-5", "source": "3", "target": "5", "kind": "relacao"},
+            ],
+            "grid_data": [],
+        }
+
+    # --- Fase 0: módulos e testes do motor ---------------------------------------
+    def test_editor_carrega_modulos_js_na_ordem(self):
+        from procedures.views.diagram_views import EDITOR_JS_MODULOS
+        c = Client()
+        c.force_login(self.user)
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia())
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        posicoes = [html.index(f'procedures/js/diagrama/{m}.js') for m in EDITOR_JS_MODULOS]
+        self.assertEqual(posicoes, sorted(posicoes), 'ordem de carregamento dos módulos')
+        self.assertLess(EDITOR_JS_MODULOS.index('estado'), EDITOR_JS_MODULOS.index('layout_arvore'))
+        self.assertLess(EDITOR_JS_MODULOS.index('layout_arvore'), EDITOR_JS_MODULOS.index('arvore'))
+        for item in ('data-layout-modo="organograma"', 'data-layout-modo="logico"', 'data-layout-modo="arvore"',
+                     'onclick="recolherTodos()"', 'class="somente-arvore"'):
+            self.assertIn(item, html)
+
+    def test_modulos_js_existem_e_tem_sintaxe_valida(self):
+        import shutil, subprocess
+        from pathlib import Path
+        from procedures.views.diagram_views import EDITOR_JS_MODULOS
+        pasta = Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama'
+        for m in EDITOR_JS_MODULOS:
+            self.assertTrue((pasta / f'{m}.js').exists(), m)
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('Node.js não disponível')
+        for m in EDITOR_JS_MODULOS:
+            r = subprocess.run([node, '--check', str(pasta / f'{m}.js')], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, f'{m}.js: {r.stderr}')
+
+    def test_motor_de_layout_em_arvore_passa_nos_testes_node(self):
+        import shutil, subprocess
+        from pathlib import Path
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('Node.js não disponível')
+        script = Path(__file__).resolve().parent / 'js' / 'layout_arvore.test.js'
+        r = subprocess.run([node, str(script)], capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('TODOS OS', r.stdout)
+
+    # --- validação do novo formato ---------------------------------------------------
+    def test_validacao_dos_campos_da_fase_1(self):
+        from procedures.services.diagram_validation import validar_topologia
+        self.assertEqual(validar_topologia(self._topologia()), [])
+        ruim = self._topologia(); ruim["layout_modo"] = "diagonal"
+        self.assertTrue(validar_topologia(ruim))
+        ruim = self._topologia(); ruim["schema_version"] = "2"
+        self.assertTrue(validar_topologia(ruim))
+        ruim = self._topologia(); ruim["edges"][0]["kind"] = "cruzada"
+        self.assertTrue(validar_topologia(ruim))
+        ruim = self._topologia(); ruim["nodes"][0]["data"]["collapsed"] = "sim"
+        self.assertTrue(validar_topologia(ruim))
+
+    def test_autosave_aceita_modo_arvore_e_recusa_modo_invalido(self):
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia('raias'))
+        c = Client()
+        c.force_login(self.user)
+        url = f'/procedures/api/diagramas-versoes/{versao.id}/auto-save/'
+        ok = c.patch(url, data=json.dumps({"dados_topologia": self._topologia('logico', recolhido=True)}), content_type='application/json')
+        self.assertEqual(ok.status_code, 200)
+        versao.refresh_from_db()
+        self.assertEqual(versao.dados_topologia['layout_modo'], 'logico')
+        ruim = self._topologia(); ruim['layout_modo'] = 'xyz'
+        self.assertEqual(c.patch(url, data=json.dumps({"dados_topologia": ruim}), content_type='application/json').status_code, 400)
+
+    # --- hierarquia e PDF -----------------------------------------------------------------
+    def test_hierarquia_em_python_espelha_o_javascript(self):
+        from procedures.services.diagram_arvore import montar_arvore, ramos_recolhidos
+        topo = self._topologia(recolhido=True)
+        arv = montar_arvore(topo["nodes"], topo["edges"])
+        self.assertEqual(arv['filhos']['1'], ['2', '3'])
+        self.assertEqual(arv['pai'].get('5'), '2')            # a ligação "relacao" 3->5 não vira pai
+        ocultos, contagem = ramos_recolhidos(topo["nodes"], topo["edges"])
+        self.assertEqual(ocultos, {'4', '5'})
+        self.assertEqual(contagem, {'2': 2})
+
+    def test_pdf_em_modo_arvore_oculta_ramo_recolhido_e_nao_desenha_raias(self):
+        from procedures.services.diagram_renderer import DiagramaFlowable
+        aberto = DiagramaFlowable(self._topologia(recolhido=False), 782, 330)
+        recolhido = DiagramaFlowable(self._topologia(recolhido=True), 782, 330)
+        self.assertEqual(len(aberto.nodes), 5)
+        self.assertEqual([n['id'] for n in recolhido.nodes], ['1', '2', '3'])
+        self.assertEqual(recolhido.contagem_ocultos, {'2': 2})
+        self.assertEqual(recolhido.lanes, [])                  # sem raias nos modos em árvore
+        por_raias = DiagramaFlowable(self._topologia('raias'), 782, 330)
+        self.assertTrue(por_raias.lanes)
+        for modo in ('organograma', 'logico', 'arvore'):
+            versao = DiagramaVersao.objects.create(diagrama=Diagrama.objects.create(titulo=f'M {modo}', criado_por=self.user),
+                                                   revisao=0, dados_topologia=self._topologia(modo, recolhido=True))
+            self.assertTrue(gerar_pdf_diagrama_doc071(versao).startswith(b'%PDF-'))
+
+    # --- comportamentos no editor (código) ---------------------------------------------
+    def test_recursos_da_fase_1_presentes_no_editor(self):
+        js = ler_js_editor()
+        for funcao in ('function aplicarLayoutArvore', 'function definirModoLayout', 'function alternarRecolhimento',
+                       'function arvoreAoSoltar', 'function arvoreAoArrastar', 'function criarBlocoRapido',
+                       'function navegarSelecao', 'function copiarRamoSelecionado', 'function colarRamo',
+                       'function duplicarRamoSelecionado', 'function editarTextoDoNo', 'function dimensionarCanvas'):
+            self.assertIn(funcao, js)
+        trecho = js[js.index('function tratarAtalhosGlobais'):js.index('// ===', js.index('function tratarAtalhosGlobais'))]
+        for tecla in ("'F2'", "key.startsWith('Arrow')", "e.key === '/'", "k === 'v'", "k === 'd'"):
+            self.assertIn(tecla, trecho)
+        # os atalhos continuam restritos ao Canvas (não interferem na Grelha)
+        self.assertIn("const noCanvasComFoco = modoAtual === 'canvas'", trecho)
+        self.assertIn("if (!noCanvasComFoco) return;", trecho)
+        # organogramas grandes: zoom mínimo menor e área do canvas dinâmica
+        self.assertNotIn('Math.max(0.25', js)
+
+    def test_modal_novo_bloco_pergunta_a_raia(self):
+        c = Client()
+        c.force_login(self.user)
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia('raias'))
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        for item in ('id="selectRaiaNovoBloco"', 'id="inputRaiaNovoBloco"', 'Raia do novo bloco', 'id="blocoRaiaNovoBloco"'):
+            self.assertIn(item, html)
+        js = ler_js_editor()
+        for funcao in ('function prepararSeletorRaiaNovoBloco', 'function raiaEscolhidaNoModal', 'function aoEscolherRaiaNovoBloco'):
+            self.assertIn(funcao, js)
+        self.assertIn('laneText = raiaEscolhidaNoModal(laneText);', js)
+        # sem mapeamento explícito não se cria raia com o nome do setor
+        trecho = js[js.index('function raiaParaColaborador'):js.index('// Ordem explícita')]
+        self.assertNotIn('setorNome', trecho)

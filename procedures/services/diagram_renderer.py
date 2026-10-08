@@ -12,6 +12,7 @@ from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.platypus import Flowable
 
 from .diagram_raias import raias_do_diagrama
+from .diagram_arvore import MODOS_ARVORE, ramos_recolhidos
 
 FONT = 'Helvetica'
 FONT_BOLD = 'Helvetica-Bold'
@@ -82,24 +83,29 @@ class DiagramaFlowable(Flowable):
         super().__init__()
         self.raias_cores = {str(k).lower(): v for k, v in (raias_cores or {}).items()}  # {nome_raia: '#RRGGBB'}
         self.fotos = fotos or {}  # {id_colaborador: bytes da imagem}
-        self.nodes = [
+        todos = [
             n for n in (topologia.get('nodes') or [])
             if isinstance(n, dict) and isinstance(n.get('position'), dict) and 'id' in n
         ]
         self.edges = [e for e in (topologia.get('edges') or []) if isinstance(e, dict)]
+        self.modo = topologia.get('layout_modo') or 'raias'
+        self.em_arvore = self.modo in MODOS_ARVORE
+        # ramos recolhidos no editor não são desenhados; o bloco recolhido mostra o contador "+N"
+        ocultos, self.contagem_ocultos = ramos_recolhidos(todos, self.edges) if self.em_arvore else (set(), {})
+        self.nodes = [n for n in todos if str(n['id']) not in ocultos]
         self.grid = topologia.get('grid_data') or []
         self.by_id = {str(n['id']): n for n in self.nodes}
 
-        self.lanes = raias_do_diagrama(topologia)
+        self.lanes = [] if self.em_arvore else raias_do_diagrama(topologia)  # modos em árvore não usam raias
         self.lane_h = {}
         for lane in self.lanes:
             ys = [n['position']['y'] for n in self.nodes
                   if ((n.get('data') or {}).get('lane') or 'Geral') == lane]
             self.lane_h[lane] = max(LANE_MIN_H, (max(ys) - min(ys)) + 160) if ys else LANE_MIN_H
 
-        self.cw = max([n['position']['x'] + _tamanho(n)[0] for n in self.nodes] + [LANE_LEFT + 400]) + MARGIN
+        self.cw = max([n['position']['x'] + _tamanho(n)[0] for n in self.nodes] + [LANE_LEFT + (0 if self.em_arvore else 400)]) + MARGIN
         max_y = max([n['position']['y'] + _tamanho(n)[1] for n in self.nodes] + [0]) + MARGIN
-        self.ch = max(LANE_TOP + sum(self.lane_h.values()) + 20, max_y)
+        self.ch = max_y if self.em_arvore else max(LANE_TOP + sum(self.lane_h.values()) + 20, max_y)
 
         self.scale = min(max_w / self.cw, max_h / self.ch, 1.0)
         self.width = self.cw * self.scale
@@ -131,6 +137,30 @@ class DiagramaFlowable(Flowable):
             self._desenhar_aresta(c, e)
         for n in self.nodes:
             self._desenhar_no(c, n)
+            if str(n['id']) in self.contagem_ocultos:
+                self._desenhar_contador(c, n, self.contagem_ocultos[str(n['id'])])
+        c.restoreState()
+
+    def _desenhar_contador(self, c, n, quantidade):
+        """Selo "+N" no ponto onde fica o botão de recolher do editor."""
+        w, h = _tamanho(n)
+        x, y = n['position']['x'], n['position']['y']
+        if self.modo == 'logico':
+            cx, cy = x + w, y + h / 2
+        elif self.modo == 'arvore':
+            cx, cy = x + 22, y + h
+        else:
+            cx, cy = x + w / 2, y + h
+        texto = f'+{quantidade}'
+        c.saveState()
+        c.setFont(FONT_BOLD, 7)
+        larg = max(18, c.stringWidth(texto, FONT_BOLD, 7) + 8)
+        c.setFillColor(colors.HexColor('#2563EB'))
+        c.setStrokeColor(colors.white)
+        c.setLineWidth(1)
+        c.roundRect(cx - larg / 2, self._y(cy) - 7, larg, 14, 7, stroke=1, fill=1)
+        c.setFillColor(colors.white)
+        c.drawCentredString(cx, self._y(cy) - 2.5, texto)
         c.restoreState()
 
     # --- raias -----------------------------------------------------------------
@@ -288,7 +318,13 @@ class DiagramaFlowable(Flowable):
         label = _txt(e.get('label'))
         nao = s.get('type') == 'decision' and label.lower() in ('nao', 'não')
 
-        if e.get('sourceHandle') == 'right' or nao:
+        livre = (e.get('kind') or 'hierarquia') == 'relacao'
+        if self.modo == 'arvore' and not livre and e.get('sourceHandle') == 'bottom' and e.get('targetHandle') == 'left':
+            tronco = sl + 20
+            pts = [(tronco, sb), (tronco, tmy), (tl, tmy)]
+        elif livre:
+            pts = [(smx, smy), (tmx, tmy)]
+        elif e.get('sourceHandle') == 'right' or nao:
             pts = self._horizontal(sr, smy, tl, tmy)
         elif tt >= sb - 10:
             pts = self._vertical(smx, sb, tmx, tt)
@@ -301,11 +337,14 @@ class DiagramaFlowable(Flowable):
         c.setStrokeColor(colors.HexColor('#64748B'))
         c.setFillColor(colors.HexColor('#64748B'))
         c.setLineWidth(1.4)
+        if livre:
+            c.setDash(5, 4)
         p = c.beginPath()
         p.moveTo(pts[0][0], self._y(pts[0][1]))
         for px, py in pts[1:]:
             p.lineTo(px, self._y(py))
         c.drawPath(p, stroke=1, fill=0)
+        c.setDash()
         self._seta(c, pts[-2], pts[-1])
 
         if label:

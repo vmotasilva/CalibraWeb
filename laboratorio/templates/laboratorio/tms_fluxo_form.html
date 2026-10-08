@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="{% url 'laboratorio:tms_fluxos_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar aos Fluxos
+        </a>
+        <h2 class="h4 fw-bold mb-0">{{ titulo }}</h2>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <form method="POST">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Corrija os erros abaixo:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <li>{{ field }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Nome da Linha / Fluxo <span class="text-danger">*</span></label>
+                        {{ form.nome }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Código / ID</label>
+                        {{ form.codigo }}
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Descrição do Processo</label>
+                        {{ form.descricao }}
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-uppercase small text-muted border-bottom pb-2 mb-3">
+                    <i class="bi bi-sliders me-1"></i>Parâmetros Padrão de Cálculo
+                </h6>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Jornada Diária de Trabalho (Horas) <span class="text-danger">*</span></label>
+                        {{ form.horas_trabalho_dia }}
+                        <div class="form-text">Ex: 8.80h para 8h48min por dia.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Dias Úteis no Mês <span class="text-danger">*</span></label>
+                        {{ form.dias_trabalho_mes }}
+                        <div class="form-text">Usado para projeção da capacidade mensal.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Unidade Padrão</label>
+                        {{ form.unidade_medida }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Fator Conversão (Peças / Par)</label>
+                        {{ form.fator_conversao_par }}
+                        <div class="form-text">Padrão: 2 peças por par de lentes.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Tamanho Padrão do Lote (Peças)</label>
+                        {{ form.tamanho_padrao_lote }}
+                        <div class="form-text">Quantidade de peças por lote.</div>
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mb-4">
+                    {{ form.ativo }}
+                    <label class="form-check-label fw-semibold" for="{{ form.ativo.id_for_label }}">Linha de Produção Ativa</label>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                    <a href="{% url 'laboratorio:tms_fluxos_list' %}" class="btn btn-light border">Cancelar</a>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                        <i class="bi bi-check-circle me-1"></i>{{ acao }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

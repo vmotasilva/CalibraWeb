@@ -11,6 +11,8 @@ from .models import (
     TurnoCoating,
     RegistroCoating,
     EquipeCoating,
+    FluxoProcessoTMS,
+    EtapaProcessoTMS,
 )
 from rh.models import Colaborador
 from maquinas.models import Maquina
@@ -355,3 +357,77 @@ class EquipeCoatingForm(forms.ModelForm):
             self.fields['colaborador'].queryset = Colaborador.objects.exclude(id__in=existentes).order_by("nome_completo")
         else:
             self.fields['colaborador'].queryset = Colaborador.objects.filter(id=self.instance.colaborador_id)
+
+
+class FluxoProcessoTMSForm(forms.ModelForm):
+    class Meta:
+        model = FluxoProcessoTMS
+        fields = [
+            "nome",
+            "codigo",
+            "descricao",
+            "horas_trabalho_dia",
+            "dias_trabalho_mes",
+            "unidade_medida",
+            "fator_conversao_par",
+            "tamanho_padrao_lote",
+            "ativo",
+        ]
+        widgets = {
+            "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: Linha de Tratamento Coating AR"}),
+            "codigo": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: LINHA-COATING-01"}),
+            "descricao": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Descrição do fluxo ou observações gerais..."}),
+            "horas_trabalho_dia": forms.NumberInput(attrs={"class": "form-control", "step": "0.1", "min": "0.1"}),
+            "dias_trabalho_mes": forms.NumberInput(attrs={"class": "form-control", "min": "1", "max": "31"}),
+            "unidade_medida": forms.Select(attrs={"class": "form-select"}),
+            "fator_conversao_par": forms.NumberInput(attrs={"class": "form-control", "step": "0.1", "min": "0.1"}),
+            "tamanho_padrao_lote": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+
+class EtapaProcessoTMSForm(forms.ModelForm):
+    class Meta:
+        model = EtapaProcessoTMS
+        fields = [
+            "fluxo",
+            "ordem",
+            "nome",
+            "codigo",
+            "tipo_posto",
+            "maquina",
+            "tempo_ciclo_segundos",
+            "tempo_setup_minutos",
+            "postos_paralelos",
+            "eficiencia_oee",
+            "perda_refugo_pct",
+            "observacoes",
+            "ativo",
+        ]
+        widgets = {
+            "fluxo": forms.Select(attrs={"class": "form-select"}),
+            "ordem": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "nome": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: 01 - Lavagem e Ultrassom"}),
+            "codigo": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ex.: ET-01"}),
+            "tipo_posto": forms.Select(attrs={"class": "form-select"}),
+            "maquina": forms.Select(attrs={"class": "form-select"}),
+            "tempo_ciclo_segundos": forms.NumberInput(attrs={"class": "form-control", "step": "0.1", "min": "0.1"}),
+            "tempo_setup_minutos": forms.NumberInput(attrs={"class": "form-control", "step": "0.1", "min": "0"}),
+            "postos_paralelos": forms.NumberInput(attrs={"class": "form-control", "min": "1"}),
+            "eficiencia_oee": forms.NumberInput(attrs={"class": "form-control", "step": "0.1", "min": "1", "max": "100"}),
+            "perda_refugo_pct": forms.NumberInput(attrs={"class": "form-control", "step": "0.1", "min": "0", "max": "99"}),
+            "observacoes": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Instruções operacionais, ferramentas, etc."}),
+            "ativo": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        fluxo_id = kwargs.pop("fluxo_id", None)
+        super().__init__(*args, **kwargs)
+        self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante")
+        if fluxo_id:
+            self.fields["fluxo"].initial = fluxo_id
+            # Sugerir próxima ordem
+            if not self.instance.pk:
+                max_ordem = EtapaProcessoTMS.objects.filter(fluxo_id=fluxo_id).count()
+                self.fields["ordem"].initial = max_ordem + 1
+

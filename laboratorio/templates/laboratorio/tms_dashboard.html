@@ -1,0 +1,739 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    .tms-card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .tms-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08) !important;
+    }
+    .kpi-icon-box {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+    }
+    .bottleneck-card {
+        background: linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%);
+        border: 1px solid #ffc9c9 !important;
+        position: relative;
+        overflow: hidden;
+    }
+    .bottleneck-badge {
+        background: #dc3545;
+        color: white;
+        animation: pulse-danger 2s infinite;
+    }
+    @keyframes pulse-danger {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.6); }
+        70% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+    .pipeline-container {
+        display: flex;
+        align-items: center;
+        overflow-x: auto;
+        padding: 1rem 0.5rem;
+        gap: 0.75rem;
+        scrollbar-width: thin;
+    }
+    .pipeline-step {
+        flex: 0 0 200px;
+        background: #ffffff;
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 0.85rem;
+        position: relative;
+        transition: all 0.2s;
+    }
+    .pipeline-step.is-gargalo {
+        border-color: #dc3545;
+        background: #fff8f8;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
+    }
+    .pipeline-step:hover {
+        border-color: #0d6efd;
+    }
+    .pipeline-arrow {
+        color: #adb5bd;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+    .simulator-box {
+        background: linear-gradient(135deg, #f8f9fa 0%, #eef2f7 100%);
+        border-radius: 12px;
+        border: 1px solid #dee2e6;
+    }
+    .result-badge-big {
+        font-size: 2.2rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-semibold">
+                    <i class="bi bi-stopwatch me-1"></i> Laboratório TMS
+                </span>
+                <span class="text-muted small">Tempos & Movimentos • Teoria das Restrições (TOC)</span>
+            </div>
+            <h2 class="h3 fw-bold mt-2 mb-0">Previsão de Produção & Análise de Gargalos</h2>
+        </div>
+        
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            {% if fluxos %}
+            <div class="dropdown">
+                <button class="btn btn-white border shadow-sm dropdown-toggle fw-semibold text-dark" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-diagram-3 text-primary me-2"></i>
+                    {% if fluxo_selecionado %}{{ fluxo_selecionado.nome }}{% else %}Selecione um Fluxo{% endif %}
+                </button>
+                <ul class="dropdown-menu shadow">
+                    <li class="dropdown-header text-uppercase small">Linhas de Produção</li>
+                    {% for fl in fluxos %}
+                    <li>
+                        <a class="dropdown-item {% if fluxo_selecionado and fluxo_selecionado.id == fl.id %}active{% endif %}" href="?fluxo_id={{ fl.id }}">
+                            {{ fl.nome }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if fluxo_selecionado %}
+            <a href="{% url 'laboratorio:tms_etapas_list' fluxo_selecionado.id %}" class="btn btn-outline-primary shadow-sm">
+                <i class="bi bi-list-check me-1"></i>Gerenciar Etapas ({{ metricas.total_etapas }})
+            </a>
+            <a href="{% url 'laboratorio:tms_exportar_excel' fluxo_selecionado.id %}" class="btn btn-outline-success shadow-sm">
+                <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
+            </a>
+            {% endif %}
+
+            <a href="{% url 'laboratorio:tms_fluxos_list' %}" class="btn btn-outline-secondary shadow-sm">
+                <i class="bi bi-gear me-1"></i>Todos os Fluxos
+            </a>
+
+            {% if not fluxos %}
+            <a href="{% url 'laboratorio:tms_carregar_exemplo' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-magic me-1"></i>Carregar Fluxo de Demonstração
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not fluxo_selecionado %}
+    <!-- Empty State -->
+    <div class="card tms-card shadow-sm text-center py-5">
+        <div class="card-body">
+            <div class="display-1 text-muted mb-3"><i class="bi bi-stopwatch"></i></div>
+            <h4 class="fw-bold">Nenhum fluxo de produção cadastrado</h4>
+            <p class="text-muted max-w-md mx-auto">
+                Cadastre as linhas de produção e etapas do laboratório para calcular capacidades, identificar restrições e prever prazos de entrega.
+            </p>
+            <div class="d-flex justify-content-center gap-2 mt-4">
+                <a href="{% url 'laboratorio:tms_fluxo_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle me-1"></i>Criar Primeiro Fluxo
+                </a>
+                <a href="{% url 'laboratorio:tms_carregar_exemplo' %}" class="btn btn-outline-primary">
+                    <i class="bi bi-lightning-charge me-1"></i>Carregar Exemplo Pré-configurado
+                </a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- KPIs Principais -->
+    <div class="row g-3 mb-4">
+        <!-- Card 1: Gargalo Atual -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card tms-card shadow-sm h-100 bottleneck-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-danger small fw-bold text-uppercase tracking-wider">
+                            <i class="bi bi-exclamation-octagon-fill me-1"></i>Gargalo Atual (Restrição)
+                        </span>
+                        <span class="badge bottleneck-badge rounded-pill px-2 py-1 small">Ritmo da Linha</span>
+                    </div>
+                    {% if metricas.gargalo %}
+                    <h4 class="fw-bold text-danger mb-1 text-truncate" title="{{ metricas.gargalo.nome }}">
+                        {{ metricas.gargalo.ordem }}. {{ metricas.gargalo.nome }}
+                    </h4>
+                    <div class="text-muted small mb-3">
+                        Postos: <strong class="text-dark">{{ metricas.gargalo.postos_paralelos }}</strong> • 
+                        TC Efetivo: <strong class="text-dark">{{ metricas.gargalo.tc_efetivo_segundos }}s</strong>
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2">
+                        <span class="h3 fw-bold text-dark mb-0">{{ metricas.gargalo.capacidade_hora_pecas }}</span>
+                        <span class="text-muted small">pçs/hora máx</span>
+                    </div>
+                    {% else %}
+                    <p class="text-muted mt-2 mb-0">Nenhuma etapa ativa configurada.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Capacidade Diária da Linha -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card tms-card shadow-sm h-100 bg-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-muted small fw-bold text-uppercase">Capacidade Diária Máxima</span>
+                        <div class="kpi-icon-box bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-speedometer2"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2 mb-1">
+                        <span class="display-6 fw-bold text-dark">{{ metricas.capacidade_maxima_dia_pecas }}</span>
+                        <span class="text-muted fw-semibold">peças/dia</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted small pt-2 border-top">
+                        <span>Pares: <strong>{{ metricas.capacidade_maxima_dia_pares }} pares/dia</strong></span>
+                        <span>Mês: <strong>{{ metricas.capacidade_maxima_mes_pecas }} pçs</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Eficiência do Balanceamento -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card tms-card shadow-sm h-100 bg-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-muted small fw-bold text-uppercase">Balanceamento da Linha</span>
+                        <div class="kpi-icon-box bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-bar-chart-steps"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2 mb-2">
+                        <span class="display-6 fw-bold text-primary">{{ metricas.eficiencia_balanceamento_pct }}%</span>
+                        <span class="text-muted small">eficiência global</span>
+                    </div>
+                    <div class="progress" style="height: 6px;">
+                        <div class="progress-bar {% if metricas.eficiencia_balanceamento_pct >= 80 %}bg-success{% elif metricas.eficiencia_balanceamento_pct >= 60 %}bg-warning{% else %}bg-danger{% endif %}" 
+                             role="progressbar" style="width: {{ metricas.eficiencia_balanceamento_pct }}%;"></div>
+                    </div>
+                    <div class="text-muted small mt-2">
+                        {% if metricas.eficiencia_balanceamento_pct >= 85 %}
+                            <span class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>Excelente balanceamento</span>
+                        {% elif metricas.eficiencia_balanceamento_pct >= 65 %}
+                            <span class="text-warning-emphasis fw-semibold"><i class="bi bi-info-circle me-1"></i>Oportunidade de melhoria</span>
+                        {% else %}
+                            <span class="text-danger fw-semibold"><i class="bi bi-exclamation-triangle me-1"></i>Linha desbalanceada</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Lead Time Teórico -->
+        <div class="col-xl-3 col-md-6">
+            <div class="card tms-card shadow-sm h-100 bg-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="text-muted small fw-bold text-uppercase">Lead Time Teórico (1 Peça)</span>
+                        <div class="kpi-icon-box bg-info bg-opacity-10 text-info">
+                            <i class="bi bi-hourglass-split"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2 mb-1">
+                        <span class="display-6 fw-bold text-dark">{{ metricas.lead_time_teorico_unitario_min }}</span>
+                        <span class="text-muted fw-semibold">minutos</span>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small pt-2 border-top">
+                        <span>Tempo Total: <strong>{{ metricas.lead_time_teorico_unitario_seg }}s</strong></span>
+                        <span>Jornada: <strong>{{ metricas.horas_trabalho_dia }}h/dia</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stepper Visual do Fluxo de Produção -->
+    <div class="card tms-card shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold mb-0"><i class="bi bi-arrow-right-circle text-primary me-2"></i>Sequência Operacional do Processo</h5>
+                <span class="text-muted small">Fluxo sequencial das etapas, capacidades individuais e destaque da restrição</span>
+            </div>
+            <a href="{% url 'laboratorio:tms_etapa_create' fluxo_selecionado.id %}" class="btn btn-sm btn-primary">
+                <i class="bi bi-plus me-1"></i>Adicionar Etapa
+            </a>
+        </div>
+        <div class="card-body p-2">
+            <div class="pipeline-container">
+                {% for etapa in metricas.etapas %}
+                <div class="pipeline-step {% if etapa.is_gargalo %}is-gargalo{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="badge bg-secondary bg-opacity-10 text-dark fw-bold">#{{ etapa.ordem }}</span>
+                        {% if etapa.is_gargalo %}
+                        <span class="badge bg-danger text-white small"><i class="bi bi-exclamation-triangle-fill me-1"></i>Gargalo</span>
+                        {% else %}
+                        <span class="badge bg-light text-muted small">{{ etapa.tipo_posto_display }}</span>
+                        {% endif %}
+                    </div>
+                    <h6 class="fw-bold mb-1 text-truncate" title="{{ etapa.nome }}">{{ etapa.nome }}</h6>
+                    <div class="small text-muted mb-2">
+                        Postos: <strong class="text-dark">{{ etapa.postos_paralelos }}</strong> • 
+                        TC: <strong class="text-dark">{{ etapa.tempo_ciclo_segundos }}s</strong>
+                    </div>
+                    <div class="p-2 rounded bg-light border">
+                        <div class="d-flex justify-content-between small">
+                            <span class="text-muted">Capacidade:</span>
+                            <strong class="{% if etapa.is_gargalo %}text-danger{% else %}text-dark{% endif %}">{{ etapa.capacidade_hora_pecas }} pçs/h</strong>
+                        </div>
+                        <div class="d-flex justify-content-between small mt-1">
+                            <span class="text-muted">Ocupação:</span>
+                            <strong>{{ etapa.utilizacao_pct }}%</strong>
+                        </div>
+                    </div>
+                </div>
+                {% if not forloop.last %}
+                <div class="pipeline-arrow"><i class="bi bi-chevron-right"></i></div>
+                {% endif %}
+                {% empty %}
+                <div class="p-4 text-center text-muted w-100">
+                    Nenhuma etapa cadastrada neste fluxo. 
+                    <a href="{% url 'laboratorio:tms_etapa_create' fluxo_selecionado.id %}">Clique aqui para adicionar etapas</a>.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção Principal: Calculadora de Previsão + Gráficos -->
+    <div class="row g-4 mb-4">
+        <!-- Coluna Esquerda: Calculadora e Simulador Interativo -->
+        <div class="col-lg-5">
+            <div class="card tms-card shadow-sm h-100 simulator-box">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <h5 class="fw-bold mb-1 text-dark">
+                        <i class="bi bi-calculator-fill text-primary me-2"></i>Calculadora de Previsão de Produção
+                    </h5>
+                    <span class="text-muted small">Estime prazos de entrega e simule cenários de capacidade em tempo real</span>
+                </div>
+                <div class="card-body">
+                    <form id="formSimulador" onsubmit="event.preventDefault(); simularProducao();">
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-7">
+                                <label class="form-label fw-semibold small text-uppercase">Quantidade Desejada</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="bi bi-box-seam text-primary"></i></span>
+                                    <input type="number" id="simDemanda" class="form-control form-control-lg fw-bold" value="500" min="1" step="1" oninput="simularProducao()">
+                                </div>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold small text-uppercase">Unidade</label>
+                                <select id="simUnidade" class="form-select form-select-lg" onchange="simularProducao()">
+                                    <option value="PECAS" selected>Peças</option>
+                                    <option value="PARES">Pares</option>
+                                    <option value="LOTES">Lotes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label fw-semibold small text-uppercase mb-0">Jornada Diária de Trabalho</label>
+                                <span class="badge bg-primary rounded-pill" id="displayHorasDia">{{ metricas.horas_trabalho_dia }}h / dia</span>
+                            </div>
+                            <input type="range" id="simHorasDia" class="form-range" min="1" max="24" step="0.5" value="{{ metricas.horas_trabalho_dia }}" oninput="atualizarDisplayHoras(this.value); simularProducao();">
+                            <div class="d-flex justify-content-between text-muted small">
+                                <span>4h (Meio período)</span>
+                                <span>8.8h (Padrão)</span>
+                                <span>16h (2 Turnos)</span>
+                                <span>24h (3 Turnos)</span>
+                            </div>
+                        </div>
+
+                        <!-- Card de Resultado da Simulação -->
+                        <div class="card border-primary shadow-sm bg-white p-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="text-uppercase text-muted fw-bold small">Tempo Total Estimado</span>
+                                <span class="badge bg-success bg-opacity-10 text-success fw-bold">Previsão TOC</span>
+                            </div>
+                            <div class="d-flex align-items-baseline gap-2 mb-2">
+                                <span class="result-badge-big text-primary" id="resTempoFormatado">
+                                    {{ previsao_exemplo.tempo_formatado }}
+                                </span>
+                            </div>
+                            <div class="row g-2 pt-2 border-top small">
+                                <div class="col-6">
+                                    <span class="text-muted">Horas Líquidas:</span>
+                                    <strong class="d-block text-dark h6 mb-0" id="resHorasTotais">{{ previsao_exemplo.tempo_total_horas }} h</strong>
+                                </div>
+                                <div class="col-6">
+                                    <span class="text-muted">Dias Úteis:</span>
+                                    <strong class="d-block text-dark h6 mb-0" id="resDiasUteis">{{ previsao_exemplo.dias_uteis_estimados }} dias</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Data/Hora Estimada de Conclusão -->
+                        <div class="p-3 bg-white rounded border shadow-sm mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-muted small d-block">Data estimada de término (iniciando agora):</span>
+                                    <strong class="text-success h6 mb-0" id="resDataTermino">-</strong>
+                                </div>
+                                <i class="bi bi-calendar-check text-success fs-3"></i>
+                            </div>
+                        </div>
+
+                        <!-- Botão de Ajuste Rápido de Linha (Kaizen) -->
+                        <button type="button" class="btn btn-outline-dark w-100" data-bs-toggle="collapse" data-bs-target="#collapseKaizen">
+                            <i class="bi bi-sliders me-2"></i>Simular Alterações nos Postos (What-If Kaizen)
+                        </button>
+
+                        <div class="collapse mt-3" id="collapseKaizen">
+                            <div class="p-3 bg-white rounded border">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold mb-0 small text-uppercase">Ajustar Postos e Operadores em Paralelo</h6>
+                                    <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="resetarOverrides()">Resetar</button>
+                                </div>
+                                <div class="small text-muted mb-3">Aumente os postos do gargalo para ver o ganho imediato de capacidade!</div>
+                                
+                                <div id="containerAjustesEtapas" class="vstack gap-2">
+                                    {% for etapa in metricas.etapas %}
+                                    <div class="d-flex justify-content-between align-items-center p-2 rounded {% if etapa.is_gargalo %}bg-danger bg-opacity-10 border border-danger{% else %}bg-light{% endif %}">
+                                        <div class="text-truncate me-2" style="max-width: 180px;">
+                                            <span class="fw-semibold small d-block text-truncate">{{ etapa.ordem }}. {{ etapa.nome }}</span>
+                                            <span class="text-muted" style="font-size: 0.75rem;">TC: {{ etapa.tempo_ciclo_segundos }}s</span>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <span class="small text-muted">Postos:</span>
+                                            <input type="number" class="form-control form-control-sm text-center input-kaizen-posto" 
+                                                   style="width: 55px;" 
+                                                   data-etapa-id="{{ etapa.id }}" 
+                                                   data-orig-postos="{{ etapa.postos_paralelos }}"
+                                                   value="{{ etapa.postos_paralelos }}" min="1" max="20"
+                                                   onchange="simularProducao()">
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Coluna Direita: Gráficos de Balanceamento & Capacidade -->
+        <div class="col-lg-7">
+            <div class="card tms-card shadow-sm mb-4">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold mb-0"><i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Balanceamento de Capacidade por Posto</h5>
+                        <span class="text-muted small">Comparativo de vazão horária entre etapas e linha limite do gargalo</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div style="height: 280px; position: relative;">
+                        <canvas id="chartCapacidadePostos"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card tms-card shadow-sm">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart-fill text-warning me-2"></i>Taxa de Ocupação dos Postos de Trabalho</h5>
+                        <span class="text-muted small">Utilização percentual em relação ao ritmo da fábrica (Gargalo = 100%)</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div style="height: 230px; position: relative;">
+                        <canvas id="chartUtilizacaoPostos"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela Detalhada das Etapas e Indicadores -->
+    <div class="card tms-card shadow-sm mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="fw-bold mb-0"><i class="bi bi-table text-primary me-2"></i>Detalhamento Analítico de Tempos e Movimentos</h5>
+                <span class="text-muted small">Todos os parâmetros operacionais, tempos de ciclo, OEE, perdas e capacidades</span>
+            </div>
+            <a href="{% url 'laboratorio:tms_etapas_list' fluxo_selecionado.id %}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil-square me-1"></i>Editar Dados das Etapas
+            </a>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small text-uppercase">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Etapa / Posto</th>
+                        <th>Tipo</th>
+                        <th>Postos / Oper.</th>
+                        <th>Tempo Ciclo (TC)</th>
+                        <th>Setup</th>
+                        <th>Eficiência OEE</th>
+                        <th>Refugo</th>
+                        <th>TC Efetivo</th>
+                        <th>Capacidade / Hora</th>
+                        <th>Capacidade / Dia</th>
+                        <th>Utilização</th>
+                        <th class="text-center pe-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaEtapasCorpo">
+                    {% for etapa in metricas.etapas %}
+                    <tr class="{% if etapa.is_gargalo %}table-danger{% endif %}">
+                        <td class="ps-3 fw-bold">{{ etapa.ordem }}</td>
+                        <td>
+                            <strong class="text-dark">{{ etapa.nome }}</strong>
+                            {% if etapa.codigo %}<span class="badge bg-light text-muted ms-1">{{ etapa.codigo }}</span>{% endif %}
+                            {% if etapa.maquina_codigo %}
+                            <div class="small text-muted"><i class="bi bi-cpu me-1"></i>{{ etapa.maquina_codigo }}</div>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ etapa.tipo_posto_display }}</span></td>
+                        <td><strong>{{ etapa.postos_paralelos }}</strong></td>
+                        <td>{{ etapa.tempo_ciclo_segundos }}s</td>
+                        <td>{{ etapa.tempo_setup_minutos }} min</td>
+                        <td>{{ etapa.eficiencia_oee }}%</td>
+                        <td>{{ etapa.perda_refugo_pct }}%</td>
+                        <td><strong>{{ etapa.tc_efetivo_segundos }}s</strong></td>
+                        <td><strong class="{% if etapa.is_gargalo %}text-danger{% else %}text-primary{% endif %}">{{ etapa.capacidade_hora_pecas }} pçs</strong></td>
+                        <td><strong>{{ etapa.capacidade_dia_pecas }} pçs</strong></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 6px;">
+                                    <div class="progress-bar {% if etapa.is_gargalo %}bg-danger{% else %}bg-primary{% endif %}" style="width: {{ etapa.utilizacao_pct }}%;"></div>
+                                </div>
+                                <span class="small fw-semibold">{{ etapa.utilizacao_pct }}%</span>
+                            </div>
+                        </td>
+                        <td class="text-center pe-3">
+                            {% if etapa.is_gargalo %}
+                            <span class="badge bg-danger rounded-pill px-2 py-1"><i class="bi bi-exclamation-octagon-fill me-1"></i>GARGALO</span>
+                            {% else %}
+                            <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1"><i class="bi bi-check me-1"></i>Estável</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if fluxo_selecionado %}
+<script>
+    let rawMetricas = {{ metricas_json|safe }};
+    let chartCapacidade = null;
+    let chartUtilizacao = null;
+
+    function atualizarDisplayHoras(val) {
+        document.getElementById('displayHorasDia').innerText = `${parseFloat(val).toFixed(1)}h / dia`;
+    }
+
+    function inicializarGraficos(metricas) {
+        if (!metricas || !metricas.etapas || metricas.etapas.length === 0) return;
+
+        const labels = metricas.etapas.map(e => `${e.ordem}. ${e.nome}`);
+        const capacidades = metricas.etapas.map(e => e.capacidade_hora_pecas);
+        const utilizacoes = metricas.etapas.map(e => e.utilizacao_pct);
+        const backgroundColors = metricas.etapas.map(e => e.is_gargalo ? 'rgba(220, 53, 69, 0.85)' : 'rgba(13, 110, 253, 0.75)');
+        const borderColors = metricas.etapas.map(e => e.is_gargalo ? '#dc3545' : '#0d6efd');
+
+        // 1. Gráfico de Capacidades
+        const ctxCap = document.getElementById('chartCapacidadePostos').getContext('2d');
+        if (chartCapacidade) chartCapacidade.destroy();
+
+        chartCapacidade = new Chart(ctxCap, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Capacidade (Peças/Hora)',
+                        data: capacidades,
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 1.5,
+                        borderRadius: 6,
+                    },
+                    {
+                        label: `Linha de Vazão do Gargalo (${metricas.capacidade_maxima_hora_pecas} pçs/h)`,
+                        data: Array(labels.length).fill(metricas.capacidade_maxima_hora_pecas),
+                        type: 'line',
+                        borderColor: '#dc3545',
+                        borderWidth: 2,
+                        borderDash: [6, 4],
+                        pointRadius: 0,
+                        fill: false,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                if (context.datasetIndex === 0) {
+                                    const item = metricas.etapas[context.dataIndex];
+                                    return `Ocupação: ${item.utilizacao_pct}%\nPostos: ${item.postos_paralelos}\nTC: ${item.tempo_ciclo_segundos}s`;
+                                }
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Capacidade (Peças/Hora)' }
+                    },
+                    x: {
+                        ticks: { maxRotation: 45, minRotation: 0 }
+                    }
+                }
+            }
+        });
+
+        // 2. Gráfico de Utilização
+        const ctxUtil = document.getElementById('chartUtilizacaoPostos').getContext('2d');
+        if (chartUtilizacao) chartUtilizacao.destroy();
+
+        chartUtilizacao = new Chart(ctxUtil, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Taxa de Ocupação (%)',
+                    data: utilizacoes,
+                    backgroundColor: metricas.etapas.map(e => e.is_gargalo ? '#dc3545' : '#ffc107'),
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        min: 0,
+                        max: 100,
+                        title: { display: true, text: 'Ocupação em relação ao gargalo (%)' }
+                    }
+                }
+            }
+        });
+    }
+
+    function calcularDataTermino(horasTotais, jornadaDia) {
+        if (horasTotais <= 0) return "-";
+        const agora = new Date();
+        const diasUteis = horasTotais / jornadaDia;
+        
+        let dataFim = new Date(agora);
+        let horasAdicionar = horasTotais;
+        
+        // Estimativa considerando dias úteis
+        let diasAdicionar = Math.floor(horasAdicionar / jornadaDia);
+        let horasRestantes = horasAdicionar % jornadaDia;
+
+        let contagemDias = 0;
+        while (contagemDias < diasAdicionar) {
+            dataFim.setDate(dataFim.getDate() + 1);
+            // Pular domingo (0) e sábado (6)
+            if (dataFim.getDay() !== 0 && dataFim.getDay() !== 6) {
+                contagemDias++;
+            }
+        }
+        dataFim.setHours(dataFim.getHours() + Math.round(horasRestantes));
+
+        const opcoes = { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
+        return dataFim.toLocaleDateString('pt-BR', opcoes);
+    }
+
+    function simularProducao() {
+        const demanda = document.getElementById('simDemanda').value || 1;
+        const unidade = document.getElementById('simUnidade').value;
+        const horasDia = document.getElementById('simHorasDia').value || 8.8;
+        const fluxoId = {{ fluxo_selecionado.id }};
+
+        // Coletar overrides de postos kaizen
+        const overrides = {};
+        document.querySelectorAll('.input-kaizen-posto').forEach(input => {
+            const etapaId = input.getAttribute('data-etapa-id');
+            const postos = parseInt(input.value) || 1;
+            overrides[etapaId] = { postos_paralelos: postos };
+        });
+
+        fetch("{% url 'laboratorio:api_tms_simular' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}",
+            },
+            body: JSON.stringify({
+                fluxo_id: fluxoId,
+                demanda: demanda,
+                tipo_unidade: unidade,
+                horas_dia: horasDia,
+                etapas_override: overrides
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const res = data.resultado;
+                document.getElementById('resTempoFormatado').innerText = res.tempo_formatado;
+                document.getElementById('resHorasTotais').innerText = `${res.tempo_total_horas} h`;
+                document.getElementById('resDiasUteis').innerText = `${res.dias_uteis_estimados} dias`;
+                document.getElementById('resDataTermino').innerText = calcularDataTermino(res.tempo_total_horas, parseFloat(horasDia));
+
+                // Atualizar gráficos com novas métricas calculadas
+                inicializarGraficos(res.metricas_base);
+            }
+        })
+        .catch(err => console.error("Erro na simulação:", err));
+    }
+
+    function resetarOverrides() {
+        document.querySelectorAll('.input-kaizen-posto').forEach(input => {
+            input.value = input.getAttribute('data-orig-postos');
+        });
+        simularProducao();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (rawMetricas) {
+            inicializarGraficos(rawMetricas);
+            const horasTotais = {{ previsao_exemplo.tempo_total_horas|default:0 }};
+            const horasDia = {{ metricas.horas_trabalho_dia|default:8.8 }};
+            document.getElementById('resDataTermino').innerText = calcularDataTermino(horasTotais, horasDia);
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

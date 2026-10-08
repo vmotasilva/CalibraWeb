@@ -1402,6 +1402,16 @@ NAV_STRUCTURE = [
                 ],
             },
             {
+                "key": "tms",
+                "nome": "TMS - Tempos e Movimentos",
+                "perm": "core.nav_laboratorio_tms_bloco",
+                "funcoes": [
+                    {"nome": "Previsão de Produção & Gargalos", "view_name": ["laboratorio:tms_dashboard", "laboratorio:api_tms_simular"], "perm": "core.nav_laboratorio_tms_dashboard"},
+                    {"nome": "Linhas de Produção", "view_name": ["laboratorio:tms_fluxos_list", "laboratorio:tms_fluxo_create", "laboratorio:tms_fluxo_update", "laboratorio:tms_fluxo_delete", "laboratorio:tms_fluxo_duplicar", "laboratorio:tms_carregar_exemplo"], "perm": "core.nav_laboratorio_tms_fluxos"},
+                    {"nome": "Etapas e Balanceamento", "view_name": ["laboratorio:tms_etapas_list", "laboratorio:tms_etapa_create", "laboratorio:tms_etapa_update", "laboratorio:tms_etapa_delete", "laboratorio:api_tms_reordenar_etapas", "laboratorio:tms_exportar_excel"], "perm": "core.nav_laboratorio_tms_etapas"},
+                ],
+            },
+            {
                 "key": "especiais",
                 "nome": "PERMISSÕES ESPECIAIS",
                 "especial": True,

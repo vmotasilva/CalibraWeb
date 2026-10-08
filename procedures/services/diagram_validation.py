@@ -8,6 +8,8 @@ MAX_NODES = 1000
 MAX_EDGES = 3000
 MAX_SUBTITULOS = 20
 MAX_RAIAS = 100
+MODOS_LAYOUT = ('raias', 'organograma', 'logico', 'arvore')
+TIPOS_CONEXAO = ('hierarquia', 'relacao')
 
 
 def _numero(valor):
@@ -31,6 +33,12 @@ def validar_topologia(topologia: dict) -> list:
         return [f"Limite de {MAX_NODES} nós por diagrama excedido."]
     if len(edges) > MAX_EDGES:
         return [f"Limite de {MAX_EDGES} conexões por diagrama excedido."]
+
+    if topologia.get('layout_modo') is not None and topologia['layout_modo'] not in MODOS_LAYOUT:
+        return [f"'layout_modo' inválido. Use um destes: {', '.join(MODOS_LAYOUT)}."]
+    versao_schema = topologia.get('schema_version')
+    if versao_schema is not None and (isinstance(versao_schema, bool) or not isinstance(versao_schema, int)):
+        return ["'schema_version' deve ser um número inteiro."]
 
     for chave in ('lanes', 'raias_fixas'):
         lista = topologia.get(chave)
@@ -58,6 +66,8 @@ def validar_topologia(topologia: dict) -> list:
             if subs is not None and (not isinstance(subs, list) or len(subs) > MAX_SUBTITULOS
                                      or not all(isinstance(t, str) and len(t) <= 300 for t in subs)):
                 erros.append(f"Subtítulos inválidos no nó {nid} (máx. {MAX_SUBTITULOS}, até 300 caracteres cada).")
+            if data.get('collapsed') is not None and not isinstance(data['collapsed'], bool):
+                erros.append(f"Campo 'collapsed' inválido no nó {nid}.")
             colab = data.get('colab')
             if colab is not None and (not isinstance(colab, dict) or not isinstance(colab.get('id'), int)
                                       or isinstance(colab.get('id'), bool)):
@@ -68,6 +78,8 @@ def validar_topologia(topologia: dict) -> list:
         if not isinstance(edge, dict) or not all(k in edge for k in ('id', 'source', 'target')):
             erros.append("Cada aresta requer 'id', 'source' e 'target'.")
             continue
+        if edge.get('kind') is not None and edge['kind'] not in TIPOS_CONEXAO:
+            erros.append(f"Tipo de conexão inválido em '{edge.get('id')}' (use hierarquia ou relacao).")
         eid = str(edge['id'])
         if eid in ids_arestas:
             erros.append(f"ID de aresta duplicado: {eid}")

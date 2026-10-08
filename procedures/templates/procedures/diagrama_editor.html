@@ -85,6 +85,78 @@
         user-select: none;
     }
 
+    /* Modos em árvore: itens que só valem em um dos modos */
+    .somente-arvore { display: none; }
+    .modo-arvore .somente-arvore { display: list-item; }
+    .modo-arvore .somente-raias { display: none; }
+
+    /* Botão de recolher/expandir ramo (o círculo "-" / "+N" do bloco) */
+    .collapse-toggle {
+        position: absolute;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 10px;
+        border: 1.5px solid #64748b;
+        background: #ffffff;
+        color: #334155;
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 17px;
+        text-align: center;
+        cursor: pointer;
+        z-index: 6;
+    }
+    .collapse-toggle:hover { border-color: #2563eb; color: #2563eb; }
+    .collapse-toggle.recolhido { background: #2563eb; border-color: #1d4ed8; color: #ffffff; }
+    .layout-organograma .collapse-toggle { bottom: -11px; left: 50%; transform: translateX(-50%); }
+    .layout-logico .collapse-toggle { right: -11px; top: 50%; transform: translateY(-50%); }
+    .layout-arvore .collapse-toggle { bottom: -11px; left: 12px; }
+
+    /* Alvos de soltura ao arrastar um bloco (trocar o pai / reordenar irmãos) */
+    .drop-filho { outline: 3px dashed #2563eb; outline-offset: 4px; }
+    .layout-organograma .drop-antes { box-shadow: -9px 0 0 0 #2563eb; }
+    .layout-organograma .drop-depois { box-shadow: 9px 0 0 0 #2563eb; }
+    .layout-logico .drop-antes, .layout-arvore .drop-antes { box-shadow: 0 -9px 0 0 #2563eb; }
+    .layout-logico .drop-depois, .layout-arvore .drop-depois { box-shadow: 0 9px 0 0 #2563eb; }
+
+    /* Edição do texto direto no bloco */
+    .edicao-inline {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 20;
+        resize: none;
+        border: 2px solid #2563eb;
+        border-radius: inherit;
+        padding: 6px 8px;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: center;
+        color: #0f172a;
+        background: #ffffff;
+        outline: none;
+    }
+
+    .aviso-editor {
+        position: fixed;
+        left: 50%;
+        bottom: 28px;
+        transform: translateX(-50%) translateY(20px);
+        background: #0f172a;
+        color: #ffffff;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s, transform 0.2s;
+        z-index: 2000;
+    }
+    .aviso-editor.visivel { opacity: 0.95; transform: translateX(-50%) translateY(0); }
+
     .ribbon-btn:disabled {
         opacity: 0.4;
         cursor: not-allowed;
@@ -918,6 +990,12 @@
                     <i class="bi bi-layout-text-window-reverse text-primary"></i> Organizar
                 </button>
                 <ul class="dropdown-menu shadow-sm">
+                    <li><h6 class="dropdown-header">Layout do diagrama</h6></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="raias" onclick="definirModoLayout('raias')"><i class="bi bi-check2 layout-check invisible me-2"></i>Por raias (fluxograma)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="organograma" onclick="definirModoLayout('organograma')"><i class="bi bi-check2 layout-check invisible me-2"></i>Organograma (de cima para baixo)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="logico" onclick="definirModoLayout('logico')"><i class="bi bi-check2 layout-check invisible me-2"></i>Lógico (da esquerda para a direita)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="arvore" onclick="definirModoLayout('arvore')"><i class="bi bi-check2 layout-check invisible me-2"></i>Árvore (lista com recuo)</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><h6 class="dropdown-header">Alinhar blocos selecionados</h6></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('top')"><i class="bi bi-align-top me-2"></i>Linha Superior</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('bottom')"><i class="bi bi-align-bottom me-2"></i>Linha Inferior</a></li>
@@ -926,11 +1004,11 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-h')"><i class="bi bi-align-center me-2"></i>Centro Vertical (Coluna)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-v')"><i class="bi bi-align-middle me-2"></i>Centro Horizontal (Linha)</a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharNosPorRaias()"><i class="bi bi-distribute-horizontal me-2"></i>Distribuir blocos dentro das raias</a></li>
+                    <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="alinharNosPorRaias()"><i class="bi bi-distribute-horizontal me-2"></i>Distribuir blocos dentro das raias</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="centralizarEixoXDaTela()"><i class="bi bi-arrows-collapse me-2"></i>Mover blocos para o centro</a></li>
                     {% if not is_locked %}
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="adicionarNovaRaia()"><i class="bi bi-plus-circle me-2"></i>Adicionar raia...</a></li>
+                    <li class="somente-raias"><hr class="dropdown-divider"></li>
+                    <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="adicionarNovaRaia()"><i class="bi bi-plus-circle me-2"></i>Adicionar raia...</a></li>
                     {% endif %}
                     {% if pode_gerenciar_raias %}
                     <li><a class="dropdown-item" href="{% url 'procedures:diagramas_raias' %}" target="_blank"><i class="bi bi-layout-three-columns me-2"></i>Gerenciar catálogo de raias</a></li>
@@ -948,6 +1026,12 @@
                 <ul class="dropdown-menu shadow-sm">
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="recentralizarCanvas()"><i class="bi bi-crosshair me-2"></i>Centralizar visualização nos blocos</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="enquadrarVisaoCompleta()"><i class="bi bi-aspect-ratio me-2"></i>Enquadrar todo o diagrama na tela</a></li>
+                    <li class="somente-arvore"><hr class="dropdown-divider"></li>
+                    <li class="somente-arvore"><h6 class="dropdown-header">Ramos</h6></li>
+                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="recolherTodos()"><i class="bi bi-arrows-collapse me-2"></i>Recolher todos os ramos</a></li>
+                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="recolherAteNivel(1)"><i class="bi bi-diagram-3 me-2"></i>Mostrar só o 1º nível</a></li>
+                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="recolherAteNivel(2)"><i class="bi bi-diagram-3 me-2"></i>Mostrar até o 2º nível</a></li>
+                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="expandirTodos()"><i class="bi bi-arrows-expand me-2"></i>Expandir todos os ramos</a></li>
                 </ul>
             </div>
 
@@ -1250,7 +1334,10 @@
 
                         <!-- Raia / Setor -->
                         <div class="mb-3">
-                            <label class="form-label text-muted small fw-bold mb-1">Raia / Setor</label>
+                            <label class="form-label text-muted small fw-bold mb-1 d-flex justify-content-between">
+                                <span>Raia</span>
+                                <a href="{% url 'procedures:diagramas_raias' %}" target="_blank" class="fw-normal text-decoration-none" title="Cadastrar e mapear raias (abre em outra aba)"><i class="bi bi-gear"></i> Gerenciar raias</a>
+                            </label>
                             <input type="text" id="inspNodeLane" class="form-control form-control-sm" list="raiasDatalist" autocomplete="off" placeholder="Escolha do catálogo ou digite uma raia livre" onchange="aplicarEstiloNoSelecionado('lane', this.value)">
                             <datalist id="raiasDatalist"></datalist>
                         </div>
@@ -1356,7 +1443,8 @@
             </div>
             <div class="modal-body">
                 <label class="form-label fw-bold small">Do catálogo</label>
-                <div id="listaRaiasCatalogo" class="list-group mb-3" style="max-height: 240px; overflow-y: auto;"></div>
+                <div id="listaRaiasCatalogo" class="list-group mb-1" style="max-height: 240px; overflow-y: auto;"></div>
+                <div class="mb-3 small"><a href="{% url 'procedures:diagramas_raias' %}" target="_blank" class="text-decoration-none"><i class="bi bi-gear"></i> Cadastrar ou editar raias no catálogo</a></div>
                 <label class="form-label fw-bold small">Raia de uso livre</label>
                 <div class="input-group">
                     <input type="text" id="inputRaiaLivre" class="form-control" maxlength="100" placeholder="Ex.: Fornecedores externos"
@@ -1450,7 +1538,8 @@
     let topologia = {{ topologia_json|safe }};
 </script>
 {% load static %}
-<script src="{% static 'procedures/js/diagrama_editor.js' %}?v={{ editor_js_version }}"></script>
+{% for modulo in editor_js_modulos %}<script src="{% static 'procedures/js/diagrama/'|add:modulo|add:'.js' %}?v={{ editor_js_version }}"></script>
+{% endfor %}
 
 <!-- MODAL NOVO BLOCO (ORGANOGRAMA/GERAL) -->
 <div class="modal fade" id="modalNovoBloco" tabindex="-1">
@@ -1485,6 +1574,15 @@
                     <div class="list-group list-group-flush" id="listaColaboradoresBusca" style="max-height: 180px; overflow-y: auto;">
                         <!-- Resultados -->
                     </div>
+                </div>
+
+                <!-- Raia do novo bloco (não se aplica aos modos em árvore, que não usam raias) -->
+                <div id="blocoRaiaNovoBloco" class="mt-3 pt-2 border-top">
+                    <label class="form-label text-muted small fw-bold mb-1" for="selectRaiaNovoBloco"><i class="bi bi-layout-three-columns"></i> Raia do novo bloco</label>
+                    <select id="selectRaiaNovoBloco" class="form-select form-select-sm" onchange="aoEscolherRaiaNovoBloco()"></select>
+                    <input type="text" id="inputRaiaNovoBloco" class="form-control form-control-sm mt-1 d-none" maxlength="100" placeholder="Nome da nova raia"
+                           onkeypress="if(event.key==='Enter') confirmarAdicionarBloco()">
+                    <div class="form-text" id="dicaRaiaNovoBloco">Em qual raia o bloco ficará. Colaboradores com setor mapeado a uma raia do catálogo usam essa raia, a menos que você escolha outra aqui.</div>
                 </div>
             </div>
             <div class="modal-footer py-1 border-top-0">

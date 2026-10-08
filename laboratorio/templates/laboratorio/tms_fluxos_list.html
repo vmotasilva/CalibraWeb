@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <a href="{% url 'laboratorio:tms_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i>Cockpit TMS
+                </a>
+                <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">
+                    Configuração de Linhas
+                </span>
+            </div>
+            <h2 class="h3 fw-bold mt-2 mb-0">Fluxos & Linhas de Produção</h2>
+        </div>
+        
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:tms_fluxo_create' %}" class="btn btn-primary shadow-sm">
+                <i class="bi bi-plus-circle me-1"></i>Novo Fluxo de Produção
+            </a>
+            <a href="{% url 'laboratorio:tms_carregar_exemplo' %}" class="btn btn-outline-primary shadow-sm">
+                <i class="bi bi-magic me-1"></i>Carregar Exemplo
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        {% for item in fluxos %}
+        <div class="col-xl-4 col-md-6">
+            <div class="card border-0 shadow-sm rounded-3 h-100 position-relative">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-dark">{{ item.obj.nome }}</h5>
+                            {% if item.obj.codigo %}
+                            <span class="badge bg-light text-muted">{{ item.obj.codigo }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="badge {% if item.obj.ativo %}bg-success bg-opacity-10 text-success{% else %}bg-secondary{% endif %} rounded-pill px-2 py-1">
+                            {% if item.obj.ativo %}Ativo{% else %}Inativo{% endif %}
+                        </span>
+                    </div>
+
+                    {% if item.obj.descricao %}
+                    <p class="text-muted small mb-3 text-truncate-2" style="min-height: 2.4rem;">
+                        {{ item.obj.descricao }}
+                    </p>
+                    {% else %}
+                    <p class="text-muted small mb-3 fst-italic">Sem descrição cadastrada.</p>
+                    {% endif %}
+
+                    <!-- KPIs Rápidos do Fluxo -->
+                    <div class="p-3 bg-light rounded-3 mb-3 border">
+                        <div class="row g-2 text-center small">
+                            <div class="col-4 border-end">
+                                <span class="text-muted d-block" style="font-size: 0.75rem;">ETAPAS</span>
+                                <strong class="h6 mb-0 text-dark">{{ item.total_etapas }}</strong>
+                            </div>
+                            <div class="col-4 border-end">
+                                <span class="text-muted d-block" style="font-size: 0.75rem;">CAPAC./DIA</span>
+                                <strong class="h6 mb-0 text-success">{{ item.capacidade_dia_pecas }} pçs</strong>
+                            </div>
+                            <div class="col-4">
+                                <span class="text-muted d-block" style="font-size: 0.75rem;">EFICIÊNCIA</span>
+                                <strong class="h6 mb-0 text-primary">{{ item.eficiencia_linha }}%</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gargalo Identificado -->
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded mb-3 {% if item.gargalo %}bg-danger bg-opacity-10 border border-danger{% else %}bg-light{% endif %}">
+                        <span class="small fw-semibold text-danger">
+                            <i class="bi bi-exclamation-octagon-fill me-1"></i>Gargalo:
+                        </span>
+                        <span class="small text-truncate fw-bold text-dark" style="max-width: 170px;" title="{{ item.gargalo.nome }}">
+                            {% if item.gargalo %}{{ item.gargalo.ordem }}. {{ item.gargalo.nome }}{% else %}Sem etapas{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                        <div class="btn-group">
+                            <a href="{% url 'laboratorio:tms_dashboard' %}?fluxo_id={{ item.obj.id }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-speedometer2 me-1"></i>Simular
+                            </a>
+                            <a href="{% url 'laboratorio:tms_etapas_list' item.obj.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-list-check me-1"></i>Etapas
+                            </a>
+                        </div>
+
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                Ações
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'laboratorio:tms_fluxo_update' item.obj.id %}">
+                                        <i class="bi bi-pencil me-2 text-warning"></i>Editar Configurações
+                                    </a>
+                                </li>
+                                <li>
+                                    <form method="POST" action="{% url 'laboratorio:tms_fluxo_duplicar' item.obj.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item">
+                                            <i class="bi bi-copy me-2 text-primary"></i>Duplicar Fluxo (Kaizen)
+                                        </button>
+                                    </form>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'laboratorio:tms_exportar_excel' item.obj.id %}">
+                                        <i class="bi bi-file-earmark-excel me-2 text-success"></i>Exportar Excel
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{% url 'laboratorio:tms_fluxo_delete' item.obj.id %}" onsubmit="return confirm('Deseja realmente excluir o fluxo \'{{ item.obj.nome }}\' e todas as suas etapas?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-trash me-2"></i>Excluir Fluxo
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <p class="text-muted">Nenhum fluxo de produção cadastrado.</p>
+            <a href="{% url 'laboratorio:tms_fluxo_create' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>Criar Novo Fluxo
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

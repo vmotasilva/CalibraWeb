@@ -1116,6 +1116,53 @@ SYSTEM_FEATURES_CATALOG = [
         "keywords": ["hub", "central", "modulo"],
     },
 
+    # LABORATÓRIO / TMS
+    {
+        "title": "TMS - Previsão de Produção & Gargalos",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Tempos e Movimentos",
+        "description": "Análise de balanceamento de linha, identificação de postos gargalo e cálculo de previsão de produção.",
+        "icon": "bi-stopwatch",
+        "color": "#0d6efd",
+        "view_name": "laboratorio:tms_dashboard",
+        "keywords": ["tms", "tempos", "movimentos", "gargalo", "previsao", "capacidade", "producao", "balanceamento"],
+    },
+    {
+        "title": "Linhas de Produção TMS",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Tempos e Movimentos",
+        "description": "Gerenciamento de fluxos e linhas de produção com configuração de postos e tempos de ciclo.",
+        "icon": "bi-diagram-3",
+        "color": "#0d6efd",
+        "view_name": "laboratorio:tms_fluxos_list",
+        "keywords": ["fluxos", "linhas", "etapas", "postos", "tms", "producao"],
+    },
+    {
+        "title": "Painel Diário de Coating",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "Coating",
+        "description": "Acompanhamento diário dos ciclos, lotes e manutenções de tratamento antirreflexo.",
+        "icon": "bi-grid-3x3-gap",
+        "color": "#0d6efd",
+        "view_name": "laboratorio:coating_painel",
+        "keywords": ["coating", "lotes", "antirreflexo", "tratamentos", "painel"],
+    },
+    {
+        "title": "HUB de Laboratório",
+        "module": "Laboratório",
+        "module_key": "laboratorio",
+        "session": "HUB",
+        "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Laboratório.",
+        "icon": "bi-eyedropper",
+        "color": "#0d6efd",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "laboratorio"},
+        "keywords": ["hub", "central", "modulo", "laboratorio"],
+    },
+
     # GERAL
     {
         "title": "Notificações / Caixa de Entrada",

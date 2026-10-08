@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 850px;">
+    <div class="d-flex align-items-center gap-2 mb-4">
+        <a href="{% url 'laboratorio:tms_etapas_list' fluxo.id %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar às Etapas
+        </a>
+        <h2 class="h4 fw-bold mb-0">{{ titulo }}</h2>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body p-4">
+            <form method="POST">
+                {% csrf_token %}
+
+                {% if form.errors %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <strong>Corrija os erros abaixo:</strong>
+                    <ul class="mb-0 mt-2">
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <li>{{ field }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <!-- Identificação -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Ordem <span class="text-danger">*</span></label>
+                        {{ form.ordem }}
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label fw-semibold">Nome da Etapa / Posto <span class="text-danger">*</span></label>
+                        {{ form.nome }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Código</label>
+                        {{ form.codigo }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tipo de Posto <span class="text-danger">*</span></label>
+                        {{ form.tipo_posto }}
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Máquina Associada (Opcional)</label>
+                        {{ form.maquina }}
+                    </div>
+                </div>
+
+                <!-- Tempos e Movimentos -->
+                <h6 class="fw-bold text-uppercase small text-muted border-bottom pb-2 mb-3">
+                    <i class="bi bi-stopwatch me-1"></i>Parâmetros de Tempos & Movimentos
+                </h6>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tempo de Ciclo (Segundos / Unidade) <span class="text-danger">*</span></label>
+                        {{ form.tempo_ciclo_segundos }}
+                        <div class="form-text">Tempo de processamento de 1 peça por operador/máquina.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Tempo de Setup / Troca (Minutos)</label>
+                        {{ form.tempo_setup_minutos }}
+                        <div class="form-text">Tempo gasto para troca de ferramentas ou ajuste de lote.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Postos / Operadores em Paralelo <span class="text-danger">*</span></label>
+                        {{ form.postos_paralelos }}
+                        <div class="form-text">Número de operadores ou máquinas executando esta etapa simultaneamente.</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Eficiência / OEE (%) <span class="text-danger">*</span></label>
+                        {{ form.eficiencia_oee }}
+                        <div class="form-text">Taxa real de aproveitamento (ex: 85%).</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Taxa de Perda / Refugo (%)</label>
+                        {{ form.perda_refugo_pct }}
+                        <div class="form-text">Índice estimado de descarte ou retrabalho.</div>
+                    </div>
+                </div>
+
+                <!-- Prévia de Capacidade Calculada Instantânea -->
+                <div class="p-3 bg-light rounded-3 border mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-bold text-uppercase text-muted">Prévia de Capacidade desta Etapa</span>
+                        <span class="badge bg-primary bg-opacity-10 text-primary fw-semibold">Cálculo TMS</span>
+                    </div>
+                    <div class="row g-2 text-center">
+                        <div class="col-4 border-end">
+                            <span class="text-muted small d-block">TC Efetivo Unitário</span>
+                            <strong class="h5 mb-0 text-dark" id="previewTcEfetivo">-</strong>
+                        </div>
+                        <div class="col-4 border-end">
+                            <span class="text-muted small d-block">Capacidade / Hora</span>
+                            <strong class="h5 mb-0 text-primary" id="previewCapHora">-</strong>
+                        </div>
+                        <div class="col-4">
+                            <span class="text-muted small d-block">Capacidade / Dia ({{ fluxo.horas_trabalho_dia }}h)</span>
+                            <strong class="h5 mb-0 text-success" id="previewCapDia">-</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Instruções / Observações Operacionais</label>
+                    {{ form.observacoes }}
+                </div>
+
+                <div class="form-check form-switch mb-4">
+                    {{ form.ativo }}
+                    <label class="form-check-label fw-semibold" for="{{ form.ativo.id_for_label }}">Etapa Ativa no Fluxo</label>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+                    <a href="{% url 'laboratorio:tms_etapas_list' fluxo.id %}" class="btn btn-light border">Cancelar</a>
+                    <button type="submit" class="btn btn-primary px-4 fw-semibold">
+                        <i class="bi bi-check-circle me-1"></i>{{ acao }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function recalcularPrevia() {
+        const tc = parseFloat(document.getElementById('id_tempo_ciclo_segundos')?.value) || 1.0;
+        const postos = Math.max(1, parseInt(document.getElementById('id_postos_paralelos')?.value) || 1);
+        const oee = Math.max(1, parseFloat(document.getElementById('id_eficiencia_oee')?.value) || 100.0) / 100.0;
+        const refugo = Math.min(99, Math.max(0, parseFloat(document.getElementById('id_perda_refugo_pct')?.value) || 0.0)) / 100.0;
+        const horasDia = {{ fluxo.horas_trabalho_dia|default:8.8 }};
+
+        const tcEfetivo = (tc / postos) / (oee * (1.0 - refugo));
+        const capHora = tcEfetivo > 0 ? (3600.0 / tcEfetivo) : 0.0;
+        const capDia = capHora * horasDia;
+
+        document.getElementById('previewTcEfetivo').innerText = `${tcEfetivo.toFixed(2)}s`;
+        document.getElementById('previewCapHora').innerText = `${capHora.toFixed(1)} pçs/h`;
+        document.getElementById('previewCapDia').innerText = `${Math.round(capDia)} pçs/dia`;
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        ['id_tempo_ciclo_segundos', 'id_postos_paralelos', 'id_eficiencia_oee', 'id_perda_refugo_pct'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', recalcularPrevia);
+        });
+        recalcularPrevia();
+    });
+</script>
+{% endblock %}
