@@ -188,7 +188,7 @@ NAV_STRUCTURE = [
     {
         "key": "diagramas",
         "nome": "Diagramas",
-        "cor": "teal",
+        "cor": "purple",
         "icone": "bi bi-diagram-3-fill",
         "module_perm": "core.nav_mod_diagramas",
         "blocos": [
@@ -214,6 +214,12 @@ NAV_STRUCTURE = [
                         "view_name": "procedures:diagrama_editor",
                         "perm": "core.nav_diagramas_editor",
                         "descricao": "Edita a topologia, raias, nós e conexões nos modos Canvas e Grelha.",
+                    },
+                    {
+                        "nome": "Cadastro e Mapeamento de Raias",
+                        "view_name": "procedures:diagramas_raias",
+                        "perm": "core.nav_diagramas_raias",
+                        "descricao": "Cadastra o catálogo de raias (cor, ordem e vínculo com o setor do RH) usado nos diagramas.",
                     },
                     {
                         "nome": "Exportar Relatório PDF DOC.071",

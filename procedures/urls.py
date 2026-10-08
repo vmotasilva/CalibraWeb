@@ -7,6 +7,7 @@ Consolida training + procurements
 from django.urls import path
 from . import views
 from .views import diagram_views
+from .views import diagram_raias_views
 
 from .views import (
     habilidades_views,
@@ -353,6 +354,7 @@ urlpatterns = [
     # ==========================
     path('diagramas/', diagram_views.diagramas_lista_view, name='diagramas_lista'),
     path('diagramas/novo/', diagram_views.diagrama_novo_view, name='diagrama_novo'),
+    path('diagramas/raias/', diagram_raias_views.raias_catalogo_view, name='diagramas_raias'),
     path('diagramas/<uuid:diagrama_id>/historico/', diagram_views.diagrama_historico_view, name='diagrama_historico'),
     path('diagramas/<uuid:diagrama_id>/duplicar/', diagram_views.diagrama_duplicar_view, name='diagrama_duplicar'),
     path('diagramas/<uuid:diagrama_id>/arquivar/', diagram_views.diagrama_arquivar_view, name='diagrama_arquivar'),

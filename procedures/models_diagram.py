@@ -196,3 +196,38 @@ class DiagramaVersao(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+class RaiaCatalogo(models.Model):
+    """
+    Catálogo global de Raias (swimlanes) reutilizáveis nos diagramas.
+    Os diagramas guardam apenas o NOME da raia (raias de uso livre continuam permitidas);
+    o catálogo fornece padronização, cor, ordem padrão e o vínculo com o Setor do RH.
+    """
+    nome = models.CharField(max_length=100, verbose_name="Nome da Raia")
+    setor = models.ForeignKey(
+        'organization.Setor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='raias_diagramas',
+        verbose_name="Setor vinculado (RH)",
+        help_text="Colaboradores desse setor caem automaticamente nesta raia."
+    )
+    cor = models.CharField(max_length=7, default="#334155", verbose_name="Cor da faixa")
+    ordem = models.PositiveIntegerField(default=0, db_index=True, verbose_name="Ordem padrão")
+    descricao = models.CharField(max_length=255, blank=True, verbose_name="Descrição")
+    ativo = models.BooleanField(default=True, verbose_name="Ativa")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Raia de Diagrama"
+        verbose_name_plural = "Raias de Diagramas"
+        ordering = ["ordem", "nome"]
+        constraints = [
+            models.UniqueConstraint(models.functions.Lower('nome'), name='uniq_raia_catalogo_nome_ci'),
+        ]
+
+    def __str__(self):
+        return self.nome

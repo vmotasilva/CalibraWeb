@@ -1,0 +1,240 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Cadastro de Raias - Diagramas{% endblock %}
+{% block header_title %}Cadastro e Mapeamento de Raias{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'procedures:diagramas_lista' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1">
+    <i class="bi bi-arrow-left"></i> Diagramas
+</a>
+{% if pode_gerenciar %}
+<button type="button" class="btn btn-primary d-inline-flex align-items-center gap-1 shadow-sm" onclick="abrirModalRaia()">
+    <i class="bi bi-plus-lg"></i> Nova Raia
+</button>
+{% endif %}
+{% endblock %}
+
+{% block main_content %}
+<div class="alert alert-light border small mb-3">
+    <i class="bi bi-info-circle text-primary"></i>
+    O catálogo padroniza o nome, a <strong>cor</strong> da faixa, a <strong>ordem</strong> e o <strong>setor do RH</strong> de cada raia.
+    Colaboradores vinculados a blocos caem automaticamente na raia do seu setor. Os diagramas guardam só o nome da raia, então
+    <strong>raias de uso livre</strong> (mapas mentais, por exemplo) continuam permitidas; elas aparecem abaixo, em "Raias livres em uso".
+    {% if not pode_gerenciar %}<br><strong>Somente leitura:</strong> você não tem permissão para alterar o catálogo.{% endif %}
+</div>
+
+<div class="card border-0 shadow-sm overflow-hidden bg-white mb-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3" style="width: 70px;">Ordem</th>
+                    <th>Raia</th>
+                    <th>Setor vinculado (RH)</th>
+                    <th style="width: 170px;">Uso nos diagramas</th>
+                    <th style="width: 90px;">Situação</th>
+                    {% if pode_gerenciar %}<th class="text-end pe-3" style="width: 150px;">Ações</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for raia in raias %}
+                <tr {% if not raia.ativo %}class="table-secondary"{% endif %}>
+                    <td class="ps-3 font-monospace">{{ raia.ordem }}</td>
+                    <td>
+                        <span class="d-inline-block rounded me-2 align-middle" style="width: 14px; height: 24px; background: {{ raia.cor }};"></span>
+                        <strong class="align-middle">{{ raia.nome }}</strong>
+                        {% if raia.descricao %}<div class="small text-muted ms-4">{{ raia.descricao }}</div>{% endif %}
+                    </td>
+                    <td>{% if raia.setor %}<span class="badge bg-light text-dark border"><i class="bi bi-diagram-2"></i> {{ raia.setor.nome }}</span>{% else %}<span class="text-muted small">Sem vínculo (uso livre)</span>{% endif %}</td>
+                    <td>
+                        {% if raia.uso %}
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">{{ raia.uso|length }} diagrama{{ raia.uso|length|pluralize }}</button>
+                            <ul class="dropdown-menu shadow-sm" style="max-height: 260px; overflow-y: auto;">
+                                {% for u in raia.uso %}
+                                <li><a class="dropdown-item small" href="{% url 'procedures:diagrama_editor' versao_id=u.versao_id %}">
+                                    <span class="font-monospace text-primary">{{ u.identificador }}</span> {{ u.titulo }} <span class="text-muted">(Rev. {{ u.revisao|stringformat:"02d" }} - {{ u.status }})</span>
+                                </a></li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% else %}<span class="text-muted small">Não usada</span>{% endif %}
+                    </td>
+                    <td>{% if raia.ativo %}<span class="badge bg-success-subtle text-success border border-success-subtle">Ativa</span>{% else %}<span class="badge bg-secondary-subtle text-secondary">Inativa</span>{% endif %}</td>
+                    {% if pode_gerenciar %}
+                    <td class="text-end pe-3">
+                        <div class="d-inline-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-primary" title="Editar"
+                                    data-id="{{ raia.id }}" data-nome="{{ raia.nome }}" data-cor="{{ raia.cor }}" data-ordem="{{ raia.ordem }}"
+                                    data-setor="{{ raia.setor_id|default_if_none:'' }}" data-descricao="{{ raia.descricao }}" data-ativo="{{ raia.ativo|yesno:'1,0' }}"
+                                    onclick="abrirModalRaia(this)"><i class="bi bi-pencil"></i></button>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown"><i class="bi bi-three-dots-vertical"></i></button>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li><button type="button" class="dropdown-item" data-id="{{ raia.id }}" data-nome="{{ raia.nome }}" onclick="abrirModalMesclar(this)"><i class="bi bi-intersect me-2"></i>Mesclar em outra raia...</button></li>
+                                    <li>
+                                        <form method="post">{% csrf_token %}<input type="hidden" name="acao" value="alternar"><input type="hidden" name="id" value="{{ raia.id }}">
+                                            <button type="submit" class="dropdown-item"><i class="bi bi-toggle-{% if raia.ativo %}off{% else %}on{% endif %} me-2"></i>{% if raia.ativo %}Desativar{% else %}Ativar{% endif %}</button>
+                                        </form>
+                                    </li>
+                                    <li>
+                                        <form method="post" onsubmit="return confirm('Remover esta raia do catálogo? Os diagramas que a usam não serão alterados.');">{% csrf_token %}<input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{{ raia.id }}">
+                                            <button type="submit" class="dropdown-item text-danger"><i class="bi bi-trash me-2"></i>Excluir do catálogo</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center py-5 text-muted">
+                    <i class="bi bi-layout-three-columns display-4 d-block mb-2 opacity-50"></i>
+                    Nenhuma raia cadastrada ainda.{% if pode_gerenciar %} Clique em <strong>Nova Raia</strong> para começar.{% endif %}
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if raias_livres %}
+<div class="card border-0 shadow-sm bg-white">
+    <div class="card-header bg-white fw-bold"><i class="bi bi-pencil-square me-1"></i> Raias livres em uso (fora do catálogo)</div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <tbody>
+                {% for livre in raias_livres %}
+                <tr>
+                    <td class="ps-3"><strong>{{ livre.nome }}</strong></td>
+                    <td class="small text-muted">
+                        {% for u in livre.uso|slice:":4" %}<a href="{% url 'procedures:diagrama_editor' versao_id=u.versao_id %}" class="me-2">{{ u.identificador }}</a>{% endfor %}
+                        {% if livre.uso|length > 4 %}+{{ livre.uso|length|add:"-4" }}{% endif %}
+                    </td>
+                    {% if pode_gerenciar %}
+                    <td class="text-end pe-3">
+                        <button type="button" class="btn btn-sm btn-outline-primary" data-nome="{{ livre.nome }}" onclick="abrirModalRaia(this, true)">
+                            <i class="bi bi-journal-plus"></i> Adicionar ao catálogo
+                        </button>
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if pode_gerenciar %}
+<!-- Modal: criar / editar raia -->
+<div class="modal fade" id="modalRaia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="salvar">
+            <input type="hidden" name="id" id="raiaId">
+            <div class="modal-header">
+                <h5 class="modal-title" id="raiaTitulo">Nova Raia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Nome da raia</label>
+                    <input type="text" name="nome" id="raiaNome" class="form-control" maxlength="100" required placeholder="Ex.: Qualidade, Metrologia, Liderança">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Setor do RH (opcional)</label>
+                    <select name="setor" id="raiaSetor" class="form-select">
+                        <option value="">Sem vínculo (uso livre)</option>
+                        {% for s in setores %}<option value="{{ s.id }}">{{ s.nome }}</option>{% endfor %}
+                    </select>
+                    <div class="form-text">Colaboradores desse setor serão colocados nesta raia ao vincular o bloco.</div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Cor da faixa</label>
+                        <input type="color" name="cor" id="raiaCor" class="form-control form-control-color w-100" value="#334155">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small">Ordem padrão</label>
+                        <input type="number" name="ordem" id="raiaOrdem" class="form-control" min="0" placeholder="Automática">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Descrição (opcional)</label>
+                    <input type="text" name="descricao" id="raiaDescricao" class="form-control" maxlength="255">
+                </div>
+                <div class="form-check mb-2" id="raiaAplicarBox" style="display:none;">
+                    <input class="form-check-input" type="checkbox" name="aplicar_rascunhos" id="raiaAplicar" checked>
+                    <label class="form-check-label small" for="raiaAplicar">Renomear também nos diagramas em <strong>Rascunho</strong> (revisões aprovadas não são alteradas)</label>
+                </div>
+                <div class="form-check" id="raiaAtivoBox" style="display:none;">
+                    <input class="form-check-input" type="checkbox" name="ativo" id="raiaAtivo" checked>
+                    <label class="form-check-label small" for="raiaAtivo">Raia ativa (aparece nas opções do editor)</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: mesclar raia -->
+<div class="modal fade" id="modalMesclar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="mesclar">
+            <input type="hidden" name="id" id="mesclarId">
+            <div class="modal-header">
+                <h5 class="modal-title">Mesclar raia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small">Todos os blocos da raia <strong id="mesclarNome"></strong> nos diagramas em <strong>Rascunho</strong> passarão para a raia escolhida. A raia de origem será desativada.</p>
+                <label class="form-label fw-bold small">Mesclar em</label>
+                <select name="destino_id" id="mesclarDestino" class="form-select" required>
+                    {% for r in raias %}<option value="{{ r.id }}">{{ r.nome }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-warning">Mesclar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalRaia(btn, novaAPartirDeLivre) {
+        const d = btn && btn.dataset ? btn.dataset : {};
+        const editando = !!d.id;
+        document.getElementById('raiaTitulo').textContent = editando ? 'Editar Raia' : 'Nova Raia';
+        document.getElementById('raiaId').value = d.id || '';
+        document.getElementById('raiaNome').value = d.nome || '';
+        document.getElementById('raiaCor').value = d.cor || '#334155';
+        document.getElementById('raiaOrdem').value = d.ordem || '';
+        document.getElementById('raiaSetor').value = d.setor || '';
+        document.getElementById('raiaDescricao').value = d.descricao || '';
+        document.getElementById('raiaAtivo').checked = d.ativo !== '0';
+        document.getElementById('raiaAplicarBox').style.display = editando ? '' : 'none';
+        document.getElementById('raiaAtivoBox').style.display = editando ? '' : 'none';
+        new bootstrap.Modal(document.getElementById('modalRaia')).show();
+    }
+
+    function abrirModalMesclar(btn) {
+        const id = btn.dataset.id;
+        document.getElementById('mesclarId').value = id;
+        document.getElementById('mesclarNome').textContent = btn.dataset.nome;
+        const sel = document.getElementById('mesclarDestino');
+        [...sel.options].forEach(o => { o.hidden = (o.value === id); o.disabled = (o.value === id); });
+        sel.value = [...sel.options].find(o => !o.disabled)?.value || '';
+        new bootstrap.Modal(document.getElementById('modalMesclar')).show();
+    }
+</script>
+{% endif %}
+{% endblock %}

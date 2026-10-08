@@ -7,6 +7,7 @@ Sem dependências externas: usada pelo endpoint de auto-save.
 MAX_NODES = 1000
 MAX_EDGES = 3000
 MAX_SUBTITULOS = 20
+MAX_RAIAS = 100
 
 
 def _numero(valor):
@@ -30,6 +31,12 @@ def validar_topologia(topologia: dict) -> list:
         return [f"Limite de {MAX_NODES} nós por diagrama excedido."]
     if len(edges) > MAX_EDGES:
         return [f"Limite de {MAX_EDGES} conexões por diagrama excedido."]
+
+    for chave in ('lanes', 'raias_fixas'):
+        lista = topologia.get(chave)
+        if lista is not None and (not isinstance(lista, list) or len(lista) > MAX_RAIAS
+                                  or not all(isinstance(x, str) and 0 < len(x) <= 100 for x in lista)):
+            return [f"'{chave}' deve ser uma lista de até {MAX_RAIAS} nomes de raia (até 100 caracteres)."]
 
     ids_nos = set()
     for node in nodes:

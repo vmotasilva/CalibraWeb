@@ -923,7 +923,10 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="centralizarEixoXDaTela()"><i class="bi bi-arrows-collapse me-2"></i>Mover blocos para o centro</a></li>
                     {% if not is_locked %}
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="adicionarNovaRaia()"><i class="bi bi-plus-circle me-2"></i>Nova raia / setor</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="adicionarNovaRaia()"><i class="bi bi-plus-circle me-2"></i>Adicionar raia...</a></li>
+                    {% endif %}
+                    {% if pode_gerenciar_raias %}
+                    <li><a class="dropdown-item" href="{% url 'procedures:diagramas_raias' %}" target="_blank"><i class="bi bi-layout-three-columns me-2"></i>Gerenciar catálogo de raias</a></li>
                     {% endif %}
                 </ul>
             </div>
@@ -1241,7 +1244,8 @@
                         <!-- Raia / Setor -->
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold mb-1">Raia / Setor</label>
-                            <input type="text" id="inspNodeLane" class="form-control form-control-sm" oninput="aplicarEstiloNoSelecionado('lane', this.value)">
+                            <input type="text" id="inspNodeLane" class="form-control form-control-sm" list="raiasDatalist" autocomplete="off" placeholder="Escolha do catálogo ou digite uma raia livre" onchange="aplicarEstiloNoSelecionado('lane', this.value)">
+                            <datalist id="raiasDatalist"></datalist>
                         </div>
 
                         <!-- Formato do Bloco (Shape) -->
@@ -1335,6 +1339,29 @@
 </div>
 
 <!-- Modal de Criação de Nova Revisão -->
+<!-- Modal: Adicionar Raia (catálogo ou uso livre) -->
+<div class="modal fade" id="modalNovaRaia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-layout-three-columns"></i> Adicionar raia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-bold small">Do catálogo</label>
+                <div id="listaRaiasCatalogo" class="list-group mb-3" style="max-height: 240px; overflow-y: auto;"></div>
+                <label class="form-label fw-bold small">Raia de uso livre</label>
+                <div class="input-group">
+                    <input type="text" id="inputRaiaLivre" class="form-control" maxlength="100" placeholder="Ex.: Fornecedores externos"
+                           onkeydown="if(event.key === 'Enter') { event.preventDefault(); adicionarRaiaLivre(); }">
+                    <button class="btn btn-primary" type="button" onclick="adicionarRaiaLivre()">Adicionar</button>
+                </div>
+                <div class="form-text">Raias livres não precisam estar no catálogo (útil para mapas mentais mais livres).</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalNovaRevisao" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1402,6 +1429,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ raias_catalogo|json_script:"raiasCatalogoData" }}
 <script>
     const VERSAO_ID = "{{ versao.id }}";
     const VERSAO_REVISAO = {{ versao.revisao }};

@@ -74,6 +74,7 @@ class NavigationPermission(models.Model):
             ("nav_diagramas_submeter", "NAV: Diagramas / Submeter para Aprovação"),
             ("nav_diagramas_aprovar", "NAV: Diagramas / Aprovar Fluxograma (ISO 13485)"),
             ("nav_diagramas_nova_revisao", "NAV: Diagramas / Criar Nova Revisão"),
+            ("nav_diagramas_raias", "NAV: Diagramas / Cadastro de Raias (catálogo)"),
 
             # --- METROLOGIA ---
 

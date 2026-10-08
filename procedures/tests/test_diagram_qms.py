@@ -616,3 +616,154 @@ class DiagramaColaboradorSubtitulosTestCase(TestCase):
         nova["nodes"][0]["data"]["colab"]["cargo"] = "Coordenadora da Qualidade"
         campos = {m["campo"] for b in comparar_topologias(antiga, nova)["blocos_alterados"] for m in b["mudancas"]}
         self.assertEqual(campos, {"Subtítulos", "Função"})
+
+
+class DiagramaRaiasTestCase(TestCase):
+    """Catálogo de raias, ordem explícita, renomear/mesclar em rascunhos e integração com editor/PDF."""
+
+    def setUp(self):
+        from organization.models import Setor
+        self.admin = User.objects.create_user(username='admin.raias', password='x')
+        self.leitor = User.objects.create_user(username='leitor.raias', password='x')
+        self.setor_q = Setor.objects.create(nome='Qualidade')
+        self.diagrama = Diagrama.objects.create(titulo='Org Raias', criado_por=self.admin)
+        self.versao = DiagramaVersao.objects.create(
+            diagrama=self.diagrama, revisao=0, status=StatusDiagrama.RASCUNHO,
+            dados_topologia=self._topologia())
+
+    @staticmethod
+    def _topologia():
+        return {
+            "nodes": [
+                {"id": "1", "type": "process", "position": {"x": 1, "y": 60}, "data": {"label": "A", "lane": "Liderança"}},
+                {"id": "2", "type": "process", "position": {"x": 1, "y": 300}, "data": {"label": "B", "lane": "Qualidade"}},
+            ],
+            "edges": [{"id": "e12", "source": "1", "target": "2"}],
+            "grid_data": [],
+        }
+
+    def _cliente(self, user, *perms):
+        from django.contrib.auth.models import Permission
+        for codename in perms:
+            user.user_permissions.add(Permission.objects.get(codename=codename))
+        c = Client()
+        c.force_login(User.objects.get(pk=user.pk))
+        return c
+
+    # --- ordem explícita ------------------------------------------------------------
+    def test_ordem_das_raias(self):
+        from procedures.services.diagram_raias import raias_do_diagrama
+        topo = self._topologia()
+        self.assertEqual(raias_do_diagrama(topo), ["Liderança", "Qualidade"])  # legado: ordem de aparição
+
+        topo["lanes"] = ["Qualidade", "Liderança"]
+        self.assertEqual(raias_do_diagrama(topo), ["Qualidade", "Liderança"])  # ordem explícita
+
+        topo["raias_fixas"] = ["Operacional"]  # raia criada sem blocos continua visível
+        self.assertEqual(raias_do_diagrama(topo), ["Qualidade", "Liderança", "Operacional"])
+
+        topo["lanes"] = ["Qualidade", "Fantasma", "Liderança"]  # nomes sem blocos e não fixos somem
+        self.assertNotIn("Fantasma", raias_do_diagrama(topo))
+        self.assertEqual(raias_do_diagrama({"nodes": [], "edges": []}), ["Geral"])
+
+    def test_autosave_valida_lanes(self):
+        url = f'/procedures/api/diagramas-versoes/{self.versao.id}/auto-save/'
+        c = self._cliente(self.admin)
+        ok = self._topologia()
+        ok["lanes"], ok["raias_fixas"] = ["Liderança", "Qualidade"], ["Qualidade"]
+        self.assertEqual(c.patch(url, data=json.dumps({"dados_topologia": ok}), content_type='application/json').status_code, 200)
+        ruim = self._topologia()
+        ruim["lanes"] = "Liderança"
+        self.assertEqual(c.patch(url, data=json.dumps({"dados_topologia": ruim}), content_type='application/json').status_code, 400)
+
+    # --- catálogo -------------------------------------------------------------------
+    def test_somente_com_permissao_altera_o_catalogo(self):
+        from procedures.models_diagram import RaiaCatalogo
+        dados = {'acao': 'salvar', 'nome': 'Qualidade', 'cor': '#0f766e', 'setor': self.setor_q.id}
+        self._cliente(self.leitor).post('/procedures/diagramas/raias/', dados)
+        self.assertEqual(RaiaCatalogo.objects.count(), 0)
+        # leitura da tela é liberada
+        self.assertEqual(self._cliente(self.leitor).get('/procedures/diagramas/raias/').status_code, 200)
+
+        c = self._cliente(self.admin, 'nav_diagramas_raias')
+        c.post('/procedures/diagramas/raias/', dados)
+        raia = RaiaCatalogo.objects.get()
+        self.assertEqual((raia.nome, raia.cor, raia.setor_id, raia.ativo), ('Qualidade', '#0f766e', self.setor_q.id, True))
+        self.assertGreater(raia.ordem, 0)
+
+    def test_validacoes_do_cadastro(self):
+        from procedures.models_diagram import RaiaCatalogo
+        c = self._cliente(self.admin, 'nav_diagramas_raias')
+        c.post('/procedures/diagramas/raias/', {'acao': 'salvar', 'nome': 'Qualidade', 'cor': '#0f766e'})
+        c.post('/procedures/diagramas/raias/', {'acao': 'salvar', 'nome': 'qualidade', 'cor': '#0f766e'})  # duplicada (sem diferenciar caixa)
+        c.post('/procedures/diagramas/raias/', {'acao': 'salvar', 'nome': 'Outra', 'cor': 'vermelho'})     # cor inválida
+        c.post('/procedures/diagramas/raias/', {'acao': 'salvar', 'nome': '   ', 'cor': '#000000'})        # nome vazio
+        self.assertEqual(list(RaiaCatalogo.objects.values_list('nome', flat=True)), ['Qualidade'])
+
+    def test_renomear_aplica_somente_em_rascunhos(self):
+        from procedures.models_diagram import RaiaCatalogo
+        raia = RaiaCatalogo.objects.create(nome='Qualidade', ordem=10)
+        # diagrama com revisão aprovada: permanece imutável
+        aprovado = Diagrama.objects.create(titulo='Aprovado', criado_por=self.admin)
+        v_ap = DiagramaVersao.objects.create(diagrama=aprovado, revisao=0, status=StatusDiagrama.APROVADO,
+                                             dados_topologia=self._topologia())
+        c = self._cliente(self.admin, 'nav_diagramas_raias')
+        c.post('/procedures/diagramas/raias/', {'acao': 'salvar', 'id': raia.id, 'nome': 'Garantia da Qualidade',
+                                                'cor': '#334155', 'ordem': 10, 'ativo': 'on', 'aplicar_rascunhos': 'on'})
+        self.versao.refresh_from_db()
+        v_ap.refresh_from_db()
+        lanes_rascunho = {n['data']['lane'] for n in self.versao.dados_topologia['nodes']}
+        lanes_aprovado = {n['data']['lane'] for n in v_ap.dados_topologia['nodes']}
+        self.assertEqual(lanes_rascunho, {'Liderança', 'Garantia da Qualidade'})
+        self.assertEqual(lanes_aprovado, {'Liderança', 'Qualidade'})
+
+    def test_mesclar_raias(self):
+        from procedures.models_diagram import RaiaCatalogo
+        origem = RaiaCatalogo.objects.create(nome='Qualidade', ordem=10)
+        destino = RaiaCatalogo.objects.create(nome='Liderança', ordem=20)
+        c = self._cliente(self.admin, 'nav_diagramas_raias')
+        c.post('/procedures/diagramas/raias/', {'acao': 'mesclar', 'id': origem.id, 'destino_id': destino.id})
+        self.versao.refresh_from_db()
+        self.assertEqual({n['data']['lane'] for n in self.versao.dados_topologia['nodes']}, {'Liderança'})
+        origem.refresh_from_db()
+        self.assertFalse(origem.ativo)
+
+    def test_tela_mostra_uso_e_raias_livres(self):
+        from procedures.models_diagram import RaiaCatalogo
+        RaiaCatalogo.objects.create(nome='Qualidade', ordem=10)
+        html = self._cliente(self.admin, 'nav_diagramas_raias').get('/procedures/diagramas/raias/').content.decode()
+        self.assertIn('1 diagrama', html)             # uso da raia Qualidade
+        self.assertIn('Raias livres em uso', html)    # "Liderança" está em uso fora do catálogo
+        self.assertIn('Liderança', html)
+
+    # --- editor / busca / PDF -------------------------------------------------------
+    def test_editor_recebe_catalogo_e_busca_traz_setor_id(self):
+        from procedures.models_diagram import RaiaCatalogo
+        from rh.models import Colaborador
+        RaiaCatalogo.objects.create(nome='Qualidade', cor='#0f766e', ordem=10, setor=self.setor_q)
+        RaiaCatalogo.objects.create(nome='Inativa', ordem=20, ativo=False)
+        html = self._cliente(self.admin).get(f'/procedures/diagramas/editor/{self.versao.id}/').content.decode()
+        self.assertIn('id="raiasCatalogoData"', html)
+        self.assertIn('#0f766e', html)
+        self.assertNotIn('Inativa', html)
+        self.assertIn('id="modalNovaRaia"', html)
+
+        Colaborador.objects.create(nome_completo='Ana Paula Silva', matricula='7001', grupo='G', setor=self.setor_q)
+        itens = self._cliente(self.admin).get('/procedures/api/diagramas/colaboradores/?q=ana').json()['results']
+        self.assertEqual(itens[0]['setor_id'], self.setor_q.id)
+
+    def test_pdf_usa_ordem_e_cor_das_raias(self):
+        from procedures.models_diagram import RaiaCatalogo
+        RaiaCatalogo.objects.create(nome='Qualidade', cor='#0f766e', ordem=10)
+        self.versao.dados_topologia["lanes"] = ["Qualidade", "Liderança"]
+        self.versao.dados_topologia["raias_fixas"] = ["Operacional"]
+        self.versao.save()
+        pdf = gerar_pdf_diagrama_doc071(self.versao)
+        self.assertTrue(pdf.startswith(b'%PDF-'))
+
+    def test_cadastro_de_raias_no_registro_de_permissoes_e_cor_do_modulo(self):
+        from shared.permissions import NAV_STRUCTURE
+        modulo = next(m for m in NAV_STRUCTURE if m["key"] == "diagramas")
+        self.assertEqual(modulo["cor"], "purple")  # cor com CSS definido (teal não existe no Bootstrap)
+        perms = [f["perm"] for b in modulo["blocos"] for f in b["funcoes"]]
+        self.assertIn("core.nav_diagramas_raias", perms)

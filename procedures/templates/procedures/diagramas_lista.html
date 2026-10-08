@@ -4,6 +4,9 @@
 {% block header_title %}Diagramas e Fluxogramas de Processo (DOC.071){% endblock %}
 
 {% block header_actions %}
+<a href="{% url 'procedures:diagramas_raias' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1">
+    <i class="bi bi-layout-three-columns"></i> Raias
+</a>
 {% if pode_criar %}
 <a href="{% url 'procedures:diagrama_novo' %}" class="btn btn-primary d-inline-flex align-items-center gap-1 shadow-sm">
     <i class="bi bi-plus-lg"></i> Novo Fluxograma

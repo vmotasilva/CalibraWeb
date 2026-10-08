@@ -177,6 +177,7 @@ function renderizarCanvas() {
         laneEl.className = 'swimlane-row';
         laneEl.style.top = `${yPos}px`;
         laneEl.style.height = `${h}px`;
+        laneEl.style.borderLeftColor = corDaRaia(lane);
 
         const safeLane = escapeHtml(lane);
         laneEl.innerHTML = `
@@ -342,6 +343,7 @@ function atualizarSelecoesVisuais() {
             renderizarTagsInspector(node);
             renderizarSubtitulosInspector(node);
             renderizarColabInspector(node);
+            preencherSugestoesDeRaias();
 
             const panel = document.getElementById('inspectorPanel');
             if (panel.classList.contains('collapsed')) {
@@ -472,6 +474,11 @@ function aplicarEstiloNoSelecionado(prop, valor) {
 
         if (!node.data) node.data = {};
         if (prop === 'label' && node.data.colab) return; // o texto vem do colaborador (nome completo ou curto)
+
+        if (prop === 'lane') {
+            moverNoParaRaia(node, valor);
+            return;
+        }
 
         if (prop === 'shape') {
             node.data.shape = valor;
@@ -638,8 +645,9 @@ function vincularColaboradorAoBloco(item) {
     if (!node.data) node.data = {};
     node.data.colab = { id: item.id, nome: item.nome, cargo: item.cargo || '', nomeCurto: false, temFoto: !!item.tem_foto };
     node.data.label = nomeExibicaoColab(node.data.colab);
-    if (item.setor && (!node.data.lane || node.data.lane === 'Geral')) node.data.lane = item.setor;
     sincronizarGridDoNo(node);
+    const raiaSetor = raiaParaColaborador(item.setor_id, item.setor);
+    if (raiaSetor && (!node.data.lane || node.data.lane === 'Geral')) moverNoParaRaia(node, raiaSetor);
 
     renderizarCanvas();
     renderizarGrelha();
@@ -1153,6 +1161,7 @@ async function buscarColaboradoresParaBloco(termo) {
                         document.getElementById('inputBuscaColab').value = colab.nome_completo || colab.nome;
                         ctxNovoBloco.colabSelecionado = {
                             id: colab.id,
+                            setorId: colab.setor_id,
                             temFoto: !!colab.tem_foto,
                             nome: colab.nome_completo || colab.nome,
                             cargo: cargoDesc,
@@ -1181,7 +1190,7 @@ function confirmarAdicionarBloco() {
             return;
         }
         labelText = ctxNovoBloco.colabSelecionado.nome;
-        laneText = ctxNovoBloco.colabSelecionado.setor || null;
+        laneText = raiaParaColaborador(ctxNovoBloco.colabSelecionado.setorId, ctxNovoBloco.colabSelecionado.setor);
         const sel = ctxNovoBloco.colabSelecionado;
         colabData = { id: sel.id, nome: sel.nome, cargo: sel.cargo || '', nomeCurto: false, temFoto: !!sel.temFoto };
     }
@@ -1633,7 +1642,7 @@ function aplicarColaboradorNoOutliner(nodeId, colab, fullText, atIndex) {
     if (!node) return;
     
     const cargoDesc = colab.cargo_nome || colab.cargo || '';
-    const setorDesc = colab.setor_nome || colab.setor || '';
+    const setorDesc = raiaParaColaborador(colab.setor_id, colab.setor_nome || colab.setor || '') || '';
     const nome = colab.nome_completo || colab.nome;
     
     // Substitui o comando @nome pelo nome real do colaborador
@@ -2175,11 +2184,118 @@ function escapeHtml(text) {
         .replace(/'/g, "&#039;");
 }
 
+// Catálogo global de raias (cor, ordem padrão e setor do RH), vindo do servidor
+const RAIAS_CATALOGO = (() => {
+    try { return JSON.parse(document.getElementById('raiasCatalogoData').textContent) || []; }
+    catch (e) { return []; }
+})();
+
+function raiaCatalogoPorNome(nome) {
+    const n = (nome || '').trim().toLowerCase();
+    return RAIAS_CATALOGO.find(r => r.nome.toLowerCase() === n) || null;
+}
+
+function corDaRaia(nome) {
+    return raiaCatalogoPorNome(nome)?.cor || '#334155';
+}
+
+// Raia do catálogo mapeada ao setor do colaborador; sem mapeamento usa o nome do setor
+function raiaParaColaborador(setorId, setorNome) {
+    const mapeada = setorId ? RAIAS_CATALOGO.find(r => r.setor_id === setorId) : null;
+    return mapeada ? mapeada.nome : (setorNome || null);
+}
+
+// Ordem explícita: topologia.lanes (nomes em ordem) + topologia.raias_fixas (raias sem blocos que continuam visíveis).
+// Uma raia aparece se tiver blocos ou for fixa. Diagramas antigos (sem "lanes") seguem a ordem de aparição dos blocos.
 function obterListaRaiasOrdenada() {
-    const fromNodes = (topologia.nodes || []).map(n => n.data?.lane || 'Geral');
-    const fromGrid = (topologia.grid_data || []).map(r => r.lane || 'Geral');
-    const all = Array.from(new Set([...fromNodes, ...fromGrid])).filter(Boolean);
-    return all.length > 0 ? all : ['Geral'];
+    const usadas = [
+        ...(topologia.nodes || []).map(n => n.data?.lane || 'Geral'),
+        ...(topologia.grid_data || []).map(r => r.lane || 'Geral')
+    ].filter(Boolean);
+    const fixas = (topologia.raias_fixas || []).filter(Boolean);
+    const visiveis = new Set([...usadas, ...fixas]);
+    const lista = [];
+    (topologia.lanes || []).forEach(l => { if (l && visiveis.has(l) && !lista.includes(l)) lista.push(l); });
+    usadas.forEach(l => { if (!lista.includes(l)) lista.push(l); });
+    fixas.forEach(l => { if (!lista.includes(l)) lista.push(l); });
+    return lista.length > 0 ? lista : ['Geral'];
+}
+
+function fixarOrdemRaias() {
+    topologia.lanes = obterListaRaiasOrdenada();
+}
+
+// Faixas (top/height) de cada raia, com a mesma regra usada para desenhar o canvas
+function calcularFaixasRaias(lanes) {
+    const faixas = {};
+    let top = 40;
+    lanes.forEach(lane => {
+        const nodes = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+        let altura = 220;
+        if (nodes.length > 0) {
+            const ys = nodes.map(n => n.position.y);
+            altura = Math.max(220, (Math.max(...ys) - Math.min(...ys)) + 160);
+        }
+        faixas[lane] = { top, height: altura };
+        top += altura;
+    });
+    return faixas;
+}
+
+// Aplica uma nova ordem de raias mantendo cada bloco dentro da sua faixa (preserva o deslocamento interno)
+function aplicarNovaOrdemDeRaias(novaLista) {
+    const antes = calcularFaixasRaias(obterListaRaiasOrdenada());
+    const depois = calcularFaixasRaias(novaLista);
+    topologia.nodes.forEach(n => {
+        const l = n.data?.lane || 'Geral';
+        if (antes[l] && depois[l]) n.position.y = Math.round(n.position.y - antes[l].top + depois[l].top);
+    });
+    topologia.lanes = novaLista;
+}
+
+// Move um bloco para outra raia: atualiza lane (bloco e grelha), mantém a raia de origem visível se ficar vazia
+// e posiciona o bloco dentro da faixa de destino
+function moverNoParaRaia(node, nomeRaia) {
+    const destino = (nomeRaia || '').trim() || 'Geral';
+    const origem = node.data?.lane || 'Geral';
+    if (!node.data) node.data = {};
+    if (origem === destino) return;
+
+    fixarOrdemRaias();
+    const listaAntes = obterListaRaiasOrdenada();
+    const faixasAntes = calcularFaixasRaias(listaAntes);
+
+    node.data.lane = destino;
+    const row = topologia.grid_data.find(r => r.stepId === node.id);
+    if (row) row.lane = destino;
+
+    const origemVazia = !topologia.nodes.some(n => (n.data?.lane || 'Geral') === origem);
+    if (origemVazia && origem !== 'Geral') {
+        // raias nomeadas continuam visíveis mesmo vazias
+        topologia.raias_fixas = [...new Set([...(topologia.raias_fixas || []), origem])];
+    }
+
+    const listaDepois = obterListaRaiasOrdenada();
+    if (origemVazia && origem === 'Geral') {
+        // a raia padrão vazia desaparece: as faixas abaixo sobem junto com seus blocos
+        const faixasDepois = calcularFaixasRaias(listaDepois);
+        topologia.nodes.forEach(n => {
+            const l = n.data?.lane || 'Geral';
+            if (n !== node && faixasAntes[l] && faixasDepois[l]) {
+                n.position.y = Math.round(n.position.y - faixasAntes[l].top + faixasDepois[l].top);
+            }
+        });
+        topologia.lanes = listaDepois;
+    }
+    const faixas = calcularFaixasRaias(listaDepois);
+    if (faixas[destino]) node.position.y = Math.round(faixas[destino].top + faixas[destino].height / 2 - 32);
+}
+
+function preencherSugestoesDeRaias() {
+    const lista = document.getElementById('raiasDatalist');
+    if (!lista) return;
+    const nomes = [...new Set([...RAIAS_CATALOGO.map(r => r.nome), ...obterListaRaiasOrdenada()])];
+    lista.innerHTML = nomes.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
 }
 
 function aplicarGrelhaParaCanvas() {
@@ -2571,6 +2687,7 @@ function abrirRenomearRaia(encodedLane) {
     if (!novoNome || !novoNome.trim() || novoNome.trim() === raiaAtual) return;
 
     const nomeLimpo = novoNome.trim();
+    fixarOrdemRaias();
 
     topologia.nodes.forEach(n => {
         if (n.data && (n.data.lane === raiaAtual || (!n.data.lane && raiaAtual === 'Geral'))) {
@@ -2582,6 +2699,11 @@ function abrirRenomearRaia(encodedLane) {
         if (r.lane === raiaAtual || (!r.lane && raiaAtual === 'Geral')) {
             r.lane = nomeLimpo;
         }
+    });
+
+    // mantém ordem e raias fixas com o novo nome (sem duplicar quando já existia)
+    ['lanes', 'raias_fixas'].forEach(chave => {
+        topologia[chave] = [...new Set((topologia[chave] || []).map(l => l === raiaAtual ? nomeLimpo : l))];
     });
 
     renderizarCanvas();
@@ -2600,16 +2722,10 @@ function moverRaia(encodedLane, direcao) {
     const targetIdx = curIdx + direcao;
     if (targetIdx < 0 || targetIdx >= lanes.length) return;
 
-    const otherLane = lanes[targetIdx];
-    lanes[curIdx] = otherLane;
-    lanes[targetIdx] = lane;
-
-    lanes.forEach((l, lIdx) => {
-        const yBase = 40 + lIdx * 240 + 60;
-        topologia.nodes.filter(n => (n.data?.lane || 'Geral') === l).forEach(n => {
-            n.position.y = yBase;
-        });
-    });
+    const nova = [...lanes];
+    nova[curIdx] = lanes[targetIdx];
+    nova[targetIdx] = lane;
+    aplicarNovaOrdemDeRaias(nova);
 
     renderizarCanvas();
     renderizarGrelha();
@@ -2618,33 +2734,72 @@ function moverRaia(encodedLane, direcao) {
 
 function adicionarNovaRaia() {
     if (IS_APPROVED) return;
-    const nomeRaia = prompt("Digite o nome da nova Raia / Setor (ex: Engenharia, Qualidade, Operação):");
-    if (!nomeRaia || !nomeRaia.trim()) return;
+    const jaNoDiagrama = new Set(obterListaRaiasOrdenada().map(l => l.toLowerCase()));
+    const lista = document.getElementById('listaRaiasCatalogo');
+    lista.innerHTML = '';
 
-    const nomeLimpo = nomeRaia.trim();
-    const nextId = gerarProximoNodeId();
+    const disponiveis = RAIAS_CATALOGO.filter(r => !jaNoDiagrama.has(r.nome.toLowerCase()));
+    if (disponiveis.length === 0) {
+        lista.innerHTML = '<div class="list-group-item small text-muted">Nenhuma raia do catálogo disponível (todas já estão no diagrama ou o catálogo está vazio).</div>';
+    }
+    disponiveis.forEach(r => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
+        btn.innerHTML = `<span style="width:12px;height:22px;border-radius:3px;background:${escapeHtml(r.cor)};flex:0 0 12px;"></span>
+                         <span class="fw-semibold">${escapeHtml(r.nome)}</span>
+                         ${r.setor_nome ? `<span class="badge bg-light text-dark border ms-auto">${escapeHtml(r.setor_nome)}</span>` : ''}`;
+        btn.onclick = () => adicionarRaiaAoDiagrama(r.nome);
+        lista.appendChild(btn);
+    });
+
+    document.getElementById('inputRaiaLivre').value = '';
+    new bootstrap.Modal(document.getElementById('modalNovaRaia')).show();
+}
+
+function adicionarRaiaLivre() {
+    adicionarRaiaAoDiagrama(document.getElementById('inputRaiaLivre').value);
+}
+
+// Insere a raia na posição definida pela ordem padrão do catálogo (raias livres ficam sempre no fim)
+function adicionarRaiaAoDiagrama(nome) {
+    if (IS_APPROVED) return;
+    const nomeLimpo = (nome || '').trim();
+    if (!nomeLimpo) return;
+
     const lanes = obterListaRaiasOrdenada();
-    const newY = 40 + lanes.length * 240 + 60;
+    if (lanes.some(l => l.toLowerCase() === nomeLimpo.toLowerCase())) {
+        alert(`A raia "${nomeLimpo}" já existe neste diagrama.`);
+        return;
+    }
 
-    topologia.nodes.push({
-        id: nextId,
-        type: 'process',
-        position: { x: 100, y: newY },
-        data: { stepId: nextId, lane: nomeLimpo, label: `Nova Etapa (${nomeLimpo})` }
+    let posicao = lanes.length;
+    const cat = raiaCatalogoPorNome(nomeLimpo);
+    if (cat) {
+        const idx = lanes.findIndex(l => {
+            const c = raiaCatalogoPorNome(l);
+            return c && c.ordem > cat.ordem;
+        });
+        if (idx !== -1) posicao = idx;
+    }
+
+    const nova = [...lanes];
+    nova.splice(posicao, 0, nomeLimpo);
+    topologia.raias_fixas = [...new Set([...(topologia.raias_fixas || []), nomeLimpo])];
+    // as faixas abaixo da nova raia descem junto com seus blocos
+    const antes = calcularFaixasRaias(lanes);
+    topologia.lanes = nova;
+    const depois = calcularFaixasRaias(nova);
+    topologia.nodes.forEach(n => {
+        const l = n.data?.lane || 'Geral';
+        if (antes[l] && depois[l]) n.position.y = Math.round(n.position.y - antes[l].top + depois[l].top);
     });
 
-    topologia.grid_data.push({
-        stepId: nextId,
-        lane: nomeLimpo,
-        type: 'process',
-        label: `Nova Etapa (${nomeLimpo})`,
-        next: []
-    });
-
+    bootstrap.Modal.getInstance(document.getElementById('modalNovaRaia'))?.hide();
     renderizarCanvas();
     renderizarGrelha();
     renderizarOutliner();
-    recentralizarCanvas();
+    preencherSugestoesDeRaias();
     dispararAutoSave();
 }
 
@@ -2660,6 +2815,8 @@ function excluirRaia(encodedLane) {
     topologia.nodes = topologia.nodes.filter(n => !idsToRemove.has(n.id));
     topologia.edges = topologia.edges.filter(e => !idsToRemove.has(e.source) && !idsToRemove.has(e.target));
     topologia.grid_data = topologia.grid_data.filter(r => !idsToRemove.has(r.stepId));
+    topologia.lanes = (topologia.lanes || []).filter(l => l !== lane);
+    topologia.raias_fixas = (topologia.raias_fixas || []).filter(l => l !== lane);
 
     posicionarAutomaticoPorRaias(true);
     renderizarCanvas();

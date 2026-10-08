@@ -11,6 +11,8 @@ from reportlab.lib import colors
 from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.platypus import Flowable
 
+from .diagram_raias import raias_do_diagrama
+
 FONT = 'Helvetica'
 FONT_BOLD = 'Helvetica-Bold'
 
@@ -73,21 +75,12 @@ def _tamanho(node):
     return largura, H_PROCESS + H_SUBTITULO * len(_subtitulos(node))
 
 
-def _raias(nodes, grid):
-    ordem = []
-    nomes = [(n.get('data') or {}).get('lane') or 'Geral' for n in nodes]
-    nomes += [(r or {}).get('lane') or 'Geral' for r in grid if isinstance(r, dict)]
-    for lane in nomes:
-        if lane not in ordem:
-            ordem.append(lane)
-    return ordem or ['Geral']
-
-
 class DiagramaFlowable(Flowable):
     """Desenha o diagrama dentro de uma caixa max_w x max_h, preservando a proporção."""
 
-    def __init__(self, topologia: dict, max_w: float, max_h: float, fotos: dict = None):
+    def __init__(self, topologia: dict, max_w: float, max_h: float, fotos: dict = None, raias_cores: dict = None):
         super().__init__()
+        self.raias_cores = {str(k).lower(): v for k, v in (raias_cores or {}).items()}  # {nome_raia: '#RRGGBB'}
         self.fotos = fotos or {}  # {id_colaborador: bytes da imagem}
         self.nodes = [
             n for n in (topologia.get('nodes') or [])
@@ -97,7 +90,7 @@ class DiagramaFlowable(Flowable):
         self.grid = topologia.get('grid_data') or []
         self.by_id = {str(n['id']): n for n in self.nodes}
 
-        self.lanes = _raias(self.nodes, self.grid)
+        self.lanes = raias_do_diagrama(topologia)
         self.lane_h = {}
         for lane in self.lanes:
             ys = [n['position']['y'] for n in self.nodes
@@ -151,7 +144,7 @@ class DiagramaFlowable(Flowable):
             c.setDash(4, 3)
             c.rect(LANE_LEFT, self._y(y + h), self.cw - LANE_LEFT, h, stroke=1, fill=1)
             c.setDash()
-            c.setFillColor(colors.HexColor('#334155'))
+            c.setFillColor(_cor(self.raias_cores.get(str(lane).lower()) or '#334155', colors.HexColor('#334155')))
             c.rect(LANE_LEFT, self._y(y + h), LANE_BAND, h, stroke=0, fill=1)
             c.saveState()
             c.translate(LANE_LEFT + LANE_BAND / 2 + 4, self._y(y + h / 2))

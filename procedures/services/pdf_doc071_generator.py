@@ -52,6 +52,15 @@ class NumberedCanvas(canvas.Canvas):
         self.restoreState()
 
 
+def _cores_das_raias() -> dict:
+    """Cores do catálogo de raias: {nome: '#RRGGBB'}."""
+    try:
+        from ..models_diagram import RaiaCatalogo
+        return dict(RaiaCatalogo.objects.values_list('nome', 'cor'))
+    except Exception:
+        return {}
+
+
 def _carregar_fotos(topologia: dict) -> dict:
     """Busca as fotos (Base64 no RH) dos colaboradores usados nos blocos: {id: bytes}."""
     ids = set()
@@ -177,11 +186,12 @@ def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) 
     if not imagem_ok:
         if topologia.get('nodes'):
             fotos = _carregar_fotos(topologia)
-            desenho = DiagramaFlowable(topologia, max_w=782, max_h=330, fotos=fotos)
+            cores = _cores_das_raias()
+            desenho = DiagramaFlowable(topologia, max_w=782, max_h=330, fotos=fotos, raias_cores=cores)
             if desenho.scale < 0.5:
                 # Diagrama grande: página própria para manter a legibilidade
                 story.append(PageBreak())
-                desenho = DiagramaFlowable(topologia, max_w=782, max_h=470, fotos=fotos)
+                desenho = DiagramaFlowable(topologia, max_w=782, max_h=470, fotos=fotos, raias_cores=cores)
             story.append(desenho)
         else:
             story.append(Paragraph("<i>[Fluxograma sem blocos cadastrados]</i>", cell_style))

@@ -26,6 +26,7 @@ from ..models_diagram import Diagrama, DiagramaVersao, StatusDiagrama
 from ..services.diagram_validation import validar_topologia
 from ..services.diagram_diff import comparar_topologias
 from ..services.diagram_fotos import decodificar_foto_colaborador
+from .diagram_raias_views import pode_gerenciar_raias, raias_catalogo_para_editor
 from shared.inbox import invalidar_cache_inbox
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
@@ -439,6 +440,7 @@ def api_diagramas_colaboradores(request):
             "nome": c.nome_completo,
             "cargo": c.cargo or '',
             "setor": c.setor.nome if c.setor else '',
+            "setor_id": c.setor_id,
             "tem_foto": bool(c.foto),
         }
         for c in colaboradores
@@ -685,6 +687,8 @@ def diagrama_editor_view(request, versao_id):
         'is_approved': versao.status == StatusDiagrama.APROVADO,
         'is_locked': versao.status != StatusDiagrama.RASCUNHO,
         'editor_js_version': _versao_js_editor(),
+        'raias_catalogo': raias_catalogo_para_editor(),
+        'pode_gerenciar_raias': pode_gerenciar_raias(request.user),
         'is_rascunho': versao.status == StatusDiagrama.RASCUNHO,
         'is_em_aprovacao': versao.status == StatusDiagrama.EM_APROVACAO,
         'revisao_em_andamento': any(
