@@ -1140,40 +1140,70 @@ function setModoNovoBloco(modo) {
 }
 
 let searchColabTimeout = null;
-async function buscarColaboradoresParaBloco(termo) {
-    if (termo.length < 2) return;
+let resultadosBuscaColab = [];
+
+// Escolher um colaborador na busca já cria o bloco completo (nome, função, foto e raia do setor)
+function escolherColaboradorParaBloco(colab) {
+    ctxNovoBloco.colabSelecionado = {
+        id: colab.id,
+        setorId: colab.setor_id,
+        temFoto: !!colab.tem_foto,
+        nome: colab.nome_completo || colab.nome,
+        cargo: colab.cargo_nome || colab.cargo || '',
+        setor: colab.setor_nome || colab.setor || ''
+    };
+    confirmarAdicionarBloco();
+}
+
+function buscarColaboradoresParaBloco(termo) {
+    const lista = document.getElementById('listaColaboradoresBusca');
     clearTimeout(searchColabTimeout);
+    resultadosBuscaColab = [];
+    if (ctxNovoBloco) delete ctxNovoBloco.colabSelecionado;
+
+    if (termo.trim().length < 2) {
+        lista.innerHTML = '';
+        return;
+    }
+    lista.innerHTML = '<div class="list-group-item small text-muted border-0"><span class="spinner-border spinner-border-sm me-1"></span> Buscando...</div>';
+
     searchColabTimeout = setTimeout(async () => {
         try {
-            const res = await fetch(`/procedures/api/diagramas/colaboradores/?q=${encodeURIComponent(termo)}`);
+            const res = await fetch(`/procedures/api/diagramas/colaboradores/?q=${encodeURIComponent(termo.trim())}`);
+            if (!res.ok) throw new Error(res.status);
             const data = await res.json();
-            const items = data.results || data;
-            const lista = document.getElementById('listaColaboradoresBusca');
+            const items = Array.isArray(data.results) ? data.results : [];
+            resultadosBuscaColab = items;
             lista.innerHTML = '';
-            if (items && Array.isArray(items)) {
-                items.slice(0, 10).forEach(colab => {
-                    const btn = document.createElement('button');
-                    btn.className = 'list-group-item list-group-item-action py-1';
-                    const cargoDesc = colab.cargo_nome || colab.cargo || '';
-                    const setorDesc = colab.setor_nome || colab.setor || '';
-                    btn.innerHTML = `<div class="fw-bold small">${escapeHtml(colab.nome_completo || colab.nome || '')}</div><div class="text-muted" style="font-size:10px;">${escapeHtml(cargoDesc)} - ${escapeHtml(setorDesc)}</div>`;
-                    btn.onclick = () => {
-                        document.getElementById('inputBuscaColab').value = colab.nome_completo || colab.nome;
-                        ctxNovoBloco.colabSelecionado = {
-                            id: colab.id,
-                            setorId: colab.setor_id,
-                            temFoto: !!colab.tem_foto,
-                            nome: colab.nome_completo || colab.nome,
-                            cargo: cargoDesc,
-                            setor: setorDesc
-                        };
-                        lista.innerHTML = '';
-                    };
-                    lista.appendChild(btn);
-                });
+
+            if (items.length === 0) {
+                lista.innerHTML = '<div class="list-group-item small text-muted border-0">Nenhum colaborador encontrado.</div>';
+                return;
             }
-        } catch (e) { console.error('Erro na busca de colaboradores', e); }
+            items.forEach(colab => {
+                const cargoDesc = colab.cargo || '';
+                const setorDesc = colab.setor || '';
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'list-group-item list-group-item-action py-1';
+                btn.innerHTML = `<div class="fw-bold small">${escapeHtml(colab.nome)}</div>
+                                 <div class="text-muted" style="font-size:10px;">${escapeHtml(cargoDesc)}${setorDesc ? ' - ' + escapeHtml(setorDesc) : ''}</div>`;
+                btn.onclick = () => escolherColaboradorParaBloco(colab);
+                lista.appendChild(btn);
+            });
+        } catch (e) {
+            console.error('Erro na busca de colaboradores', e);
+            lista.innerHTML = '<div class="list-group-item small text-danger border-0">Não foi possível buscar colaboradores. Tente novamente.</div>';
+        }
     }, 300);
+}
+
+// Enter na busca escolhe o primeiro resultado
+function teclaBuscaColaborador(e) {
+    if (e.key === 'Enter' && resultadosBuscaColab.length > 0) {
+        e.preventDefault();
+        escolherColaboradorParaBloco(resultadosBuscaColab[0]);
+    }
 }
 
 function confirmarAdicionarBloco() {

@@ -767,3 +767,22 @@ class DiagramaRaiasTestCase(TestCase):
         self.assertEqual(modulo["cor"], "purple")  # cor com CSS definido (teal não existe no Bootstrap)
         perms = [f["perm"] for b in modulo["blocos"] for f in b["funcoes"]]
         self.assertIn("core.nav_diagramas_raias", perms)
+
+
+class DiagramaModalColaboradorTestCase(TestCase):
+    def test_modal_busca_e_cria_bloco_ao_clicar_no_resultado(self):
+        from pathlib import Path
+        user = User.objects.create_user(username='modal.colab', password='x')
+        diagrama = Diagrama.objects.create(titulo='Modal', criado_por=user)
+        versao = DiagramaVersao.objects.create(diagrama=diagrama, revisao=0, dados_topologia={"nodes": [], "edges": []})
+        c = Client()
+        c.force_login(user)
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        self.assertIn('oninput="buscarColaboradoresParaBloco(this.value)"', html)
+        self.assertIn('onkeydown="teclaBuscaColaborador(event)"', html)
+
+        js = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js').read_text(encoding='utf-8')
+        trecho = js[js.index('function escolherColaboradorParaBloco'):js.index('function confirmarAdicionarBloco')]
+        self.assertIn('confirmarAdicionarBloco()', trecho)          # clicar no resultado cria o bloco
+        self.assertIn('/procedures/api/diagramas/colaboradores/', trecho)
+        self.assertNotIn('/rh/api/colaboradores/', js)              # formato antigo/incorreto não é mais usado

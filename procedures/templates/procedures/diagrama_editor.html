@@ -1472,7 +1472,9 @@
                 <!-- Painel Colaborador -->
                 <div id="containerBlocoColab" class="d-none">
                     <label class="form-label text-muted small fw-bold mb-1">Buscar Colaborador (RH)</label>
-                    <input type="text" id="inputBuscaColab" class="form-control form-control-sm mb-2" placeholder="Digite o nome..." onkeyup="buscarColaboradoresParaBloco(this.value)">
+                    <input type="text" id="inputBuscaColab" class="form-control form-control-sm mb-1" placeholder="Digite o nome..." autocomplete="off"
+                           oninput="buscarColaboradoresParaBloco(this.value)" onkeydown="teclaBuscaColaborador(event)">
+                    <div class="form-text mb-2 mt-0">Digite ao menos 2 letras e clique no colaborador: o bloco é criado com nome, função e foto.</div>
                     <div class="list-group list-group-flush" id="listaColaboradoresBusca" style="max-height: 180px; overflow-y: auto;">
                         <!-- Resultados -->
                     </div>
