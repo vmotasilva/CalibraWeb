@@ -61,3 +61,57 @@ def validar_topologia(topologia: dict) -> list:
             break
 
     return erros[:10]
+
+
+def _rotulo_no(node: dict) -> str:
+    return (node.get('data') or {}).get('label', '').strip() if isinstance(node.get('data'), dict) else ''
+
+
+def validar_para_submissao(topologia: dict) -> list:
+    """
+    Regras de consistência exigidas antes de submeter o diagrama para aprovação.
+    Retorna a lista de problemas (vazia quando está apto).
+
+    As regras de fluxograma (Início/Fim, decisões) só valem quando o diagrama usa esses tipos de bloco;
+    organogramas e mapas mentais não são obrigados a ter Início/Fim.
+    """
+    topologia = topologia or {}
+    nodes = [n for n in (topologia.get('nodes') or []) if isinstance(n, dict) and 'id' in n]
+    edges = [e for e in (topologia.get('edges') or []) if isinstance(e, dict)]
+    problemas = []
+
+    if not nodes:
+        return ["O diagrama não possui blocos."]
+
+    ids = {str(n['id']): n for n in nodes}
+    saidas = {i: 0 for i in ids}
+    entradas = {i: 0 for i in ids}
+
+    for e in edges:
+        origem, destino = str(e.get('source')), str(e.get('target'))
+        if origem not in ids or destino not in ids:
+            problemas.append(f"Conexão '{e.get('id')}' aponta para um bloco que não existe.")
+            continue
+        saidas[origem] += 1
+        entradas[destino] += 1
+
+    for i, n in ids.items():
+        if not _rotulo_no(n):
+            problemas.append(f"Bloco #{i} está sem texto.")
+
+    eh_fluxograma = any(n.get('type') in ('start', 'end', 'decision') for n in nodes)
+    if eh_fluxograma:
+        if not any(n.get('type') == 'start' for n in nodes):
+            problemas.append("O fluxograma precisa de um bloco de Início.")
+        if not any(n.get('type') == 'end' for n in nodes):
+            problemas.append("O fluxograma precisa de um bloco de Fim.")
+        for i, n in ids.items():
+            if n.get('type') == 'decision' and saidas[i] < 2:
+                problemas.append(f"A decisão '{_rotulo_no(n) or i}' precisa de pelo menos 2 saídas (ex.: Sim / Não).")
+
+    if len(nodes) > 1:
+        for i, n in ids.items():
+            if saidas[i] == 0 and entradas[i] == 0:
+                problemas.append(f"O bloco '{_rotulo_no(n) or i}' está isolado (sem nenhuma conexão).")
+
+    return problemas

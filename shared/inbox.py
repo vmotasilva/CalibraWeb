@@ -4,6 +4,7 @@ from typing import Any, Optional
 from django.urls import reverse
 from django.core.cache import cache
 from django.utils import timezone
+from django.db.models import Q
 from shared.notifications import _is_global_viewer, _get_colaborador_for_user
 
 @dataclass
@@ -831,6 +832,63 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         )
             except Exception:
                 pass
+    except Exception:
+        pass
+
+    # =========================================================================
+    # 8. DIAGRAMAS (DOC.071): aprovações pendentes e revisões devolvidas
+    # =========================================================================
+    try:
+        from django.conf import settings as dj_settings
+        from procedures.models_diagram import DiagramaVersao, StatusDiagrama
+
+        def _data_ref(dt):
+            return timezone.localtime(dt).date() if dt else hoje
+
+        # 8.1 Para aprovadores: revisões aguardando aprovação (exceto as que o próprio usuário submeteu, se há segregação)
+        if user.is_superuser or user.has_perm("core.nav_diagramas_aprovar"):
+            pendentes = DiagramaVersao.objects.filter(status=StatusDiagrama.EM_APROVACAO).select_related("diagrama", "submetido_por")
+            if getattr(dj_settings, "DIAGRAMAS_EXIGIR_SEGREGACAO_FUNCOES", True):
+                pendentes = pendentes.exclude(submetido_por=user)
+            for v in pendentes:
+                quem = (v.submetido_por.get_full_name() or v.submetido_por.username) if v.submetido_por else "—"
+                dias = (hoje - _data_ref(v.data_submissao)).days
+                items.append(
+                    InboxItem(
+                        id=f"diagrama_aprovar_{v.id}",
+                        title=f"Aprovar diagrama {v.diagrama.identificador} - {v.diagrama.titulo}",
+                        description=f"Rev. {v.revisao:02d} submetida por {quem}",
+                        module="Diagramas",
+                        icon="bi-diagram-3",
+                        url=reverse("procedures:diagrama_editor", kwargs={"versao_id": v.id}),
+                        action_text="Revisar",
+                        date=_data_ref(v.data_submissao),
+                        is_urgent=dias >= 5,
+                        sub_type="Aguardando aprovação",
+                    )
+                )
+
+        # 8.2 Para elaboradores: revisões devolvidas pelo aprovador (rascunho com motivo de devolução)
+        devolvidas = DiagramaVersao.objects.filter(
+            status=StatusDiagrama.RASCUNHO, motivo_devolucao__isnull=False
+        ).exclude(motivo_devolucao="").filter(
+            Q(submetido_por=user) | Q(diagrama__criado_por=user)
+        ).select_related("diagrama").distinct()
+        for v in devolvidas:
+            items.append(
+                InboxItem(
+                    id=f"diagrama_devolvido_{v.id}",
+                    title=f"Diagrama devolvido {v.diagrama.identificador} - {v.diagrama.titulo}",
+                    description=f"Rev. {v.revisao:02d}: {v.motivo_devolucao[:120]}",
+                    module="Diagramas",
+                    icon="bi-arrow-return-left",
+                    url=reverse("procedures:diagrama_editor", kwargs={"versao_id": v.id}),
+                    action_text="Ajustar",
+                    date=_data_ref(v.atualizado_em),
+                    is_urgent=True,
+                    sub_type="Devolvidos para ajuste",
+                )
+            )
     except Exception:
         pass
 

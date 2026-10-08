@@ -4,13 +4,19 @@ Views e Endpoints JSON / REST para o Módulo de Diagramas e Fluxogramas (DOC.071
 Compatível nativamente com Django 5.0 sem dependência externa obrigatória.
 """
 
+import hashlib
 import json
 import re
+from functools import lru_cache
+from pathlib import Path
 from django.db import models, transaction
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
+from django.db.models import Exists, OuterRef, Subquery
 from django.shortcuts import get_object_or_404, render, redirect
 from django.core.exceptions import ValidationError
 from django.utils.dateparse import parse_datetime
@@ -18,6 +24,8 @@ from django.utils.dateparse import parse_datetime
 from ..models import Procedimento
 from ..models_diagram import Diagrama, DiagramaVersao, StatusDiagrama
 from ..services.diagram_validation import validar_topologia
+from ..services.diagram_diff import comparar_topologias
+from shared.inbox import invalidar_cache_inbox
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
 from ..services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id
@@ -27,6 +35,16 @@ PERM_SUBMETER = 'core.nav_diagramas_submeter'
 PERM_APROVAR = 'core.nav_diagramas_aprovar'
 PERM_NOVA_REVISAO = 'core.nav_diagramas_nova_revisao'
 PERM_EXPORT_PDF = 'core.nav_diagramas_export_pdf'
+
+
+@lru_cache(maxsize=1)
+def _versao_js_editor() -> str:
+    """Hash do JS do editor para invalidar o cache do navegador a cada alteração do arquivo."""
+    caminho = Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js'
+    try:
+        return hashlib.md5(caminho.read_bytes()).hexdigest()[:10]
+    except OSError:
+        return '0'
 
 
 def _tem_permissao(user, perm: str) -> bool:
@@ -269,6 +287,7 @@ def api_diagrama_versao_submeter(request, versao_id):
     versao = get_object_or_404(DiagramaVersao, id=versao_id)
     try:
         versao_atualizada = DiagramaQMSService.submeter_para_aprovacao(versao, request.user)
+        invalidar_cache_inbox()  # atualiza as pendências do sino (aprovadores/elaboradores)
         return JsonResponse(serialize_diagrama_versao(versao_atualizada), status=200)
     except ValidationError as e:
         msg = e.messages[0] if hasattr(e, 'messages') else str(e)
@@ -287,6 +306,7 @@ def api_diagrama_versao_aprovar(request, versao_id):
     versao = get_object_or_404(DiagramaVersao, id=versao_id)
     try:
         versao_atualizada = DiagramaQMSService.aprovar_versao(versao, request.user)
+        invalidar_cache_inbox()  # atualiza as pendências do sino (aprovadores/elaboradores)
         return JsonResponse(serialize_diagrama_versao(versao_atualizada), status=200)
     except ValidationError as e:
         msg = e.messages[0] if hasattr(e, 'messages') else str(e)
@@ -309,6 +329,7 @@ def api_diagrama_versao_devolver(request, versao_id):
 
     try:
         versao_atualizada = DiagramaQMSService.devolver_para_ajustes(versao, request.user, payload.get("motivo", ""))
+        invalidar_cache_inbox()  # atualiza as pendências do sino (aprovadores/elaboradores)
         return JsonResponse(serialize_diagrama_versao(versao_atualizada), status=200)
     except ValidationError as e:
         msg = e.messages[0] if hasattr(e, 'messages') else str(e)
@@ -398,34 +419,154 @@ def api_diagrama_versao_aplicar_template(request, versao_id):
 # HTML TEMPLATE VIEWS (INTERFACE DO USUÁRIO)
 # ==============================================================================
 
+ORDENACOES_LISTA = {
+    'numero': ('numero', 'Número'),
+    'recente': ('-atualizado_em', 'Atualizados recentemente'),
+    'titulo': ('titulo', 'Título (A-Z)'),
+}
+STATUS_FILTRO = [
+    (StatusDiagrama.RASCUNHO, 'Rascunho'),
+    (StatusDiagrama.EM_APROVACAO, 'Em Aprovação'),
+    (StatusDiagrama.APROVADO, 'Aprovado'),
+    (StatusDiagrama.OBSOLETO, 'Obsoleto'),
+]
+
+
 @login_required
 def diagramas_lista_view(request):
-    """Tela de listagem de diagramas e fluxogramas cadastrados."""
+    """Tela de listagem de diagramas e fluxogramas cadastrados (filtros, ordenação e paginação)."""
     departamento = request.GET.get('departamento', '')
     busca = request.GET.get('busca', '').strip()
+    status = request.GET.get('status', '')
+    arquivados = request.GET.get('arquivados') == '1'
+    ordem = request.GET.get('ordem', 'numero')
+    if ordem not in ORDENACOES_LISTA:
+        ordem = 'numero'
 
-    diagramas = Diagrama.objects.filter(ativo=True).select_related('criado_por', 'procedimento', 'matriz_procedimento').prefetch_related('versoes').order_by('numero')
+    ultima_versao = DiagramaVersao.objects.filter(diagrama=OuterRef('pk')).order_by('-revisao')
+    diagramas = (
+        Diagrama.objects.filter(ativo=not arquivados)
+        .select_related('criado_por', 'procedimento', 'matriz_procedimento')
+        .prefetch_related('versoes')
+        .annotate(status_ultima=Subquery(ultima_versao.values('status')[:1]))
+        .order_by(ORDENACOES_LISTA[ordem][0], 'numero')
+    )
 
     if departamento:
         diagramas = diagramas.filter(departamento=departamento)
+    if status in dict(STATUS_FILTRO):
+        diagramas = diagramas.filter(status_ultima=status)
     if busca:
-        diagramas = diagramas.filter(
+        filtro = (
             models.Q(titulo__icontains=busca) |
             models.Q(codigo__icontains=busca) |
             models.Q(descricao__icontains=busca) |
             models.Q(procedimento__codigo__icontains=busca) |
             models.Q(procedimento__nome__icontains=busca)
         )
+        if busca.lstrip('#').isdigit():
+            filtro |= models.Q(numero=int(busca.lstrip('#')))
+        diagramas = diagramas.filter(filtro)
 
-    departamentos = Diagrama.objects.filter(ativo=True).values_list('departamento', flat=True).distinct()
+    departamentos = Diagrama.objects.values_list('departamento', flat=True).distinct().order_by('departamento')
+
+    pagina = Paginator(diagramas, 25).get_page(request.GET.get('page'))
+    for d in pagina.object_list:
+        versoes = sorted(d.versoes.all(), key=lambda v: -v.revisao)
+        d.ultima = versoes[0] if versoes else None
+        d.vigente = next((v for v in versoes if v.status == StatusDiagrama.APROVADO), None)
+        d.em_andamento = d.ultima is not None and d.ultima.status in (StatusDiagrama.RASCUNHO, StatusDiagrama.EM_APROVACAO)
+
+    params = request.GET.copy()
+    params.pop('page', None)
 
     context = {
-        'diagramas': diagramas,
+        'diagramas': pagina.object_list,
+        'pagina': pagina,
         'departamentos': departamentos,
         'departamento_selecionado': departamento,
         'busca': busca,
+        'status_selecionado': status,
+        'status_opcoes': STATUS_FILTRO,
+        'arquivados': arquivados,
+        'ordem': ordem,
+        'ordem_opcoes': [(k, v[1]) for k, v in ORDENACOES_LISTA.items()],
+        'querystring': params.urlencode(),
+        'pode_criar': _tem_permissao(request.user, 'core.nav_diagramas_novo'),
     }
     return render(request, 'procedures/diagramas_lista.html', context)
+
+
+@login_required
+@require_POST
+def diagrama_duplicar_view(request, diagrama_id):
+    """Cria um novo diagrama (R00 em rascunho) copiando a última revisão do diagrama de origem."""
+    if not _tem_permissao(request.user, 'core.nav_diagramas_novo'):
+        messages.error(request, "Você não tem permissão para criar novos fluxogramas.")
+        return redirect('procedures:diagramas_lista')
+
+    origem = get_object_or_404(Diagrama, id=diagrama_id)
+    ultima = origem.versoes.order_by('-revisao').first()
+    with transaction.atomic():
+        copia = Diagrama.objects.create(
+            titulo=f"{origem.titulo} (cópia)"[:255],
+            departamento=origem.departamento,
+            procedimento=origem.procedimento,
+            matriz_procedimento=origem.matriz_procedimento,
+            descricao=origem.descricao,
+            criado_por=request.user,
+        )
+        topologia = json.loads(json.dumps(ultima.dados_topologia)) if ultima else {"nodes": [], "edges": [], "grid_data": []}
+        nova = DiagramaVersao.objects.create(
+            diagrama=copia,
+            revisao=0,
+            status=StatusDiagrama.RASCUNHO,
+            dados_topologia=topologia,
+            motivo_revisao=f"Cópia de {origem.identificador}" + (f" (Rev. {ultima.revisao:02d})" if ultima else ""),
+        )
+    messages.success(request, f"Cópia criada a partir de {origem.identificador}.")
+    return redirect('procedures:diagrama_editor', versao_id=nova.id)
+
+
+@login_required
+@require_POST
+def diagrama_arquivar_view(request, diagrama_id):
+    """Arquiva ou restaura um diagrama. Diagramas com revisão aprovada só podem ser arquivados por superusuário."""
+    diagrama = get_object_or_404(Diagrama, id=diagrama_id)
+    restaurar = request.POST.get('acao') == 'restaurar'
+    tem_aprovada = diagrama.versoes.filter(status=StatusDiagrama.APROVADO).exists()
+
+    if not request.user.is_superuser and (tem_aprovada or not _tem_permissao(request.user, 'core.nav_diagramas_editor')):
+        messages.error(request, "Sem permissão: diagramas com revisão aprovada só podem ser arquivados por um administrador.")
+    else:
+        diagrama.ativo = restaurar
+        diagrama.save(update_fields=['ativo', 'atualizado_em'])
+        messages.success(request, f"{diagrama.identificador} {'restaurado' if restaurar else 'arquivado'}.")
+    return redirect('procedures:diagramas_lista')
+
+
+@login_required
+def diagrama_historico_view(request, diagrama_id):
+    """Histórico de revisões do diagrama e comparação entre duas revisões."""
+    diagrama = get_object_or_404(Diagrama.objects.select_related('criado_por', 'procedimento'), id=diagrama_id)
+    versoes = list(diagrama.versoes.select_related('aprovado_por', 'submetido_por').order_by('-revisao'))
+    por_id = {str(v.id): v for v in versoes}
+
+    para = por_id.get(request.GET.get('para', ''), versoes[0] if versoes else None)
+    de = por_id.get(request.GET.get('de', ''))
+    if de is None and para is not None:
+        anteriores = [v for v in versoes if v.revisao < para.revisao]
+        de = anteriores[0] if anteriores else None
+
+    diff = comparar_topologias(de.dados_topologia, para.dados_topologia) if de and para and de.pk != para.pk else None
+
+    return render(request, 'procedures/diagrama_historico.html', {
+        'diagrama': diagrama,
+        'versoes': versoes,
+        'de': de,
+        'para': para,
+        'diff': diff,
+    })
 
 
 @login_required
@@ -495,6 +636,7 @@ def diagrama_editor_view(request, versao_id):
         'topologia_json': json.dumps(versao.dados_topologia or {"nodes": [], "edges": [], "grid_data": []}),
         'is_approved': versao.status == StatusDiagrama.APROVADO,
         'is_locked': versao.status != StatusDiagrama.RASCUNHO,
+        'editor_js_version': _versao_js_editor(),
         'is_rascunho': versao.status == StatusDiagrama.RASCUNHO,
         'is_em_aprovacao': versao.status == StatusDiagrama.EM_APROVACAO,
         'revisao_em_andamento': any(

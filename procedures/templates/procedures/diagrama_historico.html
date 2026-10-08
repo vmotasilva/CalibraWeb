@@ -1,0 +1,148 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Histórico - {{ diagrama.identificador }} {{ diagrama.titulo }}{% endblock %}
+{% block header_title %}Histórico de Revisões - {{ diagrama.identificador }}{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'procedures:diagramas_lista' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1">
+    <i class="bi bi-arrow-left"></i> Voltar à lista
+</a>
+{% endblock %}
+
+{% block main_content %}
+<div class="card border-0 shadow-sm bg-white mb-4">
+    <div class="card-body">
+        <h5 class="fw-bold mb-1">{{ diagrama.titulo }}</h5>
+        <small class="text-muted">
+            {{ diagrama.departamento }} &bull; Elaborado por {{ diagrama.criado_por.get_full_name|default:diagrama.criado_por.username }}
+            {% if diagrama.procedimento %}&bull; Procedimento {{ diagrama.procedimento.codigo }}{% endif %}
+        </small>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm overflow-hidden bg-white mb-4">
+    <div class="card-header bg-white fw-bold"><i class="bi bi-layers me-1"></i> Revisões</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Rev.</th>
+                    <th>Status</th>
+                    <th>Motivo / Alteração</th>
+                    <th>Submetido</th>
+                    <th>Aprovado</th>
+                    <th class="text-end pe-3">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in versoes %}
+                <tr>
+                    <td class="ps-3 font-monospace fw-bold">R{{ v.revisao|stringformat:"02d" }}</td>
+                    <td>
+                        {% if v.status == 'APROVADO' %}<span class="badge bg-success-subtle text-success border border-success-subtle">Aprovado</span>
+                        {% elif v.status == 'EM_APROVACAO' %}<span class="badge bg-warning-subtle text-warning border border-warning-subtle">Em Aprovação</span>
+                        {% elif v.status == 'RASCUNHO' %}<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Rascunho</span>
+                        {% else %}<span class="badge bg-secondary-subtle text-secondary">{{ v.get_status_display }}</span>{% endif %}
+                    </td>
+                    <td>
+                        <div>{{ v.motivo_revisao|default:"-" }}</div>
+                        {% if v.motivo_devolucao and v.status == 'RASCUNHO' %}
+                            <small class="text-danger"><i class="bi bi-arrow-return-left"></i> Devolvido: {{ v.motivo_devolucao }}</small>
+                        {% endif %}
+                    </td>
+                    <td class="small">
+                        {% if v.submetido_por %}
+                            {{ v.submetido_por.get_full_name|default:v.submetido_por.username }}<br>
+                            <span class="text-muted">{{ v.data_submissao|date:"d/m/Y H:i" }}</span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="small">
+                        {% if v.aprovado_por %}
+                            {{ v.aprovado_por.get_full_name|default:v.aprovado_por.username }}<br>
+                            <span class="text-muted">{{ v.data_aprovacao|date:"d/m/Y H:i" }}</span>
+                        {% else %}-{% endif %}
+                    </td>
+                    <td class="text-end pe-3">
+                        <a href="{% url 'procedures:diagrama_editor' versao_id=v.id %}" class="btn btn-sm btn-outline-primary" title="Abrir no editor"><i class="bi bi-diagram-3-fill"></i> Abrir</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm bg-white mb-4">
+    <div class="card-header bg-white fw-bold"><i class="bi bi-arrow-left-right me-1"></i> Comparar revisões</div>
+    <div class="card-body">
+        {% if versoes|length < 2 %}
+            <p class="text-muted mb-0">É preciso ao menos duas revisões para comparar. Crie uma nova revisão a partir de uma versão aprovada.</p>
+        {% else %}
+        <form method="get" class="row g-2 align-items-end mb-3">
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted mb-1">De (base)</label>
+                <select name="de" class="form-select">
+                    {% for v in versoes %}<option value="{{ v.id }}" {% if de and v.id == de.id %}selected{% endif %}>R{{ v.revisao|stringformat:"02d" }} ({{ v.get_status_display }})</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold text-muted mb-1">Para (nova)</label>
+                <select name="para" class="form-select">
+                    {% for v in versoes %}<option value="{{ v.id }}" {% if para and v.id == para.id %}selected{% endif %}>R{{ v.revisao|stringformat:"02d" }} ({{ v.get_status_display }})</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4"><button class="btn btn-primary" type="submit"><i class="bi bi-arrow-left-right"></i> Comparar</button></div>
+        </form>
+
+        {% if diff %}
+            <p class="mb-3">
+                Comparando <strong>R{{ de.revisao|stringformat:"02d" }}</strong> &rarr; <strong>R{{ para.revisao|stringformat:"02d" }}</strong>:
+                {% if diff.sem_mudancas %}
+                    <span class="badge bg-secondary">Nenhuma diferença</span>
+                {% else %}
+                    <span class="badge bg-primary">{{ diff.total_mudancas }} mudança(s)</span>
+                {% endif %}
+            </p>
+
+            {% if diff.blocos_adicionados %}
+            <h6 class="text-success fw-bold"><i class="bi bi-plus-circle"></i> Blocos adicionados ({{ diff.blocos_adicionados|length }})</h6>
+            <ul class="list-group mb-3">
+                {% for b in diff.blocos_adicionados %}<li class="list-group-item list-group-item-success py-2">{{ b.nome }} <small class="text-muted">- raia {{ b.lane }}</small></li>{% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if diff.blocos_removidos %}
+            <h6 class="text-danger fw-bold"><i class="bi bi-dash-circle"></i> Blocos removidos ({{ diff.blocos_removidos|length }})</h6>
+            <ul class="list-group mb-3">
+                {% for b in diff.blocos_removidos %}<li class="list-group-item list-group-item-danger py-2">{{ b.nome }} <small class="text-muted">- raia {{ b.lane }}</small></li>{% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if diff.blocos_alterados %}
+            <h6 class="text-warning fw-bold"><i class="bi bi-pencil-square"></i> Blocos alterados ({{ diff.blocos_alterados|length }})</h6>
+            <ul class="list-group mb-3">
+                {% for b in diff.blocos_alterados %}
+                <li class="list-group-item list-group-item-warning py-2">
+                    <strong>{{ b.nome }}</strong>
+                    {% for m in b.mudancas %}<div class="small">{{ m.campo }}: <span class="text-decoration-line-through">{{ m.de }}</span> &rarr; <strong>{{ m.para }}</strong></div>{% endfor %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if diff.conexoes_adicionadas or diff.conexoes_removidas or diff.conexoes_alteradas %}
+            <h6 class="fw-bold"><i class="bi bi-diagram-2"></i> Conexões</h6>
+            <ul class="list-group mb-3">
+                {% for c in diff.conexoes_adicionadas %}<li class="list-group-item list-group-item-success py-2"><i class="bi bi-plus"></i> {{ c.texto }}{% if c.rotulo %} <small>({{ c.rotulo }})</small>{% endif %}</li>{% endfor %}
+                {% for c in diff.conexoes_removidas %}<li class="list-group-item list-group-item-danger py-2"><i class="bi bi-dash"></i> {{ c.texto }}{% if c.rotulo %} <small>({{ c.rotulo }})</small>{% endif %}</li>{% endfor %}
+                {% for c in diff.conexoes_alteradas %}<li class="list-group-item list-group-item-warning py-2"><i class="bi bi-pencil"></i> {{ c.texto }}: rótulo <span class="text-decoration-line-through">{{ c.de }}</span> &rarr; <strong>{{ c.para }}</strong></li>{% endfor %}
+            </ul>
+            {% endif %}
+            <p class="small text-muted mb-0">A comparação considera conteúdo (texto, raia, tipo, documento, marcadores e conexões); mudanças apenas de posição no canvas não são listadas.</p>
+        {% else %}
+            <p class="text-muted mb-0">Selecione duas revisões diferentes para comparar.</p>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

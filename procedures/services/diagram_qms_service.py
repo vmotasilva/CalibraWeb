@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.db import transaction
 from ..models_diagram import DiagramaVersao, StatusDiagrama
+from .diagram_validation import validar_para_submissao
 
 
 def _exige_segregacao() -> bool:
@@ -23,9 +24,11 @@ class DiagramaQMSService:
         if versao.status != StatusDiagrama.RASCUNHO:
             raise ValidationError(f"Apenas versões em Rascunho podem ser submetidas. Status atual: {versao.get_status_display()}")
 
-        nodes = (versao.dados_topologia or {}).get('nodes', [])
-        if not nodes:
-            raise ValidationError("Não é possível submeter um fluxograma sem nós ou atividades configuradas.")
+        problemas = validar_para_submissao(versao.dados_topologia)
+        if problemas:
+            lista = "\n".join(f"- {p}" for p in problemas[:8])
+            extra = f"\n(+ {len(problemas) - 8} outros problemas)" if len(problemas) > 8 else ""
+            raise ValidationError(f"Corrija antes de submeter:\n{lista}{extra}")
 
         versao.status = StatusDiagrama.EM_APROVACAO
         versao.submetido_por = usuario

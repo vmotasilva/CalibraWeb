@@ -324,12 +324,185 @@ class DiagramaGovernancaTestCase(TestCase):
     def test_editor_barra_de_ferramentas_com_historico_e_edicao_de_conexoes(self):
         url = f'/procedures/diagramas/editor/{self.versao.id}/'
         html = self._cliente(self.autor).get(url).content.decode()
-        for marcador in ('id="btnDesfazer"', 'id="btnRefazer"', 'onclick="excluirSelecao()"', 'function editarRotuloAresta',
-                         'function desfazer()', 'Organizar', 'id="labelEstiloLinha"'):
+        for marcador in ('id="btnDesfazer"', 'id="btnRefazer"', 'onclick="excluirSelecao()"',
+                         'Organizar', 'id="labelEstiloLinha"', 'procedures/js/diagrama_editor.js'):
             self.assertIn(marcador, html)
+
+        # A lógica do editor fica no arquivo estático
+        from pathlib import Path
+        js = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js').read_text(encoding='utf-8')
+        for funcao in ('function editarRotuloAresta', 'function desfazer()', 'function dispararAutoSave'):
+            self.assertIn(funcao, js)
 
         # Somente leitura (Em Aprovação): sem botões de edição/histórico
         DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
         html = self._cliente(self.autor).get(url).content.decode()
         self.assertNotIn('id="btnDesfazer"', html)
         self.assertNotIn('onclick="adicionarTopicoIrmao()"', html)
+
+
+class DiagramaPacote4TestCase(TestCase):
+    """Validação pré-submissão, comparação de revisões, lista, duplicar/arquivar e inbox."""
+
+    def setUp(self):
+        self.autor = User.objects.create_user(username='autor4', password='x')
+        self.aprovador = User.objects.create_user(username='aprovador4', password='x')
+        self.diagrama = Diagrama.objects.create(titulo='Fluxo Pacote 4', criado_por=self.autor)
+        self.versao = DiagramaVersao.objects.create(
+            diagrama=self.diagrama, revisao=0, status=StatusDiagrama.RASCUNHO, dados_topologia=self._topologia_valida())
+
+    @staticmethod
+    def _topologia_valida():
+        return {
+            "nodes": [
+                {"id": "1", "type": "start", "position": {"x": 1, "y": 1}, "data": {"label": "Início", "lane": "A"}},
+                {"id": "2", "type": "decision", "position": {"x": 1, "y": 100}, "data": {"label": "Ok?", "lane": "A"}},
+                {"id": "3", "type": "end", "position": {"x": 1, "y": 200}, "data": {"label": "Fim", "lane": "A"}},
+                {"id": "4", "type": "process", "position": {"x": 300, "y": 100}, "data": {"label": "Corrigir", "lane": "A"}},
+            ],
+            "edges": [
+                {"id": "e12", "source": "1", "target": "2"},
+                {"id": "e23", "source": "2", "target": "3", "label": "Sim"},
+                {"id": "e24", "source": "2", "target": "4", "label": "Não"},
+            ],
+            "grid_data": [],
+        }
+
+    def _cliente(self, user, *perms):
+        from django.contrib.auth.models import Permission
+        for codename in perms:
+            user.user_permissions.add(Permission.objects.get(codename=codename))
+        c = Client()
+        c.force_login(User.objects.get(pk=user.pk))
+        return c
+
+    # --- validação pré-submissão -------------------------------------------------
+    def test_validacao_aceita_fluxograma_completo(self):
+        from procedures.services.diagram_validation import validar_para_submissao
+        self.assertEqual(validar_para_submissao(self._topologia_valida()), [])
+
+    def test_validacao_detecta_problemas(self):
+        from procedures.services.diagram_validation import validar_para_submissao
+        topo = self._topologia_valida()
+        topo["nodes"] = [n for n in topo["nodes"] if n["type"] != "end"]
+        topo["edges"] = [e for e in topo["edges"] if e["id"] != "e23"]
+        topo["nodes"].append({"id": "9", "type": "process", "position": {"x": 5, "y": 5}, "data": {"label": ""}})
+        texto = " | ".join(validar_para_submissao(topo))
+        self.assertIn("Fim", texto)
+        self.assertIn("pelo menos 2 saídas", texto)
+        self.assertIn("sem texto", texto)
+        self.assertIn("isolado", texto)
+
+    def test_organograma_nao_exige_inicio_e_fim(self):
+        from procedures.services.diagram_validation import validar_para_submissao
+        topo = {"nodes": [
+            {"id": "a", "type": "process", "position": {"x": 1, "y": 1}, "data": {"label": "Diretoria"}},
+            {"id": "b", "type": "process", "position": {"x": 1, "y": 2}, "data": {"label": "Qualidade"}}],
+            "edges": [{"id": "e", "source": "a", "target": "b"}]}
+        self.assertEqual(validar_para_submissao(topo), [])
+
+    def test_submissao_bloqueada_com_problemas(self):
+        self.versao.dados_topologia["nodes"][0]["data"]["label"] = ""
+        self.versao.save()
+        with self.assertRaises(ValidationError) as ctx:
+            DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        self.assertIn("Corrija antes de submeter", ctx.exception.messages[0])
+
+    # --- comparação ---------------------------------------------------------------
+    def test_comparacao_entre_revisoes(self):
+        from procedures.services.diagram_diff import comparar_topologias
+        antiga = self._topologia_valida()
+        nova = self._topologia_valida()
+        nova["nodes"][3]["data"]["label"] = "Corrigir e reinspecionar"
+        nova["nodes"].append({"id": "5", "type": "process", "position": {"x": 1, "y": 1}, "data": {"label": "Registrar", "lane": "B"}})
+        nova["edges"] = [e for e in nova["edges"] if e["id"] != "e24"] + [{"id": "e45", "source": "4", "target": "5"}]
+        nova["nodes"][0]["position"] = {"x": 999, "y": 999}  # posição não conta
+        diff = comparar_topologias(antiga, nova)
+        self.assertEqual([b["nome"] for b in diff["blocos_adicionados"]], ["Registrar"])
+        self.assertEqual(diff["blocos_removidos"], [])
+        self.assertEqual(diff["blocos_alterados"][0]["mudancas"][0]["para"], "Corrigir e reinspecionar")
+        self.assertEqual(len(diff["conexoes_adicionadas"]), 1)
+        self.assertEqual(len(diff["conexoes_removidas"]), 1)
+        self.assertTrue(comparar_topologias(antiga, antiga)["sem_mudancas"])
+
+    def test_pagina_de_historico_com_comparacao(self):
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        DiagramaQMSService.aprovar_versao(self.versao, self.aprovador)
+        r01 = DiagramaQMSService.criar_nova_revisao(self.versao, self.autor, "Ajuste do processo")
+        r01.dados_topologia["nodes"][3]["data"]["label"] = "Corrigir (novo texto)"
+        r01.save()
+        html = self._cliente(self.autor).get(f'/procedures/diagramas/{self.diagrama.id}/historico/').content.decode()
+        self.assertIn('R01', html)
+        self.assertIn('Blocos alterados', html)
+        self.assertIn('Corrigir (novo texto)', html)
+
+    # --- lista, duplicar, arquivar -------------------------------------------------
+    def test_lista_filtra_por_status_e_mostra_vigente(self):
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        DiagramaQMSService.aprovar_versao(self.versao, self.aprovador)
+        DiagramaQMSService.criar_nova_revisao(self.versao, self.autor, "Ajuste do processo")
+        outro = Diagrama.objects.create(titulo='Outro Fluxo', criado_por=self.autor)
+        DiagramaVersao.objects.create(diagrama=outro, revisao=0, status=StatusDiagrama.RASCUNHO, dados_topologia={"nodes": [], "edges": []})
+        c = self._cliente(self.autor)
+        html = c.get('/procedures/diagramas/?status=RASCUNHO').content.decode()
+        self.assertIn('Fluxo Pacote 4', html)   # última revisão (R01) é rascunho
+        self.assertIn('Outro Fluxo', html)
+        self.assertIn('Rascunho aberto', html)  # R01 aberto sobre vigente R00
+        html = c.get('/procedures/diagramas/?status=APROVADO').content.decode()
+        self.assertNotIn('Fluxo Pacote 4', html)
+        html = c.get('/procedures/diagramas/?busca=%23' + str(outro.numero)).content.decode()
+        self.assertIn('Outro Fluxo', html)
+        self.assertNotIn('Fluxo Pacote 4', html)
+
+    def test_duplicar_cria_copia_em_rascunho(self):
+        c = self._cliente(self.autor, 'nav_diagramas_novo')
+        resp = c.post(f'/procedures/diagramas/{self.diagrama.id}/duplicar/')
+        self.assertEqual(resp.status_code, 302)
+        copia = Diagrama.objects.exclude(pk=self.diagrama.pk).get()
+        self.assertTrue(copia.titulo.endswith('(cópia)'))
+        v = copia.versoes.get()
+        self.assertEqual((v.revisao, v.status), (0, StatusDiagrama.RASCUNHO))
+        self.assertEqual(len(v.dados_topologia['nodes']), 4)
+        # Sem permissão: nada é criado
+        sem_perm = self._cliente(self.aprovador)
+        sem_perm.post(f'/procedures/diagramas/{self.diagrama.id}/duplicar/')
+        self.assertEqual(Diagrama.objects.count(), 2)
+
+    def test_arquivar_e_restaurar_respeita_revisao_aprovada(self):
+        c = self._cliente(self.autor, 'nav_diagramas_editor')
+        c.post(f'/procedures/diagramas/{self.diagrama.id}/arquivar/', {'acao': 'arquivar'})
+        self.diagrama.refresh_from_db()
+        self.assertFalse(self.diagrama.ativo)
+        c.post(f'/procedures/diagramas/{self.diagrama.id}/arquivar/', {'acao': 'restaurar'})
+        self.diagrama.refresh_from_db()
+        self.assertTrue(self.diagrama.ativo)
+
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        DiagramaQMSService.aprovar_versao(self.versao, self.aprovador)
+        c.post(f'/procedures/diagramas/{self.diagrama.id}/arquivar/', {'acao': 'arquivar'})
+        self.diagrama.refresh_from_db()
+        self.assertTrue(self.diagrama.ativo)  # aprovado: só superusuário arquiva
+
+    # --- caixa de entrada ----------------------------------------------------------
+    def test_inbox_notifica_aprovador_e_elaborador(self):
+        from shared.inbox import get_user_inbox_items
+        from django.core.cache import cache
+        from django.contrib.auth.models import Permission
+        self.aprovador.user_permissions.add(Permission.objects.get(codename='nav_diagramas_aprovar'))
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+
+        cache.clear()
+        aprovador = User.objects.get(pk=self.aprovador.pk)
+        itens = [i for i in get_user_inbox_items(aprovador) if i.module == 'Diagramas']
+        self.assertEqual(len(itens), 1)
+        self.assertEqual(itens[0].sub_type, 'Aguardando aprovação')
+
+        # Quem submeteu não vê a própria aprovação pendente (segregação)
+        cache.clear()
+        self.assertEqual([i for i in get_user_inbox_items(self.autor) if i.module == 'Diagramas'], [])
+
+        # Após devolver, o elaborador é avisado
+        DiagramaQMSService.devolver_para_ajustes(self.versao, aprovador, "Falta detalhar a decisão")
+        cache.clear()
+        itens = [i for i in get_user_inbox_items(User.objects.get(pk=self.autor.pk)) if i.module == 'Diagramas']
+        self.assertEqual([i.sub_type for i in itens], ['Devolvidos para ajuste'])
