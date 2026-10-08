@@ -78,6 +78,30 @@
         border-color: #bfdbfe;
     }
 
+    .ribbon-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: transparent;
+    }
+
+    .ribbon-sep {
+        width: 1px;
+        height: 22px;
+        background: #e2e8f0;
+        margin: 0 4px;
+    }
+
+    /* Conexões clicáveis (a camada SVG ignora o mouse; só o traço da aresta responde) */
+    .edge-hit {
+        pointer-events: stroke;
+        cursor: pointer;
+    }
+
+    .edge-label-group {
+        pointer-events: all;
+        cursor: pointer;
+    }
+
     .ribbon-kbd {
         font-size: 10px;
         font-family: monospace;
@@ -772,63 +796,70 @@
             </button>
         </div>
 
-        <!-- Grupo 2: Ações Rápidas de Criação com Teclado -->
+        <!-- Grupo 2: Criação, Conexão e Histórico (Desfazer / Refazer) -->
         <div class="d-flex align-items-center gap-1 border-end pe-2">
-            {% if not is_approved %}
+            {% if not is_locked %}
                 <button type="button" class="ribbon-btn border" onclick="adicionarTopicoIrmao()" title="Adicionar Tópico Irmão (Atalho: Enter)">
                     <i class="bi bi-plus-square text-success"></i> + Tópico <span class="ribbon-kbd">Enter</span>
                 </button>
                 <button type="button" class="ribbon-btn border" onclick="adicionarSubtopicoFilho()" title="Adicionar Subtópico Filho (Atalho: Tab)">
                     <i class="bi bi-node-plus-fill text-primary"></i> + Subtópico <span class="ribbon-kbd">Tab</span>
                 </button>
-                <button type="button" class="ribbon-btn border" onclick="conectarNosSelecionados()" title="Conectar 2 Blocos com Seta">
+                <button type="button" class="ribbon-btn border" onclick="conectarNosSelecionados()" title="Conectar blocos com seta: selecione 2 blocos (Shift + clique) - o primeiro é a origem, o segundo o destino">
                     <i class="bi bi-arrow-right-short text-secondary fs-5"></i> Conexão
                 </button>
-                <button type="button" class="ribbon-btn border" onclick="excluirNoSelecionado()" title="Excluir Bloco Selecionado (Atalho: Del)">
+                <button type="button" class="ribbon-btn border" onclick="excluirSelecao()" title="Excluir bloco ou conexão selecionada (Atalho: Del)">
                     <i class="bi bi-trash text-danger"></i> <span class="ribbon-kbd">Del</span>
+                </button>
+                <span class="ribbon-sep"></span>
+                <button type="button" class="ribbon-btn border" id="btnDesfazer" onclick="desfazer()" title="Desfazer (Ctrl + Z)" disabled>
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button type="button" class="ribbon-btn border" id="btnRefazer" onclick="refazer()" title="Refazer (Ctrl + Y ou Ctrl + Shift + Z)" disabled>
+                    <i class="bi bi-arrow-clockwise"></i>
                 </button>
             {% endif %}
         </div>
 
-        <!-- Grupo 3: Automações de Layout, Alinhamento e Raias (Imagem 01) -->
+        <!-- Grupo 3: Layout (Auto-Layout em destaque; demais ações agrupadas em "Organizar") -->
         <div class="d-flex align-items-center gap-1 border-end pe-2">
             <button type="button" class="btn btn-sm btn-primary border shadow-sm px-2 py-1" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
                 <i class="bi bi-magic"></i> <span class="small fw-semibold">Auto-Layout</span>
             </button>
             <div class="dropdown">
-                <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Alinhar Blocos Selecionados">
-                    <i class="bi bi-align-end text-primary"></i> Alinhar
+                <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Alinhar, distribuir e organizar blocos e raias">
+                    <i class="bi bi-layout-text-window-reverse text-primary"></i> Organizar
                 </button>
-                <ul class="dropdown-menu shadow-sm dropdown-menu-end">
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('top')"><i class="bi bi-align-top"></i> Linha Superior</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('bottom')"><i class="bi bi-align-bottom"></i> Linha Inferior</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('left')"><i class="bi bi-align-start"></i> Lateral Esquerda</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('right')"><i class="bi bi-align-end"></i> Lateral Direita</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-h')"><i class="bi bi-align-center"></i> Centro Vertical (Coluna)</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-v')"><i class="bi bi-align-middle"></i> Centro Horizontal (Linha)</a></li>
+                <ul class="dropdown-menu shadow-sm">
+                    <li><h6 class="dropdown-header">Alinhar blocos selecionados</h6></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('top')"><i class="bi bi-align-top me-2"></i>Linha Superior</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('bottom')"><i class="bi bi-align-bottom me-2"></i>Linha Inferior</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('left')"><i class="bi bi-align-start me-2"></i>Lateral Esquerda</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('right')"><i class="bi bi-align-end me-2"></i>Lateral Direita</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-h')"><i class="bi bi-align-center me-2"></i>Centro Vertical (Coluna)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-v')"><i class="bi bi-align-middle me-2"></i>Centro Horizontal (Linha)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharNosPorRaias()"><i class="bi bi-distribute-horizontal me-2"></i>Distribuir blocos dentro das raias</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="centralizarEixoXDaTela()"><i class="bi bi-arrows-collapse me-2"></i>Mover blocos para o centro</a></li>
+                    {% if not is_locked %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="adicionarNovaRaia()"><i class="bi bi-plus-circle me-2"></i>Nova raia / setor</a></li>
+                    {% endif %}
                 </ul>
             </div>
-            <button type="button" class="ribbon-btn border" onclick="alinharNosPorRaias()" title="Alinhar e Distribuir Blocos Dentro das Raias">
-                <i class="bi bi-distribute-horizontal text-primary"></i> Alinhar Raias
-            </button>
-            <button type="button" class="ribbon-btn border" onclick="centralizarEixoXDaTela()" title="Centralizar Todos os Blocos Horizontalmente na Tela">
-                <i class="bi bi-arrows-collapse text-primary"></i> Mover p/ Centro
-            </button>
-            {% if not is_approved %}
-                <button type="button" class="ribbon-btn border" onclick="adicionarNovaRaia()" title="Adicionar Nova Raia de Setor / Departamento">
-                    <i class="bi bi-plus-circle text-primary"></i> + Raia
-                </button>
-            {% endif %}
         </div>
 
-        <!-- Grupo 4: Visualização, Centralização e Zoom (Imagem 01) -->
+        <!-- Grupo 4: Visão e Zoom -->
         <div class="d-flex align-items-center gap-1 border-end pe-2">
-            <button type="button" class="ribbon-btn border" onclick="recentralizarCanvas()" title="Centralizar Visualização nos Blocos">
-                <i class="bi bi-crosshair text-primary"></i> Centralizar
-            </button>
-            <button type="button" class="ribbon-btn border" onclick="enquadrarVisaoCompleta()" title="Ajustar e Enquadrar Todo o Diagrama na Tela (Fit View)">
-                <i class="bi bi-aspect-ratio text-primary"></i> Enquadrar
-            </button>
+            <div class="dropdown">
+                <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Opções de visualização">
+                    <i class="bi bi-eye text-primary"></i> Visão
+                </button>
+                <ul class="dropdown-menu shadow-sm">
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="recentralizarCanvas()"><i class="bi bi-crosshair me-2"></i>Centralizar visualização nos blocos</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="enquadrarVisaoCompleta()"><i class="bi bi-aspect-ratio me-2"></i>Enquadrar todo o diagrama na tela</a></li>
+                </ul>
+            </div>
 
             <!-- Controles de Zoom -->
             <div class="btn-group btn-group-sm shadow-sm ms-1" role="group">
@@ -844,14 +875,14 @@
             </div>
         </div>
 
-        <!-- Grupo 5: Estilo de Linhas, Fundo, ZEN e Painel Lateral -->
+        <!-- Grupo 5: Exibição (linhas, fundo, ZEN) e Painel Lateral -->
         <div class="d-flex align-items-center gap-1">
-            <!-- Seletor de Estilo das Linhas de Conexão -->
             <div class="dropdown">
-                <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Configurar Estilo das Linhas / Conectores">
-                    <i class="bi bi-bezier2 text-primary"></i> <span id="labelEstiloLinha">Linhas 90°</span>
+                <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Estilo das linhas, fundo e modo foco">
+                    <i class="bi bi-sliders text-primary"></i> Exibir
                 </button>
-                <ul class="dropdown-menu shadow-sm dropdown-menu-end">
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                    <li><h6 class="dropdown-header">Linhas: <span id="labelEstiloLinha">90° (Ortogonal)</span></h6></li>
                     <li>
                         <a class="dropdown-item d-flex align-items-center gap-2 py-2" href="javascript:void(0)" onclick="alterarEstiloLinha('ortogonal')">
                             <i class="bi bi-bezier2 text-primary fs-5"></i>
@@ -879,15 +910,11 @@
                             </div>
                         </a>
                     </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarFundoCanvas()"><i class="bi bi-palette2 me-2"></i>Alternar fundo (acolhedor / claro)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarModoZen()"><i class="bi bi-fullscreen me-2"></i>Modo foco / tela cheia (ZEN)</a></li>
                 </ul>
             </div>
-
-            <button type="button" class="ribbon-btn" onclick="alternarFundoCanvas()" title="Alternar entre fundo acolhedor e fundo claro">
-                <i class="bi bi-palette2"></i> Fundo
-            </button>
-            <button type="button" class="ribbon-btn" onclick="alternarModoZen()" title="Modo Foco / Tela Cheia (ZEN)">
-                <i class="bi bi-aspect-ratio"></i> ZEN
-            </button>
             <button type="button" class="ribbon-btn border active" id="btnToggleInspector" onclick="toggleInspectorPanel()" title="Abrir / Fechar Painel Lateral de Formatação">
                 <i class="bi bi-layout-sidebar-reverse"></i> Painel
             </button>
@@ -1277,6 +1304,7 @@
     if (!topologia.estilo_linha) topologia.estilo_linha = 'ortogonal'; // Padrão 90° para fluxogramas e organogramas
 
     let autoSaveTimer = null;
+    let selectedEdgeId = null; // Conexão selecionada no canvas
     let isDragging = false;
     let activeNode = null;
     let selectedNodeId = null;
@@ -1300,6 +1328,7 @@
             gerarGridDataPorNodes();
         }
 
+        iniciarHistorico();
         renderizarCanvas();
         renderizarGrelha();
         renderizarOutliner();
@@ -1332,6 +1361,20 @@
 
             if (IS_APPROVED) return;
 
+            // Desfazer / Refazer
+            if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+                const k = e.key.toLowerCase();
+                if (k === 'z') {
+                    e.preventDefault();
+                    if (e.shiftKey) refazer(); else desfazer();
+                    return;
+                } else if (k === 'y') {
+                    e.preventDefault();
+                    refazer();
+                    return;
+                }
+            }
+
             if (e.key === 'Enter') {
                 e.preventDefault();
                 adicionarTopicoIrmao();
@@ -1339,9 +1382,9 @@
                 e.preventDefault();
                 adicionarSubtopicoFilho();
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (selectedNodeId) {
+                if (selectedEdgeId || selectedNodeId) {
                     e.preventDefault();
-                    excluirNoSelecionado();
+                    excluirSelecao();
                 }
             } else if (e.key === 'Escape') {
                 desmarcarTodosNos();
@@ -1530,6 +1573,7 @@
                         selectedNodeId = node.id;
                     }
                     atualizarSelecoesVisuais();
+                    limparSelecaoAresta();
                 } else {
                     selecionarNo(node.id);
                 }
@@ -1579,12 +1623,64 @@
         selectedNodeIds.add(nodeId);
         selectedNodeId = nodeId;
         atualizarSelecoesVisuais();
+        limparSelecaoAresta();
     }
 
     function desmarcarTodosNos() {
         selectedNodeId = null;
         selectedNodeIds.clear();
         atualizarSelecoesVisuais();
+        limparSelecaoAresta();
+    }
+
+    function limparSelecaoAresta() {
+        if (!selectedEdgeId) return;
+        selectedEdgeId = null;
+        desenharConexoes();
+    }
+
+    function selecionarAresta(edgeId) {
+        selectedNodeId = null;
+        selectedNodeIds.clear();
+        atualizarSelecoesVisuais();
+        selectedEdgeId = edgeId;
+        desenharConexoes();
+        const vp = document.getElementById('canvasViewport');
+        if (vp) vp.focus({ preventScroll: true });
+    }
+
+    function sincronizarAposEdicaoDeAresta() {
+        sincronizarEdgesComGridData();
+        desenharConexoes();
+        renderizarGrelha();
+        renderizarOutliner();
+        dispararAutoSave();
+    }
+
+    function excluirArestaSelecionada() {
+        if (IS_APPROVED || !selectedEdgeId) return;
+        topologia.edges = topologia.edges.filter(e => e.id !== selectedEdgeId);
+        selectedEdgeId = null;
+        sincronizarAposEdicaoDeAresta();
+    }
+
+    function editarRotuloAresta(edgeId) {
+        if (IS_APPROVED) return;
+        const edge = topologia.edges.find(e => e.id === edgeId);
+        if (!edge) return;
+        const novo = prompt('Rótulo da conexão (ex.: Sim, Não, Reexecutar). Deixe vazio para remover:', edge.label || '');
+        if (novo === null) return;
+        const limpo = novo.trim();
+        if (limpo) edge.label = limpo; else delete edge.label;
+        sincronizarAposEdicaoDeAresta();
+    }
+
+    function excluirSelecao() {
+        if (selectedEdgeId) {
+            excluirArestaSelecionada();
+        } else {
+            excluirNoSelecionado();
+        }
     }
 
     function alinharSelecionados(direcao) {
@@ -1995,11 +2091,30 @@
 
             const { pathData, labelPos } = gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, estilo);
 
+            const selecionada = edge.id === selectedEdgeId;
+            if (selecionada) {
+                strokeColor = '#2563eb';
+                marker = 'url(#arrowhead)';
+            }
+
+            // Área de clique ampliada (traço invisível mais largo) para selecionar / editar a conexão
+            const hit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            hit.setAttribute('d', pathData);
+            hit.setAttribute('fill', 'none');
+            hit.setAttribute('stroke', 'transparent');
+            hit.setAttribute('stroke-width', '14');
+            hit.setAttribute('class', 'edge-hit');
+            hit.addEventListener('mousedown', (ev) => ev.stopPropagation());
+            hit.addEventListener('click', (ev) => { ev.stopPropagation(); selecionarAresta(edge.id); });
+            hit.addEventListener('dblclick', (ev) => { ev.stopPropagation(); editarRotuloAresta(edge.id); });
+            svg.appendChild(hit);
+
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             path.setAttribute('d', pathData);
             path.setAttribute('fill', 'none');
+            path.setAttribute('pointer-events', 'none');
             path.setAttribute('stroke', strokeColor);
-            path.setAttribute('stroke-width', '2.2');
+            path.setAttribute('stroke-width', selecionada ? '3.6' : '2.2');
             path.setAttribute('stroke-linecap', 'round');
             path.setAttribute('stroke-linejoin', 'round');
             path.setAttribute('marker-end', marker);
@@ -2007,6 +2122,10 @@
 
             if (edge.label) {
                 const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+                textGroup.setAttribute('class', 'edge-label-group');
+                textGroup.addEventListener('mousedown', (ev) => ev.stopPropagation());
+                textGroup.addEventListener('click', (ev) => { ev.stopPropagation(); selecionarAresta(edge.id); });
+                textGroup.addEventListener('dblclick', (ev) => { ev.stopPropagation(); editarRotuloAresta(edge.id); });
 
                 const labelBg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
                 const textLen = Math.max(26, edge.label.length * 8 + 12);
@@ -2227,35 +2346,45 @@
 
     function conectarNosSelecionados() {
         if (IS_APPROVED) return;
-        const sourceId = selectedNodeId;
-        if (!sourceId) {
-            alert("Selecione primeiro o nó de origem no canvas.");
+        let sourceId = null;
+        let targetId = null;
+        const ids = [...selectedNodeIds];
+
+        if (ids.length === 2) {
+            // Seleção múltipla (Shift + clique): o primeiro selecionado é a origem, o segundo o destino
+            [sourceId, targetId] = ids;
+        } else if (selectedNodeId) {
+            const digitado = prompt(`Conectar nó #${selectedNodeId} ao nó de ID (dica: selecione 2 blocos com Shift + clique):`);
+            if (!digitado) return;
+            sourceId = selectedNodeId;
+            targetId = digitado.trim();
+        } else {
+            alert("Selecione 2 blocos (Shift + clique): o primeiro é a origem e o segundo o destino.");
             return;
         }
-        const targetId = prompt(`Conectar nó #${sourceId} ao nó de ID:`);
-        if (!targetId || targetId === sourceId) return;
 
-        const targetNode = topologia.nodes.find(n => n.id === targetId.trim());
-        if (!targetNode) {
-            alert(`Nó #${targetId} não encontrado.`);
+        const targetNode = topologia.nodes.find(n => n.id === targetId);
+        if (!targetNode || targetId === sourceId) {
+            alert(`Nó #${targetId} não encontrado ou inválido.`);
+            return;
+        }
+        if (topologia.edges.some(e => e.source === sourceId && e.target === targetId)) {
+            alert("Esses blocos já estão conectados nesse sentido.");
             return;
         }
 
         topologia.edges.push({
-            id: `e-${sourceId}-${targetNode.id}`,
+            id: `e-${sourceId}-${targetId}`,
             source: sourceId,
-            target: targetNode.id,
+            target: targetId,
             sourceHandle: 'bottom',
             targetHandle: 'top'
         });
 
-        const sourceGrid = topologia.grid_data.find(r => r.stepId === sourceId);
-        if (sourceGrid) {
-            if (!sourceGrid.next) sourceGrid.next = [];
-            sourceGrid.next.push({ targetId: targetNode.id });
-        }
-
+        sincronizarEdgesComGridData();
         renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner();
         dispararAutoSave();
     }
 
@@ -3331,6 +3460,8 @@
                 return; // Deixa o arrasto do nó agir
             }
 
+            limparSelecaoAresta();
+
             // Inicia Panning livre
             isPanning = true;
             panStart = {
@@ -3600,8 +3731,83 @@
     // =========================================================================
     // AUTO-SAVE DE ALTA FREQUÊNCIA (DEBOUNCE 800ms)
     // =========================================================================
+    // =========================================================================
+    // HISTÓRICO (DESFAZER / REFAZER) - snapshots da topologia, agrupados em janelas de 500 ms
+    // =========================================================================
+    const HISTORICO_MAX = 50;
+    let historicoUndo = [];
+    let historicoRedo = [];
+    let historicoBase = null;
+    let historicoTimer = null;
+
+    function iniciarHistorico() {
+        historicoBase = JSON.stringify(topologia);
+        atualizarBotoesHistorico();
+    }
+
+    function atualizarBotoesHistorico() {
+        const u = document.getElementById('btnDesfazer');
+        const r = document.getElementById('btnRefazer');
+        if (u) u.disabled = historicoUndo.length === 0;
+        if (r) r.disabled = historicoRedo.length === 0;
+    }
+
+    function registrarHistorico() {
+        clearTimeout(historicoTimer);
+        historicoTimer = null;
+        if (historicoBase === null) return;
+        const atual = JSON.stringify(topologia);
+        if (atual === historicoBase) return;
+        historicoUndo.push(historicoBase);
+        if (historicoUndo.length > HISTORICO_MAX) historicoUndo.shift();
+        historicoBase = atual;
+        historicoRedo = [];
+        atualizarBotoesHistorico();
+    }
+
+    function agendarHistorico() {
+        clearTimeout(historicoTimer);
+        historicoTimer = setTimeout(registrarHistorico, 500);
+    }
+
+    function restaurarSnapshot(snapshot) {
+        topologia = JSON.parse(snapshot);
+        if (!topologia.nodes) topologia.nodes = [];
+        if (!topologia.edges) topologia.edges = [];
+        if (!topologia.grid_data) topologia.grid_data = [];
+        if (!topologia.estilo_linha) topologia.estilo_linha = 'ortogonal';
+        historicoBase = JSON.stringify(topologia); // após normalizar, para a próxima comparação não gerar passo falso
+        selectedNodeId = null;
+        selectedNodeIds.clear();
+        selectedEdgeId = null;
+        renderizarCanvas();
+        renderizarGrelha();
+        renderizarOutliner();
+        atualizarLabelEstiloLinha();
+        atualizarSelecoesVisuais();
+        atualizarBotoesHistorico();
+        dispararAutoSave();
+    }
+
+    function desfazer() {
+        if (IS_APPROVED) return;
+        registrarHistorico(); // fecha alterações pendentes antes de voltar
+        if (historicoUndo.length === 0) return;
+        historicoRedo.push(JSON.stringify(topologia));
+        restaurarSnapshot(historicoUndo.pop());
+    }
+
+    function refazer() {
+        if (IS_APPROVED) return;
+        registrarHistorico();
+        if (historicoRedo.length === 0) return;
+        historicoUndo.push(JSON.stringify(topologia));
+        restaurarSnapshot(historicoRedo.pop());
+    }
+
     function dispararAutoSave() {
         if (IS_APPROVED || autoSaveConflito) return;
+        agendarHistorico();
 
         const indicator = document.getElementById('saveIndicator');
         indicator.innerHTML = '<span class="text-warning"><i class="bi bi-arrow-repeat spin"></i> Salvando...</span>';
@@ -3776,6 +3982,7 @@
                 const versaoAtualizada = await resp.json();
                 topologia = versaoAtualizada.dados_topologia || { nodes: [], edges: [], grid_data: [] };
                 if (versaoAtualizada.atualizado_em) versaoAtualizadoEm = versaoAtualizada.atualizado_em;
+                registrarHistorico(); // aplicar modelo também pode ser desfeito
                 renderizarCanvas();
                 renderizarGrelha();
                 renderizarOutliner();

@@ -320,3 +320,16 @@ class DiagramaGovernancaTestCase(TestCase):
         DiagramaQMSService.aprovar_versao(self.versao, self.aprovador)
         html = self._cliente(self.autor, 'nav_diagramas_nova_revisao').get(url).content.decode()
         self.assertIn('onclick="modalNovaRevisao()"', html)
+
+    def test_editor_barra_de_ferramentas_com_historico_e_edicao_de_conexoes(self):
+        url = f'/procedures/diagramas/editor/{self.versao.id}/'
+        html = self._cliente(self.autor).get(url).content.decode()
+        for marcador in ('id="btnDesfazer"', 'id="btnRefazer"', 'onclick="excluirSelecao()"', 'function editarRotuloAresta',
+                         'function desfazer()', 'Organizar', 'id="labelEstiloLinha"'):
+            self.assertIn(marcador, html)
+
+        # Somente leitura (Em Aprovação): sem botões de edição/histórico
+        DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
+        html = self._cliente(self.autor).get(url).content.decode()
+        self.assertNotIn('id="btnDesfazer"', html)
+        self.assertNotIn('onclick="adicionarTopicoIrmao()"', html)
