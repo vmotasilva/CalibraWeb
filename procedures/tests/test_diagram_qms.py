@@ -821,3 +821,29 @@ class TelaDePermissoesDiagramasTestCase(TestCase):
         # bloco sem o sufixo (DOC.071)
         self.assertIn('Fluxogramas de Processos', html)
         self.assertNotIn('Fluxogramas de Processos (DOC.071)', html)
+
+
+class DiagramaAtalhosPorModoTestCase(TestCase):
+    def test_atalhos_de_canvas_nao_interferem_na_grelha(self):
+        from pathlib import Path
+        user = User.objects.create_user(username='atalhos', password='x')
+        diagrama = Diagrama.objects.create(titulo='Atalhos', criado_por=user)
+        versao = DiagramaVersao.objects.create(diagrama=diagrama, revisao=0, dados_topologia={"nodes": [], "edges": []})
+        c = Client()
+        c.force_login(user)
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+
+        # controles exclusivos do Canvas ficam desativados fora dele
+        for onclick in ('adicionarTopicoIrmao()', 'adicionarSubtopicoFilho()', 'conectarNosSelecionados()', 'excluirSelecao()'):
+            self.assertIn(f'class="ribbon-btn border somente-canvas" onclick="{onclick}"', html)
+        self.assertEqual(html.count('somente-canvas"'), 7)  # 4 botões + grupos Layout, Visão e Exibição
+        self.assertIn('.modo-nao-canvas .somente-canvas', html)
+
+        js = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama_editor.js').read_text(encoding='utf-8')
+        trecho = js[js.index('function tratarAtalhosGlobais'):js.index('// ===', js.index('function tratarAtalhosGlobais'))]
+        self.assertIn("e.defaultPrevented || modalAberto() || !foraDeCampoDeEdicao()", trecho)
+        self.assertIn("if (ctrl && modoAtual === 'canvas')", trecho)               # zoom do navegador livre nos outros modos
+        self.assertIn("if (modoAtual !== 'canvas' || focoEmControleInterativo() || !focoNoCanvasOuLivre()) return;", trecho)
+        troca = js[js.index('function alternarModoEditor'):js.index('function alternarModoZen')]
+        self.assertIn("if (modo !== 'canvas') desmarcarTodosNos();", troca)        # sem seleção "invisível" para excluir
+        self.assertIn("el.inert = modo !== 'canvas'", troca)

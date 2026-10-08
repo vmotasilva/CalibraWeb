@@ -44,57 +44,95 @@ document.addEventListener('DOMContentLoaded', () => {
         enquadrarVisaoCompleta();
     }, 150);
 
-    // Atalhos de Teclado Globais no Canvas
-    window.addEventListener('keydown', (e) => {
-        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+    // Atalhos de teclado do editor (ver tratarAtalhosGlobais)
+    window.addEventListener('keydown', tratarAtalhosGlobais);
+});
 
-        // Atalhos de Zoom Globais
-        if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+function foraDeCampoDeEdicao() {
+    const el = document.activeElement;
+    if (!el) return true;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return false;
+    return !el.isContentEditable;
+}
+
+function focoEmControleInterativo() {
+    const el = document.activeElement;
+    return !!el && ['BUTTON', 'A', 'SUMMARY'].includes(el.tagName);
+}
+
+// O foco está no canvas (ou "solto", no corpo da página)? Só nesse caso as teclas de edição de blocos valem
+function focoNoCanvasOuLivre() {
+    const el = document.activeElement;
+    if (!el || el === document.body) return true;
+    const viewport = document.getElementById('canvasViewport');
+    return !!viewport && viewport.contains(el);
+}
+
+function modalAberto() {
+    return !!document.querySelector('.modal.show');
+}
+
+/**
+ * Atalhos de teclado globais. Regras para não atrapalhar Grelha, Outliner, janelas e a navegação por Tab:
+ *  - nunca agem com uma janela (modal) aberta nem dentro de campos de texto, listas ou áreas editáveis;
+ *  - zoom (Ctrl +/-/0) só no Canvas: nos demais modos o zoom do navegador continua funcionando;
+ *  - Desfazer/Refazer valem em qualquer modo (a Grelha e o Outliner usam a mesma topologia);
+ *  - Enter / Tab / Delete / Backspace / Esc (editar blocos) só no modo Canvas, com o foco no canvas
+ *    (ou solto). Com o foco em botões ou links, o teclado mantém o comportamento nativo.
+ */
+function tratarAtalhosGlobais(e) {
+    if (e.defaultPrevented || modalAberto() || !foraDeCampoDeEdicao()) return;
+
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    if (ctrl && modoAtual === 'canvas') {
+        if (e.key === '=' || e.key === '+') {
             e.preventDefault();
             alterarZoomRelativo(0.1);
             return;
-        } else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        } else if (e.key === '-') {
             e.preventDefault();
             alterarZoomRelativo(-0.1);
             return;
-        } else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+        } else if (e.key === '0') {
             e.preventDefault();
             aplicarZoom(1.0);
             return;
         }
+    }
 
-        if (IS_APPROVED) return;
+    if (IS_APPROVED) return;
 
-        // Desfazer / Refazer
-        if ((e.ctrlKey || e.metaKey) && !e.altKey) {
-            const k = e.key.toLowerCase();
-            if (k === 'z') {
-                e.preventDefault();
-                if (e.shiftKey) refazer(); else desfazer();
-                return;
-            } else if (k === 'y') {
-                e.preventDefault();
-                refazer();
-                return;
-            }
-        }
-
-        if (e.key === 'Enter') {
+    if (ctrl && !e.altKey) {
+        const k = e.key.toLowerCase();
+        if (k === 'z') {
             e.preventDefault();
-            adicionarTopicoIrmao();
-        } else if (e.key === 'Tab') {
+            if (e.shiftKey) refazer(); else desfazer();
+            return;
+        } else if (k === 'y') {
             e.preventDefault();
-            adicionarSubtopicoFilho();
-        } else if (e.key === 'Delete' || e.key === 'Backspace') {
-            if (selectedEdgeId || selectedNodeId) {
-                e.preventDefault();
-                excluirSelecao();
-            }
-        } else if (e.key === 'Escape') {
-            desmarcarTodosNos();
+            refazer();
+            return;
         }
-    });
-});
+    }
+
+    if (modoAtual !== 'canvas' || focoEmControleInterativo() || !focoNoCanvasOuLivre()) return;
+
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        adicionarTopicoIrmao();
+    } else if (e.key === 'Tab') {
+        e.preventDefault();
+        adicionarSubtopicoFilho();
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedEdgeId || selectedNodeId) {
+            e.preventDefault();
+            excluirSelecao();
+        }
+    } else if (e.key === 'Escape') {
+        desmarcarTodosNos();
+    }
+}
 
 // =========================================================================
 // ALTERNAÇÃO DE MODOS (CANVAS / OUTLINER / GRELHA)
@@ -111,6 +149,12 @@ function alternarModoEditor(modo) {
 
     [btnCanvas, btnOutliner, btnGrelha].forEach(b => b.classList.remove('active'));
     [vCanvas, vOutliner, vGrelha].forEach(v => v.classList.add('d-none'));
+
+    // Fora do Canvas não há seleção ativa (evita excluir um bloco "invisível" por engano) e os controles
+    // exclusivos do Canvas ficam desativados (sem foco, sem clique e sem atalhos)
+    if (modo !== 'canvas') desmarcarTodosNos();
+    document.getElementById('editorMainContainer')?.classList.toggle('modo-nao-canvas', modo !== 'canvas');
+    document.querySelectorAll('.somente-canvas').forEach(el => { el.inert = modo !== 'canvas'; });
 
     if (modo === 'canvas') {
         btnCanvas.classList.add('active');
@@ -2296,6 +2340,10 @@ function adicionarLinhaGrelha() {
     });
     renderizarGrelha();
     dispararAutoSave();
+
+    // o foco vai direto para a descrição da nova etapa (sem o foco "solto" que acionava atalhos globais)
+    const campos = document.querySelectorAll('#corpoTabelaGrelha tr:last-child input[type="text"]');
+    if (campos.length > 1) { campos[1].focus(); campos[1].select(); }
 }
 
 function removerLinhaGrelha(idx) {
@@ -2691,7 +2739,7 @@ function setupCanvasNavigation() {
 
     // Atalho de Tecla Espaço (Spacebar Pan)
     window.addEventListener('keydown', (e) => {
-        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+        if (modoAtual !== 'canvas' || modalAberto() || !foraDeCampoDeEdicao()) return;
         if (e.code === 'Space' && !isSpacePressed) {
             isSpacePressed = true;
             viewport.classList.add('is-space-held');

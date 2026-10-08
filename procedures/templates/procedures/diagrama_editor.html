@@ -78,6 +78,13 @@
         border-color: #bfdbfe;
     }
 
+    /* Controles exclusivos do Canvas ficam esmaecidos e inativos nos modos Grelha e Outliner */
+    .modo-nao-canvas .somente-canvas {
+        opacity: 0.35;
+        pointer-events: none;
+        user-select: none;
+    }
+
     .ribbon-btn:disabled {
         opacity: 0.4;
         cursor: not-allowed;
@@ -879,16 +886,16 @@
         <!-- Grupo 2: Criação, Conexão e Histórico (Desfazer / Refazer) -->
         <div class="d-flex align-items-center gap-1 border-end pe-2">
             {% if not is_locked %}
-                <button type="button" class="ribbon-btn border" onclick="adicionarTopicoIrmao()" title="Adicionar Tópico Irmão (Atalho: Enter)">
+                <button type="button" class="ribbon-btn border somente-canvas" onclick="adicionarTopicoIrmao()" title="Adicionar Tópico Irmão (Atalho: Enter)">
                     <i class="bi bi-plus-square text-success"></i> + Tópico <span class="ribbon-kbd">Enter</span>
                 </button>
-                <button type="button" class="ribbon-btn border" onclick="adicionarSubtopicoFilho()" title="Adicionar Subtópico Filho (Atalho: Tab)">
+                <button type="button" class="ribbon-btn border somente-canvas" onclick="adicionarSubtopicoFilho()" title="Adicionar Subtópico Filho (Atalho: Tab)">
                     <i class="bi bi-node-plus-fill text-primary"></i> + Subtópico <span class="ribbon-kbd">Tab</span>
                 </button>
-                <button type="button" class="ribbon-btn border" onclick="conectarNosSelecionados()" title="Conectar blocos com seta: selecione 2 blocos (Shift + clique) - o primeiro é a origem, o segundo o destino">
+                <button type="button" class="ribbon-btn border somente-canvas" onclick="conectarNosSelecionados()" title="Conectar blocos com seta: selecione 2 blocos (Shift + clique) - o primeiro é a origem, o segundo o destino">
                     <i class="bi bi-arrow-right-short text-secondary fs-5"></i> Conexão
                 </button>
-                <button type="button" class="ribbon-btn border" onclick="excluirSelecao()" title="Excluir bloco ou conexão selecionada (Atalho: Del)">
+                <button type="button" class="ribbon-btn border somente-canvas" onclick="excluirSelecao()" title="Excluir bloco ou conexão selecionada (Atalho: Del)">
                     <i class="bi bi-trash text-danger"></i> <span class="ribbon-kbd">Del</span>
                 </button>
                 <span class="ribbon-sep"></span>
@@ -902,7 +909,7 @@
         </div>
 
         <!-- Grupo 3: Layout (Auto-Layout em destaque; demais ações agrupadas em "Organizar") -->
-        <div class="d-flex align-items-center gap-1 border-end pe-2">
+        <div class="d-flex align-items-center gap-1 border-end pe-2 somente-canvas">
             <button type="button" class="btn btn-sm btn-primary border shadow-sm px-2 py-1" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
                 <i class="bi bi-magic"></i> <span class="small fw-semibold">Auto-Layout</span>
             </button>
@@ -933,7 +940,7 @@
         </div>
 
         <!-- Grupo 4: Visão e Zoom -->
-        <div class="d-flex align-items-center gap-1 border-end pe-2">
+        <div class="d-flex align-items-center gap-1 border-end pe-2 somente-canvas">
             <div class="dropdown">
                 <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Opções de visualização">
                     <i class="bi bi-eye text-primary"></i> Visão
@@ -959,7 +966,7 @@
         </div>
 
         <!-- Grupo 5: Exibição (linhas, fundo, ZEN) e Painel Lateral -->
-        <div class="d-flex align-items-center gap-1">
+        <div class="d-flex align-items-center gap-1 somente-canvas">
             <div class="dropdown">
                 <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Estilo das linhas, fundo e modo foco">
                     <i class="bi bi-sliders text-primary"></i> Exibir
