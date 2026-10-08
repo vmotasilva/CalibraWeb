@@ -34,5 +34,7 @@ let arrastoMoveu = false;
 let arrastoInicio = { x: 0, y: 0 };
 let ultimoAlvoDrop = null;
 let arvoreCache = null; // hierarquia calculada uma vez por renderização
+let contextoEstiloCache = {};  // profundidade e ramo de cada bloco (para temas)
+let formatoCopiado = null;      // formato copiado ("Copiar formato")
 let canvasLargura = 5000;
 let canvasAltura = 5000;

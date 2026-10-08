@@ -27,6 +27,7 @@ from ..services.diagram_validation import validar_topologia
 from ..services.diagram_diff import comparar_topologias
 from ..services.diagram_fotos import decodificar_foto_colaborador
 from .diagram_raias_views import pode_gerenciar_raias, raias_catalogo_para_editor
+from .diagram_temas_views import pode_salvar_tema, temas_para_editor
 from shared.inbox import invalidar_cache_inbox
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
@@ -41,8 +42,8 @@ PERM_EXPORT_PDF = 'core.nav_diagramas_export_pdf'
 
 # Módulos JS do editor, na ordem de carregamento (scripts clássicos que compartilham o escopo global)
 EDITOR_JS_MODULOS = [
-    'estado', 'layout_arvore', 'inicializacao', 'canvas', 'inspetor', 'blocos', 'arvore', 'edicao_inline',
-    'outliner_grelha', 'raias_layout', 'persistencia', 'acoes_qms',
+    'estado', 'layout_arvore', 'estilo', 'inicializacao', 'canvas', 'inspetor', 'blocos', 'arvore', 'edicao_inline',
+    'aparencia', 'outliner_grelha', 'raias_layout', 'persistencia', 'acoes_qms',
 ]
 
 
@@ -699,6 +700,8 @@ def diagrama_editor_view(request, versao_id):
         'editor_js_version': _versao_js_editor(),
         'editor_js_modulos': EDITOR_JS_MODULOS,
         'raias_catalogo': raias_catalogo_para_editor(),
+        'temas_salvos': temas_para_editor(request.user),
+        'pode_salvar_tema': pode_salvar_tema(request.user),
         'pode_gerenciar_raias': pode_gerenciar_raias(request.user),
         'is_rascunho': versao.status == StatusDiagrama.RASCUNHO,
         'is_em_aprovacao': versao.status == StatusDiagrama.EM_APROVACAO,

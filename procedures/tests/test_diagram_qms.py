@@ -1009,3 +1009,231 @@ class DiagramaFase1ArvoreTestCase(TestCase):
         # sem mapeamento explícito não se cria raia com o nome do setor
         trecho = js[js.index('function raiaParaColaborador'):js.index('// Ordem explícita')]
         self.assertNotIn('setorNome', trecho)
+
+
+class DiagramaFase2AparenciaTestCase(TestCase):
+    """Fase 2 do plano XMind: aparência (texto, borda, formas, linhas), temas e catálogo de temas."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='aparencia', password='x')
+        self.outro = User.objects.create_user(username='outra.pessoa', password='x')
+        self.diagrama = Diagrama.objects.create(titulo='Aparência', criado_por=self.user)
+
+    @staticmethod
+    def _node_exe(script, entrada):
+        import json, shutil, subprocess
+        node = shutil.which('node')
+        if not node:
+            return None
+        r = subprocess.run([node, '-e', script], input=json.dumps(entrada), capture_output=True, text=True, encoding='utf-8')
+        assert r.returncode == 0, r.stderr
+        return json.loads(r.stdout)
+
+    @staticmethod
+    def _pasta_js():
+        from pathlib import Path
+        return (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama').as_posix()
+
+    def _cliente(self, user, *perms):
+        from django.contrib.auth.models import Permission
+        for codename in perms:
+            user.user_permissions.add(Permission.objects.get(codename=codename))
+        c = Client()
+        c.force_login(User.objects.get(pk=user.pk))
+        return c
+
+    # --- Node: testes do resolvedor ----------------------------------------------------
+    def test_resolvedor_de_estilos_passa_nos_testes_node(self):
+        import shutil, subprocess
+        from pathlib import Path
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('Node.js não disponível')
+        script = Path(__file__).resolve().parent / 'js' / 'estilo.test.js'
+        r = subprocess.run([node, str(script)], capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('TODOS OS', r.stdout)
+
+    def test_paridade_entre_o_resolvedor_javascript_e_o_python(self):
+        """O PDF (Python) deve resolver o estilo exatamente como o editor (JavaScript)."""
+        from procedures.services.diagram_estilo import resolver_estilo_conexao, resolver_estilo_no
+        base = self._pasta_js()
+        presets = self._node_exe(f"console.log(JSON.stringify(require('{base}/estilo.js').PRESETS))", {})
+        if presets is None:
+            self.skipTest('Node.js não disponível')
+
+        def no(tipo='process', **data):
+            return {"id": "1", "type": tipo, "position": {"x": 0, "y": 0}, "data": {"label": "X", **data}}
+
+        nos = [
+            no(), no(bgColor='#ef4444'), no(bgColor='#ef4444', style={"fill": "#00ff00"}),
+            no(style={"bold": False, "italic": True, "strike": True, "fontFamily": "mono", "fontSize": 16, "align": "right",
+                      "borderStyle": "dotted", "borderColor": "#123456", "borderWidth": 4}),
+            no(style={"noFill": True}), no(style={"fill": "#0f172a"}), no(style={"fill": "#fde68a", "color": "#111111"}),
+            no(shape='brackets'), no(shape='underline', style={"fill": "#fde68a"}), no(shape='plain', bgColor='#334155'),
+            no('start'), no('end'), no('decision'),
+        ]
+        casos = []
+        for nome, tema in presets.items():
+            for prof in range(0, 5):
+                for ramo in (-1, 0, 1, 7):
+                    for n in nos:
+                        casos.append({"tipo": "no", "no": n, "ctx": {"tema": tema, "profundidade": prof, "ramo": ramo}})
+        for n in nos:
+            casos.append({"tipo": "no", "no": n, "ctx": {}})
+        aresta = {"id": "e", "source": "1", "target": "2"}
+        for tema in presets.values():
+            for ramo in (-1, 0, 3):
+                for a in (aresta, {**aresta, "style": {"color": "#000000", "width": 4, "dash": "dashed", "shape": "curva"}}):
+                    casos.append({"tipo": "aresta", "aresta": a, "ctx": {"tema": tema, "ramo": ramo}})
+
+        script = (f"const E=require('{base}/estilo.js');const c=JSON.parse(require('fs').readFileSync(0,'utf8'));"
+                  "console.log(JSON.stringify(c.map(x=>x.tipo==='no'?E.resolverEstiloNo(x.no,x.ctx):E.resolverEstiloConexao(x.aresta,x.ctx))))")
+        js = self._node_exe(script, casos)
+        py = [resolver_estilo_no(c["no"], c["ctx"]) if c["tipo"] == "no" else resolver_estilo_conexao(c["aresta"], c["ctx"]) for c in casos]
+        self.assertEqual(len(js), len(py))
+        for i, (a, b) in enumerate(zip(js, py)):
+            self.assertEqual(a, b, f"caso {i}: {casos[i]}")
+
+    def test_contexto_dos_nos_em_python(self):
+        from procedures.services.diagram_arvore import montar_arvore
+        from procedures.services.diagram_estilo import contexto_dos_nos
+        nos = [{"id": str(i), "data": {}} for i in range(1, 7)]
+        arestas = [{"id": f"e{a}{b}", "source": str(a), "target": str(b)} for a, b in [(1, 2), (1, 3), (2, 4), (3, 5), (5, 6)]]
+        ctx = contexto_dos_nos(montar_arvore(nos, arestas))
+        self.assertEqual(ctx['1'], {'profundidade': 0, 'ramo': -1})
+        self.assertEqual(ctx['3'], {'profundidade': 1, 'ramo': 1})
+        self.assertEqual(ctx['6'], {'profundidade': 3, 'ramo': 1})
+
+    # --- validação ------------------------------------------------------------------------
+    def _topologia(self):
+        return {
+            "layout_modo": "organograma",
+            "tema": {"nome": "T", "fundo": "#f8fafc", "multiRamo": True, "paleta": ["#2563eb", "#16a34a"],
+                     "linha": {"cor": "branch", "largura": 2},
+                     "niveis": [{"fill": "#1e3a8a", "texto": "#ffffff", "borda": "branch", "negrito": True, "tamanho": 14}]},
+            "nodes": [{"id": "1", "type": "process", "position": {"x": 1, "y": 1},
+                       "data": {"label": "A", "shape": "brackets", "style": {"bold": True, "fontSize": 14, "fontFamily": "serif", "color": "#112233"}}},
+                      {"id": "2", "type": "process", "position": {"x": 1, "y": 100}, "data": {"label": "B"}}],
+            "edges": [{"id": "e12", "source": "1", "target": "2", "style": {"color": "#ff0000", "width": 3, "dash": "dashed", "shape": "curva"}}],
+            "grid_data": [],
+        }
+
+    def test_validacao_do_estilo_dos_blocos_conexoes_e_tema(self):
+        from procedures.services.diagram_validation import validar_topologia
+        self.assertEqual(validar_topologia(self._topologia()), [])
+
+        def com(mudanca):
+            t = self._topologia()
+            mudanca(t)
+            return validar_topologia(t)
+
+        self.assertTrue(com(lambda t: t["nodes"][0]["data"]["style"].update(fontSize=999)))
+        self.assertTrue(com(lambda t: t["nodes"][0]["data"]["style"].update(color="vermelho")))
+        self.assertTrue(com(lambda t: t["nodes"][0]["data"]["style"].update(fontFamily="comic")))
+        self.assertTrue(com(lambda t: t["nodes"][0]["data"]["style"].update(script="x")))
+        self.assertTrue(com(lambda t: t["nodes"][0]["data"].update(shape="estrela")))
+        self.assertTrue(com(lambda t: t["edges"][0]["style"].update(width=50)))
+        self.assertTrue(com(lambda t: t["edges"][0]["style"].update(shape="zigzag")))
+        self.assertTrue(com(lambda t: t["tema"].update(fundo="azul")))
+        self.assertTrue(com(lambda t: t["tema"].update(paleta=["#zzz"])))
+        self.assertTrue(com(lambda t: t["tema"].update(extra=1)))
+        self.assertTrue(com(lambda t: t["tema"]["niveis"][0].update(tamanho=2)))
+        self.assertTrue(com(lambda t: t["tema"].update(niveis=[{}] * 9)))
+        self.assertTrue(com(lambda t: t.update(tema="texto")))
+
+    # --- catálogo de temas -------------------------------------------------------------------
+    def test_catalogo_de_temas(self):
+        url = '/procedures/api/diagramas/temas/'
+        definicao = self._topologia()["tema"]
+        corpo = json.dumps({"nome": "Corporativo da Qualidade", "definicao": definicao})
+
+        sem_perm = self._cliente(self.user)
+        self.assertEqual(sem_perm.post(url, data=corpo, content_type='application/json').status_code, 403)
+
+        c = self._cliente(self.user, 'nav_diagramas_editor')
+        r = c.post(url, data=corpo, content_type='application/json')
+        self.assertEqual(r.status_code, 201)
+        tema_id = r.json()['tema']['id']
+        self.assertEqual(r.json()['tema']['definicao']['nome'], 'Corporativo da Qualidade')
+        self.assertTrue(r.json()['tema']['pode_excluir'])
+
+        # mesmo nome (sem diferenciar caixa) pelo criador atualiza; definição inválida é recusada
+        r = c.post(url, data=json.dumps({"nome": "corporativo da qualidade", "definicao": {**definicao, "fundo": "#ffffff"}}), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(r.json()['results']), 1)
+        self.assertEqual(c.post(url, data=json.dumps({"nome": "Ruim", "definicao": {**definicao, "fundo": "azul"}}), content_type='application/json').status_code, 400)
+        self.assertEqual(c.post(url, data=json.dumps({"nome": "  ", "definicao": definicao}), content_type='application/json').status_code, 400)
+
+        # outra pessoa vê o tema, mas não substitui nem exclui
+        outro = self._cliente(self.outro, 'nav_diagramas_editor')
+        listagem = outro.get(url).json()['results']
+        # (o nome passou a ser o digitado na última atualização)
+        self.assertEqual([(t['nome'], t['pode_excluir']) for t in listagem], [('corporativo da qualidade', False)])
+        self.assertEqual(outro.post(url, data=corpo, content_type='application/json').status_code, 409)
+        self.assertEqual(outro.delete(f'{url}{tema_id}/').status_code, 403)
+
+        self.assertEqual(c.delete(f'{url}{tema_id}/').status_code, 200)
+        self.assertEqual(c.get(url).json()['results'], [])
+        self.assertEqual(Client().get(url).status_code, 401)
+
+    def test_editor_recebe_temas_salvos_e_mostra_a_aba_de_aparencia(self):
+        from procedures.models_diagram import TemaDiagrama
+        TemaDiagrama.objects.create(nome='Meu tema', definicao=self._topologia()["tema"], criado_por=self.user)
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia())
+        html = self._cliente(self.user, 'nav_diagramas_editor').get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        for item in ('id="temasSalvosData"', 'Meu tema', 'id="inspTabAparencia"', 'id="modalTema"', 'onclick="abrirModalTema()"',
+                     'id="apNegrito"', 'id="apLinhaRamo"', 'Salvar no catálogo'):
+            self.assertIn(item, html)
+        # quem não pode editar não vê o botão de salvar no catálogo
+        sem_perm = self._cliente(self.outro).get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        self.assertNotIn('Salvar no catálogo', sem_perm)
+
+    def test_autosave_persiste_tema_e_estilos(self):
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia={"nodes": [], "edges": []})
+        c = self._cliente(self.user)
+        r = c.patch(f'/procedures/api/diagramas-versoes/{versao.id}/auto-save/', data=json.dumps({"dados_topologia": self._topologia()}), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        versao.refresh_from_db()
+        self.assertTrue(versao.dados_topologia['tema']['multiRamo'])
+        self.assertEqual(versao.dados_topologia['edges'][0]['style']['shape'], 'curva')
+
+    # --- PDF -------------------------------------------------------------------------------------
+    def test_pdf_com_tema_estilos_e_conectores(self):
+        from procedures.services.diagram_renderer import DiagramaFlowable
+        topo = self._topologia()
+        topo["nodes"][0]["data"]["style"].update(strike=True, italic=True, align="left", borderStyle="dashed", noFill=True)
+        topo["nodes"].append({"id": "3", "type": "decision", "position": {"x": 300, "y": 100},
+                              "data": {"label": "Ok?", "style": {"borderStyle": "dotted", "fill": "#fde68a"}}})
+        topo["nodes"].append({"id": "4", "type": "start", "position": {"x": 300, "y": 300},
+                              "data": {"label": "Início", "style": {"bold": False, "fontSize": 16}}})
+        topo["edges"].append({"id": "e23", "source": "2", "target": "3", "style": {"shape": "reta", "dash": "dotted"}})
+        topo["edges"].append({"id": "e34", "source": "3", "target": "4", "style": {"shape": "curva", "width": 5}})
+        flow = DiagramaFlowable(topo, 782, 330)
+        self.assertEqual(flow.fundo, '#f8fafc')
+        self.assertEqual(flow.estilo_linha, 'ortogonal')
+        for forma in ('brackets', 'underline', 'plain'):
+            topo["nodes"][1]["data"]["shape"] = forma
+            versao = DiagramaVersao.objects.create(diagrama=Diagrama.objects.create(titulo=f'F {forma}', criado_por=self.user),
+                                                   revisao=0, dados_topologia=json.loads(json.dumps(topo)))
+            self.assertTrue(gerar_pdf_diagrama_doc071(versao).startswith(b'%PDF-'), forma)
+
+    def test_fontes_do_pdf_por_familia_e_estilo(self):
+        from procedures.services.diagram_estilo import nome_da_fonte
+        self.assertEqual(nome_da_fonte('sans', True, False), 'Helvetica-Bold')
+        self.assertEqual(nome_da_fonte('serif', False, True), 'Times-Italic')
+        self.assertEqual(nome_da_fonte('mono', True, True), 'Courier-BoldOblique')
+        self.assertEqual(nome_da_fonte(None, False, False), 'Helvetica')
+
+    # --- editor (código) ---------------------------------------------------------------------------
+    def test_recursos_de_aparencia_presentes_no_editor(self):
+        js = ler_js_editor()
+        for funcao in ('function aplicarEstiloVisualAoNo', 'function aplicarAparencia', 'function alternarAparencia',
+                       'function aplicarAparenciaConexao', 'function copiarFormato', 'function colarFormato',
+                       'function limparFormatacao', 'function aplicarTema', 'function salvarTemaNoCatalogo',
+                       'function excluirTemaSalvo', 'function marcadorParaCor', 'function aplicarFundoDoTema'):
+            self.assertIn(funcao, js)
+        # os rótulos recebem o estilo e as conexões usam cor/espessura/traçado/formato resolvidos
+        self.assertGreaterEqual(js.count('rotulo-bloco'), 5)
+        self.assertIn('estiloEfetivoDaConexao(edge)', js)
+        self.assertIn('marcadorParaCor(svg, estCx.color, estCx.width)', js)

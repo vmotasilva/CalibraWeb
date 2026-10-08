@@ -231,3 +231,30 @@ class RaiaCatalogo(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+class TemaDiagrama(models.Model):
+    """Tema de cores/estilos salvo no catálogo e reutilizável em qualquer diagrama."""
+    nome = models.CharField(max_length=100, verbose_name="Nome do tema")
+    definicao = models.JSONField(default=dict, verbose_name="Definição do tema")
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='temas_diagramas',
+        verbose_name="Criado por"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Tema de Diagrama"
+        verbose_name_plural = "Temas de Diagramas"
+        ordering = ["nome"]
+        constraints = [
+            models.UniqueConstraint(models.functions.Lower('nome'), name='uniq_tema_diagrama_nome_ci'),
+        ]
+
+    def __str__(self):
+        return self.nome

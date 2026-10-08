@@ -64,6 +64,7 @@ function renderizarCanvas() {
 
     // 2. Renderiza Nós (blocos de ramos recolhidos não são desenhados)
     arvoreCache = arvoreAtiva() ? arvoreAtual() : null;
+    contextoEstiloCache = DiagramaEstilo.contextoDosNos(arvoreCache || arvoreAtual());
     const escondidos = nosOcultos();
     topologia.nodes.forEach(node => {
         if (escondidos.has(String(node.id))) return;
@@ -95,14 +96,14 @@ function renderizarCanvas() {
         if (node.type === 'start' || node.type === 'end') {
             nodeEl.className = `flow-node node-start-end ${node.type === 'start' ? 'node-start' : 'node-end'}`;
             nodeEl.innerHTML = `
-                <span>${markersHtml}${escapeHtml(node.data.label) || (node.type === 'start' ? 'INÍCIO' : 'FIM')}</span>
+                <span class="rotulo-bloco">${markersHtml}${escapeHtml(node.data.label) || (node.type === 'start' ? 'INÍCIO' : 'FIM')}</span>
                 ${node.type === 'start' ? '<div class="handle handle-bottom"></div>' : '<div class="handle handle-top"></div>'}
             `;
         } else if (node.type === 'decision') {
             nodeEl.className = 'flow-node node-decision';
             nodeEl.innerHTML = `
                 <div class="diamond-inner">
-                    <div class="diamond-content">${markersHtml}${escapeHtml(node.data.label) || 'Decisão?'}</div>
+                    <div class="diamond-content rotulo-bloco">${markersHtml}${escapeHtml(node.data.label) || 'Decisão?'}</div>
                 </div>
                 <div class="handle handle-top"></div>
                 <div class="handle handle-bottom" title="Sim"></div>
@@ -135,14 +136,14 @@ function renderizarCanvas() {
                     <div class="colab-card">
                         <div class="colab-foto">${foto}</div>
                         <div class="colab-info">
-                            <div class="colab-nome">${markersHtml}${escapeHtml(nomeExibicaoColab(colab))}</div>
+                            <div class="colab-nome rotulo-bloco">${markersHtml}${escapeHtml(nomeExibicaoColab(colab))}</div>
                             ${cargoHtml}
                             ${subsHtml}
                         </div>
                     </div>`;
             } else {
                 corpoHtml = `
-                    <div class="fw-semibold small leading-tight mt-1">${markersHtml} ${escapeHtml(node.data.label)}</div>
+                    <div class="fw-semibold small leading-tight mt-1 rotulo-bloco">${markersHtml} ${escapeHtml(node.data.label)}</div>
                     ${subsHtml}`;
             }
 
@@ -182,6 +183,7 @@ function renderizarCanvas() {
             nodeEl.addEventListener('mousedown', (e) => iniciarArrasto(e, node));
         }
 
+        aplicarEstiloVisualAoNo(nodeEl, node);
         nodeEl.insertAdjacentHTML('beforeend', htmlAlternadorRecolhimento(node));
         nodeEl.addEventListener('dblclick', (e) => iniciarEdicaoNoBloco(e, node));
 
@@ -189,6 +191,7 @@ function renderizarCanvas() {
     });
 
     dimensionarCanvas();
+    aplicarFundoDoTema();
     desenharConexoes();
 }
 
@@ -225,6 +228,7 @@ function atualizarSelecoesVisuais() {
             renderizarSubtitulosInspector(node);
             renderizarColabInspector(node);
             preencherSugestoesDeRaias();
+            atualizarPainelAparencia(node);
 
             const panel = document.getElementById('inspectorPanel');
             if (panel.classList.contains('collapsed')) {
@@ -234,6 +238,7 @@ function atualizarSelecoesVisuais() {
     } else {
         document.getElementById('inspectorEmptyState').classList.remove('d-none');
         document.getElementById('inspectorControls').classList.add('d-none');
+        atualizarPainelAparencia(null);
     }
 }
 
@@ -569,8 +574,12 @@ function gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, e
     if (estilo === 'curva') {
         const deltaX = (endX - startX) * 0.5;
         const deltaY = (endY - startY) * 0.5;
+        // fluxo vertical (organogramas): a curva sai e chega na vertical; nos demais casos, na horizontal
+        const controles = flowType === 'vertical'
+            ? `${startX} ${startY + deltaY}, ${endX} ${endY - deltaY}`
+            : `${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}`;
         return {
-            pathData: `M ${startX} ${startY} C ${startX + deltaX} ${startY}, ${endX - deltaX} ${endY}, ${endX} ${endY}`,
+            pathData: `M ${startX} ${startY} C ${controles}, ${endX} ${endY}`,
             labelPos: { x: (startX + endX) / 2, y: (startY + endY) / 2 }
         };
     }
@@ -684,7 +693,16 @@ function desenharConexoes() {
             strokeColor = '#ef4444';
         }
 
-        const { pathData, labelPos } = gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, edge.kind === 'relacao' ? 'curva' : estilo);
+        // Estilo da linha: o da própria conexão vence o tema; Sim/Não mantêm verde/vermelho (a menos que a cor seja explícita)
+        const estCx = estiloEfetivoDaConexao(edge);
+        const rotuloSemantico = ['sim', 'não'].includes((edge.label || '').toLowerCase());
+        if (estCx.color && (edge.style?.color || !rotuloSemantico)) {
+            strokeColor = estCx.color;
+            marker = marcadorParaCor(svg, estCx.color, estCx.width);
+        }
+        const larguraLinha = estCx.width || 2.2;
+
+        const { pathData, labelPos } = gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, edge.kind === 'relacao' ? 'curva' : (estCx.shape || estilo));
 
         const selecionada = edge.id === selectedEdgeId;
         if (selecionada) {
@@ -709,11 +727,12 @@ function desenharConexoes() {
         path.setAttribute('fill', 'none');
         path.setAttribute('pointer-events', 'none');
         path.setAttribute('stroke', strokeColor);
-        path.setAttribute('stroke-width', selecionada ? '3.6' : '2.2');
+        path.setAttribute('stroke-width', String(selecionada ? larguraLinha + 1.4 : larguraLinha));
         path.setAttribute('stroke-linecap', 'round');
         path.setAttribute('stroke-linejoin', 'round');
         path.setAttribute('marker-end', marker);
-        if (edge.kind === 'relacao') path.setAttribute('stroke-dasharray', '7 5'); // ligação livre (fora da hierarquia)
+        const tracado = estCx.dash ? DiagramaEstilo.dashArray(estCx.dash, larguraLinha) : (edge.kind === 'relacao' ? '7 5' : null); // ligação livre = tracejada
+        if (tracado) path.setAttribute('stroke-dasharray', tracado);
         svg.appendChild(path);
 
         if (edge.label) {

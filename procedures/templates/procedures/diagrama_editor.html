@@ -85,6 +85,35 @@
         user-select: none;
     }
 
+    /* Formas sem caixa: colchetes, sublinhado e só texto (a cor/espessura vêm de variáveis definidas pelo estilo) */
+    .flow-node.node-shape-brackets,
+    .flow-node.node-shape-underline,
+    .flow-node.node-shape-plain {
+        background: transparent;
+        box-shadow: none;
+        border-color: transparent;
+    }
+    .flow-node.node-shape-underline {
+        border-radius: 0;
+        border-bottom: var(--borda-larg, 2px) var(--borda-estilo, solid) var(--borda-no, #334155);
+    }
+    .flow-node.node-shape-brackets { border-radius: 0; }
+    .colchete {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        pointer-events: none;
+        border: 0 var(--borda-estilo, solid) var(--borda-no, #334155);
+    }
+    .colchete.tl { top: -2px; left: -2px; border-top-width: var(--borda-larg, 2px); border-left-width: var(--borda-larg, 2px); }
+    .colchete.tr { top: -2px; right: -2px; border-top-width: var(--borda-larg, 2px); border-right-width: var(--borda-larg, 2px); }
+    .colchete.bl { bottom: -2px; left: -2px; border-bottom-width: var(--borda-larg, 2px); border-left-width: var(--borda-larg, 2px); }
+    .colchete.br { bottom: -2px; right: -2px; border-bottom-width: var(--borda-larg, 2px); border-right-width: var(--borda-larg, 2px); }
+
+    /* Amostras dos temas */
+    .tema-amostra { display: inline-block; width: 18px; height: 14px; border-radius: 3px; }
+    .tema-ponto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+
     /* Modos em árvore: itens que só valem em um dos modos */
     .somente-arvore { display: none; }
     .modo-arvore .somente-arvore { display: list-item; }
@@ -1085,6 +1114,7 @@
                         </a>
                     </li>
                     <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirModalTema()"><i class="bi bi-palette me-2"></i>Tema e cores do diagrama...</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarFundoCanvas()"><i class="bi bi-palette2 me-2"></i>Alternar fundo (acolhedor / claro)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarModoZen()"><i class="bi bi-fullscreen me-2"></i>Modo foco / tela cheia (ZEN)</a></li>
                 </ul>
@@ -1275,6 +1305,11 @@
                     </button>
                 </li>
                 <li class="nav-item">
+                    <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#inspTabAparencia" type="button">
+                        <i class="bi bi-palette"></i> Aparência
+                    </button>
+                </li>
+                <li class="nav-item">
                     <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#inspTabMarkers" type="button">
                         <i class="bi bi-bookmark-star"></i> Marcadores
                     </button>
@@ -1394,6 +1429,108 @@
                     </div>
                 </div>
 
+                <!-- ABA APARÊNCIA -->
+                <div class="tab-pane fade" id="inspTabAparencia">
+                    <div id="aparenciaVazio" class="text-center py-4 text-muted small">
+                        <i class="bi bi-palette display-6 d-block mb-2 opacity-50"></i>
+                        Selecione um bloco para formatar texto, borda, preenchimento e a linha que chega até ele.
+                    </div>
+
+                    <div id="aparenciaControles" class="d-none pt-2">
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Texto</label>
+                            <div class="d-flex gap-1 mb-2">
+                                <select id="apFonte" class="form-select form-select-sm" onchange="aplicarAparencia('fontFamily', this.value)">
+                                    <option value="">Fonte padrão</option>
+                                    <option value="sans">Sem serifa</option>
+                                    <option value="serif">Com serifa</option>
+                                    <option value="mono">Monoespaçada</option>
+                                </select>
+                                <input id="apTamanho" type="number" min="8" max="40" class="form-control form-control-sm" style="max-width: 78px;" placeholder="px" title="Tamanho do texto (px)" onchange="aplicarAparencia('fontSize', this.value)">
+                            </div>
+                            <div class="d-flex gap-2 mb-2 flex-wrap">
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Estilo do texto">
+                                    <button id="apNegrito" type="button" class="btn btn-outline-secondary" title="Negrito" onclick="alternarAparencia('bold')"><b>N</b></button>
+                                    <button id="apItalico" type="button" class="btn btn-outline-secondary" title="Itálico" onclick="alternarAparencia('italic')"><i>I</i></button>
+                                    <button id="apTachado" type="button" class="btn btn-outline-secondary" title="Tachado" onclick="alternarAparencia('strike')"><s>T</s></button>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Alinhamento">
+                                    <button id="apAlinhar-left" type="button" class="btn btn-outline-secondary" title="Alinhar à esquerda" onclick="aplicarAparencia('align', 'left')"><i class="bi bi-text-left"></i></button>
+                                    <button id="apAlinhar-center" type="button" class="btn btn-outline-secondary" title="Centralizar" onclick="aplicarAparencia('align', 'center')"><i class="bi bi-text-center"></i></button>
+                                    <button id="apAlinhar-right" type="button" class="btn btn-outline-secondary" title="Alinhar à direita" onclick="aplicarAparencia('align', 'right')"><i class="bi bi-text-right"></i></button>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 small">
+                                <span>Cor do texto</span>
+                                <input id="apCorTexto" type="color" class="form-control form-control-color p-0" onchange="aplicarAparencia('color', this.value)">
+                                <button type="button" class="btn btn-link btn-sm p-0" onclick="aplicarAparencia('color', null)">automática</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Preenchimento e borda</label>
+                            <div class="form-check form-switch mb-2">
+                                <input id="apSemFundo" class="form-check-input" type="checkbox" onchange="aplicarAparencia('noFill', this.checked ? true : null)">
+                                <label class="form-check-label small" for="apSemFundo">Sem preenchimento</label>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 small mb-2">
+                                <span>Preenchimento</span>
+                                <input id="apCorFundo" type="color" class="form-control form-control-color p-0" onchange="aplicarAparencia('fill', this.value)">
+                                <button type="button" class="btn btn-link btn-sm p-0" onclick="aplicarAparencia('fill', null)">padrão</button>
+                            </div>
+                            <div class="d-flex gap-1 mb-2">
+                                <select id="apBordaEstilo" class="form-select form-select-sm" onchange="aplicarAparencia('borderStyle', this.value)">
+                                    <option value="">Borda padrão</option>
+                                    <option value="solid">Contínua</option>
+                                    <option value="dashed">Tracejada</option>
+                                    <option value="dotted">Pontilhada</option>
+                                    <option value="none">Sem borda</option>
+                                </select>
+                                <input id="apBordaLargura" type="number" min="0" max="8" class="form-control form-control-sm" style="max-width: 70px;" placeholder="px" title="Espessura da borda (px)" onchange="aplicarAparencia('borderWidth', this.value)">
+                                <input id="apBordaCor" type="color" class="form-control form-control-color p-0" title="Cor da borda" onchange="aplicarAparencia('borderColor', this.value)">
+                            </div>
+                            <div class="small mb-1 text-muted">Forma da caixa</div>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-forma="" onclick="aplicarEstiloNoSelecionado('shape', 'rect')" title="Caixa normal"><i class="bi bi-square"></i> Caixa</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-forma="brackets" onclick="aplicarEstiloNoSelecionado('shape', 'brackets')" title="Cantos em colchetes"><i class="bi bi-bounding-box-circles"></i> Colchetes</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-forma="underline" onclick="aplicarEstiloNoSelecionado('shape', 'underline')" title="Só uma linha embaixo"><i class="bi bi-type-underline"></i> Sublinhado</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-forma="plain" onclick="aplicarEstiloNoSelecionado('shape', 'plain')" title="Somente o texto"><i class="bi bi-fonts"></i> Só texto</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Linha até este bloco <span class="fw-normal">(a que vem do pai)</span></label>
+                            <div class="d-flex gap-1 mb-2">
+                                <input id="apLinhaCor" type="color" class="form-control form-control-color p-0" title="Cor da linha" onchange="aplicarAparenciaConexao('color', this.value)">
+                                <input id="apLinhaLargura" type="number" min="1" max="8" class="form-control form-control-sm" style="max-width: 70px;" placeholder="px" title="Espessura da linha (px)" onchange="aplicarAparenciaConexao('width', this.value)">
+                                <select id="apLinhaTracado" class="form-select form-select-sm" title="Traçado" onchange="aplicarAparenciaConexao('dash', this.value)">
+                                    <option value="">Traço padrão</option>
+                                    <option value="solid">Contínuo</option>
+                                    <option value="dashed">Tracejado</option>
+                                    <option value="dotted">Pontilhado</option>
+                                </select>
+                            </div>
+                            <select id="apLinhaFormato" class="form-select form-select-sm mb-2" title="Formato da linha" onchange="aplicarAparenciaConexao('shape', this.value)">
+                                <option value="">Formato padrão do diagrama</option>
+                                <option value="ortogonal">90° (ortogonal)</option>
+                                <option value="curva">Curva</option>
+                                <option value="reta">Reta</option>
+                            </select>
+                            <div class="form-check mb-1">
+                                <input id="apLinhaRamo" class="form-check-input" type="checkbox">
+                                <label class="form-check-label small" for="apLinhaRamo">Aplicar também às linhas de todo o ramo abaixo</label>
+                            </div>
+                            <button type="button" class="btn btn-link btn-sm p-0" onclick="aplicarAparenciaConexao(null, null)">Limpar estilo da linha</button>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-1 pt-2 border-top">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="copiarFormato()"><i class="bi bi-eyedropper"></i> Copiar formato</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="colarFormato()"><i class="bi bi-paint-bucket"></i> Colar formato</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="limparFormatacao()"><i class="bi bi-eraser"></i> Limpar</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- ABA MARCADORES -->
                 <div class="tab-pane fade" id="inspTabMarkers">
                     <div id="inspectorMarkersControls" class="pt-2">
@@ -1434,6 +1571,55 @@
 
 <!-- Modal de Criação de Nova Revisão -->
 <!-- Modal: Adicionar Raia (catálogo ou uso livre) -->
+<!-- Modal: Tema e cores do diagrama -->
+<div class="modal fade" id="modalTema" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-palette"></i> Tema e cores do diagrama</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">O tema define a aparência por nível da hierarquia (raiz, 1º nível, demais). O que você formatar em um bloco sempre vence o tema. Tema atual: <strong id="temaAtualNome"></strong></p>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Temas prontos</label>
+                        <div id="listaTemasProntos" class="list-group mb-3"></div>
+                        <label class="form-label fw-bold small">Catálogo de temas salvos</label>
+                        <div id="listaTemasSalvos" class="list-group"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Personalizar</label>
+                        <div class="d-flex align-items-center gap-2 mb-2 small">
+                            <span>Cor de fundo</span>
+                            <input id="temaFundo" type="color" class="form-control form-control-color p-0" onchange="definirFundoDoTema(this.value)">
+                            <div class="form-check mb-0">
+                                <input id="temaSemFundo" class="form-check-input" type="checkbox" onchange="if (this.checked) definirFundoDoTema(null)">
+                                <label class="form-check-label" for="temaSemFundo">sem cor</label>
+                            </div>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input id="temaMultiRamo" class="form-check-input" type="checkbox" onchange="alternarMultiRamo(this.checked)">
+                            <label class="form-check-label small" for="temaMultiRamo">Uma cor para cada ramo</label>
+                        </div>
+                        <div id="temaPaleta" class="d-flex gap-1 flex-wrap mb-3 d-none"></div>
+                        <div class="alert alert-light border small mb-0">
+                            Dica: selecione um bloco e use a aba <strong>Aparência</strong> para ajustes individuais (texto, borda, formas e linhas).
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="aplicarTema(null)"><i class="bi bi-x-circle"></i> Remover tema</button>
+                <div class="d-flex gap-2">
+                    {% if pode_salvar_tema %}<button type="button" class="btn btn-outline-primary btn-sm" onclick="salvarTemaNoCatalogo()"><i class="bi bi-bookmark-plus"></i> Salvar no catálogo</button>{% endif %}
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Concluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalNovaRaia" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1525,6 +1711,7 @@
 
 {% block extra_js %}
 {{ raias_catalogo|json_script:"raiasCatalogoData" }}
+{{ temas_salvos|json_script:"temasSalvosData" }}
 <script>
     const VERSAO_ID = "{{ versao.id }}";
     const VERSAO_REVISAO = {{ versao.revisao }};
