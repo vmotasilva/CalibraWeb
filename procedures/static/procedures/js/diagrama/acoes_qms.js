@@ -107,7 +107,7 @@ async function exportarPDFDoc071() {
             a.href = url;
             const cd = resp.headers.get('Content-Disposition') || '';
             const m = cd.match(/filename="([^"]+)"/);
-            a.download = m ? m[1] : `DOC.071_Rev${String(VERSAO_REVISAO).padStart(2, "0")}.pdf`;
+            a.download = m ? m[1] : `Diagrama_Rev${String(VERSAO_REVISAO).padStart(2, "0")}.pdf`;
             document.body.appendChild(a);
             a.click();
             a.remove();

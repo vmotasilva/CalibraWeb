@@ -258,3 +258,26 @@ class TemaDiagrama(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+class ImagemDiagrama(models.Model):
+    """Imagem pequena usada em um bloco (reduzida no servidor). O diagrama guarda só o id."""
+    nome = models.CharField(max_length=120, blank=True)
+    content_type = models.CharField(max_length=40)
+    dados = models.BinaryField()
+    tamanho = models.PositiveIntegerField(default=0)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='imagens_diagramas',
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Imagem de Diagrama"
+        verbose_name_plural = "Imagens de Diagramas"
+
+    def __str__(self):
+        return f"Imagem {self.pk} ({self.tamanho} bytes)"

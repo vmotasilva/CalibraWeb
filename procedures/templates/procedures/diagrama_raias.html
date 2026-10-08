@@ -17,52 +17,61 @@
 {% block main_content %}
 <div class="alert alert-light border small mb-3">
     <i class="bi bi-info-circle text-primary"></i>
-    O catálogo padroniza o nome, a <strong>cor</strong> da faixa, a <strong>ordem</strong> e o <strong>setor do RH</strong> de cada raia.
-    As raias <strong>não são criadas automaticamente a partir dos setores</strong>: você cadastra aqui as raias que quiser (com ou sem setor). Se vincular uma raia a um setor, colaboradores desse setor caem nela ao serem vinculados a um bloco; sem vínculo, o bloco permanece na raia em que estiver. Os diagramas guardam só o nome da raia, então
-    <strong>raias de uso livre</strong> (mapas mentais, por exemplo) continuam permitidas; elas aparecem abaixo, em "Raias livres em uso".
+    Esta tela mostra as <strong>raias que aparecem nos diagramas</strong>. Raias <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">livres</span> existem só no diagrama;
+    ao <strong>cadastrá-las</strong> você define cor, ordem e o <strong>setor do RH</strong> (colaboradores desse setor caem na raia ao serem vinculados a um bloco). Raias livres continuam permitidas, por exemplo em mapas mentais.
     {% if not pode_gerenciar %}<br><strong>Somente leitura:</strong> você não tem permissão para alterar o catálogo.{% endif %}
 </div>
 
 <div class="card border-0 shadow-sm overflow-hidden bg-white mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-bold"><i class="bi bi-layout-three-columns me-1"></i> Raias nos diagramas ({{ raias_em_uso|length }})</span>
+        {% if qtd_livres %}<span class="small text-muted">{{ qtd_livres }} ainda fora do catálogo</span>{% endif %}
+    </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
                 <tr>
-                    <th class="ps-3" style="width: 70px;">Ordem</th>
-                    <th>Raia</th>
+                    <th class="ps-3">Raia</th>
+                    <th style="width: 130px;">Situação</th>
                     <th>Setor vinculado (RH)</th>
-                    <th style="width: 170px;">Uso nos diagramas</th>
-                    <th style="width: 90px;">Situação</th>
+                    <th style="width: 70px;">Ordem</th>
+                    <th>Diagramas que usam</th>
                     {% if pode_gerenciar %}<th class="text-end pe-3" style="width: 150px;">Ações</th>{% endif %}
                 </tr>
             </thead>
             <tbody>
-                {% for raia in raias %}
-                <tr {% if not raia.ativo %}class="table-secondary"{% endif %}>
-                    <td class="ps-3 font-monospace">{{ raia.ordem }}</td>
-                    <td>
-                        <span class="d-inline-block rounded me-2 align-middle" style="width: 14px; height: 24px; background: {{ raia.cor }};"></span>
-                        <strong class="align-middle">{{ raia.nome }}</strong>
+                {% for item in raias_em_uso %}
+                {% with raia=item.catalogo %}
+                <tr>
+                    <td class="ps-3">
+                        <span class="d-inline-block rounded me-2 align-middle" style="width: 14px; height: 24px; background: {% if raia %}{{ raia.cor }}{% else %}#cbd5e1{% endif %};"></span>
+                        <strong class="align-middle">{{ item.nome }}</strong>
                         {% if raia.descricao %}<div class="small text-muted ms-4">{{ raia.descricao }}</div>{% endif %}
                     </td>
-                    <td>{% if raia.setor %}<span class="badge bg-light text-dark border"><i class="bi bi-diagram-2"></i> {{ raia.setor.nome }}</span>{% else %}<span class="text-muted small">Sem vínculo (uso livre)</span>{% endif %}</td>
                     <td>
-                        {% if raia.uso %}
-                        <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">{{ raia.uso|length }} diagrama{{ raia.uso|length|pluralize }}</button>
+                        {% if raia %}<span class="badge bg-success-subtle text-success border border-success-subtle">Cadastrada</span>{% if not raia.ativo %} <span class="badge bg-secondary-subtle text-secondary">Inativa</span>{% endif %}
+                        {% else %}<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Livre</span>{% endif %}
+                    </td>
+                    <td>{% if raia.setor %}<span class="badge bg-light text-dark border"><i class="bi bi-diagram-2"></i> {{ raia.setor.nome }}</span>{% else %}<span class="text-muted small">Sem vínculo</span>{% endif %}</td>
+                    <td class="font-monospace">{% if raia %}{{ raia.ordem }}{% else %}<span class="text-muted">-</span>{% endif %}</td>
+                    <td class="small">
+                        {% for u in item.uso|slice:":5" %}
+                        <a href="{% url 'procedures:diagrama_editor' versao_id=u.versao_id %}" class="text-decoration-none me-2" title="{{ u.titulo }} (Rev. {{ u.revisao|stringformat:'02d' }} - {{ u.status }})"><span class="font-monospace">{{ u.identificador }}</span></a>
+                        {% endfor %}
+                        {% if item.uso|length > 5 %}
+                        <div class="dropdown d-inline-block">
+                            <button class="btn btn-sm btn-link p-0" type="button" data-bs-toggle="dropdown">+{{ item.uso|length|add:"-5" }}</button>
                             <ul class="dropdown-menu shadow-sm" style="max-height: 260px; overflow-y: auto;">
-                                {% for u in raia.uso %}
-                                <li><a class="dropdown-item small" href="{% url 'procedures:diagrama_editor' versao_id=u.versao_id %}">
-                                    <span class="font-monospace text-primary">{{ u.identificador }}</span> {{ u.titulo }} <span class="text-muted">(Rev. {{ u.revisao|stringformat:"02d" }} - {{ u.status }})</span>
-                                </a></li>
+                                {% for u in item.uso|slice:"5:" %}
+                                <li><a class="dropdown-item small" href="{% url 'procedures:diagrama_editor' versao_id=u.versao_id %}"><span class="font-monospace text-primary">{{ u.identificador }}</span> {{ u.titulo }}</a></li>
                                 {% endfor %}
                             </ul>
                         </div>
-                        {% else %}<span class="text-muted small">Não usada</span>{% endif %}
+                        {% endif %}
                     </td>
-                    <td>{% if raia.ativo %}<span class="badge bg-success-subtle text-success border border-success-subtle">Ativa</span>{% else %}<span class="badge bg-secondary-subtle text-secondary">Inativa</span>{% endif %}</td>
                     {% if pode_gerenciar %}
                     <td class="text-end pe-3">
+                        {% if raia %}
                         <div class="d-inline-flex gap-1">
                             <button type="button" class="btn btn-sm btn-outline-primary" title="Editar"
                                     data-id="{{ raia.id }}" data-nome="{{ raia.nome }}" data-cor="{{ raia.cor }}" data-ordem="{{ raia.ordem }}"
@@ -85,13 +94,19 @@
                                 </ul>
                             </div>
                         </div>
+                        {% else %}
+                        <button type="button" class="btn btn-sm btn-primary" data-nome="{{ item.nome }}" onclick="abrirModalRaia(this, true)">
+                            <i class="bi bi-journal-plus"></i> Cadastrar
+                        </button>
+                        {% endif %}
                     </td>
                     {% endif %}
                 </tr>
+                {% endwith %}
                 {% empty %}
                 <tr><td colspan="6" class="text-center py-5 text-muted">
                     <i class="bi bi-layout-three-columns display-4 d-block mb-2 opacity-50"></i>
-                    Nenhuma raia cadastrada ainda.{% if pode_gerenciar %} Clique em <strong>Nova Raia</strong> para começar.{% endif %}
+                    Nenhum diagrama usa raias ainda.{% if pode_gerenciar %} Use <strong>Nova Raia</strong> para cadastrar raias que ficarão disponíveis no editor.{% endif %}
                 </td></tr>
                 {% endfor %}
             </tbody>
@@ -99,24 +114,29 @@
     </div>
 </div>
 
-{% if raias_livres %}
+{% if raias_sem_uso %}
 <div class="card border-0 shadow-sm bg-white">
-    <div class="card-header bg-white fw-bold"><i class="bi bi-pencil-square me-1"></i> Raias livres em uso (fora do catálogo)</div>
+    <div class="card-header bg-white fw-bold"><i class="bi bi-journal-bookmark me-1"></i> Cadastradas, ainda sem uso em diagramas ({{ raias_sem_uso|length }})</div>
     <div class="table-responsive">
         <table class="table align-middle mb-0">
             <tbody>
-                {% for livre in raias_livres %}
-                <tr>
-                    <td class="ps-3"><strong>{{ livre.nome }}</strong></td>
-                    <td class="small text-muted">
-                        {% for u in livre.uso|slice:":4" %}<a href="{% url 'procedures:diagrama_editor' versao_id=u.versao_id %}" class="me-2">{{ u.identificador }}</a>{% endfor %}
-                        {% if livre.uso|length > 4 %}+{{ livre.uso|length|add:"-4" }}{% endif %}
+                {% for raia in raias_sem_uso %}
+                <tr {% if not raia.ativo %}class="table-secondary"{% endif %}>
+                    <td class="ps-3">
+                        <span class="d-inline-block rounded me-2 align-middle" style="width: 14px; height: 24px; background: {{ raia.cor }};"></span>
+                        <strong class="align-middle">{{ raia.nome }}</strong>
+                        {% if not raia.ativo %}<span class="badge bg-secondary-subtle text-secondary ms-1">Inativa</span>{% endif %}
                     </td>
+                    <td class="small">{% if raia.setor %}<i class="bi bi-diagram-2"></i> {{ raia.setor.nome }}{% else %}<span class="text-muted">Sem vínculo</span>{% endif %}</td>
                     {% if pode_gerenciar %}
                     <td class="text-end pe-3">
-                        <button type="button" class="btn btn-sm btn-outline-primary" data-nome="{{ livre.nome }}" onclick="abrirModalRaia(this, true)">
-                            <i class="bi bi-journal-plus"></i> Adicionar ao catálogo
-                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" title="Editar"
+                                data-id="{{ raia.id }}" data-nome="{{ raia.nome }}" data-cor="{{ raia.cor }}" data-ordem="{{ raia.ordem }}"
+                                data-setor="{{ raia.setor_id|default_if_none:'' }}" data-descricao="{{ raia.descricao }}" data-ativo="{{ raia.ativo|yesno:'1,0' }}"
+                                onclick="abrirModalRaia(this)"><i class="bi bi-pencil"></i></button>
+                        <form method="post" class="d-inline" onsubmit="return confirm('Remover esta raia do catálogo?');">{% csrf_token %}<input type="hidden" name="acao" value="excluir"><input type="hidden" name="id" value="{{ raia.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Excluir do catálogo"><i class="bi bi-trash"></i></button>
+                        </form>
                     </td>
                     {% endif %}
                 </tr>

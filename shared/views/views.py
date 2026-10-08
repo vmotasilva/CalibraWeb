@@ -783,7 +783,7 @@ SYSTEM_FEATURES_CATALOG = [
         "keywords": ["pop", "it", "procedimentos", "instrucoes", "documentos", "qualidade"],
     },
     {
-        "title": "Fluxogramas e Diagramas (DOC.071)",
+        "title": "Fluxogramas e Diagramas",
         "module": "Treinamentos",
         "module_key": "procedures",
         "session": "Normativos",

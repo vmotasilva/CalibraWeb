@@ -19,6 +19,7 @@ from django.core.paginator import Paginator
 from django.db.models import Exists, OuterRef, Subquery
 from django.shortcuts import get_object_or_404, render, redirect
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 from django.utils.dateparse import parse_datetime
 
 from ..models import Procedimento
@@ -42,8 +43,8 @@ PERM_EXPORT_PDF = 'core.nav_diagramas_export_pdf'
 
 # Módulos JS do editor, na ordem de carregamento (scripts clássicos que compartilham o escopo global)
 EDITOR_JS_MODULOS = [
-    'estado', 'layout_arvore', 'estilo', 'inicializacao', 'canvas', 'inspetor', 'blocos', 'arvore', 'edicao_inline',
-    'aparencia', 'outliner_grelha', 'raias_layout', 'persistencia', 'acoes_qms',
+    'estado', 'layout_arvore', 'estilo', 'conteudo', 'inicializacao', 'canvas', 'inspetor', 'blocos', 'arvore',
+    'edicao_inline', 'aparencia', 'conteudo_ui', 'outliner_grelha', 'raias_layout', 'persistencia', 'acoes_qms',
 ]
 
 
@@ -380,7 +381,7 @@ def api_diagrama_versao_exportar_pdf(request, versao_id):
         return JsonResponse({"error": "Autenticação necessária."}, status=401)
 
     if not _tem_permissao(request.user, PERM_EXPORT_PDF):
-        return _negar_permissao("exportar o PDF DOC.071")
+        return _negar_permissao("exportar o PDF do diagrama")
 
     versao = get_object_or_404(DiagramaVersao.objects.select_related('diagrama', 'aprovado_por'), id=versao_id)
     try:
@@ -392,7 +393,7 @@ def api_diagrama_versao_exportar_pdf(request, versao_id):
     pdf_bytes = gerar_pdf_diagrama_doc071(versao, image_base64=image_base64)
 
     nome_doc = re.sub(r'[^A-Za-z0-9#._-]+', '_', versao.diagrama.codigo_exibicao).strip('_')
-    filename = f"DOC.071_{nome_doc}_Rev{versao.revisao:02d}.pdf"
+    filename = f"Diagrama_{nome_doc}_Rev{versao.revisao:02d}.pdf"
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
@@ -701,6 +702,10 @@ def diagrama_editor_view(request, versao_id):
         'editor_js_modulos': EDITOR_JS_MODULOS,
         'raias_catalogo': raias_catalogo_para_editor(),
         'temas_salvos': temas_para_editor(request.user),
+        'conteudo_urls': {
+            'procedimento': reverse('procedures:detalhe_procedimento', args=[0]),
+            'diagramaAbrir': reverse('procedures:diagrama_abrir', args=['00000000-0000-0000-0000-000000000000']),
+        },
         'pode_salvar_tema': pode_salvar_tema(request.user),
         'pode_gerenciar_raias': pode_gerenciar_raias(request.user),
         'is_rascunho': versao.status == StatusDiagrama.RASCUNHO,

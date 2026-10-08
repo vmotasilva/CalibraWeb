@@ -14,7 +14,9 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Tabl
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
 from ..models_diagram import DiagramaVersao
-from .diagram_renderer import DiagramaFlowable
+from .diagram_renderer import DiagramaFlowable, MarcadorFlowable
+from .diagram_arvore import montar_arvore
+from .diagram_conteudo import POR_ID, marcadores_em_uso, resumo_por_ramo
 
 
 class NumberedCanvas(canvas.Canvas):
@@ -47,7 +49,7 @@ class NumberedCanvas(canvas.Canvas):
 
         # Textos de rodapé
         self.drawString(30, 24, "CALIBRAWEB — Sistema de Gestão Integrado da Qualidade (ISO 13485:2016)")
-        self.drawString(340, 24, "DOC.071 - FLUXOGRAMA / DIAGRAMA DE PROCESSO")
+        self.drawString(340, 24, "FLUXOGRAMA / DIAGRAMA DE PROCESSO")
         self.drawRightString(812, 24, f"Página {self._pageNumber} de {page_count}")
         self.restoreState()
 
@@ -81,6 +83,94 @@ def _carregar_fotos(topologia: dict) -> dict:
         return fotos
     except Exception:
         return {}
+
+
+def _carregar_imagens(topologia: dict) -> dict:
+    """Imagens usadas nos blocos: {'img-<id>': bytes}."""
+    ids = set()
+    for n in topologia.get('nodes') or []:
+        dados = n.get('data') if isinstance(n, dict) and isinstance(n.get('data'), dict) else {}
+        imagem = dados.get('imagem')
+        if isinstance(imagem, dict) and isinstance(imagem.get('id'), int):
+            ids.add(imagem['id'])
+    if not ids:
+        return {}
+    try:
+        from ..models_diagram import ImagemDiagrama
+        return {f'img-{i}': bytes(d) for i, d in ImagemDiagrama.objects.filter(pk__in=ids).values_list('id', 'dados')}
+    except Exception:
+        return {}
+
+
+def _tabela(linhas, larguras, estilo_extra=None):
+    tabela = Table(linhas, colWidths=larguras, repeatRows=1)
+    estilo = [
+        ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+        ('INNERGRID', (0, 0), (-1, -1), 0.25, colors.HexColor("#E2E8F0")),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#F1F5F9")),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ] + (estilo_extra or [])
+    tabela.setStyle(TableStyle(estilo))
+    return tabela
+
+
+def _secoes_de_conteudo(topologia: dict, cell_style) -> list:
+    """Legenda dos marcadores, efetivo por ramo e Notas e referências (quando houver conteúdo)."""
+    story = []
+    nos = [n for n in (topologia.get('nodes') or []) if isinstance(n, dict) and 'id' in n]
+    dados_de = lambda n: n.get('data') if isinstance(n.get('data'), dict) else {}
+
+    legenda = topologia.get('legenda') if isinstance(topologia.get('legenda'), dict) else {}
+    em_uso = marcadores_em_uso(nos)
+    if legenda.get('mostrar') and em_uso:
+        rotulos = legenda.get('rotulos') or {}
+        linhas = [[Paragraph("<b>Marcador</b>", cell_style), Paragraph("<b>Significado</b>", cell_style)]]
+        for marcador_id in em_uso:
+            m = POR_ID[marcador_id]
+            linhas.append([MarcadorFlowable(m, 12), Paragraph(escape(rotulos.get(marcador_id) or m['rotulo']), cell_style)])
+        story.append(KeepTogether([Spacer(1, 10), Paragraph("<b>Legenda dos Marcadores</b>", cell_style), Spacer(1, 3),
+                                   _tabela(linhas, [60, 300])]))
+
+    if topologia.get('mostrar_efetivo') is True:
+        arvore = montar_arvore(nos, topologia.get('edges') or [])
+        resumo = resumo_por_ramo(nos, arvore)
+        if resumo['linhas']:
+            fmt = lambda v: '-' if v is None else f"{str(v).replace('.', ',')}%"
+            linhas = [[Paragraph(f"<b>{t}</b>", cell_style) for t in ("Ramo (1º nível)", "Pessoas", "Vagas", "Quadro", "Ocupação")]]
+            for l in resumo['linhas']:
+                linhas.append([Paragraph(escape(l['nome']), cell_style), str(l['pessoas']), str(l['vagas']), str(l['total']), fmt(l['ocupacao'])])
+            t = resumo['total']
+            linhas.append([Paragraph("<b>Total do diagrama</b>", cell_style), str(t['pessoas']), str(t['vagas']), str(t['total']), fmt(t['ocupacao'])])
+            story.append(KeepTogether([Spacer(1, 10), Paragraph("<b>Efetivo e Vagas por Ramo</b>", cell_style), Spacer(1, 3),
+                                       _tabela(linhas, [300, 70, 70, 70, 70], [('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                                                                               ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor("#F1F5F9"))])]))
+
+    com_conteudo = [n for n in nos if (dados_de(n).get('nota') or '').strip() or dados_de(n).get('links')]
+    if com_conteudo:
+        linhas = [[Paragraph(f"<b>{t}</b>", cell_style) for t in ("Bloco", "Nota", "Links e referências")]]
+        for n in com_conteudo:
+            d = dados_de(n)
+            colab = d.get('colab') if isinstance(d.get('colab'), dict) else None
+            nome = (colab.get('nome') if colab else d.get('label')) or f"Bloco {n['id']}"
+            nota = escape((d.get('nota') or '').strip()).replace('\n', '<br/>')
+            links = []
+            for link in d.get('links') or []:
+                rotulo = escape(link.get('rotulo') or '')
+                if link.get('tipo') == 'url' and isinstance(link.get('url'), str):
+                    url_esc = escape(link['url'], {'"': '&quot;'})
+                    links.append('Web: <a href="' + url_esc + '" color="#2563EB">' + (rotulo or escape(link['url'])) + '</a>')
+                elif link.get('tipo') == 'procedimento':
+                    links.append(f"Procedimento: {rotulo}")
+                elif link.get('tipo') == 'diagrama':
+                    links.append(f"Diagrama: {rotulo}")
+            linhas.append([Paragraph(escape(nome), cell_style), Paragraph(nota or '-', cell_style), Paragraph('<br/>'.join(links) or '-', cell_style)])
+        story.append(Spacer(1, 10))
+        story.append(Paragraph("<b>Notas e Referências</b>", cell_style))
+        story.append(Spacer(1, 3))
+        story.append(_tabela(linhas, [150, 380, 252], [('VALIGN', (0, 0), (-1, -1), 'TOP')]))
+    return story
 
 
 def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) -> bytes:
@@ -185,8 +275,8 @@ def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) 
 
     if not imagem_ok:
         if topologia.get('nodes'):
-            fotos = _carregar_fotos(topologia)
-            cores = _cores_das_raias()
+            fotos = {**_carregar_fotos(topologia), **_carregar_imagens(topologia)}
+            cores = {**_cores_das_raias(), **(topologia.get('raias_cores') or {})}
             desenho = DiagramaFlowable(topologia, max_w=782, max_h=330, fotos=fotos, raias_cores=cores)
             if desenho.scale < 0.5:
                 # Diagrama grande: página própria para manter a legibilidade
@@ -196,7 +286,10 @@ def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) 
         else:
             story.append(Paragraph("<i>[Fluxograma sem blocos cadastrados]</i>", cell_style))
 
-    # 4. Motivo da revisão e histórico de revisões (rastreabilidade ISO 13485)
+    # 4. Legenda, efetivo por ramo e notas/referências do conteúdo dos blocos
+    story.extend(_secoes_de_conteudo(topologia, cell_style))
+
+    # 5. Motivo da revisão e histórico de revisões (rastreabilidade ISO 13485)
     story.append(Spacer(1, 12))
     if versao.motivo_revisao:
         story.append(Paragraph(f"<b>Motivo da revisão R{versao.revisao:02d}:</b> {escape(versao.motivo_revisao)}", cell_style))

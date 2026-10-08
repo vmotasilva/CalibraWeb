@@ -7,7 +7,7 @@ Inspirado em ferramentas profissionais de mapeamento mental e fluxogramas (XMind
 TEMPLATES_DIAGRAMAS = [
     {
         "id": "fluxograma_padrao",
-        "nome": "Fluxograma de Processo (DOC.071)",
+        "nome": "Fluxograma de Processo",
         "categoria": "Processos & QMS",
         "categoria_slug": "processos",
         "icone": "bi bi-diagram-3-fill",

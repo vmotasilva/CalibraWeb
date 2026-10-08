@@ -222,10 +222,10 @@ NAV_STRUCTURE = [
                         "descricao": "Cadastra o catálogo de raias (cor, ordem e vínculo com o setor do RH) usado nos diagramas.",
                     },
                     {
-                        "nome": "Exportar Relatório PDF DOC.071",
+                        "nome": "Exportar PDF do Diagrama",
                         "view_name": "procedures:api_diagrama_versao_exportar_pdf",
                         "perm": "core.nav_diagramas_export_pdf",
-                        "descricao": "Gera e faz download do documento oficial controlado DOC.071 em PDF.",
+                        "descricao": "Gera e faz download do documento oficial controlado do diagrama em PDF.",
                     },
                 ],
             },

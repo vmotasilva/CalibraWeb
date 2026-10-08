@@ -288,7 +288,7 @@ function confirmarAdicionarBloco() {
         labelText = ctxNovoBloco.colabSelecionado.nome;
         laneText = raiaParaColaborador(ctxNovoBloco.colabSelecionado.setorId);
         const sel = ctxNovoBloco.colabSelecionado;
-        colabData = { id: sel.id, nome: sel.nome, cargo: sel.cargo || '', nomeCurto: false, temFoto: !!sel.temFoto };
+        colabData = { id: sel.id, nome: sel.nome, cargo: sel.cargo || '', cargoRH: sel.cargo || '', nomeCurto: false, temFoto: !!sel.temFoto };
     }
 
     laneText = raiaEscolhidaNoModal(laneText); // a janela pergunta em qual raia o bloco ficará

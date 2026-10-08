@@ -145,7 +145,7 @@ function vincularColaboradorAoBloco(item) {
     const node = noSelecionadoUnico();
     if (!node) return;
     if (!node.data) node.data = {};
-    node.data.colab = { id: item.id, nome: item.nome, cargo: item.cargo || '', nomeCurto: false, temFoto: !!item.tem_foto };
+    node.data.colab = { id: item.id, nome: item.nome, cargo: item.cargo || '', cargoRH: item.cargo || '', nomeCurto: false, temFoto: !!item.tem_foto };
     node.data.label = nomeExibicaoColab(node.data.colab);
     sincronizarGridDoNo(node);
     const raiaSetor = raiaParaColaborador(item.setor_id);

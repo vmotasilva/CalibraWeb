@@ -9,6 +9,7 @@ from . import views
 from .views import diagram_views
 from .views import diagram_raias_views
 from .views import diagram_temas_views
+from .views import diagram_conteudo_views
 
 from .views import (
     habilidades_views,
@@ -356,6 +357,7 @@ urlpatterns = [
     path('diagramas/', diagram_views.diagramas_lista_view, name='diagramas_lista'),
     path('diagramas/novo/', diagram_views.diagrama_novo_view, name='diagrama_novo'),
     path('diagramas/raias/', diagram_raias_views.raias_catalogo_view, name='diagramas_raias'),
+    path('diagramas/<uuid:diagrama_id>/abrir/', diagram_conteudo_views.diagrama_abrir_view, name='diagrama_abrir'),
     path('diagramas/<uuid:diagrama_id>/historico/', diagram_views.diagrama_historico_view, name='diagrama_historico'),
     path('diagramas/<uuid:diagrama_id>/duplicar/', diagram_views.diagrama_duplicar_view, name='diagrama_duplicar'),
     path('diagramas/<uuid:diagrama_id>/arquivar/', diagram_views.diagrama_arquivar_view, name='diagrama_arquivar'),
@@ -365,6 +367,11 @@ urlpatterns = [
     path('api/diagramas/', diagram_views.api_diagramas_list_create, name='api_diagramas_list_create'),
     path('api/diagramas/colaboradores/', diagram_views.api_diagramas_colaboradores, name='api_diagramas_colaboradores'),
     path('api/diagramas/colaboradores/<int:colaborador_id>/foto/', diagram_views.api_diagramas_colaborador_foto, name='api_diagramas_colaborador_foto'),
+    path('api/diagramas/imagens/', diagram_conteudo_views.api_imagem_upload, name='api_diagramas_imagem_upload'),
+    path('api/diagramas/imagens/<int:imagem_id>/', diagram_conteudo_views.api_imagem_servir, name='api_diagramas_imagem'),
+    path('api/diagramas/colaboradores/sincronizar/', diagram_conteudo_views.api_colaboradores_sincronizar, name='api_diagramas_colaboradores_sincronizar'),
+    path('api/diagramas/procedimentos/', diagram_conteudo_views.api_procedimentos_buscar, name='api_diagramas_procedimentos'),
+    path('api/diagramas/buscar/', diagram_conteudo_views.api_diagramas_buscar, name='api_diagramas_buscar'),
     path('api/diagramas/temas/', diagram_temas_views.api_temas, name='api_diagramas_temas'),
     path('api/diagramas/temas/<int:tema_id>/', diagram_temas_views.api_tema_detalhe, name='api_diagramas_tema_detalhe'),
     path('api/diagramas/templates/', diagram_views.api_diagramas_templates, name='api_diagramas_templates'),

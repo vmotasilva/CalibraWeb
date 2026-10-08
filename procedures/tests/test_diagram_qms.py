@@ -740,8 +740,9 @@ class DiagramaRaiasTestCase(TestCase):
         from procedures.models_diagram import RaiaCatalogo
         RaiaCatalogo.objects.create(nome='Qualidade', ordem=10)
         html = self._cliente(self.admin, 'nav_diagramas_raias').get('/procedures/diagramas/raias/').content.decode()
-        self.assertIn('1 diagrama', html)             # uso da raia Qualidade
-        self.assertIn('Raias livres em uso', html)    # "Liderança" está em uso fora do catálogo
+        self.assertIn('Raias nos diagramas', html)    # lista principal = raias em uso
+        self.assertIn('Cadastrada', html)             # Qualidade está no catálogo e em uso
+        self.assertIn('Livre', html)                  # "Liderança" está em uso fora do catálogo
         self.assertIn('Liderança', html)
 
     # --- editor / busca / PDF -------------------------------------------------------
@@ -1237,3 +1238,256 @@ class DiagramaFase2AparenciaTestCase(TestCase):
         self.assertGreaterEqual(js.count('rotulo-bloco'), 5)
         self.assertIn('estiloEfetivoDaConexao(edge)', js)
         self.assertIn('marcadorParaCor(svg, estCx.color, estCx.width)', js)
+
+
+class DiagramaFase3ConteudoTestCase(TestCase):
+    """Fase 3 do plano XMind: marcadores, notas, links, imagem, vagas, efetivo, legenda e atualização pelo RH."""
+
+    def setUp(self):
+        from organization.models import Setor
+        self.user = User.objects.create_user(username='conteudo', password='x')
+        self.diagrama = Diagrama.objects.create(titulo='Conteúdo', criado_por=self.user)
+        self.setor = Setor.objects.create(nome='Produção')
+
+    def _cliente(self, user=None, *perms):
+        from django.contrib.auth.models import Permission
+        user = user or self.user
+        for codename in perms:
+            user.user_permissions.add(Permission.objects.get(codename=codename))
+        c = Client()
+        c.force_login(User.objects.get(pk=user.pk))
+        return c
+
+    @staticmethod
+    def _node_exe(script, entrada):
+        import shutil, subprocess
+        node = shutil.which('node')
+        if not node:
+            return None
+        r = subprocess.run([node, '-e', script], input=json.dumps(entrada), capture_output=True, text=True, encoding='utf-8')
+        assert r.returncode == 0, r.stderr
+        return json.loads(r.stdout)
+
+    @staticmethod
+    def _pasta_js():
+        from pathlib import Path
+        return (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama').as_posix()
+
+    @staticmethod
+    def _topologia():
+        def no(i, **data):
+            return {"id": str(i), "type": "process", "position": {"x": 100 * i, "y": 60 + 100 * (i % 3)}, "data": {"label": f"Bloco {i}", **data}}
+        return {
+            "layout_modo": "organograma",
+            "mostrar_efetivo": True,
+            "legenda": {"mostrar": True, "rotulos": {"band-vermelho": "Requer ação da diretoria"}},
+            "nodes": [
+                no(1, colab={"id": 1, "nome": "Maria Souza", "cargo": "Gerente", "cargoRH": "Gerente", "temFoto": False},
+                   markers=["prio-1", "band-vermelho", "prog-50"], nota="Responsável pelo SGQ\nRevisão anual",
+                   links=[{"tipo": "url", "url": "https://exemplo.com/a?b=1&c=2", "rotulo": "Site & cia"},
+                          {"tipo": "procedimento", "id": 7, "rotulo": "POP-001 - Calibração"}]),
+                no(2, vaga=True, label="Supervisor"),
+                no(3, colab={"id": 2, "nome": "João Lima", "cargo": "Técnico", "temFoto": False, "removido": True}, markers=["estr-azul", "pess-verde"]),
+                no(4, imagem={"id": 999}),
+            ],
+            "edges": [{"id": "e12", "source": "1", "target": "2"}, {"id": "e13", "source": "1", "target": "3"},
+                      {"id": "e34", "source": "3", "target": "4"}],
+            "grid_data": [],
+        }
+
+    # --- Node ------------------------------------------------------------------------------
+    def test_conteudo_passa_nos_testes_node(self):
+        import shutil, subprocess
+        from pathlib import Path
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('Node.js não disponível')
+        script = Path(__file__).resolve().parent / 'js' / 'conteudo.test.js'
+        r = subprocess.run([node, str(script)], capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('TODOS OS', r.stdout)
+
+    def test_paridade_do_catalogo_e_das_contagens_entre_javascript_e_python(self):
+        from procedures.services.diagram_arvore import montar_arvore
+        from procedures.services.diagram_conteudo import GRUPOS, contagem_efetivo, marcadores_em_uso, resumo_por_ramo
+        base = self._pasta_js()
+        topo = self._topologia()
+        # mais um ramo para variar a ocupação (1/16 testa o arredondamento meio-para-cima)
+        topo["nodes"] += [{"id": str(i), "type": "process", "position": {"x": 0, "y": 0},
+                           "data": {"label": f"V{i}", "vaga": True}} for i in range(10, 25)]
+        topo["edges"] += [{"id": f"e1-{i}", "source": "1", "target": str(i)} for i in range(10, 25)]
+        script = (f"const C=require('{base}/conteudo.js'),A=require('{base}/layout_arvore.js');"
+                  "const t=JSON.parse(require('fs').readFileSync(0,'utf8'));const arv=A.montarArvore(t.nodes,t.edges);"
+                  "console.log(JSON.stringify({grupos:C.GRUPOS,uso:C.marcadoresEmUso(t.nodes),efetivo:C.contagemEfetivo(t.nodes,arv),resumo:C.resumoPorRamo(t.nodes,arv)}))")
+        js = self._node_exe(script, topo)
+        if js is None:
+            self.skipTest('Node.js não disponível')
+        arvore = montar_arvore(topo["nodes"], topo["edges"])
+        self.assertEqual(js["grupos"], GRUPOS)
+        self.assertEqual(js["uso"], marcadores_em_uso(topo["nodes"]))
+        self.assertEqual(js["efetivo"], contagem_efetivo(topo["nodes"], arvore))
+        self.assertEqual(js["resumo"], resumo_por_ramo(topo["nodes"], arvore))
+
+    # --- validação ------------------------------------------------------------------------------
+    def test_validacao_do_conteudo(self):
+        from procedures.services.diagram_validation import validar_topologia
+        self.assertEqual(validar_topologia(self._topologia()), [])
+
+        def com(mudanca):
+            t = self._topologia()
+            mudanca(t)
+            return validar_topologia(t)
+
+        dados = lambda t: t["nodes"][0]["data"]
+        self.assertTrue(com(lambda t: dados(t).update(markers=["prio-1", "inexistente"])))
+        self.assertTrue(com(lambda t: dados(t).update(markers=["prio-1", "prio-1"])))
+        self.assertTrue(com(lambda t: dados(t).update(markers=["prio-1"] * 0 + [f"prio-{i}" for i in range(1, 8)] + ["band-azul", "band-verde"])))
+        self.assertTrue(com(lambda t: dados(t).update(nota="x" * 2001)))
+        self.assertTrue(com(lambda t: dados(t).update(nota=123)))
+        self.assertTrue(com(lambda t: dados(t).update(links=[{"tipo": "url", "url": "javascript:alert(1)", "rotulo": "x"}])))
+        self.assertTrue(com(lambda t: dados(t).update(links=[{"tipo": "procedimento", "id": "7"}])))
+        self.assertTrue(com(lambda t: dados(t).update(links=[{"tipo": "url", "url": "https://x.com", "rotulo": "a"}] * 6)))
+        self.assertTrue(com(lambda t: dados(t).update(vaga="sim")))
+        self.assertTrue(com(lambda t: dados(t).update(imagem={"id": "1"})))
+        self.assertTrue(com(lambda t: dados(t)["colab"].update(removido="sim")))
+        self.assertTrue(com(lambda t: t.update(legenda={"mostrar": True, "rotulos": {"qualquer": "x"}})))
+        self.assertTrue(com(lambda t: t.update(legenda={"mostrar": True, "rotulos": {"prio-1": "x" * 61}})))
+        self.assertTrue(com(lambda t: t.update(mostrar_efetivo="sim")))
+
+    # --- imagens ---------------------------------------------------------------------------------
+    def _png(self, lado=600, cor=(200, 30, 30, 255)):
+        import io
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new('RGBA', (lado, lado // 2), cor).save(buf, format='PNG')
+        return buf.getvalue()
+
+    def test_upload_e_entrega_de_imagem(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        import io
+        url = '/procedures/api/diagramas/imagens/'
+        sem_perm = self._cliente()
+        arquivo = SimpleUploadedFile('logo.png', self._png(), content_type='image/png')
+        self.assertEqual(sem_perm.post(url, {'arquivo': arquivo}).status_code, 403)
+
+        c = self._cliente(self.user, 'nav_diagramas_editor')
+        r = c.post(url, {'arquivo': SimpleUploadedFile('logo.png', self._png(), content_type='image/png')})
+        self.assertEqual(r.status_code, 201)
+        imagem_id = r.json()['id']
+
+        servida = c.get(f'{url}{imagem_id}/')
+        self.assertEqual(servida.status_code, 200)
+        self.assertEqual(servida['Content-Type'], 'image/png')
+        self.assertIn('immutable', servida['Cache-Control'])
+        reduzida = Image.open(io.BytesIO(servida.content))
+        self.assertLessEqual(max(reduzida.size), 320)              # reduzida no servidor
+
+        # arquivo que não é imagem, formato inválido e sem arquivo
+        self.assertEqual(c.post(url, {'arquivo': SimpleUploadedFile('x.png', b'nao e imagem', content_type='image/png')}).status_code, 400)
+        self.assertEqual(c.post(url, {}).status_code, 400)
+        self.assertEqual(c.get(f'{url}99999/').status_code, 404)
+        self.assertEqual(Client().get(f'{url}{imagem_id}/').status_code, 401)
+
+    # --- RH, buscas e abrir diagrama -----------------------------------------------------------
+    def test_sincronizacao_com_o_rh(self):
+        from rh.models import Colaborador
+        c1 = Colaborador.objects.create(nome_completo='Maria Souza Lima', matricula='5001', grupo='G', setor=self.setor, cargo='Coordenadora')
+        c = self._cliente()
+        url = '/procedures/api/diagramas/colaboradores/sincronizar/'
+        r = c.post(url, data=json.dumps({"ids": [c1.id, 99999]}), content_type='application/json')
+        self.assertEqual(r.status_code, 200)
+        res = r.json()['results']
+        self.assertEqual(res[str(c1.id)], {"existe": True, "nome": "Maria Souza Lima", "cargo": "Coordenadora", "setor_id": self.setor.id, "tem_foto": False})
+        self.assertEqual(res["99999"], {"existe": False})
+        self.assertEqual(c.post(url, data=json.dumps({"ids": ["a"]}), content_type='application/json').status_code, 400)
+        self.assertEqual(c.post(url, data=json.dumps({"ids": list(range(1, 400))}), content_type='application/json').status_code, 400)
+        self.assertEqual(Client().post(url, data='{}', content_type='application/json').status_code, 401)
+
+    def test_busca_de_procedimentos_e_diagramas_e_abrir_diagrama(self):
+        from procedures.models import Procedimento
+        Procedimento.objects.create(codigo='POP-001', nome='Calibração de paquímetros')
+        c = self._cliente()
+        achados = c.get('/procedures/api/diagramas/procedimentos/?q=paqu').json()['results']
+        self.assertEqual([(p['codigo'], p['nome']) for p in achados], [('POP-001', 'Calibração de paquímetros')])
+        self.assertEqual(c.get('/procedures/api/diagramas/procedimentos/?q=p').json()['results'], [])
+
+        v0 = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, status=StatusDiagrama.APROVADO, dados_topologia={"nodes": [], "edges": []})
+        v1 = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=1, status=StatusDiagrama.RASCUNHO, dados_topologia={"nodes": [], "edges": []})
+        diagramas = c.get(f'/procedures/api/diagramas/buscar/?q={self.diagrama.numero}').json()['results']
+        self.assertEqual(diagramas[0]['id'], str(self.diagrama.id))
+        resp = c.get(f'/procedures/diagramas/{self.diagrama.id}/abrir/')
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp['Location'].endswith(f'/diagramas/editor/{v0.id}/'), 'abre a revisão vigente (aprovada)')
+        v0.status = StatusDiagrama.OBSOLETO
+        v0.save(update_fields=['status'])
+        self.assertTrue(c.get(f'/procedures/diagramas/{self.diagrama.id}/abrir/')['Location'].endswith(f'/diagramas/editor/{v1.id}/'))
+
+    # --- PDF ----------------------------------------------------------------------------------------
+    def test_pdf_com_marcadores_vaga_efetivo_imagem_e_secoes(self):
+        from procedures.models_diagram import ImagemDiagrama
+        from procedures.services.diagram_renderer import DiagramaFlowable
+        from procedures.services.pdf_doc071_generator import _secoes_de_conteudo
+        from reportlab.lib.styles import getSampleStyleSheet
+        imagem = ImagemDiagrama.objects.create(nome='x.png', content_type='image/png', dados=self._png(80), tamanho=10)
+        topo = self._topologia()
+        topo["nodes"][3]["data"]["imagem"]["id"] = imagem.id
+
+        flow = DiagramaFlowable(topo, 782, 330)
+        self.assertEqual(flow.efetivo['1'], {'pessoas': 2, 'vagas': 1})   # Maria e João (o bloco 4 não é pessoa); 1 vaga
+        self.assertIn('1', flow.com_filhos)
+        estilo = flow._estilo(topo["nodes"][1])
+        self.assertEqual(estilo.get('borderStyle'), 'dashed')              # vaga: contorno tracejado
+
+        secoes = _secoes_de_conteudo(topo, getSampleStyleSheet()['Normal'])
+        self.assertEqual(len(secoes), 6)   # legenda (Spacer + tabela) + efetivo (Spacer + tabela) + notas (Spacer + título + espaço + tabela)... conferido abaixo por contagem de blocos
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=topo)
+        pdf = gerar_pdf_diagrama_doc071(versao)
+        self.assertTrue(pdf.startswith(b'%PDF-'))
+        # sem conteúdo extra não há seções adicionais
+        self.assertEqual(_secoes_de_conteudo({"nodes": [{"id": "1", "data": {"label": "A"}}], "edges": []}, getSampleStyleSheet()['Normal']), [])
+
+    def test_marcadores_sao_desenhados_para_todos_os_tipos(self):
+        import io
+        from procedures.services.diagram_conteudo import ORDEM, POR_ID
+        from procedures.services.diagram_renderer import desenhar_marcador_pdf
+        from reportlab.pdfgen import canvas as rl_canvas
+        buf = io.BytesIO()
+        c = rl_canvas.Canvas(buf)
+        for i, marcador_id in enumerate(ORDEM):
+            desenhar_marcador_pdf(c, POR_ID[marcador_id], 20 + (i % 10) * 20, 700 - (i // 10) * 20, 14)
+        c.save()
+        self.assertTrue(buf.getvalue().startswith(b'%PDF-'))
+
+    # --- editor ------------------------------------------------------------------------------------------
+    def test_editor_exibe_aba_conteudo_modais_e_menus(self):
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia())
+        html = self._cliente().get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        for item in ('id="inspTabConteudo"', 'id="cdVaga"', 'id="cdPaleta"', 'id="cdNota"', 'id="cdTipoLink"', 'id="cdArquivoImagem"',
+                     'id="modalLegenda"', 'id="modalEfetivo"', 'id="modalRH"', 'id="conteudoUrlsData"',
+                     'onclick="alternarEfetivo()"', 'onclick="abrirResumoEfetivo()"', 'onclick="abrirLegenda()"',
+                     'onclick="atualizarColaboradoresPeloRH(false)"', 'Etiquetas'):
+            self.assertIn(item, html)
+        js = ler_js_editor()
+        for funcao in ('function svgMarcador', 'function aplicarConteudoVisualAoNo', 'function alternarMarcador', 'function definirVaga',
+                       'function enviarImagemDoBloco', 'function atualizarColaboradoresPeloRH', 'function aplicarAtualizacoesDoRH',
+                       'function abrirResumoEfetivo', 'function atualizarLegendaVisual', 'function adicionarLinkWeb'):
+            self.assertIn(funcao, js)
+        # vincular colaborador guarda a função lida do RH (base para saber se foi personalizada depois)
+        self.assertGreaterEqual(js.count('cargoRH:'), 3)
+
+
+class DiagramaRaiaConfigTestCase(TestCase):
+    def test_validacao_de_cores_proprias_das_raias(self):
+        from procedures.services.diagram_validation import validar_topologia
+        base = {'nodes': [{'id': '1', 'position': {'x': 0, 'y': 0}, 'data': {'label': 'Inicio', 'type': 'start'}}], 'edges': []}
+        ruim = validar_topologia({**base, 'raias_cores': {'Qualidade': 'vermelho'}})
+        self.assertTrue(any('raias_cores' in e for e in ruim))
+        ok = validar_topologia({**base, 'raias_cores': {'Qualidade': '#0f766e'}})
+        self.assertFalse(any('raias_cores' in e for e in ok))
+
+    def test_editor_tem_popup_de_configuracao_da_raia(self):
+        js = ler_js_editor()
+        self.assertIn('abrirConfigRaia', js)
+        self.assertIn('ondblclick', js)
+        self.assertIn("(topologia.raias_cores || {})[nome]", js)

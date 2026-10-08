@@ -137,8 +137,14 @@ function abrirRenomearRaia(encodedLane) {
     const raiaAtual = decodeURIComponent(encodedLane);
     const novoNome = prompt(`Renomear a Raia / Setor "${raiaAtual}" para:`, raiaAtual);
     if (!novoNome || !novoNome.trim() || novoNome.trim() === raiaAtual) return;
+    renomearRaiaNoDiagrama(raiaAtual, novoNome.trim());
+    renderizarCanvas();
+    renderizarGrelha();
+    renderizarOutliner();
+    dispararAutoSave();
+}
 
-    const nomeLimpo = novoNome.trim();
+function renomearRaiaNoDiagrama(raiaAtual, nomeLimpo) {
     fixarOrdemRaias();
 
     topologia.nodes.forEach(n => {
@@ -153,15 +159,84 @@ function abrirRenomearRaia(encodedLane) {
         }
     });
 
-    // mantém ordem e raias fixas com o novo nome (sem duplicar quando já existia)
+    // mantém ordem, raias fixas e cor própria com o novo nome (sem duplicar quando já existia)
     ['lanes', 'raias_fixas'].forEach(chave => {
         topologia[chave] = [...new Set((topologia[chave] || []).map(l => l === raiaAtual ? nomeLimpo : l))];
     });
+    if (topologia.raias_cores && topologia.raias_cores[raiaAtual]) {
+        topologia.raias_cores[nomeLimpo] = topologia.raias_cores[raiaAtual];
+        delete topologia.raias_cores[raiaAtual];
+    }
+}
 
+// Duplo clique no rótulo da raia: pop-up de configuração
+let raiaEmConfiguracao = null;
+function abrirConfigRaia(encodedLane) {
+    const lane = decodeURIComponent(encodedLane);
+    raiaEmConfiguracao = lane;
+    const cat = raiaCatalogoPorNome(lane);
+    const lanes = obterListaRaiasOrdenada();
+    const blocos = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane).length;
+    const propria = (topologia.raias_cores || {})[lane];
+
+    document.getElementById('cfgRaiaNome').value = lane;
+    document.getElementById('cfgRaiaCor').value = propria || cat?.cor || '#334155';
+    document.getElementById('cfgRaiaCor').dataset.alterada = '';
+    document.getElementById('cfgRaiaPosicao').textContent = `${lanes.indexOf(lane) + 1} de ${lanes.length}`;
+    document.getElementById('cfgRaiaBlocos').textContent = blocos;
+    document.getElementById('cfgRaiaOrigem').innerHTML = cat
+        ? `<i class="bi bi-journal-check text-success"></i> Cadastrada no catálogo${cat.setor_nome ? ` (setor ${escapeHtml(cat.setor_nome)})` : ''}`
+        : '<i class="bi bi-pencil-square text-warning"></i> Raia livre (fora do catálogo)';
+    document.getElementById('cfgRaiaRestaurarCor').style.display = (propria && cat) ? '' : 'none';
+    document.querySelectorAll('#modalConfigRaia [data-edicao]').forEach(el => { el.disabled = IS_APPROVED; });
+    document.getElementById('cfgRaiaAcoes').style.display = IS_APPROVED ? 'none' : '';
+    new bootstrap.Modal(document.getElementById('modalConfigRaia')).show();
+}
+
+function salvarConfigRaia() {
+    if (IS_APPROVED || !raiaEmConfiguracao) return;
+    let lane = raiaEmConfiguracao;
+    const novoNome = document.getElementById('cfgRaiaNome').value.trim();
+    const cor = document.getElementById('cfgRaiaCor');
+    if (!novoNome) { alert('Informe o nome da raia.'); return; }
+    if (novoNome !== lane) {
+        if (obterListaRaiasOrdenada().some(l => l !== lane && l.toLowerCase() === novoNome.toLowerCase())) {
+            alert(`A raia "${novoNome}" já existe neste diagrama.`);
+            return;
+        }
+        renomearRaiaNoDiagrama(lane, novoNome);
+        lane = novoNome;
+    }
+    if (cor.dataset.alterada) {
+        topologia.raias_cores = { ...(topologia.raias_cores || {}), [lane]: cor.value };
+    }
+    bootstrap.Modal.getInstance(document.getElementById('modalConfigRaia'))?.hide();
     renderizarCanvas();
     renderizarGrelha();
     renderizarOutliner();
     dispararAutoSave();
+}
+
+function restaurarCorDaRaia() {
+    if (IS_APPROVED || !raiaEmConfiguracao) return;
+    if (topologia.raias_cores) delete topologia.raias_cores[raiaEmConfiguracao];
+    bootstrap.Modal.getInstance(document.getElementById('modalConfigRaia'))?.hide();
+    renderizarCanvas();
+    dispararAutoSave();
+}
+
+function moverRaiaPelaConfig(direcao) {
+    if (!raiaEmConfiguracao) return;
+    moverRaia(encodeURIComponent(raiaEmConfiguracao), direcao);
+    const lanes = obterListaRaiasOrdenada();
+    document.getElementById('cfgRaiaPosicao').textContent = `${lanes.indexOf(raiaEmConfiguracao) + 1} de ${lanes.length}`;
+}
+
+function excluirRaiaPelaConfig() {
+    if (!raiaEmConfiguracao) return;
+    const lane = raiaEmConfiguracao;
+    bootstrap.Modal.getInstance(document.getElementById('modalConfigRaia'))?.hide();
+    excluirRaia(encodeURIComponent(lane));
 }
 
 function moverRaia(encodedLane, direcao) {

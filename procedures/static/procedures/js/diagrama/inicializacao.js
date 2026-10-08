@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupCanvasNavigation();
     atualizarLabelEstiloLinha();
     atualizarUILayout();
+    atualizarMarcasDeMenuConteudo();
 
     // Enquadra suavemente a visão inicial nos blocos
     setTimeout(() => {

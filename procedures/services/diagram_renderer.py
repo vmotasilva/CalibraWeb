@@ -13,6 +13,7 @@ from reportlab.platypus import Flowable
 
 from .diagram_raias import raias_do_diagrama
 from .diagram_arvore import MODOS_ARVORE, montar_arvore, ramos_recolhidos
+from .diagram_conteudo import POR_ID, contagem_efetivo, eh_vaga, marcador_valido
 from .diagram_estilo import contexto_dos_nos, nome_da_fonte, resolver_estilo_conexao, resolver_estilo_no
 
 FONT = 'Helvetica'
@@ -29,6 +30,79 @@ LANE_MIN_H = 220
 MARGIN = 40
 
 DARK_BG = {'#2563eb', '#334155', '#ef4444', '#8b5cf6'}
+
+
+def desenhar_marcador_pdf(c, marcador: dict, cx: float, cy: float, tam: float):
+    """Marcador (prioridade, progresso, bandeira, estrela, pessoa) centrado em (cx, cy), coordenadas do PDF."""
+    r = tam / 2
+    cor = colors.HexColor(marcador['cor'])
+    tipo = marcador['tipo']
+    c.saveState()
+    c.setFillColor(cor)
+    c.setStrokeColor(cor)
+    if tipo == 'numero':
+        c.circle(cx, cy, r, stroke=0, fill=1)
+        c.setFillColor(colors.white)
+        c.setFont('Helvetica-Bold', tam * 0.68)
+        c.drawCentredString(cx, cy - tam * 0.24, str(marcador['valor']))
+    elif tipo == 'progresso':
+        valor = marcador['valor']
+        if valor == 100:
+            c.circle(cx, cy, r, stroke=0, fill=1)
+            c.setStrokeColor(colors.white)
+            c.setLineWidth(max(1, tam / 8))
+            p = c.beginPath()
+            p.moveTo(cx - r * 0.5, cy - r * 0.05)
+            p.lineTo(cx - r * 0.12, cy - r * 0.42)
+            p.lineTo(cx + r * 0.52, cy + r * 0.38)
+            c.drawPath(p, stroke=1, fill=0)
+        else:
+            c.setFillColor(colors.white)
+            c.setLineWidth(max(0.8, tam / 10))
+            c.circle(cx, cy, r * 0.92, stroke=1, fill=1)
+            if valor > 0:
+                c.setFillColor(cor)
+                c.wedge(cx - r * 0.7, cy - r * 0.7, cx + r * 0.7, cy + r * 0.7, 90, -valor * 3.6, stroke=0, fill=1)
+    elif tipo == 'bandeira':
+        c.setLineWidth(max(1, tam / 9))
+        c.line(cx - r * 0.55, cy - r, cx - r * 0.55, cy + r)
+        p = c.beginPath()
+        p.moveTo(cx - r * 0.45, cy + r * 0.9)
+        p.lineTo(cx + r * 0.85, cy + r * 0.9)
+        p.lineTo(cx + r * 0.4, cy + r * 0.3)
+        p.lineTo(cx + r * 0.85, cy - r * 0.3)
+        p.lineTo(cx - r * 0.45, cy - r * 0.3)
+        p.close()
+        c.drawPath(p, stroke=0, fill=1)
+    elif tipo == 'estrela':
+        import math
+        p = c.beginPath()
+        for i in range(10):
+            ang = math.pi / 2 + i * math.pi / 5
+            raio = r if i % 2 == 0 else r * 0.45
+            px, py = cx + raio * math.cos(ang), cy + raio * math.sin(ang) - r * 0.05
+            (p.moveTo if i == 0 else p.lineTo)(px, py)
+        p.close()
+        c.drawPath(p, stroke=0, fill=1)
+    elif tipo == 'pessoa':
+        c.circle(cx, cy + r * 0.45, r * 0.4, stroke=0, fill=1)
+        c.wedge(cx - r * 0.9, cy - r * 0.85 - r * 1.1, cx + r * 0.9, cy - r * 0.85 + r * 1.1, 0, 180, stroke=0, fill=1)
+    c.restoreState()
+
+
+class MarcadorFlowable(Flowable):
+    """Marcador como célula de tabela (legenda)."""
+
+    def __init__(self, marcador: dict, tam: float = 12):
+        super().__init__()
+        self.marcador, self.tam = marcador, tam
+        self.width = self.height = tam
+
+    def wrap(self, w, h):
+        return self.tam, self.tam
+
+    def draw(self):
+        desenhar_marcador_pdf(self.canv, self.marcador, self.tam / 2, self.tam / 2, self.tam)
 
 
 def _txt(valor) -> str:
@@ -93,7 +167,10 @@ class DiagramaFlowable(Flowable):
         self.tema = topologia.get('tema') if isinstance(topologia.get('tema'), dict) else None
         self.fundo = (self.tema or {}).get('fundo')
         self.estilo_linha = topologia.get('estilo_linha') or 'ortogonal'
-        self.ctx_estilo = contexto_dos_nos(montar_arvore(todos, self.edges))
+        arvore = montar_arvore(todos, self.edges)
+        self.ctx_estilo = contexto_dos_nos(arvore)
+        self.efetivo = contagem_efetivo(todos, arvore) if topologia.get('mostrar_efetivo') is True else None
+        self.com_filhos = {i for i, f in arvore['filhos'].items() if f}
         self.em_arvore = self.modo in MODOS_ARVORE
         # ramos recolhidos no editor não são desenhados; o bloco recolhido mostra o contador "+N"
         ocultos, self.contagem_ocultos = ramos_recolhidos(todos, self.edges) if self.em_arvore else (set(), {})
@@ -157,9 +234,67 @@ class DiagramaFlowable(Flowable):
             self._desenhar_aresta(c, e)
         for n in self.nodes:
             self._desenhar_no(c, n)
+            self._desenhar_extras(c, n)
             if str(n['id']) in self.contagem_ocultos:
                 self._desenhar_contador(c, n, self.contagem_ocultos[str(n['id'])])
         c.restoreState()
+
+    def _desenhar_extras(self, c, n):
+        """Marcadores (topo esquerdo), indicadores de nota/link/alerta (topo direito), selo VAGO e efetivo do ramo."""
+        dados = _dados(n)
+        w, h = _tamanho(n)
+        x, y = n['position']['x'], n['position']['y']
+        topo = self._y(y)
+
+        marcadores = [m for m in (dados.get('markers') or []) if marcador_valido(m)]
+        for i, marcador_id in enumerate(marcadores):
+            desenhar_marcador_pdf(c, POR_ID[marcador_id], x + 9 + i * 15, topo, 12)
+
+        glifos = []   # (letra, cor)
+        colab = _colab(n)
+        if colab and colab.get('removido'):
+            glifos.append(('!', '#B45309'))
+        if (dados.get('nota') or '').strip():
+            glifos.append(('N', '#475569'))
+        for _ in (dados.get('links') or []):
+            glifos.append(('L', '#2563EB'))
+        for i, (letra, cor) in enumerate(glifos):
+            cx = x + w - 6 - i * 15
+            c.saveState()
+            c.setFillColor(colors.white)
+            c.setStrokeColor(colors.HexColor(cor))
+            c.setLineWidth(1)
+            c.circle(cx, topo, 6.5, stroke=1, fill=1)
+            c.setFillColor(colors.HexColor(cor))
+            c.setFont('Helvetica-Bold', 7)
+            c.drawCentredString(cx, topo - 2.4, letra)
+            c.restoreState()
+
+        if eh_vaga(n):
+            c.saveState()
+            c.setFillColor(colors.HexColor('#FEF3C7'))
+            c.setStrokeColor(colors.HexColor('#FCD34D'))
+            c.setLineWidth(0.8)
+            c.roundRect(x + 6, self._y(y + h) + 4, 34, 11, 5, stroke=1, fill=1)
+            c.setFillColor(colors.HexColor('#92400E'))
+            c.setFont('Helvetica-Bold', 7)
+            c.drawCentredString(x + 23, self._y(y + h) + 7, 'VAGO')
+            c.restoreState()
+
+        if self.efetivo is not None and str(n['id']) in self.com_filhos:
+            cont = self.efetivo.get(str(n['id']), {})
+            if cont.get('pessoas') or cont.get('vagas'):
+                texto = f"{cont['pessoas']}" + (f" - {cont['vagas']} vaga{'s' if cont['vagas'] > 1 else ''}" if cont['vagas'] else '')
+                c.saveState()
+                c.setFont('Helvetica-Bold', 7)
+                larg = c.stringWidth(texto, 'Helvetica-Bold', 7) + 12
+                base = self._y(y + h)
+                c.setFillColor(colors.HexColor('#0F172A'))
+                c.setStrokeColor(colors.white)
+                c.roundRect(x + w - 6 - larg, base - 7, larg, 14, 7, stroke=1, fill=1)
+                c.setFillColor(colors.white)
+                c.drawCentredString(x + w - 6 - larg / 2, base - 2.5, texto)
+                c.restoreState()
 
     def _desenhar_contador(self, c, n, quantidade):
         """Selo "+N" no ponto onde fica o botão de recolher do editor."""
@@ -212,7 +347,10 @@ class DiagramaFlowable(Flowable):
     # --- estilo ------------------------------------------------------------------
     def _estilo(self, n):
         ctx = {'tema': self.tema, **self.ctx_estilo.get(str(n['id']), {})}
-        return resolver_estilo_no(n, ctx)
+        estilo = resolver_estilo_no(n, ctx)
+        if eh_vaga(n) and 'borderStyle' not in estilo:
+            estilo['borderStyle'] = 'dashed'   # posição vaga: contorno tracejado, como no editor
+        return estilo
 
     @staticmethod
     def _tracejado(estilo_borda, largura):
@@ -328,16 +466,18 @@ class DiagramaFlowable(Flowable):
                 extras.append('Doc: ' + ref)
             subs = _subtitulos(n)
             colab = _colab(n)
+            imagem = data.get('imagem') if isinstance(data.get('imagem'), dict) and not colab else None
+            lateral = bool(colab or imagem)
 
-            # Área de texto: com colaborador, a foto ocupa a esquerda (espaço vazio quando não há foto)
+            # Área de texto: com colaborador (foto do RH) ou imagem, ela ocupa a esquerda (círculo vazio sem foto)
             tx0, tx1 = x, x + w
-            if colab:
+            if lateral:
                 diam = 40
                 fx, fy = x + 10, self._y(y + h / 2) - diam / 2
-                self._desenhar_foto(c, colab.get('id'), fx, fy, diam)
+                self._desenhar_foto(c, colab.get('id') if colab else f"img-{imagem.get('id')}", fx, fy, diam)
                 tx0 = x + 10 + diam + 8
                 tx1 = x + w - 8
-            largura_txt = tx1 - tx0 - (0 if colab else 20)
+            largura_txt = tx1 - tx0 - (0 if lateral else 20)
             cx = (tx0 + tx1) / 2
 
             titulo = nome_exibicao(colab) if colab else label
@@ -361,8 +501,8 @@ class DiagramaFlowable(Flowable):
                 c.setFont(fnt, tam)
                 c.setFillColor(cor)
                 larg_ln = c.stringWidth(texto, fnt, tam)
-                if colab or alinhar == 'left':
-                    x0 = tx0 + (0 if colab else 10)
+                if lateral or alinhar == 'left':
+                    x0 = tx0 + (0 if lateral else 10)
                 elif alinhar == 'right':
                     x0 = tx1 - 10 - larg_ln
                 else:

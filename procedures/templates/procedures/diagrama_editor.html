@@ -110,6 +110,43 @@
     .colchete.bl { bottom: -2px; left: -2px; border-bottom-width: var(--borda-larg, 2px); border-left-width: var(--borda-larg, 2px); }
     .colchete.br { bottom: -2px; right: -2px; border-bottom-width: var(--borda-larg, 2px); border-right-width: var(--borda-larg, 2px); }
 
+    /* Conteúdo dos blocos: marcadores, indicadores, vaga, efetivo, imagem e legenda */
+    .marcadores-bloco { display: inline-flex; gap: 2px; margin-right: 4px; vertical-align: -2px; }
+    .marcador-svg { display: inline-block; flex: 0 0 auto; }
+    .marcador-opcao { border: 1px solid #e2e8f0; background: #fff; border-radius: 6px; padding: 2px; line-height: 0; cursor: pointer; }
+    .marcador-opcao:hover { border-color: #94a3b8; }
+    .marcador-opcao.ativo { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25); background: #eff6ff; }
+
+    .indicadores-bloco { position: absolute; top: -10px; right: -6px; display: flex; gap: 3px; z-index: 6; }
+    .indicador {
+        width: 20px; height: 20px; border-radius: 50%; padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        background: #ffffff; border: 1.5px solid #94a3b8; color: #475569; font-size: 10px; line-height: 1; cursor: pointer;
+    }
+    .indicador:hover { border-color: #2563eb; color: #2563eb; }
+    .indicador-alerta { border-color: #f59e0b; color: #b45309; background: #fffbeb; cursor: help; }
+
+    .flow-node.node-vaga { border-style: dashed !important; font-style: italic; }
+    .selo-vago {
+        display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; font-style: normal;
+        padding: 0 5px; border-radius: 8px; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; vertical-align: 1px;
+    }
+
+    .flow-node.node-com-imagem { display: flex; align-items: center; gap: 8px; text-align: left; }
+    .bloco-imagem { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; flex: 0 0 44px; border: 1px solid #e2e8f0; }
+
+    .badge-efetivo {
+        position: absolute; bottom: -10px; right: 6px; z-index: 6; white-space: nowrap;
+        font-size: 10px; font-weight: 700; font-style: normal; padding: 1px 7px; border-radius: 10px;
+        background: #0f172a; color: #ffffff; border: 1px solid #ffffff;
+    }
+
+    .legenda-marcadores {
+        position: absolute; left: 14px; bottom: 14px; z-index: 30; pointer-events: none;
+        background: rgba(255, 255, 255, 0.94); border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
     /* Amostras dos temas */
     .tema-amostra { display: inline-block; width: 18px; height: 14px; border-radius: 3px; }
     .tema-ponto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
@@ -951,7 +988,7 @@
 
             {% if pode_exportar_pdf %}
             <button type="button" class="btn btn-danger btn-sm shadow-sm" onclick="exportarPDFDoc071()">
-                <i class="bi bi-file-earmark-pdf-fill"></i> Gerar PDF DOC.071
+                <i class="bi bi-file-earmark-pdf-fill"></i> Gerar PDF
             </button>
             {% endif %}
         </div>
@@ -979,8 +1016,8 @@
             <button type="button" class="ribbon-btn" id="btnModoOutliner" onclick="alternarModoEditor('outliner')" title="Modo Estrutura em Lista com Indentação">
                 <i class="bi bi-list-task text-primary"></i> Outliner
             </button>
-            <button type="button" class="ribbon-btn" id="btnModoGrelha" onclick="alternarModoEditor('grelha')" title="Modo Tabela Matricial DOC.071">
-                <i class="bi bi-table text-primary"></i> Grelha DOC.071
+            <button type="button" class="ribbon-btn" id="btnModoGrelha" onclick="alternarModoEditor('grelha')" title="Modo Tabela Matricial">
+                <i class="bi bi-table text-primary"></i> Grelha
             </button>
         </div>
 
@@ -1114,6 +1151,12 @@
                         </a>
                     </li>
                     <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Conteúdo e efetivo</h6></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarEfetivo()"><i id="menuEfetivoCheck" class="bi bi-check2 invisible me-2"></i>Mostrar efetivo e vagas por ramo</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirResumoEfetivo()"><i class="bi bi-people me-2"></i>Resumo do efetivo e vagas...</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirLegenda()"><i class="bi bi-list-stars me-2"></i>Legenda dos marcadores...</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="atualizarColaboradoresPeloRH(false)"><i class="bi bi-arrow-repeat me-2"></i>Atualizar colaboradores pelo RH...</a></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirModalTema()"><i class="bi bi-palette me-2"></i>Tema e cores do diagrama...</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarFundoCanvas()"><i class="bi bi-palette2 me-2"></i>Alternar fundo (acolhedor / claro)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarModoZen()"><i class="bi bi-fullscreen me-2"></i>Modo foco / tela cheia (ZEN)</a></li>
@@ -1238,7 +1281,7 @@
                 </div>
 
                 <div class="mt-4 pt-3 border-top d-flex justify-content-between align-items-center">
-                    <small class="text-muted"><i class="bi bi-shield-check text-success me-1"></i>Alterações sincronizadas em tempo real com o Canvas e Grelha DOC.071.</small>
+                    <small class="text-muted"><i class="bi bi-shield-check text-success me-1"></i>Alterações sincronizadas em tempo real com o Canvas e Grelha.</small>
                     <button type="button" class="btn btn-primary" onclick="alternarModoEditor('canvas')">
                         <i class="bi bi-diagram-3-fill me-1"></i> Concluir e Visualizar no Canvas
                     </button>
@@ -1246,7 +1289,7 @@
             </div>
         </div>
 
-        <!-- VISTA 3: MODO GRELHA (TABULAR DOC.071) -->
+        <!-- VISTA 3: MODO GRELHA (TABULAR) -->
         <div id="viewGrelhaContainer" class="flex-grow-1 p-3 overflow-auto bg-light d-none" style="height: 100%;">
             <div class="card border-0 shadow-sm p-3 bg-white">
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1310,8 +1353,13 @@
                     </button>
                 </li>
                 <li class="nav-item">
+                    <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#inspTabConteudo" type="button">
+                        <i class="bi bi-card-text"></i> Conteúdo
+                    </button>
+                </li>
+                <li class="nav-item">
                     <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#inspTabMarkers" type="button">
-                        <i class="bi bi-bookmark-star"></i> Marcadores
+                        <i class="bi bi-tags"></i> Etiquetas
                     </button>
                 </li>
             </ul>
@@ -1531,7 +1579,68 @@
                     </div>
                 </div>
 
-                <!-- ABA MARCADORES -->
+                <!-- ABA CONTEÚDO -->
+                <div class="tab-pane fade" id="inspTabConteudo">
+                    <div id="conteudoVazio" class="text-center py-4 text-muted small">
+                        <i class="bi bi-card-text display-6 d-block mb-2 opacity-50"></i>
+                        Selecione um bloco para adicionar marcadores, notas, links, imagem ou marcá-lo como vaga.
+                    </div>
+
+                    <div id="conteudoControles" class="d-none pt-2">
+                        <div class="form-check form-switch mb-3">
+                            <input id="cdVaga" class="form-check-input" type="checkbox" onchange="definirVaga(this.checked)">
+                            <label class="form-check-label small fw-bold" for="cdVaga">Posição vaga (mostra "VAGO" e conta nas vagas)</label>
+                        </div>
+
+                        <div id="cdBlocoRH" class="mb-3 d-none">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="atualizarColaboradoresPeloRH(true)"><i class="bi bi-arrow-repeat"></i> Atualizar este colaborador pelo RH</button>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1 d-flex justify-content-between">
+                                <span>Marcadores</span>
+                                <span><span id="cdContadorMarcadores" class="fw-normal">0/8</span>
+                                    <button type="button" class="btn btn-link btn-sm p-0 ms-2" onclick="removerTodosMarcadores()">limpar</button></span>
+                            </label>
+                            <div id="cdPaleta"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1 d-flex justify-content-between"><span>Nota</span><span id="cdContadorNota" class="fw-normal">0/2000</span></label>
+                            <textarea id="cdNota" class="form-control form-control-sm" rows="4" maxlength="2000" placeholder="Anotação longa sobre este bloco (aparece no PDF, na seção Notas e referências)" oninput="editarNota(this.value)"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Links</label>
+                            <div id="cdLinks"></div>
+                            <div class="input-group input-group-sm mb-1">
+                                <select id="cdTipoLink" class="form-select" style="max-width: 130px;" onchange="aoMudarTipoDeLink()">
+                                    <option value="procedimento">Procedimento</option>
+                                    <option value="diagrama">Diagrama</option>
+                                    <option value="url">Endereço web</option>
+                                </select>
+                                <input id="cdBuscaLink" type="text" class="form-control" placeholder="Código ou nome do procedimento" autocomplete="off" oninput="buscarParaLink(this.value)"
+                                       onkeydown="if (event.key === 'Enter' &amp;&amp; document.getElementById('cdTipoLink').value === 'url') { event.preventDefault(); adicionarLinkWeb(); }">
+                                <button type="button" class="btn btn-outline-secondary" onclick="if (document.getElementById('cdTipoLink').value === 'url') adicionarLinkWeb()" title="Adicionar endereço web"><i class="bi bi-plus-lg"></i></button>
+                            </div>
+                            <div id="cdRotuloLinkBox" class="d-none mb-1"><input id="cdRotuloLink" type="text" class="form-control form-control-sm" maxlength="120" placeholder="Texto do link (opcional)"></div>
+                            <div id="cdResultadosLink" class="list-group list-group-flush border rounded" style="max-height: 160px; overflow-y: auto;"></div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1">Imagem</label>
+                            <div id="cdImagemPrevia" class="d-none d-flex align-items-center gap-2 mb-2">
+                                <img src="" alt="" style="width: 56px; height: 56px; object-fit: cover;" class="rounded border">
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removerImagemDoBloco()"><i class="bi bi-trash"></i> Remover</button>
+                            </div>
+                            <input id="cdArquivoImagem" type="file" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp,image/gif" onchange="enviarImagemDoBloco(this)">
+                            <div class="form-text">JPG, PNG, WEBP ou GIF (até 2 MB; reduzida a 320 px).</div>
+                            <div id="cdAvisoImagemColab" class="form-text text-warning d-none">Blocos de colaborador já usam a foto do RH.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ABA ETIQUETAS (texto livre / emojis) -->
                 <div class="tab-pane fade" id="inspTabMarkers">
                     <div id="inspectorMarkersControls" class="pt-2">
                         <div class="mb-3">
@@ -1572,6 +1681,68 @@
 <!-- Modal de Criação de Nova Revisão -->
 <!-- Modal: Adicionar Raia (catálogo ou uso livre) -->
 <!-- Modal: Tema e cores do diagrama -->
+<!-- Modal: Legenda dos marcadores -->
+<div class="modal fade" id="modalLegenda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-list-stars"></i> Legenda dos marcadores</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">Dê um significado aos marcadores em uso (ex.: bandeira vermelha = "Requer ação da diretoria").</p>
+                <div id="listaLegenda"></div>
+                <div class="form-check form-switch mt-3">
+                    <input id="legendaMostrar" class="form-check-input" type="checkbox">
+                    <label class="form-check-label small" for="legendaMostrar">Mostrar a legenda no diagrama e no PDF</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarLegenda()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Resumo do efetivo e vagas -->
+<div class="modal fade" id="modalEfetivo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-people"></i> Efetivo e vagas por ramo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">Pessoas = blocos com colaborador vinculado; vagas = blocos marcados como "vaga". A ocupação é pessoas / (pessoas + vagas).</p>
+                <table class="table table-sm align-middle">
+                    <thead class="table-light"><tr><th>Ramo (1º nível)</th><th class="text-end">Pessoas</th><th class="text-end">Vagas</th><th class="text-end">Quadro</th><th class="text-end">Ocupação</th></tr></thead>
+                    <tbody id="corpoResumoEfetivo"></tbody>
+                    <tfoot><tr id="rodapeResumoEfetivo" class="table-light"></tr></tfoot>
+                </table>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">Fechar</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Atualizar colaboradores pelo RH -->
+<div class="modal fade" id="modalRH" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-arrow-repeat"></i> Atualizar colaboradores pelo RH</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="corpoAtualizacaoRH"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" id="btnAplicarRH" class="btn btn-primary" onclick="aplicarAtualizacoesDoRH()">Aplicar atualizações</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalTema" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -1614,6 +1785,49 @@
                 <div class="d-flex gap-2">
                     {% if pode_salvar_tema %}<button type="button" class="btn btn-outline-primary btn-sm" onclick="salvarTemaNoCatalogo()"><i class="bi bi-bookmark-plus"></i> Salvar no catálogo</button>{% endif %}
                     <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Concluir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalConfigRaia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-sliders"></i> Configurar raia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Nome da raia</label>
+                    <input type="text" id="cfgRaiaNome" data-edicao class="form-control" maxlength="100"
+                           onkeydown="if(event.key === 'Enter') { event.preventDefault(); salvarConfigRaia(); }">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Cor da faixa (neste diagrama)</label>
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="color" id="cfgRaiaCor" data-edicao class="form-control form-control-color" oninput="this.dataset.alterada='1'">
+                        <button type="button" id="cfgRaiaRestaurarCor" class="btn btn-sm btn-outline-secondary" onclick="restaurarCorDaRaia()">Usar a cor do catálogo</button>
+                    </div>
+                </div>
+                <ul class="list-unstyled small mb-0">
+                    <li class="mb-1"><i class="bi bi-diagram-3 text-secondary"></i> Blocos na raia: <strong id="cfgRaiaBlocos"></strong></li>
+                    <li class="mb-1"><i class="bi bi-list-ol text-secondary"></i> Posição: <strong id="cfgRaiaPosicao"></strong>
+                        <span id="cfgRaiaAcoes">
+                            <button type="button" class="btn btn-sm btn-light border ms-2 py-0" onclick="moverRaiaPelaConfig(-1)" title="Mover para cima"><i class="bi bi-arrow-up"></i></button>
+                            <button type="button" class="btn btn-sm btn-light border py-0" onclick="moverRaiaPelaConfig(1)" title="Mover para baixo"><i class="bi bi-arrow-down"></i></button>
+                        </span>
+                    </li>
+                    <li id="cfgRaiaOrigem" class="mb-1"></li>
+                    <li><a href="{% url 'procedures:diagramas_raias' %}" target="_blank" class="text-decoration-none"><i class="bi bi-gear"></i> Gerenciar no catálogo de raias</a></li>
+                </ul>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-outline-danger btn-sm" data-edicao onclick="excluirRaiaPelaConfig()"><i class="bi bi-trash"></i> Excluir raia</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" data-edicao onclick="salvarConfigRaia()">Salvar</button>
                 </div>
             </div>
         </div>
@@ -1712,6 +1926,7 @@
 {% block extra_js %}
 {{ raias_catalogo|json_script:"raiasCatalogoData" }}
 {{ temas_salvos|json_script:"temasSalvosData" }}
+{{ conteudo_urls|json_script:"conteudoUrlsData" }}
 <script>
     const VERSAO_ID = "{{ versao.id }}";
     const VERSAO_REVISAO = {{ versao.revisao }};

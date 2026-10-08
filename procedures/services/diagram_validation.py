@@ -7,6 +7,7 @@ Sem dependências externas: usada pelo endpoint de auto-save.
 import json
 import re
 
+from .diagram_conteudo import MAX_LINKS, MAX_MARCADORES, MAX_NOTA, marcador_valido
 from .diagram_estilo import ALINHAMENTOS, BORDAS, FAMILIAS, FORMAS, FORMATOS_LINHA, TRACADOS
 
 MAX_NODES = 1000
@@ -27,6 +28,52 @@ def _cor_valida(valor, permitir_ramo=False) -> bool:
 
 def _inteiro_entre(valor, minimo, maximo) -> bool:
     return isinstance(valor, int) and not isinstance(valor, bool) and minimo <= valor <= maximo
+
+
+URL_RE = re.compile(r'^https?://[^\s]+$', re.IGNORECASE)
+
+
+def validar_conteudo_no(dados: dict, nid) -> list:
+    """Marcadores, nota, links, vaga, imagem e dados extras do colaborador de um bloco."""
+    erros = []
+    marcadores = dados.get('markers')
+    if marcadores is not None:
+        if (not isinstance(marcadores, list) or len(marcadores) > MAX_MARCADORES
+                or not all(marcador_valido(m) for m in marcadores) or len(set(marcadores)) != len(marcadores)):
+            erros.append(f"Marcadores inválidos no nó {nid} (até {MAX_MARCADORES}, do catálogo e sem repetição).")
+    nota = dados.get('nota')
+    if nota is not None and (not isinstance(nota, str) or len(nota) > MAX_NOTA):
+        erros.append(f"Nota inválida no nó {nid} (texto de até {MAX_NOTA} caracteres).")
+    links = dados.get('links')
+    if links is not None:
+        if not isinstance(links, list) or len(links) > MAX_LINKS:
+            erros.append(f"Links inválidos no nó {nid} (até {MAX_LINKS}).")
+        else:
+            for link in links:
+                ok = isinstance(link, dict) and isinstance(link.get('rotulo', ''), str) and len(link.get('rotulo', '')) <= 120
+                if ok and link.get('tipo') == 'url':
+                    ok = isinstance(link.get('url'), str) and len(link['url']) <= 500 and bool(URL_RE.match(link['url']))
+                elif ok and link.get('tipo') == 'procedimento':
+                    ok = isinstance(link.get('id'), int) and not isinstance(link.get('id'), bool)
+                elif ok and link.get('tipo') == 'diagrama':
+                    ok = isinstance(link.get('id'), str) and 0 < len(link['id']) <= 64
+                else:
+                    ok = False
+                if not ok:
+                    erros.append(f"Link inválido no nó {nid}.")
+                    break
+    if dados.get('vaga') is not None and not isinstance(dados['vaga'], bool):
+        erros.append(f"'vaga' deve ser verdadeiro/falso no nó {nid}.")
+    imagem = dados.get('imagem')
+    if imagem is not None and (not isinstance(imagem, dict) or not isinstance(imagem.get('id'), int) or isinstance(imagem.get('id'), bool)):
+        erros.append(f"Imagem inválida no nó {nid}.")
+    colab = dados.get('colab')
+    if isinstance(colab, dict):
+        if colab.get('cargoRH') is not None and (not isinstance(colab['cargoRH'], str) or len(colab['cargoRH']) > 200):
+            erros.append(f"'cargoRH' inválido no nó {nid}.")
+        if colab.get('removido') is not None and not isinstance(colab['removido'], bool):
+            erros.append(f"'removido' inválido no nó {nid}.")
+    return erros
 
 
 def validar_estilo_no(estilo, nid) -> list:
@@ -157,6 +204,15 @@ def validar_topologia(topologia: dict) -> list:
     if versao_schema is not None and (isinstance(versao_schema, bool) or not isinstance(versao_schema, int)):
         return ["'schema_version' deve ser um número inteiro."]
 
+    legenda = topologia.get('legenda')
+    if legenda is not None:
+        if (not isinstance(legenda, dict) or any(k not in ('mostrar', 'rotulos') for k in legenda)
+                or not isinstance(legenda.get('mostrar', False), bool) or not isinstance(legenda.get('rotulos', {}), dict)
+                or not all(marcador_valido(k) and isinstance(v, str) and len(v) <= 60 for k, v in legenda.get('rotulos', {}).items())):
+            return ["'legenda' inválida (mostrar: verdadeiro/falso; rótulos de até 60 caracteres por marcador do catálogo)."]
+    if topologia.get('mostrar_efetivo') is not None and not isinstance(topologia['mostrar_efetivo'], bool):
+        return ["'mostrar_efetivo' deve ser verdadeiro/falso."]
+
     if topologia.get('tema') is not None:
         erros_tema = validar_tema(topologia['tema'])
         if erros_tema:
@@ -167,6 +223,12 @@ def validar_topologia(topologia: dict) -> list:
         if lista is not None and (not isinstance(lista, list) or len(lista) > MAX_RAIAS
                                   or not all(isinstance(x, str) and 0 < len(x) <= 100 for x in lista)):
             return [f"'{chave}' deve ser uma lista de até {MAX_RAIAS} nomes de raia (até 100 caracteres)."]
+
+    cores_raias = topologia.get('raias_cores')
+    if cores_raias is not None and (not isinstance(cores_raias, dict) or len(cores_raias) > MAX_RAIAS
+                                    or not all(isinstance(k, str) and 0 < len(k) <= 100 and isinstance(c, str) and COR_RE.match(c)
+                                               for k, c in cores_raias.items())):
+        return ["'raias_cores' deve mapear nomes de raia para cores #RRGGBB."]
 
     ids_nos = set()
     for node in nodes:
@@ -192,6 +254,7 @@ def validar_topologia(topologia: dict) -> list:
                 erros.append(f"Campo 'collapsed' inválido no nó {nid}.")
             if data.get('style') is not None:
                 erros.extend(validar_estilo_no(data['style'], nid))
+            erros.extend(validar_conteudo_no(data, nid))
             if data.get('shape') is not None and data['shape'] not in FORMAS:
                 erros.append(f"Forma inválida no nó {nid}.")
             colab = data.get('colab')

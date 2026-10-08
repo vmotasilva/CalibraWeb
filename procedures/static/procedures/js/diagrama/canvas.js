@@ -42,7 +42,7 @@ function renderizarCanvas() {
         const safeLane = escapeHtml(lane);
         laneEl.innerHTML = `
             <div class="swimlane-header-wrapper dropdown">
-                <div class="swimlane-rotator-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Opções da Raia / Setor">
+                <div class="swimlane-rotator-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Clique: opções | Duplo clique: configurar raia" ondblclick="abrirConfigRaia('${encodeURIComponent(lane)}')">
                     <span>${safeLane}</span>
                 </div>
                 <ul class="dropdown-menu shadow">
@@ -64,7 +64,9 @@ function renderizarCanvas() {
 
     // 2. Renderiza Nós (blocos de ramos recolhidos não são desenhados)
     arvoreCache = arvoreAtiva() ? arvoreAtual() : null;
-    contextoEstiloCache = DiagramaEstilo.contextoDosNos(arvoreCache || arvoreAtual());
+    arvoreEfetivo = arvoreCache || arvoreAtual();
+    contextoEstiloCache = DiagramaEstilo.contextoDosNos(arvoreEfetivo);
+    efetivoCache = topologia.mostrar_efetivo ? DiagramaConteudo.contagemEfetivo(topologia.nodes, arvoreEfetivo) : null;
     const escondidos = nosOcultos();
     topologia.nodes.forEach(node => {
         if (escondidos.has(String(node.id))) return;
@@ -84,6 +86,8 @@ function renderizarCanvas() {
                 markersHtml += `<span class="node-marker-badge">${escapeHtml(tag)}</span>`;
             });
         }
+
+        markersHtml = htmlMarcadoresDoBloco(node) + markersHtml; // marcadores (prioridade, progresso, bandeira...)
 
         // Cores e Estilos Customizados
         if (node.data?.bgColor) {
@@ -184,6 +188,7 @@ function renderizarCanvas() {
         }
 
         aplicarEstiloVisualAoNo(nodeEl, node);
+        aplicarConteudoVisualAoNo(nodeEl, node);
         nodeEl.insertAdjacentHTML('beforeend', htmlAlternadorRecolhimento(node));
         nodeEl.addEventListener('dblclick', (e) => iniciarEdicaoNoBloco(e, node));
 
@@ -192,6 +197,7 @@ function renderizarCanvas() {
 
     dimensionarCanvas();
     aplicarFundoDoTema();
+    atualizarLegendaVisual();
     desenharConexoes();
 }
 
@@ -229,6 +235,7 @@ function atualizarSelecoesVisuais() {
             renderizarColabInspector(node);
             preencherSugestoesDeRaias();
             atualizarPainelAparencia(node);
+            atualizarPainelConteudo(node);
 
             const panel = document.getElementById('inspectorPanel');
             if (panel.classList.contains('collapsed')) {
@@ -239,6 +246,7 @@ function atualizarSelecoesVisuais() {
         document.getElementById('inspectorEmptyState').classList.remove('d-none');
         document.getElementById('inspectorControls').classList.add('d-none');
         atualizarPainelAparencia(null);
+        atualizarPainelConteudo(null);
     }
 }
 

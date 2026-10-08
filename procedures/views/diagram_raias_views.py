@@ -141,18 +141,27 @@ def raias_catalogo_view(request):
 
     uso = uso_das_raias()
     raias = list(RaiaCatalogo.objects.select_related('setor'))
-    for r in raias:
-        r.uso = uso.get(r.nome.lower(), [])
+    por_nome = {r.nome.lower(): r for r in raias}
 
-    catalogo = {r.nome.lower() for r in raias}
-    livres = sorted(
-        ({'nome': itens[0]['raia'], 'uso': itens} for nome, itens in uso.items() if nome not in catalogo),
-        key=lambda x: x['nome'].lower()
-    )
+    # Foco: raias que de fato aparecem nos diagramas (cadastradas ou livres)
+    em_uso = []
+    for chave, itens in uso.items():
+        cat = por_nome.get(chave)
+        em_uso.append({
+            'nome': cat.nome if cat else itens[0]['raia'],
+            'catalogo': cat,
+            'uso': itens,
+            'qtd': len({i['diagrama_id'] for i in itens}),
+        })
+    em_uso.sort(key=lambda x: (x['catalogo'] is None, x['catalogo'].ordem if x['catalogo'] else 0, x['nome'].lower()))
+
+    sem_uso = [r for r in raias if r.nome.lower() not in uso]
 
     return render(request, 'procedures/diagrama_raias.html', {
         'raias': raias,
-        'raias_livres': livres,
+        'raias_em_uso': em_uso,
+        'raias_sem_uso': sem_uso,
+        'qtd_livres': sum(1 for x in em_uso if not x['catalogo']),
         'setores': Setor.objects.all().order_by('nome'),
         'pode_gerenciar': pode,
     })
