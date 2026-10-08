@@ -510,3 +510,109 @@ class DiagramaPacote4TestCase(TestCase):
         cache.clear()
         itens = [i for i in get_user_inbox_items(User.objects.get(pk=self.autor.pk)) if i.module == 'Diagramas']
         self.assertEqual([i.sub_type for i in itens], ['Devolvidos para ajuste'])
+
+
+class DiagramaColaboradorSubtitulosTestCase(TestCase):
+    """Subtítulos nos blocos e bloco de colaborador (busca, foto, validação, PDF e comparação)."""
+
+    FOTO_PNG = ("data:image/png;base64,"
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==")
+
+    def setUp(self):
+        from rh.models import Colaborador
+        from organization.models import Setor
+        self.user = User.objects.create_user(username='editor5', password='x')
+        self.client = Client()
+        self.client.force_login(self.user)
+        setor = Setor.objects.create(nome='Qualidade')
+        base = dict(setor=setor)
+        self.colab_foto = self._criar_colab(Colaborador, 'Maria Aparecida Souza Lima', 'Analista da Qualidade', self.FOTO_PNG, '9001', base)
+        self.colab_sem_foto = self._criar_colab(Colaborador, 'João Pedro Santos', 'Auxiliar', None, '9002', base)
+        self.diagrama = Diagrama.objects.create(titulo='Org', criado_por=self.user)
+
+    @staticmethod
+    def _criar_colab(Colaborador, nome, cargo, foto, matricula, extra):
+        # Preenche apenas o necessário; demais campos obrigatórios usam o primeiro valor válido do modelo
+        campos = {'nome_completo': nome, 'cargo': cargo, 'foto': foto, 'matricula': matricula, 'grupo': 'Geral'}
+        campos.update(extra)
+        return Colaborador.objects.create(**campos)
+
+    def _topologia(self):
+        return {
+            "nodes": [
+                {"id": "1", "type": "process", "position": {"x": 100, "y": 60},
+                 "data": {"label": "Maria Aparecida Souza Lima", "lane": "Qualidade", "subtitles": ["Responsável pelo DOC.071", "Substituta: João"],
+                          "colab": {"id": self.colab_foto.id, "nome": "Maria Aparecida Souza Lima",
+                                    "cargo": "Analista da Qualidade", "nomeCurto": True, "temFoto": True}}},
+                {"id": "2", "type": "process", "position": {"x": 400, "y": 60},
+                 "data": {"label": "João Pedro Santos", "lane": "Qualidade",
+                          "colab": {"id": self.colab_sem_foto.id, "nome": "João Pedro Santos", "cargo": "Auxiliar",
+                                    "nomeCurto": False, "temFoto": False}}},
+            ],
+            "edges": [{"id": "e12", "source": "1", "target": "2"}],
+            "grid_data": [],
+        }
+
+    def test_busca_de_colaboradores_para_blocos(self):
+        resp = self.client.get('/procedures/api/diagramas/colaboradores/?q=maria')
+        self.assertEqual(resp.status_code, 200)
+        itens = resp.json()['results']
+        self.assertEqual(len(itens), 1)
+        self.assertEqual((itens[0]['id'], itens[0]['cargo'], itens[0]['setor'], itens[0]['tem_foto']),
+                         (self.colab_foto.id, 'Analista da Qualidade', 'Qualidade', True))
+        self.assertFalse(self.client.get('/procedures/api/diagramas/colaboradores/?q=joão').json()['results'][0]['tem_foto'])
+        self.assertEqual(self.client.get('/procedures/api/diagramas/colaboradores/?q=m').json()['results'], [])
+        self.assertEqual(Client().get('/procedures/api/diagramas/colaboradores/?q=maria').status_code, 401)
+
+    def test_foto_do_colaborador(self):
+        resp = self.client.get(f'/procedures/api/diagramas/colaboradores/{self.colab_foto.id}/foto/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp['Content-Type'], 'image/png')
+        self.assertTrue(resp.content.startswith(b'\x89PNG'))
+        self.assertEqual(self.client.get(f'/procedures/api/diagramas/colaboradores/{self.colab_sem_foto.id}/foto/').status_code, 404)
+
+    def test_autosave_valida_subtitulos_e_colaborador(self):
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia={"nodes": [], "edges": []})
+        url = f'/procedures/api/diagramas-versoes/{versao.id}/auto-save/'
+
+        def salvar(topo):
+            return self.client.patch(url, data=json.dumps({"dados_topologia": topo}), content_type='application/json')
+
+        self.assertEqual(salvar(self._topologia()).status_code, 200)
+
+        ruim = self._topologia()
+        ruim["nodes"][0]["data"]["subtitles"] = "texto solto"
+        self.assertEqual(salvar(ruim).status_code, 400)
+        ruim = self._topologia()
+        ruim["nodes"][0]["data"]["colab"]["id"] = "abc"
+        self.assertEqual(salvar(ruim).status_code, 400)
+        ruim = self._topologia()
+        ruim["nodes"][0]["data"]["subtitles"] = ["x"] * 21
+        self.assertEqual(salvar(ruim).status_code, 400)
+
+    def test_nome_curto_e_dimensoes_no_renderer(self):
+        from procedures.services.diagram_renderer import nome_exibicao, _tamanho
+        self.assertEqual(nome_exibicao({"nome": "Maria Aparecida Souza Lima", "nomeCurto": True}), "Maria Lima")
+        self.assertEqual(nome_exibicao({"nome": "Maria Aparecida Souza Lima", "nomeCurto": False}), "Maria Aparecida Souza Lima")
+        self.assertEqual(nome_exibicao({"nome": "João Santos", "nomeCurto": True}), "João Santos")
+        topo = self._topologia()
+        largura, altura = _tamanho(topo["nodes"][0])
+        self.assertEqual(largura, 200)
+        self.assertGreater(altura, _tamanho(topo["nodes"][1])[1])  # mais alto por ter 2 subtítulos
+
+    def test_pdf_com_blocos_de_colaborador_e_fotos(self):
+        from procedures.services.pdf_doc071_generator import _carregar_fotos
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia())
+        fotos = _carregar_fotos(versao.dados_topologia)
+        self.assertEqual(set(fotos), {self.colab_foto.id})
+        pdf = gerar_pdf_diagrama_doc071(versao)
+        self.assertTrue(pdf.startswith(b'%PDF-'))
+
+    def test_comparacao_considera_subtitulos_e_funcao(self):
+        from procedures.services.diagram_diff import comparar_topologias
+        antiga = self._topologia()
+        nova = self._topologia()
+        nova["nodes"][0]["data"]["subtitles"].append("Novo subtítulo")
+        nova["nodes"][0]["data"]["colab"]["cargo"] = "Coordenadora da Qualidade"
+        campos = {m["campo"] for b in comparar_topologias(antiga, nova)["blocos_alterados"] for m in b["mudancas"]}
+        self.assertEqual(campos, {"Subtítulos", "Função"})

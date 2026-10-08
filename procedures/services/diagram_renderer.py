@@ -5,8 +5,10 @@ Reproduz a geometria do editor (raias, blocos, decisões e conexões ortogonais)
 dispensando a captura de imagem no navegador.
 """
 
+import io
+
 from reportlab.lib import colors
-from reportlab.lib.utils import simpleSplit
+from reportlab.lib.utils import ImageReader, simpleSplit
 from reportlab.platypus import Flowable
 
 FONT = 'Helvetica'
@@ -14,6 +16,8 @@ FONT_BOLD = 'Helvetica-Bold'
 
 # Dimensões do editor (px de canvas)
 W_PROCESS, H_PROCESS = 180, 64
+W_COLAB = 200
+H_SUBTITULO = 13
 W_STARTEND, H_STARTEND = 140, 48
 SIZE_DECISION = 110
 LANE_TOP, LANE_LEFT, LANE_BAND = 40, 20, 40
@@ -37,13 +41,36 @@ def _cor(hex_str, padrao):
         return padrao
 
 
+def _dados(node) -> dict:
+    return node.get('data') if isinstance(node.get('data'), dict) else {}
+
+
+def _subtitulos(node) -> list:
+    return [_txt(t) for t in (_dados(node).get('subtitles') or []) if _txt(t)]
+
+
+def _colab(node):
+    c = _dados(node).get('colab')
+    return c if isinstance(c, dict) else None
+
+
+def nome_exibicao(colab: dict) -> str:
+    """Nome completo ou, quando nomeCurto estiver ligado, primeiro + último nome."""
+    nome = (colab.get('nome') or '').strip()
+    partes = nome.split()
+    if colab.get('nomeCurto') and len(partes) > 2:
+        return f"{partes[0]} {partes[-1]}"
+    return nome
+
+
 def _tamanho(node):
     tipo = node.get('type')
     if tipo in ('start', 'end'):
         return W_STARTEND, H_STARTEND
     if tipo == 'decision':
         return SIZE_DECISION, SIZE_DECISION
-    return W_PROCESS, H_PROCESS
+    largura = W_COLAB if _colab(node) else W_PROCESS
+    return largura, H_PROCESS + H_SUBTITULO * len(_subtitulos(node))
 
 
 def _raias(nodes, grid):
@@ -59,8 +86,9 @@ def _raias(nodes, grid):
 class DiagramaFlowable(Flowable):
     """Desenha o diagrama dentro de uma caixa max_w x max_h, preservando a proporção."""
 
-    def __init__(self, topologia: dict, max_w: float, max_h: float):
+    def __init__(self, topologia: dict, max_w: float, max_h: float, fotos: dict = None):
         super().__init__()
+        self.fotos = fotos or {}  # {id_colaborador: bytes da imagem}
         self.nodes = [
             n for n in (topologia.get('nodes') or [])
             if isinstance(n, dict) and isinstance(n.get('position'), dict) and 'id' in n
@@ -179,6 +207,7 @@ class DiagramaFlowable(Flowable):
             raio = h / 2 if data.get('shape') in ('pill', 'circle') else 8
             c.roundRect(x, self._y(y + h), w, h, raio, stroke=1, fill=1)
             cor_txt = colors.white if escuro else colors.HexColor('#0F172A')
+            cor_sub = colors.HexColor('#CBD5E1') if escuro else colors.HexColor('#64748B')
 
             extras = []
             tags = [_txt(t) for t in (data.get('customTags') or []) if _txt(t)]
@@ -187,13 +216,67 @@ class DiagramaFlowable(Flowable):
             ref = _txt(data.get('documentRef'))
             if ref:
                 extras.append('Doc: ' + ref)
+            subs = _subtitulos(n)
+            colab = _colab(n)
 
-            cy = self._y(y + h / 2) + (4 if extras else 0)
-            self._texto_centrado(c, label, x + w / 2, cy, w - 20, 9, cor_txt, max_linhas=3 if extras else 4)
+            # Área de texto: com colaborador, a foto ocupa a esquerda (espaço vazio quando não há foto)
+            tx0, tx1 = x, x + w
+            if colab:
+                diam = 40
+                fx, fy = x + 10, self._y(y + h / 2) - diam / 2
+                self._desenhar_foto(c, colab.get('id'), fx, fy, diam)
+                tx0 = x + 10 + diam + 8
+                tx1 = x + w - 8
+            largura_txt = tx1 - tx0 - (0 if colab else 20)
+            cx = (tx0 + tx1) / 2
+
+            titulo = nome_exibicao(colab) if colab else label
+            linhas = []  # (texto, fonte, tamanho, cor)
+            for ln in (simpleSplit(titulo, FONT_BOLD, 9, largura_txt) or [''])[:2 if (colab or subs) else 4]:
+                linhas.append((ln, FONT_BOLD, 9, cor_txt))
+            if colab and _txt(colab.get('cargo')):
+                for ln in (simpleSplit(_txt(colab.get('cargo')), FONT, 7.5, largura_txt) or [''])[:1]:
+                    linhas.append((ln, FONT, 7.5, cor_sub))
+            for sub in subs:
+                for ln in (simpleSplit(sub, FONT, 7.5, largura_txt) or [''])[:1]:
+                    linhas.append((ln, FONT, 7.5, cor_sub))
             if extras:
-                c.setFont(FONT, 6.5)
-                c.setFillColor(colors.HexColor('#CBD5E1') if escuro else colors.HexColor('#64748B'))
-                c.drawCentredString(x + w / 2, self._y(y + h) + 5, ' - '.join(extras)[:46])
+                linhas.append((' - '.join(extras)[:46], FONT, 6.5, cor_sub))
+
+            altura_total = sum(tam * 1.25 for _, _, tam, _ in linhas)
+            ycur = self._y(y + h / 2) + altura_total / 2
+            for texto, fonte, tam, cor in linhas:
+                ycur -= tam * 1.25
+                c.setFont(fonte, tam)
+                c.setFillColor(cor)
+                if colab:
+                    c.drawString(tx0, ycur + tam * 0.3, texto)
+                else:
+                    c.drawCentredString(cx, ycur + tam * 0.3, texto)
+
+    def _desenhar_foto(self, c, colab_id, x, y, diam):
+        """Foto circular do colaborador; sem foto, apenas o espaço (círculo neutro, sem ícone)."""
+        c.saveState()
+        raio = diam / 2
+        dados = self.fotos.get(colab_id)
+        desenhou = False
+        if dados:
+            try:
+                p = c.beginPath()
+                p.circle(x + raio, y + raio, raio)
+                c.clipPath(p, stroke=0, fill=0)
+                c.drawImage(ImageReader(io.BytesIO(dados)), x, y, diam, diam, preserveAspectRatio=True, anchor='c', mask='auto')
+                desenhou = True
+            except Exception:
+                desenhou = False
+        c.restoreState()
+        if not desenhou:
+            c.saveState()
+            c.setFillColor(colors.HexColor('#F1F5F9'))
+            c.setStrokeColor(colors.HexColor('#E2E8F0'))
+            c.setLineWidth(0.8)
+            c.circle(x + raio, y + raio, raio, stroke=1, fill=1)
+            c.restoreState()
 
     # --- conexões --------------------------------------------------------------
     def _desenhar_aresta(self, c, e):

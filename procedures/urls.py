@@ -360,6 +360,8 @@ urlpatterns = [
 
     # API Endpoints
     path('api/diagramas/', diagram_views.api_diagramas_list_create, name='api_diagramas_list_create'),
+    path('api/diagramas/colaboradores/', diagram_views.api_diagramas_colaboradores, name='api_diagramas_colaboradores'),
+    path('api/diagramas/colaboradores/<int:colaborador_id>/foto/', diagram_views.api_diagramas_colaborador_foto, name='api_diagramas_colaborador_foto'),
     path('api/diagramas/templates/', diagram_views.api_diagramas_templates, name='api_diagramas_templates'),
     path('api/diagramas/<uuid:diagrama_id>/', diagram_views.api_diagrama_detail, name='api_diagrama_detail'),
     path('api/diagramas-versoes/<uuid:versao_id>/', diagram_views.api_diagrama_versao_detail, name='api_diagrama_versao_detail'),

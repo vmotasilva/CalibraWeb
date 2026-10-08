@@ -13,6 +13,9 @@ def _no_info(node: dict) -> dict:
         'lane': data.get('lane') or 'Geral',
         'documentRef': data.get('documentRef') or '',
         'tags': ', '.join(str(t) for t in (data.get('customTags') or [])),
+        'subtitulos': ' | '.join(str(t) for t in (data.get('subtitles') or []) if str(t).strip()),
+        'colaborador': (data.get('colab') or {}).get('nome', '') if isinstance(data.get('colab'), dict) else '',
+        'cargo': (data.get('colab') or {}).get('cargo', '') if isinstance(data.get('colab'), dict) else '',
     }
 
 
@@ -35,7 +38,8 @@ def comparar_topologias(antiga: dict, nova: dict) -> dict:
         if not a:
             continue
         mudancas = []
-        for campo, rotulo in CAMPOS_NO + (('tags', 'Marcadores'),):
+        for campo, rotulo in CAMPOS_NO + (('tags', 'Marcadores'), ('subtitulos', 'Subtítulos'),
+                                           ('colaborador', 'Colaborador'), ('cargo', 'Função')):
             if a.get(campo, '') != b.get(campo, ''):
                 mudancas.append({'campo': rotulo, 'de': a.get(campo) or '(vazio)', 'para': b.get(campo) or '(vazio)'})
         if mudancas:

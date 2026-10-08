@@ -52,6 +52,28 @@ class NumberedCanvas(canvas.Canvas):
         self.restoreState()
 
 
+def _carregar_fotos(topologia: dict) -> dict:
+    """Busca as fotos (Base64 no RH) dos colaboradores usados nos blocos: {id: bytes}."""
+    ids = set()
+    for n in topologia.get('nodes') or []:
+        colab = (n.get('data') or {}).get('colab') if isinstance(n, dict) and isinstance(n.get('data'), dict) else None
+        if isinstance(colab, dict) and isinstance(colab.get('id'), int):
+            ids.add(colab['id'])
+    if not ids:
+        return {}
+    try:
+        from rh.models import Colaborador
+        from .diagram_fotos import decodificar_foto_colaborador
+        fotos = {}
+        for cid, foto in Colaborador.objects.filter(pk__in=ids).values_list('id', 'foto'):
+            dec = decodificar_foto_colaborador(foto)
+            if dec:
+                fotos[cid] = dec[0]
+        return fotos
+    except Exception:
+        return {}
+
+
 def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) -> bytes:
     """Gera o arquivo PDF DOC.071 em orientação paisagem (Landscape A4)."""
     buffer = io.BytesIO()
@@ -154,11 +176,12 @@ def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) 
 
     if not imagem_ok:
         if topologia.get('nodes'):
-            desenho = DiagramaFlowable(topologia, max_w=782, max_h=330)
+            fotos = _carregar_fotos(topologia)
+            desenho = DiagramaFlowable(topologia, max_w=782, max_h=330, fotos=fotos)
             if desenho.scale < 0.5:
                 # Diagrama grande: página própria para manter a legibilidade
                 story.append(PageBreak())
-                desenho = DiagramaFlowable(topologia, max_w=782, max_h=470)
+                desenho = DiagramaFlowable(topologia, max_w=782, max_h=470, fotos=fotos)
             story.append(desenho)
         else:
             story.append(Paragraph("<i>[Fluxograma sem blocos cadastrados]</i>", cell_style))

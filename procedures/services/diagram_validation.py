@@ -6,6 +6,7 @@ Sem dependências externas: usada pelo endpoint de auto-save.
 
 MAX_NODES = 1000
 MAX_EDGES = 3000
+MAX_SUBTITULOS = 20
 
 
 def _numero(valor):
@@ -42,8 +43,18 @@ def validar_topologia(topologia: dict) -> list:
         pos = node.get('position')
         if not isinstance(pos, dict) or not (_numero(pos.get('x')) and _numero(pos.get('y'))):
             erros.append(f"Coordenadas x/y inválidas no nó {nid}.")
-        if not isinstance(node.get('data', {}), dict):
+        data = node.get('data', {})
+        if not isinstance(data, dict):
             erros.append(f"Campo 'data' inválido no nó {nid}.")
+        else:
+            subs = data.get('subtitles')
+            if subs is not None and (not isinstance(subs, list) or len(subs) > MAX_SUBTITULOS
+                                     or not all(isinstance(t, str) and len(t) <= 300 for t in subs)):
+                erros.append(f"Subtítulos inválidos no nó {nid} (máx. {MAX_SUBTITULOS}, até 300 caracteres cada).")
+            colab = data.get('colab')
+            if colab is not None and (not isinstance(colab, dict) or not isinstance(colab.get('id'), int)
+                                      or isinstance(colab.get('id'), bool)):
+                erros.append(f"Dados de colaborador inválidos no nó {nid}.")
 
     ids_arestas = set()
     for edge in edges:

@@ -112,6 +112,82 @@
         color: #64748b;
     }
 
+    /* Subtítulos e bloco de colaborador */
+    .node-subtitle {
+        font-size: 10.5px;
+        line-height: 1.25;
+        font-weight: 500;
+        opacity: 0.75;
+        margin-top: 2px;
+        word-break: break-word;
+    }
+
+    .node-process.node-colab {
+        width: 200px;
+        padding: 8px 10px;
+    }
+
+    .colab-card {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-align: left;
+    }
+
+    .colab-foto {
+        flex: 0 0 40px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+    }
+
+    .colab-foto img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .colab-info {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .colab-nome {
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.2;
+        word-break: break-word;
+    }
+
+    .colab-cargo,
+    .colab-cargo-input {
+        display: block;
+        width: 100%;
+        font-size: 10.5px;
+        line-height: 1.25;
+        font-weight: 500;
+        color: inherit;
+        opacity: 0.8;
+    }
+
+    .colab-cargo-input {
+        background: transparent;
+        border: 0;
+        border-bottom: 1px dashed rgba(100, 116, 139, 0.45);
+        padding: 0;
+        outline: none;
+        cursor: text;
+    }
+
+    .colab-cargo-input:focus {
+        border-bottom-color: #2563eb;
+        opacity: 1;
+    }
+
     /* Layout do Corpo: Área Central + Painel Lateral */
     .editor-body-wrapper {
         display: flex;
@@ -1126,7 +1202,41 @@
                             <input type="text" id="inspNodeLabel" class="form-control form-control-sm" oninput="aplicarEstiloNoSelecionado('label', this.value)">
                         </div>
 
-                        <!-- Título da Etapa removido conforme solicitado -->
+                        <!-- Subtítulos (linhas adicionais abaixo do título do bloco) -->
+                        <div class="mb-3" id="inspSubtitulosBox">
+                            <label class="form-label text-muted small fw-bold mb-1">Subtítulos</label>
+                            <div id="inspSubtitulosList" class="d-flex flex-column gap-1 mb-1"></div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="adicionarSubtitulo()">
+                                <i class="bi bi-plus-lg"></i> Adicionar subtítulo
+                            </button>
+                        </div>
+
+                        <!-- Bloco de Colaborador: nome, função (editável) e foto vindos do RH -->
+                        <div class="mb-3" id="inspColabBox">
+                            <label class="form-label text-muted small fw-bold mb-1"><i class="bi bi-person-badge"></i> Colaborador</label>
+
+                            <div id="inspColabVinculado" class="d-none border rounded p-2 bg-light">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <div id="inspColabFoto" class="colab-foto"></div>
+                                    <div class="small fw-bold flex-grow-1" id="inspColabNome"></div>
+                                </div>
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" id="inspColabNomeCurto" onchange="alternarNomeCurto(this.checked)">
+                                    <label class="form-check-label small" for="inspColabNomeCurto">Mostrar só primeiro e último nome</label>
+                                </div>
+                                <label class="form-label text-muted small fw-bold mb-1">Função</label>
+                                <input type="text" id="inspColabCargo" class="form-control form-control-sm mb-2" placeholder="Função / cargo" oninput="editarCargoColab(this.value)">
+                                <button type="button" class="btn btn-link btn-sm text-danger p-0" onclick="desvincularColaborador()">
+                                    <i class="bi bi-person-x"></i> Desvincular colaborador
+                                </button>
+                            </div>
+
+                            <div id="inspColabBusca">
+                                <input type="text" id="inspColabSearch" class="form-control form-control-sm" placeholder="Pesquisar colaborador pelo nome..." autocomplete="off" oninput="buscarColaboradorInspector(this.value)">
+                                <div id="inspColabResultados" class="list-group list-group-flush border rounded mt-1" style="max-height: 200px; overflow-y: auto;"></div>
+                                <div class="form-text">Transforma o bloco em um bloco de colaborador.</div>
+                            </div>
+                        </div>
 
                         <!-- Raia / Setor -->
                         <div class="mb-3">

@@ -25,6 +25,7 @@ from ..models import Procedimento
 from ..models_diagram import Diagrama, DiagramaVersao, StatusDiagrama
 from ..services.diagram_validation import validar_topologia
 from ..services.diagram_diff import comparar_topologias
+from ..services.diagram_fotos import decodificar_foto_colaborador
 from shared.inbox import invalidar_cache_inbox
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
@@ -413,6 +414,53 @@ def api_diagrama_versao_aplicar_template(request, versao_id):
     versao.save(update_fields=['dados_topologia', 'atualizado_em'])
 
     return JsonResponse(serialize_diagrama_versao(versao), status=200)
+
+
+@require_http_methods(["GET"])
+def api_diagramas_colaboradores(request):
+    """Busca de colaboradores para os blocos de colaborador (nome, função, setor e se há foto)."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Autenticação necessária."}, status=401)
+
+    from rh.models import Colaborador
+
+    termo = request.GET.get('q', '').strip()
+    if len(termo) < 2:
+        return JsonResponse({"results": []})
+
+    colaboradores = (
+        Colaborador.objects.select_related('setor')
+        .filter(models.Q(nome_completo__icontains=termo) | models.Q(matricula__icontains=termo))
+        .order_by('nome_completo')[:10]
+    )
+    return JsonResponse({"results": [
+        {
+            "id": c.id,
+            "nome": c.nome_completo,
+            "cargo": c.cargo or '',
+            "setor": c.setor.nome if c.setor else '',
+            "tem_foto": bool(c.foto),
+        }
+        for c in colaboradores
+    ]})
+
+
+@require_http_methods(["GET"])
+def api_diagramas_colaborador_foto(request, colaborador_id):
+    """Entrega a foto do colaborador como imagem (evita gravar Base64 dentro do JSON do diagrama)."""
+    if not request.user.is_authenticated:
+        return JsonResponse({"error": "Autenticação necessária."}, status=401)
+
+    from rh.models import Colaborador
+
+    foto = Colaborador.objects.filter(pk=colaborador_id).values_list('foto', flat=True).first()
+    decodificada = decodificar_foto_colaborador(foto)
+    if not decodificada:
+        return HttpResponse(status=404)
+    conteudo, content_type = decodificada
+    resposta = HttpResponse(conteudo, content_type=content_type)
+    resposta['Cache-Control'] = 'private, max-age=300'
+    return resposta
 
 
 # ==============================================================================
