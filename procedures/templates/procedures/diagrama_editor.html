@@ -1076,9 +1076,7 @@
                     <li class="somente-raias"><hr class="dropdown-divider"></li>
                     <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="adicionarNovaRaia()"><i class="bi bi-plus-circle me-2"></i>Adicionar raia...</a></li>
                     {% endif %}
-                    {% if pode_gerenciar_raias %}
-                    <li><a class="dropdown-item" href="{% url 'procedures:diagramas_raias' %}" target="_blank"><i class="bi bi-layout-three-columns me-2"></i>Gerenciar catálogo de raias</a></li>
-                    {% endif %}
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirGerenciarRaias()"><i class="bi bi-layout-three-columns me-2"></i>Gerenciar raias</a></li>
                 </ul>
             </div>
         </div>
@@ -1419,9 +1417,9 @@
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold mb-1 d-flex justify-content-between">
                                 <span>Raia</span>
-                                <a href="{% url 'procedures:diagramas_raias' %}" target="_blank" class="fw-normal text-decoration-none" title="Cadastrar e mapear raias (abre em outra aba)"><i class="bi bi-gear"></i> Gerenciar raias</a>
+                                <a href="javascript:void(0)" onclick="abrirGerenciarRaias()" class="fw-normal text-decoration-none" title="Criar e editar as raias deste diagrama"><i class="bi bi-gear"></i> Gerenciar raias</a>
                             </label>
-                            <input type="text" id="inspNodeLane" class="form-control form-control-sm" list="raiasDatalist" autocomplete="off" placeholder="Escolha do catálogo ou digite uma raia livre" onchange="aplicarEstiloNoSelecionado('lane', this.value)">
+                            <input type="text" id="inspNodeLane" class="form-control form-control-sm" list="raiasDatalist" autocomplete="off" placeholder="Escolha uma raia do diagrama ou digite uma nova" onchange="aplicarEstiloNoSelecionado('lane', this.value)">
                             <datalist id="raiasDatalist"></datalist>
                         </div>
 
@@ -1819,8 +1817,7 @@
                             <button type="button" class="btn btn-sm btn-light border py-0" onclick="moverRaiaPelaConfig(1)" title="Mover para baixo"><i class="bi bi-arrow-down"></i></button>
                         </span>
                     </li>
-                    <li id="cfgRaiaOrigem" class="mb-1"></li>
-                    <li><a href="{% url 'procedures:diagramas_raias' %}" target="_blank" class="text-decoration-none"><i class="bi bi-gear"></i> Gerenciar no catálogo de raias</a></li>
+                    <li><a href="javascript:void(0)" onclick="bootstrap.Modal.getInstance(document.getElementById('modalConfigRaia'))?.hide(); abrirGerenciarRaias();" class="text-decoration-none"><i class="bi bi-layout-three-columns"></i> Gerenciar todas as raias</a></li>
                 </ul>
             </div>
             <div class="modal-footer justify-content-between">
@@ -1834,6 +1831,33 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalGerenciarRaias" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-layout-three-columns"></i> Raias deste diagrama</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">As raias existem somente neste diagrama. Edite o nome e a cor, reordene ou exclua. Duplo clique no rótulo da raia no canvas também abre a configuração individual.</p>
+                <div id="listaGerenciarRaias" class="list-group mb-3"></div>
+                <div id="gerenciarRaiasNova">
+                    <label class="form-label fw-bold small">Nova raia</label>
+                    <div class="input-group">
+                        <input type="color" id="gerenciarRaiaNovaCor" class="form-control form-control-color" value="#334155" title="Cor da faixa">
+                        <input type="text" id="gerenciarRaiaNovaNome" class="form-control" maxlength="100" placeholder="Ex.: Fornecedores externos"
+                               onkeydown="if(event.key === 'Enter') { event.preventDefault(); gerenciarRaiaAdicionar(); }">
+                        <button class="btn btn-primary" type="button" onclick="gerenciarRaiaAdicionar()"><i class="bi bi-plus-lg"></i> Criar</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Concluir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="modalNovaRaia" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -1842,16 +1866,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <label class="form-label fw-bold small">Do catálogo</label>
-                <div id="listaRaiasCatalogo" class="list-group mb-1" style="max-height: 240px; overflow-y: auto;"></div>
-                <div class="mb-3 small"><a href="{% url 'procedures:diagramas_raias' %}" target="_blank" class="text-decoration-none"><i class="bi bi-gear"></i> Cadastrar ou editar raias no catálogo</a></div>
-                <label class="form-label fw-bold small">Raia de uso livre</label>
+                <label class="form-label fw-bold small">Nome da nova raia</label>
                 <div class="input-group">
                     <input type="text" id="inputRaiaLivre" class="form-control" maxlength="100" placeholder="Ex.: Fornecedores externos"
                            onkeydown="if(event.key === 'Enter') { event.preventDefault(); adicionarRaiaLivre(); }">
                     <button class="btn btn-primary" type="button" onclick="adicionarRaiaLivre()">Adicionar</button>
                 </div>
-                <div class="form-text">Raias livres não precisam estar no catálogo (útil para mapas mentais mais livres).</div>
+                <div class="form-text">A raia existe somente neste diagrama.</div>
             </div>
         </div>
     </div>

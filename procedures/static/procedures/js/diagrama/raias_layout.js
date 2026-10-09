@@ -174,20 +174,16 @@ let raiaEmConfiguracao = null;
 function abrirConfigRaia(encodedLane) {
     const lane = decodeURIComponent(encodedLane);
     raiaEmConfiguracao = lane;
-    const cat = raiaCatalogoPorNome(lane);
     const lanes = obterListaRaiasOrdenada();
     const blocos = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane).length;
     const propria = (topologia.raias_cores || {})[lane];
 
     document.getElementById('cfgRaiaNome').value = lane;
-    document.getElementById('cfgRaiaCor').value = propria || cat?.cor || '#334155';
+    document.getElementById('cfgRaiaCor').value = propria || corDaRaia(lane);
     document.getElementById('cfgRaiaCor').dataset.alterada = '';
     document.getElementById('cfgRaiaPosicao').textContent = `${lanes.indexOf(lane) + 1} de ${lanes.length}`;
     document.getElementById('cfgRaiaBlocos').textContent = blocos;
-    document.getElementById('cfgRaiaOrigem').innerHTML = cat
-        ? `<i class="bi bi-journal-check text-success"></i> Cadastrada no catálogo${cat.setor_nome ? ` (setor ${escapeHtml(cat.setor_nome)})` : ''}`
-        : '<i class="bi bi-pencil-square text-warning"></i> Raia livre (fora do catálogo)';
-    document.getElementById('cfgRaiaRestaurarCor').style.display = (propria && cat) ? '' : 'none';
+    document.getElementById('cfgRaiaRestaurarCor').style.display = propria ? '' : 'none';
     document.querySelectorAll('#modalConfigRaia [data-edicao]').forEach(el => { el.disabled = IS_APPROVED; });
     document.getElementById('cfgRaiaAcoes').style.display = IS_APPROVED ? 'none' : '';
     new bootstrap.Modal(document.getElementById('modalConfigRaia')).show();
@@ -261,25 +257,6 @@ function moverRaia(encodedLane, direcao) {
 
 function adicionarNovaRaia() {
     if (IS_APPROVED) return;
-    const jaNoDiagrama = new Set(obterListaRaiasOrdenada().map(l => l.toLowerCase()));
-    const lista = document.getElementById('listaRaiasCatalogo');
-    lista.innerHTML = '';
-
-    const disponiveis = RAIAS_CATALOGO.filter(r => !jaNoDiagrama.has(r.nome.toLowerCase()));
-    if (disponiveis.length === 0) {
-        lista.innerHTML = '<div class="list-group-item small text-muted">Nenhuma raia do catálogo disponível (todas já estão no diagrama ou o catálogo está vazio).</div>';
-    }
-    disponiveis.forEach(r => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
-        btn.innerHTML = `<span style="width:12px;height:22px;border-radius:3px;background:${escapeHtml(r.cor)};flex:0 0 12px;"></span>
-                         <span class="fw-semibold">${escapeHtml(r.nome)}</span>
-                         ${r.setor_nome ? `<span class="badge bg-light text-dark border ms-auto">${escapeHtml(r.setor_nome)}</span>` : ''}`;
-        btn.onclick = () => adicionarRaiaAoDiagrama(r.nome);
-        lista.appendChild(btn);
-    });
-
     document.getElementById('inputRaiaLivre').value = '';
     new bootstrap.Modal(document.getElementById('modalNovaRaia')).show();
 }
@@ -288,7 +265,7 @@ function adicionarRaiaLivre() {
     adicionarRaiaAoDiagrama(document.getElementById('inputRaiaLivre').value);
 }
 
-// Insere a raia na posição definida pela ordem padrão do catálogo (raias livres ficam sempre no fim)
+// Insere a nova raia no fim do diagrama
 function adicionarRaiaAoDiagrama(nome) {
     if (IS_APPROVED) return;
     const nomeLimpo = (nome || '').trim();
@@ -300,15 +277,7 @@ function adicionarRaiaAoDiagrama(nome) {
         return;
     }
 
-    let posicao = lanes.length;
-    const cat = raiaCatalogoPorNome(nomeLimpo);
-    if (cat) {
-        const idx = lanes.findIndex(l => {
-            const c = raiaCatalogoPorNome(l);
-            return c && c.ordem > cat.ordem;
-        });
-        if (idx !== -1) posicao = idx;
-    }
+    const posicao = lanes.length;
 
     const nova = [...lanes];
     nova.splice(posicao, 0, nomeLimpo);
@@ -350,4 +319,87 @@ function excluirRaia(encodedLane) {
     renderizarGrelha();
     renderizarOutliner();
     dispararAutoSave();
+}
+
+// =========================================================================
+// GESTÃO DAS RAIAS DO DIAGRAMA ABERTO (lista: nome, cor, ordem, exclusão)
+// =========================================================================
+function abrirGerenciarRaias() {
+    renderizarListaGerenciarRaias();
+    document.getElementById('gerenciarRaiasNova').style.display = IS_APPROVED ? 'none' : '';
+    document.getElementById('gerenciarRaiaNovaNome').value = '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalGerenciarRaias')).show();
+}
+
+function renderizarListaGerenciarRaias() {
+    const lista = document.getElementById('listaGerenciarRaias');
+    const lanes = obterListaRaiasOrdenada();
+    const dis = IS_APPROVED ? 'disabled' : '';
+    lista.innerHTML = '';
+    if (lanes.length === 0) {
+        lista.innerHTML = '<div class="list-group-item small text-muted">Este diagrama ainda não tem raias.</div>';
+        return;
+    }
+    lanes.forEach((lane, i) => {
+        const blocos = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane).length;
+        const row = document.createElement('div');
+        row.className = 'list-group-item d-flex align-items-center gap-2';
+        row.innerHTML = `
+            <input type="color" class="form-control form-control-color" value="${escapeHtml(corDaRaia(lane))}" ${dis} title="Cor da faixa">
+            <input type="text" class="form-control form-control-sm" maxlength="100" value="${escapeHtml(lane)}" ${dis}>
+            <span class="badge bg-light text-dark border text-nowrap">${blocos} bloco${blocos === 1 ? '' : 's'}</span>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-light border" ${i === 0 || IS_APPROVED ? 'disabled' : ''} data-acao="cima" title="Mover para cima"><i class="bi bi-arrow-up"></i></button>
+                <button type="button" class="btn btn-light border" ${i === lanes.length - 1 || IS_APPROVED ? 'disabled' : ''} data-acao="baixo" title="Mover para baixo"><i class="bi bi-arrow-down"></i></button>
+                <button type="button" class="btn btn-outline-danger" ${dis} data-acao="excluir" title="Excluir raia"><i class="bi bi-trash"></i></button>
+            </div>`;
+        const [cor, nome] = row.querySelectorAll('input');
+        cor.onchange = () => {
+            topologia.raias_cores = { ...(topologia.raias_cores || {}), [lane]: cor.value };
+            renderizarCanvas();
+            dispararAutoSave();
+        };
+        nome.onchange = () => gerenciarRaiaRenomear(lane, nome.value);
+        nome.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); nome.blur(); } };
+        row.querySelector('[data-acao="cima"]').onclick = () => { moverRaia(encodeURIComponent(lane), -1); renderizarListaGerenciarRaias(); };
+        row.querySelector('[data-acao="baixo"]').onclick = () => { moverRaia(encodeURIComponent(lane), 1); renderizarListaGerenciarRaias(); };
+        row.querySelector('[data-acao="excluir"]').onclick = () => {
+            excluirRaia(encodeURIComponent(lane));
+            renderizarListaGerenciarRaias();
+        };
+        lista.appendChild(row);
+    });
+}
+
+function gerenciarRaiaRenomear(atual, valor) {
+    const novo = (valor || '').trim();
+    if (!novo || novo === atual) { renderizarListaGerenciarRaias(); return; }
+    if (obterListaRaiasOrdenada().some(l => l !== atual && l.toLowerCase() === novo.toLowerCase())) {
+        alert(`A raia "${novo}" já existe neste diagrama.`);
+        renderizarListaGerenciarRaias();
+        return;
+    }
+    renomearRaiaNoDiagrama(atual, novo);
+    renderizarCanvas();
+    renderizarGrelha();
+    renderizarOutliner();
+    preencherSugestoesDeRaias();
+    dispararAutoSave();
+    renderizarListaGerenciarRaias();
+}
+
+function gerenciarRaiaAdicionar() {
+    if (IS_APPROVED) return;
+    const nome = document.getElementById('gerenciarRaiaNovaNome').value.trim();
+    const cor = document.getElementById('gerenciarRaiaNovaCor').value;
+    if (!nome) return;
+    const antes = obterListaRaiasOrdenada().length;
+    adicionarRaiaAoDiagrama(nome);
+    if (obterListaRaiasOrdenada().length > antes) {
+        if (cor && cor !== '#334155') topologia.raias_cores = { ...(topologia.raias_cores || {}), [nome]: cor };
+        renderizarCanvas();
+        dispararAutoSave();
+        document.getElementById('gerenciarRaiaNovaNome').value = '';
+    }
+    renderizarListaGerenciarRaias();
 }

@@ -746,15 +746,14 @@ class DiagramaRaiasTestCase(TestCase):
         self.assertIn('Liderança', html)
 
     # --- editor / busca / PDF -------------------------------------------------------
-    def test_editor_recebe_catalogo_e_busca_traz_setor_id(self):
+    def test_editor_usa_raias_somente_do_diagrama_e_busca_traz_setor_id(self):
         from procedures.models_diagram import RaiaCatalogo
         from rh.models import Colaborador
         RaiaCatalogo.objects.create(nome='Qualidade', cor='#0f766e', ordem=10, setor=self.setor_q)
-        RaiaCatalogo.objects.create(nome='Inativa', ordem=20, ativo=False)
         html = self._cliente(self.admin).get(f'/procedures/diagramas/editor/{self.versao.id}/').content.decode()
         self.assertIn('id="raiasCatalogoData"', html)
-        self.assertIn('#0f766e', html)
-        self.assertNotIn('Inativa', html)
+        self.assertNotIn('#0f766e', html)  # o catálogo global não alimenta o editor
+        self.assertIn('id="modalGerenciarRaias"', html)
         self.assertIn('id="modalNovaRaia"', html)
 
         Colaborador.objects.create(nome_completo='Ana Paula Silva', matricula='7001', grupo='G', setor=self.setor_q)

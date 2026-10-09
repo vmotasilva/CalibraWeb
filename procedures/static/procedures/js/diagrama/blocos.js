@@ -18,7 +18,7 @@ function raiaDeReferenciaDoNovoBloco(ctx) {
     return ref?.data?.lane || obterListaRaiasOrdenada()[0] || 'Geral';
 }
 
-// Monta o seletor: raias deste diagrama, raias do catálogo ainda não usadas e "nova raia"
+// Monta o seletor: raias deste diagrama e "nova raia"
 function prepararSeletorRaiaNovoBloco(ctx) {
     const bloco = document.getElementById('blocoRaiaNovoBloco');
     const select = document.getElementById('selectRaiaNovoBloco');

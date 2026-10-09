@@ -940,7 +940,7 @@ function moverNoParaRaia(node, nomeRaia) {
 function preencherSugestoesDeRaias() {
     const lista = document.getElementById('raiasDatalist');
     if (!lista) return;
-    const nomes = [...new Set([...RAIAS_CATALOGO.map(r => r.nome), ...obterListaRaiasOrdenada()])];
+    const nomes = [...new Set(obterListaRaiasOrdenada())];
     lista.innerHTML = nomes.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
 }
 

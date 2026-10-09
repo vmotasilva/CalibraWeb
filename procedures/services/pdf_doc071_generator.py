@@ -276,7 +276,7 @@ def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) 
     if not imagem_ok:
         if topologia.get('nodes'):
             fotos = {**_carregar_fotos(topologia), **_carregar_imagens(topologia)}
-            cores = {**_cores_das_raias(), **(topologia.get('raias_cores') or {})}
+            cores = dict(topologia.get('raias_cores') or {})
             desenho = DiagramaFlowable(topologia, max_w=782, max_h=330, fotos=fotos, raias_cores=cores)
             if desenho.scale < 0.5:
                 # Diagrama grande: página própria para manter a legibilidade

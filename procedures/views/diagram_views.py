@@ -700,7 +700,7 @@ def diagrama_editor_view(request, versao_id):
         'is_locked': versao.status != StatusDiagrama.RASCUNHO,
         'editor_js_version': _versao_js_editor(),
         'editor_js_modulos': EDITOR_JS_MODULOS,
-        'raias_catalogo': raias_catalogo_para_editor(),
+        'raias_catalogo': [],  # as raias pertencem somente ao diagrama aberto (sem catálogo global)
         'temas_salvos': temas_para_editor(request.user),
         'conteudo_urls': {
             'procedimento': reverse('procedures:detalhe_procedimento', args=[0]),
