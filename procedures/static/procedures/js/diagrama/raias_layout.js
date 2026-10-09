@@ -346,7 +346,7 @@ function renderizarListaGerenciarRaias() {
         row.className = 'list-group-item d-flex align-items-center gap-2';
         row.innerHTML = `
             <input type="color" class="form-control form-control-color" value="${escapeHtml(corDaRaia(lane))}" ${dis} title="Cor da faixa">
-            <input type="text" class="form-control form-control-sm" maxlength="100" value="${escapeHtml(lane)}" ${dis}>
+            <input type="text" name="raia_nome_x" autocomplete="off" data-lpignore="true" data-1p-ignore class="form-control form-control-sm" maxlength="100" value="${escapeHtml(lane)}" ${dis}>
             <span class="badge bg-light text-dark border text-nowrap">${blocos} bloco${blocos === 1 ? '' : 's'}</span>
             <div class="btn-group btn-group-sm">
                 <button type="button" class="btn btn-light border" ${i === 0 || IS_APPROVED ? 'disabled' : ''} data-acao="cima" title="Mover para cima"><i class="bi bi-arrow-up"></i></button>

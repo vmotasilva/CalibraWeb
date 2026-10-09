@@ -1799,7 +1799,7 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label fw-bold small">Nome da raia</label>
-                    <input type="text" id="cfgRaiaNome" data-edicao class="form-control" maxlength="100"
+                    <input type="text" id="cfgRaiaNome" name="cfgRaiaNome_x" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" data-edicao class="form-control" maxlength="100"
                            onkeydown="if(event.key === 'Enter') { event.preventDefault(); salvarConfigRaia(); }">
                 </div>
                 <div class="mb-3">
@@ -1845,7 +1845,7 @@
                     <label class="form-label fw-bold small">Nova raia</label>
                     <div class="input-group">
                         <input type="color" id="gerenciarRaiaNovaCor" class="form-control form-control-color" value="#334155" title="Cor da faixa">
-                        <input type="text" id="gerenciarRaiaNovaNome" class="form-control" maxlength="100" placeholder="Ex.: Fornecedores externos"
+                        <input type="text" id="gerenciarRaiaNovaNome" name="gerenciarRaiaNovaNome_x" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" class="form-control" maxlength="100" placeholder="Ex.: Fornecedores externos"
                                onkeydown="if(event.key === 'Enter') { event.preventDefault(); gerenciarRaiaAdicionar(); }">
                         <button class="btn btn-primary" type="button" onclick="gerenciarRaiaAdicionar()"><i class="bi bi-plus-lg"></i> Criar</button>
                     </div>
@@ -1868,7 +1868,7 @@
             <div class="modal-body">
                 <label class="form-label fw-bold small">Nome da nova raia</label>
                 <div class="input-group">
-                    <input type="text" id="inputRaiaLivre" class="form-control" maxlength="100" placeholder="Ex.: Fornecedores externos"
+                    <input type="text" id="inputRaiaLivre" name="inputRaiaLivre_x" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" class="form-control" maxlength="100" placeholder="Ex.: Fornecedores externos"
                            onkeydown="if(event.key === 'Enter') { event.preventDefault(); adicionarRaiaLivre(); }">
                     <button class="btn btn-primary" type="button" onclick="adicionarRaiaLivre()">Adicionar</button>
                 </div>
@@ -2003,7 +2003,7 @@
                 <div id="blocoRaiaNovoBloco" class="mt-3 pt-2 border-top">
                     <label class="form-label text-muted small fw-bold mb-1" for="selectRaiaNovoBloco"><i class="bi bi-layout-three-columns"></i> Raia do novo bloco</label>
                     <select id="selectRaiaNovoBloco" class="form-select form-select-sm" onchange="aoEscolherRaiaNovoBloco()"></select>
-                    <input type="text" id="inputRaiaNovoBloco" class="form-control form-control-sm mt-1 d-none" maxlength="100" placeholder="Nome da nova raia"
+                    <input type="text" id="inputRaiaNovoBloco" name="inputRaiaNovoBloco_x" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" class="form-control form-control-sm mt-1 d-none" maxlength="100" placeholder="Nome da nova raia"
                            onkeypress="if(event.key==='Enter') confirmarAdicionarBloco()">
                     <div class="form-text" id="dicaRaiaNovoBloco">Em qual raia o bloco ficará. Colaboradores com setor mapeado a uma raia do catálogo usam essa raia, a menos que você escolha outra aqui.</div>
                 </div>
