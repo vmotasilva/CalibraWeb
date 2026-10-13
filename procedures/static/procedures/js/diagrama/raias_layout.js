@@ -6,35 +6,53 @@
 // =========================================================================
 // AUTOMAÇÕES DE POSICIONAMENTO, CENTRALIZAÇÃO E ALINHAMENTO POR RAIAS
 // =========================================================================
+// Auto-layout nas raias: o Y vem da raia de cada bloco; o X segue a hierarquia (subordinados distribuídos
+// lado a lado e centralizados sob o bloco ao qual estão ligados, sem sobreposição).
 function posicionarAutomaticoPorRaias(centralizar = true) {
     const lanes = obterListaRaiasOrdenada();
     const nodeWidth = 190;
     const gap = 60;
+    const passo = nodeWidth + gap;
     const viewport = document.getElementById('canvasViewport');
     const canvasTargetWidth = viewport ? (viewport.clientWidth / zoomLevel) : 1150;
 
-    lanes.forEach((lane, lIdx) => {
-        const yBase = 40 + lIdx * 240;
-        const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
-        if (nodesInLane.length === 0) return;
+    const yDaRaia = {};
+    lanes.forEach((lane, lIdx) => { yDaRaia[lane] = 40 + lIdx * 240 + 60; });
+    const noLane = n => n.data?.lane || 'Geral';
+    const posicionaveis = topologia.nodes.filter(n => yDaRaia[noLane(n)] !== undefined);
+    if (posicionaveis.length === 0) return;
 
-        nodesInLane.sort((a, b) => {
-            const numA = parseInt(a.data?.stepId || a.id, 10);
-            const numB = parseInt(b.data?.stepId || b.id, 10);
-            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-            return String(a.id).localeCompare(String(b.id));
-        });
+    const porId = new Map(posicionaveis.map(n => [String(n.id), n]));
+    const arvore = DiagramaArvore.aplicarOrdemManual(DiagramaArvore.montarArvore(posicionaveis, topologia.edges), posicionaveis);
+    const ordemNumerica = n => {
+        const v = parseInt(n.data?.stepId || n.id, 10);
+        return isNaN(v) ? Infinity : v;
+    };
+    // raízes: ordem manual (já aplicada) e, sem ela, a sequência de etapas
+    const temOrdem = id => typeof porId.get(id).data?.ordem === 'number';
+    const raizes = arvore.raizes.slice().sort((x, y) => (temOrdem(x) || temOrdem(y)) ? 0 : ordemNumerica(porId.get(x)) - ordemNumerica(porId.get(y)));
 
-        const totalWidth = nodesInLane.length * nodeWidth + (nodesInLane.length - 1) * gap;
-        
-        // Para garantir que a visualização não quebre caso a tela seja muito pequena
-        const targetW = Math.max(canvasTargetWidth, totalWidth + 160);
-        const startX = centralizar ? Math.max(80, Math.round((targetW - totalWidth) / 2)) : 80;
+    // X em "colunas": folha = próxima coluna livre; pai = centro dos filhos
+    const colunas = new Map();
+    let proxima = 0;
+    const visitar = id => {
+        const filhos = arvore.filhos.get(id) || [];
+        if (filhos.length === 0) {
+            colunas.set(id, proxima++);
+            return;
+        }
+        filhos.forEach(visitar);
+        colunas.set(id, (colunas.get(filhos[0]) + colunas.get(filhos[filhos.length - 1])) / 2);
+    };
+    raizes.forEach(visitar);
 
-        nodesInLane.forEach((node, i) => {
-            node.position.x = startX + i * (nodeWidth + gap);
-            node.position.y = yBase + 60;
-        });
+    const larguraTotal = Math.max(0, (proxima - 1)) * passo + nodeWidth;
+    const targetW = Math.max(canvasTargetWidth, larguraTotal + 160);
+    const startX = centralizar ? Math.max(80, Math.round((targetW - larguraTotal) / 2)) : 80;
+
+    posicionaveis.forEach(n => {
+        n.position.x = Math.round(startX + colunas.get(String(n.id)) * passo);
+        n.position.y = yDaRaia[noLane(n)];
     });
 }
 

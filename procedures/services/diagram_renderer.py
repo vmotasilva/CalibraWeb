@@ -14,7 +14,7 @@ from reportlab.platypus import Flowable
 from .diagram_raias import raias_do_diagrama
 from .diagram_arvore import MODOS_ARVORE, montar_arvore, ramos_recolhidos
 from .diagram_conteudo import POR_ID, contagem_efetivo, eh_vaga, marcador_valido
-from .diagram_estilo import contexto_dos_nos, nome_da_fonte, resolver_estilo_conexao, resolver_estilo_no
+from .diagram_estilo import contexto_dos_nos, cor_de_texto_para_fundo, nome_da_fonte, resolver_estilo_conexao, resolver_estilo_no
 
 FONT = 'Helvetica'
 FONT_BOLD = 'Helvetica-Bold'
@@ -329,12 +329,13 @@ class DiagramaFlowable(Flowable):
             c.setDash(4, 3)
             c.rect(LANE_LEFT, self._y(y + h), self.cw - LANE_LEFT, h, stroke=1, fill=1)
             c.setDash()
-            c.setFillColor(_cor(self.raias_cores.get(str(lane).lower()) or '#334155', colors.HexColor('#334155')))
+            cor_raia = self.raias_cores.get(str(lane).lower()) or '#334155'
+            c.setFillColor(_cor(cor_raia, colors.HexColor('#334155')))
             c.rect(LANE_LEFT, self._y(y + h), LANE_BAND, h, stroke=0, fill=1)
             c.saveState()
             c.translate(LANE_LEFT + LANE_BAND / 2 + 4, self._y(y + h / 2))
             c.rotate(90)
-            c.setFillColor(colors.white)
+            c.setFillColor(_cor(cor_de_texto_para_fundo(cor_raia), colors.white))
             c.setFont(FONT_BOLD, 14)
             nome = _txt(lane).upper()
             while nome and c.stringWidth(nome, FONT_BOLD, 14) > h - 20:

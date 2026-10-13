@@ -40,9 +40,11 @@ function renderizarCanvas() {
         laneEl.style.borderLeftColor = corDaRaia(lane);
 
         const safeLane = escapeHtml(lane);
+        const corRaia = corDaRaia(lane);
+        const estiloRotulo = `background:${corRaia};border-color:${corRaia};color:${DiagramaEstilo.corDeTextoParaFundo(corRaia)};`;
         laneEl.innerHTML = `
             <div class="swimlane-header-wrapper dropdown">
-                <div class="swimlane-rotator-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Clique: opções | Duplo clique: configurar raia" ondblclick="abrirConfigRaia('${encodeURIComponent(lane)}')">
+                <div class="swimlane-rotator-btn" style="${estiloRotulo}" data-bs-toggle="dropdown" aria-expanded="false" title="Clique: opções | Duplo clique: configurar raia" ondblclick="abrirConfigRaia('${encodeURIComponent(lane)}')">
                     <span>${safeLane}</span>
                 </div>
                 <ul class="dropdown-menu shadow">
@@ -229,6 +231,8 @@ function atualizarSelecoesVisuais() {
             document.getElementById('inspectorControls').classList.remove('d-none');
             document.getElementById('inspNodeLabel').value = node.data?.label || '';
             document.getElementById('inspNodeLane').value = node.data?.lane || '';
+            document.getElementById('inspNodeOrdem').value = typeof node.data?.ordem === 'number' ? node.data.ordem : '';
+            atualizarAjudaOrdemDoBloco(node);
             document.getElementById('inspNodeDocRef').value = node.data?.documentRef || '';
             renderizarTagsInspector(node);
             renderizarSubtitulosInspector(node);
@@ -356,6 +360,33 @@ function alinharSelecionados(direcao) {
     });
     
     renderizarCanvas();
+    dispararAutoSave();
+}
+
+// A ordem vale só entre os blocos ligados ao mesmo bloco de origem (cada grupo começa do 1)
+function atualizarAjudaOrdemDoBloco(node) {
+    const ajuda = document.getElementById('inspNodeOrdemAjuda');
+    if (!ajuda) return;
+    const arvore = DiagramaArvore.montarArvore(topologia.nodes, topologia.edges);
+    const paiId = arvore.pai.get(String(node.id));
+    const pai = paiId !== undefined ? topologia.nodes.find(n => String(n.id) === paiId) : null;
+    const irmaos = paiId !== undefined ? arvore.filhos.get(paiId).length : arvore.raizes.length;
+    ajuda.textContent = pai
+        ? `Ordem entre os ${irmaos} bloco(s) ligados a "${pai.data?.label || pai.id}" (começa em 1 a cada bloco de origem). Menor número = mais à esquerda. Em branco, segue a ordem das conexões. Use Auto-Layout para aplicar.`
+        : 'Bloco sem origem: a ordem vale entre os blocos de topo. Em branco, segue a sequência atual. Use Auto-Layout para aplicar.';
+}
+
+function definirOrdemDoBloco(valor) {
+    if (selectedNodeIds.size === 0) return;
+    const texto = String(valor).trim();
+    const numero = texto === '' ? null : Math.max(0, Math.min(9999, Math.round(Number(texto))));
+    selectedNodeIds.forEach(id => {
+        const node = topologia.nodes.find(n => n.id === id);
+        if (!node) return;
+        if (!node.data) node.data = {};
+        if (numero === null || isNaN(numero)) delete node.data.ordem;
+        else node.data.ordem = numero;
+    });
     dispararAutoSave();
 }
 

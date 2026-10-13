@@ -250,6 +250,9 @@ def validar_topologia(topologia: dict) -> list:
             if subs is not None and (not isinstance(subs, list) or len(subs) > MAX_SUBTITULOS
                                      or not all(isinstance(t, str) and len(t) <= 300 for t in subs)):
                 erros.append(f"Subtítulos inválidos no nó {nid} (máx. {MAX_SUBTITULOS}, até 300 caracteres cada).")
+            ordem = data.get('ordem')
+            if ordem is not None and (isinstance(ordem, bool) or not isinstance(ordem, int) or not 0 <= ordem <= 9999):
+                erros.append(f"'ordem' do nó {nid} deve ser um número inteiro entre 0 e 9999.")
             if data.get('collapsed') is not None and not isinstance(data['collapsed'], bool):
                 erros.append(f"Campo 'collapsed' inválido no nó {nid}.")
             if data.get('style') is not None:

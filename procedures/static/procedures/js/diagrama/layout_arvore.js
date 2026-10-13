@@ -101,12 +101,29 @@
      * Calcula as posições. `tamanhos` = { id: {w, h} } (medidos no DOM; usa estimativa quando faltar).
      * Retorna { posicoes: { id: {x, y} }, handles: { idConexao: [sourceHandle, targetHandle] }, ocultos: Set }.
      */
+    // Ordem manual (data.ordem, número): irmãos e raízes com ordem vêm primeiro, do menor para o maior;
+    // empates e blocos sem ordem mantêm a ordem das conexões. Só vale para o layout (não altera as conexões).
+    function aplicarOrdemManual(arvore, nos) {
+        const porId = new Map(nos.map(n => [String(n.id), n]));
+        const chave = id => {
+            const v = porId.get(id)?.data?.ordem;
+            return typeof v === 'number' && isFinite(v) ? v : Infinity;
+        };
+        const ordenar = lista => lista
+            .map((id, i) => ({ id, i, k: chave(id) }))
+            .sort((x, y) => (x.k === y.k ? x.i - y.i : (x.k < y.k ? -1 : 1)))
+            .map(x => x.id);
+        arvore.filhos.forEach((lista, id) => arvore.filhos.set(id, ordenar(lista)));
+        arvore.raizes = ordenar(arvore.raizes);
+        return arvore;
+    }
+
     function calcularLayout(nos, arestas, modo, tamanhos, opcoes) {
         const cfg = MODOS[modo];
         if (!cfg) throw new Error('Modo de layout desconhecido: ' + modo);
         const opt = Object.assign({ x0: MARGEM_X, y0: MARGEM_Y }, opcoes || {});
 
-        const arvore = montarArvore(nos, arestas);
+        const arvore = aplicarOrdemManual(montarArvore(nos, arestas), nos);
         const escondidos = ocultos(nos, arvore);
         const porId = new Map(nos.map(n => [String(n.id), n]));
         const tam = id => (tamanhos && tamanhos[id]) || estimarTamanho(porId.get(id));
@@ -296,7 +313,7 @@
     }
 
     const api = {
-        MODOS, ehHierarquia, estimarTamanho, montarArvore, descendentes, ocultos, profundidade,
+        MODOS, ehHierarquia, estimarTamanho, montarArvore, aplicarOrdemManual, descendentes, ocultos, profundidade,
         calcularLayout, moverNaArvore, clonarRamo, irmaos, ehAncestral,
     };
 

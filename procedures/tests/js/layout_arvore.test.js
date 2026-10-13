@@ -205,4 +205,15 @@ teste('desempenho: 600 blocos em menos de 200 ms', () => {
     assert.strictEqual(Object.keys(r.posicoes).length, 600);
 });
 
+teste('ordem manual reordena irmaos e raizes sem alterar as conexoes', () => {
+    const nos = ['r', 'a', 'b', 'c'].map(id => ({ id, position: { x: 0, y: 0 }, data: {} }));
+    nos[1].data.ordem = 3; nos[2].data.ordem = 1;   // b (1) vem antes de a (3); c sem ordem fica por ultimo
+    const arestas = [['r', 'a'], ['r', 'b'], ['r', 'c']].map(([s, t], i) => ({ id: 'e' + i, source: s, target: t }));
+    const arv = A.aplicarOrdemManual(A.montarArvore(nos, arestas), nos);
+    assert.deepStrictEqual(arv.filhos.get('r'), ['b', 'a', 'c']);
+    assert.deepStrictEqual(A.montarArvore(nos, arestas).filhos.get('r'), ['a', 'b', 'c']);
+    const r = A.calcularLayout(nos, arestas, 'organograma', {});
+    assert.ok(r.posicoes.b.x < r.posicoes.a.x && r.posicoes.a.x < r.posicoes.c.x);
+});
+
 console.log(process.exitCode ? 'COM FALHAS' : `TODOS OS ${total} TESTES OK`);

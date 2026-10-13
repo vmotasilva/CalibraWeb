@@ -491,12 +491,12 @@
     }
 
     .swimlane-rotator-btn:hover {
-        background: #1e293b;
-        border-color: #475569;
+        filter: brightness(1.12);
         box-shadow: 0 6px 16px rgba(0,0,0,0.4);
     }
 
     .swimlane-rotator-btn span {
+        color: inherit;
         font-size: 14px; /* Fonte maior e mais legível */
         font-weight: 800; /* Mais negrito */
         letter-spacing: 2px; /* Maior espaçamento entre letras */
@@ -1421,6 +1421,13 @@
                             </label>
                             <input type="text" id="inspNodeLane" class="form-control form-control-sm" list="raiasDatalist" autocomplete="off" placeholder="Escolha uma raia do diagrama ou digite uma nova" onchange="aplicarEstiloNoSelecionado('lane', this.value)">
                             <datalist id="raiasDatalist"></datalist>
+                        </div>
+                        <!-- Ordem no auto-layout -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1" for="inspNodeOrdem">Ordem no Auto-Layout</label>
+                            <input type="number" id="inspNodeOrdem" name="ordem_autolayout_x" class="form-control form-control-sm" min="0" max="9999" step="1" autocomplete="off"
+                                   placeholder="Automática" onchange="definirOrdemDoBloco(this.value)">
+                            <div class="form-text" id="inspNodeOrdemAjuda"></div>
                         </div>
 
                         <!-- Formato do Bloco (Shape) -->
