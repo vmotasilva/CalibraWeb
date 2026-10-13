@@ -1582,3 +1582,148 @@ class DiagramaFase4NavegacaoTestCase(TestCase):
         pdf = gerar_pdf_diagrama_doc071(self.versao)
         self.assertTrue(pdf.startswith(b'%PDF-'))
         self.assertGreater(len(pdf), len(gerar_pdf_diagrama_doc071(v2)))
+
+
+class DiagramaFase5ImportacaoTestCase(TestCase):
+    """Fase 5 do plano XMind: importação de .xmind, OPML e Markdown como novo diagrama."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='importador', password='x', is_superuser=True)
+
+    @staticmethod
+    def _xmind(folhas, nome_conteudo='content.json'):
+        import io, zipfile
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as z:
+            z.writestr(nome_conteudo, json.dumps(folhas))
+        return buf.getvalue()
+
+    @staticmethod
+    def _folha(titulo='Mapa'):
+        return {"title": titulo, "rootTopic": {
+            "title": "Diretor\nFernando", "style": {"properties": {"svg:fill": "#15831CFF", "fo:color": "#FFFFFFFF", "shape-class": "org.xmind.topicShape.roundedhexagon", "fo:font-size": "18pt", "fo:font-weight": "bold"}},
+            "children": {"attached": [
+                {"title": "Gerente\nJousival", "notes": {"plain": {"content": "Nota do gerente"}}, "href": "https://exemplo.com/doc",
+                 "labels": ["chave"], "markers": [{"markerId": "priority-1"}, {"markerId": "flag-red"}, {"markerId": "x-desconhecido"}],
+                 "style": {"properties": {"svg:fill": "#FF6F00FF", "shape-class": "org.xmind.topicShape.singlebreakangle"}},
+                 "children": {"attached": [{"title": "(Vago)\nSupervisor"}]}},
+                {"title": "Gerente B", "style": {"properties": {"svg:fill": "#00000000"}}},
+            ], "detached": [{"title": "solto"}]},
+        }}
+
+    def test_le_xmind_e_converte_para_topologia(self):
+        from procedures.services.importacao_mapas import contar, ler_arquivo, para_topologia, resumo_das_folhas
+        folhas = ler_arquivo('Mapa.xmind', self._xmind([self._folha('Versão 1'), self._folha('Versão 2')]))
+        self.assertEqual([f['titulo'] for f in folhas], ['Versão 1', 'Versão 2'])
+        self.assertEqual(resumo_das_folhas(folhas)[0]['blocos'], 4)
+        self.assertTrue(folhas[0]['avisos'])  # tópico solto ignorado
+
+        topo = para_topologia(folhas[0]['raiz'], 'organograma')
+        self.assertEqual(len(topo['nodes']), 4)
+        self.assertEqual(len(topo['edges']), 3)
+        self.assertTrue(topo['precisa_layout'])
+        self.assertEqual(topo['layout_modo'], 'organograma')
+        raiz, ger, vaga, ger_b = topo['nodes']
+        self.assertEqual(raiz['data']['label'], 'Diretor')
+        self.assertEqual(raiz['data']['subtitles'], ['Fernando'])
+        self.assertEqual(raiz['data']['style'], {'fill': '#15831c', 'color': '#ffffff', 'fontSize': 18, 'bold': True})
+        self.assertEqual(raiz['data']['shape'], 'pill')
+        self.assertEqual(ger['data']['nota'], 'Nota do gerente')
+        self.assertEqual(ger['data']['links'][0]['url'], 'https://exemplo.com/doc')
+        self.assertEqual(ger['data']['customTags'], ['chave'])
+        self.assertEqual(ger['data']['markers'], ['prio-1', 'band-vermelho'])
+        self.assertNotIn('shape', ger['data'])          # forma sem caixa + preenchimento explícito = bloco preenchido
+        self.assertTrue(vaga['data']['vaga'])
+        self.assertEqual(vaga['data']['label'], 'Supervisor')
+        self.assertTrue(ger_b['data']['style']['noFill'])
+        self.assertEqual({e['target'] for e in topo['edges'] if e['source'] == '1'}, {'2', '4'})
+        self.assertEqual(contar(folhas[0]['raiz']), {'blocos': 4, 'niveis': 3})
+
+    def test_sem_estilos_do_arquivo(self):
+        from procedures.services.importacao_mapas import ler_arquivo, para_topologia
+        folha = ler_arquivo('a.xmind', self._xmind([self._folha()]))[0]
+        topo = para_topologia(folha['raiz'], 'logico', com_estilos=False)
+        self.assertTrue(all('style' not in n['data'] and 'shape' not in n['data'] for n in topo['nodes']))
+
+    def test_le_opml_e_markdown(self):
+        from procedures.services.importacao_mapas import ler_arquivo, para_topologia
+        opml = ('<?xml version="1.0"?><opml version="2.0"><head><title>Equipe</title></head><body>'
+                '<outline text="Chefe" _note="obs"><outline text="A"/><outline text="B"><outline text="B1"/></outline></outline>'
+                '</body></opml>').encode('utf-8')
+        folha = ler_arquivo('equipe.opml', opml)[0]
+        self.assertEqual(folha['titulo'], 'Equipe')
+        topo = para_topologia(folha['raiz'])
+        self.assertEqual([n['data']['label'] for n in topo['nodes']], ['Chefe', 'A', 'B', 'B1'])
+        self.assertEqual(topo['nodes'][0]['data']['nota'], 'obs')
+
+        md = '# Projeto\n- Fase 1\n  - Tarefa 1.1\n  - Tarefa 1.2\n- Fase 2\n# Outro\n- X\n'.encode('utf-8')
+        folha = ler_arquivo('plano.md', md)[0]
+        self.assertEqual(folha['raiz']['titulo'], 'plano')  # vários itens de topo: raiz com o nome do arquivo
+        self.assertEqual([f['titulo'] for f in folha['raiz']['filhos']], ['Projeto', 'Outro'])
+        self.assertEqual([f['titulo'] for f in folha['raiz']['filhos'][0]['filhos']], ['Fase 1', 'Fase 2'])
+        self.assertEqual([f['titulo'] for f in folha['raiz']['filhos'][0]['filhos'][0]['filhos']], ['Tarefa 1.1', 'Tarefa 1.2'])
+
+    def test_rejeita_arquivos_invalidos_ou_fora_dos_limites(self):
+        from procedures.services.importacao_mapas import ErroImportacao, ler_arquivo, para_topologia, _no
+        casos = [
+            ('x.pdf', b'abc'),
+            ('x.xmind', b'isto nao e zip'),
+            ('x.xmind', self._xmind([], 'outro.json')),
+            ('x.xmind', self._xmind([])),
+            ('x.opml', b'<?xml version="1.0"?><!DOCTYPE x [<!ENTITY a "b">]><opml><body/></opml>'),
+            ('x.opml', b'<opml><nao-fechado>'),
+            ('x.md', b'\n\n'),
+            ('x.md', b'x' * (10 * 1024 * 1024 + 1)),
+        ]
+        for nome, dados in casos:
+            with self.assertRaises(ErroImportacao, msg=nome):
+                ler_arquivo(nome, dados)
+        raiz = _no('r')
+        raiz['filhos'] = [_no(str(i)) for i in range(1001)]
+        with self.assertRaises(ErroImportacao):
+            para_topologia(raiz)
+        with self.assertRaises(ErroImportacao):
+            para_topologia(_no('r'), 'raias')
+
+    def test_fluxo_pela_interface(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        c = Client()
+        c.force_login(self.user)
+        self.assertIn('Importar mapa', c.get('/procedures/diagramas/').content.decode())
+        self.assertEqual(c.get('/procedures/diagramas/importar/').status_code, 200)
+
+        arquivo = SimpleUploadedFile('Organograma.xmind', self._xmind([self._folha('Versão 1'), self._folha('Versão 2')]))
+        previa = c.post('/procedures/api/diagramas/importar/previa/', {'arquivo': arquivo}).json()
+        self.assertEqual([f['titulo'] for f in previa['folhas']], ['Versão 1', 'Versão 2'])
+
+        ruim = c.post('/procedures/api/diagramas/importar/previa/', {'arquivo': SimpleUploadedFile('x.pdf', b'x')})
+        self.assertEqual(ruim.status_code, 400)
+
+        arquivo = SimpleUploadedFile('Organograma.xmind', self._xmind([self._folha('Versão 1'), self._folha('Versão 2')]))
+        r = c.post('/procedures/diagramas/importar/', {'arquivo': arquivo, 'titulo': 'Org 2026', 'folha': '1',
+                                                        'layout': 'organograma', 'estilos': 'on', 'departamento': 'Diretoria'})
+        self.assertEqual(r.status_code, 302)
+        diagrama = Diagrama.objects.get(titulo='Org 2026')
+        versao = diagrama.versoes.get()
+        self.assertEqual(versao.status, StatusDiagrama.RASCUNHO)
+        self.assertEqual(len(versao.dados_topologia['nodes']), 4)
+        self.assertTrue(versao.dados_topologia['precisa_layout'])
+        self.assertIn(str(versao.id), r['Location'])
+
+        # título em branco: volta ao formulário com a mensagem
+        arquivo = SimpleUploadedFile('Organograma.xmind', self._xmind([self._folha()]))
+        r = c.post('/procedures/diagramas/importar/', {'arquivo': arquivo, 'titulo': '', 'layout': 'organograma'})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('Informe o título', r.content.decode())
+
+    def test_sem_permissao_de_criar(self):
+        outro = User.objects.create_user(username='sem.perm', password='x')
+        c = Client()
+        c.force_login(outro)
+        self.assertEqual(c.get('/procedures/diagramas/importar/').status_code, 403)
+        self.assertEqual(c.post('/procedures/api/diagramas/importar/previa/').status_code, 403)
+
+    def test_editor_aplica_layout_da_importacao_ao_abrir(self):
+        js = ler_js_editor()
+        self.assertIn('if (topologia.precisa_layout)', js)
+        self.assertIn('aplicarLayoutArvore()', js[js.index('if (topologia.precisa_layout)'):][:300])

@@ -22,6 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
     atualizarUILayout();
     atualizarMarcasDeMenuConteudo();
 
+    // Diagrama importado (XMind/OPML/Markdown): as posições vêm do auto-layout da primeira abertura
+    if (topologia.precisa_layout) {
+        delete topologia.precisa_layout;
+        if (arvoreAtiva()) aplicarLayoutArvore();
+        dispararAutoSave();
+    }
+
     // Enquadra suavemente a visão inicial nos blocos
     setTimeout(() => {
         enquadrarVisaoCompleta();

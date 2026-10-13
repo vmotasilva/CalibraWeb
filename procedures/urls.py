@@ -10,6 +10,7 @@ from .views import diagram_views
 from .views import diagram_raias_views
 from .views import diagram_temas_views
 from .views import diagram_conteudo_views
+from .views import diagram_importacao_views
 
 from .views import (
     habilidades_views,
@@ -356,6 +357,8 @@ urlpatterns = [
     # ==========================
     path('diagramas/', diagram_views.diagramas_lista_view, name='diagramas_lista'),
     path('diagramas/novo/', diagram_views.diagrama_novo_view, name='diagrama_novo'),
+    path('diagramas/importar/', diagram_importacao_views.diagrama_importar_view, name='diagrama_importar'),
+    path('api/diagramas/importar/previa/', diagram_importacao_views.api_importar_previa, name='api_diagramas_importar_previa'),
     path('diagramas/raias/', diagram_raias_views.raias_catalogo_view, name='diagramas_raias'),
     path('diagramas/<uuid:diagrama_id>/abrir/', diagram_conteudo_views.diagrama_abrir_view, name='diagrama_abrir'),
     path('diagramas/<uuid:diagrama_id>/historico/', diagram_views.diagrama_historico_view, name='diagrama_historico'),

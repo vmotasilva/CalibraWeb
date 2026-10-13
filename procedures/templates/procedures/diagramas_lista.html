@@ -8,6 +8,9 @@
     <i class="bi bi-layout-three-columns"></i> Raias
 </a>
 {% if pode_criar %}
+<a href="{% url 'procedures:diagrama_importar' %}" class="btn btn-outline-primary d-inline-flex align-items-center gap-1" title="Importar .xmind, OPML ou Markdown">
+    <i class="bi bi-box-arrow-in-down"></i> Importar mapa
+</a>
 <a href="{% url 'procedures:diagrama_novo' %}" class="btn btn-primary d-inline-flex align-items-center gap-1 shadow-sm">
     <i class="bi bi-plus-lg"></i> Novo Fluxograma
 </a>

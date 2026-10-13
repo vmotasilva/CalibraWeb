@@ -1,0 +1,124 @@
+{% extends "procedures/procedimento_base.html" %}
+
+{% block title %}Importar mapa - Diagramas{% endblock %}
+{% block header_title %}Importar mapa mental{% endblock %}
+
+{% block header_actions %}
+<a href="{% url 'procedures:diagramas_lista' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1">
+    <i class="bi bi-arrow-left"></i> Diagramas
+</a>
+{% endblock %}
+
+{% block main_content %}
+{% if not pode_criar %}
+<div class="alert alert-warning">Você não tem permissão para criar diagramas.</div>
+{% else %}
+{% if error %}<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> {{ error }}</div>{% endif %}
+
+<div class="alert alert-light border small mb-3">
+    <i class="bi bi-info-circle text-primary"></i>
+    Importe um mapa do <strong>XMind (.xmind)</strong>, um outline <strong>OPML</strong> ou um arquivo <strong>Markdown/texto</strong> com listas e recuo.
+    O diagrama é criado como <strong>Rascunho</strong> e o auto-layout é aplicado ao abrir. Textos em duas linhas (por exemplo, "Nome" e "Cargo") viram título e subtítulo,
+    e "(Vago)" vira um bloco de vaga.
+</div>
+
+<form method="post" enctype="multipart/form-data" class="card border-0 shadow-sm bg-white" id="formImportar" autocomplete="off">
+    {% csrf_token %}
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label fw-bold small">Arquivo</label>
+            <input type="file" name="arquivo" id="arquivoImportar" class="form-control" accept="{{ extensoes }}" required>
+            <div class="form-text">Até 10 MB. Formatos: .xmind, .opml, .md, .txt.</div>
+            <div id="previaErro" class="text-danger small mt-1 d-none"></div>
+        </div>
+
+        <div id="previaBloco" class="d-none">
+            <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Planilha do arquivo</label>
+                    <select name="folha" id="folhaImportar" class="form-select"></select>
+                    <div class="form-text" id="folhaInfo"></div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold small">Layout</label>
+                    <select name="layout" class="form-select">
+                        {% for valor, rotulo in layouts %}<option value="{{ valor }}" {% if valor == layout %}selected{% endif %}>{{ rotulo }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-8">
+                    <label class="form-label fw-bold small">Título do diagrama</label>
+                    <input type="text" name="titulo" id="tituloImportar" class="form-control" maxlength="200" value="{{ titulo|default:'' }}" autocomplete="off" data-lpignore="true" data-1p-ignore required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Departamento / Área</label>
+                    <input type="text" name="departamento" class="form-control" maxlength="120" value="{{ departamento }}" autocomplete="off" data-lpignore="true" data-1p-ignore>
+                </div>
+            </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="estilos" id="estilosImportar" checked>
+                <label class="form-check-label small" for="estilosImportar">Manter cores, formas e fontes do arquivo (desmarque para usar a aparência padrão do editor)</label>
+            </div>
+            <div id="avisosImportar" class="alert alert-warning small py-2 d-none"></div>
+        </div>
+    </div>
+    <div class="card-footer bg-white text-end">
+        <button type="submit" class="btn btn-primary" id="btnImportar" disabled><i class="bi bi-box-arrow-in-down"></i> Importar</button>
+    </div>
+</form>
+
+<script>
+(function () {
+    const entrada = document.getElementById('arquivoImportar');
+    const bloco = document.getElementById('previaBloco');
+    const erro = document.getElementById('previaErro');
+    const seletor = document.getElementById('folhaImportar');
+    const info = document.getElementById('folhaInfo');
+    const avisos = document.getElementById('avisosImportar');
+    const titulo = document.getElementById('tituloImportar');
+    const botao = document.getElementById('btnImportar');
+    let folhas = [];
+
+    function mostrarFolha() {
+        const f = folhas[Number(seletor.value)] || folhas[0];
+        if (!f) return;
+        info.textContent = `${f.blocos} blocos em ${f.niveis} níveis`;
+        if (!titulo.dataset.editado) titulo.value = f.titulo;
+        avisos.classList.toggle('d-none', !f.avisos.length);
+        avisos.textContent = f.avisos.length ? 'Atenção: ' + f.avisos.join('; ') + '.' : '';
+    }
+
+    titulo.addEventListener('input', () => { titulo.dataset.editado = '1'; });
+    seletor.addEventListener('change', () => { delete titulo.dataset.editado; mostrarFolha(); });
+
+    entrada.addEventListener('change', async () => {
+        erro.classList.add('d-none');
+        bloco.classList.add('d-none');
+        botao.disabled = true;
+        if (!entrada.files.length) return;
+        const dados = new FormData();
+        dados.append('arquivo', entrada.files[0]);
+        try {
+            const resp = await fetch("{% url 'procedures:api_diagramas_importar_previa' %}", {
+                method: 'POST', body: dados,
+                headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+            });
+            const json = await resp.json();
+            if (!resp.ok) throw new Error(json.error || 'Não foi possível ler o arquivo.');
+            folhas = json.folhas;
+            seletor.innerHTML = folhas.map(f => `<option value="${f.indice}"></option>`).join('');
+            [...seletor.options].forEach((o, i) => { o.textContent = `${folhas[i].titulo} (${folhas[i].blocos} blocos)`; });
+            delete titulo.dataset.editado;
+            mostrarFolha();
+            bloco.classList.remove('d-none');
+            botao.disabled = false;
+        } catch (e) {
+            erro.textContent = e.message;
+            erro.classList.remove('d-none');
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}
