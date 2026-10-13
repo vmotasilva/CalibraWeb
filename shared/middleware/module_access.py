@@ -1,101 +1,125 @@
 # -*- coding: utf-8 -*-
 """
-Middleware de controle de acesso por módulo.
-Protege automaticamente views de módulos específicos sem precisar adicionar
-decorators individuais em cada view.
+Middleware de controle de acesso por módulo e função.
+
+Aplica no servidor as permissões `core.nav_*` configuradas em
+`/rh/usuarios/<id>/`, usando o mapa `VIEW_NAME_TO_PERMISSION`
+(`shared/permissions.py`). Para uma view mapeada, exige:
+  1. o módulo ("No menu", `nav_mod_*`) ou o grupo legado do módulo; e
+  2. a permissão da função ("Acessar").
+
+Modo de operação (setting/variável de ambiente PERMISSIONS_ENFORCEMENT):
+  - "log" (padrão): só registra no logger `shared.access` o que seria bloqueado.
+  - "enforce": bloqueia (403 em requisições AJAX/API, redirect com mensagem nas demais).
+  - "off": desligado.
+
+Views não mapeadas em NAV_STRUCTURE continuam liberadas (dependem de login).
+Superusuários e staff passam sempre.
 """
 
-from django.shortcuts import redirect
+import logging
+
+from django.conf import settings
 from django.contrib import messages
-from django.urls import resolve
-from shared.permissions import has_module_access, MODULES_PERMISSIONS
+from django.http import JsonResponse
+from django.shortcuts import redirect
+
+from shared.permissions import (
+    VIEW_NAME_TO_PERMISSION,
+    _nav_module_config,
+    has_module_access,
+    has_view_access,
+)
+
+logger = logging.getLogger("shared.access")
 
 
 class ModuleAccessMiddleware:
-    """
-    Middleware que verifica permissão de módulo para cada request.
-    
-    Funciona verificando a URL da requisição e identificando o módulo.
-    Se o usuário não tiver acesso, redireciona para página de acesso negado.
-    """
-    
-    # Mapeamento de prefixos de URL para módulos
-    URL_TO_MODULE_MAPPING = {
-        '/metrologia/': 'metrologia',
-        '/rh/': 'rh',
-        '/procedures/': 'procedures',
-        '/fornecedores/': 'fornecedores',
-        '/acoes/': 'acoes',
-        '/auditoria/': 'auditoria',
-        '/laboratorio/': 'laboratorio',
-        '/procurements/': 'procurements',
-        '/admin/': 'admin',  # Admin não é restringido
-    }
-    
-    # URLs públicas que não requerem verificação
-    PUBLIC_URLS = [
-        '/',
-        '/accounts/',
-        '/login/',
-        '/logout/',
-        '/acesso-negado/',
-    ]
-    
+    # Prefixos que nunca passam pela checagem
+    EXEMPT_PREFIXES = (
+        "/static/",
+        "/media/",
+        "/admin/",
+        "/accounts/",
+        "/login/",
+        "/logout/",
+        "/acesso-negado/",
+    )
+
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        # Verificar permissão de módulo
-        self.check_module_access(request)
-        
-        response = self.get_response(request)
-        return response
+        return self.get_response(request)
 
-    def check_module_access(self, request):
-        """
-        Verifica se o usuário tem acesso ao módulo da URL.
-        """
-        # Usuários não autenticados passam (redirecionados por @login_required depois)
-        if not request.user.is_authenticated:
-            return
-        
-        # Superusers e staff têm acesso a tudo
-        if request.user.is_superuser or request.user.is_staff:
-            return
-        
-        # URLs públicas não precisam de verificação
-        if any(request.path.startswith(url) for url in self.PUBLIC_URLS):
-            return
-        
-        # Encontrar o módulo pela URL
-        module_key = self._get_module_from_url(request.path)
-        
-        if module_key and module_key != 'admin':
-            # Verificar acesso
-            if not has_module_access(request.user, module_key):
-                # Armazenar mensagem na sessão
-                messages.error(
-                    request,
-                    f"❌ Acesso negado! Você não tem permissão para acessar o módulo '{module_key}'."
-                )
-                # Redirecionar para página de acesso negado
-                request.session.save()
-                request.access_denied_redirect = redirect('access_denied', module=module_key)
+    @staticmethod
+    def _mode():
+        mode = str(getattr(settings, "PERMISSIONS_ENFORCEMENT", "log")).lower()
+        return mode if mode in {"off", "log", "enforce"} else "log"
 
-    def _get_module_from_url(self, path):
-        """
-        Extrai o módulo a partir do caminho da URL.
-        """
-        for url_prefix, module in self.URL_TO_MODULE_MAPPING.items():
-            if path.startswith(url_prefix):
-                return module
-        
+    @staticmethod
+    def _wants_json(request):
+        return (
+            request.headers.get("x-requested-with") == "XMLHttpRequest"
+            or "application/json" in request.headers.get("accept", "")
+            or request.content_type == "application/json"
+            or "/api/" in request.path
+        )
+
+    @staticmethod
+    def _denial_reason(user, view_name):
+        """Retorna None se liberado, ou o motivo do bloqueio."""
+        data = VIEW_NAME_TO_PERMISSION.get(view_name)
+        if not data:
+            return None  # view não mapeada: sem controle por função
+
+        module_key = data.get("module")
+        module = _nav_module_config(module_key) if module_key else None
+        if module and module.get("module_perm") and not has_module_access(user, module_key):
+            return f"sem acesso ao módulo '{module_key}'"
+
+        if not has_view_access(user, view_name):
+            return f"sem a permissão '{data.get('perm')}'"
         return None
 
     def process_view(self, request, view_func, view_args, view_kwargs):
-        """
-        Hook do middleware para processar antes da view.
-        """
-        if hasattr(request, 'access_denied_redirect'):
-            return request.access_denied_redirect
-        return None
+        user = getattr(request, "user", None)
+        if not user or not user.is_authenticated:
+            return None  # @login_required cuida disso
+        if user.is_superuser or user.is_staff:
+            return None
+        if request.path.startswith(self.EXEMPT_PREFIXES):
+            return None
+
+        mode = self._mode()
+        if mode == "off":
+            return None
+
+        match = getattr(request, "resolver_match", None)
+        view_name = getattr(match, "view_name", None)
+        if not view_name:
+            return None
+
+        try:
+            reason = self._denial_reason(user, view_name)
+        except Exception:
+            logger.exception("Falha ao checar permissão de %s", view_name)
+            return None
+        if not reason:
+            return None
+
+        logger.warning(
+            "ACESSO %s: user=%s view=%s path=%s motivo=%s",
+            "BLOQUEADO" if mode == "enforce" else "SERIA BLOQUEADO",
+            user.username, view_name, request.path, reason,
+        )
+        if mode != "enforce":
+            return None
+
+        if self._wants_json(request):
+            return JsonResponse(
+                {"success": False, "error": "Você não tem permissão para acessar este recurso."},
+                status=403,
+            )
+        messages.error(request, "Você não tem permissão para acessar esta página.")
+        return redirect("/")

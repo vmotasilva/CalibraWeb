@@ -148,6 +148,9 @@ MIDDLEWARE = [
     "shared.middleware.ModuleAccessMiddleware",  # Controle de acesso por módulo
 ]
 
+# Aplicação das permissões nav_* no servidor: "log" (só registra), "enforce" (bloqueia) ou "off".
+PERMISSIONS_ENFORCEMENT = os.environ.get("PERMISSIONS_ENFORCEMENT", "log").lower()
+
 ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
