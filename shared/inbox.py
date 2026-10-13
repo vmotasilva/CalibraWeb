@@ -85,11 +85,18 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             continue
 
                         action_text = "Continuar" if is_em_andamento else "Preencher"
-                        title = f"Auditoria em Andamento: {modelo.nome}" if is_em_andamento else f"Preencher Auditoria: {modelo.nome}"
-                        sub_type = "Auditorias em Andamento" if is_em_andamento else "Períodos em Atraso"
+                        # Em andamento com período já encerrado = atrasada
+                        is_atrasada = is_em_andamento and bool(p.get('atrasado'))
+                        if is_atrasada:
+                            title = f"Auditoria Atrasada: {modelo.nome}"
+                        else:
+                            title = f"Auditoria em Andamento: {modelo.nome}" if is_em_andamento else f"Preencher Auditoria: {modelo.nome}"
+                        sub_type = "Auditorias em Andamento" if is_em_andamento and not is_atrasada else "Períodos em Atraso"
                         url = reverse("auditoria:registro_edit", args=[p['registro_id']]) if is_em_andamento and p.get('registro_id') else reverse("auditoria:selecionar_modelo_preenchimento")
                         
-                        if is_em_andamento:
+                        if is_atrasada:
+                            desc = f"Prazo encerrado, ainda em andamento ({p.get('progresso', 0)}%): {p['label']}"
+                        elif is_em_andamento:
                             dia_nome = p.get('dia_atual_nome')
                             if dia_nome:
                                 desc = f"Preenchimento de hoje ({dia_nome}) pendente &bull; {p['label']} ({p.get('progresso', 0)}%)"
@@ -105,11 +112,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                                 title=title,
                                 description=desc,
                                 module="Auditoria",
-                                icon="bi-clock-history" if is_em_andamento else "bi-clipboard-check",
+                                icon="bi-exclamation-triangle-fill" if is_atrasada else ("bi-clock-history" if is_em_andamento else "bi-clipboard-check"),
                                 url=url,
                                 action_text=action_text,
                                 date=fim_date,
-                                is_urgent=(hoje - fim_date).days > 30 and not is_em_andamento,
+                                is_urgent=is_atrasada or ((hoje - fim_date).days > 30 and not is_em_andamento),
                                 sub_type=sub_type
                             )
                         )
@@ -244,9 +251,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
         else:
             # Notificação para o usuário associado (mesmo sem permissão global de metrologia)
             ocorrencias_abertas = OcorrenciaInstrumento.objects.filter(
+                Q(usuario_responsavel=user) | Q(mensagens__destinatarios=user),
                 status="ABERTA",
-                usuario_responsavel=user
-            ).select_related("instrumento", "instrumento__setor", "usuario_responsavel").order_by("-data_ocorrencia")
+            ).distinct().select_related("instrumento", "instrumento__setor", "usuario_responsavel").order_by("-data_ocorrencia")
 
         for oc in ocorrencias_abertas[:50]:
             inst = oc.instrumento
@@ -255,7 +262,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             setor_nome = f" ({inst.setor.nome})" if inst and inst.setor else ""
             tipo_nome = oc.get_tipo_display() if hasattr(oc, 'get_tipo_display') else oc.tipo
             
-            is_minha_tratativa = (oc.usuario_responsavel_id == getattr(user, 'id', None))
+            uid_atual = getattr(user, 'id', None)
+            is_minha_tratativa = (
+                oc.usuario_responsavel_id == uid_atual
+                or oc.mensagens.filter(destinatarios__id=uid_atual).exists()
+            )
             
             if is_minha_tratativa:
                 sub_tipo_name = "Minhas Tratativas"

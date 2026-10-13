@@ -197,6 +197,7 @@ def calcular_periodos_pendentes(modelo, limit=24):
                 "inicio_date": p_inicio,
                 "fim_date": p_fim,
                 "status": "EM_ANDAMENTO",
+                "atrasado": p_fim < hoje,
                 "progresso": reg_em_andamento["progresso"] or 0,
                 "registro_id": reg_em_andamento["id"],
                 "dia_atual_preenchido": dia_atual_preenchido,

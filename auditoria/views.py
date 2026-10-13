@@ -1313,7 +1313,15 @@ def selecionar_modelo_preenchimento(request):
 
         # Identificar se há auditoria em andamento (criada mas não 100% concluída)
         reg_andamento = None
-        for p in pendencias:
+        # Em andamento com período já encerrado = atrasado (prioriza o mais antigo)
+        periodo_atrasado = next(
+            (p for p in reversed(pendencias)
+             if p.get("status") == "EM_ANDAMENTO" and p.get("atrasado") and p.get("registro_id")),
+            None,
+        )
+        modelo.em_atraso = bool(periodo_atrasado)
+        modelo.periodo_atrasado_label = periodo_atrasado["label"] if periodo_atrasado else ""
+        for p in ([periodo_atrasado] if periodo_atrasado else pendencias):
             if p.get("status") == "EM_ANDAMENTO" and p.get("registro_id"):
                 reg_andamento = RegistroAuditoria.objects.filter(id=p["registro_id"]).first()
                 if reg_andamento:
@@ -1336,7 +1344,10 @@ def selecionar_modelo_preenchimento(request):
         modelo.dia_atual_preenchido = dia_atual_preenchido
         modelo.dia_atual_nome = dia_atual_nome
 
-        if modelo.tem_em_andamento:
+        if modelo.em_atraso:
+            modelo.status_display = "ATRASADO"
+            modelo.is_pendente = True
+        elif modelo.tem_em_andamento:
             modelo.status_display = "EM_ANDAMENTO"
             modelo.is_pendente = True
         elif len(pendencias) > 0:

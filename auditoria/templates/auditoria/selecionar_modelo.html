@@ -115,7 +115,11 @@
                         </span>
                     </td>
                     <td>
-                        {% if modelo.status_display == 'EM_ANDAMENTO' %}
+                        {% if modelo.status_display == 'ATRASADO' %}
+                        <span class="badge bg-danger rounded-pill" title="Auditoria em andamento ({{ modelo.registro_em_andamento.progresso|default:0 }}%) com prazo encerrado: {{ modelo.periodo_atrasado_label }}">
+                            <i class="bi bi-exclamation-triangle-fill"></i> Atrasada{% if modelo.registro_em_andamento.progresso %} ({{ modelo.registro_em_andamento.progresso }}%){% endif %}
+                        </span>
+                        {% elif modelo.status_display == 'EM_ANDAMENTO' %}
                         <div class="d-inline-flex align-items-center gap-1.5 flex-wrap">
                             <span class="badge bg-warning text-dark rounded-pill" title="Auditoria criada e em andamento ({{ modelo.registro_em_andamento.progresso|default:0 }}%)">
                                 <i class="bi bi-clock-history"></i> Em andamento{% if modelo.registro_em_andamento.progresso %} ({{ modelo.registro_em_andamento.progresso }}%){% endif %}
