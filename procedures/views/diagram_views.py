@@ -30,6 +30,7 @@ from ..services.diagram_fotos import decodificar_foto_colaborador
 from .diagram_raias_views import pode_gerenciar_raias, raias_catalogo_para_editor
 from .diagram_temas_views import pode_salvar_tema, temas_para_editor
 from shared.inbox import invalidar_cache_inbox
+from shared.permissions import is_admin_user, user_has_nav_perm
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
 from ..services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id
@@ -62,7 +63,7 @@ def _versao_js_editor() -> str:
 
 
 def _tem_permissao(user, perm: str) -> bool:
-    return bool(user.is_superuser or user.has_perm(perm))
+    return user_has_nav_perm(user, perm)
 
 
 def _negar_permissao(acao: str):
@@ -194,7 +195,7 @@ def api_diagrama_detail(request, diagrama_id):
         return JsonResponse(serialize_diagrama(diagrama, include_versoes=True), status=200)
 
     elif (request.method in ["PUT", "PATCH", "DELETE"]
-          and not request.user.is_superuser
+          and not is_admin_user(request.user)
           and diagrama.versoes.filter(status=StatusDiagrama.APROVADO).exists()):
         # Documento controlado: cabeçalho de diagrama com revisão aprovada só muda por nova revisão (ou administrador)
         return JsonResponse(
@@ -596,7 +597,7 @@ def diagrama_duplicar_view(request, diagrama_id):
 def _pode_excluir_diagrama(user, tem_historico_controlado: bool) -> bool:
     """Exclusão definitiva: quem edita diagramas pode excluir os que só têm rascunhos; com revisões em aprovação,
     aprovadas ou obsoletas (registro controlado, ISO 13485) só um administrador."""
-    if user.is_superuser:
+    if is_admin_user(user):
         return True
     return _tem_permissao(user, 'core.nav_diagramas_editor') and not tem_historico_controlado
 
@@ -629,7 +630,7 @@ def diagrama_arquivar_view(request, diagrama_id):
     restaurar = request.POST.get('acao') == 'restaurar'
     tem_aprovada = diagrama.versoes.filter(status=StatusDiagrama.APROVADO).exists()
 
-    if not request.user.is_superuser and (tem_aprovada or not _tem_permissao(request.user, 'core.nav_diagramas_editor')):
+    if not is_admin_user(request.user) and (tem_aprovada or not _tem_permissao(request.user, 'core.nav_diagramas_editor')):
         messages.error(request, "Sem permissão: diagramas com revisão aprovada só podem ser arquivados por um administrador.")
     else:
         diagrama.ativo = restaurar

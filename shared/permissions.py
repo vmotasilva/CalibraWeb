@@ -1718,6 +1718,35 @@ def get_module_key(view_module):
     """
     return view_module.split('.')[0] if '.' in view_module else view_module
 
+def is_admin_user(user) -> bool:
+    """Superusuário ou staff: mesma regra da navbar e de has_view_access."""
+    return bool(user and getattr(user, "is_authenticated", False) and (user.is_superuser or user.is_staff))
+
+
+def user_has_nav_perm(user, full_perm: str) -> bool:
+    """Regra única para views: admin (superusuário/staff) ou permissão direta `core.nav_*`
+    concedida no painel de permissões (grupos não contam, como no menu e no middleware)."""
+    return is_admin_user(user) or _user_has_nav_perm(user, full_perm)
+
+
+def nav_permission_required(full_perm: str):
+    """Decorator equivalente a @permission_required(raise_exception=True), com a regra de user_has_nav_perm."""
+    from functools import wraps
+
+    from django.core.exceptions import PermissionDenied
+
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            if not user_has_nav_perm(request.user, full_perm):
+                raise PermissionDenied
+            return view_func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 def has_module_access(user, module_key):
     """
     Verifica se um usuário tem acesso a um módulo.

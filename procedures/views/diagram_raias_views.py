@@ -4,6 +4,7 @@
 import re
 
 from django.contrib import messages
+from shared.permissions import user_has_nav_perm
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, models, transaction
 from django.shortcuts import redirect, render
@@ -16,7 +17,7 @@ COR_REGEX = re.compile(r'^#[0-9a-fA-F]{6}$')
 
 
 def pode_gerenciar_raias(user) -> bool:
-    return bool(user.is_superuser or user.has_perm(PERM_RAIAS))
+    return user_has_nav_perm(user, PERM_RAIAS)
 
 
 def raias_catalogo_para_editor():

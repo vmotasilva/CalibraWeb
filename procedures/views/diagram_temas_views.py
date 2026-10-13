@@ -4,6 +4,7 @@
 import json
 
 from django.http import JsonResponse
+from shared.permissions import is_admin_user, user_has_nav_perm
 from django.views.decorators.http import require_http_methods
 
 from ..models_diagram import TemaDiagrama
@@ -13,7 +14,7 @@ PERM_EDITAR = 'core.nav_diagramas_editor'
 
 
 def pode_salvar_tema(user) -> bool:
-    return bool(user.is_superuser or user.has_perm(PERM_EDITAR))
+    return user_has_nav_perm(user, PERM_EDITAR)
 
 
 def serializar_tema(tema: TemaDiagrama, user) -> dict:
@@ -22,7 +23,7 @@ def serializar_tema(tema: TemaDiagrama, user) -> dict:
         "nome": tema.nome,
         "definicao": tema.definicao,
         "criado_por_nome": (tema.criado_por.get_full_name() or tema.criado_por.username) if tema.criado_por else None,
-        "pode_excluir": bool(user.is_superuser or (tema.criado_por_id and tema.criado_por_id == user.id)),
+        "pode_excluir": bool(is_admin_user(user) or (tema.criado_por_id and tema.criado_por_id == user.id)),
     }
 
 
@@ -56,7 +57,7 @@ def api_temas(request):
     definicao = {**definicao, "nome": nome}
     existente = TemaDiagrama.objects.filter(nome__iexact=nome).first()
     if existente:
-        if not (request.user.is_superuser or existente.criado_por_id == request.user.id):
+        if not (is_admin_user(request.user) or existente.criado_por_id == request.user.id):
             return JsonResponse({"error": "Já existe um tema com esse nome criado por outra pessoa."}, status=409)
         existente.nome, existente.definicao = nome, definicao
         existente.save(update_fields=["nome", "definicao", "atualizado_em"])
@@ -73,7 +74,7 @@ def api_tema_detalhe(request, tema_id):
     tema = TemaDiagrama.objects.filter(pk=tema_id).first()
     if tema is None:
         return JsonResponse({"error": "Tema não encontrado."}, status=404)
-    if not (request.user.is_superuser or (tema.criado_por_id and tema.criado_por_id == request.user.id)):
+    if not (is_admin_user(request.user) or (tema.criado_por_id and tema.criado_por_id == request.user.id)):
         return JsonResponse({"error": "Só quem criou o tema (ou um administrador) pode excluí-lo."}, status=403)
     tema.delete()
     return JsonResponse({"results": temas_para_editor(request.user)})

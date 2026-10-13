@@ -2,6 +2,7 @@
 """Importação de mapas mentais (.xmind, OPML, Markdown/texto) como novo diagrama."""
 
 from django.contrib import messages
+from shared.permissions import user_has_nav_perm
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.http import JsonResponse
@@ -23,7 +24,7 @@ ROTULOS_LAYOUT = {
 
 
 def _pode_criar(user) -> bool:
-    return bool(user.is_superuser or user.has_perm(PERM_CRIAR))
+    return user_has_nav_perm(user, PERM_CRIAR)
 
 
 @login_required

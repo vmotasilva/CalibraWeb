@@ -5,6 +5,7 @@ import io
 import json
 
 from django.contrib.auth.decorators import login_required
+from shared.permissions import user_has_nav_perm
 from django.db import models
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -20,7 +21,7 @@ TIPOS_ACEITOS = {'JPEG': 'image/jpeg', 'PNG': 'image/png', 'WEBP': 'image/webp',
 
 
 def _pode_editar(user) -> bool:
-    return bool(user.is_superuser or user.has_perm(PERM_EDITAR))
+    return user_has_nav_perm(user, PERM_EDITAR)
 
 
 def _nao_autenticado():

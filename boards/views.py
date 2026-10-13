@@ -29,9 +29,12 @@ from rh.models import Colaborador
 def get_user_colaborador(user):
     return user.colaborador if hasattr(user, 'colaborador') else None
 
+from shared.permissions import user_has_nav_perm
+
+
 def _is_board_admin(user):
     """Superusuário ou permissão especial "Gerenciar Todos os Quadros": vê e altera qualquer quadro."""
-    return bool(user.is_superuser or user.has_perm("core.nav_boards_gerenciar_todos"))
+    return user_has_nav_perm(user, "core.nav_boards_gerenciar_todos")
 
 
 def can_edit_board(board, colab, user):
@@ -147,7 +150,7 @@ def dashboard_view(request):
 
 
     if request.method == 'POST':
-        if not request.user.has_perm('core.nav_boards_create') and not request.user.is_superuser:
+        if not user_has_nav_perm(request.user, 'core.nav_boards_create'):
             messages.error(request, 'Acesso Negado. Você não tem permissão para criar Quadros.')
             return redirect('boards:dashboard')
 
