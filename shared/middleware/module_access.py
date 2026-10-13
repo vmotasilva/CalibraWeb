@@ -46,6 +46,19 @@ class ModuleAccessMiddleware:
         "/acesso-negado/",
     )
 
+    # Páginas de entrada (hub/modulo) de cada módulo: exigem só o módulo ("No menu").
+    # namespace da URL -> chave do módulo em NAV_STRUCTURE
+    LANDING_PAGE_NAMES = {"hub", "modulo"}
+    LANDING_NAMESPACE_TO_MODULE = {
+        "auditoria": "auditoria",
+        "metrologia": "metrologia",
+        "rh": "rh",
+        "laboratorio": "laboratorio",
+        "procedures": "procedures",
+        "boards": "boards",
+        "fornecedores": "fornecedores",
+    }
+
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -66,11 +79,22 @@ class ModuleAccessMiddleware:
             or "/api/" in request.path
         )
 
-    @staticmethod
-    def _denial_reason(user, view_name):
+    @classmethod
+    def _landing_module(cls, match):
+        """Módulo de uma página de entrada não mapeada (ex.: auditoria:hub), ou None."""
+        if not match or match.url_name not in cls.LANDING_PAGE_NAMES:
+            return None
+        namespaces = match.namespaces or []
+        return cls.LANDING_NAMESPACE_TO_MODULE.get(namespaces[0]) if namespaces else None
+
+    @classmethod
+    def _denial_reason(cls, user, view_name, match=None):
         """Retorna None se liberado, ou o motivo do bloqueio."""
         data = VIEW_NAME_TO_PERMISSION.get(view_name)
         if not data:
+            landing = cls._landing_module(match)
+            if landing and not has_module_access(user, landing):
+                return f"sem acesso ao módulo '{landing}' (página de entrada)"
             return None  # view não mapeada: sem controle por função
 
         module_key = data.get("module")
@@ -101,7 +125,7 @@ class ModuleAccessMiddleware:
             return None
 
         try:
-            reason = self._denial_reason(user, view_name)
+            reason = self._denial_reason(user, view_name, match)
         except Exception:
             logger.exception("Falha ao checar permissão de %s", view_name)
             return None

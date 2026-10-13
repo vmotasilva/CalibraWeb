@@ -97,3 +97,35 @@ class MappedViewsBlockedTests(TestCase):
             if ModuleAccessMiddleware._denial_reason(user, vn):
                 negadas.append(vn)
         self.assertEqual(negadas, [], "Views negadas mesmo com módulo e função concedidos")
+
+
+@override_settings(PERMISSIONS_ENFORCEMENT="enforce", PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class LandingPageTests(TestCase):
+    """Páginas de entrada (hub/modulo) exigem só o módulo ('No menu')."""
+
+    PAGINAS = {
+        "auditoria:hub": "nav_mod_auditoria",
+        "auditoria:modulo": "nav_mod_auditoria",
+        "metrologia:hub": "nav_mod_metrologia",
+        "rh:hub": "nav_mod_pessoas",
+        "laboratorio:hub": "nav_mod_laboratorio",
+        "procedures:hub": "nav_mod_treinamentos",
+        "boards:hub": "nav_mod_boards",
+    }
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user("landing", password="x")
+        self.client.force_login(self.user)
+
+    def test_sem_modulo_e_bloqueado(self):
+        for vn in self.PAGINAS:
+            resp = self.client.get(reverse(vn))
+            self.assertEqual((resp.status_code, resp.url if resp.status_code == 302 else ""), (302, "/"), vn)
+
+    def test_com_modulo_passa_pelo_middleware(self):
+        for vn, codename in self.PAGINAS.items():
+            self.user.user_permissions.set([Permission.objects.get(content_type__app_label="core", codename=codename)])
+            self.user = get_user_model().objects.get(pk=self.user.pk)
+            self.client.force_login(self.user)
+            resp = self.client.get(reverse(vn))
+            self.assertFalse(resp.status_code == 302 and resp.url == "/", vn)
