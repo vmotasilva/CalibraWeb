@@ -1,6 +1,6 @@
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from boards.models import Board, BoardColumn, Card, ChecklistItem, CardComment, BoardActivity, BoardLabel, CardPlanningDate
 from rh.models import Colaborador
 from django.utils import timezone
@@ -45,6 +45,12 @@ class BoardsTestCase(TestCase):
         )
         self.card.responsaveis.add(self.colaborador)
         
+        # Permissões do painel (core.nav_*): módulo Quadros, dashboard e criação de quadros
+        self.user.user_permissions.set(Permission.objects.filter(
+            content_type__app_label='core',
+            codename__in=['nav_mod_boards', 'nav_boards_dashboard', 'nav_boards_create'],
+        ))
+
         self.client = Client()
         self.client.login(username='testuser', password='password123')
 
@@ -424,8 +430,8 @@ class BoardsTestCase(TestCase):
         # Verificar no banco de dados
         self.card.refresh_from_db()
         self.assertEqual(self.card.data_conclusao.strftime('%Y-%m-%d'), '2026-06-17')
-        self.assertEqual(self.card.datetime_inicio.strftime('%Y-%m-%dT%H:%M'), '2026-06-17T08:30')
-        self.assertEqual(self.card.datetime_fim.strftime('%Y-%m-%dT%H:%M'), '2026-06-17T17:45')
+        self.assertEqual(timezone.localtime(self.card.datetime_inicio).strftime('%Y-%m-%dT%H:%M'), '2026-06-17T08:30')
+        self.assertEqual(timezone.localtime(self.card.datetime_fim).strftime('%Y-%m-%dT%H:%M'), '2026-06-17T17:45')
         
         # 2. Verificar retorno via API GET
         response = self.client.get(detail_url)
@@ -650,8 +656,8 @@ class BoardsTestCase(TestCase):
         
         # Verifica a sincronização com os campos legados baseando-se no planejamento mais antigo (2026-06-19 08:00)
         self.card.refresh_from_db()
-        self.assertEqual(self.card.datetime_inicio.strftime('%Y-%m-%dT%H:%M'), '2026-06-19T08:00')
-        self.assertEqual(self.card.datetime_fim.strftime('%Y-%m-%dT%H:%M'), '2026-06-19T12:00')
+        self.assertEqual(timezone.localtime(self.card.datetime_inicio).strftime('%Y-%m-%dT%H:%M'), '2026-06-19T08:00')
+        self.assertEqual(timezone.localtime(self.card.datetime_fim).strftime('%Y-%m-%dT%H:%M'), '2026-06-19T12:00')
         
         # 2. Caso inválido: Hora fim antes da hora início em um dos planejamentos
         invalid_planning_json = {
