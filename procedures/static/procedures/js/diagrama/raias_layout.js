@@ -60,7 +60,7 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
                 descer(f, nivel + 1);
             });
             descer(id, 1);
-            proxima += 1 + Math.floor((maiorNivel * RECUO_NA_RAIA + 20) / passo);   // largura consumida pelo recuo
+            proxima += Math.max(1, Math.ceil((maiorNivel * RECUO_NA_RAIA + nodeWidth) / passo));   // colunas consumidas pela lista recuada
             return;
         }
         if (filhos.length === 0) {
@@ -89,7 +89,7 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     const yRelativo = new Map();            // bloco -> deslocamento (px) a partir do topo útil da raia
     const ocupacao = {};                    // raia -> [{ x, y }] (lugares já usados)
     const nivelManual = n => (Number.isInteger(n.data?.nivelRaia) && n.data.nivelRaia >= 1 ? n.data.nivelRaia : null);
-    const ocupado = (lista, x, y) => lista.some(o => Math.abs(o.x - x) < nodeWidth + 30 && Math.abs(o.y - y) < ALTURA_LINHA_NA_RAIA - 30);
+    const ocupado = (lista, x, y) => lista.some(o => Math.abs(o.x - x) < nodeWidth + 10 && Math.abs(o.y - y) < ALTURA_LINHA_NA_RAIA - 30);
     ordemPre.forEach(id => {
         const n = porId.get(id);
         const nivel = nivelManual(n);

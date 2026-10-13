@@ -145,4 +145,31 @@ teste('bloco automático não cai sobre um bloco de nível fixo na mesma coluna'
     assert.ok(P.q.y - P.p.y >= 100);
 });
 
+teste('lista recuada com vários níveis não invade a coluna do bloco vizinho', () => {
+    const P = montar(['A', 'B'],
+        [['r', 'A'], ['h1', 'A', { estrutura: 'arvore' }], ['h2', 'A'],
+         ['a1', 'B'], ['a2', 'B'], ['a3', 'B'], ['a4', 'B'], ['a5', 'B'], ['b1', 'B']],
+        [['r', 'h1'], ['r', 'h2'], ['h1', 'a1'], ['h1', 'a2'], ['a2', 'a3'], ['a3', 'a4'], ['a4', 'a5'], ['h2', 'b1']]);
+    semSobreposicao(P);
+});
+
+teste('lista recuada: a raia se estende e os filhos descem sem se sobrepor', () => {
+    const P = montar(['G', 'L'],
+        [['g', 'G', { estrutura: 'arvore' }], ['f1', 'L'], ['f2', 'L'], ['f3', 'L'], ['f4', 'L'], ['outro', 'G']],
+        [['g', 'f1'], ['g', 'f2'], ['g', 'f3'], ['g', 'f4']]);
+    semSobreposicao(P);
+    assert.ok(P.f2.y > P.f1.y && P.f3.y > P.f2.y && P.f4.y > P.f3.y);
+    // a raia L cresceu: 4 linhas de 130 px
+    assert.ok(P.f4.y - P.f1.y >= 3 * 100);
+});
+
+teste('filho do bloco vizinho não é empurrado para baixo pela lista recuada ao lado', () => {
+    const P = montar(['S', 'L'],
+        [['r', 'S'], ['e', 'S', { estrutura: 'arvore' }], ['m', 'S'], ['k1', 'L'], ['k2', 'L'], ['k3', 'L'], ['n', 'L']],
+        [['r', 'e'], ['r', 'm'], ['e', 'k1'], ['e', 'k2'], ['e', 'k3'], ['m', 'n']]);
+    semSobreposicao(P);
+    assert.strictEqual(P.n.y, P.k1.y);                       // o vizinho fica na primeira linha da raia
+    assert.ok(P.k3.y > P.k1.y);
+});
+
 console.log(process.exitCode ? 'COM FALHAS' : `TODOS OS ${total} TESTES OK`);
