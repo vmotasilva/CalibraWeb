@@ -127,6 +127,16 @@
     .indicador-alerta { border-color: #f59e0b; color: #b45309; background: #fffbeb; cursor: help; }
 
     .flow-node.node-vaga { border-style: dashed !important; font-style: italic; }
+    .icone-estrutura { display: inline-flex; align-items: center; justify-content: center; width: 30px; flex: 0 0 30px; color: #475569; }
+    .icone-estrutura svg { width: 28px; height: 20px; }
+    #inspNodeEstrutura { cursor: pointer; }
+    #inspNodeEstrutura:disabled { cursor: not-allowed; }
+    .selo-desligado {
+        display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 999px; font-size: 9px; font-weight: 800;
+        font-style: normal; letter-spacing: .4px; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; vertical-align: middle;
+    }
+    .flow-node.node-desligado { border-color: #f87171 !important; }
+    .flow-node.node-desligado .colab-foto img { filter: grayscale(1); opacity: .75; }
     .selo-vago {
         display: inline-block; font-size: 9px; font-weight: 800; letter-spacing: 0.5px; font-style: normal;
         padding: 0 5px; border-radius: 8px; background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; vertical-align: 1px;
@@ -1126,6 +1136,12 @@
             <button type="button" class="btn btn-sm btn-primary border shadow-sm px-2 py-1" onclick="reorganizarAutoLayout()" title="Recalcular Layout Automático Inteligente">
                 <i class="bi bi-magic"></i> <span class="small fw-semibold">Auto-Layout</span>
             </button>
+            {% if not is_approved %}
+            <button type="button" class="ribbon-btn border" onclick="atualizarColaboradoresPeloRH(false)"
+                    title="Atualizar nome, função e foto de todos os colaboradores do diagrama pelo RH e marcar os desligados">
+                <i class="bi bi-arrow-repeat text-success"></i> Atualizar RH
+            </button>
+            {% endif %}
             <div class="dropdown">
                 <button class="ribbon-btn border dropdown-toggle" type="button" data-bs-toggle="dropdown" title="Alinhar, distribuir e organizar blocos e raias">
                     <i class="bi bi-layout-text-window-reverse text-primary"></i> Organizar
@@ -1139,8 +1155,8 @@
                     <li id="itemEmpilharFolhas" class="d-none"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarEmpilharFolhas()" title="No organograma, blocos sem subordinados do mesmo pai ficam um abaixo do outro"><i class="bi bi-check2 layout-check me-2"></i>Empilhar folhas na vertical</a></li>
                     <li><h6 class="dropdown-header">Estrutura do ramo selecionado</h6></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('')"><i class="bi bi-arrow-return-right me-2"></i>Seguir a estrutura do pai</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('organograma')"><i class="bi bi-diagram-3 me-2"></i>Organograma (lado a lado)</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('arvore')"><i class="bi bi-list-nested me-2"></i>Árvore (lista recuada)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('organograma')"><span class="icone-estrutura me-2" data-icone-estrutura="organograma"></span>Organograma (lado a lado)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('arvore')"><span class="icone-estrutura me-2" data-icone-estrutura="arvore"></span>Árvore (lista recuada)</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><h6 class="dropdown-header">Alinhar blocos selecionados</h6></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('top')"><i class="bi bi-align-top me-2"></i>Linha Superior</a></li>
@@ -1560,11 +1576,11 @@
                         <!-- Estrutura do ramo (como no XMind) -->
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold mb-1" for="inspNodeEstrutura">Estrutura do ramo</label>
-                            <select id="inspNodeEstrutura" class="form-select form-select-sm" onchange="definirEstruturaDoRamo(this.value)">
-                                <option value="">Seguir a estrutura do pai</option>
-                                <option value="organograma">Organograma (filhos lado a lado)</option>
-                                <option value="arvore">Árvore (filhos em lista recuada)</option>
-                            </select>
+                            <div class="dropdown">
+                                <button type="button" id="inspNodeEstrutura" class="form-select form-select-sm text-start d-flex align-items-center gap-2"
+                                        data-bs-toggle="dropdown" aria-expanded="false" data-valor=""></button>
+                                <ul class="dropdown-menu shadow-sm w-100" id="inspNodeEstruturaMenu"></ul>
+                            </div>
                             <div class="form-text" id="inspNodeEstruturaAjuda"></div>
                         </div>
 
@@ -2174,7 +2190,7 @@
                     <label class="form-label text-muted small fw-bold mb-1">Buscar Colaborador (RH)</label>
                     <input type="text" id="inputBuscaColab" class="form-control form-control-sm mb-1" placeholder="Digite o nome..." autocomplete="off"
                            oninput="buscarColaboradoresParaBloco(this.value)" onkeydown="teclaBuscaColaborador(event)">
-                    <div class="form-text mb-2 mt-0">Digite ao menos 2 letras e clique no colaborador: o bloco é criado com nome, função e foto.</div>
+                    <div class="form-text mb-2 mt-0">Digite ao menos 2 letras e escolha o colaborador (ele fica destacado). Defina a raia e confirme em "Criar Bloco": o bloco é criado com nome, função e foto.</div>
                     <div class="list-group list-group-flush" id="listaColaboradoresBusca" style="max-height: 180px; overflow-y: auto;">
                         <!-- Resultados -->
                     </div>

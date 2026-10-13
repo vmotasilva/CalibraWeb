@@ -115,4 +115,17 @@ teste('nome abreviado do RH entra na comparacao com o RH', () => {
     assert.ok(!iguais.some(x => x.nomeAbreviado));
 });
 
+teste('RH: desligado (inativo) e reativado entram na comparacao', () => {
+    const nos = [no(1, { colab: colab(10) }), no(2, { colab: colab(11, { desligado: true }) }), no(3, { colab: colab(12) })];
+    const atuais = {
+        10: { existe: true, nome: 'Pessoa 10', cargo: 'Analista', ativo: false, tem_foto: true },
+        11: { existe: true, nome: 'Pessoa 11', cargo: 'Analista', ativo: true, tem_foto: true },
+        12: { existe: true, nome: 'Pessoa 12', cargo: 'Analista', tem_foto: true },   // sem "ativo": conta como ativo
+    };
+    const d = C.diferencasRH(nos, atuais);
+    assert.strictEqual(d.find(x => x.id === '1').desligado, true);
+    assert.strictEqual(d.find(x => x.id === '2').reativado, true);
+    assert.ok(!d.some(x => x.id === '3'));
+});
+
 console.log(process.exitCode ? 'COM FALHAS' : `TODOS OS ${total} TESTES OK`);

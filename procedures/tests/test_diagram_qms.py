@@ -1397,7 +1397,7 @@ class DiagramaFase3ConteudoTestCase(TestCase):
         r = c.post(url, data=json.dumps({"ids": [c1.id, 99999]}), content_type='application/json')
         self.assertEqual(r.status_code, 200)
         res = r.json()['results']
-        self.assertEqual(res[str(c1.id)], {"existe": True, "nome": "Maria Souza Lima", "nome_abreviado": "", "cargo": "Coordenadora", "setor_id": self.setor.id, "tem_foto": False})
+        self.assertEqual(res[str(c1.id)], {"existe": True, "nome": "Maria Souza Lima", "nome_abreviado": "", "cargo": "Coordenadora", "setor_id": self.setor.id, "tem_foto": False, "ativo": True})
         self.assertEqual(res["99999"], {"existe": False})
         self.assertEqual(c.post(url, data=json.dumps({"ids": ["a"]}), content_type='application/json').status_code, 400)
         self.assertEqual(c.post(url, data=json.dumps({"ids": list(range(1, 400))}), content_type='application/json').status_code, 400)
@@ -2123,3 +2123,49 @@ class DiagramaRaiasAutomaticasTestCase(TestCase):
         r = subprocess.run([node, str(script)], capture_output=True, text=True, encoding='utf-8')
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn('TODOS OS', r.stdout)
+
+
+class DiagramaAtualizarRHTestCase(TestCase):
+    """Botão "Atualizar RH": situação (desligado/ativo), foto e demais dados dos colaboradores do diagrama."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='atualiza.rh', password='x', is_superuser=True)
+        self.diagrama = Diagrama.objects.create(titulo='RH', criado_por=self.user)
+
+    def test_api_de_sincronizacao_informa_se_o_colaborador_esta_ativo(self):
+        from rh.models import Colaborador
+        ativo = Colaborador.objects.create(nome_completo='Ana Ativa', matricula='8801', grupo='G')
+        saiu = Colaborador.objects.create(nome_completo='Beto Desligado', matricula='8802', grupo='G', is_active=False)
+        c = Client()
+        c.force_login(self.user)
+        r = c.post('/procedures/api/diagramas/colaboradores/sincronizar/', data=json.dumps({'ids': [ativo.id, saiu.id, 999999]}),
+                   content_type='application/json').json()['results']
+        self.assertTrue(r[str(ativo.id)]['ativo'])
+        self.assertFalse(r[str(saiu.id)]['ativo'])
+        self.assertFalse(r['999999']['existe'])
+
+    def test_validacao_do_campo_desligado(self):
+        from procedures.services.diagram_validation import validar_topologia
+        no = {"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "x", "colab": {"id": 1, "desligado": True}}}
+        self.assertEqual(validar_topologia({"nodes": [no], "edges": []}), [])
+        no["data"]["colab"]["desligado"] = "sim"
+        self.assertTrue(validar_topologia({"nodes": [no], "edges": []}))
+
+    def test_pdf_com_colaborador_desligado(self):
+        topo = {"nodes": [{"id": "1", "type": "process", "position": {"x": 100, "y": 100},
+                           "data": {"label": "Beto", "lane": "Geral", "colab": {"id": 1, "nome": "Beto", "cargo": "Analista", "desligado": True}}}],
+                "edges": [], "layout_modo": "organograma"}
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=topo, status=StatusDiagrama.RASCUNHO)
+        self.assertTrue(gerar_pdf_diagrama_doc071(versao).startswith(b'%PDF-'))
+
+    def test_editor_traz_o_botao_e_a_marcacao(self):
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia={"nodes": [], "edges": []}, status=StatusDiagrama.RASCUNHO)
+        c = Client()
+        c.force_login(self.user)
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        self.assertIn('onclick="atualizarColaboradoresPeloRH(false)"', html)
+        self.assertIn('Atualizar RH', html)
+        self.assertIn('.selo-desligado', html)
+        js = ler_js_editor()
+        for item in ('selo-desligado', 'colab.desligado = true', 'fotoCacheBust'):
+            self.assertIn(item, js)

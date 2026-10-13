@@ -140,7 +140,10 @@
             if ((atual.nome_abreviado || '') !== (colab.nomeAbreviado || '')) d.nomeAbreviado = { de: colab.nomeAbreviado || '', para: atual.nome_abreviado || '' };
             if (!!atual.tem_foto !== (colab.temFoto !== false)) d.temFoto = { de: colab.temFoto !== false, para: !!atual.tem_foto };
             if (colab.removido) d.reencontrado = true;
-            if (d.nome || d.nomeAbreviado || d.cargo || d.temFoto || d.reencontrado || d.cargoPersonalizado) diferencas.push(d);
+            const ativoNoRH = atual.ativo !== false;   // colaborador desligado: inativo no RH
+            if (!ativoNoRH && !colab.desligado) d.desligado = true;
+            if (ativoNoRH && colab.desligado) d.reativado = true;
+            if (d.nome || d.nomeAbreviado || d.cargo || d.temFoto || d.reencontrado || d.cargoPersonalizado || d.desligado || d.reativado) diferencas.push(d);
         });
         return diferencas;
     }

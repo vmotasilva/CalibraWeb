@@ -358,6 +358,17 @@ class DiagramaFlowable(Flowable):
             c.drawCentredString(cx, topo - 2.4, letra)
             c.restoreState()
 
+        if colab and colab.get('desligado') is True:
+            c.saveState()
+            c.setFillColor(colors.HexColor('#FEE2E2'))
+            c.setStrokeColor(colors.HexColor('#FCA5A5'))
+            c.setLineWidth(0.8)
+            c.roundRect(x + 6, self._y(y + h) + 4, 52, 11, 5, stroke=1, fill=1)
+            c.setFillColor(colors.HexColor('#B91C1C'))
+            c.setFont('Helvetica-Bold', 7)
+            c.drawCentredString(x + 32, self._y(y + h) + 7, 'DESLIGADO')
+            c.restoreState()
+
         if eh_vaga(n):
             c.saveState()
             c.setFillColor(colors.HexColor('#FEF3C7'))

@@ -20,8 +20,10 @@ function nomeExibicaoColab(colab) {
     return nome;
 }
 
+let fotoCacheBust = '';   // muda depois de "Atualizar do RH" para não reaproveitar fotos antigas do navegador
+
 function fotoColabUrl(colabId) {
-    return `/procedures/api/diagramas/colaboradores/${colabId}/foto/`;
+    return `/procedures/api/diagramas/colaboradores/${colabId}/foto/${fotoCacheBust ? '?v=' + fotoCacheBust : ''}`;
 }
 
 function sincronizarGridDoNo(node) {

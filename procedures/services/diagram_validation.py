@@ -73,6 +73,8 @@ def validar_conteudo_no(dados: dict, nid) -> list:
             erros.append(f"'cargoRH' inválido no nó {nid}.")
         if colab.get('nomeAbreviado') is not None and (not isinstance(colab['nomeAbreviado'], str) or len(colab['nomeAbreviado']) > 60):
             erros.append(f"'nomeAbreviado' inválido no nó {nid}.")
+        if colab.get('desligado') is not None and not isinstance(colab['desligado'], bool):
+            erros.append(f"'desligado' inválido no nó {nid}.")
         if colab.get('removido') is not None and not isinstance(colab['removido'], bool):
             erros.append(f"'removido' inválido no nó {nid}.")
     return erros

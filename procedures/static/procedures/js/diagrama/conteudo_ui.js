@@ -66,6 +66,12 @@ function aplicarConteudoVisualAoNo(nodeEl, node) {
         if (alvo) alvo.insertAdjacentHTML('beforeend', ' <span class="selo-vago">VAGO</span>');
     }
 
+    if (dados.colab && dados.colab.desligado) {
+        nodeEl.classList.add('node-desligado');
+        const nome = nodeEl.querySelector('.rotulo-bloco');
+        if (nome) nome.insertAdjacentHTML('beforeend', ' <span class="selo-desligado" title="Colaborador desligado (inativo no RH)">DESLIGADO</span>');
+    }
+
     if (dados.imagem && dados.imagem.id && !dados.colab && node.type === 'process') {
         nodeEl.classList.add('node-com-imagem');
         nodeEl.insertAdjacentHTML('afterbegin', `<img class="bloco-imagem" src="/procedures/api/diagramas/imagens/${dados.imagem.id}/" alt="" onerror="this.remove()">`);
@@ -456,7 +462,7 @@ async function atualizarColaboradoresPeloRH(somenteSelecionados) {
     }
     diferencasRHPendentes = DiagramaConteudo.diferencasRH(blocos, atuaisRHPendentes);
     const corpo = document.getElementById('corpoAtualizacaoRH');
-    const aplicaveis = diferencasRHPendentes.filter(d => d.nome || d.nomeAbreviado || d.cargo || d.temFoto || d.removido || d.reencontrado);
+    const aplicaveis = diferencasRHPendentes.filter(d => d.nome || d.nomeAbreviado || d.cargo || d.temFoto || d.removido || d.reencontrado || d.desligado || d.reativado);
     if (diferencasRHPendentes.length === 0) {
         corpo.innerHTML = `<div class="alert alert-success mb-0"><i class="bi bi-check-circle"></i> ${blocos.length} colaborador(es) conferidos: tudo está igual ao RH.</div>`;
     } else {
@@ -465,6 +471,8 @@ async function atualizarColaboradoresPeloRH(somenteSelecionados) {
             if (d.removido) itens.push('<span class="text-danger"><i class="bi bi-exclamation-triangle-fill"></i> não encontrado no RH (o bloco será sinalizado, sem apagar nada)</span>');
             if (d.reencontrado) itens.push('<span class="text-success">voltou a existir no RH (o sinal de alerta será retirado)</span>');
             if (d.nome) itens.push(`nome: <s>${escapeHtml(d.nome.de)}</s> &rarr; <strong>${escapeHtml(d.nome.para)}</strong>`);
+            if (d.desligado) itens.push('<span class="text-danger"><i class="bi bi-person-x-fill"></i> desligado no RH (o bloco receberá a marcação DESLIGADO)</span>');
+            if (d.reativado) itens.push('<span class="text-success">voltou a ficar ativo no RH (a marcação DESLIGADO será retirada)</span>');
             if (d.nomeAbreviado) itens.push(`nome abreviado: <s>${escapeHtml(d.nomeAbreviado.de || '(vazio)')}</s> &rarr; <strong>${escapeHtml(d.nomeAbreviado.para || '(vazio)')}</strong>`);
             if (d.cargo) itens.push(`função: <s>${escapeHtml(d.cargo.de || '(vazia)')}</s> &rarr; <strong>${escapeHtml(d.cargo.para || '(vazia)')}</strong>`);
             if (d.cargoPersonalizado) itens.push(`função <em>personalizada</em> mantida ("${escapeHtml(d.cargoPersonalizado.bloco)}"); no RH é "${escapeHtml(d.cargoPersonalizado.rh)}"`);
@@ -484,6 +492,8 @@ function aplicarAtualizacoesDoRH() {
         const colab = node.data.colab;
         if (d.removido) colab.removido = true;
         if (d.reencontrado) delete colab.removido;
+        if (d.desligado) colab.desligado = true;
+        if (d.reativado) delete colab.desligado;
         if (d.nome) colab.nome = d.nome.para;
         if (d.nomeAbreviado) colab.nomeAbreviado = d.nomeAbreviado.para;
         if (d.cargo) colab.cargo = d.cargo.para;
@@ -497,6 +507,7 @@ function aplicarAtualizacoesDoRH() {
         const atual = colab && atuaisRHPendentes[colab.id];
         if (atual && atual.existe !== false && (colab.cargo || '') === (atual.cargo || '')) colab.cargoRH = atual.cargo || '';
     });
+    fotoCacheBust = String(Date.now());   // as fotos são buscadas de novo (podem ter mudado no RH)
     bootstrap.Modal.getInstance(document.getElementById('modalRH'))?.hide();
     reaplicarConteudo();
     mostrarAvisoNoEditor('Colaboradores atualizados pelo RH.');

@@ -152,17 +152,26 @@ function setModoNovoBloco(modo) {
 let searchColabTimeout = null;
 let resultadosBuscaColab = [];
 
-// Escolher um colaborador na busca já cria o bloco completo (nome, função, foto e raia do setor)
-function escolherColaboradorParaBloco(colab) {
+// Escolher um colaborador na busca só o SELECIONA (fica destacado); o bloco é criado ao confirmar em "Criar Bloco",
+// depois de escolher a raia (ou "entre raias")
+function escolherColaboradorParaBloco(colab, botao) {
     ctxNovoBloco.colabSelecionado = {
         id: colab.id,
         setorId: colab.setor_id,
         temFoto: !!colab.tem_foto,
         nome: colab.nome_completo || colab.nome,
+        nomeAbreviado: colab.nome_abreviado || '',
         cargo: colab.cargo_nome || colab.cargo || '',
         setor: colab.setor_nome || colab.setor || ''
     };
-    confirmarAdicionarBloco();
+    document.querySelectorAll('#listaColaboradoresBusca .colab-escolhido').forEach(el => {
+        el.classList.remove('active', 'colab-escolhido');
+        el.querySelector('.bi-check-circle-fill')?.remove();
+    });
+    if (botao) {
+        botao.classList.add('active', 'colab-escolhido');
+        botao.insertAdjacentHTML('beforeend', '<i class="bi bi-check-circle-fill float-end"></i>');
+    }
 }
 
 function buscarColaboradoresParaBloco(termo) {
@@ -198,7 +207,7 @@ function buscarColaboradoresParaBloco(termo) {
                 btn.className = 'list-group-item list-group-item-action py-1';
                 btn.innerHTML = `<div class="fw-bold small">${escapeHtml(colab.nome)}</div>
                                  <div class="text-muted" style="font-size:10px;">${escapeHtml(cargoDesc)}${setorDesc ? ' - ' + escapeHtml(setorDesc) : ''}</div>`;
-                btn.onclick = () => escolherColaboradorParaBloco(colab);
+                btn.onclick = () => escolherColaboradorParaBloco(colab, btn);
                 lista.appendChild(btn);
             });
         } catch (e) {
@@ -208,11 +217,14 @@ function buscarColaboradoresParaBloco(termo) {
     }, 300);
 }
 
-// Enter na busca escolhe o primeiro resultado
+// Enter na busca: seleciona o primeiro resultado; com um colaborador já selecionado, confirma (cria o bloco)
 function teclaBuscaColaborador(e) {
-    if (e.key === 'Enter' && resultadosBuscaColab.length > 0) {
-        e.preventDefault();
-        escolherColaboradorParaBloco(resultadosBuscaColab[0]);
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (ctxNovoBloco && ctxNovoBloco.colabSelecionado) { confirmarAdicionarBloco(); return; }
+    if (resultadosBuscaColab.length > 0) {
+        const primeiro = document.querySelector('#listaColaboradoresBusca button');
+        escolherColaboradorParaBloco(resultadosBuscaColab[0], primeiro);
     }
 }
 

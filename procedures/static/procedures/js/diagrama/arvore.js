@@ -89,13 +89,51 @@ function definirEstruturaDoRamo(valor) {
     dispararAutoSave();
 }
 
+// Estruturas do ramo, com a imagem que mostra como os filhos ficam dispostos (como no XMind)
+const ICONE_ESTRUTURA = {
+    '': '<i class="bi bi-arrow-return-right"></i>',
+    organograma: '<svg viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="9" y="1" width="10" height="5" rx="1"/><path d="M14 6v4M5.5 10h17M5.5 10v3M14 10v3M22.5 10v3"/>' +
+        '<rect x="2" y="13" width="7" height="5" rx="1"/><rect x="10.5" y="13" width="7" height="5" rx="1"/><rect x="19" y="13" width="7" height="5" rx="1"/></svg>',
+    arvore: '<svg viewBox="0 0 28 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">' +
+        '<rect x="1" y="1" width="10" height="5" rx="1"/><path d="M4 6v10M4 10h6M4 16h6"/>' +
+        '<rect x="10" y="7.5" width="16" height="5" rx="1"/><rect x="10" y="13.5" width="16" height="5" rx="1"/></svg>',
+};
+const OPCOES_ESTRUTURA = [
+    { valor: '', rotulo: 'Seguir a estrutura do pai' },
+    { valor: 'organograma', rotulo: 'Organograma (filhos lado a lado)' },
+    { valor: 'arvore', rotulo: 'Árvore (filhos em lista recuada)' },
+];
+
+function montarMenuDeEstrutura() {
+    const menu = document.getElementById('inspNodeEstruturaMenu');
+    if (menu && !menu.children.length) {
+        OPCOES_ESTRUTURA.forEach(o => {
+            const li = document.createElement('li');
+            li.innerHTML = `<button type="button" class="dropdown-item d-flex align-items-center gap-2 py-2" data-valor="${o.valor}">` +
+                `<span class="icone-estrutura">${ICONE_ESTRUTURA[o.valor]}</span><span>${o.rotulo}</span><i class="bi bi-check2 ms-auto invisible"></i></button>`;
+            li.querySelector('button').onclick = () => definirEstruturaDoRamo(o.valor);
+            menu.appendChild(li);
+        });
+    }
+    // imagens nos itens do menu Organizar
+    document.querySelectorAll('[data-icone-estrutura]').forEach(el => { el.innerHTML = ICONE_ESTRUTURA[el.dataset.iconeEstrutura] || ''; });
+}
+
 function atualizarSeletorDeEstrutura(node) {
-    const sel = document.getElementById('inspNodeEstrutura');
+    const botao = document.getElementById('inspNodeEstrutura');
     const ajuda = document.getElementById('inspNodeEstruturaAjuda');
-    if (!sel) return;
-    sel.value = DiagramaArvore.ESTRUTURAS.includes(node.data?.estrutura) ? node.data.estrutura : '';
+    if (!botao) return;
+    montarMenuDeEstrutura();
+    const valor = DiagramaArvore.ESTRUTURAS.includes(node.data?.estrutura) ? node.data.estrutura : '';
+    const opcao = OPCOES_ESTRUTURA.find(o => o.valor === valor) || OPCOES_ESTRUTURA[0];
+    botao.dataset.valor = valor;
+    botao.innerHTML = `<span class="icone-estrutura">${ICONE_ESTRUTURA[valor]}</span><span class="flex-grow-1">${opcao.rotulo}</span>`;
+    document.querySelectorAll('#inspNodeEstruturaMenu .dropdown-item').forEach(b => {
+        b.querySelector('.bi-check2').classList.toggle('invisible', b.dataset.valor !== valor);
+    });
     const aplicavel = ['organograma', 'raias'].includes(modoLayout());
-    sel.disabled = IS_APPROVED || !aplicavel;
+    botao.disabled = IS_APPROVED || !aplicavel;
     if (ajuda) ajuda.textContent = aplicavel
         ? 'Define como os blocos ligados abaixo deste são dispostos no Auto-Layout. "Seguir o pai" herda a estrutura do bloco de origem.'
         : 'Disponível nos layouts Organograma e Por raias (Organizar > Layout do diagrama).';
