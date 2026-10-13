@@ -242,6 +242,13 @@
     </div>
 </div>
 <script>
+    // O menu "⋮" abre por cima da tabela (posição fixa), sem ser cortado nem criar rolagem dentro dela
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.table-responsive [data-bs-toggle="dropdown"]').forEach(botao => {
+            new bootstrap.Dropdown(botao, { popperConfig: padrao => ({ ...padrao, strategy: 'fixed' }) });
+        });
+    });
+
     function abrirExcluirDiagrama(btn) {
         const d = btn.dataset;
         document.getElementById('formExcluirDiagrama').action = d.acao;
