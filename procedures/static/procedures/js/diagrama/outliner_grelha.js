@@ -69,6 +69,66 @@ function obterEstruturaOutliner() {
 /**
  * Renderiza a lista interativa de tópicos com recuos, guias de alinhamento e badges de raia.
  */
+// Blocos escondidos no Outliner: descendentes de um bloco recolhido (data.collapsed, o mesmo estado do canvas)
+function idsOcultosNoOutliner(items) {
+    const ocultos = new Set();
+    const porId = new Map(items.map(it => [it.id, it]));
+    items.forEach(it => {   // a lista já vem em pré-ordem: o pai é visto antes dos filhos
+        if (it.parentId === null) return;
+        const pai = porId.get(it.parentId);
+        if (pai && (pai.node.data?.collapsed || ocultos.has(pai.id))) ocultos.add(it.id);
+    });
+    return ocultos;
+}
+
+function contarDescendentesOutliner(items, id) {
+    const filhosDe = new Map();
+    items.forEach(it => { if (it.parentId !== null) { if (!filhosDe.has(it.parentId)) filhosDe.set(it.parentId, []); filhosDe.get(it.parentId).push(it.id); } });
+    let total = 0;
+    const pilha = [...(filhosDe.get(id) || [])];
+    while (pilha.length) { const x = pilha.pop(); total++; pilha.push(...(filhosDe.get(x) || [])); }
+    return total;
+}
+
+function itensVisiveisDoOutliner() {
+    const items = obterEstruturaOutliner();
+    const ocultos = idsOcultosNoOutliner(items);
+    return items.filter(it => !ocultos.has(it.id));
+}
+
+function atualizarAposRecolhimentoNoOutliner() {
+    if (typeof arvoreAtiva === 'function' && arvoreAtiva()) aplicarLayoutArvore(); // o canvas em árvore acompanha
+    renderizarOutliner();
+    dispararAutoSave();
+}
+
+function alternarRecolhimentoOutliner(nodeId, ev) {
+    if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+    const node = topologia.nodes.find(n => String(n.id) === String(nodeId));
+    if (!node) return;
+    if (!node.data) node.data = {};
+    if (node.data.collapsed) delete node.data.collapsed; else node.data.collapsed = true;
+    if (node.data.collapsed) {
+        // a seleção não pode ficar em um bloco que acabou de ficar oculto
+        const ocultos = idsOcultosNoOutliner(obterEstruturaOutliner());
+        if ([...selectedNodeIds].some(id => ocultos.has(id))) selecionarNo(node.id);
+    }
+    atualizarAposRecolhimentoNoOutliner();
+}
+
+// Recolhe (ou expande) todos os ramos; ao recolher, os blocos de primeiro nível continuam visíveis
+function definirRecolhimentoNoOutliner(recolher) {
+    const items = obterEstruturaOutliner();
+    const comFilhos = new Set(items.filter(it => it.parentId !== null).map(it => it.parentId));
+    items.forEach(it => {
+        if (!it.node.data) it.node.data = {};
+        if (recolher && comFilhos.has(it.id)) it.node.data.collapsed = true;
+        else delete it.node.data.collapsed;
+    });
+    if (recolher) desmarcarTodosNos();
+    atualizarAposRecolhimentoNoOutliner();
+}
+
 function renderizarOutliner(focusNodeId = null, cursorPosition = null) {
     const listEl = document.getElementById('outlinerList');
     if (!listEl) return;
@@ -90,7 +150,12 @@ function renderizarOutliner(focusNodeId = null, cursorPosition = null) {
         return;
     }
 
+    const ocultos = idsOcultosNoOutliner(items);
+    const qtdFilhos = new Map();
+    items.forEach(it => { if (it.parentId !== null) qtdFilhos.set(it.parentId, (qtdFilhos.get(it.parentId) || 0) + 1); });
+
     items.forEach((item, idx) => {
+        if (ocultos.has(item.id)) return;   // dentro de um ramo recolhido
         const node = item.node;
         const level = item.level;
         const safeLabel = escapeHtml(node.data?.label || '');
@@ -99,16 +164,27 @@ function renderizarOutliner(focusNodeId = null, cursorPosition = null) {
         const itemEl = document.createElement('div');
         itemEl.className = `outliner-item outliner-level-${Math.min(level, 6)}`;
         itemEl.id = `outliner-row-${node.id}`;
-        itemEl.style.paddingLeft = `${level * 28 + 8}px`;
+        itemEl.style.paddingLeft = `${level * 28 + 26}px`;   // 18px à esquerda para a seta de recolher
 
         // Linhas guia de hierarquia para níveis indentados
         let guideLinesHtml = '';
         for (let l = 0; l < level; l++) {
-            guideLinesHtml += `<span class="outliner-guide-line" style="left: ${l * 28 + 16}px;"></span>`;
+            guideLinesHtml += `<span class="outliner-guide-line" style="left: ${l * 28 + 34}px;"></span>`;
         }
+
+        const filhos = qtdFilhos.get(item.id) || 0;
+        const recolhido = !!node.data?.collapsed;
+        const setaHtml = filhos > 0
+            ? `<button type="button" class="outliner-toggle" style="left: ${level * 28 + 4}px;" tabindex="-1"
+                       title="${recolhido ? 'Expandir (' + contarDescendentesOutliner(items, item.id) + ' bloco(s) ocultos)' : 'Recolher ramo'}"
+                       onclick="alternarRecolhimentoOutliner('${node.id}', event)"><i class="bi bi-chevron-${recolhido ? 'right' : 'down'}"></i></button>`
+            : '';
+        const contadorHtml = recolhido
+            ? `<span class="badge bg-light text-secondary border outliner-contador" title="Blocos ocultos neste ramo">+${contarDescendentesOutliner(items, item.id)}</span>` : '';
 
         itemEl.innerHTML = `
             ${guideLinesHtml}
+            ${setaHtml}
             <div class="outliner-bullet ${level > 0 ? 'sub-bullet' : ''}" title="Nível ${level + 1} (${currentLane})" onclick="selecionarNo('${node.id}')"></div>
             <input type="text" 
                 id="outliner-input-${node.id}" 
@@ -120,6 +196,7 @@ function renderizarOutliner(focusNodeId = null, cursorPosition = null) {
                 onkeydown="onOutlinerKeydown(event, '${node.id}', ${idx})"
                 onclick="selecionarNo('${node.id}')"
             >
+            ${contadorHtml}
             <div class="dropdown">
                 <button class="btn btn-sm btn-light border py-0 px-2 outliner-lane-badge dropdown-toggle" type="button" data-bs-toggle="dropdown" ${IS_APPROVED ? 'disabled' : ''} title="Raia / Setor Responsável">
                     ${escapeHtml(currentLane)}
@@ -366,12 +443,13 @@ function onOutlinerKeydown(e, nodeId, idx) {
  */
 function recuarItemOutliner(nodeId, cursorPos = null) {
     if (IS_APPROVED) return;
-    const items = obterEstruturaOutliner();
+    const items = itensVisiveisDoOutliner();   // o item anterior é o que aparece na tela acima
     const curIdx = items.findIndex(it => it.id === nodeId);
     if (curIdx <= 0) return; // O primeiro item da lista não pode ser recuado
 
     const prevItem = items[curIdx - 1];
     const prevNodeId = prevItem.id;
+    if (prevItem.node.data) delete prevItem.node.data.collapsed;   // o novo subtópico precisa ficar visível
 
     // Remove conexões de entrada existentes
     topologia.edges = (topologia.edges || []).filter(e => e.target !== nodeId);
@@ -462,6 +540,8 @@ function criarProximoItemOutliner(refNodeId = null) {
         position: { x: 100, y: 100 },
         data: { stepId: nextId, lane: lane, label: '' }
     };
+    const paiDoNovo = parentId && topologia.nodes.find(n => n.id === parentId);
+    if (paiDoNovo && paiDoNovo.data) delete paiDoNovo.data.collapsed;   // o novo item precisa ficar visível
 
     topologia.nodes.splice(insertIndexInNodes, 0, newNode);
 
@@ -510,7 +590,7 @@ function excluirItemOutlinerETrazerFocoAnterior(nodeId) {
  * Move o foco do teclado para o item acima (-1) ou abaixo (+1).
  */
 function focarItemOutlinerVizinho(nodeId, offset) {
-    const items = obterEstruturaOutliner();
+    const items = itensVisiveisDoOutliner();
     const curIdx = items.findIndex(it => it.id === nodeId);
     if (curIdx === -1) return;
 
@@ -750,8 +830,8 @@ function renderizarGrelha() {
         tr.innerHTML = `
             <td class="text-center font-monospace fw-bold">${row.stepId}</td>
             <td>
-                <input type="text" class="form-control form-control-sm" value="${row.lane || ''}" 
-                    ${IS_APPROVED ? 'disabled' : ''} onchange="atualizarGrelha(${idx}, 'lane', this.value)">
+                <input type="text" class="form-control form-control-sm grelha-raia" name="grelha_raia_x" value="${escapeHtml(row.lane || '')}"
+                    autocomplete="off" data-lpignore="true" data-1p-ignore placeholder="Buscar raia..." ${IS_APPROVED ? 'disabled' : ''}>
             </td>
             <td>
                 <select class="form-select form-select-sm" ${IS_APPROVED ? 'disabled' : ''} onchange="atualizarGrelha(${idx}, 'type', this.value)">
@@ -783,6 +863,7 @@ function renderizarGrelha() {
             </td>
         `;
         corpo.appendChild(tr);
+        ligarBuscaDeRaia(tr.querySelector('.grelha-raia'), () => row.lane || 'Geral', nome => atualizarGrelha(idx, 'lane', nome));
     });
 }
 

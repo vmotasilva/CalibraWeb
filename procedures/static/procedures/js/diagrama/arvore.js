@@ -118,6 +118,7 @@ function alternarRecolhimento(nodeId, ev) {
         if ([...selectedNodeIds].some(id => ocultosAgora.has(String(id)))) selecionarNo(node.id);
     }
     aplicarLayoutArvore();
+    renderizarOutliner();
     dispararAutoSave();
 }
 
@@ -134,6 +135,7 @@ function definirRecolhimentoDeTodos(recolher, nivelMinimo) {
     });
     desmarcarTodosNos();
     aplicarLayoutArvore();
+    renderizarOutliner();
     enquadrarVisaoCompleta();
     dispararAutoSave();
 }

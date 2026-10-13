@@ -423,25 +423,39 @@ function gerenciarRaiaAdicionar() {
 }
 
 // =========================================================================
-// CAMPO "RAIA" DO INSPETOR: busca entre as raias deste diagrama
+// BUSCA DE RAIAS (campo "Raia" do inspetor e coluna "Raia / Setor" da Grelha)
+// Lista flutuante com as raias deste diagrama; permite criar uma nova quando não há correspondência.
 // =========================================================================
-let buscaRaiaAtiva = -1;
+let buscaRaia = { input: null, atual: () => '', aoEscolher: null, ativo: -1, filtrar: false };
 
 function semAcento(texto) {
-    return String(texto || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return String(texto || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-function raiaAtualDoBlocoSelecionado() {
-    const node = topologia.nodes.find(n => n.id === selectedNodeId);
-    return node ? (node.data?.lane || 'Geral') : '';
+function listaFlutuanteDeRaias() {
+    let lista = document.getElementById('buscaRaiaFlutuante');
+    if (!lista) {
+        lista = document.createElement('div');
+        lista.id = 'buscaRaiaFlutuante';
+        lista.className = 'list-group shadow busca-raia-lista d-none';
+        lista.setAttribute('role', 'listbox');
+        // mousedown (antes do blur do campo) para o clique não se perder
+        lista.addEventListener('mousedown', e => {
+            const item = e.target.closest('[data-raia],[data-nova]');
+            e.preventDefault();
+            if (item) escolherRaiaNaBusca(item.dataset.raia || item.dataset.nova);
+        });
+        document.body.appendChild(lista);
+    }
+    return lista;
 }
 
 function renderizarBuscaDeRaia() {
-    const entrada = document.getElementById('inspNodeLane');
-    const lista = document.getElementById('inspNodeLaneLista');
-    if (!entrada || !lista) return;
-    const termo = semAcento(entrada.value.trim());
-    const atual = raiaAtualDoBlocoSelecionado();
+    const entrada = buscaRaia.input;
+    if (!entrada) return;
+    const lista = listaFlutuanteDeRaias();
+    const termo = buscaRaia.filtrar ? semAcento(entrada.value.trim()) : ''; // ao abrir, mostra todas as raias
+    const atual = buscaRaia.atual();
     const todas = obterListaRaiasOrdenada();
     const filtradas = todas.filter(r => !termo || semAcento(r).includes(termo));
     const exata = todas.some(r => semAcento(r) === termo);
@@ -470,67 +484,100 @@ function renderizarBuscaDeRaia() {
     if (!lista.children.length) {
         lista.innerHTML = '<div class="list-group-item small text-muted">Nenhuma raia encontrada.</div>';
     }
-    buscaRaiaAtiva = lista.querySelector('[data-raia],[data-nova]') ? 0 : -1;
+    buscaRaia.ativo = lista.querySelector('[data-raia],[data-nova]') ? 0 : -1;
+    posicionarBuscaDeRaia();
     marcarItemDaBusca();
-    lista.classList.remove('d-none');
     entrada.setAttribute('aria-expanded', 'true');
 }
 
-function marcarItemDaBusca() {
-    const itens = [...document.querySelectorAll('#inspNodeLaneLista [data-raia], #inspNodeLaneLista [data-nova]')];
-    itens.forEach((el, i) => el.classList.toggle('ativo', i === buscaRaiaAtiva));
-    if (itens[buscaRaiaAtiva]) itens[buscaRaiaAtiva].scrollIntoView({ block: 'nearest' });
-}
-
-function fecharBuscaDeRaia(restaurar) {
-    const entrada = document.getElementById('inspNodeLane');
-    const lista = document.getElementById('inspNodeLaneLista');
-    if (lista) lista.classList.add('d-none');
-    if (entrada) {
-        entrada.setAttribute('aria-expanded', 'false');
-        if (restaurar) entrada.value = raiaAtualDoBlocoSelecionado();
+function posicionarBuscaDeRaia() {
+    const lista = listaFlutuanteDeRaias();
+    const r = buscaRaia.input.getBoundingClientRect();
+    lista.classList.remove('d-none');
+    lista.style.width = `${Math.max(r.width, 200)}px`;
+    lista.style.left = `${Math.min(r.left, window.innerWidth - lista.offsetWidth - 8)}px`;
+    const abaixo = window.innerHeight - r.bottom;
+    if (abaixo < Math.min(lista.scrollHeight, 230) + 8 && r.top > abaixo) {   // sem espaço embaixo: abre para cima
+        lista.style.top = 'auto';
+        lista.style.bottom = `${window.innerHeight - r.top + 2}px`;
+    } else {
+        lista.style.bottom = 'auto';
+        lista.style.top = `${r.bottom + 2}px`;
     }
 }
 
-function escolherRaiaDoInspetor(nome) {
-    if (IS_APPROVED || !nome) { fecharBuscaDeRaia(true); return; }
-    document.getElementById('inspNodeLane').value = nome;
-    fecharBuscaDeRaia(false);
-    aplicarEstiloNoSelecionado('lane', nome);
+function marcarItemDaBusca() {
+    const itens = [...document.querySelectorAll('#buscaRaiaFlutuante [data-raia], #buscaRaiaFlutuante [data-nova]')];
+    itens.forEach((el, i) => el.classList.toggle('ativo', i === buscaRaia.ativo));
+    if (itens[buscaRaia.ativo]) itens[buscaRaia.ativo].scrollIntoView({ block: 'nearest' });
 }
 
-function iniciarBuscaDeRaia() {
-    const entrada = document.getElementById('inspNodeLane');
-    const lista = document.getElementById('inspNodeLaneLista');
-    if (!entrada || !lista) return;
-    entrada.addEventListener('focus', () => { entrada.select(); renderizarBuscaDeRaia(); });
-    entrada.addEventListener('input', renderizarBuscaDeRaia);
-    entrada.addEventListener('blur', () => setTimeout(() => fecharBuscaDeRaia(true), 120));
+function fecharBuscaDeRaia(restaurar) {
+    const lista = document.getElementById('buscaRaiaFlutuante');
+    if (lista) lista.classList.add('d-none');
+    const entrada = buscaRaia.input;
+    if (entrada) {
+        entrada.setAttribute('aria-expanded', 'false');
+        if (restaurar) entrada.value = buscaRaia.atual();
+    }
+    buscaRaia.input = null;
+}
+
+function escolherRaiaNaBusca(nome) {
+    const entrada = buscaRaia.input;
+    const aoEscolher = buscaRaia.aoEscolher;
+    if (IS_APPROVED || !nome || !entrada) { fecharBuscaDeRaia(true); return; }
+    entrada.value = nome;
+    fecharBuscaDeRaia(false);
+    aoEscolher(nome);
+}
+
+// Liga o comportamento de busca a um campo de texto. `atual()` devolve a raia vigente; `aoEscolher(nome)` aplica a escolha.
+function ligarBuscaDeRaia(entrada, atual, aoEscolher) {
+    if (!entrada) return;
+    entrada.setAttribute('role', 'combobox');
+    entrada.setAttribute('autocomplete', 'off');
+    const abrir = () => { buscaRaia = { input: entrada, atual, aoEscolher, ativo: -1, filtrar: false }; renderizarBuscaDeRaia(); };
+    entrada.addEventListener('focus', () => { entrada.select(); abrir(); });
+    entrada.addEventListener('input', () => { if (buscaRaia.input !== entrada) abrir(); buscaRaia.filtrar = true; renderizarBuscaDeRaia(); });
+    entrada.addEventListener('blur', () => setTimeout(() => { if (buscaRaia.input === entrada) fecharBuscaDeRaia(true); }, 120));
     entrada.addEventListener('keydown', e => {
-        const itens = [...lista.querySelectorAll('[data-raia],[data-nova]')];
+        if (buscaRaia.input !== entrada && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { e.preventDefault(); abrir(); return; }
+        if (buscaRaia.input !== entrada) return;
+        const itens = [...listaFlutuanteDeRaias().querySelectorAll('[data-raia],[data-nova]')];
         if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
             e.preventDefault();
-            if (lista.classList.contains('d-none')) renderizarBuscaDeRaia();
-            else if (itens.length) {
-                buscaRaiaAtiva = (buscaRaiaAtiva + (e.key === 'ArrowDown' ? 1 : -1) + itens.length) % itens.length;
+            if (itens.length) {
+                buscaRaia.ativo = (buscaRaia.ativo + (e.key === 'ArrowDown' ? 1 : -1) + itens.length) % itens.length;
                 marcarItemDaBusca();
             }
         } else if (e.key === 'Enter') {
             e.preventDefault();
-            const item = itens[buscaRaiaAtiva];
-            if (item) escolherRaiaDoInspetor(item.dataset.raia || item.dataset.nova);
+            const item = itens[buscaRaia.ativo];
+            if (item) escolherRaiaNaBusca(item.dataset.raia || item.dataset.nova);
         } else if (e.key === 'Escape') {
             e.stopPropagation();
             fecharBuscaDeRaia(true);
             entrada.blur();
         }
     });
-    // mousedown (antes do blur do campo) para o clique não se perder
-    lista.addEventListener('mousedown', e => {
-        const item = e.target.closest('[data-raia],[data-nova]');
-        e.preventDefault();
-        if (item) escolherRaiaDoInspetor(item.dataset.raia || item.dataset.nova);
-    });
 }
 
-iniciarBuscaDeRaia();
+// rolagem ou redimensionamento fora da lista: fecha (a lista é "fixa" na tela)
+window.addEventListener('scroll', e => {
+    if (buscaRaia.input && !(e.target.closest && e.target.closest('#buscaRaiaFlutuante'))) fecharBuscaDeRaia(true);
+}, true);
+window.addEventListener('resize', () => { if (buscaRaia.input) fecharBuscaDeRaia(true); });
+
+function iniciarBuscaDeRaiaDoInspetor() {
+    ligarBuscaDeRaia(
+        document.getElementById('inspNodeLane'),
+        () => {
+            const node = topologia.nodes.find(n => n.id === selectedNodeId);
+            return node ? (node.data?.lane || 'Geral') : '';
+        },
+        nome => aplicarEstiloNoSelecionado('lane', nome)
+    );
+}
+
+iniciarBuscaDeRaiaDoInspetor();

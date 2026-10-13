@@ -492,8 +492,7 @@
     .pitch-ativo .minimapa, .pitch-ativo .barra-status { display: none !important; }
 
     .busca-raia-lista {
-        position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 1060;
-        max-height: 230px; overflow-y: auto; border-radius: 8px;
+        position: fixed; z-index: 2100; max-height: 230px; overflow-y: auto; border-radius: 8px;
     }
     .busca-raia-lista .list-group-item { font-size: 13px; padding: 6px 10px; cursor: pointer; }
     .busca-raia-lista .list-group-item.ativo, .busca-raia-lista .list-group-item:hover { background: #eff6ff; }
@@ -858,6 +857,14 @@
     .outliner-item:hover .outliner-bullet {
         transform: scale(1.25);
     }
+
+    .outliner-toggle {
+        position: absolute; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; padding: 0;
+        display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px;
+        background: transparent; color: #64748b; font-size: 11px; cursor: pointer; z-index: 2;
+    }
+    .outliner-toggle:hover { background: #e2e8f0; color: #0f172a; }
+    .outliner-contador { font-size: 11px; flex-shrink: 0; }
 
     .outliner-guide-line {
         position: absolute;
@@ -1281,6 +1288,10 @@
 
                     <div class="d-flex align-items-center gap-2">
                         <!-- Alternador entre Lista Interativa e Texto Livre -->
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Recolher ou expandir ramos">
+                            <button type="button" class="btn btn-outline-secondary text-nowrap" onclick="definirRecolhimentoNoOutliner(true)" title="Recolher todos os ramos (mostra só o primeiro nível)"><i class="bi bi-arrows-collapse"></i> Recolher tudo</button>
+                            <button type="button" class="btn btn-outline-secondary text-nowrap" onclick="definirRecolhimentoNoOutliner(false)" title="Expandir todos os ramos"><i class="bi bi-arrows-expand"></i> Expandir tudo</button>
+                        </div>
                         <div class="btn-group btn-group-sm p-1 bg-light border rounded-pill shadow-xs" role="group">
                             <button type="button" id="btnOutlinerVisaoLista" class="btn btn-sm btn-white active rounded-pill fw-semibold px-3" onclick="alternarVisualizacaoOutliner('lista')">
                                 <i class="bi bi-list-ul me-1"></i> Lista Interativa
@@ -1492,7 +1503,6 @@
                                 <input type="text" id="inspNodeLane" name="raia_do_bloco_x" class="form-control form-control-sm pe-4" autocomplete="off" data-lpignore="true" data-1p-ignore
                                        role="combobox" aria-expanded="false" aria-controls="inspNodeLaneLista" placeholder="Buscar raia deste diagrama...">
                                 <i class="bi bi-search position-absolute text-muted" style="right: 9px; top: 7px; font-size: 12px; pointer-events: none;"></i>
-                                <div id="inspNodeLaneLista" class="list-group shadow busca-raia-lista d-none" role="listbox"></div>
                             </div>
                         </div>
                         <!-- Ordem no auto-layout -->
