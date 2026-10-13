@@ -24,9 +24,20 @@ function arvoreAtual() {
     return DiagramaArvore.montarArvore(topologia.nodes, topologia.edges);
 }
 
+// Blocos escondidos: descendentes de um bloco recolhido (em qualquer layout) e, no modo por raias, blocos de raias recolhidas
 function nosOcultos() {
-    if (!arvoreAtiva()) return new Set();
-    return DiagramaArvore.ocultos(topologia.nodes, arvoreCache || arvoreAtual());
+    const ocultos = DiagramaArvore.ocultos(topologia.nodes, arvoreAtual());
+    if (!arvoreAtiva() && (topologia.raias_recolhidas || []).length) {
+        const recolhidas = new Set(topologia.raias_recolhidas);
+        topologia.nodes.forEach(n => { if (recolhidas.has(n.data?.lane || 'Geral')) ocultos.add(String(n.id)); });
+    }
+    return ocultos;
+}
+
+// Reaplica o layout do modo atual e atualiza a lista (usado ao recolher/expandir ramos)
+function atualizarAposRecolhimento() {
+    if (arvoreAtiva()) aplicarLayoutArvore(); else renderizarCanvas();
+    renderizarOutliner();
 }
 
 // Estado visual dos controles de layout (menu, faixas e botões que só valem em um dos modos)
@@ -45,6 +56,51 @@ function atualizarUILayout() {
     });
     const rotulo = document.getElementById('labelLayoutAtual');
     if (rotulo) rotulo.textContent = ROTULOS_LAYOUT[modo] || modo;
+    const itemEmpilhar = document.getElementById('itemEmpilharFolhas');
+    if (itemEmpilhar) {
+        itemEmpilhar.classList.toggle('d-none', modo !== 'organograma');
+        const marcaEmpilhar = itemEmpilhar.querySelector('.layout-check');
+        if (marcaEmpilhar) marcaEmpilhar.classList.toggle('invisible', topologia.empilhar_folhas === false);
+    }
+}
+
+// Estrutura do ramo (como no XMind): como os filhos do(s) bloco(s) selecionado(s) são dispostos no organograma
+// '' = seguir a estrutura do pai | 'organograma' | 'arvore' (lista recuada)
+function definirEstruturaDoRamo(valor) {
+    if (IS_APPROVED || selectedNodeIds.size === 0) return;
+    selectedNodeIds.forEach(id => {
+        const node = topologia.nodes.find(n => n.id === id);
+        if (!node) return;
+        if (!node.data) node.data = {};
+        if (DiagramaArvore.ESTRUTURAS.includes(valor)) node.data.estrutura = valor; else delete node.data.estrutura;
+    });
+    if (modoLayout() === 'organograma') aplicarLayoutArvore(); else renderizarCanvas();
+    const no = topologia.nodes.find(n => n.id === selectedNodeId);
+    if (no) atualizarSeletorDeEstrutura(no);
+    dispararAutoSave();
+}
+
+function atualizarSeletorDeEstrutura(node) {
+    const sel = document.getElementById('inspNodeEstrutura');
+    const ajuda = document.getElementById('inspNodeEstruturaAjuda');
+    if (!sel) return;
+    sel.value = DiagramaArvore.ESTRUTURAS.includes(node.data?.estrutura) ? node.data.estrutura : '';
+    const emOrganograma = modoLayout() === 'organograma';
+    sel.disabled = IS_APPROVED || !emOrganograma;
+    if (ajuda) ajuda.textContent = emOrganograma
+        ? 'Define como os blocos ligados abaixo deste são dispostos. "Seguir o pai" herda a estrutura do bloco de origem.'
+        : 'Disponível no layout Organograma (Organizar > Layout do diagrama).';
+}
+
+// Organograma: folhas de um mesmo bloco empilhadas na vertical (compacto) ou lado a lado
+function alternarEmpilharFolhas() {
+    if (IS_APPROVED || modoLayout() !== 'organograma') return;
+    if (topologia.empilhar_folhas === false) delete topologia.empilhar_folhas;
+    else topologia.empilhar_folhas = false;
+    atualizarUILayout();
+    aplicarLayoutArvore();
+    enquadrarVisaoCompleta();
+    dispararAutoSave();
 }
 
 // Mede os blocos visíveis no DOM e aplica o layout em árvore (posições e pontos de ligação das conexões)
@@ -58,7 +114,8 @@ function aplicarLayoutArvore() {
         if (el) tamanhos[String(n.id)] = { w: el.offsetWidth, h: el.offsetHeight };
     });
 
-    const resultado = DiagramaArvore.calcularLayout(topologia.nodes, topologia.edges, modoLayout(), tamanhos);
+    const resultado = DiagramaArvore.calcularLayout(topologia.nodes, topologia.edges, modoLayout(), tamanhos,
+        { empilharFolhas: topologia.empilhar_folhas !== false });
     topologia.nodes.forEach(n => {
         const p = resultado.posicoes[String(n.id)];
         if (p) n.position = { x: p.x, y: p.y };
@@ -95,11 +152,11 @@ function reaplicarLayoutDoModo() {
 
 // ------------------------------------------------------------------ recolher / expandir
 function htmlAlternadorRecolhimento(node) {
-    if (!arvoreAtiva() || !arvoreCache) return '';
-    const filhos = arvoreCache.filhos.get(String(node.id)) || [];
+    if (!arvoreEfetivo) return '';
+    const filhos = arvoreEfetivo.filhos.get(String(node.id)) || [];
     if (filhos.length === 0) return '';
     const recolhido = !!node.data?.collapsed;
-    const escondidos = recolhido ? DiagramaArvore.descendentes(arvoreCache, String(node.id)).size : 0;
+    const escondidos = recolhido ? DiagramaArvore.descendentes(arvoreEfetivo, String(node.id)).size : 0;
     const titulo = recolhido ? `Expandir (${escondidos} bloco(s) ocultos)` : 'Recolher ramo';
     return `<button type="button" class="collapse-toggle ${recolhido ? 'recolhido' : ''}" title="${titulo}"
                     onmousedown="event.stopPropagation()" ondblclick="event.stopPropagation()"
@@ -117,13 +174,11 @@ function alternarRecolhimento(nodeId, ev) {
         const ocultosAgora = DiagramaArvore.descendentes(arvoreAtual(), String(node.id));
         if ([...selectedNodeIds].some(id => ocultosAgora.has(String(id)))) selecionarNo(node.id);
     }
-    aplicarLayoutArvore();
-    renderizarOutliner();
+    atualizarAposRecolhimento();
     dispararAutoSave();
 }
 
 function definirRecolhimentoDeTodos(recolher, nivelMinimo) {
-    if (!arvoreAtiva()) return;
     const arv = arvoreAtual();
     topologia.nodes.forEach(n => {
         const tem = (arv.filhos.get(String(n.id)) || []).length > 0;
@@ -134,8 +189,7 @@ function definirRecolhimentoDeTodos(recolher, nivelMinimo) {
         if (!n.data.collapsed) delete n.data.collapsed;
     });
     desmarcarTodosNos();
-    aplicarLayoutArvore();
-    renderizarOutliner();
+    atualizarAposRecolhimento();
     enquadrarVisaoCompleta();
     dispararAutoSave();
 }
@@ -345,7 +399,7 @@ function garantirBlocoVisivel(nodeId) {
 
 function alternarRecolhimentoDaSelecao() {
     const node = noSelecionadoUnico();
-    if (!node || !arvoreAtiva()) return;
+    if (!node) return;
     if ((arvoreAtual().filhos.get(String(node.id)) || []).length === 0) return;
     alternarRecolhimento(node.id);
 }

@@ -252,6 +252,14 @@ def validar_topologia(topologia: dict) -> list:
                                   or not all(isinstance(x, str) and 0 < len(x) <= 100 for x in lista)):
             return [f"'{chave}' deve ser uma lista de até {MAX_RAIAS} nomes de raia (até 100 caracteres)."]
 
+    if topologia.get('empilhar_folhas') is not None and not isinstance(topologia['empilhar_folhas'], bool):
+        return ["'empilhar_folhas' deve ser verdadeiro/falso."]
+
+    recolhidas = topologia.get('raias_recolhidas')
+    if recolhidas is not None and (not isinstance(recolhidas, list) or len(recolhidas) > MAX_RAIAS
+                                   or not all(isinstance(x, str) and 0 < len(x) <= 100 for x in recolhidas)):
+        return [f"'raias_recolhidas' deve ser uma lista de até {MAX_RAIAS} nomes de raia."]
+
     erros_nav = validar_grupos_e_vistas(topologia)
     if erros_nav:
         return erros_nav
@@ -285,6 +293,10 @@ def validar_topologia(topologia: dict) -> list:
             ordem = data.get('ordem')
             if ordem is not None and (isinstance(ordem, bool) or not isinstance(ordem, int) or not 0 <= ordem <= 9999):
                 erros.append(f"'ordem' do nó {nid} deve ser um número inteiro entre 0 e 9999.")
+            if data.get('estrutura') is not None and data['estrutura'] not in ('organograma', 'arvore'):
+                erros.append(f"Estrutura inválida no nó {nid} (use organograma ou arvore).")
+            if data.get('laneAbaixo') is not None and (not isinstance(data['laneAbaixo'], str) or not 0 < len(data['laneAbaixo']) <= 100):
+                erros.append(f"'laneAbaixo' inválida no nó {nid}.")
             if data.get('collapsed') is not None and not isinstance(data['collapsed'], bool):
                 erros.append(f"Campo 'collapsed' inválido no nó {nid}.")
             if data.get('style') is not None:

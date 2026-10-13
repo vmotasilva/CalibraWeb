@@ -1727,3 +1727,103 @@ class DiagramaFase5ImportacaoTestCase(TestCase):
         js = ler_js_editor()
         self.assertIn('if (topologia.precisa_layout)', js)
         self.assertIn('aplicarLayoutArvore()', js[js.index('if (topologia.precisa_layout)'):][:300])
+
+
+class DiagramaOrganogramaCompactoTestCase(TestCase):
+    """Organograma compacto: folhas do mesmo pai empilhadas na vertical (opção por diagrama)."""
+
+    def test_validacao_da_opcao_de_empilhar(self):
+        from procedures.services.diagram_validation import validar_topologia
+        base = {"nodes": [{"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "A"}}], "edges": []}
+        self.assertEqual(validar_topologia({**base, "empilhar_folhas": False}), [])
+        self.assertTrue(validar_topologia({**base, "empilhar_folhas": "nao"}))
+
+    def test_editor_traz_opcao_e_aplica_no_layout(self):
+        user = User.objects.create_user(username='compacto', password='x', is_superuser=True)
+        diagrama = Diagrama.objects.create(titulo='Compacto', criado_por=user)
+        versao = DiagramaVersao.objects.create(diagrama=diagrama, revisao=0, dados_topologia={"nodes": [], "edges": []})
+        c = Client()
+        c.force_login(user)
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        self.assertIn('id="itemEmpilharFolhas"', html)
+        self.assertIn('onclick="alternarEmpilharFolhas()"', html)
+        js = ler_js_editor()
+        self.assertIn('empilharFolhas: topologia.empilhar_folhas !== false', js)
+
+
+class DiagramaEstruturasERaiasTestCase(TestCase):
+    """Estrutura do ramo, recolher blocos/raias em qualquer layout e blocos entre raias."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='estruturas', password='x', is_superuser=True)
+        self.diagrama = Diagrama.objects.create(titulo='Estruturas', criado_por=self.user)
+
+    @staticmethod
+    def _no(i, lane, y, **dados):
+        return {"id": str(i), "type": "process", "position": {"x": 100 * i, "y": y}, "data": {"label": f"B{i}", "lane": lane, **dados}}
+
+    def _topologia(self, **extra):
+        return {"lanes": ["Alta", "Media", "Baixa"], "layout_modo": "raias",
+                "nodes": [self._no(1, "Alta", 100), self._no(2, "Media", 320), self._no(3, "Media", 320), self._no(4, "Baixa", 540)],
+                "edges": [{"id": "e1", "source": "1", "target": "2"}, {"id": "e2", "source": "1", "target": "3"},
+                          {"id": "e3", "source": "2", "target": "4"}], **extra}
+
+    def test_validacao_dos_novos_campos(self):
+        from procedures.services.diagram_validation import validar_topologia
+        base = self._topologia()
+        self.assertEqual(validar_topologia(base), [])
+        base["nodes"][0]["data"]["estrutura"] = "arvore"
+        base["nodes"][1]["data"]["laneAbaixo"] = "Baixa"
+        base["raias_recolhidas"] = ["Baixa"]
+        self.assertEqual(validar_topologia(base), [])
+        for ruim in ({"estrutura": "tabela"}, {"laneAbaixo": ""}, {"laneAbaixo": 3}):
+            topo = self._topologia()
+            topo["nodes"][0]["data"].update(ruim)
+            self.assertTrue(validar_topologia(topo), ruim)
+        topo = self._topologia(raias_recolhidas="Baixa")
+        self.assertTrue(validar_topologia(topo))
+
+    def test_pdf_com_raia_recolhida_bloco_recolhido_e_bloco_entre_raias(self):
+        base = self._topologia()
+        versao_base = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=base, status=StatusDiagrama.RASCUNHO)
+        pdf_base = gerar_pdf_diagrama_doc071(versao_base)
+
+        topo = self._topologia(raias_recolhidas=["Baixa"])
+        topo["nodes"][1]["data"]["collapsed"] = True              # recolhe B2 (esconde B4) mesmo no modo por raias
+        topo["nodes"][2]["data"]["laneAbaixo"] = "Baixa"          # B3 sobre a divisa Media/Baixa
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=1, dados_topologia=topo, status=StatusDiagrama.RASCUNHO)
+        pdf = gerar_pdf_diagrama_doc071(versao)
+        self.assertTrue(pdf.startswith(b'%PDF-'))
+        self.assertTrue(pdf_base.startswith(b'%PDF-'))
+
+    def test_renderer_ignora_blocos_entre_raias_na_altura_e_oculta_raia_recolhida(self):
+        from procedures.services.diagram_renderer import LANE_RECOLHIDA_H, DiagramaFlowable
+        topo = self._topologia(raias_recolhidas=["Baixa"])
+        topo["nodes"][2]["data"]["laneAbaixo"] = "Baixa"
+        desenho = DiagramaFlowable(topo, max_w=782, max_h=400)
+        self.assertEqual(desenho.lane_h["Baixa"], LANE_RECOLHIDA_H)
+        self.assertNotIn("4", desenho.by_id)         # bloco da raia recolhida não é desenhado
+        self.assertIn("3", desenho.by_id)
+        # B3 está entre Media e Baixa: só B2 define a altura da faixa Media
+        self.assertEqual(desenho.lane_h["Media"], 220)
+
+    def test_editor_traz_controles_novos(self):
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia(), status=StatusDiagrama.RASCUNHO)
+        c = Client()
+        c.force_login(self.user)
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        for item in ('id="inspNodeEntreRaias"', 'id="inspNodeEstrutura"', 'definirTodasRaiasRecolhidas(true)',
+                     "definirEstruturaDoRamo('arvore')"):
+            self.assertIn(item, html)
+        js = ler_js_editor()
+        for item in ('function alternarRaiaRecolhida', 'function definirPosicaoEntreRaias', 'function noEntreRaias',
+                     'function definirEstruturaDoRamo'):
+            self.assertIn(item, js)
+
+    def test_importador_traz_a_estrutura_do_xmind(self):
+        from procedures.services.importacao_mapas import _estrutura_xmind
+        self.assertEqual(_estrutura_xmind('org.xmind.ui.org-chart.down'), 'organograma')
+        self.assertEqual(_estrutura_xmind('org.xmind.ui.tree.right'), 'arvore')
+        self.assertEqual(_estrutura_xmind('org.xmind.ui.treetable.toptitle'), 'arvore')
+        self.assertIsNone(_estrutura_xmind('org.xmind.ui.map.clockwise'))
+        self.assertIsNone(_estrutura_xmind(None))

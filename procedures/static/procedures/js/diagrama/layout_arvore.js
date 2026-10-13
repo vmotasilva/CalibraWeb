@@ -11,13 +11,17 @@
 
     const MODOS = {
         // direcao: eixo dos níveis | gapCruz: espaço entre irmãos | gapNivel: espaço entre níveis
-        organograma: { direcao: 'baixo', gapCruz: 40, gapNivel: 90, handles: ['bottom', 'top'] },
+        organograma: { direcao: 'baixo', gapCruz: 40, gapNivel: 90, handles: ['bottom', 'top'], empilharFolhas: true },
         logico: { direcao: 'direita', gapCruz: 24, gapNivel: 80, handles: ['right', 'left'] },
         arvore: { direcao: 'lista', gapCruz: 16, gapNivel: 40, handles: ['bottom', 'left'] },
     };
 
     const MARGEM_X = 80;
     const MARGEM_Y = 60;
+    // Estrutura de um ramo (data.estrutura): como os filhos de um bloco são dispostos no organograma
+    const ESTRUTURAS = ['organograma', 'arvore'];
+    const RECUO_PILHA = 28;   // organograma: folhas empilhadas ficam recuadas à direita do eixo do pai
+    const GAP_PILHA = 14;     // espaço vertical entre folhas empilhadas
 
     function ehHierarquia(aresta) {
         return (aresta.kind || 'hierarquia') === 'hierarquia';
@@ -128,6 +132,9 @@
         const porId = new Map(nos.map(n => [String(n.id), n]));
         const tam = id => (tamanhos && tamanhos[id]) || estimarTamanho(porId.get(id));
         const visiveis = id => (arvore.filhos.get(id) || []).filter(f => !escondidos.has(f));
+        // Organograma compacto: quando todos os filhos de um bloco são folhas (2 ou mais), eles são empilhados na vertical
+        const empilhar = opt.empilharFolhas !== undefined ? !!opt.empilharFolhas : !!cfg.empilharFolhas;
+        const empilhados = new Set();
 
         const posicoes = {};
         if (cfg.direcao === 'lista') {
@@ -151,11 +158,48 @@
             const nivel = cfg.direcao === 'baixo' ? t => t.h : t => t.w;
             const raizesVisiveis = arvore.raizes.filter(r => !escondidos.has(r));
 
+            // Estrutura efetiva de cada bloco: a do próprio (data.estrutura) ou a herdada do pai ("seguir a estrutura do pai")
+            const estrutura = new Map();
+            const resolver = (id, herdada) => {
+                const proprio = porId.get(id)?.data?.estrutura;
+                const efetiva = ESTRUTURAS.includes(proprio) ? proprio : herdada;
+                estrutura.set(id, efetiva);
+                visiveis(id).forEach(f => resolver(f, efetiva));
+            };
+            raizesVisiveis.forEach(r => resolver(r, 'organograma'));
+
+            // Pilha: linhas {id, nivel} dispostas na vertical sob um bloco (estrutura "árvore": todo o ramo, recuado por nível;
+            // organograma compacto: filhos que são só folhas). null quando o bloco não usa pilha.
+            const pilhas = new Map();
+            const linhasDaPilha = id => {
+                if (pilhas.has(id)) return pilhas.get(id);
+                let linhas = null;
+                const kids = visiveis(id);
+                if (cfg.direcao === 'baixo' && kids.length > 0) {
+                    if (estrutura.get(id) === 'arvore') {
+                        linhas = [];
+                        const descer = (pid, n) => visiveis(pid).forEach(f => { linhas.push({ id: f, nivel: n }); descer(f, n + 1); });
+                        descer(id, 1);
+                    } else if (empilhar && kids.length >= 2 && kids.every(f => visiveis(f).length === 0)) {
+                        linhas = kids.map(f => ({ id: f, nivel: 1 }));
+                    }
+                }
+                pilhas.set(id, linhas);
+                return linhas;
+            };
+
             // 1) extensão de cada subárvore no eixo cruzado
             const extensao = new Map();
             const medir = id => {
                 const proprio = cruz(tam(id));
                 const kids = visiveis(id);
+                const linhas = linhasDaPilha(id);
+                if (linhas) {
+                    const alcance = Math.max(...linhas.map(l => l.nivel * RECUO_PILHA + cruz(tam(l.id))));
+                    const e = Math.max(proprio, proprio / 2 + alcance);
+                    extensao.set(id, e);
+                    return e;
+                }
                 let soma = 0;
                 kids.forEach((f, i) => { soma += medir(f) + (i > 0 ? cfg.gapCruz : 0); });
                 const e = Math.max(proprio, soma);
@@ -168,6 +212,7 @@
             const espessura = [];
             const medirNiveis = (id, d) => {
                 espessura[d] = Math.max(espessura[d] || 0, nivel(tam(id)));
+                if (linhasDaPilha(id)) return;   // as linhas da pilha não formam uma linha própria do organograma
                 visiveis(id).forEach(f => medirNiveis(f, d + 1));
             };
             raizesVisiveis.forEach(r => medirNiveis(r, 0));
@@ -182,8 +227,8 @@
                 const proprio = cruz(tam(id));
                 const total = extensao.get(id);
                 let c;
-                if (kids.length === 0) {
-                    c = inicio + total / 2;
+                if (kids.length === 0 || linhasDaPilha(id)) {
+                    c = inicio + (linhasDaPilha(id) ? proprio : total) / 2;
                 } else {
                     let somaFilhos = 0;
                     kids.forEach((f, i) => { somaFilhos += extensao.get(f) + (i > 0 ? cfg.gapCruz : 0); });
@@ -202,6 +247,17 @@
                 const pos = nivel(t) < espessura[d] ? (espessura[d] - nivel(t)) / 2 : 0; // centraliza no nível
                 if (cfg.direcao === 'baixo') posicoes[id] = { x: c - t.w / 2, y: inicioNivel[d] + pos };
                 else posicoes[id] = { x: inicioNivel[d] + pos, y: c - t.h / 2 };
+                const linhas = linhasDaPilha(id);
+                if (linhas) {
+                    let y = posicoes[id].y + t.h + cfg.gapNivel / 2;
+                    linhas.forEach(l => {
+                        const tf = tam(l.id);
+                        posicoes[l.id] = { x: c + l.nivel * RECUO_PILHA, y };
+                        centro.set(l.id, c + l.nivel * RECUO_PILHA + tf.w / 2);
+                        empilhados.add(l.id);
+                        y += tf.h + GAP_PILHA;
+                    });
+                }
             };
 
             let cursorRaiz = 0;
@@ -225,7 +281,7 @@
         arestas.filter(ehHierarquia).forEach(a => {
             const o = String(a.source);
             const d = String(a.target);
-            if (arvore.pai.get(d) === o && posicoes[o] && posicoes[d]) handles[a.id] = cfg.handles;
+            if (arvore.pai.get(d) === o && posicoes[o] && posicoes[d]) handles[a.id] = empilhados.has(d) ? ['bottom', 'left'] : cfg.handles;
         });
 
         return { posicoes, handles, ocultos: escondidos };
@@ -313,7 +369,7 @@
     }
 
     const api = {
-        MODOS, ehHierarquia, estimarTamanho, montarArvore, aplicarOrdemManual, descendentes, ocultos, profundidade,
+        MODOS, ESTRUTURAS, ehHierarquia, estimarTamanho, montarArvore, aplicarOrdemManual, descendentes, ocultos, profundidade,
         calcularLayout, moverNaArvore, clonarRamo, irmaos, ehAncestral,
     };
 

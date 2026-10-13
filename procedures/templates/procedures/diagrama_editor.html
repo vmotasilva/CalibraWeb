@@ -497,6 +497,15 @@
     .busca-raia-lista .list-group-item { font-size: 13px; padding: 6px 10px; cursor: pointer; }
     .busca-raia-lista .list-group-item.ativo, .busca-raia-lista .list-group-item:hover { background: #eff6ff; }
 
+    .swimlane-recolhida { background: repeating-linear-gradient(135deg, rgba(148,163,184,.10) 0 8px, transparent 8px 16px); }
+    .swimlane-recolhida .swimlane-header-wrapper { left: 6px; transform: translate(0, -50%); }
+    .swimlane-recolhida .swimlane-rotator-btn { transform: none; padding: 6px 16px; }
+    .swimlane-resumo {
+        position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: auto;
+        border: 1px dashed #94a3b8; border-radius: 999px; background: #fff; color: #475569; padding: 3px 14px; font-size: 12px; cursor: pointer;
+    }
+    .swimlane-resumo:hover { background: #f1f5f9; }
+
     .swimlane-row {
         position: absolute;
         left: 20px;
@@ -1112,6 +1121,11 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="organograma" onclick="definirModoLayout('organograma')"><i class="bi bi-check2 layout-check invisible me-2"></i>Organograma (de cima para baixo)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="logico" onclick="definirModoLayout('logico')"><i class="bi bi-check2 layout-check invisible me-2"></i>Lógico (da esquerda para a direita)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="arvore" onclick="definirModoLayout('arvore')"><i class="bi bi-check2 layout-check invisible me-2"></i>Árvore (lista com recuo)</a></li>
+                    <li id="itemEmpilharFolhas" class="d-none"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarEmpilharFolhas()" title="No organograma, blocos sem subordinados do mesmo pai ficam um abaixo do outro"><i class="bi bi-check2 layout-check me-2"></i>Empilhar folhas na vertical</a></li>
+                    <li class="somente-arvore"><h6 class="dropdown-header">Estrutura do ramo selecionado</h6></li>
+                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('')"><i class="bi bi-arrow-return-right me-2"></i>Seguir a estrutura do pai</a></li>
+                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('organograma')"><i class="bi bi-diagram-3 me-2"></i>Organograma (lado a lado)</a></li>
+                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('arvore')"><i class="bi bi-list-nested me-2"></i>Árvore (lista recuada)</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><h6 class="dropdown-header">Alinhar blocos selecionados</h6></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('top')"><i class="bi bi-align-top me-2"></i>Linha Superior</a></li>
@@ -1121,6 +1135,8 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-h')"><i class="bi bi-align-center me-2"></i>Centro Vertical (Coluna)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-v')"><i class="bi bi-align-middle me-2"></i>Centro Horizontal (Linha)</a></li>
                     <li><hr class="dropdown-divider"></li>
+                    <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="definirTodasRaiasRecolhidas(true)"><i class="bi bi-arrows-collapse me-2"></i>Recolher todas as raias</a></li>
+                    <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="definirTodasRaiasRecolhidas(false)"><i class="bi bi-arrows-expand me-2"></i>Expandir todas as raias</a></li>
                     <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="alinharNosPorRaias()"><i class="bi bi-distribute-horizontal me-2"></i>Distribuir blocos dentro das raias</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="centralizarEixoXDaTela()"><i class="bi bi-arrows-collapse me-2"></i>Mover blocos para o centro</a></li>
                     <li><hr class="dropdown-divider"></li>
@@ -1144,12 +1160,12 @@
                 <ul class="dropdown-menu shadow-sm">
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="recentralizarCanvas()"><i class="bi bi-crosshair me-2"></i>Centralizar visualização nos blocos</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="enquadrarVisaoCompleta()"><i class="bi bi-aspect-ratio me-2"></i>Enquadrar todo o diagrama na tela</a></li>
-                    <li class="somente-arvore"><hr class="dropdown-divider"></li>
-                    <li class="somente-arvore"><h6 class="dropdown-header">Ramos</h6></li>
-                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="recolherTodos()"><i class="bi bi-arrows-collapse me-2"></i>Recolher todos os ramos</a></li>
-                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="recolherAteNivel(1)"><i class="bi bi-diagram-3 me-2"></i>Mostrar só o 1º nível</a></li>
-                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="recolherAteNivel(2)"><i class="bi bi-diagram-3 me-2"></i>Mostrar até o 2º nível</a></li>
-                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="expandirTodos()"><i class="bi bi-arrows-expand me-2"></i>Expandir todos os ramos</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Ramos</h6></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="recolherTodos()"><i class="bi bi-arrows-collapse me-2"></i>Recolher todos os ramos</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="recolherAteNivel(1)"><i class="bi bi-diagram-3 me-2"></i>Mostrar só o 1º nível</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="recolherAteNivel(2)"><i class="bi bi-diagram-3 me-2"></i>Mostrar até o 2º nível</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="expandirTodos()"><i class="bi bi-arrows-expand me-2"></i>Expandir todos os ramos</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="iniciarApresentacao()"><i class="bi bi-easel me-2"></i>Apresentar (passo a passo)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarMinimapa()"><i class="bi bi-check2 me-2" id="checkMinimapa"></i>Minimapa</a></li>
@@ -1505,12 +1521,29 @@
                                 <i class="bi bi-search position-absolute text-muted" style="right: 9px; top: 7px; font-size: 12px; pointer-events: none;"></i>
                             </div>
                         </div>
+                        <!-- Posição na raia (dentro ou entre raias) -->
+                        <div class="mb-3 somente-raias" id="inspEntreRaiasBox">
+                            <label class="form-label text-muted small fw-bold mb-1" for="inspNodeEntreRaias">Posição na raia</label>
+                            <select id="inspNodeEntreRaias" class="form-select form-select-sm" onchange="definirPosicaoEntreRaias(this.value)"></select>
+                            <div class="form-text">"Entre raias" deixa o bloco sobre a divisa das duas raias, sem criar uma raia só para ele.</div>
+                        </div>
                         <!-- Ordem no auto-layout -->
                         <div class="mb-3">
                             <label class="form-label text-muted small fw-bold mb-1" for="inspNodeOrdem">Ordem no Auto-Layout</label>
                             <input type="number" id="inspNodeOrdem" name="ordem_autolayout_x" class="form-control form-control-sm" min="0" max="9999" step="1" autocomplete="off"
                                    placeholder="Automática" onchange="definirOrdemDoBloco(this.value)">
                             <div class="form-text" id="inspNodeOrdemAjuda"></div>
+                        </div>
+
+                        <!-- Estrutura do ramo (como no XMind) -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small fw-bold mb-1" for="inspNodeEstrutura">Estrutura do ramo</label>
+                            <select id="inspNodeEstrutura" class="form-select form-select-sm" onchange="definirEstruturaDoRamo(this.value)">
+                                <option value="">Seguir a estrutura do pai</option>
+                                <option value="organograma">Organograma (filhos lado a lado)</option>
+                                <option value="arvore">Árvore (filhos em lista recuada)</option>
+                            </select>
+                            <div class="form-text" id="inspNodeEstruturaAjuda"></div>
                         </div>
 
                         <!-- Formato do Bloco (Shape) -->

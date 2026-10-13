@@ -28,6 +28,7 @@ W_STARTEND, H_STARTEND = 140, 48
 SIZE_DECISION = 110
 LANE_TOP, LANE_LEFT, LANE_BAND = 40, 20, 40
 LANE_MIN_H = 220
+LANE_RECOLHIDA_H = 64   # altura de uma raia recolhida (espelha ALTURA_RAIA_RECOLHIDA do editor)
 MARGIN = 40
 
 DARK_BG = {'#2563eb', '#334155', '#ef4444', '#8b5cf6'}
@@ -174,8 +175,11 @@ class DiagramaFlowable(Flowable):
         self.com_filhos = {i for i, f in arvore['filhos'].items() if f}
         self.em_arvore = self.modo in MODOS_ARVORE
         # ramos recolhidos no editor não são desenhados; o bloco recolhido mostra o contador "+N"
-        ocultos, self.contagem_ocultos = ramos_recolhidos(todos, self.edges) if self.em_arvore else (set(), {})
-        self.nodes = [n for n in todos if str(n['id']) not in ocultos]
+        ocultos, self.contagem_ocultos = ramos_recolhidos(todos, self.edges)
+        # raias recolhidas (modo por raias): blocos ocultos e faixa reduzida
+        self.raias_recolhidas = set() if self.em_arvore else {str(x) for x in (topologia.get('raias_recolhidas') or [])}
+        self.nodes = [n for n in todos if str(n['id']) not in ocultos
+                      and not (_dados(n).get('lane') or 'Geral') in self.raias_recolhidas]
         self.grid = topologia.get('grid_data') or []
         self.by_id = {str(n['id']): n for n in self.nodes}
 
@@ -183,8 +187,10 @@ class DiagramaFlowable(Flowable):
         self.lane_h = {}
         for lane in self.lanes:
             ys = [n['position']['y'] for n in self.nodes
-                  if ((n.get('data') or {}).get('lane') or 'Geral') == lane]
+                  if ((n.get('data') or {}).get('lane') or 'Geral') == lane and not self._entre_raias(n)]
             self.lane_h[lane] = max(LANE_MIN_H, (max(ys) - min(ys)) + 160) if ys else LANE_MIN_H
+            if lane in self.raias_recolhidas:
+                self.lane_h[lane] = LANE_RECOLHIDA_H
 
         # grupos (boundary): molduras atrás dos blocos; ampliam a área desenhada
         caixas = {str(n['id']): dict(zip('xywh', (n['position']['x'], n['position']['y'], *_tamanho(n)))) for n in self.nodes}
@@ -206,6 +212,15 @@ class DiagramaFlowable(Flowable):
         self.scale = min(max_w / self.cw, max_h / self.ch, 1.0)
         self.width = self.cw * self.scale
         self.height = self.ch * self.scale
+
+    def _entre_raias(self, n) -> bool:
+        """Bloco sobre a divisa de duas raias adjacentes (data.laneAbaixo): não define a altura da faixa."""
+        abaixo = (n.get('data') or {}).get('laneAbaixo')
+        lane = (n.get('data') or {}).get('lane') or 'Geral'
+        if not abaixo or lane not in self.lanes:
+            return False
+        i = self.lanes.index(lane)
+        return i + 1 < len(self.lanes) and self.lanes[i + 1] == abaixo
 
     def wrap(self, availWidth, availHeight):
         return self.width, self.height

@@ -16,25 +16,18 @@ function renderizarCanvas() {
     const lanes = arvoreAtiva() ? [] : obterListaRaiasOrdenada(); // os modos em árvore não usam raias
     let currentY = 40;
     
-    // Calcula a altura necessária para cada raia
+    // Altura de cada raia (a mesma regra de calcularFaixasRaias); raias recolhidas ficam com altura fixa
     const laneHeights = {};
-    lanes.forEach(lane => {
-        const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
-        if (nodesInLane.length > 0) {
-            // Encontra a maior posição Y + altura estimada do nó (cerca de 100px)
-            const minPos = Math.min(...nodesInLane.map(n => n.position.y));
-            const maxPos = Math.max(...nodesInLane.map(n => n.position.y));
-            laneHeights[lane] = Math.max(220, (maxPos - minPos) + 160);
-        } else {
-            laneHeights[lane] = 220; // altura mínima
-        }
-    });
+    const faixasRaias = calcularFaixasRaias(lanes);
+    lanes.forEach(lane => { laneHeights[lane] = faixasRaias[lane].height; });
 
     lanes.forEach((lane, idx) => {
         const yPos = currentY;
         const h = laneHeights[lane];
+        const recolhida = raiaRecolhida(lane);
+        const qtdBlocos = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane).length;
         const laneEl = document.createElement('div');
-        laneEl.className = 'swimlane-row';
+        laneEl.className = 'swimlane-row' + (recolhida ? ' swimlane-recolhida' : '');
         laneEl.style.top = `${yPos}px`;
         laneEl.style.height = `${h}px`;
         laneEl.style.borderLeftColor = corDaRaia(lane);
@@ -49,6 +42,7 @@ function renderizarCanvas() {
                 </div>
                 <ul class="dropdown-menu shadow">
                     <li><h6 class="dropdown-header text-uppercase fw-bold text-primary">Raia: ${safeLane}</h6></li>
+                    <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="alternarRaiaRecolhida('${encodeURIComponent(lane)}')"><i class="bi bi-${recolhida ? 'arrows-expand' : 'arrows-collapse'} me-2 text-secondary"></i> ${recolhida ? 'Expandir raia' : 'Recolher raia'}</a></li>
                     <li><a class="dropdown-item py-2" href="javascript:void(0)" onclick="abrirRenomearRaia('${encodeURIComponent(lane)}')"><i class="bi bi-pencil-square me-2 text-secondary"></i> Renomear Raia</a></li>
                     ${!IS_APPROVED ? `
                     <li><hr class="dropdown-divider"></li>
@@ -59,6 +53,7 @@ function renderizarCanvas() {
                     ` : ''}
                 </ul>
             </div>
+            ${recolhida ? `<button type="button" class="swimlane-resumo" onclick="alternarRaiaRecolhida('${encodeURIComponent(lane)}')" title="Expandir raia"><i class="bi bi-chevron-down"></i> ${qtdBlocos} bloco${qtdBlocos === 1 ? '' : 's'} oculto${qtdBlocos === 1 ? '' : 's'}</button>` : ''}
         `;
         swimlanesLayer.appendChild(laneEl);
         currentY += h; // Avança o Y base para a próxima raia
@@ -233,6 +228,8 @@ function atualizarSelecoesVisuais() {
             document.getElementById('inspNodeLabel').value = node.data?.label || '';
             document.getElementById('inspNodeLane').value = node.data?.lane || '';
             document.getElementById('inspNodeOrdem').value = typeof node.data?.ordem === 'number' ? node.data.ordem : '';
+            atualizarSeletorEntreRaias(node);
+            atualizarSeletorDeEstrutura(node);
             atualizarAjudaOrdemDoBloco(node);
             document.getElementById('inspNodeDocRef').value = node.data?.documentRef || '';
             renderizarTagsInspector(node);

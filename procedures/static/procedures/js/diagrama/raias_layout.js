@@ -17,7 +17,13 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     const canvasTargetWidth = viewport ? (viewport.clientWidth / zoomLevel) : 1150;
 
     const yDaRaia = {};
-    lanes.forEach((lane, lIdx) => { yDaRaia[lane] = 40 + lIdx * 240 + 60; });
+    const topoDaRaia = {};
+    let acumulado = 40;
+    lanes.forEach(lane => {
+        topoDaRaia[lane] = acumulado;
+        yDaRaia[lane] = acumulado + 60;
+        acumulado += raiaRecolhida(lane) ? ALTURA_RAIA_RECOLHIDA : 220;   // a mesma altura das faixas desenhadas
+    });
     const noLane = n => n.data?.lane || 'Geral';
     const posicionaveis = topologia.nodes.filter(n => yDaRaia[noLane(n)] !== undefined);
     if (posicionaveis.length === 0) return;
@@ -52,7 +58,8 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
 
     posicionaveis.forEach(n => {
         n.position.x = Math.round(startX + colunas.get(String(n.id)) * passo);
-        n.position.y = yDaRaia[noLane(n)];
+        // bloco entre raias: sobre a divisa com a raia de baixo
+        n.position.y = noEntreRaias(n, lanes) ? topoDaRaia[n.data.laneAbaixo] - 32 : yDaRaia[noLane(n)];
     });
 }
 
@@ -90,7 +97,7 @@ function alinharNosPorRaias() {
         lanes.forEach(lane => {
             laneYBase[lane] = currentY + 60; // Margem superior
             
-            const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+            const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane && !noEntreRaias(n, lanes));
             if (nodesInLane.length > 0) {
                 const minPos = Math.min(...nodesInLane.map(n => n.position.y));
                 const maxPos = Math.max(...nodesInLane.map(n => n.position.y));
@@ -102,7 +109,7 @@ function alinharNosPorRaias() {
 
         lanes.forEach(lane => {
             const yBase = laneYBase[lane];
-            const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
+            const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane && !noEntreRaias(n, lanes));
             if (nodesInLane.length === 0) return;
 
             nodesInLane.forEach(n => {
@@ -169,7 +176,9 @@ function renomearRaiaNoDiagrama(raiaAtual, nomeLimpo) {
         if (n.data && (n.data.lane === raiaAtual || (!n.data.lane && raiaAtual === 'Geral'))) {
             n.data.lane = nomeLimpo;
         }
+        if (n.data && n.data.laneAbaixo === raiaAtual) n.data.laneAbaixo = nomeLimpo;
     });
+    topologia.raias_recolhidas = [...new Set((topologia.raias_recolhidas || []).map(l => l === raiaAtual ? nomeLimpo : l))];
 
     topologia.grid_data.forEach(r => {
         if (r.lane === raiaAtual || (!r.lane && raiaAtual === 'Geral')) {
@@ -331,6 +340,8 @@ function excluirRaia(encodedLane) {
     topologia.grid_data = topologia.grid_data.filter(r => !idsToRemove.has(r.stepId));
     topologia.lanes = (topologia.lanes || []).filter(l => l !== lane);
     topologia.raias_fixas = (topologia.raias_fixas || []).filter(l => l !== lane);
+    topologia.raias_recolhidas = (topologia.raias_recolhidas || []).filter(l => l !== lane);
+    topologia.nodes.forEach(n => { if (n.data && n.data.laneAbaixo === lane) delete n.data.laneAbaixo; });
 
     posicionarAutomaticoPorRaias(true);
     renderizarCanvas();
@@ -581,3 +592,40 @@ function iniciarBuscaDeRaiaDoInspetor() {
 }
 
 iniciarBuscaDeRaiaDoInspetor();
+
+// =========================================================================
+// RECOLHER / EXPANDIR RAIAS (esconde os blocos da raia e reduz a faixa; os blocos de baixo sobem junto)
+// =========================================================================
+function mudarFaixasDasRaias(mutar) {
+    const lanes = obterListaRaiasOrdenada();
+    const antes = calcularFaixasRaias(lanes);
+    mutar();
+    const depois = calcularFaixasRaias(lanes);
+    topologia.nodes.forEach(n => {
+        const l = n.data?.lane || 'Geral';
+        if (noEntreRaias(n, lanes)) return;   // reposicionados abaixo, sobre a divisa
+        if (antes[l] && depois[l]) n.position.y = Math.round(n.position.y - antes[l].top + depois[l].top);
+    });
+    topologia.nodes.forEach(n => { if (noEntreRaias(n, lanes)) posicionarNoEmRelacaoAsRaias(n); });
+    const recolhidas = new Set(topologia.raias_recolhidas || []);
+    if ([...selectedNodeIds].some(id => recolhidas.has(topologia.nodes.find(n => n.id === id)?.data?.lane || 'Geral'))) desmarcarTodosNos();
+}
+
+function alternarRaiaRecolhida(encodedLane) {
+    const lane = decodeURIComponent(encodedLane);
+    mudarFaixasDasRaias(() => {
+        const conjunto = new Set(topologia.raias_recolhidas || []);
+        if (conjunto.has(lane)) conjunto.delete(lane); else conjunto.add(lane);
+        topologia.raias_recolhidas = [...conjunto];
+    });
+    renderizarCanvas();
+    renderizarOutliner();
+    dispararAutoSave();
+}
+
+function definirTodasRaiasRecolhidas(recolher) {
+    mudarFaixasDasRaias(() => { topologia.raias_recolhidas = recolher ? obterListaRaiasOrdenada() : []; });
+    renderizarCanvas();
+    renderizarOutliner();
+    dispararAutoSave();
+}

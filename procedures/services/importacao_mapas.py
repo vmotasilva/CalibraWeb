@@ -31,7 +31,7 @@ class ErroImportacao(Exception):
 
 def _no(titulo: str) -> dict:
     return {'titulo': titulo, 'filhos': [], 'estilo': {}, 'forma': None, 'nota': '', 'links': [],
-            'etiquetas': [], 'marcadores': []}
+            'etiquetas': [], 'marcadores': [], 'estrutura': None}
 
 
 # ======================================================================== XMind
@@ -98,6 +98,16 @@ def _estilo_xmind(props: dict):
     return estilo, forma
 
 
+def _estrutura_xmind(classe):
+    """structureClass do XMind -> estrutura do ramo no editor (None = seguir o pai)."""
+    classe = str(classe or '').lower()
+    if 'org-chart' in classe:
+        return 'organograma'
+    if '.tree.' in classe or 'treetable' in classe:
+        return 'arvore'
+    return None
+
+
 def _marcador_xmind(marker_id) -> str:
     """Id de marcador do XMind -> id do catálogo do editor ('' quando não há equivalente)."""
     marker_id = str(marker_id or '').lower()
@@ -117,6 +127,7 @@ def _topico_json(t: dict, contexto: dict, profundidade=0) -> dict:
     if profundidade > PROFUNDIDADE_MAXIMA:
         raise ErroImportacao(f'O mapa tem mais de {PROFUNDIDADE_MAXIMA} níveis de profundidade.')
     no = _no(str(t.get('title') or ''))
+    no['estrutura'] = _estrutura_xmind(t.get('structureClass'))
     estilo, forma = _estilo_xmind(((t.get('style') or {}).get('properties')) or {})
     no['estilo'], no['forma'] = estilo, forma
 
@@ -361,6 +372,8 @@ def para_topologia(raiz: dict, modo: str = 'organograma', com_estilos: bool = Tr
             dados['customTags'] = [e[:30] for e in no['etiquetas'][:8]]
         if no['marcadores']:
             dados['markers'] = no['marcadores'][:MAX_MARCADORES]
+        if no.get('estrutura') and modo == 'organograma':
+            dados['estrutura'] = no['estrutura']
         nodes.append({'id': nid, 'type': 'process', 'position': {'x': 0, 'y': 0}, 'data': dados})
         if pai_id is not None:
             edges.append({'id': f'e{pai_id}-{nid}', 'source': pai_id, 'target': nid})

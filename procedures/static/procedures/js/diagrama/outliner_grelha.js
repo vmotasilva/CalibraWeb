@@ -97,8 +97,7 @@ function itensVisiveisDoOutliner() {
 }
 
 function atualizarAposRecolhimentoNoOutliner() {
-    if (typeof arvoreAtiva === 'function' && arvoreAtiva()) aplicarLayoutArvore(); // o canvas em árvore acompanha
-    renderizarOutliner();
+    atualizarAposRecolhimento();   // o canvas acompanha (qualquer layout)
     dispararAutoSave();
 }
 
@@ -953,13 +952,31 @@ function fixarOrdemRaias() {
 }
 
 // Faixas (top/height) de cada raia, com a mesma regra usada para desenhar o canvas
+const ALTURA_RAIA_RECOLHIDA = 64;   // espelhado em LANE_RECOLHIDA_H (diagram_renderer.py)
+
+function raiaRecolhida(lane) {
+    return (topologia.raias_recolhidas || []).includes(lane);
+}
+
+// Bloco "entre raias": data.lane = raia de cima e data.laneAbaixo = a raia seguinte (adjacente); o bloco fica sobre a divisa
+function noEntreRaias(n, lanes) {
+    const abaixo = n.data?.laneAbaixo;
+    if (!abaixo) return false;
+    const lista = lanes || obterListaRaiasOrdenada();
+    const i = lista.indexOf(n.data?.lane || 'Geral');
+    return i !== -1 && lista[i + 1] === abaixo;
+}
+
 function calcularFaixasRaias(lanes) {
     const faixas = {};
     let top = 40;
     lanes.forEach(lane => {
-        const nodes = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane);
-        let altura = 220;
-        if (nodes.length > 0) {
+        // blocos entre raias ficam na divisa e não definem a altura da faixa
+        const nodes = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane && !noEntreRaias(n, lanes));
+        let altura = raiaRecolhida(lane) ? ALTURA_RAIA_RECOLHIDA : 220;
+        if (raiaRecolhida(lane)) {
+            // faixa recolhida: altura fixa
+        } else if (nodes.length > 0) {
             const ys = nodes.map(n => n.position.y);
             altura = Math.max(220, (Math.max(...ys) - Math.min(...ys)) + 160);
         }
@@ -986,7 +1003,12 @@ function moverNoParaRaia(node, nomeRaia) {
     const destino = (nomeRaia || '').trim() || 'Geral';
     const origem = node.data?.lane || 'Geral';
     if (!node.data) node.data = {};
-    if (origem === destino) return;
+    const estavaEntre = !!node.data.laneAbaixo;
+    delete node.data.laneAbaixo;   // escolher uma raia põe o bloco dentro dela
+    if (origem === destino) {
+        if (estavaEntre) posicionarNoEmRelacaoAsRaias(node);
+        return;
+    }
 
     fixarOrdemRaias();
     const listaAntes = obterListaRaiasOrdenada();
@@ -1014,9 +1036,69 @@ function moverNoParaRaia(node, nomeRaia) {
         });
         topologia.lanes = listaDepois;
     }
-    const faixas = calcularFaixasRaias(listaDepois);
-    if (faixas[destino]) node.position.y = Math.round(faixas[destino].top + faixas[destino].height / 2 - 32);
+    posicionarNoEmRelacaoAsRaias(node);
 }
+
+// Y do bloco: centro da sua raia ou, quando está "entre raias", sobre a divisa com a raia de baixo
+function posicionarNoEmRelacaoAsRaias(node) {
+    const lanes = obterListaRaiasOrdenada();
+    const faixas = calcularFaixasRaias(lanes);
+    const el = document.getElementById(`node-${node.id}`);
+    const altura = el ? el.offsetHeight : 64;
+    if (noEntreRaias(node, lanes) && faixas[node.data.laneAbaixo]) {
+        node.position.y = Math.round(faixas[node.data.laneAbaixo].top - altura / 2);
+        return;
+    }
+    const lane = node.data?.lane || 'Geral';
+    if (faixas[lane]) node.position.y = Math.round(faixas[lane].top + faixas[lane].height / 2 - 32);
+}
+
+// Posição do bloco em relação às raias: 'dentro' | 'abaixo' (entre esta e a seguinte) | 'acima' (entre a anterior e esta)
+function definirPosicaoEntreRaias(modo) {
+    if (IS_APPROVED || arvoreAtiva()) return;
+    selectedNodeIds.forEach(id => {
+        const node = topologia.nodes.find(n => n.id === id);
+        if (!node) return;
+        if (!node.data) node.data = {};
+        const lanes = obterListaRaiasOrdenada();
+        const atual = node.data.lane || 'Geral';
+        const i = lanes.indexOf(atual);
+        if (modo === 'acima' && i > 0) {
+            node.data.lane = lanes[i - 1];
+            node.data.laneAbaixo = atual;
+            const linha = topologia.grid_data.find(r => r.stepId === node.id);
+            if (linha) linha.lane = lanes[i - 1];
+        } else if (modo === 'abaixo' && i !== -1 && i < lanes.length - 1) {
+            node.data.laneAbaixo = lanes[i + 1];
+        } else {
+            delete node.data.laneAbaixo;
+        }
+        posicionarNoEmRelacaoAsRaias(node);
+    });
+    renderizarCanvas();
+    renderizarGrelha();
+    renderizarOutliner();
+    dispararAutoSave();
+    const no = topologia.nodes.find(n => n.id === selectedNodeId);
+    if (no) atualizarSeletorEntreRaias(no);
+}
+
+// Opções do seletor "Posição na raia" do inspetor, conforme as raias vizinhas do bloco
+function atualizarSeletorEntreRaias(node) {
+    const caixa = document.getElementById('inspEntreRaiasBox');
+    const sel = document.getElementById('inspNodeEntreRaias');
+    if (!caixa || !sel) return;
+    const lanes = obterListaRaiasOrdenada();
+    const atual = node.data?.lane || 'Geral';
+    const i = lanes.indexOf(atual);
+    const opcoes = [['dentro', `Dentro de "${atual}"`]];
+    if (i !== -1 && i < lanes.length - 1) opcoes.push(['abaixo', `Entre "${atual}" e "${lanes[i + 1]}"`]);
+    if (i > 0) opcoes.push(['acima', `Entre "${lanes[i - 1]}" e "${atual}"`]);
+    sel.innerHTML = opcoes.map(([v, r]) => `<option value="${v}">${escapeHtml(r)}</option>`).join('');
+    sel.value = noEntreRaias(node, lanes) ? 'abaixo' : 'dentro';
+    sel.disabled = IS_APPROVED || opcoes.length < 2;
+}
+
 
 function preencherSugestoesDeRaias() {
     const lista = document.getElementById('raiasDatalist');
