@@ -939,7 +939,8 @@ def api_card_detail_view(request, card_id):
         if colab:
             from .models import BoardMention
             BoardMention.objects.filter(comentario__cartao=card, mencionado=colab, visualizada=False).update(visualizada=True)
-            
+            BoardNotification.objects.filter(cartao=card, colaborador=colab, lida=False).update(lida=True)
+
         checklist = list(card.checklist_itens.values('id', 'descricao', 'concluido'))
         comentarios = []
         for c in card.comentarios.select_related('autor').all():
