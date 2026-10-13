@@ -42,3 +42,58 @@ class ModuleAccessMiddlewareTests(TestCase):
         self.user.save()
         resp = self.client.post(self.url)
         self.assertNotEqual(resp.status_code, 403)
+
+
+def _reverse_any(view_name):
+    """Monta uma URL para a view tentando de 0 a 4 argumentos posicionais (int, depois str)."""
+    from django.urls import NoReverseMatch
+
+    for sample in (1, "x"):
+        for n in range(0, 5):
+            try:
+                return reverse(view_name, args=[sample] * n)
+            except NoReverseMatch:
+                continue
+    return None
+
+
+@override_settings(PERMISSIONS_ENFORCEMENT="enforce", PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class MappedViewsBlockedTests(TestCase):
+    """Toda view mapeada em NAV_STRUCTURE deve negar acesso a quem não tem módulo/função."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user("semperm2", password="x")
+        self.client.force_login(self.user)
+
+    def test_usuario_sem_permissao_e_bloqueado_em_todas_as_views_mapeadas(self):
+        urls = {vn: _reverse_any(vn) for vn in VIEW_NAME_TO_PERMISSION}
+        resolvidas = {vn: u for vn, u in urls.items() if u}
+        self.assertGreaterEqual(len(resolvidas), 0.8 * len(urls), "Muitas views não puderam ser resolvidas")
+
+        liberadas = []
+        for vn, url in resolvidas.items():
+            if url.startswith(("/admin/", "/accounts/")):
+                continue
+            resp = self.client.get(url)
+            bloqueada = resp.status_code == 403 or (resp.status_code == 302 and resp.url == "/")
+            if not bloqueada:
+                liberadas.append(f"{vn} -> {resp.status_code}")
+        self.assertEqual(liberadas, [], "Views mapeadas acessíveis sem permissão")
+
+    def test_modulo_e_funcao_liberam_cada_view_mapeada(self):
+        from shared.middleware.module_access import ModuleAccessMiddleware
+
+        from shared.permissions import _nav_module_config
+
+        negadas = []
+        user = get_user_model().objects.create_user("u_liberado", password="x")
+        for vn, data in VIEW_NAME_TO_PERMISSION.items():
+            cfg = _nav_module_config(data["module"])
+            perms = [data["perm"]] + ([cfg["module_perm"]] if cfg and cfg.get("module_perm") else [])
+            user.user_permissions.set(
+                [Permission.objects.get(content_type__app_label=f.split(".", 1)[0], codename=f.split(".", 1)[1]) for f in perms]
+            )
+            user = get_user_model().objects.get(pk=user.pk)  # descarta cache de permissões
+            if ModuleAccessMiddleware._denial_reason(user, vn):
+                negadas.append(vn)
+        self.assertEqual(negadas, [], "Views negadas mesmo com módulo e função concedidos")
