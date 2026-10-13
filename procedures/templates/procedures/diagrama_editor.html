@@ -454,6 +454,43 @@
         pointer-events: none;
     }
 
+
+    /* Grupos (boundary), minimapa, barra de status e apresentação */
+    .grupos-layer { position: absolute; top: 0; left: 0; z-index: 2; pointer-events: none; }
+    .grupo-boundary { position: absolute; border: 2px dashed; border-radius: 14px; box-sizing: border-box; pointer-events: none; }
+    .grupo-titulo {
+        position: absolute; top: 4px; left: 14px;
+        padding: 2px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .3px;
+        max-width: calc(100% - 28px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        pointer-events: auto; cursor: grab; user-select: none; box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    .grupo-resumo {
+        position: absolute; padding: 8px 10px; font-size: 12px; line-height: 1.35; color: #334155;
+        background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid; border-radius: 6px;
+        white-space: pre-wrap; pointer-events: auto; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    }
+    .minimapa {
+        position: absolute; right: 14px; bottom: 14px; z-index: 30; padding: 4px; border-radius: 8px;
+        background: rgba(255,255,255,.92); border: 1px solid #cbd5e1; box-shadow: 0 2px 10px rgba(0,0,0,.15);
+    }
+    .minimapa canvas { display: block; width: 210px; height: 140px; cursor: crosshair; }
+    .barra-status {
+        display: flex; align-items: center; gap: 16px; flex: 0 0 auto; padding: 3px 12px; font-size: 12px;
+        color: #475569; background: #f8fafc; border-top: 1px solid #e2e8f0; white-space: nowrap; overflow: hidden;
+    }
+    .barra-status i { margin-right: 3px; color: #64748b; }
+    .pitch-barra {
+        position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 40;
+        display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-radius: 999px;
+        background: rgba(15,23,42,.92); color: #fff; box-shadow: 0 4px 18px rgba(0,0,0,.35);
+    }
+    .pitch-barra .btn { color: #fff; }
+    .pitch-ativo .flow-node { transition: opacity .25s ease, box-shadow .25s ease; }
+    .pitch-ativo .flow-node.pitch-dim { opacity: .18; }
+    .pitch-ativo .flow-node.pitch-foco { box-shadow: 0 0 0 4px rgba(37,99,235,.55), 0 8px 24px rgba(0,0,0,.3); }
+    .pitch-ativo .handle, .pitch-ativo .handle-add { display: none !important; }
+    .pitch-ativo .minimapa, .pitch-ativo .barra-status { display: none !important; }
+
     .swimlane-row {
         position: absolute;
         left: 20px;
@@ -1072,6 +1109,9 @@
                     <li><hr class="dropdown-divider"></li>
                     <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="alinharNosPorRaias()"><i class="bi bi-distribute-horizontal me-2"></i>Distribuir blocos dentro das raias</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="centralizarEixoXDaTela()"><i class="bi bi-arrows-collapse me-2"></i>Mover blocos para o centro</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Grupos</h6></li>
+                    {% if not is_approved %}<li><a class="dropdown-item" href="javascript:void(0)" onclick="agruparSelecao()"><i class="bi bi-bounding-box me-2"></i>Agrupar seleção <span class="text-muted small ms-1">Ctrl+G</span></a></li>{% endif %}
                     {% if not is_locked %}
                     <li class="somente-raias"><hr class="dropdown-divider"></li>
                     <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="adicionarNovaRaia()"><i class="bi bi-plus-circle me-2"></i>Adicionar raia...</a></li>
@@ -1096,6 +1136,13 @@
                     <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="recolherAteNivel(1)"><i class="bi bi-diagram-3 me-2"></i>Mostrar só o 1º nível</a></li>
                     <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="recolherAteNivel(2)"><i class="bi bi-diagram-3 me-2"></i>Mostrar até o 2º nível</a></li>
                     <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="expandirTodos()"><i class="bi bi-arrows-expand me-2"></i>Expandir todos os ramos</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="iniciarApresentacao()"><i class="bi bi-easel me-2"></i>Apresentar (passo a passo)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarMinimapa()"><i class="bi bi-check2 me-2" id="checkMinimapa"></i>Minimapa</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><h6 class="dropdown-header">Vistas salvas</h6></li>
+                    {% if not is_approved %}<li><a class="dropdown-item" href="javascript:void(0)" onclick="salvarVistaAtual()"><i class="bi bi-camera me-2"></i>Salvar vista atual...</a></li>{% endif %}
+                    <li><div id="listaVistas"></div></li>
                 </ul>
             </div>
 
@@ -1177,6 +1224,9 @@
                         <!-- Raias (Swimlanes) -->
                         <div id="swimlanesLayer" class="swimlanes-layer"></div>
 
+                        <!-- Grupos (boundary) -->
+                        <div id="gruposLayer" class="grupos-layer"></div>
+
                         <!-- Conexões SVG (Arestas / Setas) -->
                         <svg id="connectionsLayer" class="connections-layer">
                             <defs>
@@ -1197,6 +1247,18 @@
                     </div>
                 </div>
             </div>
+            <!-- Minimapa e controles da apresentação -->
+            <div id="minimapa" class="minimapa d-none somente-canvas"><canvas id="minimapaCanvas" title="Clique ou arraste para navegar"></canvas></div>
+            <div id="pitchBarra" class="pitch-barra d-none">
+                <button type="button" class="btn btn-sm" onclick="irParaPasso(apresentacao.i - 1)" title="Anterior (←)"><i class="bi bi-chevron-left"></i></button>
+                <div class="text-center" style="min-width: 220px;">
+                    <div id="pitchRotulo" class="fw-semibold small text-truncate" style="max-width: 360px;"></div>
+                    <div id="pitchContador" class="small opacity-75 font-monospace"></div>
+                </div>
+                <button type="button" class="btn btn-sm" onclick="irParaPasso(apresentacao.i + 1)" title="Próximo (→)"><i class="bi bi-chevron-right"></i></button>
+                <button type="button" class="btn btn-sm border-start rounded-0 ps-3" onclick="encerrarApresentacao()" title="Sair (Esc)"><i class="bi bi-x-lg"></i> Sair</button>
+            </div>
+            <div id="barraStatus" class="barra-status somente-canvas"></div>
         </div>
 
         <!-- VISTA 2: MODO OUTLINER (LISTA ESTRUTURADA E TEXTO INDENTADO) -->
@@ -1860,6 +1922,42 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Concluir</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalGrupo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-bounding-box"></i> Grupo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Título</label>
+                    <input type="text" id="grupoTitulo" name="grupo_titulo_x" data-edicao class="form-control" maxlength="100" autocomplete="off" data-lpignore="true" data-1p-ignore>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Cor</label>
+                    <input type="color" id="grupoCor" data-edicao class="form-control form-control-color">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Resumo (opcional)</label>
+                    <textarea id="grupoResumo" name="grupo_resumo_x" data-edicao class="form-control" rows="4" maxlength="1000" autocomplete="off" placeholder="Texto exibido ao lado do grupo, no canvas e no PDF"></textarea>
+                </div>
+                <div class="small text-muted">
+                    <i class="bi bi-diagram-3"></i> Blocos no grupo: <strong id="grupoQtd"></strong>
+                    <button type="button" class="btn btn-sm btn-link py-0" data-edicao onclick="usarSelecaoNoGrupo()">Usar a seleção atual como membros</button>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-outline-danger btn-sm" data-edicao onclick="desagruparGrupo()"><i class="bi bi-x-octagon"></i> Desfazer grupo</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" data-edicao onclick="salvarGrupo()">Salvar</button>
+                </div>
             </div>
         </div>
     </div>

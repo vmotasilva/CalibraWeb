@@ -209,7 +209,7 @@ function dimensionarCanvas() {
     topologia.nodes.forEach(n => { maxX = Math.max(maxX, n.position.x + 400); maxY = Math.max(maxY, n.position.y + 400); });
     canvasLargura = Math.max(5000, Math.ceil(maxX));
     canvasAltura = Math.max(5000, Math.ceil(maxY));
-    ['canvasContent', 'nodesContainer', 'swimlanesLayer', 'connectionsLayer'].forEach(id => {
+    ['canvasContent', 'nodesContainer', 'swimlanesLayer', 'gruposLayer', 'connectionsLayer'].forEach(id => {
         const el = document.getElementById(id);
         if (el) { el.style.width = `${canvasLargura}px`; el.style.height = `${canvasAltura}px`; }
     });
@@ -219,6 +219,7 @@ function dimensionarCanvas() {
 
 function atualizarSelecoesVisuais() {
     document.querySelectorAll('.flow-node').forEach(el => el.classList.remove('selected'));
+    if (typeof agendarNavegacao === 'function') agendarNavegacao();
     selectedNodeIds.forEach(id => {
         const el = document.getElementById(`node-${id}`);
         if (el) el.classList.add('selected');
@@ -705,6 +706,8 @@ function gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, e
 }
 
 function desenharConexoes() {
+    if (typeof desenharGrupos === 'function') desenharGrupos(); // molduras acompanham os blocos
+    if (typeof agendarNavegacao === 'function') agendarNavegacao();
     const svg = document.getElementById('connectionsLayer');
     const defs = svg.querySelector('defs');
     svg.innerHTML = '';
@@ -928,6 +931,7 @@ function alterarZoomRelativo(delta) {
 }
 
 function atualizarIndicadorZoom() {
+    if (typeof agendarNavegacao === 'function') agendarNavegacao();
     const btn = document.getElementById('btnZoomLabel');
     if (btn) {
         btn.textContent = `${Math.round(zoomLevel * 100)}%`;

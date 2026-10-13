@@ -105,6 +105,12 @@ function tratarAtalhosGlobais(e) {
 
     if (IS_APPROVED) return;
 
+    if (ctrl && !e.altKey && noCanvasComFoco && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        agruparSelecao();
+        return;
+    }
+
     if (ctrl && !e.altKey) {
         const k = e.key.toLowerCase();
         if (k === 'z') {

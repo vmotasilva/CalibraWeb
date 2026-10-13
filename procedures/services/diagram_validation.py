@@ -180,6 +180,34 @@ def _numero(valor):
     return isinstance(valor, (int, float)) and not isinstance(valor, bool)
 
 
+def validar_grupos_e_vistas(topologia: dict) -> list:
+    """Grupos (boundary) e vistas salvas do canvas."""
+    grupos = topologia.get('grupos')
+    if grupos is not None:
+        if not isinstance(grupos, list) or len(grupos) > 50:
+            return ["'grupos' deve ser uma lista de até 50 grupos."]
+        ids = set()
+        for g in grupos:
+            if (not isinstance(g, dict) or not isinstance(g.get('id'), str) or not 0 < len(g['id']) <= 40
+                    or g['id'] in ids or not isinstance(g.get('titulo', ''), str) or len(g.get('titulo', '')) > 100
+                    or not isinstance(g.get('resumo', ''), str) or len(g.get('resumo', '')) > 1000
+                    or not (isinstance(g.get('cor'), str) and COR_RE.match(g['cor']))
+                    or not isinstance(g.get('nos'), list) or len(g['nos']) > 1000
+                    or not all(isinstance(i, (str, int)) and not isinstance(i, bool) for i in g['nos'])):
+                return ["'grupos' inválido (id único, título até 100, resumo até 1000, cor #RRGGBB e lista de blocos)."]
+            ids.add(g['id'])
+    vistas = topologia.get('vistas')
+    if vistas is not None:
+        if not isinstance(vistas, list) or len(vistas) > 20:
+            return ["'vistas' deve ser uma lista de até 20 vistas."]
+        for vista in vistas:
+            if (not isinstance(vista, dict) or not isinstance(vista.get('id'), str) or not 0 < len(vista['id']) <= 40
+                    or not isinstance(vista.get('nome'), str) or not 0 < len(vista['nome']) <= 60
+                    or not all(_numero(vista.get(k)) for k in ('zoom', 'cx', 'cy')) or not 0.05 <= vista['zoom'] <= 3):
+                return ["'vistas' inválido (id, nome até 60, zoom, cx e cy numéricos)."]
+    return []
+
+
 def validar_topologia(topologia: dict) -> list:
     """Retorna a lista de erros encontrados (vazia quando a topologia é válida)."""
     erros = []
@@ -223,6 +251,10 @@ def validar_topologia(topologia: dict) -> list:
         if lista is not None and (not isinstance(lista, list) or len(lista) > MAX_RAIAS
                                   or not all(isinstance(x, str) and 0 < len(x) <= 100 for x in lista)):
             return [f"'{chave}' deve ser uma lista de até {MAX_RAIAS} nomes de raia (até 100 caracteres)."]
+
+    erros_nav = validar_grupos_e_vistas(topologia)
+    if erros_nav:
+        return erros_nav
 
     cores_raias = topologia.get('raias_cores')
     if cores_raias is not None and (not isinstance(cores_raias, dict) or len(cores_raias) > MAX_RAIAS

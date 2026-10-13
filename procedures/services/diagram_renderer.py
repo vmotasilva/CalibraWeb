@@ -14,6 +14,7 @@ from reportlab.platypus import Flowable
 from .diagram_raias import raias_do_diagrama
 from .diagram_arvore import MODOS_ARVORE, montar_arvore, ramos_recolhidos
 from .diagram_conteudo import POR_ID, contagem_efetivo, eh_vaga, marcador_valido
+from .diagram_grupos import RESUMO_GAP, RESUMO_W, caixa_do_grupo, grupos_validos, nivel_de_aninhamento
 from .diagram_estilo import contexto_dos_nos, cor_de_texto_para_fundo, nome_da_fonte, resolver_estilo_conexao, resolver_estilo_no
 
 FONT = 'Helvetica'
@@ -185,8 +186,21 @@ class DiagramaFlowable(Flowable):
                   if ((n.get('data') or {}).get('lane') or 'Geral') == lane]
             self.lane_h[lane] = max(LANE_MIN_H, (max(ys) - min(ys)) + 160) if ys else LANE_MIN_H
 
+        # grupos (boundary): molduras atrás dos blocos; ampliam a área desenhada
+        caixas = {str(n['id']): dict(zip('xywh', (n['position']['x'], n['position']['y'], *_tamanho(n)))) for n in self.nodes}
+        lista = grupos_validos(topologia)
+        self.grupos = []
+        for i, g in enumerate(lista):
+            caixa = caixa_do_grupo(g, caixas, nivel_de_aninhamento(lista, i, caixas))
+            if caixa:
+                self.grupos.append((g, caixa))
+        direita_grupos = max([c['x'] + c['w'] + (RESUMO_GAP + RESUMO_W if (g.get('resumo') or '').strip() else 0)
+                              for g, c in self.grupos] + [0])
+        baixo_grupos = max([c['y'] + c['h'] for _, c in self.grupos] + [0])
+
         self.cw = max([n['position']['x'] + _tamanho(n)[0] for n in self.nodes] + [LANE_LEFT + (0 if self.em_arvore else 400)]) + MARGIN
-        max_y = max([n['position']['y'] + _tamanho(n)[1] for n in self.nodes] + [0]) + MARGIN
+        self.cw = max(self.cw, direita_grupos + MARGIN)
+        max_y = max([n['position']['y'] + _tamanho(n)[1] for n in self.nodes] + [baixo_grupos, 0]) + MARGIN
         self.ch = max_y if self.em_arvore else max(LANE_TOP + sum(self.lane_h.values()) + 20, max_y)
 
         self.scale = min(max_w / self.cw, max_h / self.ch, 1.0)
@@ -230,6 +244,7 @@ class DiagramaFlowable(Flowable):
             c.setFillColor(_cor(self.fundo, colors.white))
             c.rect(0, 0, self.cw, self.ch, stroke=0, fill=1)
         self._desenhar_raias(c)
+        self._desenhar_grupos(c)
         for e in self.edges:
             self._desenhar_aresta(c, e)
         for n in self.nodes:
@@ -238,6 +253,53 @@ class DiagramaFlowable(Flowable):
             if str(n['id']) in self.contagem_ocultos:
                 self._desenhar_contador(c, n, self.contagem_ocultos[str(n['id'])])
         c.restoreState()
+
+    def _desenhar_grupos(self, c):
+        """Molduras tracejadas dos grupos, com título e quadro de resumo ao lado."""
+        for g, cx in self.grupos:
+            cor = _cor(g.get('cor'), colors.HexColor('#2563EB'))
+            x, w, h = cx['x'], cx['w'], cx['h']
+            topo = self._y(cx['y'])
+            c.saveState()
+            c.setFillColor(cor)
+            c.setFillAlpha(0.07)
+            c.roundRect(x, topo - h, w, h, 14, stroke=0, fill=1)
+            c.setFillAlpha(1)
+            c.setStrokeColor(cor)
+            c.setLineWidth(1.5)
+            c.setDash(6, 4)
+            c.roundRect(x, topo - h, w, h, 14, stroke=1, fill=0)
+            c.setDash()
+
+            titulo = _txt(g.get('titulo') or 'Grupo')
+            c.setFont(FONT_BOLD, 10)
+            while len(titulo) > 1 and c.stringWidth(titulo, FONT_BOLD, 10) + 20 > w - 28:
+                titulo = titulo[:-2] + '…' if not titulo.endswith('…') else titulo[:-2] + '…'
+            larg = c.stringWidth(titulo, FONT_BOLD, 10) + 20
+            c.setFillColor(cor)
+            c.roundRect(x + 14, topo - 4 - 17, larg, 17, 8.5, stroke=0, fill=1)
+            c.setFillColor(_cor(cor_de_texto_para_fundo(g.get('cor') or '#2563eb'), colors.white))
+            c.drawString(x + 24, topo - 4 - 12, titulo)
+
+            resumo = (g.get('resumo') or '').strip()
+            if resumo:
+                linhas = []
+                for paragrafo in resumo.split('\n'):
+                    linhas += simpleSplit(_txt(paragrafo) or ' ', FONT, 9, RESUMO_W - 20)
+                linhas = linhas[:14]
+                alt = len(linhas) * 11 + 12
+                rx = x + w + RESUMO_GAP
+                c.setFillColor(colors.white)
+                c.setStrokeColor(colors.HexColor('#E2E8F0'))
+                c.setLineWidth(0.8)
+                c.roundRect(rx, topo - alt, RESUMO_W, alt, 4, stroke=1, fill=1)
+                c.setFillColor(cor)
+                c.rect(rx, topo - alt, 4, alt, stroke=0, fill=1)
+                c.setFillColor(colors.HexColor('#334155'))
+                c.setFont(FONT, 9)
+                for i, ln in enumerate(linhas):
+                    c.drawString(rx + 12, topo - 14 - i * 11, ln)
+            c.restoreState()
 
     def _desenhar_extras(self, c, n):
         """Marcadores (topo esquerdo), indicadores de nota/link/alerta (topo direito), selo VAGO e efetivo do ramo."""

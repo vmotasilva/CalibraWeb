@@ -844,7 +844,7 @@ class DiagramaAtalhosPorModoTestCase(TestCase):
         # controles exclusivos do Canvas ficam desativados fora dele
         for onclick in ('adicionarTopicoIrmao()', 'adicionarSubtopicoFilho()', 'conectarNosSelecionados()', 'excluirSelecao()'):
             self.assertIn(f'class="ribbon-btn border somente-canvas" onclick="{onclick}"', html)
-        self.assertEqual(html.count('somente-canvas"'), 7)  # 4 botões + grupos Layout, Visão e Exibição
+        self.assertEqual(html.count('somente-canvas"'), 9)  # 4 botões + grupos Layout, Visão e Exibição + minimapa e barra de status
         self.assertIn('.modo-nao-canvas .somente-canvas', html)
 
         js = ler_js_editor()
@@ -1490,3 +1490,95 @@ class DiagramaRaiaConfigTestCase(TestCase):
         self.assertIn('abrirConfigRaia', js)
         self.assertIn('ondblclick', js)
         self.assertIn("(topologia.raias_cores || {})[nome]", js)
+
+
+class DiagramaFase4NavegacaoTestCase(TestCase):
+    """Fase 4 do plano XMind: grupos (boundary), minimapa, barra de status, vistas salvas e apresentação."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='navegacao', password='x', is_superuser=True)
+        self.diagrama = Diagrama.objects.create(titulo='Navegação', criado_por=self.user)
+        self.topo = {
+            "schema_version": 2, "layout_modo": "organograma",
+            "nodes": [
+                {"id": "1", "type": "process", "position": {"x": 300, "y": 100}, "data": {"label": "Diretoria"}},
+                {"id": "2", "type": "process", "position": {"x": 100, "y": 300}, "data": {"label": "Qualidade"}},
+                {"id": "3", "type": "process", "position": {"x": 500, "y": 300}, "data": {"label": "Produção"}},
+            ],
+            "edges": [{"id": "e1", "source": "1", "target": "2"}, {"id": "e2", "source": "1", "target": "3"}],
+            "grupos": [{"id": "g1", "titulo": "Operação", "cor": "#2563eb", "resumo": "Time responsável pela operação.\nSegunda linha.", "nos": ["2", "3"]}],
+            "vistas": [{"id": "v1", "nome": "Visão geral", "zoom": 0.8, "cx": 400, "cy": 300}],
+        }
+        self.versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self.topo,
+                                                    status=StatusDiagrama.RASCUNHO)
+
+    def _cliente(self):
+        c = Client()
+        c.force_login(self.user)
+        return c
+
+    def test_validacao_de_grupos_e_vistas(self):
+        from procedures.services.diagram_validation import validar_topologia
+        base = {"nodes": [{"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "A"}}], "edges": []}
+        self.assertEqual(validar_topologia({**base, "grupos": self.topo["grupos"], "vistas": self.topo["vistas"]}), [])
+        ruins = [
+            {"grupos": [{"id": "g", "titulo": "x", "cor": "azul", "nos": ["1"]}]},
+            {"grupos": [{"id": "g", "titulo": "x", "cor": "#2563eb", "nos": "1"}]},
+            {"grupos": [{"id": "g", "titulo": "x", "cor": "#2563eb", "nos": ["1"]}] * 2},
+            {"vistas": [{"id": "v", "nome": "", "zoom": 1, "cx": 0, "cy": 0}]},
+            {"vistas": [{"id": "v", "nome": "ok", "zoom": 99, "cx": 0, "cy": 0}]},
+        ]
+        for extra in ruins:
+            self.assertTrue(validar_topologia({**base, **extra}), extra)
+
+    def test_editor_traz_camada_de_grupos_minimapa_status_e_apresentacao(self):
+        from procedures.views.diagram_views import EDITOR_JS_MODULOS
+        html = self._cliente().get(f'/procedures/diagramas/editor/{self.versao.id}/').content.decode()
+        for item in ('id="gruposLayer"', 'id="minimapa"', 'id="barraStatus"', 'id="pitchBarra"', 'id="modalGrupo"',
+                     'id="listaVistas"', 'onclick="agruparSelecao()"', 'onclick="iniciarApresentacao()"'):
+            self.assertIn(item, html)
+        for m in ('grupos', 'agrupamento', 'navegacao'):
+            self.assertIn(m, EDITOR_JS_MODULOS)
+        self.assertLess(EDITOR_JS_MODULOS.index('grupos'), EDITOR_JS_MODULOS.index('agrupamento'))
+
+    def test_grupos_passam_nos_testes_node(self):
+        import shutil, subprocess
+        from pathlib import Path
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('Node.js não disponível')
+        script = Path(__file__).resolve().parent / 'js' / 'grupos.test.js'
+        r = subprocess.run([node, str(script)], capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('TODOS OS', r.stdout)
+
+    def test_paridade_da_geometria_dos_grupos_entre_javascript_e_python(self):
+        import shutil, subprocess
+        from pathlib import Path
+        from procedures.services.diagram_grupos import caixa_do_grupo, nivel_de_aninhamento
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('Node.js não disponível')
+        base = (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama').as_posix()
+        caixas = {"a": {"x": 20, "y": 20, "w": 160, "h": 60}, "b": {"x": 400, "y": 300, "w": 150, "h": 70},
+                  "c": {"x": 700, "y": 200, "w": 160, "h": 60}}
+        grupos = [{"nos": ["a", "b", "c"]}, {"nos": ["b", "c"]}, {"nos": ["c"]}, {"nos": ["zz"]}]
+        script = (f"const G=require('{base}/grupos.js');const t=JSON.parse(require('fs').readFileSync(0,'utf8'));"
+                  "console.log(JSON.stringify(t.grupos.map((g,i)=>{const n=G.nivelDeAninhamento(t.grupos,i,t.caixas);"
+                  "return {n, c:G.caixaDoGrupo(g,t.caixas,n)}})))")
+        r = subprocess.run([node, '-e', script], input=json.dumps({"grupos": grupos, "caixas": caixas}),
+                           capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        js = json.loads(r.stdout)
+        for i, g in enumerate(grupos):
+            nivel = nivel_de_aninhamento(grupos, i, caixas)
+            self.assertEqual(js[i]['n'], nivel)
+            self.assertEqual(js[i]['c'], caixa_do_grupo(g, caixas, nivel))
+
+    def test_pdf_desenha_grupos_com_resumo(self):
+        sem = dict(self.topo, grupos=[])
+        v2 = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=1, dados_topologia=sem,
+                                           status=StatusDiagrama.RASCUNHO)
+        pdf = gerar_pdf_diagrama_doc071(self.versao)
+        self.assertTrue(pdf.startswith(b'%PDF-'))
+        self.assertGreater(len(pdf), len(gerar_pdf_diagrama_doc071(v2)))
