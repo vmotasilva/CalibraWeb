@@ -93,7 +93,7 @@ def api_colaboradores_sincronizar(request):
 
     from rh.models import Colaborador
     encontrados = {
-        c.id: {"existe": True, "nome": c.nome_completo, "cargo": c.cargo or '', "setor_id": c.setor_id, "tem_foto": bool(c.foto)}
+        c.id: {"existe": True, "nome": c.nome_completo, "nome_abreviado": c.nome_abreviado_manual or '', "cargo": c.cargo or '', "setor_id": c.setor_id, "tem_foto": bool(c.foto)}
         for c in Colaborador.objects.filter(pk__in=ids).select_related('setor')
     }
     resultado = {str(i): encontrados.get(i, {"existe": False}) for i in ids}

@@ -107,4 +107,12 @@ teste('links: validação e limite', () => {
     assert.deepStrictEqual(C.normalizarLinks(undefined), []);
 });
 
+teste('nome abreviado do RH entra na comparacao com o RH', () => {
+    const nos = [no(1, { colab: colab(10, { nome: 'Maria Souza Lima', nomeAbreviado: '' }) })];
+    const d = C.diferencasRH(nos, { 10: { existe: true, nome: 'Maria Souza Lima', cargo: 'Analista', nome_abreviado: 'Cida Lima', tem_foto: false } });
+    assert.deepStrictEqual(d[0].nomeAbreviado, { de: '', para: 'Cida Lima' });
+    const iguais = C.diferencasRH(nos, { 10: { existe: true, nome: 'Maria Souza Lima', cargo: '', nome_abreviado: '', tem_foto: false } });
+    assert.ok(!iguais.some(x => x.nomeAbreviado));
+});
+
 console.log(process.exitCode ? 'COM FALHAS' : `TODOS OS ${total} TESTES OK`);

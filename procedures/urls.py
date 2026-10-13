@@ -364,6 +364,7 @@ urlpatterns = [
     path('diagramas/<uuid:diagrama_id>/historico/', diagram_views.diagrama_historico_view, name='diagrama_historico'),
     path('diagramas/<uuid:diagrama_id>/duplicar/', diagram_views.diagrama_duplicar_view, name='diagrama_duplicar'),
     path('diagramas/<uuid:diagrama_id>/arquivar/', diagram_views.diagrama_arquivar_view, name='diagrama_arquivar'),
+    path('diagramas/<uuid:diagrama_id>/excluir/', diagram_views.diagrama_excluir_view, name='diagrama_excluir'),
     path('diagramas/editor/<uuid:versao_id>/', diagram_views.diagrama_editor_view, name='diagrama_editor'),
 
     # API Endpoints

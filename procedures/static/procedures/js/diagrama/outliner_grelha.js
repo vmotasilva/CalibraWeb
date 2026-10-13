@@ -368,7 +368,7 @@ function aplicarColaboradorNoOutliner(nodeId, colab, fullText, atIndex) {
     node.data.label = novoTexto;
     
     // Vincula o colaborador ao bloco (nome, função editável e foto)
-    node.data.colab = { id: colab.id, nome: nome, cargo: cargoDesc, cargoRH: cargoDesc, nomeCurto: false, temFoto: colab.tem_foto !== false };
+    node.data.colab = { id: colab.id, nome: nome, cargo: cargoDesc, cargoRH: cargoDesc, nomeAbreviado: colab.nome_abreviado || '', nomeCurto: false, temFoto: colab.tem_foto !== false };
     
     // Se a raia for Geral ou inexistente, joga para a raia do setor do colaborador
     if (setorDesc && (!node.data.lane || node.data.lane === 'Geral')) {

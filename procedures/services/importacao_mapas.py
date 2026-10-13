@@ -389,5 +389,102 @@ def para_topologia(raiz: dict, modo: str = 'organograma', com_estilos: bool = Tr
     return topologia
 
 
-def resumo_das_folhas(folhas: list) -> list:
-    return [{'indice': i, 'titulo': f['titulo'], 'avisos': f['avisos'], **contar(f['raiz'])} for i, f in enumerate(folhas)]
+def resumo_das_folhas(folhas: list, colaboradores=None, modo: str = 'organograma') -> list:
+    """Resumo de cada planilha. Com `colaboradores` (lista do RH), inclui quantos blocos seriam ligados a pessoas."""
+    saida = []
+    for i, f in enumerate(folhas):
+        item = {'indice': i, 'titulo': f['titulo'], 'avisos': f['avisos'], **contar(f['raiz'])}
+        if colaboradores is not None:
+            try:
+                item['vinculos'] = vincular_colaboradores(para_topologia(f['raiz'], modo, False), colaboradores)
+            except ErroImportacao:
+                pass
+        saida.append(item)
+    return saida
+
+
+# ======================================================================== ligação com os colaboradores do RH
+def _tokens_nome(nome: str) -> list:
+    """Nome em minúsculas, sem acentos nem pontuação, separado em palavras."""
+    import unicodedata
+    sem_acento = unicodedata.normalize('NFD', str(nome or '')).encode('ascii', 'ignore').decode('ascii')
+    return re.sub(r'[^a-z0-9 ]+', ' ', sem_acento.lower()).split()
+
+
+def _subsequencia(curto: list, longo: list) -> bool:
+    it = iter(longo)
+    return all(any(p == q for q in it) for p in curto)
+
+
+def carregar_colaboradores() -> list:
+    """Colaboradores ativos do RH: [{id, nome, cargo, tem_foto}] (a foto em si não é carregada)."""
+    from rh.models import Colaborador
+    com_foto = set(Colaborador.objects.filter(is_active=True).exclude(foto__isnull=True).exclude(foto='').values_list('id', flat=True))
+    return [{'id': c['id'], 'nome': c['nome_completo'], 'cargo': c['cargo'] or '', 'nome_abreviado': c['nome_abreviado_manual'] or '',
+             'tem_foto': c['id'] in com_foto}
+            for c in Colaborador.objects.filter(is_active=True).values('id', 'nome_completo', 'cargo', 'nome_abreviado_manual')]
+
+
+def _procurar_colaborador(tokens: list, indice: list):
+    """('ok', colaborador) | ('ambiguo', [colaboradores]) | ('nenhum', None). Regras conservadoras:
+    1) nome igual; 2) mesmas palavras em ordem, começando e terminando igual (ou o nome do mapa é o começo do nome do RH)."""
+    iguais = [c for c, t in indice if t == tokens]
+    if len(iguais) == 1:
+        return 'ok', iguais[0]
+    if len(iguais) > 1:
+        return 'ambiguo', iguais
+    parecidos = [c for c, t in indice
+                 if t[0] == tokens[0] and _subsequencia(tokens, t) and (t[-1] == tokens[-1] or t[:len(tokens)] == tokens)]
+    if len(parecidos) == 1:
+        return 'ok', parecidos[0]
+    if len(parecidos) > 1:
+        return 'ambiguo', parecidos
+    return 'nenhum', None
+
+
+def vincular_colaboradores(topologia: dict, colaboradores=None) -> dict:
+    """Liga blocos com nome de pessoa aos colaboradores do RH (dados.colab) e devolve o resumo:
+    {vinculados, ambiguos: [nomes], sem_correspondencia}. A função de cargo escrita no mapa ("Nome\nCargo") vira a função
+    editável do bloco; o cargo do RH fica guardado para a opção "atualizar pelo RH"."""
+    colaboradores = carregar_colaboradores() if colaboradores is None else colaboradores
+    indice = [(c, _tokens_nome(c['nome'])) for c in colaboradores]
+    indice = [(c, t) for c, t in indice if t]
+    resumo = {'vinculados': 0, 'ambiguos': [], 'sem_correspondencia': 0}
+
+    for no in topologia.get('nodes') or []:
+        dados = no.get('data') or {}
+        if dados.get('vaga') or dados.get('colab'):
+            continue
+        rotulo = str(dados.get('label') or '')
+        tokens = _tokens_nome(rotulo)
+        if len(tokens) < 2:            # "Produção", "Qualidade"...: áreas, não pessoas
+            continue
+        situacao, achado = _procurar_colaborador(tokens, indice)
+        if situacao == 'ambiguo':
+            resumo['ambiguos'].append(rotulo)
+            continue
+        if situacao == 'nenhum':
+            resumo['sem_correspondencia'] += 1
+            continue
+
+        partes_rh = achado['nome'].split()
+        subtitulos = list(dados.get('subtitles') or [])
+        cargo_do_mapa = subtitulos.pop(0) if subtitulos else ''
+        dados['colab'] = {
+            'id': achado['id'], 'nome': achado['nome'], 'cargo': (cargo_do_mapa or achado['cargo'])[:100],
+            'cargoRH': achado['cargo'], 'nomeAbreviado': (achado.get('nome_abreviado') or '')[:60],
+            'nomeCurto': len(tokens) < len(partes_rh) and (len(partes_rh) > 2 or bool(achado.get('nome_abreviado'))),
+            'temFoto': bool(achado['tem_foto']),
+        }
+        if dados['colab']['nomeCurto']:
+            curto = dados['colab']['nomeAbreviado'] or f"{partes_rh[0]} {partes_rh[-1]}"
+        else:
+            curto = achado['nome']
+        dados['label'] = curto[:300]
+        if subtitulos:
+            dados['subtitles'] = subtitulos
+        else:
+            dados.pop('subtitles', None)
+        no['data'] = dados
+        resumo['vinculados'] += 1
+    return resumo

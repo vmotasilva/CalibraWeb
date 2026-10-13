@@ -28,6 +28,11 @@
                                     {{ form.nome_completo }}
                                 {% endif %}
                             </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Nome Abreviado</label>
+                                {{ form.nome_abreviado_manual }}
+                                <div class="form-text">Versão curta usada nos diagramas. Em branco: primeiro e último nome.</div>
+                            </div>
                             <div class="col-md-4">
                                 <label class="form-label">CPF *</label>
                                 {% if form.cpf.errors %}

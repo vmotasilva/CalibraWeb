@@ -60,6 +60,11 @@
                 <input class="form-check-input" type="checkbox" name="estilos" id="estilosImportar" checked>
                 <label class="form-check-label small" for="estilosImportar">Manter cores, formas e fontes do arquivo (desmarque para usar a aparência padrão do editor)</label>
             </div>
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" name="vincular" id="vincularImportar" checked>
+                <label class="form-check-label small" for="vincularImportar">Ligar blocos com nome de pessoa aos <strong>colaboradores do RH</strong> (foto, nome e função). Só liga quando há uma correspondência única; a função escrita no mapa é mantida.</label>
+                <div class="form-text" id="vinculosInfo"></div>
+            </div>
             <div id="avisosImportar" class="alert alert-warning small py-2 d-none"></div>
         </div>
     </div>
@@ -84,6 +89,10 @@
         const f = folhas[Number(seletor.value)] || folhas[0];
         if (!f) return;
         info.textContent = `${f.blocos} blocos em ${f.niveis} níveis`;
+        const v = f.vinculos;
+        document.getElementById('vinculosInfo').textContent = v
+            ? `Nesta planilha: ${v.vinculados} bloco(s) seriam ligados ao RH` + (v.ambiguos.length ? `, ${v.ambiguos.length} ambíguo(s) (sem ligação)` : '') + '.'
+            : '';
         if (!titulo.dataset.editado) titulo.value = f.titulo;
         avisos.classList.toggle('d-none', !f.avisos.length);
         avisos.textContent = f.avisos.length ? 'Atenção: ' + f.avisos.join('; ') + '.' : '';

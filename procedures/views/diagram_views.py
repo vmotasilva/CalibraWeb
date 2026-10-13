@@ -451,6 +451,7 @@ def api_diagramas_colaboradores(request):
             "id": c.id,
             "nome": c.nome_completo,
             "cargo": c.cargo or '',
+            "nome_abreviado": c.nome_abreviado_manual or '',
             "setor": c.setor.nome if c.setor else '',
             "setor_id": c.setor_id,
             "tem_foto": bool(c.foto),
@@ -538,6 +539,8 @@ def diagramas_lista_view(request):
         d.ultima = versoes[0] if versoes else None
         d.vigente = next((v for v in versoes if v.status == StatusDiagrama.APROVADO), None)
         d.em_andamento = d.ultima is not None and d.ultima.status in (StatusDiagrama.RASCUNHO, StatusDiagrama.EM_APROVACAO)
+        d.exige_confirmacao = any(v.status != StatusDiagrama.RASCUNHO for v in versoes)   # histórico controlado (QMS)
+        d.pode_excluir = _pode_excluir_diagrama(request.user, d.exige_confirmacao)
 
     params = request.GET.copy()
     params.pop('page', None)
@@ -588,6 +591,34 @@ def diagrama_duplicar_view(request, diagrama_id):
         )
     messages.success(request, f"Cópia criada a partir de {origem.identificador}.")
     return redirect('procedures:diagrama_editor', versao_id=nova.id)
+
+
+def _pode_excluir_diagrama(user, tem_historico_controlado: bool) -> bool:
+    """Exclusão definitiva: quem edita diagramas pode excluir os que só têm rascunhos; com revisões em aprovação,
+    aprovadas ou obsoletas (registro controlado, ISO 13485) só um administrador."""
+    if user.is_superuser:
+        return True
+    return _tem_permissao(user, 'core.nav_diagramas_editor') and not tem_historico_controlado
+
+
+@login_required
+@require_POST
+def diagrama_excluir_view(request, diagrama_id):
+    """Exclui definitivamente o diagrama e todas as suas revisões."""
+    diagrama = get_object_or_404(Diagrama, id=diagrama_id)
+    versoes = list(diagrama.versoes.all())
+    exige_confirmacao = any(v.status != StatusDiagrama.RASCUNHO for v in versoes)
+    identificador = diagrama.identificador
+    if not _pode_excluir_diagrama(request.user, exige_confirmacao):
+        messages.error(request, "Sem permissão: diagramas com revisão em aprovação, aprovada ou obsoleta só podem ser excluídos por um administrador (use Arquivar).")
+        return redirect('procedures:diagramas_lista')
+    if exige_confirmacao and request.POST.get('confirmacao', '').strip().lstrip('#').upper() != identificador.lstrip('#').upper():
+        messages.error(request, f"Exclusão não realizada: digite o identificador {identificador} para confirmar.")
+        return redirect('procedures:diagramas_lista')
+    with transaction.atomic():
+        diagrama.delete()
+    messages.success(request, f"{identificador} excluído definitivamente ({len(versoes)} revisão(ões)).")
+    return redirect('procedures:diagramas_lista')
 
 
 @login_required

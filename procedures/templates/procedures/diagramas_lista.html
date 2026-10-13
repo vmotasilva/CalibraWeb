@@ -172,6 +172,18 @@
                                                 </button>
                                             </form>
                                         </li>
+                                        {% if diagrama.pode_excluir %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <button type="button" class="dropdown-item text-danger fw-semibold"
+                                                    data-acao="{% url 'procedures:diagrama_excluir' diagrama_id=diagrama.id %}"
+                                                    data-identificador="{{ diagrama.identificador }}" data-titulo="{{ diagrama.titulo }}"
+                                                    data-confirmar="{% if diagrama.exige_confirmacao %}1{% else %}0{% endif %}"
+                                                    onclick="abrirExcluirDiagrama(this)">
+                                                <i class="bi bi-trash me-2"></i>Excluir...
+                                            </button>
+                                        </li>
+                                        {% endif %}
                                     </ul>
                                 </div>
                             </div>
@@ -204,4 +216,42 @@
     </div>
     {% endif %}
 </div>
+
+<div class="modal fade" id="modalExcluirDiagrama" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" id="formExcluirDiagrama" class="modal-content" autocomplete="off">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i> Excluir diagrama</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Excluir <strong id="excluirIdentificador"></strong> &mdash; <span id="excluirTitulo"></span>?</p>
+                <p class="small text-muted mb-2">Todas as revisões e o histórico do diagrama serão apagados <strong>definitivamente</strong>. Para só tirá-lo da lista, use <em>Arquivar</em>.</p>
+                <div id="excluirConfirmacaoBox" class="d-none">
+                    <div class="alert alert-warning small py-2">Este diagrama tem revisões em aprovação, aprovadas ou obsoletas (registro controlado).</div>
+                    <label class="form-label small fw-bold">Digite <span class="font-monospace" id="excluirIdentificadorDigitar"></span> para confirmar</label>
+                    <input type="text" name="confirmacao" id="excluirConfirmacao" class="form-control" autocomplete="off" data-lpignore="true" data-1p-ignore>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Excluir definitivamente</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    function abrirExcluirDiagrama(btn) {
+        const d = btn.dataset;
+        document.getElementById('formExcluirDiagrama').action = d.acao;
+        document.getElementById('excluirIdentificador').textContent = d.identificador;
+        document.getElementById('excluirIdentificadorDigitar').textContent = d.identificador;
+        document.getElementById('excluirTitulo').textContent = d.titulo;
+        document.getElementById('excluirConfirmacao').value = '';
+        document.getElementById('excluirConfirmacaoBox').classList.toggle('d-none', d.confirmar !== '1');
+        document.getElementById('excluirConfirmacao').required = d.confirmar === '1';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalExcluirDiagrama')).show();
+    }
+</script>
 {% endblock %}

@@ -2082,6 +2082,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <label class="form-label fw-bold small text-muted">Matrícula</label>
                                     {{ colaborador_form.matricula }}
                                 </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-bold small text-muted">Nome Abreviado</label>
+                                    {{ colaborador_form.nome_abreviado_manual }}
+                                    <div class="form-text">Versão curta usada nos diagramas (organogramas e fluxogramas). Em branco: primeiro e último nome.</div>
+                                </div>
                                 <div class="col-md-6">
                                     <label class="form-label fw-bold small text-muted"><i class="bi bi-globe me-1 text-primary"></i>Matrícula Global</label>
                                     {{ colaborador_form.matricula_global }}

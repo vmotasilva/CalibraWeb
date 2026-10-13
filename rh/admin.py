@@ -15,7 +15,7 @@ class ColaboradorAdmin(admin.ModelAdmin):
     ordering = ['matricula']
     fieldsets = (
         ('Informações Básicas', {
-            'fields': ('matricula', 'cpf', 'nome_completo', 'cargo', 'grupo')
+            'fields': ('matricula', 'cpf', 'nome_completo', 'nome_abreviado_manual', 'cargo', 'grupo')
         }),
         ('Organização', {
             'fields': ('setor', 'centro_custo', 'turno')

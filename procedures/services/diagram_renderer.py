@@ -135,11 +135,15 @@ def _colab(node):
 
 
 def nome_exibicao(colab: dict) -> str:
-    """Nome completo ou, quando nomeCurto estiver ligado, primeiro + último nome."""
+    """Nome completo ou, com nomeCurto ligado, o Nome Abreviado do RH (e, sem ele, primeiro + último nome)."""
     nome = (colab.get('nome') or '').strip()
-    partes = nome.split()
-    if colab.get('nomeCurto') and len(partes) > 2:
-        return f"{partes[0]} {partes[-1]}"
+    if colab.get('nomeCurto'):
+        abreviado = (colab.get('nomeAbreviado') or '').strip()
+        if abreviado:
+            return abreviado
+        partes = nome.split()
+        if len(partes) > 2:
+            return f"{partes[0]} {partes[-1]}"
     return nome
 
 

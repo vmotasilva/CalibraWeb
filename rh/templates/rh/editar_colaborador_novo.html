@@ -44,6 +44,11 @@
                             {% endif %}
                             <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Nome será convertido para MAIÚSCULAS</small>
                         </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-bold text-dark">Nome Abreviado</label>
+                            {{ form.nome_abreviado_manual }}
+                            <small class="text-muted d-block mt-1"><i class="bi bi-info-circle"></i> Versão curta usada nos diagramas. Em branco: primeiro e último nome.</small>
+                        </div>
                         <div class="col-md-4">
                             <label class="form-label fw-bold text-dark">CPF</label>
                             {{ form.cpf }}

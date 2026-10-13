@@ -1397,7 +1397,7 @@ class DiagramaFase3ConteudoTestCase(TestCase):
         r = c.post(url, data=json.dumps({"ids": [c1.id, 99999]}), content_type='application/json')
         self.assertEqual(r.status_code, 200)
         res = r.json()['results']
-        self.assertEqual(res[str(c1.id)], {"existe": True, "nome": "Maria Souza Lima", "cargo": "Coordenadora", "setor_id": self.setor.id, "tem_foto": False})
+        self.assertEqual(res[str(c1.id)], {"existe": True, "nome": "Maria Souza Lima", "nome_abreviado": "", "cargo": "Coordenadora", "setor_id": self.setor.id, "tem_foto": False})
         self.assertEqual(res["99999"], {"existe": False})
         self.assertEqual(c.post(url, data=json.dumps({"ids": ["a"]}), content_type='application/json').status_code, 400)
         self.assertEqual(c.post(url, data=json.dumps({"ids": list(range(1, 400))}), content_type='application/json').status_code, 400)
@@ -1827,3 +1827,230 @@ class DiagramaEstruturasERaiasTestCase(TestCase):
         self.assertEqual(_estrutura_xmind('org.xmind.ui.treetable.toptitle'), 'arvore')
         self.assertIsNone(_estrutura_xmind('org.xmind.ui.map.clockwise'))
         self.assertIsNone(_estrutura_xmind(None))
+
+
+class DiagramaImportacaoVinculoRHTestCase(TestCase):
+    """Importação: ligação dos blocos com nome de pessoa aos colaboradores do RH."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='vinculo', password='x', is_superuser=True)
+
+    @staticmethod
+    def _rh():
+        return [
+            {'id': 1, 'nome': 'JOUSIVAL SILVA VILELA', 'cargo': 'GERENTE DE PRODUCAO', 'tem_foto': True},
+            {'id': 2, 'nome': 'Vinícius Mota Silva', 'cargo': 'Coordenador de Qualidade', 'tem_foto': False},
+            {'id': 3, 'nome': 'Carlos Amorim', 'cargo': 'Consultor', 'tem_foto': False},
+            {'id': 4, 'nome': 'Carlos Amorim Neto', 'cargo': 'Consultor', 'tem_foto': False},
+            {'id': 5, 'nome': 'Maria Souza', 'cargo': 'Analista', 'tem_foto': False},
+            {'id': 6, 'nome': 'Maria Souza Lima', 'cargo': 'Auxiliar', 'tem_foto': False},
+        ]
+
+    @staticmethod
+    def _topo(*blocos):
+        return {"nodes": [{"id": str(i + 1), "type": "process", "position": {"x": 0, "y": 0}, "data": dict(b)}
+                          for i, b in enumerate(blocos)], "edges": []}
+
+    def test_liga_por_nome_igual_ou_abreviado_e_mantem_a_funcao_do_mapa(self):
+        from procedures.services.importacao_mapas import vincular_colaboradores
+        topo = self._topo(
+            {"label": "Jousival Vilela", "subtitles": ["Gerente de Produção", "Turno A"]},
+            {"label": "Vinícius Mota", "subtitles": ["Coordenador"]},
+            {"label": "Carlos Amorim"},                         # igual a um e prefixo de outro: o igual vence
+        )
+        r = vincular_colaboradores(topo, self._rh())
+        self.assertEqual(r, {'vinculados': 3, 'ambiguos': [], 'sem_correspondencia': 0})
+        a, b, c = [n['data'] for n in topo['nodes']]
+        self.assertEqual(a['colab']['id'], 1)
+        self.assertEqual(a['colab']['cargo'], 'Gerente de Produção')        # função do mapa
+        self.assertEqual(a['colab']['cargoRH'], 'GERENTE DE PRODUCAO')
+        self.assertTrue(a['colab']['temFoto'])
+        self.assertTrue(a['colab']['nomeCurto'])
+        self.assertEqual(a['label'], 'JOUSIVAL VILELA')                     # primeiro + último nome
+        self.assertEqual(a['subtitles'], ['Turno A'])                        # a função saiu dos subtítulos
+        self.assertEqual(b['colab']['id'], 2)
+        self.assertNotIn('subtitles', b)
+        self.assertEqual(c['colab']['id'], 3)
+        self.assertEqual(c['colab']['cargo'], 'Consultor')                  # sem função no mapa: usa a do RH
+        self.assertFalse(c['colab']['nomeCurto'])
+
+    def test_ambiguos_areas_vagas_e_sem_correspondencia_nao_sao_ligados(self):
+        from procedures.services.importacao_mapas import vincular_colaboradores
+        topo = self._topo(
+            {"label": "Maria Souza"},                                       # "Maria Souza" existe e "Maria Souza Lima" também: igual vence
+            {"label": "Maria"},                                             # uma palavra só: área/apelido, ignora
+            {"label": "Produção"},
+            {"label": "Supervisor", "vaga": True},
+            {"label": "Pessoa Inexistente"},
+            {"label": "Carlos Amorim Neto"},
+        )
+        r = vincular_colaboradores(topo, self._rh())
+        self.assertEqual(r['vinculados'], 2)
+        self.assertEqual(r['sem_correspondencia'], 1)
+        self.assertEqual(r['ambiguos'], [])
+        self.assertEqual(topo['nodes'][0]['data']['colab']['id'], 5)
+        self.assertEqual(topo['nodes'][5]['data']['colab']['id'], 4)
+        for i in (1, 2, 3, 4):
+            self.assertNotIn('colab', topo['nodes'][i]['data'])
+
+        rh = self._rh() + [{'id': 7, 'nome': 'Joao Pedro Almeida', 'cargo': '', 'tem_foto': False},
+                           {'id': 8, 'nome': 'Joao Paulo Almeida', 'cargo': '', 'tem_foto': False}]
+        topo = self._topo({"label": "Joao Almeida"})
+        r = vincular_colaboradores(topo, rh)
+        self.assertEqual(r['vinculados'], 0)
+        self.assertEqual(r['ambiguos'], ['Joao Almeida'])
+        self.assertNotIn('colab', topo['nodes'][0]['data'])
+
+    def test_fluxo_pela_interface_com_colaboradores_do_rh(self):
+        import io, json as _json, zipfile
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from rh.models import Colaborador
+        Colaborador.objects.create(nome_completo='Fernando Ribeiro Costa', matricula='9001', grupo='G', cargo='Diretor Comercial')
+        Colaborador.objects.create(nome_completo='Antigo Funcionario', matricula='9002', grupo='G', is_active=False)
+        mapa = [{"title": "Mapa", "rootTopic": {"title": "Fernando Ribeiro\nDiretor", "children": {"attached": [
+            {"title": "Antigo Funcionario\nGerente"}, {"title": "Produção"}]}}}]
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as z:
+            z.writestr('content.json', _json.dumps(mapa))
+        c = Client()
+        c.force_login(self.user)
+
+        previa = c.post('/procedures/api/diagramas/importar/previa/',
+                        {'arquivo': SimpleUploadedFile('Mapa.xmind', buf.getvalue())}).json()
+        self.assertEqual(previa['folhas'][0]['vinculos']['vinculados'], 1)      # o inativo não conta
+
+        r = c.post('/procedures/diagramas/importar/', {'arquivo': SimpleUploadedFile('Mapa.xmind', buf.getvalue()),
+                                                        'titulo': 'Com RH', 'layout': 'organograma', 'vincular': 'on'})
+        self.assertEqual(r.status_code, 302)
+        nos = Diagrama.objects.get(titulo='Com RH').versoes.get().dados_topologia['nodes']
+        raiz = nos[0]['data']
+        self.assertEqual(raiz['colab']['nome'], 'Fernando Ribeiro Costa')
+        self.assertEqual(raiz['colab']['cargo'], 'Diretor')
+        self.assertNotIn('colab', nos[1]['data'])
+
+        r = c.post('/procedures/diagramas/importar/', {'arquivo': SimpleUploadedFile('Mapa.xmind', buf.getvalue()),
+                                                        'titulo': 'Sem RH', 'layout': 'organograma'})
+        self.assertEqual(r.status_code, 302)
+        self.assertNotIn('colab', Diagrama.objects.get(titulo='Sem RH').versoes.get().dados_topologia['nodes'][0]['data'])
+
+
+class DiagramaExclusaoTestCase(TestCase):
+    """Exclusão definitiva de diagramas (rascunhos livres; registro controlado só por administrador, com confirmação)."""
+
+    def setUp(self):
+        from django.contrib.auth.models import Permission
+        self.admin = User.objects.create_user(username='admin.excluir', password='x', is_superuser=True)
+        self.editor = User.objects.create_user(username='editor.excluir', password='x')
+        self.editor.user_permissions.add(Permission.objects.get(codename='nav_diagramas_editor'))
+        self.leitor = User.objects.create_user(username='leitor.excluir', password='x')
+
+    def _diagrama(self, *status):
+        d = Diagrama.objects.create(titulo='Para excluir', criado_por=self.admin)
+        for i, st in enumerate(status):
+            DiagramaVersao.objects.create(diagrama=d, revisao=i, status=st, dados_topologia={"nodes": [], "edges": []})
+        return d
+
+    def _cliente(self, user):
+        c = Client()
+        c.force_login(User.objects.get(pk=user.pk))
+        return c
+
+    def test_editor_exclui_diagrama_so_com_rascunho(self):
+        d = self._diagrama(StatusDiagrama.RASCUNHO)
+        r = self._cliente(self.editor).post(f'/procedures/diagramas/{d.id}/excluir/')
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(Diagrama.objects.filter(pk=d.pk).exists())
+        self.assertFalse(DiagramaVersao.objects.filter(diagrama_id=d.pk).exists())
+
+    def test_sem_permissao_ou_com_registro_controlado_nao_exclui_para_nao_administrador(self):
+        d = self._diagrama(StatusDiagrama.RASCUNHO)
+        self._cliente(self.leitor).post(f'/procedures/diagramas/{d.id}/excluir/')
+        self.assertTrue(Diagrama.objects.filter(pk=d.pk).exists())
+
+        for status in (StatusDiagrama.APROVADO, StatusDiagrama.EM_APROVACAO, StatusDiagrama.OBSOLETO):
+            controlado = self._diagrama(StatusDiagrama.RASCUNHO, status)
+            self._cliente(self.editor).post(f'/procedures/diagramas/{controlado.id}/excluir/', {'confirmacao': controlado.identificador})
+            self.assertTrue(Diagrama.objects.filter(pk=controlado.pk).exists(), status)
+
+    def test_administrador_precisa_digitar_o_identificador_quando_ha_registro_controlado(self):
+        d = self._diagrama(StatusDiagrama.OBSOLETO, StatusDiagrama.APROVADO)
+        c = self._cliente(self.admin)
+        c.post(f'/procedures/diagramas/{d.id}/excluir/')                                    # sem confirmação
+        c.post(f'/procedures/diagramas/{d.id}/excluir/', {'confirmacao': 'errado'})
+        self.assertTrue(Diagrama.objects.filter(pk=d.pk).exists())
+        c.post(f'/procedures/diagramas/{d.id}/excluir/', {'confirmacao': d.identificador})
+        self.assertFalse(Diagrama.objects.filter(pk=d.pk).exists())
+
+    def test_lista_mostra_a_acao_somente_a_quem_pode(self):
+        d = self._diagrama(StatusDiagrama.RASCUNHO)
+        controlado = self._diagrama(StatusDiagrama.APROVADO)
+        html = self._cliente(self.editor).get('/procedures/diagramas/').content.decode()
+        self.assertIn(f'/procedures/diagramas/{d.id}/excluir/', html)
+        self.assertNotIn(f'/procedures/diagramas/{controlado.id}/excluir/', html)
+        self.assertIn('id="modalExcluirDiagrama"', html)
+        html = self._cliente(self.admin).get('/procedures/diagramas/').content.decode()
+        self.assertIn(f'/procedures/diagramas/{controlado.id}/excluir/', html)
+
+
+class NomeAbreviadoColaboradorTestCase(TestCase):
+    """Nome Abreviado do colaborador (RH) usado nos diagramas; em branco vale a regra de primeiro + último nome."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='abrev', password='x', is_superuser=True)
+
+    def test_propriedade_usa_o_campo_e_cai_na_regra_antiga(self):
+        from rh.models import Colaborador
+        c = Colaborador.objects.create(nome_completo='ADAILTON DOS SANTOS JUNIOR', matricula='434', grupo='G')
+        self.assertEqual(c.nome_abreviado, 'ADAILTON JUNIOR')
+        c.nome_abreviado_manual = 'Adailton Jr.'
+        c.save()
+        self.assertEqual(c.nome_abreviado, 'Adailton Jr.')
+        c.nome_abreviado_manual = '   '
+        self.assertEqual(c.nome_abreviado, 'ADAILTON JUNIOR')
+
+    def test_formulario_do_rh_traz_o_campo(self):
+        from rh.forms.forms import ColaboradorForm
+        self.assertIn('nome_abreviado_manual', ColaboradorForm().fields)
+
+    def test_api_do_diagrama_devolve_o_nome_abreviado(self):
+        from rh.models import Colaborador
+        Colaborador.objects.create(nome_completo='Maria Aparecida Souza Lima', matricula='7101', grupo='G', nome_abreviado_manual='Maria Lima')
+        Colaborador.objects.create(nome_completo='Joao Pedro Santos Almeida', matricula='7102', grupo='G')
+        c = Client()
+        c.force_login(self.user)
+        itens = c.get('/procedures/api/diagramas/colaboradores/?q=maria').json()['results']
+        self.assertEqual(itens[0]['nome_abreviado'], 'Maria Lima')
+        itens = c.get('/procedures/api/diagramas/colaboradores/?q=joao').json()['results']
+        self.assertEqual(itens[0]['nome_abreviado'], '')
+
+    def test_exibicao_no_pdf_e_validacao(self):
+        from procedures.services.diagram_renderer import nome_exibicao
+        from procedures.services.diagram_validation import validar_topologia
+        base = {'nome': 'Maria Aparecida Souza Lima'}
+        self.assertEqual(nome_exibicao(base), 'Maria Aparecida Souza Lima')
+        self.assertEqual(nome_exibicao({**base, 'nomeCurto': True}), 'Maria Lima')                       # regra antiga
+        self.assertEqual(nome_exibicao({**base, 'nomeCurto': True, 'nomeAbreviado': 'Cida Souza'}), 'Cida Souza')
+        self.assertEqual(nome_exibicao({**base, 'nomeCurto': False, 'nomeAbreviado': 'Cida Souza'}), 'Maria Aparecida Souza Lima')
+        no = {"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "x", "colab": {"id": 1, "nomeAbreviado": "Cida"}}}
+        self.assertEqual(validar_topologia({"nodes": [no], "edges": []}), [])
+        no["data"]["colab"]["nomeAbreviado"] = "x" * 61
+        self.assertTrue(validar_topologia({"nodes": [no], "edges": []}))
+
+    def test_importacao_usa_o_nome_abreviado_do_rh(self):
+        from procedures.services.importacao_mapas import vincular_colaboradores
+        rh = [{'id': 1, 'nome': 'Maria Aparecida Souza Lima', 'cargo': 'Analista', 'tem_foto': False, 'nome_abreviado': 'Cida Lima'},
+              {'id': 2, 'nome': 'Joao Pedro Santos Almeida', 'cargo': '', 'tem_foto': False, 'nome_abreviado': ''}]
+        topo = {"nodes": [{"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "Maria Lima"}},
+                          {"id": "2", "position": {"x": 0, "y": 0}, "data": {"label": "Joao Almeida"}}], "edges": []}
+        vincular_colaboradores(topo, rh)
+        a, b = topo['nodes'][0]['data'], topo['nodes'][1]['data']
+        self.assertEqual(a['colab']['nomeAbreviado'], 'Cida Lima')
+        self.assertTrue(a['colab']['nomeCurto'])
+        self.assertEqual(a['label'], 'Cida Lima')
+        self.assertEqual(b['colab']['nomeAbreviado'], '')
+        self.assertEqual(b['label'], 'Joao Almeida')          # regra antiga: primeiro + último nome
+
+    def test_editor_traz_o_texto_novo_e_a_diferenca_do_rh(self):
+        js = ler_js_editor()
+        self.assertIn('colab.nomeAbreviado', js)
+        self.assertIn('nome abreviado:', js)

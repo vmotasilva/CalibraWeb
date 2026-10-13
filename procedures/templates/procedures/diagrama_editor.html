@@ -506,6 +506,13 @@
     }
     .swimlane-resumo:hover { background: #f1f5f9; }
 
+    /* Menus da barra de ferramentas (Organizar, Visão, Exibir): rolagem quando não cabem na tela */
+    .ribbon-btn + .dropdown-menu {
+        max-height: calc(100vh - 240px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
     .swimlane-row {
         position: absolute;
         left: 20px;
@@ -1493,7 +1500,7 @@
                                 </div>
                                 <div class="form-check form-switch mb-2">
                                     <input class="form-check-input" type="checkbox" id="inspColabNomeCurto" onchange="alternarNomeCurto(this.checked)">
-                                    <label class="form-check-label small" for="inspColabNomeCurto">Mostrar só primeiro e último nome</label>
+                                    <label class="form-check-label small" for="inspColabNomeCurto">Mostrar nome abreviado (ou primeiro e último nome)</label>
                                 </div>
                                 <label class="form-label text-muted small fw-bold mb-1">Função</label>
                                 <input type="text" id="inspColabCargo" class="form-control form-control-sm mb-2" placeholder="Função / cargo" oninput="editarCargoColab(this.value)">

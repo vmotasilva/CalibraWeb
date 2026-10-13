@@ -42,6 +42,10 @@ class Colaborador(models.Model):
         max_length=14, unique=True, null=True, blank=True, verbose_name="CPF"
     )
     nome_completo = models.CharField(max_length=100, verbose_name="Nome Completo")
+    nome_abreviado_manual = models.CharField(
+        max_length=60, blank=True, default="", verbose_name="Nome Abreviado",
+        help_text="Versão curta do nome, usada nos diagramas. Em branco: primeiro e último nome."
+    )
     cargo = models.CharField(max_length=100, null=True, blank=True)
     posto_trabalho = models.CharField(
         max_length=100, null=True, blank=True, verbose_name="Posto de Trabalho"
@@ -174,6 +178,10 @@ class Colaborador(models.Model):
 
     @property
     def nome_abreviado(self):
+        """Nome Abreviado informado no cadastro; em branco, primeiro + último nome."""
+        manual = (self.nome_abreviado_manual or "").strip()
+        if manual:
+            return manual
         if not self.nome_completo:
             return ""
         partes = self.nome_completo.strip().split()

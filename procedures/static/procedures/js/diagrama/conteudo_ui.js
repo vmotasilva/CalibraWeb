@@ -456,7 +456,7 @@ async function atualizarColaboradoresPeloRH(somenteSelecionados) {
     }
     diferencasRHPendentes = DiagramaConteudo.diferencasRH(blocos, atuaisRHPendentes);
     const corpo = document.getElementById('corpoAtualizacaoRH');
-    const aplicaveis = diferencasRHPendentes.filter(d => d.nome || d.cargo || d.temFoto || d.removido || d.reencontrado);
+    const aplicaveis = diferencasRHPendentes.filter(d => d.nome || d.nomeAbreviado || d.cargo || d.temFoto || d.removido || d.reencontrado);
     if (diferencasRHPendentes.length === 0) {
         corpo.innerHTML = `<div class="alert alert-success mb-0"><i class="bi bi-check-circle"></i> ${blocos.length} colaborador(es) conferidos: tudo está igual ao RH.</div>`;
     } else {
@@ -465,6 +465,7 @@ async function atualizarColaboradoresPeloRH(somenteSelecionados) {
             if (d.removido) itens.push('<span class="text-danger"><i class="bi bi-exclamation-triangle-fill"></i> não encontrado no RH (o bloco será sinalizado, sem apagar nada)</span>');
             if (d.reencontrado) itens.push('<span class="text-success">voltou a existir no RH (o sinal de alerta será retirado)</span>');
             if (d.nome) itens.push(`nome: <s>${escapeHtml(d.nome.de)}</s> &rarr; <strong>${escapeHtml(d.nome.para)}</strong>`);
+            if (d.nomeAbreviado) itens.push(`nome abreviado: <s>${escapeHtml(d.nomeAbreviado.de || '(vazio)')}</s> &rarr; <strong>${escapeHtml(d.nomeAbreviado.para || '(vazio)')}</strong>`);
             if (d.cargo) itens.push(`função: <s>${escapeHtml(d.cargo.de || '(vazia)')}</s> &rarr; <strong>${escapeHtml(d.cargo.para || '(vazia)')}</strong>`);
             if (d.cargoPersonalizado) itens.push(`função <em>personalizada</em> mantida ("${escapeHtml(d.cargoPersonalizado.bloco)}"); no RH é "${escapeHtml(d.cargoPersonalizado.rh)}"`);
             if (d.temFoto) itens.push(d.temFoto.para ? 'agora tem foto no RH' : 'a foto foi removida do RH');
@@ -484,6 +485,7 @@ function aplicarAtualizacoesDoRH() {
         if (d.removido) colab.removido = true;
         if (d.reencontrado) delete colab.removido;
         if (d.nome) colab.nome = d.nome.para;
+        if (d.nomeAbreviado) colab.nomeAbreviado = d.nomeAbreviado.para;
         if (d.cargo) colab.cargo = d.cargo.para;
         if (d.temFoto) colab.temFoto = d.temFoto.para;
         node.data.label = nomeExibicaoColab(colab);

@@ -10,7 +10,8 @@ from django.views.decorators.http import require_http_methods
 
 from ..models_diagram import Diagrama, DiagramaVersao, StatusDiagrama
 from ..services.importacao_mapas import (
-    EXTENSOES, MODOS_IMPORTACAO, ErroImportacao, ler_arquivo, para_topologia, resumo_das_folhas,
+    EXTENSOES, MODOS_IMPORTACAO, ErroImportacao, carregar_colaboradores, ler_arquivo, para_topologia, resumo_das_folhas,
+    vincular_colaboradores,
 )
 
 PERM_CRIAR = 'core.nav_diagramas_novo'
@@ -38,7 +39,8 @@ def api_importar_previa(request):
         folhas = ler_arquivo(arquivo.name, arquivo.read())
     except ErroImportacao as e:
         return JsonResponse({"error": str(e)}, status=400)
-    return JsonResponse({"folhas": resumo_das_folhas(folhas)})
+    colaboradores = carregar_colaboradores()
+    return JsonResponse({"folhas": resumo_das_folhas(folhas, colaboradores), "colaboradores_no_rh": len(colaboradores)})
 
 
 @login_required
@@ -59,6 +61,7 @@ def diagrama_importar_view(request):
         departamento = request.POST.get('departamento', '').strip()[:120] or 'Metrologia'
         layout = request.POST.get('layout', 'organograma')
         com_estilos = request.POST.get('estilos') == 'on'
+        vincular = request.POST.get('vincular') == 'on'
         contexto.update(titulo=titulo, departamento=departamento, layout=layout)
         try:
             if not arquivo:
@@ -72,6 +75,7 @@ def diagrama_importar_view(request):
             except (ValueError, IndexError):
                 raise ErroImportacao('Planilha inválida.')
             topologia = para_topologia(folha['raiz'], layout, com_estilos)
+            vinculos = vincular_colaboradores(topologia) if vincular else None
         except ErroImportacao as e:
             contexto['error'] = str(e)
             return render(request, 'procedures/diagrama_importar.html', contexto)
@@ -82,11 +86,17 @@ def diagrama_importar_view(request):
                 diagrama=diagrama, revisao=0, status=StatusDiagrama.RASCUNHO, dados_topologia=topologia,
                 motivo_revisao=f"Importado de '{arquivo.name}' ({folha['titulo']}).",
             )
-        avisos = folha.get('avisos') or []
+        avisos = list(folha.get('avisos') or [])
+        texto = f'Mapa importado: {len(topologia["nodes"])} blocos.'
+        if vinculos is not None:
+            texto += f' {vinculos["vinculados"]} ligado(s) a colaboradores do RH.'
+            if vinculos['ambiguos']:
+                nomes = ', '.join(vinculos['ambiguos'][:5]) + ('...' if len(vinculos['ambiguos']) > 5 else '')
+                avisos.append(f'{len(vinculos["ambiguos"])} nome(s) com mais de um colaborador possível ficaram sem ligação ({nomes})')
         if avisos:
-            messages.warning(request, 'Importado com ressalvas: ' + '; '.join(avisos) + '.')
+            messages.warning(request, texto + ' Ressalvas: ' + '; '.join(avisos) + '.')
         else:
-            messages.success(request, f'Mapa importado: {len(topologia["nodes"])} blocos.')
+            messages.success(request, texto)
         return redirect('procedures:diagrama_editor', versao_id=versao.id)
 
     return render(request, 'procedures/diagrama_importar.html', contexto)

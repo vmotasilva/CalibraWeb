@@ -8,10 +8,15 @@
 // =========================================================================
 const MAX_SUBTITULOS = 20;
 
+// Nome no bloco: completo; com "nome curto" ligado, o Nome Abreviado do RH e, sem ele, primeiro + último nome
 function nomeExibicaoColab(colab) {
     const nome = (colab?.nome || '').trim();
-    const partes = nome.split(/\s+/).filter(Boolean);
-    if (colab?.nomeCurto && partes.length > 2) return `${partes[0]} ${partes[partes.length - 1]}`;
+    if (colab?.nomeCurto) {
+        const abreviado = (colab.nomeAbreviado || '').trim();
+        if (abreviado) return abreviado;
+        const partes = nome.split(/\s+/).filter(Boolean);
+        if (partes.length > 2) return `${partes[0]} ${partes[partes.length - 1]}`;
+    }
     return nome;
 }
 
@@ -145,7 +150,7 @@ function vincularColaboradorAoBloco(item) {
     const node = noSelecionadoUnico();
     if (!node) return;
     if (!node.data) node.data = {};
-    node.data.colab = { id: item.id, nome: item.nome, cargo: item.cargo || '', cargoRH: item.cargo || '', nomeCurto: false, temFoto: !!item.tem_foto };
+    node.data.colab = { id: item.id, nome: item.nome, cargo: item.cargo || '', cargoRH: item.cargo || '', nomeAbreviado: item.nome_abreviado || '', nomeCurto: false, temFoto: !!item.tem_foto };
     node.data.label = nomeExibicaoColab(node.data.colab);
     sincronizarGridDoNo(node);
     const raiaSetor = raiaParaColaborador(item.setor_id);

@@ -137,9 +137,10 @@
                 if (colab.cargoRH !== undefined && cargoDoBloco === colab.cargoRH) d.cargo = { de: cargoDoBloco, para: cargoAtual };
                 else d.cargoPersonalizado = { bloco: cargoDoBloco, rh: cargoAtual };   // mantido como está
             }
+            if ((atual.nome_abreviado || '') !== (colab.nomeAbreviado || '')) d.nomeAbreviado = { de: colab.nomeAbreviado || '', para: atual.nome_abreviado || '' };
             if (!!atual.tem_foto !== (colab.temFoto !== false)) d.temFoto = { de: colab.temFoto !== false, para: !!atual.tem_foto };
             if (colab.removido) d.reencontrado = true;
-            if (d.nome || d.cargo || d.temFoto || d.reencontrado || d.cargoPersonalizado) diferencas.push(d);
+            if (d.nome || d.nomeAbreviado || d.cargo || d.temFoto || d.reencontrado || d.cargoPersonalizado) diferencas.push(d);
         });
         return diferencas;
     }
