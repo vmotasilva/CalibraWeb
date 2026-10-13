@@ -14,7 +14,11 @@
     const modalEl = document.getElementById('modalEditarInstrumento');
     const conteudo = document.getElementById('modalEditarInstrumentoConteudo');
     if (!modalEl) return;
-    const modal = new bootstrap.Modal(modalEl);
+    // O bootstrap.bundle é carregado depois do bloco content: resolve só no uso.
+    const modal = {
+        show: () => bootstrap.Modal.getOrCreateInstance(modalEl).show(),
+        hide: () => bootstrap.Modal.getOrCreateInstance(modalEl).hide(),
+    };
     const spinner = conteudo.innerHTML;
     let urlEdicao = '';
 
