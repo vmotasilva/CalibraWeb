@@ -24,7 +24,7 @@
     {% can_nav_view user 'remover_historico' 'metrologia' as can_remover_historico %}
     
     <!-- CABEÇALHO DO INSTRUMENTO (RESPONSIVO) -->
-    <div class="mb-4">
+    <div class="mb-4" id="instrumento-cabecalho">
         <!-- Linha Superior: Voltar e Status (ATIVO/INATIVO) -->
         <div class="d-flex justify-content-between align-items-center mb-2">
             <a href="{% url 'modulo_metrologia' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1 shadow-sm">
@@ -46,7 +46,7 @@
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="instrumentoAcoesMobile">
                         {% if can_editar_instrumento %}
                         <li>
-                            <a href="{{ edit_url }}" class="dropdown-item">
+                            <a href="{{ edit_url }}" data-instrumento-editar class="dropdown-item">
                                 <i class="bi bi-pencil me-2 text-primary"></i>Editar Instrumento
                             </a>
                         </li>
@@ -90,7 +90,7 @@
                     <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="instrumentoAcoesDesktop">
                         {% if can_editar_instrumento %}
                         <li>
-                            <a href="{{ edit_url }}" class="dropdown-item">
+                            <a href="{{ edit_url }}" data-instrumento-editar class="dropdown-item">
                                 <i class="bi bi-pencil me-2 text-primary"></i>Editar Instrumento
                             </a>
                         </li>
@@ -113,7 +113,7 @@
                 </div>
 
                 {% if can_editar_instrumento %}
-                    <a href="{{ edit_url }}" class="btn btn-outline-primary btn-sm shadow-sm">
+                    <a href="{{ edit_url }}" data-instrumento-editar class="btn btn-outline-primary btn-sm shadow-sm">
                         <i class="bi bi-pencil"></i> Editar
                     </a>
                 {% endif %}
@@ -122,7 +122,7 @@
     </div>
 
     <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-4" id="instrumento-lateral">
             <div class="card shadow-sm mb-4">
                 <div class="card-header bg-light text-secondary">
                     <i class="bi bi-box-seam"></i> Identificação
@@ -1781,5 +1781,7 @@ function toggleEditOcorrencia(id) {
     recalcularTodasFaixas();
 })();
 </script>
+
+{% include 'metrologia/_modal_editar_instrumento.html' with refresh_ids='instrumento-cabecalho,instrumento-lateral' %}
 
 {% endblock %}

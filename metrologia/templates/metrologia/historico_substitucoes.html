@@ -4,7 +4,7 @@
 {% block title %}Histórico de Substituições - {{ referencia.codigo_referencia }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-4" id="historico-substituicoes-conteudo">
     <div class="row">
         <div class="col-md-12">
             
@@ -78,7 +78,7 @@
                             <a href="{% url 'visualizar_instrumento' instrumento_ativo.id %}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-eye"></i> Ver Detalhes
                             </a>
-                            <a href="{% url 'editar_instrumento' instrumento_ativo.id %}" class="btn btn-sm btn-secondary">
+                            <a href="{% url 'editar_instrumento' instrumento_ativo.id %}" data-instrumento-editar class="btn btn-sm btn-secondary">
                                 <i class="fas fa-edit"></i> Editar
                             </a>
                         </div>
@@ -137,7 +137,7 @@
                                                 <a href="{% url 'visualizar_instrumento' instr.id %}" class="btn btn-outline-primary" title="Ver Detalhes">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="{% url 'editar_instrumento' instr.id %}" class="btn btn-outline-secondary" title="Editar">
+                                                <a href="{% url 'editar_instrumento' instr.id %}" data-instrumento-editar class="btn btn-outline-secondary" title="Editar">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                             </div>
@@ -248,4 +248,6 @@
         box-shadow: 0 0 0 4px #fff, 0 0 0 8px #28a745;
     }
 </style>
+
+{% include 'metrologia/_modal_editar_instrumento.html' with refresh_ids='historico-substituicoes-conteudo' %}
 {% endblock %}

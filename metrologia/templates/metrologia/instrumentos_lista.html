@@ -216,6 +216,7 @@
     </script>
 
     <!-- Instruments Table -->
+    <div id="lista-instrumentos-tabela">
     {% if instrumentos %}
         <div class="card">
             <div class="table-responsive">
@@ -369,6 +370,7 @@
                                                 <i class="bi bi-eye"></i>
                                             </a>
                                             <a href="{% url 'editar_instrumento' inst.id %}" 
+                                               data-instrumento-editar
                                                class="btn btn-outline-warning" 
                                                title="Editar">
                                                 <i class="bi bi-pencil"></i>
@@ -442,7 +444,9 @@
             Nenhum instrumento encontrado com os filtros selecionados.
         </div>
     {% endif %}
+    </div>
 </div>
+{% include 'metrologia/_modal_editar_instrumento.html' with refresh_ids='lista-instrumentos-tabela' %}
 {% endblock %}
 
 <!-- Template Tag for Date Arithmetic -->

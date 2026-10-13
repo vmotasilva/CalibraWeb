@@ -1,0 +1,101 @@
+<!-- Modal de edição do instrumento (conteúdo carregado sob demanda) -->
+<div class="modal fade" id="modalEditarInstrumento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow" id="modalEditarInstrumentoConteudo">
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const modalEl = document.getElementById('modalEditarInstrumento');
+    const conteudo = document.getElementById('modalEditarInstrumentoConteudo');
+    if (!modalEl) return;
+    const modal = new bootstrap.Modal(modalEl);
+    const spinner = conteudo.innerHTML;
+    let urlEdicao = '';
+
+    function toast(msg, ok) {
+        const t = document.createElement('div');
+        t.className = 'toast align-items-center text-bg-' + (ok ? 'success' : 'danger') + ' border-0 show position-fixed bottom-0 end-0 m-3';
+        t.style.zIndex = 2000;
+        t.innerHTML = '<div class="d-flex"><div class="toast-body">' + msg + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    }
+
+    async function abrir(url) {
+        urlEdicao = url;
+        conteudo.innerHTML = spinner;
+        modal.show();
+        try {
+            const r = await fetch(url + '?modal=1', {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+            if (!r.ok) throw new Error();
+            conteudo.innerHTML = await r.text();
+            ligarFormulario();
+        } catch (e) {
+            modal.hide();
+            window.location.href = url;
+        }
+    }
+
+    function ligarFormulario() {
+        const form = conteudo.querySelector('#formEditarInstrumento');
+        if (!form) return;
+        const cat = form.querySelector('#id_categoria');
+        const acao = form.querySelector('#id_acao');
+        if (cat && acao) {
+            cat.addEventListener('change', () => {
+                const a = cat.options[cat.selectedIndex].dataset.acao;
+                if (a) acao.value = a;
+            });
+        }
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            if (!form.checkValidity()) {
+                const inv = form.querySelector(':invalid');
+                const pane = inv && inv.closest('.tab-pane');
+                if (pane) bootstrap.Tab.getOrCreateInstance(form.querySelector('[data-bs-target="#' + pane.id + '"]')).show();
+                form.reportValidity();
+                return;
+            }
+            const btn = form.querySelector('[type=submit]');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando...';
+            try {
+                const r = await fetch(urlEdicao, {method: 'POST', body: new FormData(form), headers: {'X-Requested-With': 'XMLHttpRequest'}});
+                const d = await r.json();
+                if (!d.ok) throw new Error(d.erro || 'Erro ao salvar.');
+                modal.hide();
+                await atualizarPagina();
+                toast('Instrumento atualizado com sucesso!', true);
+            } catch (e) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check2-circle me-1"></i>Salvar alterações';
+                const al = form.querySelector('#editarInstrumentoErro');
+                al.textContent = e.message;
+                al.classList.remove('d-none');
+            }
+        });
+    }
+
+    async function atualizarPagina() {
+        const r = await fetch(window.location.href, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        '{{ refresh_ids }}'.split(',').forEach(id => {
+            const novo = doc.getElementById(id), atual = document.getElementById(id);
+            if (novo && atual) atual.innerHTML = novo.innerHTML;
+        });
+    }
+
+    document.addEventListener('click', (ev) => {
+        const a = ev.target.closest('[data-instrumento-editar]');
+        if (!a) return;
+        ev.preventDefault();
+        abrir(a.getAttribute('href'));
+    });
+})();
+</script>

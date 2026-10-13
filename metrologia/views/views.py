@@ -1486,7 +1486,7 @@ def relatorio_ocorrencias_view(request):
     atribuindo responsáveis e acompanhando status.
     """
     from qms.models import OcorrenciaInstrumento
-    from metrologia.models import Instrumento
+    from metrologia.models import Instrumento, CategoriaInstrumento
     from organization.models import Setor
     from django.contrib.auth.models import User
     from django.db.models import Q
@@ -1496,6 +1496,7 @@ def relatorio_ocorrencias_view(request):
     setor_filtro = request.GET.get('setor', '').strip()
     status_filtro = request.GET.get('status', 'ABERTA').strip()
     tipo_filtro = request.GET.get('tipo', '').strip()
+    categoria_filtro = request.GET.get('categoria', '').strip()
     responsavel_filtro = request.GET.get('responsavel', '').strip()
     data_inicio = request.GET.get('data_inicio', '').strip()
     data_fim = request.GET.get('data_fim', '').strip()
@@ -1521,6 +1522,9 @@ def relatorio_ocorrencias_view(request):
 
     if tipo_filtro:
         qs = qs.filter(tipo=tipo_filtro)
+
+    if categoria_filtro.isdigit():
+        qs = qs.filter(instrumento__categoria_id=int(categoria_filtro))
 
     if responsavel_filtro:
         if responsavel_filtro == 'sem_responsavel':
@@ -1674,6 +1678,8 @@ def relatorio_ocorrencias_view(request):
         'todos_instrumentos': todos_instrumentos,
         'usuarios_responsaveis': usuarios_responsaveis,
         'tipos_ocorrencia': OcorrenciaInstrumento.TIPO_OCORRENCIA,
+        'todas_categorias': CategoriaInstrumento.objects.order_by('nome'),
+        'categoria_filtro': categoria_filtro,
         'status_filtro': status_filtro,
         'setor_filtro': setor_filtro,
         'tipo_filtro': tipo_filtro,

@@ -2390,7 +2390,8 @@ def editar_instrumento_view(request, instrumento_id):
     from django.db import transaction
     
     instrumento = get_object_or_404(Instrumento, id=instrumento_id)
-    
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
     if request.method == 'POST':
         try:
             with transaction.atomic():
@@ -2472,11 +2473,15 @@ def editar_instrumento_view(request, instrumento_id):
                 instrumento.ativo = request.POST.get('ativo') == 'on'
                 
                 instrumento.save()
+                if is_ajax:
+                    return JsonResponse({'ok': True})
                 messages.success(request, 'Instrumento atualizado com sucesso!')
                 return redirect('visualizar_instrumento', instrumento_id=instrumento.id)
-                
+
         except Exception as e:
             logger.error(f"Erro ao editar instrumento {instrumento_id}: {str(e)}")
+            if is_ajax:
+                return JsonResponse({'ok': False, 'erro': f'Erro ao atualizar instrumento: {str(e)}'}, status=400)
             messages.error(request, f'Erro ao atualizar instrumento: {str(e)}')
     
     # Preparar contexto com dados para o formulário
@@ -2494,6 +2499,8 @@ def editar_instrumento_view(request, instrumento_id):
         'responsaveis': responsaveis,
     }
     
+    if is_ajax and request.GET.get('modal'):
+        return render(request, 'metrologia/_editar_instrumento_modal.html', context)
     return render(request, 'metrologia/editar_instrumento.html', context)
 
 

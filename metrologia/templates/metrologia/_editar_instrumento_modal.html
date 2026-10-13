@@ -1,0 +1,136 @@
+<form method="post" id="formEditarInstrumento" novalidate>
+    {% csrf_token %}
+    <div class="modal-header py-2">
+        <div class="min-w-0">
+            <h5 class="modal-title mb-0"><i class="bi bi-pencil-square text-primary me-2"></i>Editar instrumento</h5>
+            <small class="text-muted font-monospace">{{ instrumento.tag }}</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+    </div>
+
+    <div class="modal-body pt-2">
+        <ul class="nav nav-tabs mb-3" role="tablist">
+            <li class="nav-item"><button class="nav-link active" type="button" data-bs-toggle="tab" data-bs-target="#ei-ident"><i class="bi bi-tag me-1"></i>Identificação</button></li>
+            <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#ei-local"><i class="bi bi-geo-alt me-1"></i>Classificação e local</button></li>
+            <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="tab" data-bs-target="#ei-calib"><i class="bi bi-calendar-check me-1"></i>Calibração</button></li>
+        </ul>
+
+        <div class="tab-content" style="min-height: 250px;">
+            <div class="tab-pane fade show active" id="ei-ident">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="id_tag" class="form-label small fw-semibold mb-1">TAG <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="id_tag" name="tag" value="{{ instrumento.tag }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_codigo" class="form-label small fw-semibold mb-1">Código interno</label>
+                        <input type="text" class="form-control form-control-sm" id="id_codigo" name="codigo" value="{{ instrumento.codigo|default:'' }}">
+                    </div>
+                    <div class="col-12">
+                        <label for="id_descricao" class="form-label small fw-semibold mb-1">Descrição <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="id_descricao" name="descricao" value="{{ instrumento.descricao }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_fabricante" class="form-label small fw-semibold mb-1">Fabricante</label>
+                        <input type="text" class="form-control form-control-sm" id="id_fabricante" name="fabricante" value="{{ instrumento.fabricante|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_modelo" class="form-label small fw-semibold mb-1">Modelo</label>
+                        <input type="text" class="form-control form-control-sm" id="id_modelo" name="modelo" value="{{ instrumento.modelo|default:'' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="id_serie" class="form-label small fw-semibold mb-1">Série</label>
+                        <input type="text" class="form-control form-control-sm" id="id_serie" name="serie" value="{{ instrumento.serie|default:'' }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="ei-local">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="id_categoria" class="form-label small fw-semibold mb-1">Categoria</label>
+                        <select class="form-select form-select-sm" id="id_categoria" name="categoria">
+                            <option value="" data-acao="">-- Selecionar --</option>
+                            {% for categoria in categorias %}
+                                <option value="{{ categoria.id }}" data-acao="{{ categoria.acao|default:'' }}" {% if instrumento.categoria_id == categoria.id %}selected{% endif %}>{{ categoria.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_setor" class="form-label small fw-semibold mb-1">Setor</label>
+                        <select class="form-select form-select-sm" id="id_setor" name="setor">
+                            <option value="">-- Selecionar --</option>
+                            {% for setor in setores %}
+                                <option value="{{ setor.id }}" {% if instrumento.setor_id == setor.id %}selected{% endif %}>{{ setor.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_localizacao" class="form-label small fw-semibold mb-1">Localização específica</label>
+                        <input type="text" class="form-control form-control-sm" id="id_localizacao" name="localizacao" value="{{ instrumento.localizacao|default:'' }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_responsavel" class="form-label small fw-semibold mb-1">Responsável</label>
+                        <select class="form-select form-select-sm" id="id_responsavel" name="responsavel">
+                            <option value="">-- Selecionar --</option>
+                            {% for responsavel in responsaveis %}
+                                <option value="{{ responsavel.id }}" {% if instrumento.responsavel_id == responsavel.id %}selected{% endif %}>{{ responsavel.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="id_ativo" name="ativo" {% if instrumento.ativo %}checked{% endif %}>
+                            <label class="form-check-label small fw-semibold" for="id_ativo">Instrumento ativo</label>
+                            <small class="text-muted d-block">Desative para marcar como inativo/descontinuado.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="ei-calib">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="id_data_ultima_calibracao" class="form-label small fw-semibold mb-1">Última calibração</label>
+                        <input type="date" class="form-control form-control-sm" id="id_data_ultima_calibracao" name="data_ultima_calibracao" value="{% if instrumento.data_ultima_calibracao %}{{ instrumento.data_ultima_calibracao|date:'Y-m-d' }}{% endif %}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_data_proxima_calibracao" class="form-label small fw-semibold mb-1">Próxima calibração</label>
+                        <input type="date" class="form-control form-control-sm" id="id_data_proxima_calibracao" name="data_proxima_calibracao" value="{% if instrumento.data_proxima_calibracao %}{{ instrumento.data_proxima_calibracao|date:'Y-m-d' }}{% endif %}">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_frequencia_meses" class="form-label small fw-semibold mb-1">Frequência (meses)</label>
+                        <input type="number" class="form-control form-control-sm" id="id_frequencia_meses" name="frequencia_meses" value="{{ instrumento.frequencia_meses|default:'12' }}" min="1">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_tolerancia_processo" class="form-label small fw-semibold mb-1">Tolerância do processo (±)</label>
+                        <input type="text" class="form-control form-control-sm" id="id_tolerancia_processo" name="tolerancia_processo" value="{% if instrumento.tolerancia_processo %}{{ instrumento.tolerancia_processo }}{% endif %}" placeholder="Ex: 0.1000">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_tratativa_calibracao" class="form-label small fw-semibold mb-1">Tratativa <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="id_tratativa_calibracao" name="tratativa_calibracao" required>
+                            <option value="">-- Selecione --</option>
+                            <option value="INTERNA" {% if instrumento.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>Interna</option>
+                            <option value="EXTERNA" {% if instrumento.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>Externa</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="id_acao" class="form-label small fw-semibold mb-1">Ação <span class="text-danger">*</span></label>
+                        <select class="form-select form-select-sm" id="id_acao" name="acao" required>
+                            <option value="">-- Selecione --</option>
+                            <option value="CALIBRACAO" {% if instrumento.acao == 'CALIBRACAO' %}selected{% endif %}>Calibração</option>
+                            <option value="VERIFICACAO" {% if instrumento.acao == 'VERIFICACAO' %}selected{% endif %}>Verificação</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-danger py-2 small mt-3 mb-0 d-none" id="editarInstrumentoErro"></div>
+    </div>
+
+    <div class="modal-footer py-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check2-circle me-1"></i>Salvar alterações</button>
+    </div>
+</form>
