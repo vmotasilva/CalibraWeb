@@ -2042,6 +2042,7 @@ def api_configuracao_ferias(request):
     })
 
 
+@login_required
 def api_colaboradores(request):
     """API para buscar colaboradores com filtros"""
     colaboradores = Colaborador.objects.select_related('setor', 'lider', 'supervisor').all()
@@ -2100,6 +2101,7 @@ def api_colaboradores(request):
     return JsonResponse(data)
 
 
+@login_required
 def api_setores(request):
     """API para listar setores"""
     setores = Setor.objects.all().order_by('nome')
@@ -2117,6 +2119,7 @@ def api_setores(request):
     return JsonResponse(data)
 
 
+@login_required
 def api_cargos(request):
     """API para listar cargos únicos"""
     cargos = Colaborador.objects.exclude(
@@ -2132,6 +2135,7 @@ def api_cargos(request):
     return JsonResponse(data)
 
 
+@login_required
 def api_grupos(request):
     """API para listar grupos únicos"""
     grupos = Colaborador.objects.exclude(
@@ -2147,6 +2151,7 @@ def api_grupos(request):
     return JsonResponse(data)
 
 
+@login_required
 def api_lideres(request):
     """API para listar líderes (colaboradores que são líderes de alguém)"""
     lideres = Colaborador.objects.filter(
@@ -2166,6 +2171,7 @@ def api_lideres(request):
     return JsonResponse(data)
 
 
+@login_required
 def api_supervisores(request):
     """API para listar supervisores (colaboradores que são supervisores de alguém)"""
     supervisores = Colaborador.objects.filter(
@@ -2684,11 +2690,12 @@ def api_upload_foto_colaborador(request, colab_id):
 
 @login_required
 @require_http_methods(["POST"])
-@csrf_exempt
 def api_delete_colaborador(request, colab_id):
     """
     API para deletar um colaborador específico
     """
+    if not (request.user.is_superuser or request.user.has_perm("core.nav_pessoas_api_delete_colaborador")):
+        return JsonResponse({'success': False, 'error': 'Sem permissão para deletar colaboradores.'}, status=403)
     try:
         colaborador = get_object_or_404(Colaborador, id=colab_id)
         nome = colaborador.nome_completo

@@ -1,5 +1,7 @@
+from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
 # API para respostas de avaliação (edição)
+@login_required
 @require_GET
 def api_respostas_avaliacao(request, avaliacao_id):
     from .models import RespostaAvaliacao
@@ -8,6 +10,7 @@ def api_respostas_avaliacao(request, avaliacao_id):
     for r in respostas:
         data[r.pergunta_id] = {"resposta": r.resposta, "observacao": r.observacao}
     return JsonResponse({"respostas": data})
+@login_required
 def avaliacao_edit(request, fornecedor_id, avaliacao_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     avaliacao = get_object_or_404(fornecedor.avaliacoes, pk=avaliacao_id)
@@ -60,6 +63,7 @@ def avaliacao_edit(request, fornecedor_id, avaliacao_id):
     return render(request, "fornecedores/avaliacao_form.html", {"form": form, "respostas": respostas, "fornecedor": fornecedor, "edicao": True, "avaliacao": avaliacao})
 from django.http import JsonResponse
 
+@login_required
 def perguntas_filtradas(request):
     tipo = request.GET.get("tipo")
     tipo_nota = request.GET.get("tipo_nota")
@@ -76,6 +80,7 @@ def perguntas_filtradas(request):
         for p in perguntas
     ]
     return JsonResponse({"perguntas": data})
+@login_required
 def pergunta_edit(request, pk):
     pergunta = get_object_or_404(PerguntaAvaliacao, pk=pk)
     if request.method == "POST":
@@ -87,6 +92,7 @@ def pergunta_edit(request, pk):
         form = PerguntaAvaliacaoForm(instance=pergunta)
     return render(request, "fornecedores/pergunta_form.html", {"form": form, "pergunta": pergunta})
 
+@login_required
 def pergunta_delete(request, pk):
     pergunta = get_object_or_404(PerguntaAvaliacao, pk=pk)
     if request.method == "POST":
@@ -108,6 +114,7 @@ from django.http import HttpResponse
 from django.db.models import Q
 from django.utils import timezone
 
+@login_required
 def fornecedor_list(request):
     fornecedores = Fornecedor.objects.all()
     tipo = request.GET.get("tipo")
@@ -148,6 +155,7 @@ def fornecedor_list(request):
     ufs = Fornecedor.objects.values_list("uf", flat=True).distinct().order_by("uf")
     return render(request, "fornecedores/fornecedor_list.html", {"fornecedores": fornecedores_com_pontuacoes, "ufs": ufs})
 
+@login_required
 def fornecedor_detail(request, pk):
     fornecedor = get_object_or_404(Fornecedor, pk=pk)
     
@@ -246,6 +254,7 @@ def fornecedor_detail(request, pk):
         "pontuacao_geral": pontuacao_geral
     })
 
+@login_required
 def fornecedor_create(request):
     if request.method == "POST":
         form = FornecedorForm(request.POST)
@@ -257,6 +266,7 @@ def fornecedor_create(request):
         form = FornecedorForm()
     return render(request, "fornecedores/fornecedor_form.html", {"form": form, "fornecedor": None})
 
+@login_required
 def fornecedor_update(request, pk):
     fornecedor = get_object_or_404(Fornecedor, pk=pk)
     if request.method == "POST":
@@ -269,10 +279,12 @@ def fornecedor_update(request, pk):
         form = FornecedorForm(instance=fornecedor)
     return render(request, "fornecedores/fornecedor_form.html", {"form": form, "fornecedor": fornecedor})
 
+@login_required
 def pergunta_list(request):
     perguntas = PerguntaAvaliacao.objects.all().order_by("tipo", "ordem")
     return render(request, "fornecedores/pergunta_list.html", {"perguntas": perguntas})
 
+@login_required
 def pergunta_create(request):
     if request.method == "POST":
         form = PerguntaAvaliacaoForm(request.POST)
@@ -282,6 +294,7 @@ def pergunta_create(request):
     else:
         form = PerguntaAvaliacaoForm()
     return render(request, "fornecedores/pergunta_form.html", {"form": form})
+@login_required
 def documento_create(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     if request.method == "POST":
@@ -296,6 +309,7 @@ def documento_create(request, fornecedor_id):
         form = DocumentoFornecedorForm()
     return render(request, "fornecedores/documento_form.html", {"form": form, "fornecedor": fornecedor})
 
+@login_required
 def documento_delete(request, fornecedor_id, doc_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     doc = get_object_or_404(DocumentoFornecedor, pk=doc_id, fornecedor=fornecedor)
@@ -305,6 +319,7 @@ def documento_delete(request, fornecedor_id, doc_id):
         return redirect(reverse("fornecedores:fornecedor_detail", args=[fornecedor.pk]))
     return render(request, "fornecedores/documento_confirm_delete.html", {"documento": doc, "fornecedor": fornecedor})
 
+@login_required
 def avaliacao_selecao_create(request, fornecedor_id):
     """Criar/editar avaliação de SELECAO (Avaliação Inicial)"""
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
@@ -402,6 +417,7 @@ def avaliacao_selecao_create(request, fornecedor_id):
         "today": timezone.now().date(),
     })
 
+@login_required
 def avaliacao_reavaliacao_create(request, fornecedor_id):
     """Criar/editar reavaliação (REAVALIACAO) - anualmente a partir de janeiro"""
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
@@ -512,6 +528,7 @@ def avaliacao_reavaliacao_create(request, fornecedor_id):
         "today": timezone.now().date(),
     })
 
+@login_required
 def avaliacao_create(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     if request.method == "POST":
@@ -579,6 +596,7 @@ def avaliacao_create(request, fornecedor_id):
         respostas = [RespostaAvaliacaoForm(prefix=str(p.id), initial={"pergunta": p}) for p in perguntas]
     return render(request, "fornecedores/avaliacao_form.html", {"form": form, "respostas": respostas, "fornecedor": fornecedor})
 
+@login_required
 def avaliacao_list(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     if request.method == "POST" and request.POST.get("delete_id"):
@@ -598,6 +616,7 @@ def avaliacao_list(request, fornecedor_id):
         })
     return render(request, "fornecedores/avaliacao_list.html", {"avaliacoes_info": avaliacoes_info, "fornecedor": fornecedor})
 
+@login_required
 def reavaliacao_create(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     if request.method == "POST":
@@ -633,6 +652,7 @@ def reavaliacao_create(request, fornecedor_id):
         respostas = [RespostaAvaliacaoForm(prefix=str(p.id), initial={"pergunta": p}) for p in perguntas]
     return render(request, "fornecedores/reavaliacao_form.html", {"form": form, "respostas": respostas, "fornecedor": fornecedor})
 
+@login_required
 def reavaliacao_list(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     reavaliacoes = fornecedor.avaliacoes.filter(tipo="REAVALIACAO").order_by("-data")
@@ -655,6 +675,7 @@ def reavaliacao_list(request, fornecedor_id):
         "today": timezone.now().date()
     })
 
+@login_required
 def export_avaliacoes_excel(request, fornecedor_id):
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)
     avaliacoes = fornecedor.avaliacoes.all().order_by("-data")
@@ -677,6 +698,7 @@ def export_avaliacoes_excel(request, fornecedor_id):
     df.to_excel(response, index=False)
     return response
 
+@login_required
 def avaliacao_matriz_create(request, fornecedor_id):
     """Criar/editar avaliação tipo matriz com requisitos A, B, C, D para Produto e Serviço"""
     fornecedor = get_object_or_404(Fornecedor, pk=fornecedor_id)

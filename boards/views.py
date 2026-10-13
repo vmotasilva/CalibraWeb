@@ -50,7 +50,7 @@ def can_edit_board(board, colab, user):
 
 
 from functools import wraps
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseForbidden, Http404
 from django.shortcuts import get_object_or_404
 import json
 
@@ -98,9 +98,19 @@ def require_board_edit_permission(view_func):
                     elif 'column_id' in data:
                         from .models import BoardColumn
                         board = get_object_or_404(BoardColumn, id=data['column_id']).quadro
-        except Exception as e:
-            pass
-            
+                    elif data.get('column_order_ids'):
+                        from .models import Board
+                        for b in Board.objects.filter(colunas__id__in=data['column_order_ids']).distinct():
+                            if not can_edit_board(b, colab, request.user):
+                                board = b
+                                break
+        except Http404:
+            raise
+        except ValueError:
+            pass  # corpo nao-JSON (form): sem quadro inferivel
+        except Exception:
+            return JsonResponse({'success': False, 'error': 'Requisicao invalida.'}, status=400)
+
         if board and not can_edit_board(board, colab, request.user):
             if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json':
                 return JsonResponse({'success': False, 'error': 'Acesso negado. Apenas membros podem alterar.'}, status=403)
