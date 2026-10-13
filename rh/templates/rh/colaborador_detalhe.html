@@ -13,7 +13,7 @@
                     <i class="bi bi-arrow-left fs-6"></i>
                 </a>
                 {% if perms.rh.pode_alterar_foto_colaborador %}
-                <div class="position-relative flex-shrink-0 avatar-container" style="width: 48px; height: 48px; cursor: pointer;" onclick="document.getElementById('avatarUpload').click();" title="Alterar Foto">
+                <div class="position-relative flex-shrink-0 avatar-container" style="width: 48px; height: 48px; cursor: pointer;" onclick="abrirEscolhaFoto();" title="Alterar Foto">
                 {% else %}
                 <div class="position-relative flex-shrink-0" style="width: 48px; height: 48px;">
                 {% endif %}
@@ -32,6 +32,21 @@
                 </div>
                 {% if perms.rh.pode_alterar_foto_colaborador %}
                 <input type="file" id="avatarUpload" accept="image/*" class="d-none">
+                <input type="file" id="avatarCamera" accept="image/*" capture="user" class="d-none">
+                <div class="modal fade" id="fotoOrigemModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered modal-sm">
+                        <div class="modal-content">
+                            <div class="modal-header py-2">
+                                <h6 class="modal-title fw-bold">Alterar Foto</h6>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body d-grid gap-2">
+                                <button type="button" class="btn btn-primary" id="btnFotoCamera"><i class="bi bi-camera-fill me-2"></i>Tirar foto</button>
+                                <button type="button" class="btn btn-outline-secondary" id="btnFotoGaleria"><i class="bi bi-images me-2"></i>Escolher da galeria</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 {% endif %}
                 <div class="min-w-0 text-break">
                     <h3 class="fw-bold mb-1 text-truncate fs-5 text-dark" title="{{ alvo.nome_completo }}">{{ alvo.nome_completo }}</h3>
@@ -2264,8 +2279,33 @@ document.addEventListener('DOMContentLoaded', function() {
         cropperModal = new bootstrap.Modal(cropperModalEl);
     }
 
-    if(avatarUpload) {
-        avatarUpload.addEventListener('change', function(e) {
+    const avatarCamera = document.getElementById('avatarCamera');
+    const fotoOrigemModalEl = document.getElementById('fotoOrigemModal');
+
+    // Em celular/tablet (toque) oferece câmera ou galeria; no desktop abre o seletor de arquivos direto
+    window.abrirEscolhaFoto = function() {
+        const isMobile = window.matchMedia('(pointer: coarse)').matches;
+        if (isMobile && fotoOrigemModalEl) {
+            bootstrap.Modal.getOrCreateInstance(fotoOrigemModalEl).show();
+        } else if (avatarUpload) {
+            avatarUpload.click();
+        }
+    };
+
+    if (fotoOrigemModalEl) {
+        document.getElementById('btnFotoCamera').addEventListener('click', function() {
+            bootstrap.Modal.getInstance(fotoOrigemModalEl).hide();
+            avatarCamera.click();
+        });
+        document.getElementById('btnFotoGaleria').addEventListener('click', function() {
+            bootstrap.Modal.getInstance(fotoOrigemModalEl).hide();
+            avatarUpload.click();
+        });
+    }
+
+    [avatarUpload, avatarCamera].forEach(function(input) {
+        if (!input) return;
+        input.addEventListener('change', function(e) {
             const files = e.target.files;
             if (files && files.length > 0) {
                 const reader = new FileReader();
@@ -2276,7 +2316,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 reader.readAsDataURL(files[0]);
             }
         });
-    }
+    });
 
     if(cropperModalEl) {
         cropperModalEl.addEventListener('shown.bs.modal', function() {
@@ -2293,6 +2333,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 cropper = null;
             }
             if(avatarUpload) avatarUpload.value = '';
+            if(avatarCamera) avatarCamera.value = '';
         });
     }
 
