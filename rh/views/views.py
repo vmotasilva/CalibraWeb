@@ -3478,6 +3478,9 @@ def detalhe_usuario_view(request, user_id):
     raw_modulos = get_nav_structure()
     modulos = []
     for modulo in raw_modulos:
+        # O acesso a Usuários é só superusuário/staff (nenhuma nav_* do módulo é lida): não exibir toggles sem efeito
+        if modulo.get("key") == "usuarios":
+            continue
         # Organizar blocos em itens diretos ou grupos (ex: grupo "ISO 13485")
         itens_modulo = []
         grupos_dict = {}
@@ -3526,6 +3529,11 @@ def detalhe_usuario_view(request, user_id):
     
     # Combinar permissões do usuário para checar checkboxes no template
     all_user_perms = {f"core.{codename}" for codename in user_perms_core}
+    # Permissões não-core exibidas na tela (ex.: rh.pode_alterar_foto_colaborador)
+    all_user_perms |= {
+        f"rh.{codename}"
+        for codename in user.user_permissions.filter(content_type__app_label="rh").values_list("codename", flat=True)
+    }
     
     # Contexto para Autenticadores TOTP
     try:

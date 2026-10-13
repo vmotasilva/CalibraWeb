@@ -34,6 +34,13 @@ def _all_url_names():
 
 
 def _iter_perms():
+    """Permissões core.* do NAV_STRUCTURE (as de outros apps, ex.: rh.pode_alterar_foto_colaborador, vivem nos seus models)."""
+    for perm in _iter_all_perms():
+        if str(perm).startswith("core."):
+            yield perm
+
+
+def _iter_all_perms():
     for modulo in NAV_STRUCTURE:
         if modulo.get("module_perm"):
             yield modulo["module_perm"]
@@ -41,7 +48,8 @@ def _iter_perms():
             if bloco.get("perm"):
                 yield bloco["perm"]
             for func in bloco["funcoes"]:
-                yield func["perm"]
+                if func.get("perm"):
+                    yield func["perm"]
 
 
 def _perm(codename):

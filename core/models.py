@@ -462,6 +462,10 @@ class NavigationPermission(models.Model):
             ("nav_laboratorio_coating_equipe_delete", "NAV: Laboratorio / Excluir Membro da Equipe"),
             ("nav_laboratorio_encerrar_qualquer_ocorrencia", "NAV: Laboratorio / Permissão Especial: Encerrar Ocorrência de Qualquer Usuário"),
             ("nav_laboratorio_coating_recalcular_todos", "NAV: Laboratorio / Permissão Especial: Recalcular Turnos de Todos os Lotes"),
+            ("nav_laboratorio_tms_bloco", "NAV: Laboratorio / Bloco TMS - Tempos e Movimentos"),
+            ("nav_laboratorio_tms_dashboard", "NAV: Laboratorio / TMS Previsão de Produção e Gargalos"),
+            ("nav_laboratorio_tms_fluxos", "NAV: Laboratorio / TMS Linhas de Produção"),
+            ("nav_laboratorio_tms_etapas", "NAV: Laboratorio / TMS Etapas e Balanceamento"),
 
             # --- USUÁRIOS ---
             ("nav_mod_usuarios", "NAV: Módulo Usuários"),

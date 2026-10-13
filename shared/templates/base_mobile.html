@@ -487,6 +487,8 @@
                 {% endif %}
 
                 {% can_nav_view user 'procedures:procedimentos_list' 'procedures' as nav_procedimentos_list %}
+                {% can_nav_view user 'boards:dashboard' 'boards' as nav_boards_list %}
+                {% if nav_boards_list %}
                 <li class="nav-item">
                     <a class="nav-link position-relative d-flex align-items-center" href="{% url 'boards:dashboard' %}">
                         <i class="bi bi-kanban nav-icon"></i>
@@ -498,6 +500,7 @@
                         {% endif %}
                     </a>
                 </li>
+                {% endif %}
                 {% if nav_procedimentos_list %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'procedures:procedimentos_list' %}">
@@ -505,7 +508,7 @@
                         </a>
                     </li>
                 {% endif %}
-                {% can_nav_view user 'procedures:diagramas_lista' 'procedures' as nav_diagramas_list %}
+                {% can_nav_view user 'procedures:diagramas_lista' 'diagramas' as nav_diagramas_list %}
                 {% if nav_diagramas_list %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'procedures:diagramas_lista' %}">

@@ -792,6 +792,37 @@
         }
 
         // Handler para salvar todas as permissões
+        // Cascata Módulo -> Bloco -> Função (espelha a regra aplicada no servidor ao salvar)
+        document.addEventListener('change', function (ev) {
+            const cb = ev.target;
+            if (!cb.classList || !cb.classList.contains('perm-checkbox') || cb.disabled) return;
+            const moduleCard = cb.closest('.module-card');
+            if (!moduleCard) return;
+            const moduleCb = moduleCard.querySelector('.module-header .perm-checkbox');
+            const blockCard = cb.closest('.card.border');
+            const blockCb = blockCard ? blockCard.querySelector('.block-header .perm-checkbox') : null;
+
+            if (cb === moduleCb) {
+                if (!cb.checked) {
+                    moduleCard.querySelectorAll('.perm-checkbox').forEach(o => { if (o !== cb && !o.disabled) o.checked = false; });
+                }
+                return;
+            }
+            if (cb === blockCb) {
+                if (!cb.checked) {
+                    blockCard.querySelectorAll('.perm-checkbox').forEach(o => { if (o !== cb && !o.disabled) o.checked = false; });
+                } else if (moduleCb && !moduleCb.disabled) {
+                    moduleCb.checked = true;
+                }
+                return;
+            }
+            // Função: ligar exige bloco e módulo ligados
+            if (cb.checked) {
+                if (blockCb && !blockCb.disabled) blockCb.checked = true;
+                if (moduleCb && !moduleCb.disabled) moduleCb.checked = true;
+            }
+        });
+
         document.getElementById('btnSalvarPermissoes')?.addEventListener('click', async function () {
             const btn = this;
             const originalHtml = btn.innerHTML;
