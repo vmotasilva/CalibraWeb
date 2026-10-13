@@ -27,7 +27,8 @@ H_SUBTITULO = 13
 W_STARTEND, H_STARTEND = 140, 48
 SIZE_DECISION = 110
 LANE_TOP, LANE_LEFT, LANE_BAND = 40, 20, 40
-LANE_MIN_H = 220
+LANE_MIN_H = 130   # altura mínima de uma raia (espelha ALTURA_MINIMA_RAIA do editor)
+LANE_PAD = 30      # folga acima e abaixo dos blocos (PADDING_RAIA do editor)
 LANE_RECOLHIDA_H = 64   # altura de uma raia recolhida (espelha ALTURA_RAIA_RECOLHIDA do editor)
 MARGIN = 40
 
@@ -173,6 +174,7 @@ class DiagramaFlowable(Flowable):
         self.tema = topologia.get('tema') if isinstance(topologia.get('tema'), dict) else None
         self.fundo = (self.tema or {}).get('fundo')
         self.estilo_linha = topologia.get('estilo_linha') or 'ortogonal'
+        self.mostrar_nome_raias = topologia.get('mostrar_nome_raias') is True
         arvore = montar_arvore(todos, self.edges)
         self.ctx_estilo = contexto_dos_nos(arvore)
         self.efetivo = contagem_efetivo(todos, arvore) if topologia.get('mostrar_efetivo') is True else None
@@ -189,12 +191,17 @@ class DiagramaFlowable(Flowable):
 
         self.lanes = [] if self.em_arvore else raias_do_diagrama(topologia)  # modos em árvore não usam raias
         self.lane_h = {}
+        topo_raia = LANE_TOP
         for lane in self.lanes:
-            ys = [n['position']['y'] for n in self.nodes
-                  if ((n.get('data') or {}).get('lane') or 'Geral') == lane and not self._entre_raias(n)]
-            self.lane_h[lane] = max(LANE_MIN_H, (max(ys) - min(ys)) + 160) if ys else LANE_MIN_H
+            # altura automática: acompanha o espaço ocupado pelos blocos visíveis da raia (os "entre raias" não contam)
             if lane in self.raias_recolhidas:
-                self.lane_h[lane] = LANE_RECOLHIDA_H
+                altura = LANE_RECOLHIDA_H
+            else:
+                fundos = [n['position']['y'] + _tamanho(n)[1] + LANE_PAD for n in self.nodes
+                          if ((n.get('data') or {}).get('lane') or 'Geral') == lane and not self._entre_raias(n)]
+                altura = max(LANE_MIN_H, max(fundos) - topo_raia) if fundos else LANE_MIN_H
+            self.lane_h[lane] = altura
+            topo_raia += altura
 
         # grupos (boundary): molduras atrás dos blocos; ampliam a área desenhada
         caixas = {str(n['id']): dict(zip('xywh', (n['position']['x'], n['position']['y'], *_tamanho(n)))) for n in self.nodes}
@@ -413,6 +420,9 @@ class DiagramaFlowable(Flowable):
             cor_raia = self.raias_cores.get(str(lane).lower()) or '#334155'
             c.setFillColor(_cor(cor_raia, colors.HexColor('#334155')))
             c.rect(LANE_LEFT, self._y(y + h), LANE_BAND, h, stroke=0, fill=1)
+            if not (self.mostrar_nome_raias or lane in self.raias_recolhidas):
+                y += h
+                continue   # nome da raia oculto (padrão): só a faixa colorida
             c.saveState()
             c.translate(LANE_LEFT + LANE_BAND / 2 + 4, self._y(y + h / 2))
             c.rotate(90)

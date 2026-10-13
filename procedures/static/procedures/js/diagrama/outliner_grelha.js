@@ -106,7 +106,7 @@ function alternarRecolhimentoOutliner(nodeId, ev) {
     const node = topologia.nodes.find(n => String(n.id) === String(nodeId));
     if (!node) return;
     if (!node.data) node.data = {};
-    if (node.data.collapsed) delete node.data.collapsed; else node.data.collapsed = true;
+    comAjusteDeRaias(() => { if (node.data.collapsed) delete node.data.collapsed; else node.data.collapsed = true; });
     if (node.data.collapsed) {
         // a seleção não pode ficar em um bloco que acabou de ficar oculto
         const ocultos = idsOcultosNoOutliner(obterEstruturaOutliner());
@@ -119,11 +119,11 @@ function alternarRecolhimentoOutliner(nodeId, ev) {
 function definirRecolhimentoNoOutliner(recolher) {
     const items = obterEstruturaOutliner();
     const comFilhos = new Set(items.filter(it => it.parentId !== null).map(it => it.parentId));
-    items.forEach(it => {
+    comAjusteDeRaias(() => items.forEach(it => {
         if (!it.node.data) it.node.data = {};
         if (recolher && comFilhos.has(it.id)) it.node.data.collapsed = true;
         else delete it.node.data.collapsed;
-    });
+    }));
     if (recolher) desmarcarTodosNos();
     atualizarAposRecolhimentoNoOutliner();
 }
@@ -967,18 +967,32 @@ function noEntreRaias(n, lanes) {
     return i !== -1 && lista[i + 1] === abaixo;
 }
 
+const ALTURA_NIVEL_NA_RAIA = 65;   // passo entre os níveis de altura dentro da raia
+const PADDING_RAIA = 30;          // folga acima e abaixo dos blocos dentro da raia
+const ALTURA_MINIMA_RAIA = 130;   // raia vazia ou com poucos blocos
+
+function alturaDoBlocoNoCanvas(n) {
+    const el = document.getElementById(`node-${n.id}`);
+    return el && el.offsetHeight ? el.offsetHeight : 70;
+}
+
+// Faixas (top/height) de cada raia. A altura é automática: acompanha o espaço ocupado pelos blocos visíveis da raia
+// (blocos de ramos recolhidos e blocos entre raias não contam); raias recolhidas têm altura fixa.
 function calcularFaixasRaias(lanes) {
     const faixas = {};
+    const ocultos = typeof nosOcultos === 'function' ? nosOcultos() : new Set();
     let top = 40;
     lanes.forEach(lane => {
-        // blocos entre raias ficam na divisa e não definem a altura da faixa
-        const nodes = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane && !noEntreRaias(n, lanes));
-        let altura = raiaRecolhida(lane) ? ALTURA_RAIA_RECOLHIDA : 220;
+        let altura = ALTURA_MINIMA_RAIA;
         if (raiaRecolhida(lane)) {
-            // faixa recolhida: altura fixa
-        } else if (nodes.length > 0) {
-            const ys = nodes.map(n => n.position.y);
-            altura = Math.max(220, (Math.max(...ys) - Math.min(...ys)) + 160);
+            altura = ALTURA_RAIA_RECOLHIDA;
+        } else {
+            let fundo = top + ALTURA_MINIMA_RAIA;
+            topologia.nodes.forEach(n => {
+                if ((n.data?.lane || 'Geral') !== lane || noEntreRaias(n, lanes) || ocultos.has(String(n.id))) return;
+                fundo = Math.max(fundo, n.position.y + alturaDoBlocoNoCanvas(n) + PADDING_RAIA);
+            });
+            altura = fundo - top;
         }
         faixas[lane] = { top, height: altura };
         top += altura;
@@ -1050,7 +1064,40 @@ function posicionarNoEmRelacaoAsRaias(node) {
         return;
     }
     const lane = node.data?.lane || 'Geral';
-    if (faixas[lane]) node.position.y = Math.round(faixas[lane].top + faixas[lane].height / 2 - 32);
+    if (faixas[lane]) node.position.y = Math.round(faixas[lane].top + PADDING_RAIA);
+}
+
+// Nível do bloco dentro da raia (1 = topo): coordenada de altura predefinida, de 65 px em 65 px. null = automático.
+function definirNivelNaRaia(valor) {
+    if (IS_APPROVED || arvoreAtiva()) return;
+    const nivel = valor === '' || valor === null ? null : Math.max(1, Math.min(20, parseInt(valor, 10) || 1));
+    const nos = Array.from(selectedNodeIds).map(id => topologia.nodes.find(n => n.id === id)).filter(Boolean);
+    if (nos.length === 0) return;
+    mudarFaixasDasRaias(() => {
+        nos.forEach(node => {
+            if (!node.data) node.data = {};
+            if (nivel === null) delete node.data.nivelRaia; else node.data.nivelRaia = nivel;
+            const faixa = calcularFaixasRaias(obterListaRaiasOrdenada())[node.data.lane || 'Geral'];
+            if (faixa && !noEntreRaias(node)) node.position.y = Math.round(faixa.top + PADDING_RAIA + ((nivel || 1) - 1) * ALTURA_NIVEL_NA_RAIA);
+        });
+    });
+    renderizarCanvas();
+    renderizarGrelha();
+    dispararAutoSave();
+    const no = topologia.nodes.find(n => n.id === selectedNodeId);
+    if (no) atualizarSeletorNivelNaRaia(no);
+}
+
+function atualizarSeletorNivelNaRaia(node) {
+    const caixa = document.getElementById('inspNivelRaiaBox');
+    const sel = document.getElementById('inspNodeNivelRaia');
+    if (!caixa || !sel) return;
+    if (!sel.options.length) {
+        sel.innerHTML = '<option value="">Automático</option>' +
+            Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}">Nível ${i + 1}${i === 0 ? ' (topo da raia)' : ''}</option>`).join('');
+    }
+    sel.value = Number.isInteger(node.data?.nivelRaia) ? String(node.data.nivelRaia) : '';
+    sel.disabled = IS_APPROVED || noEntreRaias(node);
 }
 
 // Posição do bloco em relação às raias: 'dentro' | 'abaixo' (entre esta e a seguinte) | 'acima' (entre a anterior e esta)

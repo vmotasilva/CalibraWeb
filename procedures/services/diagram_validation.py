@@ -257,6 +257,9 @@ def validar_topologia(topologia: dict) -> list:
     if topologia.get('empilhar_folhas') is not None and not isinstance(topologia['empilhar_folhas'], bool):
         return ["'empilhar_folhas' deve ser verdadeiro/falso."]
 
+    if topologia.get('mostrar_nome_raias') is not None and not isinstance(topologia['mostrar_nome_raias'], bool):
+        return ["'mostrar_nome_raias' deve ser verdadeiro/falso."]
+
     recolhidas = topologia.get('raias_recolhidas')
     if recolhidas is not None and (not isinstance(recolhidas, list) or len(recolhidas) > MAX_RAIAS
                                    or not all(isinstance(x, str) and 0 < len(x) <= 100 for x in recolhidas)):
@@ -299,6 +302,8 @@ def validar_topologia(topologia: dict) -> list:
                 erros.append(f"Estrutura inválida no nó {nid} (use organograma ou arvore).")
             if data.get('laneAbaixo') is not None and (not isinstance(data['laneAbaixo'], str) or not 0 < len(data['laneAbaixo']) <= 100):
                 erros.append(f"'laneAbaixo' inválida no nó {nid}.")
+            if data.get('nivelRaia') is not None and not _inteiro_entre(data['nivelRaia'], 1, 20):
+                erros.append(f"'nivelRaia' do nó {nid} deve ser um inteiro de 1 a 20.")
             if data.get('collapsed') is not None and not isinstance(data['collapsed'], bool):
                 erros.append(f"Campo 'collapsed' inválido no nó {nid}.")
             if data.get('style') is not None:

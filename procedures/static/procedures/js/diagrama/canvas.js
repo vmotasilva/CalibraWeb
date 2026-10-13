@@ -27,7 +27,8 @@ function renderizarCanvas() {
         const recolhida = raiaRecolhida(lane);
         const qtdBlocos = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane).length;
         const laneEl = document.createElement('div');
-        laneEl.className = 'swimlane-row' + (recolhida ? ' swimlane-recolhida' : '');
+        const semNome = topologia.mostrar_nome_raias !== true && !recolhida;   // raias recolhidas mantêm o nome visível
+        laneEl.className = 'swimlane-row' + (recolhida ? ' swimlane-recolhida' : '') + (semNome ? ' swimlane-sem-nome' : '');
         laneEl.style.top = `${yPos}px`;
         laneEl.style.height = `${h}px`;
         laneEl.style.borderLeftColor = corDaRaia(lane);
@@ -37,7 +38,7 @@ function renderizarCanvas() {
         const estiloRotulo = `background:${corRaia};border-color:${corRaia};color:${DiagramaEstilo.corDeTextoParaFundo(corRaia)};`;
         laneEl.innerHTML = `
             <div class="swimlane-header-wrapper dropdown">
-                <div class="swimlane-rotator-btn" style="${estiloRotulo}" data-bs-toggle="dropdown" aria-expanded="false" title="Clique: opções | Duplo clique: configurar raia" ondblclick="abrirConfigRaia('${encodeURIComponent(lane)}')">
+                <div class="swimlane-rotator-btn" style="${estiloRotulo}" data-bs-toggle="dropdown" aria-expanded="false" title="${safeLane} - Clique: opções | Duplo clique: configurar raia" ondblclick="abrirConfigRaia('${encodeURIComponent(lane)}')">
                     <span>${safeLane}</span>
                 </div>
                 <ul class="dropdown-menu shadow">
@@ -182,6 +183,11 @@ function renderizarCanvas() {
         // Eventos de Arrasto
         if (!IS_APPROVED) {
             nodeEl.addEventListener('mousedown', (e) => iniciarArrasto(e, node));
+            // arrastar de um ponto do bloco até outro bloco cria uma conexão
+            nodeEl.querySelectorAll('.handle').forEach(h => {
+                h.title = 'Arraste até outro bloco para conectar';
+                h.addEventListener('mousedown', (e) => iniciarConexaoPorArrasto(e, node, h));
+            });
         }
 
         aplicarEstiloVisualAoNo(nodeEl, node);
@@ -229,6 +235,7 @@ function atualizarSelecoesVisuais() {
             document.getElementById('inspNodeLane').value = node.data?.lane || '';
             document.getElementById('inspNodeOrdem').value = typeof node.data?.ordem === 'number' ? node.data.ordem : '';
             atualizarSeletorEntreRaias(node);
+            atualizarSeletorNivelNaRaia(node);
             atualizarSeletorDeEstrutura(node);
             atualizarAjudaOrdemDoBloco(node);
             document.getElementById('inspNodeDocRef').value = node.data?.documentRef || '';
@@ -773,6 +780,7 @@ function desenharConexoes() {
         const tracado = estCx.dash ? DiagramaEstilo.dashArray(estCx.dash, larguraLinha) : (edge.kind === 'relacao' ? '7 5' : null); // ligação livre = tracejada
         if (tracado) path.setAttribute('stroke-dasharray', tracado);
         svg.appendChild(path);
+        if (selecionada) desenharPontasDaConexao(svg, edge, pathData);   // pontas arrastáveis para religar a conexão
 
         if (edge.label) {
             const textGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');

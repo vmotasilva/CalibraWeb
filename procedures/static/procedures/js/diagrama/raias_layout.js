@@ -8,6 +8,8 @@
 // =========================================================================
 // Auto-layout nas raias: o Y vem da raia de cada bloco; o X segue a hierarquia (subordinados distribuídos
 // lado a lado e centralizados sob o bloco ao qual estão ligados, sem sobreposição).
+const ALTURA_LINHA_NA_RAIA = 130;   // distância vertical entre blocos pai e filho que ficam na mesma raia
+
 function posicionarAutomaticoPorRaias(centralizar = true) {
     const lanes = obterListaRaiasOrdenada();
     const nodeWidth = 190;
@@ -16,16 +18,8 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     const viewport = document.getElementById('canvasViewport');
     const canvasTargetWidth = viewport ? (viewport.clientWidth / zoomLevel) : 1150;
 
-    const yDaRaia = {};
-    const topoDaRaia = {};
-    let acumulado = 40;
-    lanes.forEach(lane => {
-        topoDaRaia[lane] = acumulado;
-        yDaRaia[lane] = acumulado + 60;
-        acumulado += raiaRecolhida(lane) ? ALTURA_RAIA_RECOLHIDA : 220;   // a mesma altura das faixas desenhadas
-    });
     const noLane = n => n.data?.lane || 'Geral';
-    const posicionaveis = topologia.nodes.filter(n => yDaRaia[noLane(n)] !== undefined);
+    const posicionaveis = topologia.nodes.filter(n => lanes.includes(noLane(n)));
     if (posicionaveis.length === 0) return;
 
     const porId = new Map(posicionaveis.map(n => [String(n.id), n]));
@@ -38,11 +32,37 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     const temOrdem = id => typeof porId.get(id).data?.ordem === 'number';
     const raizes = arvore.raizes.slice().sort((x, y) => (temOrdem(x) || temOrdem(y)) ? 0 : ordemNumerica(porId.get(x)) - ordemNumerica(porId.get(y)));
 
+    // Estrutura do ramo (data.estrutura): herdada do pai; "arvore" = o ramo vira uma lista recuada sob o bloco
+    const estrutura = new Map();
+    const resolverEstrutura = (id, herdada) => {
+        const propria = porId.get(id)?.data?.estrutura;
+        const efetiva = DiagramaArvore.ESTRUTURAS.includes(propria) ? propria : herdada;
+        estrutura.set(id, efetiva);
+        (arvore.filhos.get(id) || []).forEach(f => resolverEstrutura(f, efetiva));
+    };
+    raizes.forEach(r => resolverEstrutura(r, 'organograma'));
+
     // X em "colunas": folha = próxima coluna livre; pai = centro dos filhos
     const colunas = new Map();
+    const recuoPx = new Map();            // blocos de uma lista recuada: deslocamento em px dentro da coluna
+    const RECUO_NA_RAIA = 40;
     let proxima = 0;
     const visitar = id => {
         const filhos = arvore.filhos.get(id) || [];
+        if (estrutura.get(id) === 'arvore' && filhos.length > 0) {
+            // cabeça de lista: ocupa uma coluna; os descendentes ficam na mesma coluna, recuados por nível
+            colunas.set(id, proxima);
+            let maiorNivel = 0;
+            const descer = (pid, nivel) => (arvore.filhos.get(pid) || []).forEach(f => {
+                colunas.set(f, proxima);
+                recuoPx.set(f, nivel * RECUO_NA_RAIA);
+                maiorNivel = Math.max(maiorNivel, nivel);
+                descer(f, nivel + 1);
+            });
+            descer(id, 1);
+            proxima += 1 + Math.floor((maiorNivel * RECUO_NA_RAIA + 20) / passo);   // largura consumida pelo recuo
+            return;
+        }
         if (filhos.length === 0) {
             colunas.set(id, proxima++);
             return;
@@ -56,10 +76,71 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     const targetW = Math.max(canvasTargetWidth, larguraTotal + 160);
     const startX = centralizar ? Math.max(80, Math.round((targetW - larguraTotal) / 2)) : 80;
 
+    const xDoBloco = id => Math.round(startX + colunas.get(id) * passo + (recuoPx.get(id) || 0));
+
+    // Linhas dentro da raia: um bloco ligado a um pai da MESMA raia fica sempre abaixo dele; blocos da mesma raia que
+    // cairiam um sobre o outro (mesma coluna) também descem uma linha. A faixa da raia cresce conforme as linhas.
+    const ordemPre = [];
+    const preOrdem = id => { ordemPre.push(id); (arvore.filhos.get(id) || []).forEach(preOrdem); };
+    raizes.forEach(preOrdem);
+    // Níveis de altura dentro da raia (data.nivelRaia, 1 = topo): coordenadas predefinidas de Y, de 65 px em 65 px, para
+    // deixar um bloco um pouco acima ou abaixo dos vizinhos. Os níveis escolhidos têm prioridade e reservam o lugar.
+    const ALTURA_NIVEL = ALTURA_NIVEL_NA_RAIA;
+    const yRelativo = new Map();            // bloco -> deslocamento (px) a partir do topo útil da raia
+    const ocupacao = {};                    // raia -> [{ x, y }] (lugares já usados)
+    const nivelManual = n => (Number.isInteger(n.data?.nivelRaia) && n.data.nivelRaia >= 1 ? n.data.nivelRaia : null);
+    const ocupado = (lista, x, y) => lista.some(o => Math.abs(o.x - x) < nodeWidth + 30 && Math.abs(o.y - y) < ALTURA_LINHA_NA_RAIA - 30);
+    ordemPre.forEach(id => {
+        const n = porId.get(id);
+        const nivel = nivelManual(n);
+        if (nivel === null || noEntreRaias(n, lanes)) return;
+        const y = (nivel - 1) * ALTURA_NIVEL;
+        yRelativo.set(id, y);
+        (ocupacao[noLane(n)] = ocupacao[noLane(n)] || []).push({ x: xDoBloco(id), y });
+    });
+    // demais blocos: abaixo do pai da MESMA raia e sem cair sobre outro bloco (descem uma linha)
+    ordemPre.forEach(id => {
+        if (yRelativo.has(id)) return;
+        const n = porId.get(id);
+        const lane = noLane(n);
+        if (noEntreRaias(n, lanes)) { yRelativo.set(id, 0); return; }   // fica sobre a divisa das raias
+        const paiId = arvore.pai.get(id);
+        const pai = paiId !== undefined ? porId.get(paiId) : null;
+        let y = pai && noLane(pai) === lane && !noEntreRaias(pai, lanes) ? (yRelativo.get(paiId) || 0) + ALTURA_LINHA_NA_RAIA : 0;
+        const x = xDoBloco(id);
+        const lista = ocupacao[lane] = ocupacao[lane] || [];
+        while (ocupado(lista, x, y)) y += ALTURA_LINHA_NA_RAIA;
+        lista.push({ x, y });
+        yRelativo.set(id, y);
+    });
+
+    // topo e Y de cada raia (a mesma altura automática das faixas desenhadas: calcularFaixasRaias)
+    const ocultos = typeof nosOcultos === 'function' ? nosOcultos() : new Set();
+    const fundoRelativo = {};       // raia -> maior (deslocamento + altura do bloco) entre os blocos visíveis
     posicionaveis.forEach(n => {
-        n.position.x = Math.round(startX + colunas.get(String(n.id)) * passo);
+        const id = String(n.id);
+        if (noEntreRaias(n, lanes) || ocultos.has(id)) return;
+        const lane = noLane(n);
+        fundoRelativo[lane] = Math.max(fundoRelativo[lane] || 0, (yRelativo.get(id) || 0) + alturaDoBlocoNoCanvas(n));
+    });
+    const yDaRaia = {};
+    const topoDaRaia = {};
+    let acumulado = 40;
+    lanes.forEach(lane => {
+        topoDaRaia[lane] = acumulado;
+        yDaRaia[lane] = acumulado + PADDING_RAIA;
+        acumulado += raiaRecolhida(lane)
+            ? ALTURA_RAIA_RECOLHIDA
+            : Math.max(ALTURA_MINIMA_RAIA, PADDING_RAIA + (fundoRelativo[lane] || 0) + PADDING_RAIA);
+    });
+
+    posicionaveis.forEach(n => {
+        const id = String(n.id);
+        n.position.x = xDoBloco(id);
         // bloco entre raias: sobre a divisa com a raia de baixo
-        n.position.y = noEntreRaias(n, lanes) ? topoDaRaia[n.data.laneAbaixo] - 32 : yDaRaia[noLane(n)];
+        n.position.y = noEntreRaias(n, lanes)
+            ? topoDaRaia[n.data.laneAbaixo] - alturaDoBlocoNoCanvas(n) / 2
+            : yDaRaia[noLane(n)] + (yRelativo.get(id) || 0);
     });
 }
 
@@ -95,16 +176,12 @@ function alinharNosPorRaias() {
         let currentY = 40;
         const laneYBase = {};
         lanes.forEach(lane => {
-            laneYBase[lane] = currentY + 60; // Margem superior
-            
+            laneYBase[lane] = currentY + PADDING_RAIA;
+
+            // todos os blocos da raia ficam numa só linha: altura = bloco mais alto + folgas
             const nodesInLane = topologia.nodes.filter(n => (n.data?.lane || 'Geral') === lane && !noEntreRaias(n, lanes));
-            if (nodesInLane.length > 0) {
-                const minPos = Math.min(...nodesInLane.map(n => n.position.y));
-                const maxPos = Math.max(...nodesInLane.map(n => n.position.y));
-                currentY += Math.max(220, (maxPos - minPos) + 160);
-            } else {
-                currentY += 220;
-            }
+            const maisAlto = nodesInLane.length ? Math.max(...nodesInLane.map(alturaDoBlocoNoCanvas)) : 0;
+            currentY += raiaRecolhida(lane) ? ALTURA_RAIA_RECOLHIDA : Math.max(ALTURA_MINIMA_RAIA, maisAlto + 2 * PADDING_RAIA);
         });
 
         lanes.forEach(lane => {

@@ -34,6 +34,12 @@ function nosOcultos() {
     return ocultos;
 }
 
+// Executa uma mudança de recolhimento; no modo por raias, as faixas encolhem/crescem e as raias de baixo acompanham
+function comAjusteDeRaias(mudanca) {
+    if (!arvoreAtiva() && typeof mudarFaixasDasRaias === 'function') mudarFaixasDasRaias(mudanca);
+    else mudanca();
+}
+
 // Reaplica o layout do modo atual e atualiza a lista (usado ao recolher/expandir ramos)
 function atualizarAposRecolhimento() {
     if (arvoreAtiva()) aplicarLayoutArvore(); else renderizarCanvas();
@@ -56,6 +62,7 @@ function atualizarUILayout() {
     });
     const rotulo = document.getElementById('labelLayoutAtual');
     if (rotulo) rotulo.textContent = ROTULOS_LAYOUT[modo] || modo;
+    atualizarMarcaNomeDasRaias();
     const itemEmpilhar = document.getElementById('itemEmpilharFolhas');
     if (itemEmpilhar) {
         itemEmpilhar.classList.toggle('d-none', modo !== 'organograma');
@@ -74,7 +81,9 @@ function definirEstruturaDoRamo(valor) {
         if (!node.data) node.data = {};
         if (DiagramaArvore.ESTRUTURAS.includes(valor)) node.data.estrutura = valor; else delete node.data.estrutura;
     });
-    if (modoLayout() === 'organograma') aplicarLayoutArvore(); else renderizarCanvas();
+    if (modoLayout() === 'organograma') aplicarLayoutArvore();
+    else if (modoLayout() === 'raias') { posicionarAutomaticoPorRaias(false); renderizarCanvas(); }
+    else renderizarCanvas();
     const no = topologia.nodes.find(n => n.id === selectedNodeId);
     if (no) atualizarSeletorDeEstrutura(no);
     dispararAutoSave();
@@ -85,11 +94,25 @@ function atualizarSeletorDeEstrutura(node) {
     const ajuda = document.getElementById('inspNodeEstruturaAjuda');
     if (!sel) return;
     sel.value = DiagramaArvore.ESTRUTURAS.includes(node.data?.estrutura) ? node.data.estrutura : '';
-    const emOrganograma = modoLayout() === 'organograma';
-    sel.disabled = IS_APPROVED || !emOrganograma;
-    if (ajuda) ajuda.textContent = emOrganograma
-        ? 'Define como os blocos ligados abaixo deste são dispostos. "Seguir o pai" herda a estrutura do bloco de origem.'
-        : 'Disponível no layout Organograma (Organizar > Layout do diagrama).';
+    const aplicavel = ['organograma', 'raias'].includes(modoLayout());
+    sel.disabled = IS_APPROVED || !aplicavel;
+    if (ajuda) ajuda.textContent = aplicavel
+        ? 'Define como os blocos ligados abaixo deste são dispostos no Auto-Layout. "Seguir o pai" herda a estrutura do bloco de origem.'
+        : 'Disponível nos layouts Organograma e Por raias (Organizar > Layout do diagrama).';
+}
+
+// Nome das raias no canvas e no PDF (padrão: oculto; a faixa colorida identifica a raia, e o nome aparece ao passar o mouse)
+function alternarNomeDasRaias() {
+    if (IS_APPROVED) return;
+    if (topologia.mostrar_nome_raias === true) delete topologia.mostrar_nome_raias; else topologia.mostrar_nome_raias = true;
+    atualizarMarcaNomeDasRaias();
+    renderizarCanvas();
+    dispararAutoSave();
+}
+
+function atualizarMarcaNomeDasRaias() {
+    const marca = document.getElementById('checkNomeRaias');
+    if (marca) marca.classList.toggle('invisible', topologia.mostrar_nome_raias !== true);
 }
 
 // Organograma: folhas de um mesmo bloco empilhadas na vertical (compacto) ou lado a lado
@@ -168,7 +191,7 @@ function alternarRecolhimento(nodeId, ev) {
     const node = topologia.nodes.find(n => String(n.id) === String(nodeId));
     if (!node) return;
     if (!node.data) node.data = {};
-    node.data.collapsed = !node.data.collapsed;
+    comAjusteDeRaias(() => { node.data.collapsed = !node.data.collapsed; });
     if (node.data.collapsed) {
         // a seleção não pode ficar em um bloco que acabou de ficar oculto
         const ocultosAgora = DiagramaArvore.descendentes(arvoreAtual(), String(node.id));
@@ -180,14 +203,14 @@ function alternarRecolhimento(nodeId, ev) {
 
 function definirRecolhimentoDeTodos(recolher, nivelMinimo) {
     const arv = arvoreAtual();
-    topologia.nodes.forEach(n => {
+    comAjusteDeRaias(() => topologia.nodes.forEach(n => {
         const tem = (arv.filhos.get(String(n.id)) || []).length > 0;
         if (!n.data) n.data = {};
         const nivel = DiagramaArvore.profundidade(arv, String(n.id));
         if (!tem) { delete n.data.collapsed; return; }
         n.data.collapsed = recolher && nivel >= nivelMinimo;
         if (!n.data.collapsed) delete n.data.collapsed;
-    });
+    }));
     desmarcarTodosNos();
     atualizarAposRecolhimento();
     enquadrarVisaoCompleta();

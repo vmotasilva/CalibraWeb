@@ -497,6 +497,8 @@
     .busca-raia-lista .list-group-item { font-size: 13px; padding: 6px 10px; cursor: pointer; }
     .busca-raia-lista .list-group-item.ativo, .busca-raia-lista .list-group-item:hover { background: #eff6ff; }
 
+    .swimlane-sem-nome .swimlane-rotator-btn { padding: 34px 5px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+    .swimlane-sem-nome .swimlane-rotator-btn span { display: none; }
     .swimlane-recolhida { background: repeating-linear-gradient(135deg, rgba(148,163,184,.10) 0 8px, transparent 8px 16px); }
     .swimlane-recolhida .swimlane-header-wrapper { left: 6px; transform: translate(0, -50%); }
     .swimlane-recolhida .swimlane-rotator-btn { transform: none; padding: 6px 16px; }
@@ -668,6 +670,12 @@
         border: 2px solid #475569;
         z-index: 10;
     }
+    .handle { cursor: crosshair; transition: transform .12s; }
+    .handle:hover { transform: scale(1.5); }
+    .conectando, .conectando * { cursor: crosshair !important; }
+    .flow-node.alvo-conexao { outline: 3px solid #2563eb; outline-offset: 3px; }
+    .ponta-conexao { fill: #fff; stroke: #2563eb; stroke-width: 2.5; cursor: grab; }
+    .ponta-conexao:hover { fill: #dbeafe; }
     .handle-top { top: -6px; left: calc(50% - 5px); }
     .handle-bottom { bottom: -6px; left: calc(50% - 5px); background: #10b981; border-color: #ffffff; }
     .handle-right { right: -6px; top: calc(50% - 5px); background: #ef4444; border-color: #ffffff; }
@@ -1129,10 +1137,10 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="logico" onclick="definirModoLayout('logico')"><i class="bi bi-check2 layout-check invisible me-2"></i>Lógico (da esquerda para a direita)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="arvore" onclick="definirModoLayout('arvore')"><i class="bi bi-check2 layout-check invisible me-2"></i>Árvore (lista com recuo)</a></li>
                     <li id="itemEmpilharFolhas" class="d-none"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarEmpilharFolhas()" title="No organograma, blocos sem subordinados do mesmo pai ficam um abaixo do outro"><i class="bi bi-check2 layout-check me-2"></i>Empilhar folhas na vertical</a></li>
-                    <li class="somente-arvore"><h6 class="dropdown-header">Estrutura do ramo selecionado</h6></li>
-                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('')"><i class="bi bi-arrow-return-right me-2"></i>Seguir a estrutura do pai</a></li>
-                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('organograma')"><i class="bi bi-diagram-3 me-2"></i>Organograma (lado a lado)</a></li>
-                    <li class="somente-arvore"><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('arvore')"><i class="bi bi-list-nested me-2"></i>Árvore (lista recuada)</a></li>
+                    <li><h6 class="dropdown-header">Estrutura do ramo selecionado</h6></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('')"><i class="bi bi-arrow-return-right me-2"></i>Seguir a estrutura do pai</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('organograma')"><i class="bi bi-diagram-3 me-2"></i>Organograma (lado a lado)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('arvore')"><i class="bi bi-list-nested me-2"></i>Árvore (lista recuada)</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><h6 class="dropdown-header">Alinhar blocos selecionados</h6></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('top')"><i class="bi bi-align-top me-2"></i>Linha Superior</a></li>
@@ -1241,6 +1249,7 @@
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirModalTema()"><i class="bi bi-palette me-2"></i>Tema e cores do diagrama...</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarFundoCanvas()"><i class="bi bi-palette2 me-2"></i>Alternar fundo (acolhedor / claro)</a></li>
+                    <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="alternarNomeDasRaias()"><i class="bi bi-check2 me-2 invisible" id="checkNomeRaias"></i>Mostrar nomes das raias</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarModoZen()"><i class="bi bi-fullscreen me-2"></i>Modo foco / tela cheia (ZEN)</a></li>
                 </ul>
             </div>
@@ -1533,6 +1542,12 @@
                             <label class="form-label text-muted small fw-bold mb-1" for="inspNodeEntreRaias">Posição na raia</label>
                             <select id="inspNodeEntreRaias" class="form-select form-select-sm" onchange="definirPosicaoEntreRaias(this.value)"></select>
                             <div class="form-text">"Entre raias" deixa o bloco sobre a divisa das duas raias, sem criar uma raia só para ele.</div>
+                        </div>
+                        <!-- Nível dentro da raia (altura predefinida) -->
+                        <div class="mb-3 somente-raias" id="inspNivelRaiaBox">
+                            <label class="form-label text-muted small fw-bold mb-1" for="inspNodeNivelRaia">Nível na raia</label>
+                            <select id="inspNodeNivelRaia" class="form-select form-select-sm" onchange="definirNivelNaRaia(this.value)"></select>
+                            <div class="form-text">Altura predefinida dentro da raia (de 65 em 65 px): deixa o bloco um pouco acima ou abaixo dos vizinhos. O Auto-Layout respeita o nível escolhido.</div>
                         </div>
                         <!-- Ordem no auto-layout -->
                         <div class="mb-3">
@@ -2171,7 +2186,7 @@
                     <select id="selectRaiaNovoBloco" class="form-select form-select-sm" onchange="aoEscolherRaiaNovoBloco()"></select>
                     <input type="text" id="inputRaiaNovoBloco" name="inputRaiaNovoBloco_x" autocomplete="off" data-lpignore="true" data-1p-ignore data-form-type="other" class="form-control form-control-sm mt-1 d-none" maxlength="100" placeholder="Nome da nova raia"
                            onkeypress="if(event.key==='Enter') confirmarAdicionarBloco()">
-                    <div class="form-text" id="dicaRaiaNovoBloco">Em qual raia o bloco ficará. Colaboradores com setor mapeado a uma raia do catálogo usam essa raia, a menos que você escolha outra aqui.</div>
+                    <div class="form-text" id="dicaRaiaNovoBloco">Em qual raia o bloco ficará. Em "Entre raias" ele fica sobre a divisa de duas raias vizinhas, sem criar uma raia só para ele.</div>
                 </div>
             </div>
             <div class="modal-footer py-1 border-top-0">

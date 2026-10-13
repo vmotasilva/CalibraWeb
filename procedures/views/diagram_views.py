@@ -44,7 +44,7 @@ PERM_EXPORT_PDF = 'core.nav_diagramas_export_pdf'
 # Módulos JS do editor, na ordem de carregamento (scripts clássicos que compartilham o escopo global)
 EDITOR_JS_MODULOS = [
     'estado', 'layout_arvore', 'estilo', 'conteudo', 'grupos', 'inicializacao', 'canvas', 'inspetor', 'blocos', 'arvore',
-    'edicao_inline', 'aparencia', 'conteudo_ui', 'outliner_grelha', 'raias_layout', 'agrupamento', 'navegacao', 'persistencia', 'acoes_qms',
+    'edicao_inline', 'aparencia', 'conteudo_ui', 'outliner_grelha', 'raias_layout', 'agrupamento', 'navegacao', 'conexoes_ui', 'persistencia', 'acoes_qms',
 ]
 
 

@@ -43,6 +43,18 @@ function prepararSeletorRaiaNovoBloco(ctx) {
         select.appendChild(g);
     };
     grupo('Neste diagrama', noDiagrama);
+    // blocos entre duas raias adjacentes ficam sobre a divisa, sem raia própria
+    if (noDiagrama.length > 1) {
+        const g = document.createElement('optgroup');
+        g.label = 'Entre raias';
+        noDiagrama.slice(0, -1).forEach((nome, i) => {
+            const o = document.createElement('option');
+            o.value = `entre:${i}`;
+            o.textContent = `Entre "${nome}" e "${noDiagrama[i + 1]}"`;
+            g.appendChild(o);
+        });
+        select.appendChild(g);
+    }
     grupo('Do catálogo de raias', doCatalogo);
     const nova = document.createElement('option');
     nova.value = '__nova__';
@@ -61,12 +73,35 @@ function aoEscolherRaiaNovoBloco() {
     if (nova) campo.focus();
 }
 
+// "Entre raias" escolhido na janela: { cima, baixo } (raias adjacentes) ou null
+function escolhaEntreRaiasNoModal() {
+    const bloco = document.getElementById('blocoRaiaNovoBloco');
+    const select = document.getElementById('selectRaiaNovoBloco');
+    if (!bloco || bloco.classList.contains('d-none') || !select || !String(select.value).startsWith('entre:')) return null;
+    const lanes = obterListaRaiasOrdenada();
+    const i = parseInt(select.value.slice(6), 10);
+    return lanes[i] !== undefined && lanes[i + 1] !== undefined ? { cima: lanes[i], baixo: lanes[i + 1] } : null;
+}
+
+// Coloca o bloco recém-criado sobre a divisa das duas raias (data.laneAbaixo)
+function aplicarEntreRaiasNoNovoBloco(nodeId, entre) {
+    const node = topologia.nodes.find(n => n.id === nodeId);
+    if (!node || !entre) return;
+    node.data.lane = entre.cima;
+    node.data.laneAbaixo = entre.baixo;
+    const linha = topologia.grid_data.find(r => r.stepId === nodeId);
+    if (linha) linha.lane = entre.cima;
+    posicionarNoEmRelacaoAsRaias(node);
+}
+
 // Raia final do bloco: o que o usuário escolheu na janela; sem escolha manual, a raia mapeada ao setor do
 // colaborador (se houver); por fim a raia de referência (valor inicial do campo)
 function raiaEscolhidaNoModal(raiaMapeada) {
     const bloco = document.getElementById('blocoRaiaNovoBloco');
     if (!bloco || bloco.classList.contains('d-none')) return raiaMapeada;
     const select = document.getElementById('selectRaiaNovoBloco');
+    const entre = escolhaEntreRaiasNoModal();
+    if (entre) return entre.cima;   // o bloco pertence à raia de cima e fica sobre a divisa
     const valor = select.value === '__nova__' ? document.getElementById('inputRaiaNovoBloco').value.trim() : select.value;
     if (!raiaNovoBlocoManual && raiaMapeada) return raiaMapeada;
     return valor || raiaMapeada || null;
@@ -292,6 +327,7 @@ function confirmarAdicionarBloco() {
     }
 
     laneText = raiaEscolhidaNoModal(laneText); // a janela pergunta em qual raia o bloco ficará
+    const entreRaias = escolhaEntreRaiasNoModal();
 
     const nextId = gerarProximoNodeId();
     const faixasAntes = calcularFaixasRaias(obterListaRaiasOrdenada());
@@ -342,6 +378,7 @@ function confirmarAdicionarBloco() {
             // "+" de baixo é um filho: alinhado lado a lado com os demais filhos do bloco
             ligarFilhoAoPai(parentNode, nextId);
             inserirFilhoNoLayout(parentNode, topologia.nodes.find(n => n.id === nextId), faixasAntes);
+            aplicarEntreRaiasNoNovoBloco(nextId, entreRaias);
             selecionarNo(nextId);
             if (arvoreAtiva()) aplicarLayoutArvore(); else renderizarCanvas();
             dispararAutoSave();
@@ -365,6 +402,7 @@ function confirmarAdicionarBloco() {
         }
     }
 
+    aplicarEntreRaiasNoNovoBloco(nextId, entreRaias);
     if (arvoreAtiva()) aplicarLayoutArvore(); else renderizarCanvas();
     selecionarNo(nextId);
     dispararAutoSave();

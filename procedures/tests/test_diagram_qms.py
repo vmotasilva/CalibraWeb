@@ -899,7 +899,7 @@ class DiagramaFase1ArvoreTestCase(TestCase):
         self.assertLess(EDITOR_JS_MODULOS.index('estado'), EDITOR_JS_MODULOS.index('layout_arvore'))
         self.assertLess(EDITOR_JS_MODULOS.index('layout_arvore'), EDITOR_JS_MODULOS.index('arvore'))
         for item in ('data-layout-modo="organograma"', 'data-layout-modo="logico"', 'data-layout-modo="arvore"',
-                     'onclick="recolherTodos()"', 'class="somente-arvore"'):
+                     'onclick="recolherTodos()"', '.modo-arvore .somente-arvore'):
             self.assertIn(item, html)
 
     def test_modulos_js_existem_e_tem_sintaxe_valida(self):
@@ -1817,7 +1817,7 @@ class DiagramaEstruturasERaiasTestCase(TestCase):
             self.assertIn(item, html)
         js = ler_js_editor()
         for item in ('function alternarRaiaRecolhida', 'function definirPosicaoEntreRaias', 'function noEntreRaias',
-                     'function definirEstruturaDoRamo'):
+                     'function definirEstruturaDoRamo', 'function escolhaEntreRaiasNoModal', "value = `entre:${i}`"):
             self.assertIn(item, js)
 
     def test_importador_traz_a_estrutura_do_xmind(self):
@@ -2054,3 +2054,72 @@ class NomeAbreviadoColaboradorTestCase(TestCase):
         js = ler_js_editor()
         self.assertIn('colab.nomeAbreviado', js)
         self.assertIn('nome abreviado:', js)
+
+
+class DiagramaRaiasAutomaticasTestCase(TestCase):
+    """Altura automática das raias, níveis dentro da raia, nome das raias opcional e conexões por arrasto."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='raias.auto', password='x', is_superuser=True)
+        self.diagrama = Diagrama.objects.create(titulo='Raias auto', criado_por=self.user)
+
+    def _topologia(self, **extra):
+        no = lambda i, lane, y, **d: {"id": str(i), "type": "process", "position": {"x": 100 * i, "y": y}, "data": {"label": f"B{i}", "lane": lane, **d}}
+        return {"lanes": ["Alta", "Media"], "layout_modo": "raias",
+                "nodes": [no(1, "Alta", 70), no(2, "Media", 200)], "edges": [{"id": "e1", "source": "1", "target": "2"}], **extra}
+
+    def test_validacao_dos_campos_novos(self):
+        from procedures.services.diagram_validation import validar_topologia
+        topo = self._topologia(mostrar_nome_raias=True)
+        topo["nodes"][0]["data"]["nivelRaia"] = 3
+        self.assertEqual(validar_topologia(topo), [])
+        for ruim in ({"nivelRaia": 0}, {"nivelRaia": 21}, {"nivelRaia": "2"}, {"nivelRaia": True}):
+            t = self._topologia()
+            t["nodes"][0]["data"].update(ruim)
+            self.assertTrue(validar_topologia(t), ruim)
+        self.assertTrue(validar_topologia(self._topologia(mostrar_nome_raias="sim")))
+
+    def test_altura_das_raias_no_pdf_acompanha_o_conteudo(self):
+        from procedures.services.diagram_renderer import LANE_MIN_H, LANE_PAD, DiagramaFlowable, _tamanho
+        desenho = DiagramaFlowable(self._topologia(), max_w=782, max_h=400)
+        # raias com uma só linha de blocos ficam na altura mínima (não mais 220)
+        self.assertEqual(desenho.lane_h["Alta"], LANE_MIN_H)
+        self.assertEqual(desenho.lane_h["Media"], LANE_MIN_H)
+        topo = self._topologia()
+        topo["nodes"][0]["data"]["nivelRaia"] = 4
+        topo["nodes"][0]["position"]["y"] = 70 + 3 * 65                    # nível 4: 195 px abaixo do topo útil
+        alta = DiagramaFlowable(topo, max_w=782, max_h=400).lane_h["Alta"]
+        esperado = 70 + 3 * 65 + _tamanho(topo["nodes"][0])[1] + LANE_PAD - 40
+        self.assertEqual(alta, max(LANE_MIN_H, esperado))
+        self.assertGreater(alta, LANE_MIN_H)
+
+    def test_pdf_com_e_sem_nome_das_raias(self):
+        sem = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia(), status=StatusDiagrama.RASCUNHO)
+        com = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=1, dados_topologia=self._topologia(mostrar_nome_raias=True), status=StatusDiagrama.RASCUNHO)
+        self.assertTrue(gerar_pdf_diagrama_doc071(sem).startswith(b'%PDF-'))
+        self.assertTrue(gerar_pdf_diagrama_doc071(com).startswith(b'%PDF-'))
+
+    def test_editor_traz_controles_de_nivel_nome_das_raias_e_conexoes(self):
+        from procedures.views.diagram_views import EDITOR_JS_MODULOS
+        versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=self._topologia(), status=StatusDiagrama.RASCUNHO)
+        c = Client()
+        c.force_login(self.user)
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        for item in ('id="inspNodeNivelRaia"', 'onchange="definirNivelNaRaia(this.value)"', 'onclick="alternarNomeDasRaias()"', 'id="checkNomeRaias"'):
+            self.assertIn(item, html)
+        self.assertIn('conexoes_ui', EDITOR_JS_MODULOS)
+        js = ler_js_editor()
+        for item in ('function iniciarConexaoPorArrasto', 'function iniciarReligacaoDaPonta', 'function criarConexaoEntre',
+                     'function desenharPontasDaConexao', 'function definirNivelNaRaia', 'const ALTURA_MINIMA_RAIA'):
+            self.assertIn(item, js)
+
+    def test_auto_layout_por_raias_passa_nos_testes_node(self):
+        import shutil, subprocess
+        from pathlib import Path
+        node = shutil.which('node')
+        if not node:
+            self.skipTest('Node.js não disponível')
+        script = Path(__file__).resolve().parent / 'js' / 'raias_layout.test.js'
+        r = subprocess.run([node, str(script)], capture_output=True, text=True, encoding='utf-8')
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('TODOS OS', r.stdout)
