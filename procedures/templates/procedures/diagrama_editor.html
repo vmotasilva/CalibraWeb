@@ -491,6 +491,13 @@
     .pitch-ativo .handle, .pitch-ativo .handle-add { display: none !important; }
     .pitch-ativo .minimapa, .pitch-ativo .barra-status { display: none !important; }
 
+    .busca-raia-lista {
+        position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 1060;
+        max-height: 230px; overflow-y: auto; border-radius: 8px;
+    }
+    .busca-raia-lista .list-group-item { font-size: 13px; padding: 6px 10px; cursor: pointer; }
+    .busca-raia-lista .list-group-item.ativo, .busca-raia-lista .list-group-item:hover { background: #eff6ff; }
+
     .swimlane-row {
         position: absolute;
         left: 20px;
@@ -1481,8 +1488,12 @@
                                 <span>Raia</span>
                                 <a href="javascript:void(0)" onclick="abrirGerenciarRaias()" class="fw-normal text-decoration-none" title="Criar e editar as raias deste diagrama"><i class="bi bi-gear"></i> Gerenciar raias</a>
                             </label>
-                            <input type="text" id="inspNodeLane" class="form-control form-control-sm" list="raiasDatalist" autocomplete="off" placeholder="Escolha uma raia do diagrama ou digite uma nova" onchange="aplicarEstiloNoSelecionado('lane', this.value)">
-                            <datalist id="raiasDatalist"></datalist>
+                            <div class="position-relative" id="inspNodeLaneBox">
+                                <input type="text" id="inspNodeLane" name="raia_do_bloco_x" class="form-control form-control-sm pe-4" autocomplete="off" data-lpignore="true" data-1p-ignore
+                                       role="combobox" aria-expanded="false" aria-controls="inspNodeLaneLista" placeholder="Buscar raia deste diagrama...">
+                                <i class="bi bi-search position-absolute text-muted" style="right: 9px; top: 7px; font-size: 12px; pointer-events: none;"></i>
+                                <div id="inspNodeLaneLista" class="list-group shadow busca-raia-lista d-none" role="listbox"></div>
+                            </div>
                         </div>
                         <!-- Ordem no auto-layout -->
                         <div class="mb-3">
