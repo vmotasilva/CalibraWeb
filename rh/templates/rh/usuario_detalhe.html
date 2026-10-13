@@ -136,6 +136,15 @@
         .border-purple {
             border-color: #8b5cf6 !important;
         }
+
+        /* Cabeçalhos dos cards de módulos: fonte preta (o card escuro de Usuários mantém a fonte branca) */
+        .module-header:not(.bg-dark),
+        .module-header:not(.bg-dark) h5,
+        .module-header:not(.bg-dark) i,
+        .module-header:not(.bg-dark) .text-white,
+        .module-header:not(.bg-dark) .collapse-icon {
+            color: #000 !important;
+        }
 </style>
 {% endblock %}
 
