@@ -36,6 +36,7 @@ from .views import (
     # Ocorrências
     registrar_ocorrencia,
     atribuir_responsavel_ocorrencia,
+    adicionar_mensagem_ocorrencia,
     encerrar_ocorrencia,
     reabrir_ocorrencia,
     editar_ocorrencia,
@@ -100,6 +101,7 @@ __all__ = [
     'registrar_historico_massa',
     'registrar_ocorrencia',
     'atribuir_responsavel_ocorrencia',
+    'adicionar_mensagem_ocorrencia',
     'encerrar_ocorrencia',
     'reabrir_ocorrencia',
     'editar_ocorrencia',

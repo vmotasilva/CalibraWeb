@@ -1,0 +1,61 @@
+{% comment %}
+Histórico de mensagens + lançamento de nova mensagem de uma ocorrência.
+Parâmetros: oc (OcorrenciaInstrumento), usuarios_responsaveis (queryset de User), uid (reservado).
+{% endcomment %}
+<div class="mb-3 p-2 rounded bg-light border">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label fw-bold small text-muted text-uppercase mb-0" style="font-size: 0.72rem;">
+            <i class="bi bi-chat-left-text-fill text-primary me-1"></i> Tratativas e Mensagens
+        </label>
+        <span class="badge bg-secondary-subtle text-dark border" style="font-size: 0.72rem;">{{ oc.mensagens.all|length }}</span>
+    </div>
+
+    {% if oc.usuario_responsavel %}
+        <div class="small mb-2 text-muted">
+            <i class="bi bi-person-check me-1"></i>Responsável principal:
+            <strong class="text-dark">{{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}</strong>
+        </div>
+    {% endif %}
+
+    <div class="mb-2" style="max-height: 240px; overflow-y: auto;">
+        {% for m in oc.mensagens.all %}
+            <div class="bg-white border rounded p-2 mb-2">
+                <div class="d-flex justify-content-between align-items-start gap-2">
+                    <span class="fw-bold small text-dark">
+                        <i class="bi bi-person-circle text-primary me-1"></i>{% if m.autor %}{{ m.autor.get_full_name|default:m.autor.username }}{% else %}Usuário removido{% endif %}
+                    </span>
+                    <small class="text-muted text-nowrap" style="font-size: 0.7rem;">{{ m.criado_em|date:"d/m/Y H:i" }}</small>
+                </div>
+                <div class="small text-dark mt-1" style="white-space: pre-wrap;">{{ m.texto }}</div>
+                {% with dests=m.destinatarios.all %}
+                    {% if dests %}
+                        <div class="mt-1" style="font-size: 0.72rem;">
+                            <i class="bi bi-arrow-right-circle text-warning me-1"></i>
+                            {% for d in dests %}<span class="badge bg-warning-subtle text-dark border border-warning-subtle fw-normal me-1">{{ d.get_full_name|default:d.username }}</span>{% endfor %}
+                        </div>
+                    {% endif %}
+                {% endwith %}
+            </div>
+        {% empty %}
+            <div class="text-muted small fst-italic">Nenhuma mensagem lançada ainda.</div>
+        {% endfor %}
+    </div>
+
+    <form method="post" action="{% url 'metrologia:adicionar_mensagem_ocorrencia' oc.id %}">
+        {% csrf_token %}
+        <textarea name="texto" class="form-control form-control-sm mb-2" rows="2" required placeholder="Escreva uma nova mensagem / andamento da tratativa..."></textarea>
+        <details class="mb-2">
+            <summary class="small text-primary" style="cursor: pointer;"><i class="bi bi-people me-1"></i>Direcionar a responsáveis (opcional, vários)</summary>
+            <div class="border rounded bg-white p-2 mt-1" style="max-height: 160px; overflow-y: auto;">
+                {% for u in usuarios_responsaveis %}
+                    <label class="form-check d-block small">
+                        <input class="form-check-input" type="checkbox" name="destinatarios" value="{{ u.id }}">
+                        <span class="form-check-label">{% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}{% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </details>
+        <button type="submit" class="btn btn-sm btn-primary fw-semibold"><i class="bi bi-send me-1"></i>Lançar mensagem</button>
+        <small class="text-muted d-block mt-1" style="font-size: 0.70rem;"><i class="bi bi-info-circle me-1"></i>Os responsáveis marcados recebem notificação no painel. O histórico completo é mantido.</small>
+    </form>
+</div>

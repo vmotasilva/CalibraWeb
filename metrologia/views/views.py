@@ -1364,6 +1364,44 @@ def atribuir_responsavel_ocorrencia(request, ocorrencia_id):
     return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
 
 @login_required
+def adicionar_mensagem_ocorrencia(request, ocorrencia_id):
+    """Lança uma nova mensagem no histórico da ocorrência, direcionada a um ou mais responsáveis."""
+    from qms.models import OcorrenciaInstrumento, OcorrenciaMensagem
+    from django.contrib.auth.models import User
+    from shared.inbox import invalidar_cache_inbox
+    from django.shortcuts import redirect, get_object_or_404
+    from django.contrib import messages
+
+    if request.method == 'POST':
+        ocorrencia = get_object_or_404(OcorrenciaInstrumento, pk=ocorrencia_id)
+        texto = (request.POST.get('texto') or '').strip()
+        ids = [i for i in request.POST.getlist('destinatarios') if i.isdigit()]
+        destinatarios = list(User.objects.filter(pk__in=ids, is_active=True))
+
+        if not texto:
+            messages.error(request, 'Escreva a mensagem antes de enviar.')
+        else:
+            msg = OcorrenciaMensagem.objects.create(
+                ocorrencia=ocorrencia, autor=request.user, texto=texto
+            )
+            msg.destinatarios.set(destinatarios)
+
+            if destinatarios and not ocorrencia.usuario_responsavel_id:
+                ocorrencia.usuario_responsavel = destinatarios[0]
+                ocorrencia.save(update_fields=['usuario_responsavel'])
+
+            invalidar_cache_inbox(request.user)
+            for u in destinatarios:
+                invalidar_cache_inbox(u)
+
+            if destinatarios:
+                messages.success(request, f'Mensagem lançada na ocorrência #{ocorrencia.id} e direcionada a {len(destinatarios)} responsável(is).')
+            else:
+                messages.success(request, f'Mensagem lançada na ocorrência #{ocorrencia.id}.')
+
+    return redirect(request.META.get('HTTP_REFERER', '/metrologia/'))
+
+@login_required
 def encerrar_ocorrencia(request, ocorrencia_id):
     from qms.models import OcorrenciaInstrumento
     from shared.inbox import invalidar_cache_inbox

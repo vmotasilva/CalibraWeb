@@ -106,6 +106,27 @@ class OcorrenciaInstrumento(models.Model):
         )
 
 
+class OcorrenciaMensagem(models.Model):
+    """Mensagem do histórico de tratativa de uma ocorrência, com N destinatários."""
+    ocorrencia = models.ForeignKey(
+        OcorrenciaInstrumento, on_delete=models.CASCADE, related_name="mensagens"
+    )
+    autor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="ocorrencia_mensagens_enviadas"
+    )
+    texto = models.TextField()
+    destinatarios = models.ManyToManyField(
+        User, blank=True, related_name="ocorrencia_mensagens_recebidas"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["criado_em", "id"]
+
+    def __str__(self):
+        return f"Msg #{self.pk} da ocorrência {self.ocorrencia_id}"
+
+
 # --- 3. Import Job (Cross-App Coordinator) ---
 class ImportJob(models.Model):
     """Cross-app model: coordinates data import jobs across all apps"""
