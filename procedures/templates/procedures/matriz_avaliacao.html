@@ -6,6 +6,18 @@
 
 {% block extra_css %}
 <style>
+    /* Topo fixo da matriz: filtros, seleção em lote e aviso de desligados ficam visíveis enquanto a lista rola */
+    .matriz-topo-fixo {
+        position: sticky;
+        top: var(--topbar-h, 72px);
+        z-index: 1020;
+        background: #f4f6f9;
+        padding-top: .5rem;
+        margin-top: -.5rem;
+    }
+    .matriz-topo-fixo .alert { margin-bottom: .75rem; }
+</style>
+<style>
     /* =======================================================
        1. GRID CONTAINER PRINCIPAL (CARDS DOS COLABORADORES)
        ======================================================= */
@@ -391,6 +403,8 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    <!-- Topo fixo: filtros + seleção + aviso de desligados (a matriz rola por baixo) -->
+    <div class="matriz-topo-fixo">
     <!-- Botões de Acesso Rápido Superior (Filtros, Legendas, Associar) -->
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
         <div class="btn-group">
@@ -443,6 +457,40 @@
         <button type="button" class="btn btn-success d-flex align-items-center gap-1 ms-auto" data-bs-toggle="modal" data-bs-target="#modalAssociarColab">
             <i class="bi bi-person-plus"></i> <span class="d-none d-sm-inline">Associar Novo</span> Colaborador
         </button>
+    </div>
+
+    {% if matriz_selecionada %}
+    <!-- Ações em Lote -->
+    <div class="card mb-3" id="acoes-lote-container" style="display: none;">
+        <div class="card-body py-2">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <span id="contador-selecionados" class="fw-bold text-primary">0 colaboradores</span> selecionados
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-danger btn-sm" id="btn-desassociar">
+                        <i class="bi bi-trash"></i> Desassociar Selecionados
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-limpar-selecao">
+                        <i class="bi bi-x"></i> Limpar Seleção
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if colaboradores_desligados_ids %}
+    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 shadow-sm border-warning">
+        <div>
+            <i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-2"></i>
+            <strong>Colaboradores Desligados:</strong> Encontramos <strong>{{ colaboradores_desligados_ids|length }}</strong> colaborador(es) associado(s) a esta matriz que foi(foram) desligado(s) no RH.
+        </div>
+        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalRemoverDesligados">
+            <i class="bi bi-person-x"></i> Remover da Matriz
+        </button>
+    </div>
+    {% endif %}
+    {% endif %}
     </div>
 
     <!-- Modal de Filtros da Matriz -->
@@ -571,37 +619,7 @@
         </div>
     </div>
 
-    <!-- Ações em Lote -->
-    <div class="card mb-3" id="acoes-lote-container" style="display: none;">
-        <div class="card-body py-2">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <div>
-                    <span id="contador-selecionados" class="fw-bold text-primary">0 colaboradores</span> selecionados
-                </div>
-                <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-danger btn-sm" id="btn-desassociar">
-                        <i class="bi bi-trash"></i> Desassociar Selecionados
-                    </button>
-                    <button type="button" class="btn btn-secondary btn-sm" id="btn-limpar-selecao">
-                        <i class="bi bi-x"></i> Limpar Seleção
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Alerta de Colaboradores Desligados -->
     {% if colaboradores_desligados_ids %}
-    <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 shadow-sm border-warning">
-        <div>
-            <i class="bi bi-exclamation-triangle-fill text-warning fs-5 me-2"></i>
-            <strong>Colaboradores Desligados:</strong> Encontramos <strong>{{ colaboradores_desligados_ids|length }}</strong> colaborador(es) associado(s) a esta matriz que foi(foram) desligado(s) no RH.
-        </div>
-        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalRemoverDesligados">
-            <i class="bi bi-person-x"></i> Remover da Matriz
-        </button>
-    </div>
-
     <!-- Modal: remover desligados da matriz -->
     <div class="modal fade" id="modalRemoverDesligados" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-scrollable">
@@ -1209,6 +1227,15 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+    // Altura real da barra superior fixa, usada pelo topo fixo da matriz (.matriz-topo-fixo)
+    (function() {
+        const topbar = document.querySelector('.calibra-topbar');
+        const aplicar = () => { if (topbar) document.documentElement.style.setProperty('--topbar-h', topbar.offsetHeight + 'px'); };
+        aplicar();
+        window.addEventListener('resize', aplicar);
+    })();
+</script>
 {% if matriz_selecionada %}
 <script>
     const matrizId = {{ matriz_selecionada.id }};

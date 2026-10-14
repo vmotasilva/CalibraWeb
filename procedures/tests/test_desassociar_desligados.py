@@ -34,3 +34,13 @@ class DesassociarDesligadosTest(TestCase):
         self.assertEqual(resp.json()['quantidade'], 1)
         self.assertFalse(ColaboradorMatrizHabilidade.objects.filter(matriz=self.matriz).exists())
 
+
+    def test_topo_fixo_agrupa_filtros_selecao_e_aviso(self):
+        resp = self.client.get(reverse('procedures:matriz_avaliacoes'), {'matriz': self.matriz.id})
+        html = resp.content.decode()
+        ini = html.index('matriz-topo-fixo">')
+        fim = html.index('Matriz Card Principal')
+        topo = html[ini:fim]
+        self.assertIn('acoes-lote-container', topo)
+        self.assertIn('Colaboradores Desligados:', topo)
+        self.assertIn('modalAssociarColab', topo)
