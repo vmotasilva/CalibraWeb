@@ -1520,7 +1520,8 @@
     }
 
     // ===== Checkbox - Selecionar Todos =====
-    document.getElementById('selecionar-todos').addEventListener('change', function() {
+    // O "selecionar todos" não existe no layout em cards: sem a checagem, o erro abortava o script e os botões abaixo nunca eram ligados.
+    document.getElementById('selecionar-todos')?.addEventListener('change', function() {
         const checkboxes = document.querySelectorAll('.checkbox-colaborador');
         checkboxes.forEach(cb => cb.checked = this.checked);
         atualizarContadorSelecionados();
@@ -1548,7 +1549,8 @@
     // ===== Limpar Seleção =====
     document.getElementById('btn-limpar-selecao').addEventListener('click', function() {
         document.querySelectorAll('.checkbox-colaborador').forEach(cb => cb.checked = false);
-        document.getElementById('selecionar-todos').checked = false;
+        const todos = document.getElementById('selecionar-todos');
+        if (todos) todos.checked = false;
         atualizarContadorSelecionados();
     });
 
