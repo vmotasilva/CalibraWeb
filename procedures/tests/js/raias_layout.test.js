@@ -172,4 +172,12 @@ teste('filho do bloco vizinho não é empurrado para baixo pela lista recuada ao
     assert.ok(P.k3.y > P.k1.y);
 });
 
+teste('lista recuada: as ligações dos filhos entram pela lateral e voltam ao padrão sem a estrutura', () => {
+    montar(['S', 'L'], [['e', 'S', { estrutura: 'arvore' }], ['k1', 'L'], ['k2', 'L']], [['e', 'k1'], ['e', 'k2']]);
+    assert.deepStrictEqual(topologia.edges.map(x => [x.sourceHandle, x.targetHandle]), [['bottom', 'left'], ['bottom', 'left']]);
+    delete topologia.nodes[0].data.estrutura;                  // volta a "seguir o pai" (organograma)
+    posicionarAutomaticoPorRaias(false);
+    assert.deepStrictEqual(topologia.edges.map(x => [x.sourceHandle, x.targetHandle]), [['bottom', 'top'], ['bottom', 'top']]);
+});
+
 console.log(process.exitCode ? 'COM FALHAS' : `TODOS OS ${total} TESTES OK`);

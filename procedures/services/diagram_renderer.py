@@ -661,7 +661,7 @@ class DiagramaFlowable(Flowable):
         ctx_destino = self.ctx_estilo.get(str(e.get('target')), {})
         est = resolver_estilo_conexao(e, {'tema': self.tema, 'ramo': ctx_destino.get('ramo')})
         formato = est.get('shape') or self.estilo_linha
-        if self.modo == 'arvore' and not livre and e.get('sourceHandle') == 'bottom' and e.get('targetHandle') == 'left':
+        if not livre and e.get('sourceHandle') == 'bottom' and e.get('targetHandle') == 'left':
             tronco = sl + 20
             pts = [(tronco, sb), (tronco, tmy), (tl, tmy)]
         elif livre:
@@ -687,7 +687,7 @@ class DiagramaFlowable(Flowable):
         (sx0, sy0), (sx1, sy1) = pts[0], pts[-1]
         p = c.beginPath()
         p.moveTo(sx0, self._y(sy0))
-        if (formato == 'curva' or livre) and not (self.modo == 'arvore' and not livre and e.get('sourceHandle') == 'bottom' and e.get('targetHandle') == 'left'):
+        if (formato == 'curva' or livre) and not (not livre and e.get('sourceHandle') == 'bottom' and e.get('targetHandle') == 'left'):
             dx, dy = (sx1 - sx0) * 0.5, (sy1 - sy0) * 0.5
             vertical = e.get('sourceHandle') == 'bottom' or (tt >= sb - 10 and e.get('sourceHandle') != 'right')
             if vertical:   # fluxo vertical (organogramas): a curva sai e chega na vertical, como no editor

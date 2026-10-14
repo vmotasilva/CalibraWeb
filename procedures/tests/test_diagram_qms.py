@@ -2110,7 +2110,8 @@ class DiagramaRaiasAutomaticasTestCase(TestCase):
         self.assertIn('conexoes_ui', EDITOR_JS_MODULOS)
         js = ler_js_editor()
         for item in ('function iniciarConexaoPorArrasto', 'function iniciarReligacaoDaPonta', 'function criarConexaoEntre',
-                     'function desenharPontasDaConexao', 'function definirNivelNaRaia', 'const ALTURA_MINIMA_RAIA'):
+                     'function desenharPontasDaConexao', 'function definirNivelNaRaia', 'const ALTURA_MINIMA_RAIA',
+                     'function afiliadosComNivelFixo', 'Converter o nível deles para Automático?'):
             self.assertIn(item, js)
 
     def test_auto_layout_por_raias_passa_nos_testes_node(self):

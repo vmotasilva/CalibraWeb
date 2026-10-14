@@ -564,8 +564,8 @@ function gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, e
     const tMidX = tLeft + tW / 2;
     const tMidY = tTop + tH / 2;
 
-    // Modo "Árvore (lista)": tronco vertical saindo da base do pai e cotovelo até a lateral do filho
-    if (modoLayout() === 'arvore' && (edge.kind || 'hierarquia') === 'hierarquia' && edge.sourceHandle === 'bottom' && edge.targetHandle === 'left') {
+    // Estrutura em árvore (modo Árvore ou ramo em lista recuada): tronco vertical saindo da base do pai e cotovelo até a lateral do filho
+    if ((edge.kind || 'hierarquia') === 'hierarquia' && edge.sourceHandle === 'bottom' && edge.targetHandle === 'left') {
         const troncoX = sLeft + 20;
         const raio = Math.max(0, Math.min(6, Math.abs(tMidY - sBottom) / 2, Math.abs(tLeft - troncoX) / 2));
         return {

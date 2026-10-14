@@ -134,6 +134,17 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
             : Math.max(ALTURA_MINIMA_RAIA, PADDING_RAIA + (fundoRelativo[lane] || 0) + PADDING_RAIA);
     });
 
+    // Ligações: membros de listas recuadas (estrutura Árvore) entram pela lateral, com tronco vertical; as demais seguem o padrão
+    topologia.edges.forEach(e => {
+        if (!DiagramaArvore.ehHierarquia(e) || arvore.pai.get(String(e.target)) !== String(e.source)) return;
+        if (recuoPx.has(String(e.target))) {
+            e.sourceHandle = 'bottom';
+            e.targetHandle = 'left';
+        } else if (e.sourceHandle === 'bottom' && e.targetHandle === 'left') {
+            e.targetHandle = 'top';      // deixou de ser membro de lista
+        }
+    });
+
     posicionaveis.forEach(n => {
         const id = String(n.id);
         n.position.x = xDoBloco(id);

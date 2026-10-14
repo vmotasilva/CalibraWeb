@@ -73,8 +73,25 @@ function atualizarUILayout() {
 
 // Estrutura do ramo (como no XMind): como os filhos do(s) bloco(s) selecionado(s) são dispostos no organograma
 // '' = seguir a estrutura do pai | 'organograma' | 'arvore' (lista recuada)
+// Blocos afiliados (descendentes) dos blocos selecionados que têm nível fixo na raia (data.nivelRaia)
+function afiliadosComNivelFixo() {
+    const arv = arvoreAtual();
+    const ids = new Set();
+    selectedNodeIds.forEach(id => DiagramaArvore.descendentes(arv, String(id)).forEach(d => ids.add(d)));
+    return topologia.nodes.filter(n => ids.has(String(n.id)) && Number.isInteger(n.data?.nivelRaia));
+}
+
 function definirEstruturaDoRamo(valor) {
     if (IS_APPROVED || selectedNodeIds.size === 0) return;
+    // No layout por raias, níveis fixos nos afiliados atrapalham o ajuste da estrutura: pergunta se devem voltar ao automático
+    if (modoLayout() === 'raias') {
+        const fixos = afiliadosComNivelFixo();
+        if (fixos.length > 0 && confirm(`${fixos.length} bloco(s) afiliado(s) têm nível fixo na raia, o que pode atrapalhar o ajuste da estrutura.
+
+Converter o nível deles para Automático?`)) {
+            fixos.forEach(n => delete n.data.nivelRaia);
+        }
+    }
     selectedNodeIds.forEach(id => {
         const node = topologia.nodes.find(n => n.id === id);
         if (!node) return;
