@@ -80,11 +80,10 @@ class ColaboradorForm(forms.ModelForm):
     class Meta:
         model = Colaborador
         fields = "__all__"
-        exclude = ["user_django", "criado_em", "pacotes_treinamento"]
+        exclude = ["user_django", "criado_em", "pacotes_treinamento", "foto"]
         widgets = {
             "nome_completo": forms.TextInput(attrs={"class": "form-control"}),
             "nome_abreviado_manual": forms.TextInput(attrs={"class": "form-control", "maxlength": "60", "placeholder": "Ex.: Vinícius Mota", "autocomplete": "off"}),
-            "foto": forms.FileInput(attrs={"class": "form-control", "accept": "image/*"}),
             "matricula": forms.TextInput(attrs={"class": "form-control"}),
             "matricula_global": forms.TextInput(attrs={"class": "form-control"}),
             "cpf": forms.TextInput(attrs={
