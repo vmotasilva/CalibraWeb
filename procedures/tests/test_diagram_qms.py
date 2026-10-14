@@ -2228,3 +2228,73 @@ class PerguntaDeLigacaoTestCase(TestCase):
         # o Outliner não usa mais pontas laterais fixas nas ligações hierárquicas
         outliner = js[js.index('async function recuarItemOutliner'):js.index('function recalcularPosicoesCanvasHierarquico')]
         self.assertNotIn("sourceHandle: 'right'", outliner)
+
+
+class PdfSoDesenhoTestCase(TestCase):
+    """O PDF exportado contém só o desenho (sem cabeçalho, molduras, tabelas e rodapé)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='pdf.desenho', password='x', is_superuser=True)
+        self.diagrama = Diagrama.objects.create(titulo='Só desenho', criado_por=self.user)
+        topo = {"layout_modo": "raias", "lanes": ["A", "B"],
+                "nodes": [{"id": "1", "type": "process", "position": {"x": 100, "y": 70}, "data": {"label": "Início", "lane": "A"}},
+                          {"id": "2", "type": "process", "position": {"x": 600, "y": 200}, "data": {"label": "Fim", "lane": "B"}}],
+                "edges": [{"id": "e1", "source": "1", "target": "2"}]}
+        self.versao = DiagramaVersao.objects.create(diagrama=self.diagrama, revisao=0, dados_topologia=topo, status=StatusDiagrama.RASCUNHO)
+
+    @staticmethod
+    def _paginas_e_tamanho(pdf):
+        import re
+        paginas = len(re.findall(rb"/Type\s*/Page[^s]", pdf))
+        caixa = re.search(rb"/MediaBox\s*\[\s*0\s+0\s+([0-9.]+)\s+([0-9.]+)", pdf)
+        return paginas, float(caixa.group(1)), float(caixa.group(2))
+
+    def test_pagina_unica_do_tamanho_do_desenho(self):
+        from procedures.services.diagram_renderer import DiagramaFlowable
+        from procedures.services.pdf_doc071_generator import MARGEM_PDF_DESENHO, gerar_pdf_desenho
+        pdf = gerar_pdf_desenho(self.versao)
+        self.assertTrue(pdf.startswith(b'%PDF-'))
+        paginas, largura, altura = self._paginas_e_tamanho(pdf)
+        self.assertEqual(paginas, 1)
+        desenho = DiagramaFlowable(self.versao.dados_topologia, max_w=13000, max_h=13000)
+        self.assertAlmostEqual(largura, desenho.width + 2 * MARGEM_PDF_DESENHO, delta=1)
+        self.assertAlmostEqual(altura, desenho.height + 2 * MARGEM_PDF_DESENHO, delta=1)
+        self.assertEqual(desenho.scale, 1.0)      # tamanho real, sem reduzir
+
+    def test_diagrama_gigante_e_reduzido_para_caber_no_limite_dos_leitores(self):
+        from procedures.services.pdf_doc071_generator import LIMITE_PAGINA_PDF, gerar_pdf_desenho
+        topo = dict(self.versao.dados_topologia)
+        topo["nodes"] = topo["nodes"] + [{"id": "3", "type": "process", "position": {"x": 30000, "y": 100}, "data": {"label": "Longe", "lane": "A"}}]
+        self.versao.dados_topologia = topo
+        self.versao.save()
+        _, largura, altura = self._paginas_e_tamanho(gerar_pdf_desenho(self.versao))
+        self.assertLessEqual(largura, LIMITE_PAGINA_PDF + 1)
+        self.assertLessEqual(altura, LIMITE_PAGINA_PDF + 1)
+
+    def test_diagrama_sem_blocos_gera_pdf_simples(self):
+        from procedures.services.pdf_doc071_generator import gerar_pdf_desenho
+        self.versao.dados_topologia = {"nodes": [], "edges": []}
+        self.versao.save()
+        self.assertTrue(gerar_pdf_desenho(self.versao).startswith(b'%PDF-'))
+
+    def test_endpoint_exporta_so_o_desenho_por_padrao_e_o_completo_sob_pedido(self):
+        c = Client()
+        c.force_login(self.user)
+        url = f'/procedures/api/diagramas-versoes/{self.versao.id}/exportar-pdf-doc071/'
+        so_desenho = c.post(url, data=json.dumps({}), content_type='application/json')
+        self.assertEqual(so_desenho.status_code, 200)
+        pag1, larg1, alt1 = self._paginas_e_tamanho(so_desenho.content)
+        completo = c.post(url, data=json.dumps({"completo": True}), content_type='application/json')
+        self.assertEqual(completo.status_code, 200)
+        _, larg2, alt2 = self._paginas_e_tamanho(completo.content)
+        self.assertEqual(pag1, 1)
+        self.assertAlmostEqual(larg2, 841.89, delta=1)      # documento completo: A4 paisagem
+        self.assertNotAlmostEqual(larg1, larg2, delta=1)
+
+    def test_editor_tem_botao_para_voltar_a_listagem(self):
+        c = Client()
+        c.force_login(self.user)
+        html = c.get(f'/procedures/diagramas/editor/{self.versao.id}/').content.decode()
+        self.assertIn('id="btnVoltarLista"', html)
+        self.assertIn('href="/procedures/diagramas/"', html)
+        self.assertIn('function voltarParaListagem', ler_js_editor())

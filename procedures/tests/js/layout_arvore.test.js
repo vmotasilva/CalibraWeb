@@ -205,17 +205,39 @@ teste('desempenho: 600 blocos em menos de 200 ms', () => {
     assert.strictEqual(Object.keys(r.posicoes).length, 600);
 });
 
-teste('ordem manual reordena irmaos e raizes sem alterar as conexoes', () => {
+teste('ordem manual = posicao entre os irmaos; sem numero ocupa o que sobra; conexoes intactas', () => {
     const nos = ['r', 'a', 'b', 'c'].map(id => ({ id, position: { x: 0, y: 0 }, data: {} }));
-    nos[1].data.ordem = 3; nos[2].data.ordem = 1;   // b (1) vem antes de a (3); c sem ordem fica por ultimo
+    nos[1].data.ordem = 3; nos[2].data.ordem = 1;   // b = 1a posicao, a = 3a posicao; c (sem numero) fica com a que sobra
     const arestas = [['r', 'a'], ['r', 'b'], ['r', 'c']].map(([s, t], i) => ({ id: 'e' + i, source: s, target: t }));
     const arv = A.aplicarOrdemManual(A.montarArvore(nos, arestas), nos);
-    assert.deepStrictEqual(arv.filhos.get('r'), ['b', 'a', 'c']);
+    assert.deepStrictEqual(arv.filhos.get('r'), ['b', 'c', 'a']);
     assert.deepStrictEqual(A.montarArvore(nos, arestas).filhos.get('r'), ['a', 'b', 'c']);
     const r = A.calcularLayout(nos, arestas, 'organograma', {}, { empilharFolhas: false });
-    assert.ok(r.posicoes.b.x < r.posicoes.a.x && r.posicoes.a.x < r.posicoes.c.x);
-    const p = A.calcularLayout(nos, arestas, 'organograma', {});   // empilhado: a ordem vira vertical
-    assert.ok(p.posicoes.b.y < p.posicoes.a.y && p.posicoes.a.y < p.posicoes.c.y);
+    assert.ok(r.posicoes.b.x < r.posicoes.c.x && r.posicoes.c.x < r.posicoes.a.x);
+});
+
+teste('um unico numero nao joga o bloco para a esquerda de todos: vai para a posicao pedida', () => {
+    const nos = ['r', 'a', 'b', 'c', 'd'].map(id => ({ id, position: { x: 0, y: 0 }, data: {} }));
+    nos[1].data.ordem = 3;                                   // a (1o irmao natural) deve ser o 3o
+    const arestas = [['r', 'a'], ['r', 'b'], ['r', 'c'], ['r', 'd']].map(([s, t], i) => ({ id: 'e' + i, source: s, target: t }));
+    assert.deepStrictEqual(A.aplicarOrdemManual(A.montarArvore(nos, arestas), nos).filhos.get('r'), ['b', 'c', 'a', 'd']);
+});
+
+teste('ordem alem do total vai para o fim; numeros repetidos e posicao ocupada empurram para a proxima', () => {
+    assert.deepStrictEqual(A.ordenarPorPosicao(['a', 'b', 'c'], id => (id === 'a' ? 9 : null)), ['b', 'c', 'a']);
+    assert.deepStrictEqual(A.ordenarPorPosicao(['a', 'b', 'c'], id => (id === 'a' || id === 'b' ? 1 : null)), ['a', 'b', 'c']);
+    assert.deepStrictEqual(A.ordenarPorPosicao(['a', 'b', 'c'], id => (id === 'c' ? 1 : null)), ['c', 'a', 'b']);
+});
+
+teste('grupos isolados: a contagem de cada grupo (ex.: raia e nivel) e independente', () => {
+    const nos = ['r', 'a', 'b', 'x', 'y'].map(id => ({ id, position: { x: 0, y: 0 }, data: {} }));
+    nos[2].data.ordem = 1;      // b: primeiro do grupo "G1"
+    nos[4].data.ordem = 1;      // y: primeiro do grupo "G2"
+    const arestas = [['r', 'a'], ['r', 'b'], ['r', 'x'], ['r', 'y']].map(([s, t], i) => ({ id: 'e' + i, source: s, target: t }));
+    const grupo = n => (['a', 'b'].includes(String(n.id)) ? 'G1' : 'G2');
+    const arv = A.aplicarOrdemManual(A.montarArvore(nos, arestas), nos, grupo);
+    // as vagas de cada grupo se mantêm (a, b ocupam as duas primeiras; x, y as duas últimas); dentro de cada grupo vale a ordem
+    assert.deepStrictEqual(arv.filhos.get('r'), ['b', 'a', 'y', 'x']);
 });
 
 teste('organograma empilha folhas na vertical e economiza largura', () => {

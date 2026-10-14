@@ -180,4 +180,14 @@ teste('lista recuada: as ligações dos filhos entram pela lateral e voltam ao p
     assert.deepStrictEqual(topologia.edges.map(x => [x.sourceHandle, x.targetHandle]), [['bottom', 'top'], ['bottom', 'top']]);
 });
 
+teste('ordem por raia e nivel: cada grupo conta isolado e um numero so nao vai para a esquerda de todos', () => {
+    const P = montar(['A', 'B', 'C'],
+        [['r', 'A'], ['b1', 'B'], ['b2', 'B', { ordem: 3 }], ['b3', 'B'], ['c1', 'C'], ['c2', 'C', { ordem: 1 }]],
+        [['r', 'b1'], ['r', 'b2'], ['r', 'b3'], ['r', 'c1'], ['r', 'c2']]);
+    // raia B: b2 pediu a 3a posicao (entre b1, b3 e b2 -> b1, b3, b2); raia C: c2 pediu a 1a (c2, c1)
+    assert.ok(P.b1.x < P.b3.x && P.b3.x < P.b2.x);
+    assert.ok(P.c2.x < P.c1.x);
+    semSobreposicao(P);
+});
+
 console.log(process.exitCode ? 'COM FALHAS' : `TODOS OS ${total} TESTES OK`);

@@ -105,18 +105,49 @@
      * Calcula as posições. `tamanhos` = { id: {w, h} } (medidos no DOM; usa estimativa quando faltar).
      * Retorna { posicoes: { id: {x, y} }, handles: { idConexao: [sourceHandle, targetHandle] }, ocultos: Set }.
      */
-    // Ordem manual (data.ordem, número): irmãos e raízes com ordem vêm primeiro, do menor para o maior;
-    // empates e blocos sem ordem mantêm a ordem das conexões. Só vale para o layout (não altera as conexões).
-    function aplicarOrdemManual(arvore, nos) {
+    // Ordem manual (data.ordem, número) = POSIÇÃO do bloco entre os seus pares (1 = primeiro). Os pares são os irmãos (blocos
+    // ligados ao mesmo pai) e, quando `chaveDoGrupo` é informada, só os irmãos do mesmo grupo (por exemplo, a mesma raia e o
+    // mesmo nível): cada grupo tem a sua contagem isolada. Blocos sem número ocupam as posições que sobram, na ordem das
+    // conexões. Só vale para o layout (não altera as conexões).
+    function ordenarPorPosicao(ids, ordemDe) {
+        const n = ids.length;
+        const resultado = new Array(n).fill(null);
+        const numerados = ids.map((id, i) => ({ id, i, o: ordemDe(id) })).filter(x => x.o !== null)
+            .sort((x, y) => x.o - y.o || x.i - y.i);
+        numerados.forEach(x => {
+            const alvo = Math.max(0, Math.min(n - 1, Math.round(x.o) - 1));
+            let d = alvo;
+            while (d < n && resultado[d] !== null) d++;                       // posição ocupada: próxima livre à direita
+            if (d >= n) { d = alvo; while (d >= 0 && resultado[d] !== null) d--; }   // sem espaço à direita: à esquerda
+            resultado[d] = x.id;
+        });
+        const usados = new Set(numerados.map(x => x.id));
+        const livres = ids.filter(id => !usados.has(id));
+        let k = 0;
+        for (let p = 0; p < n; p++) if (resultado[p] === null) resultado[p] = livres[k++];
+        return resultado;
+    }
+
+    function aplicarOrdemManual(arvore, nos, chaveDoGrupo) {
         const porId = new Map(nos.map(n => [String(n.id), n]));
-        const chave = id => {
+        const ordemDe = id => {
             const v = porId.get(id)?.data?.ordem;
-            return typeof v === 'number' && isFinite(v) ? v : Infinity;
+            return typeof v === 'number' && isFinite(v) ? v : null;
         };
-        const ordenar = lista => lista
-            .map((id, i) => ({ id, i, k: chave(id) }))
-            .sort((x, y) => (x.k === y.k ? x.i - y.i : (x.k < y.k ? -1 : 1)))
-            .map(x => x.id);
+        const ordenar = lista => {
+            const grupos = new Map();   // chave do grupo -> membros com a posição (vaga) que ocupam na lista
+            lista.forEach((id, vaga) => {
+                const chave = chaveDoGrupo ? chaveDoGrupo(porId.get(id)) : '';
+                if (!grupos.has(chave)) grupos.set(chave, []);
+                grupos.get(chave).push({ id, vaga });
+            });
+            const saida = lista.slice();
+            grupos.forEach(membros => {
+                const novos = ordenarPorPosicao(membros.map(m => m.id), ordemDe);
+                membros.forEach((m, i) => { saida[m.vaga] = novos[i]; });
+            });
+            return saida;
+        };
         arvore.filhos.forEach((lista, id) => arvore.filhos.set(id, ordenar(lista)));
         arvore.raizes = ordenar(arvore.raizes);
         return arvore;
@@ -369,7 +400,7 @@
     }
 
     const api = {
-        MODOS, ESTRUTURAS, ehHierarquia, estimarTamanho, montarArvore, aplicarOrdemManual, descendentes, ocultos, profundidade,
+        MODOS, ESTRUTURAS, ehHierarquia, estimarTamanho, montarArvore, aplicarOrdemManual, ordenarPorPosicao, descendentes, ocultos, profundidade,
         calcularLayout, moverNaArvore, clonarRamo, irmaos, ehAncestral,
     };
 

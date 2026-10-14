@@ -23,7 +23,9 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     if (posicionaveis.length === 0) return;
 
     const porId = new Map(posicionaveis.map(n => [String(n.id), n]));
-    const arvore = DiagramaArvore.aplicarOrdemManual(DiagramaArvore.montarArvore(posicionaveis, topologia.edges), posicionaveis);
+    // a ordem de cada bloco conta só entre os irmãos da mesma raia e do mesmo nível (contagem isolada por nível)
+    const grupoDaOrdem = n => `${n.data?.lane || 'Geral'}|${Number.isInteger(n.data?.nivelRaia) ? n.data.nivelRaia : 'auto'}`;
+    const arvore = DiagramaArvore.aplicarOrdemManual(DiagramaArvore.montarArvore(posicionaveis, topologia.edges), posicionaveis, grupoDaOrdem);
     const ordemNumerica = n => {
         const v = parseInt(n.data?.stepId || n.id, 10);
         return isNaN(v) ? Infinity : v;

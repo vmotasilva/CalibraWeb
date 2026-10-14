@@ -173,6 +173,49 @@ def _secoes_de_conteudo(topologia: dict, cell_style) -> list:
     return story
 
 
+LIMITE_PAGINA_PDF = 14000   # pontos: tamanho máximo de página aceito pelos leitores de PDF (Acrobat: 14400)
+MARGEM_PDF_DESENHO = 20
+
+
+def gerar_pdf_desenho(versao: DiagramaVersao) -> bytes:
+    """PDF só com o desenho: uma página do tamanho do diagrama (vetorial, escala 1:1), sem cabeçalho, molduras,
+    tabelas ou rodapé. Se o desenho passar do limite de página dos leitores, é reduzido para caber."""
+    topologia = versao.dados_topologia or {}
+    buffer = io.BytesIO()
+    titulo = f"{versao.diagrama.identificador} - {versao.diagrama.titulo} (Rev. {versao.revisao:02d})"
+
+    if not topologia.get('nodes'):
+        c = canvas.Canvas(buffer, pagesize=landscape(A4))
+        c.setTitle(titulo)
+        c.setFont('Helvetica-Oblique', 11)
+        c.setFillColor(colors.HexColor('#64748B'))
+        c.drawCentredString(landscape(A4)[0] / 2, landscape(A4)[1] / 2, 'Diagrama sem blocos cadastrados')
+        c.showPage()
+        c.save()
+        return buffer.getvalue()
+
+    fotos = {**_carregar_fotos(topologia), **_carregar_imagens(topologia)}
+    cores = dict(topologia.get('raias_cores') or {})
+    limite = LIMITE_PAGINA_PDF - 2 * MARGEM_PDF_DESENHO
+    desenho = DiagramaFlowable(topologia, max_w=limite, max_h=limite, fotos=fotos, raias_cores=cores)
+    largura = desenho.width + 2 * MARGEM_PDF_DESENHO
+    altura = desenho.height + 2 * MARGEM_PDF_DESENHO
+
+    c = canvas.Canvas(buffer, pagesize=(largura, altura))
+    c.setTitle(titulo)
+    fundo = (topologia.get('tema') or {}).get('fundo')
+    if isinstance(fundo, str) and len(fundo) == 7 and fundo.startswith('#'):
+        try:
+            c.setFillColor(colors.HexColor(fundo))
+            c.rect(0, 0, largura, altura, stroke=0, fill=1)   # a página inteira usa o fundo do tema
+        except Exception:
+            pass
+    desenho.drawOn(c, MARGEM_PDF_DESENHO, MARGEM_PDF_DESENHO)
+    c.showPage()
+    c.save()
+    return buffer.getvalue()
+
+
 def gerar_pdf_diagrama_doc071(versao: DiagramaVersao, image_base64: str = None) -> bytes:
     """Gera o arquivo PDF DOC.071 em orientação paisagem (Landscape A4)."""
     buffer = io.BytesIO()

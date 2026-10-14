@@ -121,3 +121,18 @@ function dispararAutoSave() {
         }
     }, 800);
 }
+
+// Botão "Diagramas": volta para a listagem; se ainda há salvamento em andamento, espera terminar antes de sair
+function voltarParaListagem(ev) {
+    const indicador = document.getElementById('saveIndicator');
+    if (!indicador || !indicador.textContent.includes('Salvando')) return;   // nada pendente: segue o link
+    ev.preventDefault();
+    const destino = ev.currentTarget.href;
+    const inicio = Date.now();
+    const espera = setInterval(() => {
+        if (!indicador.textContent.includes('Salvando') || Date.now() - inicio > 5000) {
+            clearInterval(espera);
+            window.location.href = destino;
+        }
+    }, 150);
+}

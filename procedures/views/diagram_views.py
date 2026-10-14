@@ -32,7 +32,7 @@ from .diagram_temas_views import pode_salvar_tema, temas_para_editor
 from shared.inbox import invalidar_cache_inbox
 from shared.permissions import is_admin_user, user_has_nav_perm
 from ..services.diagram_qms_service import DiagramaQMSService
-from ..services.pdf_doc071_generator import gerar_pdf_diagrama_doc071
+from ..services.pdf_doc071_generator import gerar_pdf_desenho, gerar_pdf_diagrama_doc071
 from ..services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id
 
 
@@ -390,8 +390,11 @@ def api_diagrama_versao_exportar_pdf(request, versao_id):
     except Exception:
         payload = {}
 
-    image_base64 = payload.get("image_base64")
-    pdf_bytes = gerar_pdf_diagrama_doc071(versao, image_base64=image_base64)
+    # padrão: PDF só com o desenho; {"completo": true} gera o documento com cabeçalho, metadados e histórico
+    if payload.get("completo") is True:
+        pdf_bytes = gerar_pdf_diagrama_doc071(versao, image_base64=payload.get("image_base64"))
+    else:
+        pdf_bytes = gerar_pdf_desenho(versao)
 
     nome_doc = re.sub(r'[^A-Za-z0-9#._-]+', '_', versao.diagrama.codigo_exibicao).strip('_')
     filename = f"Diagrama_{nome_doc}_Rev{versao.revisao:02d}.pdf"

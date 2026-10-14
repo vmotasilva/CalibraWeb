@@ -376,9 +376,12 @@ function atualizarAjudaOrdemDoBloco(node) {
     const paiId = arvore.pai.get(String(node.id));
     const pai = paiId !== undefined ? topologia.nodes.find(n => String(n.id) === paiId) : null;
     const irmaos = paiId !== undefined ? arvore.filhos.get(paiId).length : arvore.raizes.length;
-    ajuda.textContent = pai
-        ? `Ordem entre os ${irmaos} bloco(s) ligados a "${pai.data?.label || pai.id}" (começa em 1 a cada bloco de origem). Menor número = mais à esquerda. Em branco, segue a ordem das conexões. Use Auto-Layout para aplicar.`
-        : 'Bloco sem origem: a ordem vale entre os blocos de topo. Em branco, segue a sequência atual. Use Auto-Layout para aplicar.';
+    const porRaia = modoLayout() === 'raias';
+    const escopo = porRaia ? 'da mesma raia e do mesmo nível (cada nível tem a sua contagem)' : 'ligados ao mesmo bloco de origem';
+    ajuda.textContent = (pai
+        ? `Posição entre os ${irmaos} bloco(s) ligados a "${pai.data?.label || pai.id}", contando só os ${escopo}: 1 = primeiro da esquerda.`
+        : `Bloco sem origem: posição entre os blocos de topo ${porRaia ? 'da mesma raia e nível' : ''}: 1 = primeiro da esquerda.`)
+        + ' Sem número, o bloco ocupa as posições que sobram. Use Auto-Layout para aplicar.';
 }
 
 function definirOrdemDoBloco(valor) {
