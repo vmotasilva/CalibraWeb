@@ -1,5 +1,7 @@
 {% extends "procedures/procedimento_base.html" %}
 
+{% block header_title %}{% endblock %}
+
 {% block title %}{{ diagrama.codigo_exibicao }} - {{ diagrama.titulo }} (Rev. {{ versao.revisao|stringformat:"02d" }}){% endblock %}
 
 {% block extra_css %}
