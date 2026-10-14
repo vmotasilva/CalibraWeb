@@ -237,7 +237,7 @@
                         <i class="bi bi-grid-1x2-fill"></i>
                         Central de Operações
                     </span>
-                    <a href="{% url 'changelog' %}" class="badge bg-white bg-opacity-20 text-white border-0 text-decoration-none py-1 px-2 rounded-pill" style="font-size: 0.72rem;">
+                    <a href="{% url 'changelog' %}" class="badge text-white border-0 text-decoration-none py-1 px-2 rounded-pill" style="font-size: 0.72rem; background: rgba(255, 255, 255, 0.18);" title="Histórico de atualizações">
                         <i class="bi bi-info-circle me-1"></i> v{{ system_version|default:'1.0' }}
                     </a>
                 </div>
@@ -296,10 +296,10 @@
 
                     <!-- BOTÕES MÓDULOS E NOTIFICAÇÕES -->
                     <a class="btn btn-light btn-sm hub-primary-btn fw-semibold py-1 px-3 rounded-pill d-inline-flex align-items-center text-nowrap" href="#modulos" style="min-height: 36px; font-size: 0.82rem;">
-                        <i class="bi bi-grid-3x3-gap me-1.5"></i> Módulos
+                        <i class="bi bi-grid-3x3-gap me-1"></i> Módulos
                     </a>
                     <a class="btn btn-warning btn-sm hub-primary-btn text-dark fw-bold shadow-sm py-1 px-3 rounded-pill d-inline-flex align-items-center text-nowrap" href="{% url 'inbox' %}" style="min-height: 36px; font-size: 0.82rem;">
-                        <i class="bi bi-bell-fill me-1.5"></i> Notificações{% if nav_notifications_total %} ({{ nav_notifications_total }}){% endif %}
+                        <i class="bi bi-bell-fill me-1"></i> Notificações{% if nav_notifications_total %} ({{ nav_notifications_total }}){% endif %}
                     </a>
                 </div>
             </div>
@@ -313,7 +313,7 @@
                 <h2 class="h4 mb-1">Módulos do Sistema</h2>
                 <p>Acesse o HUB dedicado de cada módulo para gerenciar suas rotinas e indicadores.</p>
             </div>
-            <span class="module-chip">{{ modules|length }} módulos ativos</span>
+            <span class="module-chip">{{ modules|length }} módulo{{ modules|length|pluralize }} ativo{{ modules|length|pluralize }}</span>
         </div>
         <div class="row g-3" id="modulesGrid">
             {% for module in modules %}
@@ -404,10 +404,18 @@
             searchInput.setAttribute('aria-expanded', 'true');
         }
 
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = value == null ? '' : String(value);
+            return div.innerHTML;
+        }
+
         function highlightQuery(text, query) {
-            if (!query) return text;
-            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-            return text.replace(regex, '<mark class="bg-warning text-dark p-0 rounded-1">$1</mark>');
+            const safeText = escapeHtml(text);
+            if (!query) return safeText;
+            const safeQuery = escapeHtml(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${safeQuery})`, 'gi');
+            return safeText.replace(regex, '<mark class="bg-warning text-dark p-0 rounded-1">$1</mark>');
         }
 
         function renderResults(results, query) {
@@ -420,7 +428,7 @@
                     <div class="p-4 text-center text-muted">
                         <i class="bi bi-search-heart display-6 d-block mb-2 text-secondary opacity-50"></i>
                         <p class="mb-1 fw-semibold text-dark">Nenhum recurso encontrado</p>
-                        <small class="text-muted">Não encontramos nenhuma tela ou função com "${query}".</small>
+                        <small class="text-muted">Não encontramos nenhuma tela ou função com "${escapeHtml(query)}".</small>
                     </div>
                 `;
                 openDropdown();
@@ -448,7 +456,7 @@
                                 ${highlightedModule} &bull; ${highlightedSession}
                             </span>
                         </div>
-                        <small class="text-muted text-truncate d-block" style="font-size: 0.78rem;">${item.description}</small>
+                        <small class="text-muted text-truncate d-block" style="font-size: 0.78rem;">${escapeHtml(item.description)}</small>
                     </div>
                     <i class="bi bi-arrow-right-short text-muted fs-5 flex-shrink-0"></i>
                 `;
@@ -463,9 +471,14 @@
             const url = `{% url 'api_hub_search' %}?q=${encodeURIComponent(query)}`;
 
             fetch(url, { credentials: 'same-origin' })
-                .then((res) => res.json())
+                .then((res) => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    return res.json();
+                })
                 .then((data) => {
                     hideLoading();
+                    // Ignora respostas atrasadas de uma busca que já foi substituída
+                    if (searchInput.value.trim() !== query) return;
                     if (data && data.success) {
                         renderResults(data.results, query);
                     }

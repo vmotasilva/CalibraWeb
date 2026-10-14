@@ -117,6 +117,7 @@ class SharedHubViewTests(TestCase):
             ('laboratorio', 'HUB de Laboratório', 'Painel de Ocorrências'),
             ('pessoas', 'HUB de Pessoas', 'Quadro de Colaboradores'),
             ('fornecedores', 'HUB de Fornecedores', 'Base de Fornecedores'),
+            ('diagramas', 'HUB de Diagramas', 'Cadastro de Raias'),
         ]
 
         for slug, expected_title, expected_activity in modulos:
