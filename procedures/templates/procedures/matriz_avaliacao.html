@@ -1195,7 +1195,29 @@
         }
         return cookieValue;
     }
-    
+
+    // Token CSRF: o cookie é HttpOnly em produção, então o token do template é o fallback confiável.
+    function obterCsrf() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken') || csrfToken;
+    }
+
+    // Lê a resposta JSON de associar/desassociar sem quebrar em 403/500 (HTML) e
+    // normaliza as chaves de sucesso/erro (o middleware de permissões usa success/error).
+    function lerRespostaJson(response) {
+        return response.text().then(texto => {
+            let data = {};
+            try { data = JSON.parse(texto); } catch (e) { /* resposta não-JSON */ }
+            const sucesso = data.sucesso === true || data.success === true;
+            let erro = data.erro || data.error || data.message || '';
+            if (!sucesso && !erro) {
+                erro = response.status === 403
+                    ? 'Sem permissão ou sessão/CSRF expirado (HTTP 403). Recarregue a página e tente novamente.'
+                    : `Falha na requisição (HTTP ${response.status}).`;
+            }
+            return { ...data, sucesso, erro };
+        });
+    }
+
     let avaliacaoAtual = {
         matrizId: null,
         colaboradorId: null,
@@ -1514,14 +1536,13 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                               getCookie('csrftoken')
+                'X-CSRFToken': obterCsrf()
             },
             body: JSON.stringify({
                 colaboradores: selecionados
             })
         })
-        .then(response => response.json())
+        .then(lerRespostaJson)
         .then(data => {
             if (data.sucesso) {
                 alert(`${data.quantidade} colaborador(es) desassociado(s) com sucesso!`);
@@ -1563,8 +1584,8 @@
             this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Removendo...';
             
             const currentMatrizId = typeof matrizId !== 'undefined' ? matrizId : '{{ matriz_selecionada.id }}';
-            const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken') || (typeof csrfToken !== 'undefined' ? csrfToken : '');
-            
+            const csrf = obterCsrf();
+
             fetch(`/procedures/matrizes/${currentMatrizId}/desassociar-colaboradores/`, {
                 method: 'POST',
                 headers: {
@@ -1575,7 +1596,7 @@
                     colaboradores: ids
                 })
             })
-            .then(response => response.json())
+            .then(lerRespostaJson)
             .then(data => {
                 if (data.sucesso) {
                     alert(`${data.quantidade} colaborador(es) desligado(s) desassociado(s) com sucesso!`);
@@ -1781,7 +1802,7 @@
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Associando...';
 
-            const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value || getCookie('csrftoken') || (typeof csrfToken !== 'undefined' ? csrfToken : '');
+            const csrf = obterCsrf();
 
             fetch(`/procedures/matrizes/${matrizSelectId}/associar-colaborador/`, {
                 method: 'POST',
@@ -1793,7 +1814,7 @@
                     colaborador_id: parseInt(colaboradorId)
                 })
             })
-            .then(response => response.json())
+            .then(lerRespostaJson)
             .then(data => {
                 if (data.sucesso) {
                     alert('Colaborador associado com sucesso!');
