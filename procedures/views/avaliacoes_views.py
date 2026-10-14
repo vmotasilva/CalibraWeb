@@ -54,9 +54,10 @@ def matriz_avaliacoes_view(request):
     turnos_disponiveis = []
     pagination = None
     query_params = None
+    colaboradores_desligados = []
     colaboradores_desligados_ids = []
     desligados_ids_json = '[]'
-    
+
     if matriz_id:
         matriz_selecionada = get_object_or_404(MatrizHabilidade, id=matriz_id)
         # Colunas (disciplinas) em ordem alfabética crescente
@@ -122,10 +123,11 @@ def matriz_avaliacoes_view(request):
             ).filter(num_avaliacoes__lt=disciplinas.count())
         
         # Obter IDs dos colaboradores desligados associados à matriz
-        colaboradores_desligados_ids = list(Colaborador.objects.filter(
+        colaboradores_desligados = list(Colaborador.objects.filter(
             id__in=ColaboradorMatrizHabilidade.objects.filter(matriz=matriz_selecionada, ativo=True).values_list('colaborador_id', flat=True),
             is_active=False
-        ).values_list('id', flat=True))
+        ).select_related('setor').order_by('nome_completo'))
+        colaboradores_desligados_ids = [c.id for c in colaboradores_desligados]
         import json
         desligados_ids_json = json.dumps(colaboradores_desligados_ids)
         
@@ -276,6 +278,7 @@ def matriz_avaliacoes_view(request):
         'nivel_filtro': nivel_filtro,
         'pagination': pagination,
         'query_params': query_params,
+        'colaboradores_desligados': colaboradores_desligados,
         'colaboradores_desligados_ids': colaboradores_desligados_ids,
         'desligados_ids_json': desligados_ids_json,
     }
