@@ -142,6 +142,9 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
             e.targetHandle = 'left';
         } else if (e.sourceHandle === 'bottom' && e.targetHandle === 'left') {
             e.targetHandle = 'top';      // deixou de ser membro de lista
+        } else if (!e.ligacaoManual && e.sourceHandle === 'right' && e.targetHandle === 'left' && porId.get(String(e.source))?.type !== 'decision') {
+            e.sourceHandle = 'bottom';   // ligação de hierarquia criada com saída/entrada laterais: volta a sair por baixo e entrar por cima
+            e.targetHandle = 'top';
         }
     });
 

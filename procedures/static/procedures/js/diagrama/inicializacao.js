@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     atualizarUILayout();
     atualizarMarcasDeMenuConteudo();
     montarMenuDeEstrutura();
+    atualizarMarcaLigacaoPadrao();
 
     // Diagrama importado (XMind/OPML/Markdown): as posições vêm do auto-layout da primeira abertura
     if (topologia.precisa_layout) {

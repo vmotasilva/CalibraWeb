@@ -262,6 +262,12 @@ def validar_topologia(topologia: dict) -> list:
     if topologia.get('mostrar_nome_raias') is not None and not isinstance(topologia['mostrar_nome_raias'], bool):
         return ["'mostrar_nome_raias' deve ser verdadeiro/falso."]
 
+    padrao = topologia.get('ligacao_padrao')
+    if padrao is not None and (not isinstance(padrao, dict)
+                               or padrao.get('sourceHandle') not in ('top', 'right', 'bottom', 'left')
+                               or padrao.get('targetHandle') not in ('top', 'right', 'bottom', 'left')):
+        return ["'ligacao_padrao' deve informar sourceHandle e targetHandle (top, right, bottom ou left)."]
+
     recolhidas = topologia.get('raias_recolhidas')
     if recolhidas is not None and (not isinstance(recolhidas, list) or len(recolhidas) > MAX_RAIAS
                                    or not all(isinstance(x, str) and 0 < len(x) <= 100 for x in recolhidas)):

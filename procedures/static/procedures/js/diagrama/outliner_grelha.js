@@ -69,6 +69,15 @@ function obterEstruturaOutliner() {
 /**
  * Renderiza a lista interativa de tópicos com recuos, guias de alinhamento e badges de raia.
  */
+// Pontos de ligação padrão de uma conexão pai -> filho, conforme o layout: organograma e raias saem por baixo do pai e
+// entram por cima do filho; "lógico" usa as laterais; "árvore" sai por baixo e entra pela lateral
+function alcasPadraoDaLigacao() {
+    const modo = typeof modoLayout === 'function' ? modoLayout() : 'raias';
+    if (modo === 'logico') return { sourceHandle: 'right', targetHandle: 'left' };
+    if (modo === 'arvore') return { sourceHandle: 'bottom', targetHandle: 'left' };
+    return { sourceHandle: 'bottom', targetHandle: 'top' };
+}
+
 // Blocos escondidos no Outliner: descendentes de um bloco recolhido (data.collapsed, o mesmo estado do canvas)
 function idsOcultosNoOutliner(items) {
     const ocultos = new Set();
@@ -493,7 +502,7 @@ function onOutlinerKeydown(e, nodeId, idx) {
 /**
  * Recua o item (aumenta o nível de hierarquia / torna subtópico do item imediatamente anterior).
  */
-function recuarItemOutliner(nodeId, cursorPos = null) {
+async function recuarItemOutliner(nodeId, cursorPos = null) {
     if (IS_APPROVED) return;
     const items = itensVisiveisDoOutliner();   // o item anterior é o que aparece na tela acima
     const curIdx = items.findIndex(it => it.id === nodeId);
@@ -503,6 +512,10 @@ function recuarItemOutliner(nodeId, cursorPos = null) {
     const prevNodeId = prevItem.id;
     if (prevItem.node.data) delete prevItem.node.data.collapsed;   // o novo subtópico precisa ficar visível
 
+    // pergunta por onde a ligação sai do pai e entra no filho (layout por raias)
+    const alcas = await escolherAlcasDaLigacao(rotuloDoBloco(prevNodeId), rotuloDoBloco(nodeId));
+    if (!alcas) return;
+
     // Remove conexões de entrada existentes
     topologia.edges = (topologia.edges || []).filter(e => e.target !== nodeId);
 
@@ -511,8 +524,7 @@ function recuarItemOutliner(nodeId, cursorPos = null) {
         id: `e-${prevNodeId}-${nodeId}`,
         source: prevNodeId,
         target: nodeId,
-        sourceHandle: 'right',
-        targetHandle: 'left'
+        ...alcas
     });
 
     // Sincroniza topologia e reorganiza canvas
@@ -528,7 +540,7 @@ function recuarItemOutliner(nodeId, cursorPos = null) {
 /**
  * Desrecua o item (diminui o nível de hierarquia / sobe um nível).
  */
-function desrecuarItemOutliner(nodeId, cursorPos = null) {
+async function desrecuarItemOutliner(nodeId, cursorPos = null) {
     if (IS_APPROVED) return;
     const items = obterEstruturaOutliner();
     const curItem = items.find(it => it.id === nodeId);
@@ -537,6 +549,11 @@ function desrecuarItemOutliner(nodeId, cursorPos = null) {
     const parentId = curItem.parentId;
     const parentItem = items.find(it => it.id === parentId);
     const grandParentId = parentItem ? parentItem.parentId : null;
+    let alcas = null;
+    if (grandParentId) {
+        alcas = await escolherAlcasDaLigacao(rotuloDoBloco(grandParentId), rotuloDoBloco(nodeId));
+        if (!alcas) return;
+    }
 
     // Remove conexão pai -> nó atual
     topologia.edges = (topologia.edges || []).filter(e => e.target !== nodeId);
@@ -547,8 +564,7 @@ function desrecuarItemOutliner(nodeId, cursorPos = null) {
             id: `e-${grandParentId}-${nodeId}`,
             source: grandParentId,
             target: nodeId,
-            sourceHandle: 'right',
-            targetHandle: 'left'
+            ...alcas
         });
     }
 
@@ -564,7 +580,7 @@ function desrecuarItemOutliner(nodeId, cursorPos = null) {
 /**
  * Cria um novo item logo abaixo do nó de referência (ao pressionar Enter).
  */
-function criarProximoItemOutliner(refNodeId = null) {
+async function criarProximoItemOutliner(refNodeId = null) {
     if (IS_APPROVED) return;
     const items = obterEstruturaOutliner();
     let parentId = null;
@@ -585,6 +601,13 @@ function criarProximoItemOutliner(refNodeId = null) {
         lane = lastItem.node.data?.lane || 'Geral';
     }
 
+    // com pai, pergunta por onde a ligação sai do pai e entra no novo bloco (layout por raias)
+    let alcas = null;
+    if (parentId) {
+        alcas = await escolherAlcasDaLigacao(rotuloDoBloco(parentId), 'novo bloco');
+        if (!alcas) return;
+    }
+
     const nextId = gerarProximoNodeId();
     const newNode = {
         id: nextId,
@@ -602,8 +625,7 @@ function criarProximoItemOutliner(refNodeId = null) {
             id: `e-${parentId}-${nextId}`,
             source: parentId,
             target: nextId,
-            sourceHandle: 'right',
-            targetHandle: 'left'
+            ...alcas
         });
     }
 
@@ -716,18 +738,11 @@ function sincronizarEdgesComGridData() {
     gerarGridDataPorNodes();
 }
 
+// Reposiciona os blocos depois de uma edição estrutural no Outliner: usa o mesmo cálculo do Auto-Layout do modo atual
+// (filhos abaixo do pai no organograma e nas raias; layouts em árvore têm o seu próprio cálculo)
 function recalcularPosicoesCanvasHierarquico() {
-    const items = obterEstruturaOutliner();
-    const lanes = obterListaRaiasOrdenada();
-    const laneYMap = new Map();
-    lanes.forEach((l, idx) => laneYMap.set(l, 40 + idx * 240 + 60));
-
-    items.forEach((it, idx) => {
-        const lane = it.node.data?.lane || (lanes[0] || 'Geral');
-        const baseY = laneYMap.get(lane) || (100 + idx * 70);
-        it.node.position.x = 100 + it.level * 220;
-        it.node.position.y = baseY;
-    });
+    if (typeof arvoreAtiva === 'function' && arvoreAtiva()) { aplicarLayoutArvore(); return; }
+    posicionarAutomaticoPorRaias(true);
 }
 
 // =========================================================================
@@ -823,8 +838,7 @@ function importarTextoParaOutliner() {
                 id: `e-${parent.id}-${nodeId}`,
                 source: parent.id,
                 target: nodeId,
-                sourceHandle: 'right',
-                targetHandle: 'left'
+                ...alcasPadraoDaLigacao()
             });
         }
 
@@ -924,8 +938,12 @@ function atualizarGrelha(idx, campo, valor) {
     dispararAutoSave();
 }
 
-function atualizarConexaoGrelha(idx, targetId) {
-    topologia.grid_data[idx].next = targetId ? [{ targetId }] : [];
+async function atualizarConexaoGrelha(idx, targetId) {
+    const linha = topologia.grid_data[idx];
+    if (!targetId) { linha.next = []; dispararAutoSave(); return; }
+    const alcas = await escolherAlcasDaLigacao(linha.label || linha.stepId, rotuloDoBloco(targetId) || String(targetId));
+    if (!alcas) { renderizarGrelha(); return; }          // cancelou: volta ao valor anterior
+    linha.next = [{ targetId, sourceHandle: alcas.sourceHandle, targetHandle: alcas.targetHandle, ligacaoManual: alcas.ligacaoManual || undefined }];
     dispararAutoSave();
 }
 
@@ -1247,14 +1265,17 @@ function gerarNodesPorGridData() {
             if (!conn.targetId) return;
             const antiga = oldEdges.find(e => e.source === r.stepId && e.target === conn.targetId);
             if (antiga) {
-                novasEdges.push({ ...antiga, label: conn.condition !== undefined ? (conn.condition || '') : (antiga.label || '') });
+                const pontas = conn.ligacaoManual && conn.sourceHandle && conn.targetHandle
+                    ? { sourceHandle: conn.sourceHandle, targetHandle: conn.targetHandle, ligacaoManual: true } : {};   // pontas escolhidas na Grelha
+                novasEdges.push({ ...antiga, ...pontas, label: conn.condition !== undefined ? (conn.condition || '') : (antiga.label || '') });
             } else {
                 novasEdges.push({
                     id: `e-${r.stepId}-${conn.targetId}-${cIdx}`,
                     source: r.stepId,
                     target: conn.targetId,
-                    sourceHandle: r.type === 'decision' && conn.condition?.toLowerCase() === 'não' ? 'right' : 'bottom',
-                    targetHandle: 'top',
+                    sourceHandle: conn.sourceHandle || (r.type === 'decision' && conn.condition?.toLowerCase() === 'não' ? 'right' : 'bottom'),
+                    targetHandle: conn.targetHandle || 'top',
+                    ligacaoManual: conn.ligacaoManual || undefined,
                     label: conn.condition || ''
                 });
             }
@@ -1272,7 +1293,7 @@ function gerarGridDataPorNodes() {
             type: n.type || 'process',
             label: n.data?.label || '',
             documentRef: n.data?.documentRef,
-            next: outEdges.map(e => ({ targetId: e.target, condition: e.label }))
+            next: outEdges.map(e => ({ targetId: e.target, condition: e.label, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle, ligacaoManual: e.ligacaoManual }))
         };
     });
 }

@@ -155,6 +155,7 @@ function criarConexaoEntre(origemId, destinoId, ladoOrigem, ladoDestino) {
         target: destinoId,
         sourceHandle: ladoOrigem,
         targetHandle: ladoDestino,
+        ligacaoManual: true,
     });
     atualizarAposMudarConexoes(id, false);
 }
@@ -169,6 +170,7 @@ function religarPontaDaConexao(edge, ponta, alvo, lado) {
     }
     if (ponta === 'origem') { edge.source = alvo.id; edge.sourceHandle = lado; }
     else { edge.target = alvo.id; edge.targetHandle = lado; }
+    edge.ligacaoManual = true;
     atualizarAposMudarConexoes(edge.id, (edge.kind || 'hierarquia') === 'hierarquia');
 }
 
@@ -190,4 +192,55 @@ function desenharPontasDaConexao(svg, edge, pathData) {
         c.addEventListener('mousedown', ev => iniciarReligacaoDaPonta(ev, edge, ponta));
         svg.appendChild(c);
     });
+}
+
+// --- Pergunta: por onde a ligação sai do pai e entra no filho ------------------------------------
+const NOMES_DOS_LADOS = { bottom: 'Baixo', top: 'Topo', left: 'Lateral esquerda', right: 'Lateral direita' };
+
+// Pergunta as pontas ao criar uma ligação pai -> filho pelo Outliner ou pela Grelha (layout por raias).
+// Nos layouts em árvore a estrutura define as pontas (sem pergunta). Resolve com { sourceHandle, targetHandle } ou null (cancelou).
+function escolherAlcasDaLigacao(nomePai, nomeFilho) {
+    if (IS_APPROVED) return Promise.resolve(null);
+    if (arvoreAtiva()) return Promise.resolve(alcasPadraoDaLigacao());
+    const lembrada = topologia.ligacao_padrao;
+    if (lembrada && LADOS.includes(lembrada.sourceHandle) && LADOS.includes(lembrada.targetHandle)) {
+        return Promise.resolve({ sourceHandle: lembrada.sourceHandle, targetHandle: lembrada.targetHandle, ligacaoManual: true });
+    }
+    return new Promise(resolve => {
+        const modalEl = document.getElementById('modalLigacao');
+        const padrao = alcasPadraoDaLigacao();
+        document.getElementById('ligResumo').innerHTML = `<strong>${escapeHtml(String(nomePai || 'Bloco pai'))}</strong> &rarr; <strong>${escapeHtml(String(nomeFilho || 'novo bloco'))}</strong>`;
+        document.getElementById('ligSaida').value = padrao.sourceHandle;
+        document.getElementById('ligEntrada').value = padrao.targetHandle;
+        document.getElementById('ligLembrar').checked = false;
+        let decidiu = false;
+        const confirmar = () => {
+            decidiu = true;
+            const alcas = { sourceHandle: document.getElementById('ligSaida').value, targetHandle: document.getElementById('ligEntrada').value, ligacaoManual: true };
+            if (document.getElementById('ligLembrar').checked) {
+                topologia.ligacao_padrao = { sourceHandle: alcas.sourceHandle, targetHandle: alcas.targetHandle };
+                atualizarMarcaLigacaoPadrao();
+                dispararAutoSave();
+            }
+            bootstrap.Modal.getInstance(modalEl).hide();
+            resolve(alcas);
+        };
+        const botao = document.getElementById('ligConfirmar');
+        botao.onclick = confirmar;
+        modalEl.addEventListener('hidden.bs.modal', () => { if (!decidiu) resolve(null); }, { once: true });
+        modalEl.addEventListener('shown.bs.modal', () => botao.focus(), { once: true });
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    });
+}
+
+function perguntarLigacaoNovamente() {
+    delete topologia.ligacao_padrao;
+    atualizarMarcaLigacaoPadrao();
+    dispararAutoSave();
+    mostrarAvisoNoEditor('As pontas da ligação serão perguntadas de novo ao adicionar blocos.');
+}
+
+function atualizarMarcaLigacaoPadrao() {
+    const item = document.getElementById('itemPerguntarLigacao');
+    if (item) item.classList.toggle('d-none', !topologia.ligacao_padrao);
 }

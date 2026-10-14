@@ -2200,3 +2200,31 @@ class OutlinerMencaoColaboradoresTestCase(TestCase):
         js = ler_js_editor()
         for item in ('function teclaNaMencaoDoOutliner', 'listar=1', 'function mencaoAbertaNoOutliner', '(@ para colaborador)'):
             self.assertIn(item, js)
+
+
+class PerguntaDeLigacaoTestCase(TestCase):
+    """Outliner e Grelha perguntam por onde a ligação sai do pai e entra no filho (layout por raias)."""
+
+    def test_validacao_da_ligacao_padrao(self):
+        from procedures.services.diagram_validation import validar_topologia
+        base = {"nodes": [{"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "A"}}], "edges": []}
+        self.assertEqual(validar_topologia({**base, "ligacao_padrao": {"sourceHandle": "right", "targetHandle": "left"}}), [])
+        for ruim in ({"sourceHandle": "meio", "targetHandle": "top"}, {"sourceHandle": "top"}, "bottom/top"):
+            self.assertTrue(validar_topologia({**base, "ligacao_padrao": ruim}), ruim)
+
+    def test_editor_traz_o_dialogo_e_o_codigo(self):
+        user = User.objects.create_user(username='pergunta.ligacao', password='x', is_superuser=True)
+        diagrama = Diagrama.objects.create(titulo='Ligação', criado_por=user)
+        versao = DiagramaVersao.objects.create(diagrama=diagrama, revisao=0, dados_topologia={"nodes": [], "edges": []})
+        c = Client()
+        c.force_login(user)
+        html = c.get(f'/procedures/diagramas/editor/{versao.id}/').content.decode()
+        for item in ('id="modalLigacao"', 'id="ligSaida"', 'id="ligEntrada"', 'id="ligLembrar"', 'onclick="perguntarLigacaoNovamente()"'):
+            self.assertIn(item, html)
+        js = ler_js_editor()
+        for item in ('function escolherAlcasDaLigacao', 'function alcasPadraoDaLigacao', 'await escolherAlcasDaLigacao',
+                     'ligacaoManual', 'async function atualizarConexaoGrelha'):
+            self.assertIn(item, js)
+        # o Outliner não usa mais pontas laterais fixas nas ligações hierárquicas
+        outliner = js[js.index('async function recuarItemOutliner'):js.index('function recalcularPosicoesCanvasHierarquico')]
+        self.assertNotIn("sourceHandle: 'right'", outliner)

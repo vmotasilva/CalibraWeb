@@ -1166,6 +1166,7 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-h')"><i class="bi bi-align-center me-2"></i>Centro Vertical (Coluna)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alinharSelecionados('center-v')"><i class="bi bi-align-middle me-2"></i>Centro Horizontal (Linha)</a></li>
                     <li><hr class="dropdown-divider"></li>
+                    <li id="itemPerguntarLigacao" class="somente-raias d-none"><a class="dropdown-item" href="javascript:void(0)" onclick="perguntarLigacaoNovamente()"><i class="bi bi-question-circle me-2"></i>Perguntar as pontas da ligação ao adicionar blocos</a></li>
                     <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="definirTodasRaiasRecolhidas(true)"><i class="bi bi-arrows-collapse me-2"></i>Recolher todas as raias</a></li>
                     <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="definirTodasRaiasRecolhidas(false)"><i class="bi bi-arrows-expand me-2"></i>Expandir todas as raias</a></li>
                     <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="alinharNosPorRaias()"><i class="bi bi-distribute-horizontal me-2"></i>Distribuir blocos dentro das raias</a></li>
@@ -2050,6 +2051,48 @@
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
                     <button type="button" class="btn btn-primary" data-edicao onclick="salvarGrupo()">Salvar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalLigacao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-share"></i> Ligar ao bloco pai</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3" id="ligResumo"></p>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small" for="ligSaida">Sai do pai por</label>
+                        <select id="ligSaida" class="form-select">
+                            <option value="bottom">Baixo</option>
+                            <option value="right">Lateral direita</option>
+                            <option value="left">Lateral esquerda</option>
+                            <option value="top">Topo</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small" for="ligEntrada">Entra no filho por</label>
+                        <select id="ligEntrada" class="form-select">
+                            <option value="top">Topo</option>
+                            <option value="left">Lateral esquerda</option>
+                            <option value="right">Lateral direita</option>
+                            <option value="bottom">Baixo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="ligLembrar">
+                    <label class="form-check-label small" for="ligLembrar">Usar sempre esta escolha neste diagrama (não perguntar de novo)</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="ligConfirmar">Confirmar</button>
             </div>
         </div>
     </div>
