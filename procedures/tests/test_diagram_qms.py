@@ -2170,3 +2170,33 @@ class DiagramaAtualizarRHTestCase(TestCase):
         js = ler_js_editor()
         for item in ('selo-desligado', 'colab.desligado = true', 'fotoCacheBust'):
             self.assertIn(item, js)
+
+
+class OutlinerMencaoColaboradoresTestCase(TestCase):
+    """Menção "@" no Outliner: lista de colaboradores ativos desde o primeiro caractere."""
+
+    def setUp(self):
+        from rh.models import Colaborador
+        self.user = User.objects.create_user(username='mencao', password='x', is_superuser=True)
+        Colaborador.objects.create(nome_completo='Ana Paula', matricula='9101', grupo='G', cargo='Analista')
+        Colaborador.objects.create(nome_completo='Bruno Costa', matricula='9102', grupo='G')
+        Colaborador.objects.create(nome_completo='Ana Desligada', matricula='9103', grupo='G', is_active=False)
+        self.c = Client()
+        self.c.force_login(self.user)
+
+    def _nomes(self, query):
+        return [x['nome'] for x in self.c.get('/procedures/api/diagramas/colaboradores/' + query).json()['results']]
+
+    def test_listar_aceita_busca_vazia_e_curta_somente_ativos(self):
+        self.assertEqual(self._nomes('?listar=1&q='), ['Ana Paula', 'Bruno Costa'])        # sem o desligado
+        self.assertEqual(self._nomes('?listar=1&q=a'), ['Ana Paula'])                      # 1 letra: começa com
+        self.assertEqual(self._nomes('?listar=1&q=cos'), ['Bruno Costa'])                  # 2+ letras: contém
+
+    def test_busca_normal_continua_exigindo_duas_letras_e_ignora_desligados(self):
+        self.assertEqual(self._nomes('?q=a'), [])
+        self.assertEqual(self._nomes('?q=ana'), ['Ana Paula'])
+
+    def test_outliner_tem_menção_com_teclado(self):
+        js = ler_js_editor()
+        for item in ('function teclaNaMencaoDoOutliner', 'listar=1', 'function mencaoAbertaNoOutliner', '(@ para colaborador)'):
+            self.assertIn(item, js)

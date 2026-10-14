@@ -432,21 +432,24 @@ def api_diagrama_versao_aplicar_template(request, versao_id):
 
 @require_http_methods(["GET"])
 def api_diagramas_colaboradores(request):
-    """Busca de colaboradores para os blocos de colaborador (nome, função, setor e se há foto)."""
+    """Busca de colaboradores ativos para os blocos de colaborador (nome, função, setor e se há foto).
+    Com `listar=1` (menção "@" do Outliner) aceita busca vazia ou de 1 letra e devolve os primeiros por nome."""
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Autenticação necessária."}, status=401)
 
     from rh.models import Colaborador
 
     termo = request.GET.get('q', '').strip()
-    if len(termo) < 2:
+    listar = request.GET.get('listar') == '1'
+    if len(termo) < 2 and not listar:
         return JsonResponse({"results": []})
 
-    colaboradores = (
-        Colaborador.objects.select_related('setor')
-        .filter(models.Q(nome_completo__icontains=termo) | models.Q(matricula__icontains=termo))
-        .order_by('nome_completo')[:10]
-    )
+    qs = Colaborador.objects.select_related('setor').filter(is_active=True)
+    if len(termo) >= 2:
+        qs = qs.filter(models.Q(nome_completo__icontains=termo) | models.Q(matricula__icontains=termo))
+    elif termo:
+        qs = qs.filter(nome_completo__istartswith=termo)
+    colaboradores = qs.order_by('nome_completo')[:12 if listar else 10]
     return JsonResponse({"results": [
         {
             "id": c.id,

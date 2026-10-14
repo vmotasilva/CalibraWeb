@@ -189,7 +189,7 @@ function renderizarOutliner(focusNodeId = null, cursorPosition = null) {
                 id="outliner-input-${node.id}" 
                 class="form-control form-control-sm outliner-input flex-grow-1 ${level === 0 ? 'fw-bold text-dark' : 'fw-medium text-secondary-emphasis'}" 
                 value="${safeLabel}" 
-                placeholder="Digite o nome do tópico / etapa..."
+                placeholder="Digite o nome do tópico / etapa... (@ para colaborador)"
                 ${IS_APPROVED ? 'disabled' : ''}
                 oninput="onOutlinerInput('${node.id}', this.value)"
                 onkeydown="onOutlinerKeydown(event, '${node.id}', ${idx})"
@@ -274,25 +274,69 @@ let outlinerMentionNodeId = null;
 
 function checkOutlinerMention(nodeId, text, inputEl) {
     const lastAt = text.lastIndexOf('@');
-    if (lastAt >= 0) {
+    // o "@" abre a lista de colaboradores (no começo do texto ou depois de um espaço: e-mails não contam)
+    if (lastAt >= 0 && (lastAt === 0 || /\s/.test(text[lastAt - 1]))) {
         const termo = text.substring(lastAt + 1);
-        if (termo.length >= 2 && !termo.includes(',') && !termo.includes(';')) {
+        if (!termo.includes(',') && !termo.includes(';')) {
             outlinerMentionNodeId = nodeId;
             clearTimeout(outlinerMentionTimeout);
             outlinerMentionTimeout = setTimeout(async () => {
                 try {
-                    const res = await fetch(`/procedures/api/diagramas/colaboradores/?q=${encodeURIComponent(termo)}`);
+                    const res = await fetch(`/procedures/api/diagramas/colaboradores/?listar=1&q=${encodeURIComponent(termo.trim())}`);
                     if (res.ok) {
                         const data = await res.json();
                         const items = data.results || data;
-                        renderizarDropdownMentionOutliner(inputEl, items, text, lastAt);
+                        // a resposta só vale se o texto ainda é o mesmo
+                        if (inputEl.value === text) renderizarDropdownMentionOutliner(inputEl, items, text, lastAt);
                     }
                 } catch (e) {}
-            }, 400);
+            }, termo.length < 2 ? 120 : 300);
             return;
         }
     }
+    clearTimeout(outlinerMentionTimeout);
     esconderDropdownMentionOutliner();
+}
+
+// Menção aberta? (permite navegar pela lista com as setas e escolher com Enter/Tab)
+let outlinerMentionAtivo = -1;
+let outlinerMentionItens = [];
+let outlinerMentionContexto = null;
+
+function mencaoAbertaNoOutliner() {
+    const d = document.getElementById('outlinerMentionDropdown');
+    return !!d && !d.classList.contains('d-none') && outlinerMentionItens.length > 0;
+}
+
+function marcarItemDaMencao() {
+    document.querySelectorAll('#outlinerMentionDropdown [data-mencao]').forEach((el, i) => {
+        el.classList.toggle('active', i === outlinerMentionAtivo);
+        if (i === outlinerMentionAtivo) el.scrollIntoView({ block: 'nearest' });
+    });
+}
+
+// Retorna true quando a tecla foi tratada pela lista de menção
+function teclaNaMencaoDoOutliner(e) {
+    if (!mencaoAbertaNoOutliner()) return false;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        const n = outlinerMentionItens.length;
+        outlinerMentionAtivo = (outlinerMentionAtivo + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+        marcarItemDaMencao();
+        return true;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        e.stopPropagation();
+        const c = outlinerMentionContexto;
+        aplicarColaboradorNoOutliner(c.nodeId, outlinerMentionItens[outlinerMentionAtivo], c.texto, c.atIndex);
+        return true;
+    }
+    if (e.key === 'Escape') {
+        esconderDropdownMentionOutliner();
+        return true;
+    }
+    return false;
 }
 
 function renderizarDropdownMentionOutliner(inputEl, items, fullText, atIndex) {
@@ -323,10 +367,15 @@ function renderizarDropdownMentionOutliner(inputEl, items, fullText, atIndex) {
         return;
     }
 
-    dropdown.innerHTML = `<div class="bg-light px-3 py-2 small fw-bold text-muted border-bottom"><i class="bi bi-people-fill me-1"></i> Sugestões de Colaboradores</div>`;
+    dropdown.innerHTML = `<div class="bg-light px-3 py-2 small fw-bold text-muted border-bottom"><i class="bi bi-people-fill me-1"></i> Colaboradores &mdash; ↑ ↓ e Enter para escolher</div>`;
+    outlinerMentionItens = items.slice(0, 10);
+    outlinerMentionAtivo = 0;
+    outlinerMentionContexto = { nodeId: outlinerMentionNodeId, texto: fullText, atIndex };
 
-    items.slice(0, 6).forEach(colab => {
+    outlinerMentionItens.forEach(colab => {
         const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.mencao = '1';
         btn.className = 'list-group-item list-group-item-action py-2 px-3 border-0 border-bottom';
         const cargoDesc = colab.cargo_nome || colab.cargo || '';
         const setorDesc = colab.setor_nome || colab.setor || '';
@@ -341,6 +390,7 @@ function renderizarDropdownMentionOutliner(inputEl, items, fullText, atIndex) {
         dropdown.appendChild(btn);
     });
 
+    marcarItemDaMencao();
     const rect = inputEl.getBoundingClientRect();
     dropdown.style.top = `${rect.bottom + window.scrollY + 4}px`;
     dropdown.style.left = `${rect.left + window.scrollX}px`;
@@ -351,6 +401,8 @@ function renderizarDropdownMentionOutliner(inputEl, items, fullText, atIndex) {
 function esconderDropdownMentionOutliner() {
     const d = document.getElementById('outlinerMentionDropdown');
     if (d) d.classList.add('d-none');
+    outlinerMentionItens = [];
+    outlinerMentionAtivo = -1;
 }
 
 function aplicarColaboradorNoOutliner(nodeId, colab, fullText, atIndex) {
@@ -393,6 +445,7 @@ function aplicarColaboradorNoOutliner(nodeId, colab, fullText, atIndex) {
  * Interceptador de teclado para navegação, recuos por Tab e criação ágil de tópicos.
  */
 function onOutlinerKeydown(e, nodeId, idx) {
+    if (teclaNaMencaoDoOutliner(e)) return;
     const input = e.target;
     const cursorPos = input.selectionStart;
 
