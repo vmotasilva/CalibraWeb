@@ -134,11 +134,6 @@ class Colaborador(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Colaborador Ativo (RH)")
     criado_em = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        permissions = [
-            ("pode_alterar_foto_colaborador", "Pode alterar foto do colaborador"),
-        ]
-
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
@@ -195,6 +190,10 @@ class Colaborador(models.Model):
     class Meta:
         verbose_name = "Colaborador"
         verbose_name_plural = "Colaboradores (RH)"
+        # a classe Meta é uma só: um segundo bloco "class Meta" sobrescreveria este e a permissão nunca seria criada
+        permissions = [
+            ("pode_alterar_foto_colaborador", "Pode alterar foto do colaborador"),
+        ]
         indexes = [
             models.Index(fields=['setor', 'is_active']),
             models.Index(fields=['lider', '-matricula']),

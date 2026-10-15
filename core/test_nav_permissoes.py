@@ -69,6 +69,16 @@ class NavStructureTests(TestCase):
         )
         self.assertEqual(sorted(codenames - existentes), [])
 
+    def test_permissoes_de_qualquer_app_existem_no_banco(self):
+        """Inclui as que vivem nos models de outros apps (ex.: rh.pode_alterar_foto_colaborador): sem a linha em Permission
+        o toggle da tela de usuários não consegue gravar (um segundo "class Meta" no model já escondeu uma delas)."""
+        faltando = []
+        for perm in set(_iter_all_perms()):
+            app_label, codename = str(perm).split(".", 1)
+            if not Permission.objects.filter(content_type__app_label=app_label, codename=codename).exists():
+                faltando.append(perm)
+        self.assertEqual(sorted(faltando), [])
+
     def test_nenhuma_permissao_repetida(self):
         # Bloco com a mesma permissão de uma função (ou duas funções com a mesma) impede desligar só uma delas no painel.
         repetidas = [p for p, n in Counter(_iter_perms()).items() if n > 1]
@@ -120,6 +130,18 @@ class PainelPermissoesTests(TestCase):
 
     def _codenames(self):
         return set(self.alvo.user_permissions.values_list("codename", flat=True))
+
+    def test_permissao_de_foto_do_colaborador_e_salva_e_volta_marcada(self):
+        resp = self.client.post(
+            reverse("rh:api_atualizar_permissoes_lote"),
+            data=json.dumps({"user_id": self.alvo.pk, "permissoes": {"core": [], "rh": ["pode_alterar_foto_colaborador"]}}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.json()["success"], True)
+        self.assertIn("pode_alterar_foto_colaborador", self._codenames())
+        html = self.client.get(reverse("rh:detalhe_usuario", args=[self.alvo.pk])).content.decode("utf-8")
+        i = html.index('id="perm_rh_pode_alterar_foto_colaborador"')
+        self.assertIn("checked", html[i:html.index(">", i)])
 
     def test_especiais_salvam_sem_toggle_de_bloco_e_globais_sem_modulo(self):
         resp = self._salvar(["nav_mod_pessoas", "nav_pessoas_ver_salario", "nav_pessoas_ver_todos_colaboradores"])
