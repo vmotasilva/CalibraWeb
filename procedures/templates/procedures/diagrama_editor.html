@@ -1974,9 +1974,39 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="corpoAtualizacaoRH"></div>
+            <div class="modal-body border-top py-2 d-none" id="opcaoDesligadosVaga">
+                <div class="form-check small mb-0">
+                    <input class="form-check-input" type="checkbox" id="rhConverterVaga">
+                    <label class="form-check-label" for="rhConverterVaga">Converter em <strong>vaga</strong> os blocos de colaboradores desligados (o bloco perde nome e foto e mostra a função)</label>
+                </div>
+            </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Fechar</button>
                 <button type="button" id="btnAplicarRH" class="btn btn-primary" onclick="aplicarAtualizacoesDoRH()">Aplicar atualizações</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: colaboradores desligados no RH (aberto ao abrir o diagrama) -->
+<div class="modal fade" id="modalDesligadosRH" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-person-x-fill text-danger"></i> Colaboradores desligados</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small">Os colaboradores abaixo foram desligados no RH e ainda aparecem neste diagrama. O que fazer com os blocos deles?</p>
+                <ul class="list-group mb-3" id="listaDesligadosRH"></ul>
+                <div class="form-check small">
+                    <input class="form-check-input" type="checkbox" id="desligadosSempreVaga">
+                    <label class="form-check-label" for="desligadosSempreVaga">Nos próximos desligamentos, converter em vaga automaticamente</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger" onclick="resolverDesligadosDoRH('marcar')"><i class="bi bi-person-x"></i> Só marcar como DESLIGADO</button>
+                <button type="button" class="btn btn-primary" onclick="resolverDesligadosDoRH('vaga')"><i class="bi bi-person-dash"></i> Converter em vaga</button>
             </div>
         </div>
     </div>

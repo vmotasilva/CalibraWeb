@@ -246,6 +246,9 @@ def validar_topologia(topologia: dict) -> list:
                 or not isinstance(legenda.get('mostrar', False), bool) or not isinstance(legenda.get('rotulos', {}), dict)
                 or not all(marcador_valido(k) and isinstance(v, str) and len(v) <= 60 for k, v in legenda.get('rotulos', {}).items())):
             return ["'legenda' inválida (mostrar: verdadeiro/falso; rótulos de até 60 caracteres por marcador do catálogo)."]
+    if topologia.get('desligados_viram_vaga') is not None and not isinstance(topologia['desligados_viram_vaga'], bool):
+        return ["'desligados_viram_vaga' deve ser verdadeiro/falso."]
+
     if topologia.get('mostrar_efetivo') is not None and not isinstance(topologia['mostrar_efetivo'], bool):
         return ["'mostrar_efetivo' deve ser verdadeiro/falso."]
 

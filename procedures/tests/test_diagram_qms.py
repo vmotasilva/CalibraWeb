@@ -2328,6 +2328,22 @@ class ModelosDeEstiloTestCase(TestCase):
             self.assertIn(item, js)
 
 
+class DesligadosViramVagaTestCase(TestCase):
+    """Colaboradores desligados no RH: marcação DESLIGADO ou conversão do bloco em vaga."""
+
+    def test_editor_confere_o_rh_ao_abrir_e_oferece_a_conversao(self):
+        js = ler_js_editor()
+        for item in ('async function verificarDesligadosNoRH', 'function resolverDesligadosDoRH', 'function converterColaboradorEmVaga',
+                     'desligados_viram_vaga', "atual.ativo === false", 'rhConverterVaga'):
+            self.assertIn(item, js)
+
+    def test_validacao_da_opcao_de_converter_automaticamente(self):
+        from procedures.services.diagram_validation import validar_topologia
+        base = {"nodes": [{"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "A"}}], "edges": []}
+        self.assertEqual(validar_topologia({**base, "desligados_viram_vaga": True}), [])
+        self.assertTrue(validar_topologia({**base, "desligados_viram_vaga": "sim"}))
+
+
 class PerguntaDeLigacaoTestCase(TestCase):
     """Outliner e Grelha perguntam por onde a ligação sai do pai e entra no filho (layout por raias)."""
 

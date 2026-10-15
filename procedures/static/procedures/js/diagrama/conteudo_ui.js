@@ -433,6 +433,64 @@ function atualizarLegendaVisual() {
     }).join('');
 }
 
+// ------------------------------------------------------------------ desligados no RH: marcação ou conversão em vaga
+// O bloco de um colaborador desligado vira vaga: perde nome e foto e passa a mostrar a função (como "Marcar como vaga").
+function converterColaboradorEmVaga(node) {
+    const colab = node && node.data && node.data.colab;
+    if (!colab) return;
+    node.data.label = colab.cargo || 'Vaga';
+    delete node.data.colab;
+    node.data.vaga = true;
+    sincronizarGridDoNo(node);
+}
+
+let desligadosPendentes = [];
+
+// Ao abrir um rascunho, confere o RH: colaboradores desligados desde a última vez são marcados ou viram vaga
+async function verificarDesligadosNoRH() {
+    if (IS_APPROVED) return;
+    const blocos = topologia.nodes.filter(n => n.data?.colab && !n.data.colab.desligado && !n.data.colab.removido);
+    if (blocos.length === 0) return;
+    let atuais;
+    try {
+        atuais = await consultarRH([...new Set(blocos.map(n => n.data.colab.id))]);
+    } catch (e) {
+        return;   // sem resposta do RH agora: tenta de novo na próxima abertura
+    }
+    const novos = blocos.filter(n => {
+        const atual = atuais[n.data.colab.id];
+        return atual && atual.existe !== false && atual.ativo === false;
+    });
+    if (novos.length === 0) return;
+
+    if (topologia.desligados_viram_vaga) {
+        const nomes = novos.map(n => n.data.colab.nome);
+        novos.forEach(converterColaboradorEmVaga);
+        reaplicarConteudo();
+        mostrarAvisoNoEditor(`${nomes.length} colaborador(es) desligado(s) no RH viraram vaga: ${nomes.join(', ')}.`);
+        return;
+    }
+    desligadosPendentes = novos.map(n => String(n.id));
+    document.getElementById('listaDesligadosRH').innerHTML = novos.map(n =>
+        `<li class="list-group-item small"><div class="fw-semibold">${escapeHtml(n.data.colab.nome || n.data.label || '')}</div>`
+        + `<div class="text-muted">${escapeHtml(n.data.colab.cargo || 'sem função')}</div></li>`).join('');
+    document.getElementById('desligadosSempreVaga').checked = false;
+    new bootstrap.Modal(document.getElementById('modalDesligadosRH')).show();
+}
+
+function resolverDesligadosDoRH(acao) {
+    if (IS_APPROVED) return;
+    const nodes = desligadosPendentes.map(id => topologia.nodes.find(n => String(n.id) === id)).filter(n => n?.data?.colab);
+    if (acao === 'vaga' && document.getElementById('desligadosSempreVaga').checked) topologia.desligados_viram_vaga = true;
+    nodes.forEach(n => { if (acao === 'vaga') converterColaboradorEmVaga(n); else n.data.colab.desligado = true; });
+    desligadosPendentes = [];
+    bootstrap.Modal.getInstance(document.getElementById('modalDesligadosRH'))?.hide();
+    reaplicarConteudo();
+    mostrarAvisoNoEditor(acao === 'vaga' ? `${nodes.length} bloco(s) convertido(s) em vaga.` : `${nodes.length} bloco(s) marcado(s) como DESLIGADO.`);
+}
+
+document.addEventListener('DOMContentLoaded', () => setTimeout(verificarDesligadosNoRH, 900));
+
 // ------------------------------------------------------------------ atualizar do RH
 let diferencasRHPendentes = [];
 let atuaisRHPendentes = {};
@@ -481,11 +539,16 @@ async function atualizarColaboradoresPeloRH(somenteSelecionados) {
         }).join('') + '</ul>';
     }
     document.getElementById('btnAplicarRH').classList.toggle('d-none', aplicaveis.length === 0);
+    const haDesligados = blocos.some(n => n.data.colab.desligado) || diferencasRHPendentes.some(d => d.desligado);
+    document.getElementById('opcaoDesligadosVaga').classList.toggle('d-none', !haDesligados);
+    document.getElementById('rhConverterVaga').checked = !!topologia.desligados_viram_vaga;
     new bootstrap.Modal(document.getElementById('modalRH')).show();
 }
 
 function aplicarAtualizacoesDoRH() {
     if (IS_APPROVED) return;
+    const converterVaga = document.getElementById('rhConverterVaga').checked;
+    const idsDoModal = new Set(diferencasRHPendentes.map(d => d.id));
     diferencasRHPendentes.forEach(d => {
         const node = topologia.nodes.find(n => String(n.id) === d.id);
         if (!node?.data?.colab) return;
@@ -501,6 +564,10 @@ function aplicarAtualizacoesDoRH() {
         node.data.label = nomeExibicaoColab(colab);
         sincronizarGridDoNo(node);
     });
+    // desligados (agora ou marcados antes) viram vaga quando a opção está marcada
+    if (converterVaga) {
+        topologia.nodes.filter(n => n.data?.colab?.desligado).forEach(converterColaboradorEmVaga);
+    }
     // anota a última função lida do RH nos blocos que não foram personalizados (base das próximas comparações)
     topologia.nodes.forEach(n => {
         const colab = n.data?.colab;
