@@ -254,8 +254,9 @@ function atualizarSelecoesVisuais() {
             atualizarPainelAparencia(node);
             atualizarPainelConteudo(node);
 
+            // No celular o painel fica recolhido (a barra do bloco o expande); no desktop abre sozinho
             const panel = document.getElementById('inspectorPanel');
-            if (panel.classList.contains('collapsed')) {
+            if (panel.classList.contains('collapsed') && !ehTelaEstreita()) {
                 toggleInspectorPanel();
             }
         }
@@ -265,6 +266,7 @@ function atualizarSelecoesVisuais() {
         atualizarPainelAparencia(null);
         atualizarPainelConteudo(null);
     }
+    if (typeof atualizarBarraInspetor === 'function') atualizarBarraInspetor();
 }
 
 function selecionarNo(nodeId) {
