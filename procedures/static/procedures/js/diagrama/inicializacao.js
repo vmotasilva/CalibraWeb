@@ -231,4 +231,33 @@ function toggleInspectorPanel() {
     const btn = document.getElementById('btnToggleInspector');
     panel.classList.toggle('collapsed');
     btn.classList.toggle('active');
+    atualizarBarraInspetor();
 }
+
+// Celular: o painel do bloco não abre sozinho ao selecionar; aparece uma barra com o nome do bloco que o expande
+function atualizarBarraInspetor() {
+    const barra = document.getElementById('inspetorBarra');
+    if (!barra) return;
+    const painelRecolhido = document.getElementById('inspectorPanel')?.classList.contains('collapsed');
+    let texto = '';
+    if (selectedNodeId && typeof topologia !== 'undefined') {
+        const no = topologia.nodes.find(n => n.id === selectedNodeId);
+        texto = (no?.data?.label || '').replace(/\s+/g, ' ').trim() || 'Bloco selecionado';
+    }
+    document.getElementById('inspetorBarraTexto').textContent = texto;
+    barra.classList.toggle('visivel', !!texto && painelRecolhido);
+}
+
+// Celular: abre / fecha o bloco com as demais ferramentas do editor
+function alternarFerramentasMobile() {
+    const ribbon = document.querySelector('.editor-ribbon');
+    const aberto = ribbon.classList.toggle('ribbon-aberto');
+    document.getElementById('btnFerramentasMobile')?.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+}
+
+// Menus suspensos com posição fixa: não são cortados pela rolagem/overflow da barra de ferramentas
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.editor-header [data-bs-toggle="dropdown"], .editor-ribbon [data-bs-toggle="dropdown"]').forEach(botao => {
+        bootstrap.Dropdown.getOrCreateInstance(botao, { popperConfig: padrao => ({ ...padrao, strategy: 'fixed' }) });
+    });
+});
