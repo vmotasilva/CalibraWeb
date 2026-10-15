@@ -199,10 +199,28 @@ function alternarModoEditor(modo) {
     }
 }
 
-function alternarModoZen() {
-    document.getElementById('editorMainContainer').classList.toggle('zen-mode');
-    setTimeout(enquadrarVisaoCompleta, 200);
+// Modo foco (ZEN): esconde cabeçalho, barra de ferramentas e avisos; o conteúdo ocupa a tela toda
+// e só ficam os controles flutuantes (sair, zoom e enquadrar). Vale para Canvas, Outliner e Grelha.
+function alternarModoZen(forcar) {
+    const container = document.getElementById('editorMainContainer');
+    const ativo = container.classList.toggle('zen-mode', forcar);
+    document.body.classList.toggle('editor-foco-ativo', ativo);
+    if (ativo) {
+        document.getElementById('inspectorPanel')?.classList.add('collapsed');
+        document.getElementById('btnToggleInspector')?.classList.remove('active');
+    }
+    setTimeout(() => { if (modoAtual === 'canvas') enquadrarVisaoCompleta(); }, 200);
 }
+
+// Esc sai do modo foco (sem atrapalhar a edição de texto nem janelas abertas)
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!document.getElementById('editorMainContainer')?.classList.contains('zen-mode')) return;
+    if (document.querySelector('.modal.show, .dropdown-menu.show')) return;
+    const alvo = e.target;
+    if (alvo && (alvo.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName))) return;
+    alternarModoZen(false);
+});
 
 function alternarFundoCanvas() {
     document.getElementById('canvasViewport').classList.toggle('clean-bg');
