@@ -33,7 +33,7 @@ from shared.inbox import invalidar_cache_inbox
 from shared.permissions import is_admin_user, user_has_nav_perm
 from ..services.diagram_qms_service import DiagramaQMSService
 from ..services.pdf_doc071_generator import gerar_pdf_desenho, gerar_pdf_diagrama_doc071
-from ..services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id
+from ..services.diagram_templates import obter_catalogo_templates, obter_topologia_por_template_id, topologia_de_modelo
 
 
 PERM_SUBMETER = 'core.nav_diagramas_submeter'
@@ -681,10 +681,23 @@ def diagrama_novo_view(request):
         procedimento_id = request.POST.get('procedimento_id') or None
         descricao = request.POST.get('descricao', '').strip()
         template_id = request.POST.get('template_id', 'fluxograma_padrao')
+        # modelo do catálogo de estilos (layout + tema escolhidos na galeria); vale no lugar do modelo de base
+        modelo_layout = request.POST.get('modelo_layout', '').strip()
+        modelo_nome = request.POST.get('modelo_nome', '').strip()[:80]
+        modelo_tema = None
+        erro_modelo = ''
+        if modelo_layout:
+            from ..services.diagram_validation import MODOS_LAYOUT, validar_tema
+            try:
+                modelo_tema = json.loads(request.POST.get('modelo_tema', '') or 'null')
+            except ValueError:
+                modelo_tema = None
+            if modelo_layout == 'raias' or modelo_layout not in MODOS_LAYOUT or not isinstance(modelo_tema, dict) or validar_tema(modelo_tema):
+                erro_modelo = 'O modelo escolhido é inválido. Escolha outro modelo e tente novamente.'
 
-        if not titulo:
+        if not titulo or erro_modelo:
             return render(request, 'procedures/diagrama_form.html', {
-                'error': 'O Título do Processo / Diagrama é obrigatório.',
+                'error': erro_modelo or 'O Título do Processo / Diagrama é obrigatório.',
                 'titulo': titulo,
                 'departamento': departamento,
                 'descricao': descricao,
@@ -702,13 +715,18 @@ def diagrama_novo_view(request):
                 descricao=descricao,
                 criado_por=request.user
             )
-            topologia_inicial = obter_topologia_por_template_id(template_id, departamento or "Metrologia")
+            if modelo_tema is not None:
+                topologia_inicial = topologia_de_modelo(modelo_layout, modelo_tema, departamento or "Metrologia")
+                origem = modelo_nome or modelo_layout
+            else:
+                topologia_inicial = obter_topologia_por_template_id(template_id, departamento or "Metrologia")
+                origem = template_id
             versao = DiagramaVersao.objects.create(
                 diagrama=diagrama,
                 revisao=0,
                 status=StatusDiagrama.RASCUNHO,
                 dados_topologia=topologia_inicial,
-                motivo_revisao=f"Criação inicial baseada no modelo '{template_id}'."
+                motivo_revisao=f"Criação inicial baseada no modelo '{origem}'."
             )
 
         return redirect('procedures:diagrama_editor', versao_id=versao.id)

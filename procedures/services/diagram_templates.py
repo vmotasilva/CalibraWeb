@@ -281,3 +281,35 @@ def obter_topologia_por_template_id(template_id: str, departamento: str = "Metro
             return tpl["gerar_topologia"](departamento or "Metrologia")
     # Fallback para o primeiro
     return TEMPLATES_DIAGRAMAS[0]["gerar_topologia"](departamento or "Metrologia")
+
+
+def topologia_de_modelo(layout: str, tema: dict, departamento: str = "Metrologia") -> dict:
+    """Topologia inicial de um modelo do catálogo de estilos (layout + tema): um tópico central, 3 principais e 2 subtópicos
+    em cada um. As posições vêm do auto-layout da primeira abertura (precisa_layout), que mede os blocos no editor."""
+    dep = departamento or "Metrologia"
+    nodes = [{"id": "1", "type": "process", "position": {"x": 0, "y": 0},
+              "data": {"label": "Tópico central", "stepId": "1", "lane": dep}}]
+    edges = []
+    proximo = 2
+    for i in range(1, 4):
+        pai = str(proximo)
+        nodes.append({"id": pai, "type": "process", "position": {"x": 0, "y": 0},
+                      "data": {"label": f"Tópico principal {i}", "stepId": pai, "lane": dep}})
+        edges.append({"id": f"e-1-{pai}", "source": "1", "target": pai})
+        proximo += 1
+        for j in range(1, 3):
+            filho = str(proximo)
+            nodes.append({"id": filho, "type": "process", "position": {"x": 0, "y": 0},
+                          "data": {"label": f"Subtópico {i}.{j}", "stepId": filho, "lane": dep}})
+            edges.append({"id": f"e-{pai}-{filho}", "source": pai, "target": filho})
+            proximo += 1
+    return {
+        "schema_version": 2,
+        "layout_modo": layout,
+        "tema": tema,
+        "precisa_layout": True,
+        "nodes": nodes,
+        "edges": edges,
+        "grid_data": [],
+    }
+

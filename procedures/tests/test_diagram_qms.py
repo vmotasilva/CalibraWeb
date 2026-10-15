@@ -2405,6 +2405,57 @@ class LayoutsEspeciaisTestCase(TestCase):
             self.assertIn(f'data-layout-modo="{modo}"', html)
 
 
+class CriacaoComModeloDoCatalogoTestCase(TestCase):
+    """Tela de criação: a galeria de estilos e variações grava layout + tema no diagrama novo."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='criador.modelo', password='x', is_superuser=True)
+        self.client = Client()
+        self.client.force_login(self.user)
+        self.tema = {"nome": "Modelo: Pílulas", "fundo": "#fff1d9", "multiRamo": False, "paleta": [],
+                     "linha": {"cor": "#0f172a", "largura": 1, "formato": "curva", "seta": False},
+                     "niveis": [{"forma": "pill", "fill": "#3f51b5", "borda": "#3f51b5", "texto": "#ffffff", "tamanho": 15, "negrito": True}]}
+
+    def _criar(self, **extra):
+        dados = {'titulo': 'Mapa novo', 'departamento': 'Qualidade', 'template_id': '', 'modelo_layout': 'mapa',
+                 'modelo_tema': json.dumps(self.tema), 'modelo_nome': 'Mapa mental - Pílulas'}
+        dados.update(extra)
+        return self.client.post('/procedures/diagramas/novo/', dados)
+
+    def test_pagina_de_criacao_tem_a_galeria_de_estilos(self):
+        html = self.client.get('/procedures/diagramas/novo/').content.decode('utf-8')
+        for item in ('id="galeriaModelos"', 'name="modelo_layout"', 'name="modelo_tema"', 'modelos_estilo.js', 'Estilos e variações'):
+            self.assertIn(item, html)
+
+    def test_cria_diagrama_com_layout_tema_e_exemplo_de_topicos(self):
+        r = self._criar()
+        self.assertEqual(r.status_code, 302)
+        versao = DiagramaVersao.objects.get(diagrama__titulo='Mapa novo')
+        topo = versao.dados_topologia
+        self.assertEqual(topo['layout_modo'], 'mapa')
+        self.assertEqual(topo['tema']['linha']['formato'], 'curva')
+        self.assertTrue(topo['precisa_layout'])
+        self.assertEqual(len(topo['nodes']), 10)
+        self.assertEqual(len(topo['edges']), 9)
+        self.assertIn('Mapa mental - Pílulas', versao.motivo_revisao)
+        from procedures.services.diagram_validation import validar_topologia
+        self.assertEqual(validar_topologia(topo), [])
+
+    def test_modelo_invalido_nao_cria_diagrama(self):
+        for extra in ({'modelo_layout': 'raias'}, {'modelo_layout': 'inexistente'}, {'modelo_tema': 'nao-e-json'},
+                      {'modelo_tema': json.dumps({**self.tema, 'niveis': [{'forma': 'estrela'}]})}):
+            r = self._criar(**extra)
+            self.assertEqual(r.status_code, 200, extra)
+            self.assertIn('modelo escolhido é inválido', r.content.decode('utf-8'))
+        self.assertFalse(Diagrama.objects.filter(titulo='Mapa novo').exists())
+
+    def test_sem_modelo_do_catalogo_continua_usando_o_modelo_de_base(self):
+        r = self.client.post('/procedures/diagramas/novo/', {'titulo': 'Fluxo base', 'template_id': 'fluxograma_padrao'})
+        self.assertEqual(r.status_code, 302)
+        topo = DiagramaVersao.objects.get(diagrama__titulo='Fluxo base').dados_topologia
+        self.assertNotIn('precisa_layout', topo)
+
+
 class PerguntaDeLigacaoTestCase(TestCase):
     """Outliner e Grelha perguntam por onde a ligação sai do pai e entra no filho (layout por raias)."""
 

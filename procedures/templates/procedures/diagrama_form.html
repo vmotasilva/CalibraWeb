@@ -1,4 +1,5 @@
 {% extends "procedures/procedimento_base.html" %}
+{% load static %}
 
 {% block title %}Novo Diagrama / Fluxograma{% endblock %}
 {% block header_title %}Novo Diagrama / Fluxograma{% endblock %}
@@ -105,9 +106,18 @@
         <form method="POST" id="novoDiagramaForm">
             {% csrf_token %}
             <input type="hidden" name="template_id" id="selectedTemplateId" value="{{ template_id_selecionado|default:'fluxograma_padrao' }}">
+            <input type="hidden" name="modelo_layout" id="modeloLayout" value="">
+            <input type="hidden" name="modelo_tema" id="modeloTema" value="">
+            <input type="hidden" name="modelo_nome" id="modeloNome" value="">
 
             <!-- SEÇÃO 1: GALERIA DE MODELOS VISUAIS -->
             <div class="card border-0 shadow-sm p-4 bg-white mb-4">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item"><button type="button" class="nav-link active" data-bs-toggle="tab" data-bs-target="#abaModelosBase"><i class="bi bi-grid-1x2 me-1"></i>Modelos de base</button></li>
+                    <li class="nav-item"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#abaEstilosModelo"><i class="bi bi-palette2 me-1"></i>Estilos e variações</button></li>
+                </ul>
+                <div class="tab-content">
+                <div class="tab-pane fade show active" id="abaModelosBase">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
                     <div>
                         <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2">
@@ -260,6 +270,21 @@
                     </div>
                     {% endfor %}
                 </div>
+                </div>
+                <div class="tab-pane fade" id="abaEstilosModelo">
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                        <div>
+                            <h5 class="fw-bold text-dark mb-1 d-flex align-items-center gap-2"><i class="bi bi-palette2 text-primary"></i> Escolha o layout e o estilo</h5>
+                            <p class="text-muted small mb-0">Cada variação define o <strong>layout</strong> (como os blocos se distribuem) e o <strong>estilo</strong> (formas, linhas e fontes). O diagrama começa com um exemplo de tópicos que você edita depois.</p>
+                        </div>
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                            <label class="small fw-semibold mb-0" for="modeloPaleta">Cores</label>
+                            <select id="modeloPaleta" class="form-select form-select-sm w-auto"></select>
+                        </div>
+                    </div>
+                    <div id="galeriaModelos" class="mt-3"></div>
+                </div>
+                </div>
             </div>
 
             <!-- SEÇÃO 2: DADOS DO FLUXOGRAMA -->
@@ -316,12 +341,78 @@
     </div>
 </div>
 
+<script src="{% static 'procedures/js/diagrama/modelos_estilo.js' %}"></script>
 <script>
     function selectTemplate(templateId, element) {
+        // escolher um modelo de base cancela a escolha feita na galeria de estilos
+        if (typeof variacaoEscolhida !== 'undefined' && variacaoEscolhida) { variacaoEscolhida = null; atualizarCamposDoModelo(); renderizarGaleriaModelos(); }
         document.getElementById('selectedTemplateId').value = templateId;
         document.querySelectorAll('.template-card').forEach(card => card.classList.remove('active'));
         element.classList.add('active');
     }
+
+    // ---- Estilos e variações (mesmo catálogo do botão "Modelos" do editor)
+    let variacaoEscolhida = null;
+
+    function escHtml(v) {
+        const d = document.createElement('div');
+        d.textContent = v == null ? '' : String(v);
+        return d.innerHTML;
+    }
+
+    function paletaEscolhida() {
+        return DiagramaModelos.paletaPorId(document.getElementById('modeloPaleta').value);
+    }
+
+    function atualizarCamposDoModelo() {
+        const campoLayout = document.getElementById('modeloLayout');
+        const campoTema = document.getElementById('modeloTema');
+        const campoNome = document.getElementById('modeloNome');
+        if (!variacaoEscolhida) { campoLayout.value = ''; campoTema.value = ''; campoNome.value = ''; return; }
+        const achado = DiagramaModelos.variacaoPorId(variacaoEscolhida);
+        campoLayout.value = achado.variacao.layout || achado.familia.layout;
+        campoTema.value = JSON.stringify(DiagramaModelos.construirTema(achado.variacao, paletaEscolhida()));
+        campoNome.value = `${achado.familia.nome} - ${achado.variacao.nome}`;
+        document.getElementById('selectedTemplateId').value = '';
+        document.querySelectorAll('.template-card').forEach(card => card.classList.remove('active'));
+    }
+
+    function escolherVariacao(id) {
+        variacaoEscolhida = id;
+        atualizarCamposDoModelo();
+        renderizarGaleriaModelos();
+    }
+
+    function renderizarGaleriaModelos() {
+        const select = document.getElementById('modeloPaleta');
+        if (!select.options.length) {
+            select.innerHTML = DiagramaModelos.PALETAS.map(p => `<option value="${p.id}">${escHtml(p.nome)}</option>`).join('');
+        }
+        const paleta = paletaEscolhida();
+        document.getElementById('galeriaModelos').innerHTML = DiagramaModelos.FAMILIAS_MODELO.map(familia => `
+            <div class="mb-4">
+                <div class="fw-bold text-dark">${escHtml(familia.nome)}</div>
+                <div class="text-muted small mb-2">${escHtml(familia.descricao)}</div>
+                <div class="row g-2">
+                    ${familia.variacoes.map(v => `
+                        <div class="col-6 col-md-3">
+                            <button type="button" class="modelo-variacao w-100 p-1 border rounded-3 bg-white text-start ${variacaoEscolhida === v.id ? 'border-primary border-2' : ''}"
+                                    onclick="escolherVariacao('${v.id}')" title="${escHtml(familia.nome)} - ${escHtml(v.nome)}">
+                                <div class="rounded-2 overflow-hidden">${DiagramaModelos.miniatura(familia, v, paleta)}</div>
+                                <div class="small fw-semibold px-1 pt-1">${escHtml(v.nome)}${variacaoEscolhida === v.id ? ' <i class="bi bi-check-circle-fill text-primary"></i>' : ''}</div>
+                            </button>
+                        </div>`).join('')}
+                </div>
+            </div>`).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        renderizarGaleriaModelos();
+        document.getElementById('modeloPaleta').addEventListener('change', function() {
+            atualizarCamposDoModelo();
+            renderizarGaleriaModelos();
+        });
+    });
 
     // Filtro de categorias dos templates
     document.addEventListener('DOMContentLoaded', function() {
