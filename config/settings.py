@@ -233,6 +233,9 @@ if database_url:
 _is_serverless = bool(os.environ.get("VERCEL"))
 _conn_max_age = 0 if _is_serverless else 600
 
+# SSL no banco e obrigatorio por padrao; so desative (DB_SSL_REQUIRE=False) em bancos locais/CI sem SSL.
+_db_ssl_require = os.environ.get("DB_SSL_REQUIRE", "True").strip().lower() not in ("false", "0", "no")
+
 if database_url:
     # Guard against placeholder URLs like ...@host:port/db
     malformed_placeholder = "@host:" in database_url or database_url.endswith("@host")
@@ -244,13 +247,13 @@ if database_url:
             logger.info("Successfully replaced malformed URL with PG* vars")
         else:
             logger.error("Failed to build URL from PG* vars, will use malformed URL (will likely fail)")
-    DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=_conn_max_age, ssl_require=True)
+    DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=_conn_max_age, ssl_require=_db_ssl_require)
     logger.info(f"Database configured (conn_max_age={_conn_max_age})")
 else:
     logger.info("No DATABASE_URL found, attempting to build from PG* vars")
     built = _build_db_from_pg_env()
     if built:
-        DATABASES["default"] = dj_database_url.parse(built, conn_max_age=_conn_max_age, ssl_require=True)
+        DATABASES["default"] = dj_database_url.parse(built, conn_max_age=_conn_max_age, ssl_require=_db_ssl_require)
         logger.info("Successfully configured database from PG* vars")
     else:
         logger.warning("No database configuration found, using default SQLite")
