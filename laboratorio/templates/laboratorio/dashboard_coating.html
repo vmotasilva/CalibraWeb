@@ -258,7 +258,18 @@
                 </div>
                 <div id="collapseLotes" class="collapse show">
                     <div class="card-body">
-                        <div class="d-flex justify-content-end mb-3">
+                        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                            <ul class="nav nav-pills nav-sm bg-light p-1 rounded-3 border" id="lotesVisaoTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active py-1 px-2" data-visao="trat" type="button" title="Barra empilhada por tratamento">Por Tratamento</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-1 px-2" data-visao="maq" type="button" title="Barra empilhada por máquina">Por Máquina</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link py-1 px-2" data-visao="maq_trat" type="button" title="Uma barra por máquina, empilhada por tratamento">Máquina x Tratamento</button>
+                                </li>
+                            </ul>
                             <ul class="nav nav-pills nav-sm" id="lotesTabs" role="tablist">
                                 <li class="nav-item" role="presentation">
                                     <button class="nav-link active py-1 px-2" data-period="dia" type="button" role="tab">Diário</button>
@@ -609,10 +620,12 @@
         }
 
         // Tabelas de Lotes
+        let visaoAtual = 'trat';
         const table = document.getElementById('chartDataTable');
         function renderTable(labels, datasets) {
             if (table) {
-                let tableHTML = '<thead class="table-light"><tr><th class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">Tratamento \ Data</th>';
+                const rotuloCanto = {trat: 'Tratamento / Data', maq: 'Máquina / Data', maq_trat: 'Máquina - Tratamento / Data'}[visaoAtual] || 'Tratamento / Data';
+                let tableHTML = '<thead class="table-light"><tr><th class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">' + rotuloCanto + '</th>';
                 labels.forEach(label => { tableHTML += `<th>${label}</th>`; });
                 tableHTML += '</tr></thead><tbody>';
                 
@@ -717,21 +730,67 @@
             const datasets_sem = JSON.parse('{{ datasets_sem|default:"[]"|safe }}');
             const datasets_mes = JSON.parse('{{ datasets_mes|default:"[]"|safe }}');
             
-            renderTable(labels_dia, datasets_dia);
+            const datasets_maq = JSON.parse('{{ datasets_maq_json|default:"{}"|escapejs }}');
+            const datasets_maq_trat = JSON.parse('{{ datasets_maq_trat_json|default:"{}"|escapejs }}');
+
+            const labelsPorPeriodo = { dia: labels_dia, sem: labels_sem, mes: labels_mes };
+            const datasetsPorVisao = {
+                trat: { dia: datasets_dia, sem: datasets_sem, mes: datasets_mes },
+                maq: datasets_maq,
+                maq_trat: datasets_maq_trat
+            };
+            let periodoAtual = 'dia';
+
+            // Escreve o código da máquina embaixo de cada barra (visão Máquina x Tratamento)
+            const pluginRotuloMaquina = {
+                id: 'rotuloMaquina',
+                afterDraw(chart) {
+                    if (visaoAtual !== 'maq_trat') return;
+                    const ctx = chart.ctx;
+                    const feitos = new Set();
+                    ctx.save();
+                    ctx.fillStyle = '#495057';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    chart.data.datasets.forEach((ds, i) => {
+                        chart.getDatasetMeta(i).data.forEach((bar, j) => {
+                            const chave = ds.stack + '|' + j;
+                            if (feitos.has(chave)) return;
+                            feitos.add(chave);
+                            ctx.fillText(ds.stack, bar.x, chart.chartArea.bottom + 12);
+                        });
+                    });
+                    ctx.restore();
+                }
+            };
 
             // Chart 1: Lotes
             const canvasLotes = document.getElementById('lotesChart');
+            let lotesChart = null;
+            function atualizarLotes() {
+                const labels = labelsPorPeriodo[periodoAtual];
+                const datasets = datasetsPorVisao[visaoAtual][periodoAtual] || [];
+                renderTable(labels, datasets);
+                if (!lotesChart) return;
+                lotesChart.data.labels = labels;
+                lotesChart.data.datasets = datasets.map(ds => ({...ds, type: 'bar'}));
+                const multi = visaoAtual === 'maq_trat';
+                lotesChart.options.scales.x.display = multi;
+                lotesChart.options.scales.x.ticks.padding = multi ? 18 : 3;
+                lotesChart.update();
+            }
+
             if (canvasLotes) {
-                const ctxLotes = canvasLotes.getContext('2d');
-                let lotesChart = new Chart(ctxLotes, {
+                lotesChart = new Chart(canvasLotes.getContext('2d'), {
                     type: 'bar',
                     data: { labels: labels_dia, datasets: datasets_dia },
+                    plugins: [pluginRotuloMaquina],
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         layout: { padding: { right: 0, left: 0, top: 10, bottom: 0 } },
                         scales: {
-                            x: { stacked: true, display: false },
+                            x: { stacked: true, display: false, ticks: { padding: 3 } },
                             y: {
                                 afterFit: function(scaleInstance) { scaleInstance.width = 150; },
                                 stacked: true, beginAtZero: true, ticks: { precision: 0 },
@@ -740,36 +799,26 @@
                         plugins: { legend: { display: false } }
                     }
                 });
-                
-                // Handle Lotes Tabs
-                document.querySelectorAll('#lotesTabs button').forEach(btn => {
-                    btn.addEventListener('click', function(e) {
-                        document.querySelectorAll('#lotesTabs button').forEach(b => b.classList.remove('active'));
-                        this.classList.add('active');
-                        let period = this.getAttribute('data-period');
-                        if (period === 'dia') {
-                            lotesChart.data.labels = labels_dia;
-                            lotesChart.data.datasets = datasets_dia;
-                            lotesChart.config.type = 'bar';
-                            lotesChart.options.scales.x.display = false;
-                            renderTable(labels_dia, datasets_dia);
-                        } else if (period === 'sem') {
-                            lotesChart.data.labels = labels_sem;
-                            lotesChart.data.datasets = datasets_sem.map(ds => ({...ds, type: 'bar'}));
-                            lotesChart.config.type = 'bar';
-                            lotesChart.options.scales.x.display = false;
-                            renderTable(labels_sem, datasets_sem);
-                        } else if (period === 'mes') {
-                            lotesChart.data.labels = labels_mes;
-                            lotesChart.data.datasets = datasets_mes.map(ds => ({...ds, type: 'bar'}));
-                            lotesChart.config.type = 'bar';
-                            lotesChart.options.scales.x.display = false;
-                            renderTable(labels_mes, datasets_mes);
-                        }
-                        lotesChart.update();
-                    });
-                });
             }
+            atualizarLotes();
+
+            document.querySelectorAll('#lotesTabs button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('#lotesTabs button').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    periodoAtual = this.getAttribute('data-period');
+                    atualizarLotes();
+                });
+            });
+
+            document.querySelectorAll('#lotesVisaoTabs button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('#lotesVisaoTabs button').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    visaoAtual = this.getAttribute('data-visao');
+                    atualizarLotes();
+                });
+            });
 
             // Chart 2: Manutenções (se houver)
             const canvasManut = document.getElementById('manutChart');

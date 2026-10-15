@@ -2738,8 +2738,58 @@ def dashboard_coating(request):
         datasets_sem.append({**base_dataset, 'data': data_sem, 'type': 'line', 'tension': 0.3, 'fill': False})
         datasets_mes.append({**base_dataset, 'data': data_mes, 'type': 'bar'})
 
+    # Visualizações alternativas: por máquina e por máquina + tratamento
+    contagem_chart = {}
+    for row in qs_registros.values(
+        'maquina__codigo', 'tratamento__nome', 'tratamento__cor', 'turno_coating__data'
+    ).annotate(n=Count('id')).order_by():
+        chave = (
+            row['maquina__codigo'] or 'Sem Máquina',
+            row['tratamento__nome'] or 'Sem Tratamento',
+            row['tratamento__cor'],
+        )
+        por_dia = contagem_chart.setdefault(chave, {})
+        por_dia[row['turno_coating__data']] = por_dia.get(row['turno_coating__data'], 0) + row['n']
+
+    def _lotes(total_registros):
+        v = total_registros * 0.5
+        return int(v) if v.is_integer() else v
+
+    def _serie_periodos(por_dia):
+        return {
+            'dia': [_lotes(por_dia.get(d, 0)) for d in dias],
+            'sem': [_lotes(sum(por_dia.get(d, 0) for d in w)) for w in weeks_dict.values()],
+            'mes': [_lotes(sum(por_dia.get(d, 0) for d in m)) for m in months_dict.values()],
+        }
+
+    maquinas_chart = sorted({c[0] for c in contagem_chart})
+    cores_maquina = ['#0d6efd', '#fd7e14', '#198754', '#6f42c1', '#dc3545', '#0dcaf0', '#ffc107', '#d63384', '#20c997', '#6c757d']
+    datasets_maq = {'dia': [], 'sem': [], 'mes': []}
+    datasets_maq_trat = {'dia': [], 'sem': [], 'mes': []}
+
+    for i, maq in enumerate(maquinas_chart):
+        cor_maq = cores_maquina[i % len(cores_maquina)]
+        total_maq = {}
+        for (m, _t, _c), por_dia in contagem_chart.items():
+            if m == maq:
+                for d, n in por_dia.items():
+                    total_maq[d] = total_maq.get(d, 0) + n
+        for per, data in _serie_periodos(total_maq).items():
+            datasets_maq[per].append({
+                'label': maq, 'data': data, 'backgroundColor': cor_maq,
+                'borderColor': cor_maq, 'borderWidth': 1,
+            })
+
+    for (maq, trat, cor), por_dia in sorted(contagem_chart.items(), key=lambda kv: (kv[0][0], kv[0][1])):
+        cor = cor or default_colors[len(datasets_maq_trat['dia']) % len(default_colors)]
+        for per, data in _serie_periodos(por_dia).items():
+            datasets_maq_trat[per].append({
+                'label': f'{maq} - {trat}', 'data': data, 'backgroundColor': cor,
+                'borderColor': cor, 'borderWidth': 1, 'stack': maq, 'stackLabel': maq,
+            })
+
     # Manutenções (Doughnut - Realizados vs Pendentes no Período)
-    ciclos_ativos = CicloManutencaoCoating.objects.filter(ativo=True)
+    ciclos_ativos =CicloManutencaoCoating.objects.filter(ativo=True)
     
     total_lotes_periodo = qs_registros.count() * 0.5
     
@@ -3108,6 +3158,8 @@ def dashboard_coating(request):
         "maq_mais_produtiva": maq_mais_produtiva,
         "avg_rodando": avg_rodando_str,
         "avg_parado": avg_parado_str,
+        "datasets_maq_json": json.dumps(datasets_maq),
+        "datasets_maq_trat_json": json.dumps(datasets_maq_trat),
         "labels_dia": json.dumps(labels_dia),
         "labels_sem": json.dumps(labels_sem),
         "labels_mes": json.dumps(labels_mes),
