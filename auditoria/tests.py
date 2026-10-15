@@ -1325,6 +1325,7 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
         )
         modelo.refresh_from_db()
+        modelo.responsaveis.add(self.user)
 
         with patch("django.utils.timezone.localdate", return_value=data_quinta):
             pendencias = calcular_periodos_pendentes(modelo)
@@ -1350,6 +1351,7 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
         )
         modelo.refresh_from_db()
+        modelo.responsaveis.add(self.user)
 
         # Quinta-feira (2026-09-03, weekday 3): Mesmo antes de sexta-feira,
         # a semana 31/08/2026 a 06/09/2026 já iniciou e DEVE constar como PENDENTE
@@ -1384,6 +1386,7 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
         )
         modelo.refresh_from_db()
+        modelo.responsaveis.add(self.user)
 
         # Terça-feira (2026-09-01)
         data_terca = datetime.date(2026, 9, 1)
@@ -1411,6 +1414,7 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
         )
         modelo.refresh_from_db()
+        modelo.responsaveis.add(self.user)
 
         # Cria registro com 35% de progresso (status RASCUNHO)
         registro = RegistroAuditoria.objects.create(
@@ -1459,6 +1463,7 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
         )
         modelo.refresh_from_db()
+        modelo.responsaveis.add(self.user)
 
         # Cria registro 100% concluído
         RegistroAuditoria.objects.create(
@@ -1498,6 +1503,7 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
             criado_em=timezone.make_aware(datetime.datetime(2026, 8, 31, 8, 0, 0))
         )
         modelo.refresh_from_db()
+        modelo.responsaveis.add(self.user)
         p1 = PerguntaAuditoria.objects.create(
             modelo=modelo,
             pergunta="Pergunta Diária 1",

@@ -1286,10 +1286,10 @@ def selecionar_modelo_preenchimento(request):
     periodicidade = (request.GET.get("periodicidade") or "").strip()
     pendentes = (request.GET.get("pendentes") or "").strip().lower()
 
-    if not _auditoria_is_admin(request.user):
-        responsavel_id = str(request.user.pk)
+    # Formulários de preenchimento aparecem só para quem é responsável (inclusive admins)
+    responsavel_id = str(request.user.pk)
 
-    modelos = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.filter(ativo=True))
+    modelos = ModeloAuditoria.objects.filter(ativo=True)
     if q:
         modelos = modelos.filter(models.Q(nome__icontains=q) | models.Q(objeto_auditoria__icontains=q))
     if responsavel_id:
@@ -1365,18 +1365,7 @@ def selecionar_modelo_preenchimento(request):
     modelos = modelos_com_pendencias
 
     User = get_user_model()
-    modelos_com_responsavel = _filter_modelos_para_usuario(
-        request.user,
-        ModeloAuditoria.objects.filter(
-            ativo=True,
-        ).filter(
-            models.Q(responsaveis__isnull=False) | models.Q(responsavel__isnull=False)
-        ),
-    )
-    ids_m2m = list(modelos_com_responsavel.values_list("responsaveis__id", flat=True))
-    ids_fk = list(modelos_com_responsavel.values_list("responsavel_id", flat=True))
-    responsaveis_ids = {i for i in ids_m2m + ids_fk if i}
-    responsaveis = User.objects.filter(id__in=responsaveis_ids).order_by("username")
+    responsaveis = User.objects.filter(pk=request.user.pk)
 
     context = {
         "modelos": modelos,
@@ -2515,6 +2504,15 @@ def registros_por_modelo(request, modelo_id):
     if request.method == "POST" and is_read_only:
         return HttpResponseForbidden("Este link é somente leitura.")
 
+    if request.method == "POST" and (request.POST.get("action") or "").strip() == "update_responsaveis":
+        if not _auditoria_can_update_modelo(request.user, modelo):
+            return HttpResponseForbidden("Você não tem permissão para alterar os responsáveis deste modelo.")
+        User = get_user_model()
+        ids = [int(i) for i in request.POST.getlist("responsaveis") if i.isdigit()]
+        modelo.responsaveis.set(User.objects.filter(pk__in=ids, is_active=True))
+        messages.success(request, "Responsáveis atualizados com sucesso.")
+        return redirect("auditoria:registros_por_modelo", modelo_id=modelo.id)
+
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "share_report_targeted":
         destinatario_raw = (request.POST.get("destinatario_id") or "").strip()
         if not destinatario_raw.isdigit():
@@ -3246,6 +3244,10 @@ def registros_por_modelo(request, modelo_id):
         "targeted_share": targeted_share,
         "justificativas": justificativas,
     }
+    if not is_read_only and _auditoria_can_update_modelo(request.user, modelo):
+        context["can_edit_responsaveis"] = True
+        context["usuarios_responsaveis"] = get_user_model().objects.filter(is_active=True).order_by("first_name", "username")
+        context["responsaveis_ids"] = set(modelo.responsaveis.values_list("pk", flat=True))
     return render(request, "auditoria/registros_por_modelo.html", context)
 
 

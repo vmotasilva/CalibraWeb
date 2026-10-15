@@ -32,9 +32,20 @@
                                     {{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}
                                 {% endfor %}
                                 </span>
+                                {% if can_edit_responsaveis %}
+                                <button type="button" class="btn btn-link btn-sm p-0 ms-2 no-print" data-bs-toggle="modal" data-bs-target="#modal-responsaveis"><i class="bi bi-pencil"></i> Editar</button>
+                                {% endif %}
                             </p>
                             {% elif modelo.responsavel %}
-                            <p class="mb-2"><strong>Responsável:</strong> {{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}</p>
+                            <p class="mb-2"><strong>Responsável:</strong> {{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}
+                                {% if can_edit_responsaveis %}
+                                <button type="button" class="btn btn-link btn-sm p-0 ms-2 no-print" data-bs-toggle="modal" data-bs-target="#modal-responsaveis"><i class="bi bi-pencil"></i> Editar</button>
+                                {% endif %}
+                            </p>
+                            {% elif can_edit_responsaveis %}
+                            <p class="mb-2"><strong>Responsáveis:</strong> <span class="text-muted">Nenhum</span>
+                                <button type="button" class="btn btn-link btn-sm p-0 ms-2 no-print" data-bs-toggle="modal" data-bs-target="#modal-responsaveis"><i class="bi bi-pencil"></i> Editar</button>
+                            </p>
                             {% endif %}
                         </div>
                         <div class="col-md-6 text-start text-md-end mt-2 mt-md-0">
@@ -691,6 +702,36 @@
                                         <button type="submit" class="btn btn-primary d-none" id="btn-salvar-comentario-modal">
                                             <i class="bi bi-plus-circle"></i> Adicionar comentário
                                         </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if can_edit_responsaveis %}
+                    <div class="modal fade" id="modal-responsaveis" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="update_responsaveis">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Responsáveis pelo modelo</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="small text-muted">Somente os responsáveis (e administradores) veem este formulário para preenchimento.</p>
+                                        <select class="form-select" name="responsaveis" multiple size="12">
+                                            {% for u in usuarios_responsaveis %}
+                                            <option value="{{ u.id }}" {% if u.id in responsaveis_ids %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">Segure Ctrl para selecionar mais de um.</div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Salvar</button>
                                     </div>
                                 </form>
                             </div>
