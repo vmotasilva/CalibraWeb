@@ -30,6 +30,29 @@
         border-radius: 0;
         border: none;
     }
+    /* Modo foco: só o conteúdo + controles flutuantes */
+    .editor-container.zen-mode > .editor-header,
+    .editor-container.zen-mode > .editor-ribbon,
+    .editor-container.zen-mode > .alert { display: none !important; }
+    body.editor-foco-ativo { overflow: hidden; }
+    .foco-controles {
+        display: none;
+        position: absolute;
+        top: calc(10px + env(safe-area-inset-top, 0px));
+        right: 10px;
+        z-index: 40;
+        align-items: center;
+        gap: 2px;
+        padding: 4px;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.18);
+    }
+    .editor-container.zen-mode .foco-controles { display: inline-flex; }
+    .foco-controles .btn { border: 0; border-radius: 50%; width: 38px; height: 38px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+    .foco-controles .foco-sair { background: #0f172a; color: #fff; }
+    .modo-nao-canvas .foco-controles .somente-canvas-foco { display: none; }
 
     .editor-header {
         background: #f8fafc;
@@ -992,7 +1015,7 @@
             min-height: 480px;
             border-radius: 8px;
         }
-        .editor-container.zen-mode { height: 100dvh; }
+        .editor-container.zen-mode { height: 100dvh; min-height: 0; margin: 0 !important; }
         .container-fluid:has(#editorMainContainer) { padding: 6px 4px !important; }
         .editor-container { margin-bottom: 0 !important; }
 
@@ -1191,6 +1214,9 @@
             <button type="button" class="ribbon-btn" id="btnModoGrelha" onclick="alternarModoEditor('grelha')" title="Modo Tabela Matricial">
                 <i class="bi bi-table text-primary"></i> Grelha
             </button>
+            <button type="button" class="ribbon-btn" id="btnModoFoco" onclick="alternarModoZen()" title="Modo foco: esconde as barras e deixa só o conteúdo (Esc para sair)">
+                <i class="bi bi-arrows-fullscreen text-primary"></i> Foco
+            </button>
         </div>
 
         <!-- Grupo 2: Criação, Conexão e Histórico (Desfazer / Refazer) -->
@@ -1361,7 +1387,7 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="abrirModalTema()"><i class="bi bi-palette me-2"></i>Tema e cores do diagrama...</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarFundoCanvas()"><i class="bi bi-palette2 me-2"></i>Alternar fundo (acolhedor / claro)</a></li>
                     <li class="somente-raias"><a class="dropdown-item" href="javascript:void(0)" onclick="alternarNomeDasRaias()"><i class="bi bi-check2 me-2 invisible" id="checkNomeRaias"></i>Mostrar nomes das raias</a></li>
-                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarModoZen()"><i class="bi bi-fullscreen me-2"></i>Modo foco / tela cheia (ZEN)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="alternarModoZen()"><i class="bi bi-fullscreen me-2"></i>Modo foco (só o conteúdo)</a></li>
                 </ul>
             </div>
             <button type="button" class="ribbon-btn border active" id="btnToggleInspector" onclick="toggleInspectorPanel()" title="Abrir / Fechar Painel Lateral de Formatação">
@@ -1372,6 +1398,14 @@
 
     <!-- 3. Corpo Principal do Editor -->
     <div class="editor-body-wrapper">
+        <!-- Controles flutuantes do modo foco (só aparecem com .zen-mode) -->
+        <div class="foco-controles" role="toolbar" aria-label="Controles do modo foco">
+            <button type="button" class="btn btn-light somente-canvas-foco" onclick="alterarZoomRelativo(-0.1)" title="Diminuir zoom"><i class="bi bi-dash-lg"></i></button>
+            <button type="button" class="btn btn-light somente-canvas-foco" onclick="alterarZoomRelativo(0.1)" title="Aumentar zoom"><i class="bi bi-plus-lg"></i></button>
+            <button type="button" class="btn btn-light somente-canvas-foco" onclick="enquadrarVisaoCompleta()" title="Enquadrar todo o diagrama na tela"><i class="bi bi-aspect-ratio"></i></button>
+            <button type="button" class="btn foco-sair" onclick="alternarModoZen(false)" title="Sair do modo foco (Esc)"><i class="bi bi-fullscreen-exit"></i></button>
+        </div>
+
         <!-- VISTA 1: MODO CANVAS (VISUAL) -->
         <div id="viewCanvasContainer" class="flex-grow-1 position-relative d-flex flex-column h-100 overflow-hidden" style="min-width: 0;">
             <!-- Viewport do Diagrama (100% da área útil visual, livre e desobstruída) -->
