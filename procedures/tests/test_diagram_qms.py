@@ -2262,7 +2262,7 @@ class ModelosDeEstiloTestCase(TestCase):
         self.assertGreaterEqual(len(temas), 12)
         for item in temas:
             self.assertEqual(validar_tema(item['tema']), [], item['id'])
-            self.assertIn(item['layout'], ('organograma', 'logico', 'arvore', 'mapa'))
+            self.assertIn(item['layout'], ('organograma', 'logico', 'arvore', 'mapa', 'tabela', 'tabela_topo', 'matriz', 'linha_tempo', 'espinha'))
 
     def test_familias_tem_quatro_variacoes_e_miniaturas(self):
         base = self._base()
@@ -2271,8 +2271,8 @@ class ModelosDeEstiloTestCase(TestCase):
             "console.log(JSON.stringify(M.FAMILIAS_MODELO.map(f=>({n:f.variacoes.length,svg:f.variacoes.every(v=>M.miniatura(f,v).startsWith('<svg'))}))))")
         if resumo is None:
             self.skipTest('Node.js não disponível')
-        self.assertEqual(len(resumo), 5)
-        self.assertTrue(all(r['n'] == 4 and r['svg'] for r in resumo))
+        self.assertEqual(len(resumo), 9)
+        self.assertTrue(all(r['n'] >= 2 and r['svg'] for r in resumo))
 
     def test_forma_do_nivel_em_javascript_e_python(self):
         from procedures.services.diagram_estilo import forma_efetiva, resolver_estilo_no
@@ -2342,6 +2342,68 @@ class DesligadosViramVagaTestCase(TestCase):
         base = {"nodes": [{"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "A"}}], "edges": []}
         self.assertEqual(validar_topologia({**base, "desligados_viram_vaga": True}), [])
         self.assertTrue(validar_topologia({**base, "desligados_viram_vaga": "sim"}))
+
+
+class LayoutsEspeciaisTestCase(TestCase):
+    """Tabela, matriz, linha do tempo e espinha de peixe: validação e PDF com células, guias e conexões ocultas."""
+
+    @staticmethod
+    def _topo():
+        def no(i, x, y, rotulo, celula=None):
+            data = {"label": rotulo}
+            if celula:
+                data["celula"] = celula
+            return {"id": str(i), "type": "process", "position": {"x": x, "y": y}, "data": data}
+        return {
+            "layout_modo": "linha_tempo",
+            "nodes": [no(1, 60, 200, 'Central'), no(2, 300, 80, 'A'), no(3, 500, 320, 'B', {"w": 150, "h": 56})],
+            "edges": [{"id": "e12", "source": "1", "target": "2", "oculta": True}, {"id": "e13", "source": "1", "target": "3", "oculta": True}],
+            "guias": [{"x1": 240, "y1": 232, "x2": 700, "y2": 232}, {"x1": 375, "y1": 232, "x2": 375, "y2": 140}],
+        }
+
+    def test_validacao_de_celula_guias_e_conexoes_ocultas(self):
+        from procedures.services.diagram_validation import validar_topologia
+        topo = self._topo()
+        self.assertEqual(validar_topologia(topo), [])
+        for modo in ('tabela', 'tabela_topo', 'matriz', 'linha_tempo', 'espinha'):
+            self.assertEqual(validar_topologia({**topo, "layout_modo": modo}), [], modo)
+        ruim = self._topo()
+        ruim["nodes"][2]["data"]["celula"] = {"w": 0, "h": 56}
+        self.assertTrue(validar_topologia(ruim))
+        ruim = self._topo()
+        ruim["edges"][0]["oculta"] = "sim"
+        self.assertTrue(validar_topologia(ruim))
+        ruim = self._topo()
+        ruim["guias"] = [{"x1": 1, "y1": 2, "x2": "3", "y2": 4}]
+        self.assertTrue(validar_topologia(ruim))
+
+    def test_pdf_usa_tamanho_de_celula_guias_e_nao_desenha_conexao_oculta(self):
+        import io
+        from reportlab.pdfgen import canvas
+        from procedures.services.diagram_renderer import DiagramaFlowable, _tamanho
+        topo = self._topo()
+        self.assertEqual(_tamanho(topo["nodes"][2]), (150.0, 56.0))
+        fluxo = DiagramaFlowable(topo, 800, 600)
+        self.assertEqual(len(fluxo.guias), 2)
+        self.assertGreaterEqual(fluxo.cw, 700)
+        chamadas = []
+        fluxo._desenhar_aresta = lambda c, e: chamadas.append(e['id'])
+        buf = io.BytesIO()
+        c = canvas.Canvas(buf)
+        fluxo.canv = c
+        fluxo.wrap(800, 600)
+        fluxo.draw()
+        c.save()
+        self.assertEqual(chamadas, [])
+        self.assertTrue(buf.getvalue().startswith(b'%PDF-'))
+
+    def test_editor_aplica_artefatos_do_layout(self):
+        js = ler_js_editor()
+        for item in ('function limparArtefatosDeLayout', 'data.celula', 'edge.oculta', 'topologia.guias', 'ROTULOS_LAYOUT'):
+            self.assertIn(item, js)
+        html = (__import__('pathlib').Path(__file__).resolve().parent.parent / 'templates' / 'procedures' / 'diagrama_editor.html').read_text(encoding='utf-8')
+        for modo in ('tabela', 'tabela_topo', 'matriz', 'linha_tempo', 'espinha'):
+            self.assertIn(f'data-layout-modo="{modo}"', html)
 
 
 class PerguntaDeLigacaoTestCase(TestCase):

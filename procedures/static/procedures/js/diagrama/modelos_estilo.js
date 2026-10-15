@@ -98,6 +98,50 @@
                     n('rect', 'principal', 'principal', 'branco', true, 15), n('rect', 'branco', 'cinza', 'escuro', false, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
             ],
         },
+        {
+            id: 'linha_tempo', nome: 'Linha do tempo', layout: 'linha_tempo',
+            descricao: 'O tópico central à esquerda e uma linha com os ramos principais, alternando acima e abaixo.',
+            variacoes: [
+                { id: 'tl-destaque', nome: 'Destaque e caixas', linha: { formato: 'ortogonal', largura: 2, seta: false }, niveis: [
+                    n('rect', 'principal', 'principal', 'branco', true, 15), n('rect', 'branco', 'cinza', 'escuro', true, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+                { id: 'tl-sublinhado', nome: 'Texto sublinhado', linha: { formato: 'ortogonal', largura: 2, seta: false }, niveis: [
+                    n('plain', null, null, 'escuro', true, 16), n('underline', null, 'escuro', 'escuro', true, 12), n('underline', null, 'cinza', 'escuro', false, 10), n('underline', null, 'cinza', 'escuro', false, 10)] },
+                { id: 'tl-pilulas', nome: 'Pílulas', linha: { formato: 'ortogonal', largura: 2, seta: false }, niveis: [
+                    n('pill', 'principal', 'principal', 'branco', true, 15), n('pill', 'branco', 'cinza', 'escuro', true, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+                { id: 'tl-contorno', nome: 'Contorno escuro', linha: { formato: 'ortogonal', largura: 2, seta: false }, niveis: [
+                    n('rect', 'branco', 'escuro', 'escuro', true, 15), n('rect', 'branco', 'escuro', 'escuro', false, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+            ],
+        },
+        {
+            id: 'espinha', nome: 'Espinha de peixe', layout: 'espinha',
+            descricao: 'Causa e efeito: a cabeça à direita, a espinha e os ossos inclinados com as causas de cada ramo.',
+            variacoes: [
+                { id: 'fsh-destaque', nome: 'Destaque', linha: { formato: 'ortogonal', largura: 2, seta: false }, niveis: [
+                    n('rect', 'principal', 'principal', 'branco', true, 15), n('rect', 'branco', 'cinza', 'escuro', true, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+                { id: 'fsh-contorno', nome: 'Contorno e sublinhado', linha: { formato: 'ortogonal', largura: 2, seta: false }, niveis: [
+                    n('rect', 'branco', 'escuro', 'escuro', true, 15), n('underline', null, 'escuro', 'escuro', true, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+            ],
+        },
+        {
+            id: 'tabela', nome: 'Tabela em árvore', layout: 'tabela',
+            descricao: 'Cada bloco vira uma célula de tabela, com os níveis em colunas.',
+            variacoes: [
+                { id: 'tab-cabecalho', nome: 'Cabeçalho em destaque', layout: 'tabela_topo', linha: { formato: 'ortogonal', largura: 1, seta: false }, niveis: [
+                    n('rect', 'principal', 'principal', 'branco', true, 15), n('rect', 'branco', 'cinza', 'escuro', true, 12), n('rect', 'branco', 'cinza', 'escuro', false, 11), n('rect', 'branco', 'cinza', 'escuro', false, 10)] },
+                { id: 'tab-lateral', nome: 'Tópico central na lateral', linha: { formato: 'ortogonal', largura: 1, seta: false }, niveis: [
+                    n('rect', 'branco', 'escuro', 'escuro', true, 15), n('rect', 'branco', 'cinza', 'escuro', true, 12), n('rect', 'branco', 'cinza', 'escuro', false, 11), n('rect', 'branco', 'cinza', 'escuro', false, 10)] },
+            ],
+        },
+        {
+            id: 'matriz', nome: 'Matriz', layout: 'matriz',
+            descricao: 'Os níveis em linhas e os ramos em colunas, no formato de matriz.',
+            variacoes: [
+                { id: 'mtz-destaque', nome: 'Cabeçalho em destaque', linha: { formato: 'ortogonal', largura: 1, seta: false }, niveis: [
+                    n('rect', 'principal', 'principal', 'branco', true, 15), n('rect', 'clara', 'cinza', 'escuro', true, 12), n('rect', 'branco', 'cinza', 'escuro', false, 11), n('rect', 'branco', 'cinza', 'escuro', false, 10)] },
+                { id: 'mtz-contorno', nome: 'Contorno', linha: { formato: 'ortogonal', largura: 1, seta: false }, niveis: [
+                    n('rect', 'branco', 'escuro', 'escuro', true, 15), n('rect', 'branco', 'escuro', 'escuro', true, 12), n('rect', 'branco', 'cinza', 'escuro', false, 11), n('rect', 'branco', 'cinza', 'escuro', false, 10)] },
+            ],
+        },
     ];
 
     function paletaPorId(id) {
@@ -186,8 +230,9 @@
         paleta = paleta || PALETAS[0];
         const f = variacao.linha.formato;
         const [s0, s1, s2] = variacao.niveis;
+        const layout = variacao.layout || familia.layout;
         let corpo = '';
-        if (familia.layout === 'organograma') {
+        if (layout === 'organograma') {
             const centro = [L / 2, 20], pais = [[L * 0.28, 62], [L * 0.72, 62]];
             pais.forEach(([px, py]) => {
                 corpo += ligacao(f, centro[0], centro[1] + 7, px, py - 7, false);
@@ -198,7 +243,7 @@
             });
             pais.forEach(([px, py]) => { corpo += caixa(px, py, 46, 14, s1, paleta); });
             corpo += caixa(centro[0], centro[1], 66, 16, s0, paleta);
-        } else if (familia.layout === 'mapa') {
+        } else if (layout === 'mapa') {
             const cx = L / 2, cy = A / 2;
             [[1, 34], [1, 62], [1, 90], [-1, 34], [-1, 62], [-1, 90]].forEach(([lado, py]) => {
                 const px = cx + lado * 56;
@@ -210,7 +255,46 @@
             });
             [34, 62, 90].forEach(py => { corpo += caixa(cx + 56, py, 38, 12, s1, paleta) + caixa(cx - 56, py, 38, 12, s1, paleta); });
             corpo += caixa(cx, cy, 50, 18, s0, paleta);
-        } else if (familia.layout === 'logico') {
+        } else if (layout === 'tabela_topo' || layout === 'tabela' || layout === 'matriz') {
+            const cel = (x, y, w, h, spec) => {
+                const c = caixa(x + w / 2, y + h / 2, w, h, Object.assign({}, spec, { forma: spec.forma === 'pill' ? 'rect' : spec.forma }), paleta);
+                return c;
+            };
+            if (layout === 'tabela_topo') {
+                corpo += cel(30, 14, 160, 20, s0);
+                [0, 1].forEach(i => { corpo += cel(30, 34 + i * 40, 52, 40, s1); [0, 1].forEach(j => { corpo += cel(82, 34 + i * 40 + j * 20, 108, 20, s2); }); });
+            } else if (layout === 'tabela') {
+                corpo += cel(20, 14, 50, 96, s0);
+                [0, 1].forEach(i => { corpo += cel(70, 14 + i * 48, 50, 48, s1); [0, 1].forEach(j => { corpo += cel(120, 14 + i * 48 + j * 24, 80, 24, s2); }); });
+            } else {
+                corpo += cel(30, 14, 160, 22, s0);
+                [0, 1].forEach(i => { corpo += cel(30 + i * 80, 36, 80, 22, s1); [0, 1].forEach(j => { corpo += cel(30 + i * 80, 58 + j * 24, 80, 24, s2); }); });
+            }
+        } else if (layout === 'linha_tempo') {
+            const y0 = 62, x0 = 46;
+            corpo += `<line x1="${x0}" y1="${y0}" x2="${L - 8}" y2="${y0}" stroke="#334155" stroke-width="2"/>`;
+            [[78, -1], [128, 1], [178, -1]].forEach(([xc, lado]) => {
+                const yb = y0 + lado * 30;
+                corpo += `<line x1="${xc}" y1="${y0}" x2="${xc}" y2="${yb}" stroke="#334155" stroke-width="1.5"/>`;
+                corpo += caixa(xc, yb + lado * 7, 32, 13, s1, paleta);
+                [-1, 1].forEach(d => { corpo += caixa(xc + 34, yb + lado * 7 + d * 6, 20, 6, s2, paleta); });
+            });
+            corpo += caixa(22, y0, 38, 18, s0, paleta);
+        } else if (layout === 'espinha') {
+            const y0 = 62;
+            corpo += `<line x1="8" y1="${y0}" x2="${L - 62}" y2="${y0}" stroke="#334155" stroke-width="2"/>`;
+            [[60, -1], [110, -1], [60, 1], [110, 1]].forEach(([xc, lado]) => {
+                const ym = y0 + lado * 46;
+                corpo += `<line x1="${xc}" y1="${ym - lado * 6}" x2="${xc + 22}" y2="${y0}" stroke="#334155" stroke-width="1.5"/>`;
+                [0.4, 0.75].forEach(t => {
+                    const yy = ym - lado * 6 + (y0 - (ym - lado * 6)) * t;
+                    const xx = xc + 22 * t;
+                    corpo += `<line x1="${xx - 14}" y1="${yy}" x2="${xx}" y2="${yy}" stroke="#334155" stroke-width="1"/>${caixa(xx - 24, yy, 18, 6, s2, paleta)}`;
+                });
+                corpo += caixa(xc, ym, 34, 12, s1, paleta);
+            });
+            corpo += caixa(L - 32, y0, 52, 20, s0, paleta);
+        } else if (layout === 'logico') {
             const centro = [36, A / 2], pais = [26, 62, 98];
             pais.forEach((py, i) => {
                 corpo += ligacao(f, centro[0] + 28, centro[1], 98, py, true);

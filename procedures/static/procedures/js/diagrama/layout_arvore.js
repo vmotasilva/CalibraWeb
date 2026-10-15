@@ -16,6 +16,12 @@
         arvore: { direcao: 'lista', gapCruz: 16, gapNivel: 40, handles: ['bottom', 'left'] },
         // mapa mental: topico central no meio e ramos principais nos dois lados (cada lado e um layout logico)
         mapa: { direcao: 'dois-lados', gapCruz: 24, gapNivel: 80, handles: ['right', 'left'] },
+        // tabelas: cada bloco vira uma célula; linha do tempo e espinha de peixe têm linhas-guia próprias
+        tabela: { direcao: 'tabela', eixo: 'colunas', handles: ['right', 'left'] },
+        tabela_topo: { direcao: 'tabela', eixo: 'colunas', cabecalho: true, handles: ['right', 'left'] },
+        matriz: { direcao: 'tabela', eixo: 'linhas', handles: ['bottom', 'top'] },
+        linha_tempo: { direcao: 'linha-tempo', handles: ['right', 'left'] },
+        espinha: { direcao: 'espinha', handles: ['right', 'left'] },
     };
 
     const MARGEM_X = 80;
@@ -234,11 +240,242 @@
         return { posicoes, handles, ocultos: escondidos };
     }
 
+    // ------------------------------------------------------------------ layouts especiais: tabela, matriz, linha do tempo, espinha
+    // Além de posicoes/handles, devolvem: celulas (tamanho de cada bloco-célula), arestasOcultas (ids de conexões que o
+    // próprio desenho substitui) e guias (linhas extras: a espinha da linha do tempo, os ossos do peixe).
+    function prepararLayout(nos, arestas, tamanhos) {
+        const arvore = aplicarOrdemManual(montarArvore(nos, arestas), nos);
+        const escondidos = ocultos(nos, arvore);
+        const porId = new Map(nos.map(n => [String(n.id), n]));
+        const tam = id => (tamanhos && tamanhos[id]) || estimarTamanho(porId.get(id));
+        const arestaDe = new Map();
+        arestas.filter(ehHierarquia).forEach(a => { const k = `${a.source}|${a.target}`; if (!arestaDe.has(k)) arestaDe.set(k, a); });
+        const visiveis = id => (arvore.filhos.get(id) || []).filter(f => !escondidos.has(f));
+        return { arvore, escondidos, porId, tam, arestaDe, visiveis, raizes: arvore.raizes.filter(r => !escondidos.has(r)) };
+    }
+
+    // Layout "lógico" de um ramo (bloco + descendentes), com o bloco na origem
+    function layoutDoRamo(P, nos, ramoId, tamanhos) {
+        const conjunto = new Set([ramoId]);
+        descendentes(P.arvore, ramoId).forEach(d => conjunto.add(d));
+        const arestasRamo = [];
+        const adicionar = pai => (P.arvore.filhos.get(pai) || []).forEach(f => {
+            const o = P.arestaDe.get(`${pai}|${f}`);
+            if (o) arestasRamo.push({ id: o.id, source: pai, target: f, kind: 'hierarquia' });
+            adicionar(f);
+        });
+        adicionar(ramoId);
+        return calcularLayout(nos.filter(n => conjunto.has(String(n.id))), arestasRamo, 'logico', tamanhos, { x0: 0, y0: 0 });
+    }
+
+    const CELULA_MIN = { w: 150, h: 56 };
+
+    /**
+     * Tabela em árvore (eixo "colunas": cada nível é uma coluna) e matriz (eixo "linhas": cada nível é uma linha).
+     * Cada bloco vira uma célula que ocupa a faixa das suas folhas; com `cabecalho` o tópico central é uma faixa no topo.
+     */
+    function calcularTabela(cfg, nos, arestas, tamanhos, opt) {
+        const P = prepararLayout(nos, arestas, tamanhos);
+        const colunas = cfg.eixo === 'colunas';
+        const posicoes = {}, celulas = {}, arestasOcultas = [];
+        let deslocamento = 0;
+
+        P.raizes.forEach(raiz => {
+            const nivelDe = new Map(), faixa = new Map();
+            let folhas = 0;
+            const percorrer = (id, d) => {
+                nivelDe.set(id, d);
+                const kids = P.visiveis(id);
+                if (kids.length === 0) { faixa.set(id, [folhas, folhas]); folhas++; return; }
+                kids.forEach(k => percorrer(k, d + 1));
+                faixa.set(id, [faixa.get(kids[0])[0], faixa.get(kids[kids.length - 1])[1]]);
+            };
+            percorrer(raiz, 0);
+
+            const dimNivel = id => (colunas ? P.tam(id).w : P.tam(id).h);
+            const dimCruz = id => (colunas ? P.tam(id).h : P.tam(id).w);
+            const nivel = [];                                   // tamanho de cada nível (coluna ou linha)
+            let unidade = colunas ? CELULA_MIN.h : CELULA_MIN.w;   // tamanho de cada folha
+            nivelDe.forEach((d, id) => {
+                nivel[d] = Math.max(nivel[d] || (colunas ? CELULA_MIN.w : CELULA_MIN.h), dimNivel(id));
+                if (P.visiveis(id).length === 0) unidade = Math.max(unidade, dimCruz(id));
+            });
+            const d0 = cfg.cabecalho ? 1 : 0;
+            const inicio = [];
+            let acumulado = 0;
+            for (let d = d0; d < nivel.length; d++) { inicio[d] = acumulado; acumulado += nivel[d]; }
+            const alturaCab = cfg.cabecalho ? Math.max(P.tam(raiz).h, CELULA_MIN.h) : 0;
+            const larguraNiveis = acumulado;
+            const cruzTotal = folhas * unidade;
+
+            nivelDe.forEach((d, id) => {
+                if (cfg.cabecalho && d === 0) {
+                    posicoes[id] = { x: opt.x0, y: opt.y0 + deslocamento };
+                    celulas[id] = { w: larguraNiveis, h: alturaCab };
+                    return;
+                }
+                const [a0, a1] = faixa.get(id);
+                const cruzInicio = a0 * unidade, cruzTam = (a1 - a0 + 1) * unidade;
+                if (colunas) {
+                    posicoes[id] = { x: opt.x0 + inicio[d], y: opt.y0 + deslocamento + alturaCab + cruzInicio };
+                    celulas[id] = { w: nivel[d], h: cruzTam };
+                } else {
+                    posicoes[id] = { x: opt.x0 + deslocamento + cruzInicio, y: opt.y0 + inicio[d] };
+                    celulas[id] = { w: cruzTam, h: nivel[d] };
+                }
+            });
+            P.arvore.filhos.forEach((lista, pai) => {
+                if (!nivelDe.has(pai)) return;
+                lista.forEach(f => { const o = P.arestaDe.get(`${pai}|${f}`); if (o) arestasOcultas.push(o.id); });
+            });
+            deslocamento += (colunas ? alturaCab + cruzTotal : cruzTotal) + 60;
+        });
+        return { posicoes, handles: {}, ocultos: P.escondidos, celulas, arestasOcultas, guias: [] };
+    }
+
+    /**
+     * Linha do tempo: o tópico central à esquerda, uma espinha horizontal e os ramos principais ao longo dela,
+     * alternando acima e abaixo; os desdobramentos de cada ramo seguem para a direita (layout "lógico").
+     */
+    function calcularLinhaTempo(cfg, nos, arestas, tamanhos, opt) {
+        const P = prepararLayout(nos, arestas, tamanhos);
+        const posicoes = {}, handles = {}, arestasOcultas = [], guias = [];
+        const FOLGA_ESPINHA = 36, FOLGA_COLUNA = 40;
+        let yBase = opt.y0;
+
+        P.raizes.forEach(raiz => {
+            const mains = P.visiveis(raiz);
+            const tr = P.tam(raiz);
+            const rel = {}, guiasRaiz = [];
+            const fim = { cima: 0, baixo: 0 };
+            let colunaMinima = tr.w + 60, xMax = tr.w;
+            mains.forEach((m, i) => {
+                const lado = i % 2 === 0 ? 'cima' : 'baixo';
+                const r = layoutDoRamo(P, nos, m, tamanhos);
+                const h = Math.max(...Object.entries(r.posicoes).map(([id, p]) => p.y + P.tam(id).h));
+                const w = Math.max(...Object.entries(r.posicoes).map(([id, p]) => p.x + P.tam(id).w));
+                const xm = Math.max(colunaMinima, fim[lado]);
+                const yOff = lado === 'cima' ? -FOLGA_ESPINHA - h : FOLGA_ESPINHA;
+                Object.entries(r.posicoes).forEach(([id, p]) => { rel[id] = { x: xm + p.x, y: yOff + p.y }; });
+                Object.keys(r.handles).forEach(id => { handles[id] = ['right', 'left']; });
+                const tm = P.tam(m), pm = rel[m], xc = pm.x + tm.w / 2;
+                guiasRaiz.push({ x1: xc, y1: 0, x2: xc, y2: lado === 'cima' ? pm.y + tm.h : pm.y });
+                const o = P.arestaDe.get(`${raiz}|${m}`);
+                if (o) arestasOcultas.push(o.id);
+                fim[lado] = xm + w + FOLGA_COLUNA;
+                colunaMinima = xm + tm.w + 20;
+                xMax = Math.max(xMax, xm + tm.w);
+            });
+            rel[raiz] = { x: 0, y: -tr.h / 2 };
+            if (mains.length > 0) guiasRaiz.push({ x1: tr.w, y1: 0, x2: xMax + 30, y2: 0 });
+
+            const ys = Object.entries(rel).map(([id, p]) => [p.y, p.y + P.tam(id).h]);
+            const minY = Math.min(...ys.map(v => v[0])), maxY = Math.max(...ys.map(v => v[1]));
+            Object.entries(rel).forEach(([id, p]) => { posicoes[id] = { x: p.x + opt.x0, y: p.y - minY + yBase }; });
+            guiasRaiz.forEach(g => guias.push({ x1: g.x1 + opt.x0, y1: g.y1 - minY + yBase, x2: g.x2 + opt.x0, y2: g.y2 - minY + yBase }));
+            yBase += maxY - minY + 80;
+        });
+        Object.values(posicoes).forEach(p => { p.x = Math.round(p.x); p.y = Math.round(p.y); });
+        guias.forEach(g => { g.x1 = Math.round(g.x1); g.y1 = Math.round(g.y1); g.x2 = Math.round(g.x2); g.y2 = Math.round(g.y2); });
+        return { posicoes, handles, ocultos: P.escondidos, celulas: {}, arestasOcultas, guias };
+    }
+
+    /**
+     * Espinha de peixe: a "cabeça" (tópico central) à direita, a espinha horizontal e os ramos principais como ossos
+     * inclinados acima e abaixo dela. As causas (filhos do ramo) ficam encostadas no osso, ligadas por linhas horizontais;
+     * os níveis seguintes ficam em lista recuada sob cada causa.
+     */
+    function calcularEspinha(cfg, nos, arestas, tamanhos, opt) {
+        const P = prepararLayout(nos, arestas, tamanhos);
+        const posicoes = {}, handles = {}, arestasOcultas = [], guias = [];
+        const FOLGA_ESPINHA = 24, FOLGA_PILHA = 14, RECUO = 28, GAP_LINHA = 10, FOLGA_OSSO = 12;
+        let yBase = opt.y0;
+
+        P.raizes.forEach(raiz => {
+            const mains = P.visiveis(raiz);
+            const tr = P.tam(raiz);
+            const rel = {}, guiasRaiz = [];
+            rel[raiz] = { x: 0, y: -tr.h / 2 };
+            const limite = { cima: -30, baixo: -30 };
+            let xsAnterior = -20, xMin = 0;
+
+            mains.forEach((m, i) => {
+                const lado = i % 2 === 0 ? 'cima' : 'baixo';
+                const tm = P.tam(m);
+                // linhas da pilha: cada causa seguida dos seus descendentes (lista recuada)
+                const grupos = [];
+                P.visiveis(m).forEach(c => {
+                    const linhas = [{ id: c, nivel: 0 }];
+                    const descer = (pid, n) => P.visiveis(pid).forEach(f => { linhas.push({ id: f, nivel: n }); descer(f, n + 1); });
+                    descer(c, 1);
+                    grupos.push(linhas);
+                });
+                const alturaGrupo = linhas => linhas.reduce((s, l) => s + P.tam(l.id).h + GAP_LINHA, 0);
+                const larguraGrupo = linhas => Math.max(...linhas.map(l => l.nivel * RECUO + P.tam(l.id).w));
+                const pilha = grupos.reduce((s, g) => s + alturaGrupo(g), 0);
+                const larguraMax = grupos.length ? Math.max(...grupos.map(larguraGrupo)) : 0;
+                const comprimento = FOLGA_ESPINHA + pilha + FOLGA_PILHA;
+                const inclinacao = Math.max(50, (pilha + 38) * 0.5);
+                const esq = Math.max(FOLGA_OSSO + larguraMax, tm.w / 2);
+                const dir = Math.max(inclinacao, tm.w / 2);
+                const xc = Math.min(limite[lado] - dir, xsAnterior - 40 - inclinacao);
+                const xs = xc + inclinacao;
+                limite[lado] = xc - esq - 24;
+                xsAnterior = xs;
+                xMin = Math.min(xMin, xc - esq);
+
+                // geometria do osso: do centro do bloco principal até a espinha (y = 0)
+                const yMain = lado === 'cima' ? -(comprimento + tm.h) : comprimento;
+                const yPontaOsso = lado === 'cima' ? yMain + tm.h : yMain;
+                rel[m] = { x: xc - tm.w / 2, y: yMain };
+                guiasRaiz.push({ x1: xc, y1: yPontaOsso, x2: xs, y2: 0 });
+                const xOsso = y => xc + inclinacao * (y - yPontaOsso) / (0 - yPontaOsso);
+                const oRaiz = P.arestaDe.get(`${raiz}|${m}`);
+                if (oRaiz) arestasOcultas.push(oRaiz.id);
+
+                let y = lado === 'cima' ? yPontaOsso + FOLGA_PILHA : FOLGA_ESPINHA;
+                grupos.forEach(linhas => {
+                    const causa = linhas[0];
+                    const tc = P.tam(causa.id);
+                    const yMeio = y + tc.h / 2;
+                    const direita = xOsso(yMeio) - FOLGA_OSSO;
+                    const xCausa = direita - larguraGrupo(linhas);
+                    linhas.forEach(l => {
+                        rel[l.id] = { x: xCausa + l.nivel * RECUO, y };
+                        y += P.tam(l.id).h + GAP_LINHA;
+                    });
+                    guiasRaiz.push({ x1: xCausa + tc.w, y1: yMeio, x2: xOsso(yMeio), y2: yMeio });
+                    const oc = P.arestaDe.get(`${m}|${causa.id}`);
+                    if (oc) arestasOcultas.push(oc.id);
+                    linhas.slice(1).forEach(l => {
+                        const pai = P.arvore.pai.get(l.id);
+                        const o = P.arestaDe.get(`${pai}|${l.id}`);
+                        if (o) handles[o.id] = ['bottom', 'left'];
+                    });
+                });
+            });
+            if (mains.length > 0) guiasRaiz.push({ x1: xMin - 30, y1: 0, x2: 0, y2: 0 });
+
+            const ys = Object.entries(rel).map(([id, p]) => [p.y, p.y + P.tam(id).h]);
+            const minY = Math.min(...ys.map(v => v[0])), maxY = Math.max(...ys.map(v => v[1]));
+            const minX = Math.min(...Object.values(rel).map(p => p.x), ...guiasRaiz.map(g => Math.min(g.x1, g.x2)));
+            Object.entries(rel).forEach(([id, p]) => { posicoes[id] = { x: p.x - minX + opt.x0, y: p.y - minY + yBase }; });
+            guiasRaiz.forEach(g => guias.push({ x1: g.x1 - minX + opt.x0, y1: g.y1 - minY + yBase, x2: g.x2 - minX + opt.x0, y2: g.y2 - minY + yBase }));
+            yBase += maxY - minY + 80;
+        });
+        Object.values(posicoes).forEach(p => { p.x = Math.round(p.x); p.y = Math.round(p.y); });
+        guias.forEach(g => { g.x1 = Math.round(g.x1); g.y1 = Math.round(g.y1); g.x2 = Math.round(g.x2); g.y2 = Math.round(g.y2); });
+        return { posicoes, handles, ocultos: P.escondidos, celulas: {}, arestasOcultas, guias };
+    }
+
     function calcularLayout(nos, arestas, modo, tamanhos, opcoes) {
         const cfg = MODOS[modo];
         if (!cfg) throw new Error('Modo de layout desconhecido: ' + modo);
         const opt = Object.assign({ x0: MARGEM_X, y0: MARGEM_Y }, opcoes || {});
         if (cfg.direcao === 'dois-lados') return calcularMapa(nos, arestas, tamanhos, opt);
+        if (cfg.direcao === 'tabela') return calcularTabela(cfg, nos, arestas, tamanhos, opt);
+        if (cfg.direcao === 'linha-tempo') return calcularLinhaTempo(cfg, nos, arestas, tamanhos, opt);
+        if (cfg.direcao === 'espinha') return calcularEspinha(cfg, nos, arestas, tamanhos, opt);
 
         const arvore = aplicarOrdemManual(montarArvore(nos, arestas), nos);
         const escondidos = ocultos(nos, arvore);

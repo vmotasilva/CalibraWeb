@@ -190,7 +190,10 @@
     .layout-organograma .collapse-toggle { bottom: -11px; left: 50%; transform: translateX(-50%); }
     .layout-logico .collapse-toggle { right: -11px; top: 50%; transform: translateY(-50%); }
     .layout-arvore .collapse-toggle { bottom: -11px; left: 12px; }
-    .layout-mapa .collapse-toggle { bottom: -11px; left: 50%; transform: translateX(-50%); }
+    .layout-mapa .collapse-toggle, .layout-linha_tempo .collapse-toggle, .layout-espinha .collapse-toggle { bottom: -11px; left: 50%; transform: translateX(-50%); }
+    /* tabelas e matriz: o ramo não é recolhido (as células ocupam a grade) */
+    .layout-tabela .collapse-toggle, .layout-tabela_topo .collapse-toggle, .layout-matriz .collapse-toggle { display: none; }
+    .flow-node.node-celula { border-radius: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; overflow: hidden; }
 
     /* Alvos de soltura ao arrastar um bloco (trocar o pai / reordenar irmãos) */
     .drop-filho { outline: 3px dashed #2563eb; outline-offset: 4px; }
@@ -1222,6 +1225,11 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="logico" onclick="definirModoLayout('logico')"><i class="bi bi-check2 layout-check invisible me-2"></i>Lógico (da esquerda para a direita)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="arvore" onclick="definirModoLayout('arvore')"><i class="bi bi-check2 layout-check invisible me-2"></i>Árvore (lista com recuo)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="mapa" onclick="definirModoLayout('mapa')"><i class="bi bi-check2 layout-check invisible me-2"></i>Mapa mental (para os dois lados)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="tabela" onclick="definirModoLayout('tabela')"><i class="bi bi-check2 layout-check invisible me-2"></i>Tabela em árvore (níveis em colunas)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="tabela_topo" onclick="definirModoLayout('tabela_topo')"><i class="bi bi-check2 layout-check invisible me-2"></i>Tabela com cabeçalho</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="matriz" onclick="definirModoLayout('matriz')"><i class="bi bi-check2 layout-check invisible me-2"></i>Matriz (níveis em linhas)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="linha_tempo" onclick="definirModoLayout('linha_tempo')"><i class="bi bi-check2 layout-check invisible me-2"></i>Linha do tempo</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="espinha" onclick="definirModoLayout('espinha')"><i class="bi bi-check2 layout-check invisible me-2"></i>Espinha de peixe</a></li>
                     <li id="itemFluxoHorizontal" class="somente-raias"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarFluxoDasRaias()" title="Nas raias, os níveis da hierarquia avançam em colunas: pais à esquerda e filhos à direita"><i class="bi bi-check2 layout-check invisible me-2"></i>Raias: progressão da esquerda para a direita</a></li>
                     <li id="itemEmpilharFolhas" class="d-none"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarEmpilharFolhas()" title="No organograma, blocos sem subordinados do mesmo pai ficam um abaixo do outro"><i class="bi bi-check2 layout-check me-2"></i>Empilhar folhas na vertical</a></li>
                     <li><h6 class="dropdown-header">Estrutura do ramo selecionado</h6></li>

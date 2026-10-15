@@ -14,7 +14,7 @@ function variacaoAtualDoDiagrama() {
     if (!nome) return null;
     for (const familia of DiagramaModelos.FAMILIAS_MODELO) {
         const v = familia.variacoes.find(x => `Modelo: ${x.nome}` === nome);
-        if (v && familia.layout === (topologia.layout_modo || 'raias')) return v.id;
+        if (v && (v.layout || familia.layout) === (topologia.layout_modo || 'raias')) return v.id;
     }
     return null;
 }
@@ -64,7 +64,7 @@ function aplicarModeloDeEstilo(variacaoId) {
         topologia.edges.forEach(e => { delete e.style; });
     }
 
-    topologia.layout_modo = familia.layout;
+    topologia.layout_modo = variacao.layout || familia.layout;
     topologia.tema = DiagramaModelos.construirTema(variacao, paletaDoModeloEscolhida());
     aplicarFundoDoTema();
     aplicarLayoutArvore();          // as famílias deste catálogo usam os layouts em árvore (renderiza o canvas)

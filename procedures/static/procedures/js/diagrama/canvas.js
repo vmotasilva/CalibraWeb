@@ -72,6 +72,13 @@ function renderizarCanvas() {
         nodeEl.id = `node-${node.id}`;
         nodeEl.style.left = `${node.position.x}px`;
         nodeEl.style.top = `${node.position.y}px`;
+        if (node.data?.celula) {   // tabelas e matriz: o bloco é uma célula do tamanho calculado pelo layout
+            nodeEl.style.width = `${node.data.celula.w}px`;
+            nodeEl.style.height = `${node.data.celula.h}px`;
+            nodeEl.style.minHeight = '0';
+            nodeEl.style.boxSizing = 'border-box';
+            nodeEl.classList.add('node-celula');
+        }
 
         if (selectedNodeIds.has(node.id)) {
             nodeEl.classList.add('selected');
@@ -753,7 +760,21 @@ function desenharConexoes() {
 
     const estilo = topologia.estilo_linha || 'ortogonal';
 
+    // linhas-guia do layout (espinha da linha do tempo, ossos do peixe): mesma cor e espessura das conexões do tema
+    if (Array.isArray(topologia.guias) && topologia.guias.length) {
+        const estGuia = DiagramaEstilo.resolverEstiloConexao({}, { tema: topologia.tema || null });
+        topologia.guias.forEach(g => {
+            const linha = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            linha.setAttribute('x1', g.x1); linha.setAttribute('y1', g.y1); linha.setAttribute('x2', g.x2); linha.setAttribute('y2', g.y2);
+            linha.setAttribute('stroke', estGuia.color || '#475569');
+            linha.setAttribute('stroke-width', estGuia.width || 2.2);
+            linha.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(linha);
+        });
+    }
+
     topologia.edges.forEach(edge => {
+        if (edge.oculta) return;   // conexão substituída pelo desenho do layout
         const sourceNode = topologia.nodes.find(n => n.id === edge.source);
         const targetNode = topologia.nodes.find(n => n.id === edge.target);
         if (!sourceNode || !targetNode) return;

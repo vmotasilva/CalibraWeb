@@ -5,7 +5,7 @@ A árvore é formada pelas conexões com kind "hierarquia" (padrão); "relacao" 
 Cada bloco tem no máximo um pai (a primeira conexão vence) e ciclos são ignorados.
 """
 
-MODOS_ARVORE = ('organograma', 'logico', 'arvore', 'mapa')
+MODOS_ARVORE = ('organograma', 'logico', 'arvore', 'mapa', 'tabela', 'tabela_topo', 'matriz', 'linha_tempo', 'espinha')
 
 
 def eh_hierarquia(aresta: dict) -> bool:

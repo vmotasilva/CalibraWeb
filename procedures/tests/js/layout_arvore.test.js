@@ -341,4 +341,66 @@ teste('mapa: ramo recolhido some do layout', () => {
     assert.ok(r.ocultos.has('3'));
 });
 
+// --------------------------------------------------------------------------- tabela, matriz, linha do tempo e espinha
+const arvoreDeTeste = () => {
+    const nos = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(no);
+    const arestas = [lig(1, 2), lig(1, 3), lig(1, 4), lig(2, 5), lig(2, 6), lig(3, 7), lig(7, 8), lig(4, 9)];
+    return { nos, arestas, tam: tamanhos([1, 2, 3, 4, 5, 6, 7, 8, 9]) };
+};
+const dentro = (p, c, x, y) => x >= p.x && x <= p.x + c.w && y >= p.y && y <= p.y + c.h;
+
+teste('tabela: células sem sobreposição, pai ocupa a faixa dos filhos e nenhuma conexão é desenhada', () => {
+    const { nos, arestas, tam } = arvoreDeTeste();
+    const r = A.calcularLayout(nos, arestas, 'tabela', tam, {});
+    const itens = Object.entries(r.posicoes).map(([id, p]) => ({ id, x: p.x, y: p.y, w: r.celulas[id].w, h: r.celulas[id].h }));
+    itens.forEach((a, i) => itens.slice(i + 1).forEach(b => assert.ok(!(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h), `${a.id} x ${b.id}`)));
+    const c = id => itens.find(i => i.id === String(id));
+    assert.strictEqual(c(2).h, c(5).h + c(6).h, 'o pai tem a altura dos filhos');
+    assert.strictEqual(c(1).h, c(2).h + c(3).h + c(4).h, 'o central ocupa todas as linhas');
+    assert.ok(c(2).x >= c(1).x + c(1).w && c(5).x >= c(2).x + c(2).w, 'níveis em colunas');
+    assert.strictEqual(r.arestasOcultas.length, arestas.length);
+});
+
+teste('tabela com cabeçalho: o tópico central é uma faixa no topo, com a largura das colunas', () => {
+    const { nos, arestas, tam } = arvoreDeTeste();
+    const r = A.calcularLayout(nos, arestas, 'tabela_topo', tam, {});
+    const raiz = r.celulas['1'];
+    assert.ok(r.posicoes['2'].y >= r.posicoes['1'].y + raiz.h, 'filhos abaixo do cabeçalho');
+    const direita = Math.max(...Object.entries(r.posicoes).filter(([id]) => id !== '1').map(([id, p]) => p.x + r.celulas[id].w));
+    assert.strictEqual(r.posicoes['1'].x + raiz.w, direita);
+});
+
+teste('matriz: níveis em linhas e ramos em colunas', () => {
+    const { nos, arestas, tam } = arvoreDeTeste();
+    const r = A.calcularLayout(nos, arestas, 'matriz', tam, {});
+    assert.ok(r.posicoes['2'].y >= r.posicoes['1'].y + r.celulas['1'].h, 'principais abaixo do central');
+    assert.ok(r.posicoes['5'].y >= r.posicoes['2'].y + r.celulas['2'].h, 'filhos abaixo do pai');
+    assert.strictEqual(r.celulas['1'].w, r.celulas['2'].w + r.celulas['3'].w + r.celulas['4'].w, 'o central cobre as colunas');
+});
+
+teste('linha do tempo: ramos alternam acima e abaixo da espinha, que tem uma guia', () => {
+    const { nos, arestas, tam } = arvoreDeTeste();
+    const r = A.calcularLayout(nos, arestas, 'linha_tempo', tam, {});
+    const p = r.posicoes;
+    const espinha = r.guias.find(g => g.y1 === g.y2);
+    assert.ok(espinha, 'guia horizontal da espinha');
+    assert.ok(p['2'].y + T.h <= espinha.y1 && p['4'].y + T.h <= espinha.y1, 'ramos 1 e 3 acima');
+    assert.ok(p['3'].y >= espinha.y1, 'ramo 2 abaixo');
+    assert.ok(p['2'].x > p['1'].x + T.w, 'ramos à direita do tópico central');
+    assert.ok(r.arestasOcultas.includes('e-1-2') && !r.arestasOcultas.includes('e-2-5'));
+    assert.ok(semSobreposicao(p));
+});
+
+teste('espinha de peixe: cabeça à direita, ossos inclinados e causas ligadas ao osso', () => {
+    const { nos, arestas, tam } = arvoreDeTeste();
+    const r = A.calcularLayout(nos, arestas, 'espinha', tam, {});
+    const p = r.posicoes;
+    assert.ok(Object.entries(p).filter(([id]) => id !== '1').every(([, q]) => q.x + T.w <= p['1'].x + 1), 'ramos à esquerda da cabeça');
+    const espinha = r.guias.find(g => g.y1 === g.y2 && g.x2 <= p['1'].x + 1 && g.x2 >= p['1'].x - 1);
+    assert.ok(espinha, 'espinha chega à cabeça');
+    assert.ok(r.guias.some(g => g.x1 !== g.x2 && g.y1 !== g.y2), 'há ossos inclinados');
+    assert.deepStrictEqual(r.handles['e-7-8'], ['bottom', 'left'], 'neto em lista recuada sob a causa');
+    assert.ok(semSobreposicao(p));
+});
+
 console.log(process.exitCode ? 'COM FALHAS' : `TODOS OS ${total} TESTES OK`);

@@ -149,6 +149,9 @@ def nome_exibicao(colab: dict) -> str:
 
 
 def _tamanho(node):
+    celula = _dados(node).get('celula')
+    if isinstance(celula, dict) and all(isinstance(celula.get(k), (int, float)) and not isinstance(celula.get(k), bool) and celula[k] > 0 for k in ('w', 'h')):
+        return float(celula['w']), float(celula['h'])   # tabelas e matriz: o bloco é uma célula
     tipo = node.get('type')
     if tipo in ('start', 'end'):
         return W_STARTEND, H_STARTEND
@@ -187,6 +190,9 @@ class DiagramaFlowable(Flowable):
         self.nodes = [n for n in todos if str(n['id']) not in ocultos
                       and not (_dados(n).get('lane') or 'Geral') in self.raias_recolhidas]
         self.grid = topologia.get('grid_data') or []
+        # linhas-guia (espinha da linha do tempo, ossos do peixe): só linhas com coordenadas numéricas
+        self.guias = [g for g in (topologia.get('guias') or []) if isinstance(g, dict)
+                      and all(isinstance(g.get(k), (int, float)) and not isinstance(g.get(k), bool) for k in ('x1', 'y1', 'x2', 'y2'))]
         self.by_id = {str(n['id']): n for n in self.nodes}
 
         self.lanes = [] if self.em_arvore else raias_do_diagrama(topologia)  # modos em árvore não usam raias
@@ -216,8 +222,9 @@ class DiagramaFlowable(Flowable):
         baixo_grupos = max([c['y'] + c['h'] for _, c in self.grupos] + [0])
 
         self.cw = max([n['position']['x'] + _tamanho(n)[0] for n in self.nodes] + [LANE_LEFT + (0 if self.em_arvore else 400)]) + MARGIN
-        self.cw = max(self.cw, direita_grupos + MARGIN)
-        max_y = max([n['position']['y'] + _tamanho(n)[1] for n in self.nodes] + [baixo_grupos, 0]) + MARGIN
+        self.cw = max(self.cw, direita_grupos + MARGIN, max([max(g['x1'], g['x2']) for g in self.guias] + [0]) + MARGIN)
+        max_y = max([n['position']['y'] + _tamanho(n)[1] for n in self.nodes] + [baixo_grupos, 0]
+                    + [max(g['y1'], g['y2']) for g in self.guias]) + MARGIN
         self.ch = max_y if self.em_arvore else max(LANE_TOP + sum(self.lane_h.values()) + 20, max_y)
 
         self.scale = min(max_w / self.cw, max_h / self.ch, 1.0)
@@ -271,13 +278,29 @@ class DiagramaFlowable(Flowable):
             c.rect(0, 0, self.cw, self.ch, stroke=0, fill=1)
         self._desenhar_raias(c)
         self._desenhar_grupos(c)
+        self._desenhar_guias(c)
         for e in self.edges:
+            if e.get('oculta') is True:
+                continue   # conexão substituída pelo desenho do layout (tabela, espinha, linha do tempo)
             self._desenhar_aresta(c, e)
         for n in self.nodes:
             self._desenhar_no(c, n)
             self._desenhar_extras(c, n)
             if str(n['id']) in self.contagem_ocultos:
                 self._desenhar_contador(c, n, self.contagem_ocultos[str(n['id'])])
+        c.restoreState()
+
+    def _desenhar_guias(self, c):
+        """Linhas-guia do layout (mesma cor e espessura que o tema usa nas conexões)."""
+        if not self.guias:
+            return
+        est = resolver_estilo_conexao({}, {'tema': self.tema})
+        cor = _cor(est['color'], colors.HexColor('#64748B')) if est.get('color') else colors.HexColor('#64748B')
+        c.saveState()
+        c.setStrokeColor(cor)
+        c.setLineWidth((est['width'] * 0.65) if est.get('width') else 1.4)
+        for g in self.guias:
+            c.line(g['x1'], self._y(g['y1']), g['x2'], self._y(g['y2']))
         c.restoreState()
 
     def _desenhar_grupos(self, c):

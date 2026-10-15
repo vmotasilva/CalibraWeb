@@ -14,7 +14,7 @@ MAX_NODES = 1000
 MAX_EDGES = 3000
 MAX_SUBTITULOS = 20
 MAX_RAIAS = 100
-MODOS_LAYOUT = ('raias', 'organograma', 'logico', 'arvore', 'mapa')
+MODOS_LAYOUT = ('raias', 'organograma', 'logico', 'arvore', 'mapa', 'tabela', 'tabela_topo', 'matriz', 'linha_tempo', 'espinha')
 TIPOS_CONEXAO = ('hierarquia', 'relacao')
 
 
@@ -62,6 +62,9 @@ def validar_conteudo_no(dados: dict, nid) -> list:
                 if not ok:
                     erros.append(f"Link inválido no nó {nid}.")
                     break
+    celula = dados.get('celula')
+    if celula is not None and (not isinstance(celula, dict) or not all(_numero(celula.get(k)) and 1 <= celula[k] <= 6000 for k in ('w', 'h'))):
+        erros.append(f"Tamanho de célula inválido no nó {nid}.")
     if dados.get('vaga') is not None and not isinstance(dados['vaga'], bool):
         erros.append(f"'vaga' deve ser verdadeiro/falso no nó {nid}.")
     imagem = dados.get('imagem')
@@ -239,6 +242,13 @@ def validar_topologia(topologia: dict) -> list:
     versao_schema = topologia.get('schema_version')
     if versao_schema is not None and (isinstance(versao_schema, bool) or not isinstance(versao_schema, int)):
         return ["'schema_version' deve ser um número inteiro."]
+
+    if any(isinstance(e, dict) and e.get('oculta') is not None and not isinstance(e['oculta'], bool) for e in edges):
+        return ["'oculta' deve ser verdadeiro/falso nas conexões."]
+    guias = topologia.get('guias')
+    if guias is not None and (not isinstance(guias, list) or len(guias) > 400 or not all(
+            isinstance(g, dict) and all(_numero(g.get(k)) and -100000 <= g[k] <= 100000 for k in ('x1', 'y1', 'x2', 'y2')) for g in guias)):
+        return ["'guias' deve ser uma lista de até 400 linhas com x1, y1, x2 e y2."]
 
     legenda = topologia.get('legenda')
     if legenda is not None:

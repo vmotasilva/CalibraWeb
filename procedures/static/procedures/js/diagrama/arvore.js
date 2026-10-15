@@ -4,13 +4,18 @@
  * O cálculo de layout fica em layout_arvore.js (puro e testado em Node); aqui há apenas a ligação com o DOM.
  */
 
-const MODOS_ARVORE = ['organograma', 'logico', 'arvore', 'mapa'];
+const MODOS_ARVORE = ['organograma', 'logico', 'arvore', 'mapa', 'tabela', 'tabela_topo', 'matriz', 'linha_tempo', 'espinha'];
 const ROTULOS_LAYOUT = {
     raias: 'Por raias (fluxograma)',
     organograma: 'Organograma (de cima para baixo)',
     logico: 'Lógico (da esquerda para a direita)',
     arvore: 'Árvore (lista com recuo)',
     mapa: 'Mapa mental (para os dois lados)',
+    tabela: 'Tabela em árvore (níveis em colunas)',
+    tabela_topo: 'Tabela com cabeçalho',
+    matriz: 'Matriz (níveis em linhas)',
+    linha_tempo: 'Linha do tempo',
+    espinha: 'Espinha de peixe',
 };
 
 function modoLayout() {
@@ -185,8 +190,17 @@ function alternarEmpilharFolhas() {
 }
 
 // Mede os blocos visíveis no DOM e aplica o layout em árvore (posições e pontos de ligação das conexões)
+// Tabelas, linha do tempo e espinha guardam no diagrama o que o layout desenha além dos blocos: tamanho das células
+// (data.celula), conexões substituídas pelo desenho (oculta) e linhas-guia (topologia.guias)
+function limparArtefatosDeLayout() {
+    topologia.nodes.forEach(n => { if (n.data) delete n.data.celula; });
+    topologia.edges.forEach(e => { delete e.oculta; });
+    delete topologia.guias;
+}
+
 function aplicarLayoutArvore() {
     if (!arvoreAtiva()) return;
+    limparArtefatosDeLayout();   // mede o tamanho natural dos blocos (sem células do layout anterior)
     renderizarCanvas(); // garante o DOM atual para medir
 
     const tamanhos = {};
@@ -205,6 +219,13 @@ function aplicarLayoutArvore() {
         const h = resultado.handles[e.id];
         if (h) { e.sourceHandle = h[0]; e.targetHandle = h[1]; }
     });
+    Object.entries(resultado.celulas || {}).forEach(([id, c]) => {
+        const n = topologia.nodes.find(x => String(x.id) === id);
+        if (n) { if (!n.data) n.data = {}; n.data.celula = { w: Math.round(c.w), h: Math.round(c.h) }; }
+    });
+    const ocultas = new Set(resultado.arestasOcultas || []);
+    topologia.edges.forEach(e => { if (ocultas.has(e.id)) e.oculta = true; });
+    if ((resultado.guias || []).length) topologia.guias = resultado.guias;
     renderizarCanvas();
 }
 
@@ -215,6 +236,7 @@ function definirModoLayout(modo) {
 
     topologia.layout_modo = modo;
     if (modo === 'raias') {
+        limparArtefatosDeLayout();
         posicionarAutomaticoPorRaias(true);
         renderizarCanvas();
     } else {
