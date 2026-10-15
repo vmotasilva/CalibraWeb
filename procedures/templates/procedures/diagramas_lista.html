@@ -18,7 +18,71 @@
 {% endblock %}
 
 {% block main_content %}
-<div class="row g-3 mb-4">
+{% with filtros_ativos=busca|default:departamento_selecionado|default:status_selecionado|default:arquivados %}
+{# Mobile: filtros em pop-up #}
+<div class="d-md-none d-flex gap-2 mb-3">
+    <button type="button" class="btn btn-outline-secondary flex-grow-1 position-relative" data-bs-toggle="modal" data-bs-target="#modalFiltrosDiagramas">
+        <i class="bi bi-funnel"></i> Filtros
+        {% if filtros_ativos or ordem != 'numero' %}<span class="position-absolute top-0 start-100 translate-middle p-1 bg-primary border border-light rounded-circle"></span>{% endif %}
+    </button>
+    {% if filtros_ativos or ordem != 'numero' %}
+        <a href="{% url 'procedures:diagramas_lista' %}" class="btn btn-light border" title="Limpar Filtros"><i class="bi bi-x-circle"></i></a>
+    {% endif %}
+</div>
+
+<div class="modal fade d-md-none" id="modalFiltrosDiagramas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="GET" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-funnel me-1"></i> Filtros</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold mb-1">Buscar por Título, Procedimento ou Nº</label>
+                    <input type="text" name="busca" value="{{ busca }}" class="form-control" placeholder="Ex: Calibração, POP-001, #001...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold mb-1">Departamento</label>
+                    <select name="departamento" class="form-select">
+                        <option value="">Todos</option>
+                        {% for dep in departamentos %}
+                            <option value="{{ dep }}" {% if dep == departamento_selecionado %}selected{% endif %}>{{ dep }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold mb-1">Status da última revisão</label>
+                    <select name="status" class="form-select">
+                        <option value="">Todos</option>
+                        {% for valor, rotulo in status_opcoes %}
+                            <option value="{{ valor }}" {% if valor == status_selecionado %}selected{% endif %}>{{ rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold mb-1">Ordenar por</label>
+                    <select name="ordem" class="form-select">
+                        {% for valor, rotulo in ordem_opcoes %}
+                            <option value="{{ valor }}" {% if valor == ordem %}selected{% endif %}>{{ rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" name="arquivados" value="1" id="chkArquivadosMobile" {% if arquivados %}checked{% endif %}>
+                    <label class="form-check-label small" for="chkArquivadosMobile">Arquivados</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="{% url 'procedures:diagramas_lista' %}" class="btn btn-light">Limpar</a>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Aplicar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endwith %}
+
+<div class="row g-3 mb-4 d-none d-md-flex">
     <div class="col-12">
         <div class="card border-0 shadow-sm p-3 bg-white">
             <form method="GET" class="row g-2 align-items-end">
@@ -71,7 +135,118 @@
     </div>
 </div>
 
-<div class="card border-0 shadow-sm overflow-hidden bg-white">
+{# Mobile: diagramas em cards #}
+<div class="d-md-none">
+    {% for diagrama in diagramas %}
+        {% with versao=diagrama.ultima vigente=diagrama.vigente %}
+        <div class="card border-0 shadow-sm mb-3 bg-white {% if arquivados %}opacity-75{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <span class="font-monospace fw-bold text-primary">{{ diagrama.identificador }}</span>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown" title="Mais ações"><i class="bi bi-three-dots-vertical"></i></button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                            <li><a class="dropdown-item" href="{% url 'procedures:diagrama_historico' diagrama_id=diagrama.id %}"><i class="bi bi-clock-history me-2"></i>Histórico</a></li>
+                            {% if pode_criar and not arquivados %}
+                            <li>
+                                <form method="post" action="{% url 'procedures:diagrama_duplicar' diagrama_id=diagrama.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item"><i class="bi bi-files me-2"></i>Duplicar</button>
+                                </form>
+                            </li>
+                            {% endif %}
+                            <li>
+                                <form method="post" action="{% url 'procedures:diagrama_arquivar' diagrama_id=diagrama.id %}"
+                                      onsubmit="return confirm('{% if arquivados %}Restaurar{% else %}Arquivar{% endif %} este diagrama?');">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="acao" value="{% if arquivados %}restaurar{% else %}arquivar{% endif %}">
+                                    <button type="submit" class="dropdown-item {% if not arquivados %}text-danger{% endif %}">
+                                        <i class="bi {% if arquivados %}bi-arrow-counterclockwise{% else %}bi-archive{% endif %} me-2"></i>{% if arquivados %}Restaurar{% else %}Arquivar{% endif %}
+                                    </button>
+                                </form>
+                            </li>
+                            {% if diagrama.pode_excluir %}
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button type="button" class="dropdown-item text-danger fw-semibold"
+                                        data-acao="{% url 'procedures:diagrama_excluir' diagrama_id=diagrama.id %}"
+                                        data-identificador="{{ diagrama.identificador }}" data-titulo="{{ diagrama.titulo }}"
+                                        data-confirmar="{% if diagrama.exige_confirmacao %}1{% else %}0{% endif %}"
+                                        onclick="abrirExcluirDiagrama(this)">
+                                    <i class="bi bi-trash me-2"></i>Excluir...
+                                </button>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+                <div class="fw-semibold text-dark">{{ diagrama.titulo }}</div>
+                {% if diagrama.descricao %}
+                    <small class="text-muted d-block mb-2" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ diagrama.descricao }}</small>
+                {% endif %}
+                <div class="d-flex flex-wrap gap-1 mb-2">
+                    {% if diagrama.procedimento %}
+                        <span class="badge bg-dark-subtle text-dark font-monospace border"><i class="bi bi-file-earmark-text me-1"></i>{{ diagrama.procedimento.codigo }}</span>
+                    {% elif diagrama.codigo %}
+                        <span class="badge bg-secondary-subtle text-secondary font-monospace border">{{ diagrama.codigo }}</span>
+                    {% else %}
+                        <span class="badge bg-light text-muted border">Avulso / Geral</span>
+                    {% endif %}
+                    <span class="badge bg-light text-secondary border">{{ diagrama.departamento }}</span>
+                </div>
+                <div class="d-flex flex-wrap gap-1 align-items-center small mb-3">
+                    {% if vigente %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle font-monospace"><i class="bi bi-check-circle-fill"></i> Vigente Rev. {{ vigente.revisao|stringformat:"02d" }}</span>
+                    {% else %}
+                        <span class="text-muted">Sem versão aprovada</span>
+                    {% endif %}
+                    {% if versao %}
+                        <span class="badge bg-secondary-subtle text-secondary font-monospace">Rev. {{ versao.revisao|stringformat:"02d" }}</span>
+                        {% if versao.status == 'APROVADO' %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">Aprovado</span>
+                        {% elif versao.status == 'EM_APROVACAO' %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="bi bi-clock-history"></i> Em Aprovação</span>
+                        {% elif versao.status == 'RASCUNHO' %}
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-pencil-square"></i> Rascunho{% if vigente %} aberto{% endif %}</span>
+                        {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary">{{ versao.get_status_display }}</span>
+                        {% endif %}
+                        {% if versao.motivo_devolucao and versao.status == 'RASCUNHO' %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-arrow-return-left"></i> Devolvido</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% if versao %}
+                <a href="{% url 'procedures:diagrama_editor' versao_id=versao.id %}" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-diagram-3-fill"></i> Abrir
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endwith %}
+    {% empty %}
+        <div class="card border-0 shadow-sm bg-white">
+            <div class="card-body text-center py-5 text-muted">
+                <i class="bi bi-diagram-3 display-4 d-block mb-2 opacity-50"></i>
+                <p class="mb-2 fw-medium">{% if busca or departamento_selecionado or status_selecionado or arquivados %}Nenhum fluxograma encontrado com esses filtros.{% else %}Nenhum fluxograma cadastrado ainda.{% endif %}</p>
+                {% if pode_criar and not arquivados %}
+                <a href="{% url 'procedures:diagrama_novo' %}" class="btn btn-sm btn-primary">Criar Primeiro Fluxograma</a>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+    {% if pagina.paginator.num_pages > 1 %}
+    <div class="d-flex justify-content-between align-items-center small text-muted">
+        <span>{{ pagina.paginator.count }} diagrama(s) &bull; pág. {{ pagina.number }}/{{ pagina.paginator.num_pages }}</span>
+        <div class="btn-group btn-group-sm">
+            {% if pagina.has_previous %}<a class="btn btn-outline-secondary" href="?{{ querystring }}&page={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+            {% if pagina.has_next %}<a class="btn btn-outline-secondary" href="?{{ querystring }}&page={{ pagina.next_page_number }}">Próxima</a>{% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card border-0 shadow-sm overflow-hidden bg-white d-none d-md-block">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
