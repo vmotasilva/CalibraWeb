@@ -113,9 +113,10 @@ function renderizarCanvas() {
                 <div class="handle handle-left"></div>
             `;
         } else {
-            const shapeClass = node.data?.shape === 'pill' ? 'node-pill' : 
-                              (node.data?.shape === 'circle' ? 'node-circle' : 
-                              (node.data?.shape === 'parallelogram' ? 'node-parallelogram' : 
+            const formaDoBloco = typeof formaDoNo === 'function' ? formaDoNo(node) : node.data?.shape;
+            const shapeClass = formaDoBloco === 'pill' ? 'node-pill' : 
+                              (formaDoBloco === 'circle' ? 'node-circle' : 
+                              (formaDoBloco === 'parallelogram' ? 'node-parallelogram' : 
                               (node.data?.isCentral ? 'node-central' : '')));
                               
             const colab = node.data?.colab;

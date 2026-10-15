@@ -8,7 +8,7 @@ import json
 import re
 
 from .diagram_conteudo import MAX_LINKS, MAX_MARCADORES, MAX_NOTA, marcador_valido
-from .diagram_estilo import ALINHAMENTOS, BORDAS, FAMILIAS, FORMAS, FORMATOS_LINHA, TRACADOS
+from .diagram_estilo import ALINHAMENTOS, BORDAS, FAMILIAS, FORMAS, FORMAS_TEMA, FORMATOS_LINHA, TRACADOS
 
 MAX_NODES = 1000
 MAX_EDGES = 3000
@@ -163,7 +163,7 @@ def validar_tema(tema) -> list:
                 erros.append(f"Nível {i + 1} do tema inválido.")
                 continue
             for k in nivel:
-                if k not in ('fill', 'texto', 'borda', 'larguraBorda', 'tamanho', 'negrito', 'italico', 'familia'):
+                if k not in ('fill', 'texto', 'borda', 'larguraBorda', 'tamanho', 'negrito', 'italico', 'familia', 'forma'):
                     erros.append(f"Propriedade '{k}' desconhecida no nível {i + 1} do tema.")
             for k in ('fill', 'texto', 'borda'):
                 if k in nivel and not _cor_valida(nivel[k], permitir_ramo=True):
@@ -175,6 +175,8 @@ def validar_tema(tema) -> list:
             for k in ('negrito', 'italico'):
                 if k in nivel and not isinstance(nivel[k], bool):
                     erros.append(f"'{k}' deve ser verdadeiro/falso no nível {i + 1} do tema.")
+            if 'forma' in nivel and nivel['forma'] not in FORMAS_TEMA:
+                erros.append(f"Forma inválida no nível {i + 1} do tema.")
             if 'familia' in nivel and nivel['familia'] not in FAMILIAS:
                 erros.append(f"Fonte inválida no nível {i + 1} do tema.")
     return erros[:10]
@@ -258,6 +260,9 @@ def validar_topologia(topologia: dict) -> list:
 
     if topologia.get('empilhar_folhas') is not None and not isinstance(topologia['empilhar_folhas'], bool):
         return ["'empilhar_folhas' deve ser verdadeiro/falso."]
+
+    if topologia.get('raias_fluxo') not in (None, 'horizontal'):
+        return ["'raias_fluxo' deve ser 'horizontal' ou ausente."]
 
     if topologia.get('mostrar_nome_raias') is not None and not isinstance(topologia['mostrar_nome_raias'], bool):
         return ["'mostrar_nome_raias' deve ser verdadeiro/falso."]

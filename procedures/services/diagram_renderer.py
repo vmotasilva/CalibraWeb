@@ -15,7 +15,7 @@ from .diagram_raias import raias_do_diagrama
 from .diagram_arvore import MODOS_ARVORE, montar_arvore, ramos_recolhidos
 from .diagram_conteudo import POR_ID, contagem_efetivo, eh_vaga, marcador_valido
 from .diagram_grupos import RESUMO_GAP, RESUMO_W, caixa_do_grupo, grupos_validos, nivel_de_aninhamento
-from .diagram_estilo import contexto_dos_nos, cor_de_texto_para_fundo, nome_da_fonte, resolver_estilo_conexao, resolver_estilo_no
+from .diagram_estilo import contexto_dos_nos, cor_de_texto_para_fundo, forma_efetiva, nome_da_fonte, resolver_estilo_conexao, resolver_estilo_no
 
 FONT = 'Helvetica'
 FONT_BOLD = 'Helvetica-Bold'
@@ -510,7 +510,8 @@ class DiagramaFlowable(Flowable):
         label = _txt(data.get('label'))
         st = self._estilo(n)
         bg_custom = st.get('fill')
-        forma = data.get('shape') if data.get('shape') in ('brackets', 'underline', 'plain') else None
+        forma_no = forma_efetiva(n, {'tema': self.tema, **self.ctx_estilo.get(str(n['id']), {})})
+        forma = forma_no if forma_no in ('brackets', 'underline', 'plain') else None
 
         fonte = nome_da_fonte(st.get('fontFamily'), st.get('bold', True), st.get('italic', False))
         tam_px = st.get('fontSize')
@@ -552,7 +553,7 @@ class DiagramaFlowable(Flowable):
             central = data.get('isCentral')
             fundo = bg_custom or ('#2563EB' if central else '#FFFFFF')
             escuro = bool(central) or fundo.lower() in DARK_BG
-            raio = h / 2 if data.get('shape') in ('pill', 'circle') else 8
+            raio = h / 2 if forma_no in ('pill', 'circle') else 8
             self._desenhar_caixa(c, x, y, w, h, raio, _cor(fundo, colors.white),
                                  colors.HexColor('#1D4ED8' if central else '#94A3B8'), 1.6, st, forma)
             cor_txt = cor_estilo or (colors.white if escuro else colors.HexColor('#0F172A'))

@@ -13,6 +13,7 @@ BORDAS = ('solid', 'dashed', 'dotted', 'none')
 TRACADOS = ('solid', 'dashed', 'dotted')
 FORMATOS_LINHA = ('ortogonal', 'curva', 'reta')
 ALINHAMENTOS = ('left', 'center', 'right')
+FORMAS_TEMA = ('rect', 'pill', 'brackets', 'underline', 'plain')   # forma que um nível do tema pode dar aos blocos
 FORMAS = ('rect', 'pill', 'decision', 'circle', 'parallelogram', 'brackets', 'underline', 'plain')
 
 # família -> (normal, negrito, itálico, negrito+itálico) nas fontes padrão do PDF
@@ -59,6 +60,20 @@ def _token(valor, tema, ramo):
     return cor_do_ramo(tema, ramo) if valor == 'branch' else valor
 
 
+def forma_efetiva(no: dict, ctx: dict = None):
+    """Forma do bloco: data.shape ou, sem ela, a do nível do tema (início, fim e decisão não herdam). None = sem forma."""
+    ctx = ctx or {}
+    dados = no.get('data') if isinstance(no.get('data'), dict) else {}
+    if dados.get('shape'):
+        return dados['shape']
+    niveis = ((ctx.get('tema') or {}).get('niveis')) or []
+    if not niveis or (no.get('type') or 'process') in ('start', 'end', 'decision'):
+        return None
+    nivel = niveis[min(ctx.get('profundidade') or 0, len(niveis) - 1)] or {}
+    forma = nivel.get('forma')
+    return forma if forma and forma != 'rect' else None
+
+
 def resolver_estilo_no(no: dict, ctx: dict = None) -> dict:
     """Estilo efetivo do bloco: fill, noFill, color, fontFamily, fontSize, bold, italic, strike, align, border*."""
     ctx = ctx or {}
@@ -81,7 +96,7 @@ def resolver_estilo_no(no: dict, ctx: dict = None) -> dict:
             'fontFamily': nivel.get('familia'),
         })
     # Formas sem caixa (colchetes, sublinhado, só texto) nunca herdam o preenchimento do tema
-    especial = dados.get('shape') in ('brackets', 'underline', 'plain')
+    especial = forma_efetiva(no, ctx) in ('brackets', 'underline', 'plain')
     estilo_no = dados.get('style') if isinstance(dados.get('style'), dict) else {}
     if especial and not (estilo_no.get('fill') or dados.get('bgColor')):
         base.pop('fill', None)

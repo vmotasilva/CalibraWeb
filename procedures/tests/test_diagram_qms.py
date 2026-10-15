@@ -2207,6 +2207,98 @@ class OutlinerMencaoColaboradoresTestCase(TestCase):
         self.assertIn('topologia.edges.splice(arestaRef + 1, 0, novaAresta)', js)
 
 
+    def test_outliner_tem_setas_para_subir_e_descer_linha(self):
+        js = ler_js_editor()
+        for item in ('function moverItemOutliner', 'onclick="moverItemOutliner(', 'function moverOutlinerItem'):
+            self.assertIn(item, js)
+
+
+class RaiasHorizontaisTestCase(TestCase):
+    """Raias com progressão da esquerda para a direita (pais à esquerda, filhos à direita)."""
+
+    def test_validacao_do_fluxo_das_raias(self):
+        from procedures.services.diagram_validation import validar_topologia
+        base = {"nodes": [{"id": "1", "position": {"x": 0, "y": 0}, "data": {"label": "A"}}], "edges": []}
+        self.assertEqual(validar_topologia({**base, "raias_fluxo": "horizontal"}), [])
+        self.assertTrue(validar_topologia({**base, "raias_fluxo": "diagonal"}))
+
+    def test_editor_tem_opcao_e_layout_horizontal(self):
+        js = ler_js_editor()
+        for item in ('function alternarFluxoDasRaias', "topologia.raias_fluxo === 'horizontal'", "e.sourceHandle = 'right'"):
+            self.assertIn(item, js)
+
+
+class ModelosDeEstiloTestCase(TestCase):
+    """Catálogo de modelos (layout + estilo por variação): temas válidos e paridade JS/Python da forma por nível."""
+
+    @staticmethod
+    def _node(script, entrada=None):
+        import json, shutil, subprocess
+        node = shutil.which('node')
+        if not node:
+            return None
+        r = subprocess.run([node, '-e', script], input=json.dumps(entrada if entrada is not None else {}),
+                           capture_output=True, text=True, encoding='utf-8')
+        assert r.returncode == 0, r.stdout + r.stderr
+        return json.loads(r.stdout)
+
+    @staticmethod
+    def _base():
+        from pathlib import Path
+        return (Path(__file__).resolve().parent.parent / 'static' / 'procedures' / 'js' / 'diagrama').as_posix()
+
+    def _temas(self):
+        base = self._base()
+        return self._node(
+            f"const M=require('{base}/modelos_estilo.js');const r=[];"
+            "M.FAMILIAS_MODELO.forEach(f=>f.variacoes.forEach(v=>M.PALETAS.forEach(p=>r.push({layout:f.layout,id:v.id,tema:M.construirTema(v,p)}))));"
+            "console.log(JSON.stringify(r))")
+
+    def test_todas_as_variacoes_geram_temas_validos(self):
+        from procedures.services.diagram_validation import validar_tema
+        temas = self._temas()
+        if temas is None:
+            self.skipTest('Node.js não disponível')
+        self.assertGreaterEqual(len(temas), 12)
+        for item in temas:
+            self.assertEqual(validar_tema(item['tema']), [], item['id'])
+            self.assertIn(item['layout'], ('organograma', 'logico', 'arvore'))
+
+    def test_familias_tem_quatro_variacoes_e_miniaturas(self):
+        base = self._base()
+        resumo = self._node(
+            f"const M=require('{base}/modelos_estilo.js');"
+            "console.log(JSON.stringify(M.FAMILIAS_MODELO.map(f=>({n:f.variacoes.length,svg:f.variacoes.every(v=>M.miniatura(f,v).startsWith('<svg'))}))))")
+        if resumo is None:
+            self.skipTest('Node.js não disponível')
+        self.assertTrue(all(r['n'] == 4 and r['svg'] for r in resumo))
+
+    def test_forma_do_nivel_em_javascript_e_python(self):
+        from procedures.services.diagram_estilo import forma_efetiva, resolver_estilo_no
+        temas = self._temas()
+        if temas is None:
+            self.skipTest('Node.js não disponível')
+
+        def no(tipo='process', **data):
+            return {"id": "1", "type": tipo, "position": {"x": 0, "y": 0}, "data": {"label": "X", **data}}
+
+        nos = [no(), no(shape='pill'), no(shape='brackets'), no('decision'), no('start'), no(style={"fill": "#00ff00"})]
+        casos = [{"no": n, "ctx": {"tema": item['tema'], "profundidade": prof, "ramo": 0}}
+                 for item in temas[:15] for prof in range(0, 5) for n in nos]
+        base = self._base()
+        js = self._node(
+            f"const E=require('{base}/estilo.js');const c=JSON.parse(require('fs').readFileSync(0,'utf8'));"
+            "console.log(JSON.stringify(c.map(x=>({f:E.formaEfetiva(x.no,x.ctx)===undefined?null:E.formaEfetiva(x.no,x.ctx),e:E.resolverEstiloNo(x.no,x.ctx)}))))", casos)
+        for i, (r, c) in enumerate(zip(js, casos)):
+            self.assertEqual(r['f'], forma_efetiva(c['no'], c['ctx']), f"forma {i}")
+            self.assertEqual(r['e'], resolver_estilo_no(c['no'], c['ctx']), f"estilo {i}")
+
+    def test_editor_carrega_modulos_do_catalogo_e_tem_a_galeria(self):
+        js = ler_js_editor()
+        for item in ('const FAMILIAS_MODELO', 'function aplicarModeloDeEstilo', 'function renderizarGaleriaModelos', 'function formaDoNo'):
+            self.assertIn(item, js)
+
+
 class PerguntaDeLigacaoTestCase(TestCase):
     """Outliner e Grelha perguntam por onde a ligação sai do pai e entra no filho (layout por raias)."""
 

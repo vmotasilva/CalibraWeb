@@ -23,6 +23,7 @@
     const FORMATOS_LINHA = ['ortogonal', 'curva', 'reta'];
     const ALINHAMENTOS = ['left', 'center', 'right'];
     const FORMAS_EXTRAS = ['brackets', 'underline', 'plain'];
+    const FORMAS_TEMA = ['rect', 'pill', 'brackets', 'underline', 'plain'];   // forma que um nível do tema pode dar aos blocos
     const COR = /^#[0-9a-fA-F]{6}$/;
 
     const PRESETS = {
@@ -98,6 +99,21 @@
     }
 
     /**
+     * Forma efetiva do bloco: a escolhida no próprio bloco (data.shape) ou, sem ela, a do nível do tema (tema.niveis[].forma).
+     * Início, fim e decisão não herdam forma do tema. Retorna undefined quando não há forma definida.
+     */
+    function formaEfetiva(no, ctx) {
+        ctx = ctx || {};
+        const dados = (no && no.data) || {};
+        if (dados.shape) return dados.shape;
+        const tipo = (no && no.type) || 'process';
+        const niveis = (ctx.tema && ctx.tema.niveis) || [];
+        if (niveis.length === 0 || tipo === 'start' || tipo === 'end' || tipo === 'decision') return undefined;
+        const nivel = niveis[Math.min(ctx.profundidade || 0, niveis.length - 1)] || {};
+        return nivel.forma && nivel.forma !== 'rect' ? nivel.forma : undefined;
+    }
+
+    /**
      * Estilo efetivo do bloco. ctx = { tema, profundidade, ramo }.
      * Retorna só as propriedades definidas: fill, noFill, color, fontFamily, fontSize, bold, italic, strike, align,
      * borderStyle, borderColor, borderWidth.
@@ -124,7 +140,7 @@
         }
 
         // Formas sem caixa (colchetes, sublinhado, só texto) nunca herdam o preenchimento do tema
-        const especial = FORMAS_EXTRAS.includes(dados.shape);
+        const especial = FORMAS_EXTRAS.includes(formaEfetiva(no, ctx));
         const fillExplicito = !!((dados.style && dados.style.fill) || dados.bgColor);
         if (especial && !fillExplicito) delete base.fill;
 
@@ -221,7 +237,7 @@
     }
 
     const api = {
-        FAMILIAS, CSS_FAMILIAS, BORDAS, TRACADOS, FORMATOS_LINHA, ALINHAMENTOS, FORMAS_EXTRAS, PRESETS,
+        FAMILIAS, CSS_FAMILIAS, BORDAS, TRACADOS, FORMATOS_LINHA, ALINHAMENTOS, FORMAS_EXTRAS, FORMAS_TEMA, PRESETS, formaEfetiva,
         resolverEstiloNo, resolverEstiloConexao, contextoDosNos, corDoRamo, corDeTextoParaFundo, luminancia,
         normalizarEstiloNo, normalizarEstiloConexao, dashArray,
     };

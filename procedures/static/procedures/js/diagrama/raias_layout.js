@@ -25,6 +25,8 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     const porId = new Map(posicionaveis.map(n => [String(n.id), n]));
     // a ordem de cada bloco conta só entre os irmãos da mesma raia e do mesmo nível (contagem isolada por nível)
     const grupoDaOrdem = n => `${n.data?.lane || 'Geral'}|${Number.isInteger(n.data?.nivelRaia) ? n.data.nivelRaia : 'auto'}`;
+    // fluxo da esquerda para a direita: cada nível da hierarquia é uma coluna (pais à esquerda, filhos à direita)
+    const horizontal = topologia.raias_fluxo === 'horizontal';
     const arvore = DiagramaArvore.aplicarOrdemManual(DiagramaArvore.montarArvore(posicionaveis, topologia.edges), posicionaveis, grupoDaOrdem);
     const ordemNumerica = n => {
         const v = parseInt(n.data?.stepId || n.id, 10);
@@ -73,10 +75,17 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
         colunas.set(id, (colunas.get(filhos[0]) + colunas.get(filhos[filhos.length - 1])) / 2);
     };
     raizes.forEach(visitar);
+    if (horizontal) {
+        colunas.clear();
+        recuoPx.clear();
+        const profundidade = (id, nivel) => { colunas.set(id, nivel); (arvore.filhos.get(id) || []).forEach(f => profundidade(f, nivel + 1)); };
+        raizes.forEach(r => profundidade(r, 0));
+        proxima = Math.max(0, ...colunas.values()) + 1;
+    }
 
     const larguraTotal = Math.max(0, (proxima - 1)) * passo + nodeWidth;
     const targetW = Math.max(canvasTargetWidth, larguraTotal + 160);
-    const startX = centralizar ? Math.max(80, Math.round((targetW - larguraTotal) / 2)) : 80;
+    const startX = centralizar && !horizontal ? Math.max(80, Math.round((targetW - larguraTotal) / 2)) : 80;
 
     const xDoBloco = id => Math.round(startX + colunas.get(id) * passo + (recuoPx.get(id) || 0));
 
@@ -92,7 +101,35 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     const ocupacao = {};                    // raia -> [{ x, y }] (lugares já usados)
     const nivelManual = n => (Number.isInteger(n.data?.nivelRaia) && n.data.nivelRaia >= 1 ? n.data.nivelRaia : null);
     const ocupado = (lista, x, y) => lista.some(o => Math.abs(o.x - x) < nodeWidth + 10 && Math.abs(o.y - y) < ALTURA_LINHA_NA_RAIA - 30);
-    ordemPre.forEach(id => {
+    if (horizontal) {
+        // linhas dentro da raia: o primeiro filho da mesma raia fica na linha do pai; os demais descem, depois do ramo anterior
+        const proximaLivre = {};
+        const usados = new Set();
+        const colocar = (id, inicio) => {
+            const n = porId.get(id);
+            const lane = noLane(n);
+            const nivel = nivelManual(n);
+            let linha = inicio;
+            if (noEntreRaias(n, lanes)) yRelativo.set(id, 0);
+            else if (nivel !== null) { yRelativo.set(id, (nivel - 1) * ALTURA_NIVEL); linha = (nivel - 1) * ALTURA_NIVEL / ALTURA_LINHA_NA_RAIA; }
+            else {
+                const chave = linha => `${lane}|${colunas.get(id)}|${linha}`;
+                while (usados.has(chave(linha))) linha++;
+                usados.add(chave(linha));
+                proximaLivre[lane] = Math.max(proximaLivre[lane] || 0, linha + 1);
+                yRelativo.set(id, linha * ALTURA_LINHA_NA_RAIA);
+            }
+            let primeiro = true;
+            (arvore.filhos.get(id) || []).forEach(f => {
+                const laneFilho = noLane(porId.get(f));
+                const mesmaRaia = laneFilho === lane && !noEntreRaias(n, lanes);
+                colocar(f, mesmaRaia && primeiro ? Math.round(linha) : (proximaLivre[laneFilho] || 0));
+                if (mesmaRaia) primeiro = false;
+            });
+        };
+        raizes.forEach(r => colocar(r, proximaLivre[noLane(porId.get(r))] || 0));
+    }
+    if (!horizontal) ordemPre.forEach(id => {
         const n = porId.get(id);
         const nivel = nivelManual(n);
         if (nivel === null || noEntreRaias(n, lanes)) return;
@@ -101,7 +138,7 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
         (ocupacao[noLane(n)] = ocupacao[noLane(n)] || []).push({ x: xDoBloco(id), y });
     });
     // demais blocos: abaixo do pai da MESMA raia e sem cair sobre outro bloco (descem uma linha)
-    ordemPre.forEach(id => {
+    if (!horizontal) ordemPre.forEach(id => {
         if (yRelativo.has(id)) return;
         const n = porId.get(id);
         const lane = noLane(n);
@@ -139,6 +176,10 @@ function posicionarAutomaticoPorRaias(centralizar = true) {
     // Ligações: membros de listas recuadas (estrutura Árvore) entram pela lateral, com tronco vertical; as demais seguem o padrão
     topologia.edges.forEach(e => {
         if (!DiagramaArvore.ehHierarquia(e) || arvore.pai.get(String(e.target)) !== String(e.source)) return;
+        if (horizontal) {
+            if (!e.ligacaoManual) { e.sourceHandle = 'right'; e.targetHandle = 'left'; }   // sai pela direita do pai e entra pela esquerda do filho
+            return;
+        }
         if (recuoPx.has(String(e.target))) {
             e.sourceHandle = 'bottom';
             e.targetHandle = 'left';

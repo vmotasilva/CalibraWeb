@@ -13,6 +13,11 @@ function estiloEfetivoDoNo(node) {
     return DiagramaEstilo.resolverEstiloNo(node, contextoEstiloDoNo(node));
 }
 
+// Forma do bloco: a escolhida nele ou a do nível do tema (modelos de estilo)
+function formaDoNo(node) {
+    return DiagramaEstilo.formaEfetiva(node, contextoEstiloDoNo(node));
+}
+
 function arestaDeEntrada(node) {
     return topologia.edges.find(e => String(e.target) === String(node.id) && (e.kind || 'hierarquia') === 'hierarquia') || null;
 }
@@ -25,7 +30,7 @@ function estiloEfetivoDaConexao(edge) {
 // Aplica ao elemento do bloco o estilo resolvido (explícito > tema > padrão). Sem estilo, não mexe em nada.
 function aplicarEstiloVisualAoNo(nodeEl, node) {
     const st = estiloEfetivoDoNo(node);
-    const forma = node.data?.shape;
+    const forma = formaDoNo(node);
     const especial = DiagramaEstilo.FORMAS_EXTRAS.includes(forma);
 
     if (especial) {

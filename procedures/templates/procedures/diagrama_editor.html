@@ -1220,6 +1220,7 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="organograma" onclick="definirModoLayout('organograma')"><i class="bi bi-check2 layout-check invisible me-2"></i>Organograma (de cima para baixo)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="logico" onclick="definirModoLayout('logico')"><i class="bi bi-check2 layout-check invisible me-2"></i>Lógico (da esquerda para a direita)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="arvore" onclick="definirModoLayout('arvore')"><i class="bi bi-check2 layout-check invisible me-2"></i>Árvore (lista com recuo)</a></li>
+                    <li id="itemFluxoHorizontal" class="somente-raias"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarFluxoDasRaias()" title="Nas raias, os níveis da hierarquia avançam em colunas: pais à esquerda e filhos à direita"><i class="bi bi-check2 layout-check invisible me-2"></i>Raias: progressão da esquerda para a direita</a></li>
                     <li id="itemEmpilharFolhas" class="d-none"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarEmpilharFolhas()" title="No organograma, blocos sem subordinados do mesmo pai ficam um abaixo do outro"><i class="bi bi-check2 layout-check me-2"></i>Empilhar folhas na vertical</a></li>
                     <li><h6 class="dropdown-header">Estrutura do ramo selecionado</h6></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" onclick="definirEstruturaDoRamo('')"><i class="bi bi-arrow-return-right me-2"></i>Seguir a estrutura do pai</a></li>
@@ -1420,6 +1421,12 @@
 
                         {% if not is_approved %}
                             <div class="d-flex gap-1 ms-1">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="moverOutlinerItem(-1)" title="Subir o item selecionado (Alt+Shift+↑)">
+                                    <i class="bi bi-arrow-up"></i> Subir
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="moverOutlinerItem(1)" title="Descer o item selecionado (Alt+Shift+↓)">
+                                    <i class="bi bi-arrow-down"></i> Descer
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="outdentOutlinerItem()" title="Desrecuar Nível (Shift+Tab)">
                                     <i class="bi bi-arrow-left"></i> Desrecuar
                                 </button>
@@ -1447,6 +1454,7 @@
                             <span><kbd class="outliner-kbd-badge">Tab</kbd> Recuar (Criar Subtópico)</span>
                             <span><kbd class="outliner-kbd-badge">Shift + Tab</kbd> Desrecuar</span>
                             <span><kbd class="outliner-kbd-badge">Backspace</kbd> Desrecuar / Excluir</span>
+                            <span><kbd class="outliner-kbd-badge">Alt + Shift + ↑ / ↓</kbd> Subir / Descer</span>
                             <span><kbd class="outliner-kbd-badge">↑ / ↓</kbd> Navegar</span>
                         </div>
                         <span class="text-primary fw-medium"><i class="bi bi-lightning-charge-fill me-1"></i>100% via teclado</span>
@@ -2221,6 +2229,24 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item"><button type="button" class="nav-link active" data-bs-toggle="tab" data-bs-target="#abaEstilosModelo"><i class="bi bi-palette2 me-1"></i>Estilos e variações</button></li>
+                    <li class="nav-item"><button type="button" class="nav-link" data-bs-toggle="tab" data-bs-target="#abaModelosBase"><i class="bi bi-grid-1x2 me-1"></i>Modelos de base</button></li>
+                </ul>
+                <div class="tab-content">
+                <div class="tab-pane fade show active" id="abaEstilosModelo">
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+                        <label class="small fw-semibold mb-0" for="modeloPaleta">Cores</label>
+                        <select id="modeloPaleta" class="form-select form-select-sm w-auto" onchange="renderizarGaleriaModelos()"></select>
+                        <div class="form-check small mb-0">
+                            <input class="form-check-input" type="checkbox" id="modeloLimparFormato">
+                            <label class="form-check-label" for="modeloLimparFormato" title="Remove cor, forma e fonte escolhidas individualmente nos blocos, para que o estilo do modelo valha para todos">Substituir a formatação individual dos blocos</label>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">Cada variação define o <strong>layout</strong> (como os blocos se distribuem) e o <strong>estilo</strong> (forma dos blocos, linhas e fontes). O conteúdo do diagrama é mantido e a mudança pode ser desfeita com Ctrl+Z.</p>
+                    <div id="galeriaModelos"></div>
+                </div>
+                <div class="tab-pane fade" id="abaModelosBase">
                 <div class="alert alert-warning d-flex align-items-center small py-2 mb-3">
                     <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
                     <div><strong>Atenção:</strong> Aplicar um modelo substituirá a topologia e nós atuais deste rascunho.</div>
@@ -2242,6 +2268,8 @@
                         </div>
                     </div>
                     {% endfor %}
+                </div>
+                </div>
                 </div>
             </div>
             <div class="modal-footer">

@@ -63,6 +63,8 @@ function atualizarUILayout() {
     const rotulo = document.getElementById('labelLayoutAtual');
     if (rotulo) rotulo.textContent = ROTULOS_LAYOUT[modo] || modo;
     atualizarMarcaNomeDasRaias();
+    const marcaFluxo = document.querySelector('#itemFluxoHorizontal .layout-check');
+    if (marcaFluxo) marcaFluxo.classList.toggle('invisible', topologia.raias_fluxo !== 'horizontal');
     const itemEmpilhar = document.getElementById('itemEmpilharFolhas');
     if (itemEmpilhar) {
         itemEmpilhar.classList.toggle('d-none', modo !== 'organograma');
@@ -217,6 +219,21 @@ function definirModoLayout(modo) {
     } else {
         aplicarLayoutArvore();
     }
+    atualizarUILayout();
+    renderizarGrelha();
+    enquadrarVisaoCompleta();
+    dispararAutoSave();
+}
+
+// Raias na horizontal com progressão da esquerda para a direita (pais à esquerda, filhos à direita)
+function alternarFluxoDasRaias() {
+    if (IS_APPROVED || modoLayout() !== 'raias') return;
+    const horizontal = topologia.raias_fluxo === 'horizontal';
+    if (topologia.nodes.length > 1 &&
+        !confirm(`Mudar o fluxo das raias para "${horizontal ? 'de cima para baixo' : 'da esquerda para a direita'}" reposiciona todos os blocos. Você pode desfazer com Ctrl+Z. Continuar?`)) return;
+    if (horizontal) delete topologia.raias_fluxo; else topologia.raias_fluxo = 'horizontal';
+    posicionarAutomaticoPorRaias(true);
+    renderizarCanvas();
     atualizarUILayout();
     renderizarGrelha();
     enquadrarVisaoCompleta();

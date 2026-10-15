@@ -162,9 +162,18 @@ function renderizarOutliner(focusNodeId = null, cursorPosition = null) {
     const qtdFilhos = new Map();
     items.forEach(it => { if (it.parentId !== null) qtdFilhos.set(it.parentId, (qtdFilhos.get(it.parentId) || 0) + 1); });
 
+    const irmaos = new Map();   // pai -> ids dos irmãos na ordem em que aparecem
+    items.forEach(it => {
+        const k = it.parentId === null ? '' : it.parentId;
+        if (!irmaos.has(k)) irmaos.set(k, []);
+        irmaos.get(k).push(it.id);
+    });
+
     items.forEach((item, idx) => {
         if (ocultos.has(item.id)) return;   // dentro de um ramo recolhido
         const node = item.node;
+        const grupoIrmaos = irmaos.get(item.parentId === null ? '' : item.parentId) || [];
+        const posIrmao = grupoIrmaos.indexOf(item.id);
         const level = item.level;
         const safeLabel = escapeHtml(node.data?.label || '');
         const currentLane = node.data?.lane || (lanes[0] || 'Geral');
@@ -222,6 +231,16 @@ function renderizarOutliner(focusNodeId = null, cursorPosition = null) {
                 </ul>
             </div>
             ${!IS_APPROVED ? `
+                <span class="outliner-mover d-inline-flex flex-shrink-0">
+                    <button type="button" class="btn btn-sm btn-link text-secondary p-0 px-1" tabindex="-1" ${posIrmao <= 0 ? 'disabled' : ''}
+                            onclick="moverItemOutliner('${node.id}', -1)" title="Subir (Alt+Shift+↑): troca de posição com o item de cima, no mesmo nível">
+                        <i class="bi bi-arrow-up"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-link text-secondary p-0 px-1" tabindex="-1" ${posIrmao >= grupoIrmaos.length - 1 ? 'disabled' : ''}
+                            onclick="moverItemOutliner('${node.id}', 1)" title="Descer (Alt+Shift+↓): troca de posição com o item de baixo, no mesmo nível">
+                        <i class="bi bi-arrow-down"></i>
+                    </button>
+                </span>
                 <button type="button" class="btn btn-sm btn-link text-danger p-0 outliner-del-btn" onclick="excluirItemOutlinerETrazerFocoAnterior('${node.id}')" title="Excluir este item">
                     <i class="bi bi-x-circle"></i>
                 </button>
@@ -486,6 +505,10 @@ function onOutlinerKeydown(e, nodeId, idx) {
                 excluirItemOutlinerETrazerFocoAnterior(nodeId);
             }
         }
+    } else if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && e.altKey && e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        moverItemOutliner(nodeId, e.key === 'ArrowUp' ? -1 : 1, cursorPos);
     } else if (e.key === 'ArrowUp') {
         if (cursorPos === 0 || e.ctrlKey || e.altKey) {
             e.preventDefault();
@@ -497,6 +520,53 @@ function onOutlinerKeydown(e, nodeId, idx) {
             focarItemOutlinerVizinho(nodeId, 1);
         }
     }
+}
+
+/**
+ * Sobe (-1) ou desce (+1) o item trocando de lugar com o irmão vizinho (mesmo pai, mesmo nível);
+ * os subitens acompanham o item. A ordem dos irmãos no Outliner segue a das arestas (raízes: a dos blocos).
+ */
+function moverItemOutliner(nodeId, direcao, cursorPos = null) {
+    if (IS_APPROVED) return;
+    const items = obterEstruturaOutliner();
+    const atual = items.find(it => it.id === nodeId);
+    if (!atual) return;
+    const irmaos = items.filter(it => it.parentId === atual.parentId);
+    const i = irmaos.findIndex(it => it.id === nodeId);
+    const vizinho = irmaos[i + direcao];
+    if (!vizinho) return;
+
+    if (atual.parentId === null) {
+        const nodes = topologia.nodes;
+        const a = nodes.findIndex(n => n.id === nodeId);
+        const b = nodes.findIndex(n => n.id === vizinho.id);
+        [nodes[a], nodes[b]] = [nodes[b], nodes[a]];
+    } else {
+        const edges = topologia.edges;
+        const a = edges.findIndex(e => e.source === atual.parentId && e.target === nodeId);
+        const b = edges.findIndex(e => e.source === atual.parentId && e.target === vizinho.id);
+        if (a === -1 || b === -1) return;
+        [edges[a], edges[b]] = [edges[b], edges[a]];
+    }
+    // posição numerada ("ordem") acompanha a troca, senão o canvas mantém a ordem antiga
+    const da = atual.node.data || (atual.node.data = {});
+    const db = vizinho.node.data || (vizinho.node.data = {});
+    if (da.ordem !== undefined || db.ordem !== undefined) {
+        const oa = da.ordem, ob = db.ordem;
+        if (ob === undefined) delete da.ordem; else da.ordem = ob;
+        if (oa === undefined) delete db.ordem; else db.ordem = oa;
+    }
+
+    sincronizarEdgesComGridData();
+    recalcularPosicoesCanvasHierarquico();
+    renderizarCanvas();
+    renderizarGrelha();
+    renderizarOutliner(nodeId, cursorPos);
+    dispararAutoSave();
+}
+
+function moverOutlinerItem(direcao) {
+    if (selectedNodeId) moverItemOutliner(selectedNodeId, direcao);
 }
 
 /**
