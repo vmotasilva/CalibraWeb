@@ -188,7 +188,7 @@ NAV_STRUCTURE = [
     {
         "key": "diagramas",
         "nome": "Diagramas",
-        "cor": "orange",
+        "cor": "dark",
         "icone": "bi bi-diagram-3-fill",
         "module_perm": "core.nav_mod_diagramas",
         "blocos": [

@@ -3475,7 +3475,13 @@ def detalhe_usuario_view(request, user_id):
         app_label, codename = str(full_perm).split(".", 1)
         return {"app_label": app_label, "codename": codename, "full": f"{app_label}.{codename}"}
 
-    raw_modulos = get_nav_structure()
+    import unicodedata
+
+    def _chave_ordem(m):
+        nome = unicodedata.normalize("NFKD", str(m.get("nome") or "")).encode("ascii", "ignore").decode().lower()
+        return (m.get("key") == "global", nome)  # Permissões Globais sempre por último
+
+    raw_modulos = sorted(get_nav_structure(), key=_chave_ordem)
     modulos = []
     for modulo in raw_modulos:
         # O acesso a Usuários é só superusuário/staff (nenhuma nav_* do módulo é lida): não exibir toggles sem efeito

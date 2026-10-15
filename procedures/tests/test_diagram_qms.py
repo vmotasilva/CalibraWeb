@@ -772,7 +772,7 @@ class DiagramaRaiasTestCase(TestCase):
     def test_cadastro_de_raias_no_registro_de_permissoes_e_cor_do_modulo(self):
         from shared.permissions import NAV_STRUCTURE
         modulo = next(m for m in NAV_STRUCTURE if m["key"] == "diagramas")
-        self.assertEqual(modulo["cor"], "orange")  # cor com CSS definido (teal não existe no Bootstrap)
+        self.assertEqual(modulo["cor"], "dark")  # preto, com fonte branca (Bootstrap bg-dark)
         perms = [f["perm"] for b in modulo["blocos"] for f in b["funcoes"]]
         self.assertIn("core.nav_diagramas_raias", perms)
 
@@ -821,9 +821,8 @@ class TelaDePermissoesDiagramasTestCase(TestCase):
         self.assertEqual(resp.status_code, 200)
         html = resp.content.decode()
 
-        # cabeçalho do módulo usa uma cor que tem CSS definido na própria tela
-        self.assertIn('card-header bg-orange text-white module-header', html)
-        self.assertIn('.bg-orange {', html)
+        # cabeçalho do módulo usa a cor escura do Bootstrap (fonte branca)
+        self.assertIn('card-header bg-dark text-white module-header', html)
         self.assertNotIn('bg-teal', html)
 
         # bloco sem o sufixo (DOC.071)
