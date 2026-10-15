@@ -20,7 +20,7 @@
     };
     const BORDAS = ['solid', 'dashed', 'dotted', 'none'];
     const TRACADOS = ['solid', 'dashed', 'dotted'];
-    const FORMATOS_LINHA = ['ortogonal', 'curva', 'reta'];
+    const FORMATOS_LINHA = ['ortogonal', 'curva', 'reta', 'chave'];
     const ALINHAMENTOS = ['left', 'center', 'right'];
     const FORMAS_EXTRAS = ['brackets', 'underline', 'plain'];
     const FORMAS_TEMA = ['rect', 'pill', 'brackets', 'underline', 'plain'];   // forma que um nível do tema pode dar aos blocos
@@ -170,6 +170,7 @@
             width: linha.largura,
             dash: linha.tracejado,
             shape: linha.formato,
+            arrow: linha.seta,
         });
         return Object.assign({}, base, limpar((aresta && aresta.style) || {}));
     }

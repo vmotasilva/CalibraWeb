@@ -4,12 +4,13 @@
  * O cálculo de layout fica em layout_arvore.js (puro e testado em Node); aqui há apenas a ligação com o DOM.
  */
 
-const MODOS_ARVORE = ['organograma', 'logico', 'arvore'];
+const MODOS_ARVORE = ['organograma', 'logico', 'arvore', 'mapa'];
 const ROTULOS_LAYOUT = {
     raias: 'Por raias (fluxograma)',
     organograma: 'Organograma (de cima para baixo)',
     logico: 'Lógico (da esquerda para a direita)',
     arvore: 'Árvore (lista com recuo)',
+    mapa: 'Mapa mental (para os dois lados)',
 };
 
 function modoLayout() {

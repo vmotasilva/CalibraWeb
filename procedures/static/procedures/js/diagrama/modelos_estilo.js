@@ -70,6 +70,34 @@
                     n('pill', 'principal', 'principal', 'branco', true, 15), n('pill', 'branco', 'cinza', 'escuro', false, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
             ],
         },
+        {
+            id: 'mapa', nome: 'Mapa mental', layout: 'mapa',
+            descricao: 'Tópico central no meio e os ramos principais distribuídos dos dois lados, sem setas.',
+            variacoes: [
+                { id: 'map-destaque', nome: 'Destaque e caixas', linha: { formato: 'curva', largura: 1, seta: false }, niveis: [
+                    n('rect', 'principal', 'principal', 'branco', true, 15), n('rect', 'branco', 'cinza', 'escuro', false, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+                { id: 'map-sublinhado', nome: 'Texto sobre linhas', linha: { formato: 'curva', largura: 1, seta: false }, niveis: [
+                    n('plain', null, null, 'escuro', true, 16), n('underline', null, 'escuro', 'escuro', true, 12), n('underline', null, 'cinza', 'escuro', false, 10), n('underline', null, 'cinza', 'escuro', false, 10)] },
+                { id: 'map-pilulas', nome: 'Pílulas', linha: { formato: 'curva', largura: 1, seta: false }, niveis: [
+                    n('pill', 'principal', 'principal', 'branco', true, 15), n('pill', 'branco', 'cinza', 'escuro', false, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+                { id: 'map-serifa', nome: 'Texto com serifa', linha: { formato: 'ortogonal', largura: 1, seta: false }, niveis: [
+                    n('plain', null, null, 'escuro', true, 18, 'serif'), n('plain', null, null, 'escuro', true, 13, 'serif'), n('plain', null, null, 'escuro', false, 11, 'serif'), n('plain', null, null, 'escuro', false, 10, 'serif')] },
+            ],
+        },
+        {
+            id: 'chave', nome: 'Mapa de chaves', layout: 'logico',
+            descricao: 'Da esquerda para a direita, com chaves { } agrupando os desdobramentos de cada tópico.',
+            variacoes: [
+                { id: 'chv-texto', nome: 'Texto e chaves', linha: { formato: 'chave', largura: 1, seta: false }, niveis: [
+                    n('plain', null, null, 'escuro', true, 15), n('plain', null, null, 'escuro', true, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+                { id: 'chv-caixas', nome: 'Caixas e chaves', linha: { formato: 'chave', largura: 1, seta: false }, niveis: [
+                    n('rect', 'branco', 'cinza', 'escuro', false, 15), n('rect', 'branco', 'cinza', 'escuro', false, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+                { id: 'chv-contorno', nome: 'Contorno escuro', linha: { formato: 'chave', largura: 1, seta: false }, niveis: [
+                    n('rect', 'branco', 'escuro', 'escuro', true, 15), n('rect', 'branco', 'escuro', 'escuro', false, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+                { id: 'chv-destaque', nome: 'Destaque', linha: { formato: 'chave', largura: 1, seta: false }, niveis: [
+                    n('rect', 'principal', 'principal', 'branco', true, 15), n('rect', 'branco', 'cinza', 'escuro', false, 12), n('plain', null, null, 'escuro', false, 10), n('plain', null, null, 'escuro', false, 10)] },
+            ],
+        },
     ];
 
     function paletaPorId(id) {
@@ -112,7 +140,7 @@
             fundo: paleta.fundo,
             multiRamo: false,
             paleta: [],
-            linha: { cor: ESCURO, largura: variacao.linha.largura, formato: variacao.linha.formato },
+            linha: Object.assign({ cor: ESCURO, largura: variacao.linha.largura, formato: variacao.linha.formato }, variacao.linha.seta === false ? { seta: false } : {}),
             niveis: variacao.niveis.map(spec => construirNivel(spec, paleta)),
         };
     }
@@ -137,6 +165,13 @@
     function ligacao(formato, x1, y1, x2, y2, horizontal) {
         const c = 'stroke="#64748b" stroke-width="1" fill="none"';
         if (formato === 'reta') return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${c}/>`;
+        if (formato === 'chave') {
+            const dx = x2 >= x1 ? 1 : -1, dy = y2 >= y1 ? 1 : -1;
+            if (Math.abs(y1 - y2) < 1) return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" ${c}/>`;
+            if (!horizontal) return `<path d="M${x1} ${y1} V${(y1 + y2) / 2} H${x2} V${y2}" ${c}/>`;
+            const m = x1 + dx * Math.min(10, Math.abs(x2 - x1) / 2), r = Math.min(4, Math.abs(y2 - y1) / 2);
+            return `<path d="M${x1} ${y1} H${m - r * dx} Q${m} ${y1} ${m} ${y1 + r * dy} V${y2 - r * dy} Q${m} ${y2} ${m + r * dx} ${y2} H${x2}" ${c}/>`;
+        }
         if (formato === 'curva') {
             return horizontal
                 ? `<path d="M${x1} ${y1} C${(x1 + x2) / 2} ${y1} ${(x1 + x2) / 2} ${y2} ${x2} ${y2}" ${c}/>`
@@ -163,6 +198,18 @@
             });
             pais.forEach(([px, py]) => { corpo += caixa(px, py, 46, 14, s1, paleta); });
             corpo += caixa(centro[0], centro[1], 66, 16, s0, paleta);
+        } else if (familia.layout === 'mapa') {
+            const cx = L / 2, cy = A / 2;
+            [[1, 34], [1, 62], [1, 90], [-1, 34], [-1, 62], [-1, 90]].forEach(([lado, py]) => {
+                const px = cx + lado * 56;
+                corpo += ligacao(f, cx + lado * 26, cy, px - lado * 20, py, true);
+                [-1, 1].forEach(d => {
+                    const sx = cx + lado * 98, sy = py + d * 7;
+                    corpo += ligacao(f, px + lado * 20, py, sx - lado * 14, sy, true) + caixa(sx, sy, 24, 7, s2, paleta);
+                });
+            });
+            [34, 62, 90].forEach(py => { corpo += caixa(cx + 56, py, 38, 12, s1, paleta) + caixa(cx - 56, py, 38, 12, s1, paleta); });
+            corpo += caixa(cx, cy, 50, 18, s0, paleta);
         } else if (familia.layout === 'logico') {
             const centro = [36, A / 2], pais = [26, 62, 98];
             pais.forEach((py, i) => {

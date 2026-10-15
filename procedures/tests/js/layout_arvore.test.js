@@ -310,4 +310,35 @@ teste('a estrutura é herdada pelo ramo e o filho pode voltar ao organograma', (
     assert.strictEqual(P2.a.y, P2.b.y);
 });
 
+// --------------------------------------------------------------------------- mapa mental (dois lados)
+teste('mapa: ramos nos dois lados do tópico central, sem sobreposição', () => {
+    const nos = [1, 2, 3, 4, 5, 6, 7].map(no);
+    const arestas = [lig(1, 2), lig(1, 3), lig(1, 4), lig(1, 5), lig(2, 6), lig(3, 7)];
+    const r = A.calcularLayout(nos, arestas, 'mapa', tamanhos([1, 2, 3, 4, 5, 6, 7]), {});
+    const p = r.posicoes;
+    const direita = [2, 3].every(i => p[i].x > p[1].x + T.w);
+    const esquerda = [4, 5].every(i => p[i].x + T.w < p[1].x);
+    assert.ok(direita && esquerda, 'primeiros ramos à direita e os demais à esquerda');
+    assert.ok(p[6].x > p[2].x, 'neto à direita do pai (lado direito)');
+    assert.ok(p[7].x + T.w < p[3].x || p[7].x > p[3].x, 'neto do ramo 3 fica do mesmo lado do pai');
+    assert.deepStrictEqual(r.handles['e-1-2'], ['right', 'left']);
+    assert.deepStrictEqual(r.handles['e-1-4'], ['left', 'right']);
+    assert.ok(semSobreposicao(p));
+    assert.ok(Math.abs((p[1].y + T.h / 2) - (Math.min(...Object.values(p).map(v => v.y)) + Math.max(...Object.values(p).map(v => v.y + T.h))) / 2) < 200, 'tópico central perto do meio');
+});
+
+teste('mapa: um único ramo vai para a direita; sem filhos não quebra', () => {
+    const r1 = A.calcularLayout([no(1), no(2)], [lig(1, 2)], 'mapa', tamanhos([1, 2]), {});
+    assert.ok(r1.posicoes['2'].x > r1.posicoes['1'].x);
+    const r2 = A.calcularLayout([no(1)], [], 'mapa', tamanhos([1]), {});
+    assert.deepStrictEqual(Object.keys(r2.posicoes), ['1']);
+});
+
+teste('mapa: ramo recolhido some do layout', () => {
+    const nos = [no(1), no(2, { data: { label: 'B2', collapsed: true } }), no(3), no(4)];
+    const r = A.calcularLayout(nos, [lig(1, 2), lig(2, 3), lig(1, 4)], 'mapa', tamanhos([1, 2, 3, 4]), {});
+    assert.ok(!('3' in r.posicoes));
+    assert.ok(r.ocultos.has('3'));
+});
+
 console.log(process.exitCode ? 'COM FALHAS' : `TODOS OS ${total} TESTES OK`);

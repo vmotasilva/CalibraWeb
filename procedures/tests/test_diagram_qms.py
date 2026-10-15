@@ -2262,7 +2262,7 @@ class ModelosDeEstiloTestCase(TestCase):
         self.assertGreaterEqual(len(temas), 12)
         for item in temas:
             self.assertEqual(validar_tema(item['tema']), [], item['id'])
-            self.assertIn(item['layout'], ('organograma', 'logico', 'arvore'))
+            self.assertIn(item['layout'], ('organograma', 'logico', 'arvore', 'mapa'))
 
     def test_familias_tem_quatro_variacoes_e_miniaturas(self):
         base = self._base()
@@ -2271,6 +2271,7 @@ class ModelosDeEstiloTestCase(TestCase):
             "console.log(JSON.stringify(M.FAMILIAS_MODELO.map(f=>({n:f.variacoes.length,svg:f.variacoes.every(v=>M.miniatura(f,v).startsWith('<svg'))}))))")
         if resumo is None:
             self.skipTest('Node.js não disponível')
+        self.assertEqual(len(resumo), 5)
         self.assertTrue(all(r['n'] == 4 and r['svg'] for r in resumo))
 
     def test_forma_do_nivel_em_javascript_e_python(self):
@@ -2292,6 +2293,34 @@ class ModelosDeEstiloTestCase(TestCase):
         for i, (r, c) in enumerate(zip(js, casos)):
             self.assertEqual(r['f'], forma_efetiva(c['no'], c['ctx']), f"forma {i}")
             self.assertEqual(r['e'], resolver_estilo_no(c['no'], c['ctx']), f"estilo {i}")
+
+    def test_mapa_mental_e_chaves_no_catalogo_e_no_pdf(self):
+        from procedures.services.diagram_renderer import DiagramaFlowable
+        from procedures.services.diagram_validation import validar_topologia
+        temas = {t['id']: t for t in self._temas()}
+        self.assertIn('map-destaque', temas)
+        self.assertIn('chv-texto', temas)
+        self.assertEqual(temas['chv-texto']['tema']['linha']['formato'], 'chave')
+        self.assertIs(temas['map-pilulas']['tema']['linha']['seta'], False)
+
+        def no(i, x, y, rotulo):
+            return {"id": str(i), "type": "process", "position": {"x": x, "y": y}, "data": {"label": rotulo}}
+        topo = {
+            "layout_modo": "mapa", "tema": temas['chv-texto']['tema'],
+            "nodes": [no(1, 400, 200, 'Central'), no(2, 700, 100, 'D1'), no(3, 700, 300, 'D2'), no(4, 100, 200, 'E1'), no(5, 700, 400, 'D3')],
+            "edges": [
+                {"id": "e12", "source": "1", "target": "2", "sourceHandle": "right", "targetHandle": "left"},
+                {"id": "e13", "source": "1", "target": "3", "sourceHandle": "right", "targetHandle": "left"},
+                {"id": "e14", "source": "1", "target": "4", "sourceHandle": "left", "targetHandle": "right"},
+                {"id": "e35", "source": "3", "target": "5", "sourceHandle": "bottom", "targetHandle": "top"},
+            ],
+        }
+        self.assertEqual(validar_topologia(topo), [])
+        fluxo = DiagramaFlowable(topo, 800, 600)
+        self.assertIsNotNone(fluxo)
+        for chave in ('layout_modo',):
+            topo[chave] = 'inexistente'
+            self.assertTrue(validar_topologia(topo))
 
     def test_editor_carrega_modulos_do_catalogo_e_tem_a_galeria(self):
         js = ler_js_editor()

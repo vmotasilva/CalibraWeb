@@ -14,6 +14,8 @@
         organograma: { direcao: 'baixo', gapCruz: 40, gapNivel: 90, handles: ['bottom', 'top'], empilharFolhas: true },
         logico: { direcao: 'direita', gapCruz: 24, gapNivel: 80, handles: ['right', 'left'] },
         arvore: { direcao: 'lista', gapCruz: 16, gapNivel: 40, handles: ['bottom', 'left'] },
+        // mapa mental: topico central no meio e ramos principais nos dois lados (cada lado e um layout logico)
+        mapa: { direcao: 'dois-lados', gapCruz: 24, gapNivel: 80, handles: ['right', 'left'] },
     };
 
     const MARGEM_X = 80;
@@ -153,10 +155,90 @@
         return arvore;
     }
 
+    /**
+     * Mapa mental: para cada raiz, os ramos principais sao divididos em dois grupos contiguos de peso parecido (numero de
+     * blocos): os primeiros ficam a direita (de cima para baixo) e os demais a esquerda (de baixo para cima, sentido horario
+     * como no XMind). Cada lado usa o layout "logico"; o lado esquerdo e espelhado em torno do centro do topico central.
+     */
+    function calcularMapa(nos, arestas, tamanhos, opt) {
+        const arvore = aplicarOrdemManual(montarArvore(nos, arestas), nos);
+        const escondidos = ocultos(nos, arvore);
+        const porId = new Map(nos.map(n => [String(n.id), n]));
+        const tam = id => (tamanhos && tamanhos[id]) || estimarTamanho(porId.get(id));
+        const arestaDe = new Map();
+        arestas.filter(ehHierarquia).forEach(a => { if (!arestaDe.has(`${a.source}|${a.target}`)) arestaDe.set(`${a.source}|${a.target}`, a); });
+        const visiveis = id => (arvore.filhos.get(id) || []).filter(f => !escondidos.has(f));
+        const peso = id => 1 + visiveis(id).reduce((s, f) => s + peso(f), 0);
+
+        const posicoes = {};
+        const handles = {};
+        let yBase = opt.y0;
+
+        arvore.raizes.filter(r => !escondidos.has(r)).forEach(raiz => {
+            const kids = visiveis(raiz);
+            let corte = kids.length;
+            if (kids.length > 1) {
+                const pesos = kids.map(peso);
+                const total = pesos.reduce((a, b) => a + b, 0);
+                let acumulado = 0, menor = Infinity;
+                corte = 1;
+                for (let k = 1; k <= kids.length; k++) {
+                    acumulado += pesos[k - 1];
+                    const diferenca = Math.abs(2 * acumulado - total);
+                    if (diferenca <= menor) { menor = diferenca; corte = k; }
+                }
+                if (corte >= kids.length) corte = Math.max(1, kids.length - 1);
+            }
+            const direita = kids.slice(0, corte);
+            const esquerda = kids.slice(corte).reverse();
+            const t0 = tam(raiz);
+
+            const lado = (filhosDoLado) => {
+                const conjunto = new Set([raiz]);
+                filhosDoLado.forEach(f => { conjunto.add(f); descendentes(arvore, f).forEach(d => conjunto.add(d)); });
+                const nosLado = nos.filter(n => conjunto.has(String(n.id)));
+                const arestasLado = [];
+                const adicionar = (pai, lista) => lista.forEach(f => {
+                    const original = arestaDe.get(`${pai}|${f}`);
+                    if (original) arestasLado.push({ id: original.id, source: pai, target: f, kind: 'hierarquia' });
+                    adicionar(f, arvore.filhos.get(f) || []);
+                });
+                adicionar(raiz, filhosDoLado);
+                const r = calcularLayout(nosLado, arestasLado, 'logico', tamanhos, { x0: 0, y0: 0 });
+                const dy = -(r.posicoes[raiz].y + t0.h / 2);   // centro do topico central na altura 0
+                return { r, dy };
+            };
+
+            const parte = {};
+            const direitaCalc = lado(direita);
+            Object.entries(direitaCalc.r.posicoes).forEach(([id, p]) => { parte[id] = { x: p.x, y: p.y + direitaCalc.dy }; });
+            Object.keys(direitaCalc.r.handles).forEach(id => { handles[id] = ['right', 'left']; });
+            if (esquerda.length > 0) {
+                const esquerdaCalc = lado(esquerda);
+                Object.entries(esquerdaCalc.r.posicoes).forEach(([id, p]) => {
+                    if (id === raiz) return;
+                    parte[id] = { x: t0.w - (p.x + tam(id).w), y: p.y + esquerdaCalc.dy };
+                });
+                Object.keys(esquerdaCalc.r.handles).forEach(id => { handles[id] = ['left', 'right']; });
+            }
+
+            const faixas = Object.entries(parte).map(([id, p]) => [p.y, p.y + tam(id).h]);
+            const minX = Math.min(...Object.values(parte).map(p => p.x));
+            const minY = Math.min(...faixas.map(v => v[0]));
+            const maxY = Math.max(...faixas.map(v => v[1]));
+            Object.entries(parte).forEach(([id, p]) => { posicoes[id] = { x: p.x - minX + opt.x0, y: p.y - minY + yBase }; });
+            yBase += maxY - minY + 80;
+        });
+
+        Object.values(posicoes).forEach(p => { p.x = Math.round(p.x); p.y = Math.round(p.y); });
+        return { posicoes, handles, ocultos: escondidos };
+    }
+
     function calcularLayout(nos, arestas, modo, tamanhos, opcoes) {
         const cfg = MODOS[modo];
         if (!cfg) throw new Error('Modo de layout desconhecido: ' + modo);
         const opt = Object.assign({ x0: MARGEM_X, y0: MARGEM_Y }, opcoes || {});
+        if (cfg.direcao === 'dois-lados') return calcularMapa(nos, arestas, tamanhos, opt);
 
         const arvore = aplicarOrdemManual(montarArvore(nos, arestas), nos);
         const escondidos = ocultos(nos, arvore);

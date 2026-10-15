@@ -73,7 +73,7 @@ function obterEstruturaOutliner() {
 // entram por cima do filho; "lógico" usa as laterais; "árvore" sai por baixo e entra pela lateral
 function alcasPadraoDaLigacao() {
     const modo = typeof modoLayout === 'function' ? modoLayout() : 'raias';
-    if (modo === 'logico') return { sourceHandle: 'right', targetHandle: 'left' };
+    if (modo === 'logico' || modo === 'mapa') return { sourceHandle: 'right', targetHandle: 'left' };
     if (modo === 'arvore') return { sourceHandle: 'bottom', targetHandle: 'left' };
     return { sourceHandle: 'bottom', targetHandle: 'top' };
 }

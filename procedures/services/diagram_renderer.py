@@ -667,6 +667,8 @@ class DiagramaFlowable(Flowable):
             pts = [(tronco, sb), (tronco, tmy), (tl, tmy)]
         elif livre:
             pts = [(smx, smy), (tmx, tmy)]
+        elif e.get('sourceHandle') == 'left' and e.get('targetHandle') == 'right':
+            pts = self._horizontal(sl, smy, tr, tmy)   # mapa mental: ramo do lado esquerdo
         elif e.get('sourceHandle') == 'right' or nao:
             pts = self._horizontal(sr, smy, tl, tmy)
         elif tt >= sb - 10:
@@ -690,7 +692,7 @@ class DiagramaFlowable(Flowable):
         p.moveTo(sx0, self._y(sy0))
         if (formato == 'curva' or livre) and not (not livre and e.get('sourceHandle') == 'bottom' and e.get('targetHandle') == 'left'):
             dx, dy = (sx1 - sx0) * 0.5, (sy1 - sy0) * 0.5
-            vertical = e.get('sourceHandle') == 'bottom' or (tt >= sb - 10 and e.get('sourceHandle') != 'right')
+            vertical = e.get('sourceHandle') == 'bottom' or (tt >= sb - 10 and e.get('sourceHandle') not in ('right', 'left'))
             if vertical:   # fluxo vertical (organogramas): a curva sai e chega na vertical, como no editor
                 p.curveTo(sx0, self._y(sy0 + dy), sx1, self._y(sy1 - dy), sx1, self._y(sy1))
                 pts = [(sx1, sy1 - dy), (sx1, sy1)]
@@ -700,12 +702,15 @@ class DiagramaFlowable(Flowable):
         elif formato == 'reta' and not livre:
             p.lineTo(sx1, self._y(sy1))
             pts = [(sx0, sy0), (sx1, sy1)]
+        elif formato == 'chave' and not livre and len(pts) == 4:
+            pts = self._caminho_chave(p, pts)
         else:
             for px, py in pts[1:]:
                 p.lineTo(px, self._y(py))
         c.drawPath(p, stroke=1, fill=0)
         c.setDash()
-        self._seta(c, pts[-2], pts[-1])
+        if est.get('arrow') is not False:
+            self._seta(c, pts[-2], pts[-1])
 
         if label:
             i = len(pts) // 2
@@ -719,6 +724,36 @@ class DiagramaFlowable(Flowable):
             c.roundRect(lx - larg / 2, self._y(ly) - 6, larg, 12, 4, stroke=1, fill=1)
             c.setFillColor(colors.HexColor('#334155'))
             c.drawCentredString(lx, self._y(ly) - 2.5, label)
+
+    def _quadratica(self, p, a, q, b):
+        """Curva quadratica de a ate b (controle q), convertida para bezier cubica; pontos em coordenadas do diagrama."""
+        c1 = (a[0] + 2 / 3 * (q[0] - a[0]), a[1] + 2 / 3 * (q[1] - a[1]))
+        c2 = (b[0] + 2 / 3 * (q[0] - b[0]), b[1] + 2 / 3 * (q[1] - b[1]))
+        p.curveTo(c1[0], self._y(c1[1]), c2[0], self._y(c2[1]), b[0], self._y(b[1]))
+
+    def _caminho_chave(self, p, pts):
+        """Conector em chave (espinha curta junto do pai e cantos arredondados), igual ao do editor. Retorna os 2 ultimos pontos (seta)."""
+        (x0, y0), (x1, y1), (x2, y2), (x3, y3) = pts
+        sinal = lambda v: 1 if v >= 0 else -1
+        if abs(y0 - y1) < 0.01:   # primeiro trecho horizontal
+            dx, dy = sinal(x3 - x0), sinal(y3 - y0)
+            meio = x0 + dx * min(26, abs(x3 - x0) / 2)
+            r = min(10, abs(meio - x0), abs(y3 - y0) / 2)
+            p.lineTo(meio - r * dx, self._y(y0))
+            self._quadratica(p, (meio - r * dx, y0), (meio, y0), (meio, y0 + r * dy))
+            p.lineTo(meio, self._y(y3 - r * dy))
+            self._quadratica(p, (meio, y3 - r * dy), (meio, y3), (meio + r * dx, y3))
+            p.lineTo(x3, self._y(y3))
+            return [(meio + r * dx, y3), (x3, y3)]
+        dx, dy = sinal(x3 - x0), sinal(y3 - y0)
+        meio = y0 + dy * min(26, abs(y3 - y0) / 2)
+        r = min(10, abs(meio - y0), abs(x3 - x0) / 2)
+        p.lineTo(x0, self._y(meio - r * dy))
+        self._quadratica(p, (x0, meio - r * dy), (x0, meio), (x0 + r * dx, meio))
+        p.lineTo(x3 - r * dx, self._y(meio))
+        self._quadratica(p, (x3 - r * dx, meio), (x3, meio), (x3, meio + r * dy))
+        p.lineTo(x3, self._y(y3))
+        return [(x3, meio + r * dy), (x3, y3)]
 
     @staticmethod
     def _vertical(sx, sy, ex, ey):

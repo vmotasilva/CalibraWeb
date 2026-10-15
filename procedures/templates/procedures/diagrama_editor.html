@@ -190,6 +190,7 @@
     .layout-organograma .collapse-toggle { bottom: -11px; left: 50%; transform: translateX(-50%); }
     .layout-logico .collapse-toggle { right: -11px; top: 50%; transform: translateY(-50%); }
     .layout-arvore .collapse-toggle { bottom: -11px; left: 12px; }
+    .layout-mapa .collapse-toggle { bottom: -11px; left: 50%; transform: translateX(-50%); }
 
     /* Alvos de soltura ao arrastar um bloco (trocar o pai / reordenar irmãos) */
     .drop-filho { outline: 3px dashed #2563eb; outline-offset: 4px; }
@@ -1220,6 +1221,7 @@
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="organograma" onclick="definirModoLayout('organograma')"><i class="bi bi-check2 layout-check invisible me-2"></i>Organograma (de cima para baixo)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="logico" onclick="definirModoLayout('logico')"><i class="bi bi-check2 layout-check invisible me-2"></i>Lógico (da esquerda para a direita)</a></li>
                     <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="arvore" onclick="definirModoLayout('arvore')"><i class="bi bi-check2 layout-check invisible me-2"></i>Árvore (lista com recuo)</a></li>
+                    <li><a class="dropdown-item" href="javascript:void(0)" data-layout-modo="mapa" onclick="definirModoLayout('mapa')"><i class="bi bi-check2 layout-check invisible me-2"></i>Mapa mental (para os dois lados)</a></li>
                     <li id="itemFluxoHorizontal" class="somente-raias"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarFluxoDasRaias()" title="Nas raias, os níveis da hierarquia avançam em colunas: pais à esquerda e filhos à direita"><i class="bi bi-check2 layout-check invisible me-2"></i>Raias: progressão da esquerda para a direita</a></li>
                     <li id="itemEmpilharFolhas" class="d-none"><a class="dropdown-item small" href="javascript:void(0)" onclick="alternarEmpilharFolhas()" title="No organograma, blocos sem subordinados do mesmo pai ficam um abaixo do outro"><i class="bi bi-check2 layout-check me-2"></i>Empilhar folhas na vertical</a></li>
                     <li><h6 class="dropdown-header">Estrutura do ramo selecionado</h6></li>
@@ -1799,6 +1801,7 @@
                                 <option value="ortogonal">90° (ortogonal)</option>
                                 <option value="curva">Curva</option>
                                 <option value="reta">Reta</option>
+                                <option value="chave">Chave { }</option>
                             </select>
                             <div class="form-check mb-1">
                                 <input id="apLinhaRamo" class="form-check-input" type="checkbox">

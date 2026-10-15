@@ -14,7 +14,7 @@ MAX_NODES = 1000
 MAX_EDGES = 3000
 MAX_SUBTITULOS = 20
 MAX_RAIAS = 100
-MODOS_LAYOUT = ('raias', 'organograma', 'logico', 'arvore')
+MODOS_LAYOUT = ('raias', 'organograma', 'logico', 'arvore', 'mapa')
 TIPOS_CONEXAO = ('hierarquia', 'relacao')
 
 
@@ -154,6 +154,8 @@ def validar_tema(tema) -> list:
             erros.append("Traçado da linha do tema inválido.")
         if 'formato' in linha and linha['formato'] not in FORMATOS_LINHA:
             erros.append("Formato da linha do tema inválido.")
+        if 'seta' in linha and not isinstance(linha['seta'], bool):
+            erros.append("'seta' da linha do tema deve ser verdadeiro/falso.")
     niveis = tema.get('niveis', [])
     if not isinstance(niveis, list) or len(niveis) > 8:
         erros.append("O tema aceita até 8 níveis.")

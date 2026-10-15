@@ -11,7 +11,7 @@ Um teste compara esta implementação com a do JavaScript para garantir o mesmo 
 FAMILIAS = ('sans', 'serif', 'mono')
 BORDAS = ('solid', 'dashed', 'dotted', 'none')
 TRACADOS = ('solid', 'dashed', 'dotted')
-FORMATOS_LINHA = ('ortogonal', 'curva', 'reta')
+FORMATOS_LINHA = ('ortogonal', 'curva', 'reta', 'chave')
 ALINHAMENTOS = ('left', 'center', 'right')
 FORMAS_TEMA = ('rect', 'pill', 'brackets', 'underline', 'plain')   # forma que um nível do tema pode dar aos blocos
 FORMAS = ('rect', 'pill', 'decision', 'circle', 'parallelogram', 'brackets', 'underline', 'plain')
@@ -128,6 +128,7 @@ def resolver_estilo_conexao(aresta: dict, ctx: dict = None) -> dict:
         'width': linha.get('largura'),
         'dash': linha.get('tracejado'),
         'shape': linha.get('formato'),
+        'arrow': linha.get('seta'),
     })
     proprio = aresta.get('style') if isinstance(aresta.get('style'), dict) else {}
     return {**base, **_limpar(proprio)}

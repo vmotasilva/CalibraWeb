@@ -582,7 +582,14 @@ function gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, e
     let flowType = 'vertical';
 
     // Determinação inteligente dos pontos de ancoragem
-    if (edge.sourceHandle === 'right' || (sourceNode.type === 'decision' && edge.label?.toLowerCase() === 'não')) {
+    if (edge.sourceHandle === 'left' && edge.targetHandle === 'right') {
+        // mapa mental: ramo do lado esquerdo sai pela esquerda do pai e entra pela direita do filho
+        startX = sLeft;
+        startY = sMidY;
+        endX = tRight;
+        endY = tMidY;
+        flowType = 'horizontal';
+    } else if (edge.sourceHandle === 'right' || (sourceNode.type === 'decision' && edge.label?.toLowerCase() === 'não')) {
         startX = sRight;
         startY = sMidY;
         endX = tLeft;
@@ -637,6 +644,29 @@ function gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, e
         return {
             pathData: `M ${startX} ${startY} L ${endX} ${endY}`,
             labelPos: { x: (startX + endX) / 2, y: (startY + endY) / 2 }
+        };
+    }
+
+    // Estilo 4: Chave (brace map): espinha curta junto do pai, com cantos bem arredondados, de onde saem os ramos
+    if (estilo === 'chave' && flowType !== 'loopback') {
+        const raioChave = 10;
+        if (flowType === 'horizontal') {
+            if (Math.abs(startY - endY) < 4) return { pathData: `M ${startX} ${startY} L ${endX} ${endY}`, labelPos: { x: (startX + endX) / 2, y: startY - 8 } };
+            const dX = endX > startX ? 1 : -1, dY = endY > startY ? 1 : -1;
+            const meio = startX + dX * Math.min(26, Math.abs(endX - startX) / 2);
+            const rd = Math.min(raioChave, Math.abs(meio - startX), Math.abs(endY - startY) / 2);
+            return {
+                pathData: `M ${startX} ${startY} L ${meio - rd * dX} ${startY} Q ${meio} ${startY} ${meio} ${startY + rd * dY} L ${meio} ${endY - rd * dY} Q ${meio} ${endY} ${meio + rd * dX} ${endY} L ${endX} ${endY}`,
+                labelPos: { x: meio + 10, y: (startY + endY) / 2 }
+            };
+        }
+        if (Math.abs(startX - endX) < 4) return { pathData: `M ${startX} ${startY} L ${endX} ${endY}`, labelPos: { x: startX + 16, y: (startY + endY) / 2 } };
+        const dY = endY > startY ? 1 : -1, dX = endX > startX ? 1 : -1;
+        const meioY = startY + dY * Math.min(26, Math.abs(endY - startY) / 2);
+        const rv = Math.min(raioChave, Math.abs(meioY - startY), Math.abs(endX - startX) / 2);
+        return {
+            pathData: `M ${startX} ${startY} L ${startX} ${meioY - rv * dY} Q ${startX} ${meioY} ${startX + rv * dX} ${meioY} L ${endX - rv * dX} ${meioY} Q ${endX} ${meioY} ${endX} ${meioY + rv * dY} L ${endX} ${endY}`,
+            labelPos: { x: (startX + endX) / 2, y: meioY - 6 }
         };
     }
 
@@ -750,6 +780,7 @@ function desenharConexoes() {
             strokeColor = estCx.color;
             marker = marcadorParaCor(svg, estCx.color, estCx.width);
         }
+        if (estCx.arrow === false) marker = 'none';   // linhas sem seta (mapa mental, chaves)
         const larguraLinha = estCx.width || 2.2;
 
         const { pathData, labelPos } = gerarCaminhoConexao(sourceNode, targetNode, sourceEl, targetEl, edge, edge.kind === 'relacao' ? 'curva' : (estCx.shape || estilo));
