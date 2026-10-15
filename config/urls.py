@@ -14,9 +14,11 @@ import os
 # Conditionally import 2FA URLs if two_factor is installed
 try:
     from two_factor.urls import urlpatterns as tf_urls
+    from shared.two_factor_login import LoginViewIsentos2FA
 except RuntimeError:
     # two_factor app not in INSTALLED_APPS (e.g., during testing)
     tf_urls = []
+    LoginViewIsentos2FA = None
 # from procedures.views import nova_solicitacao  # TODO: Implementar se necessário
 from rh.views import modulo_rh_view, detalhe_colaborador_view, editar_colaborador_view, registrar_ocorrencia_view, editar_ocorrencia_view, deletar_ocorrencia_view, listar_ocorrencias_view, registrar_ferias_view, editar_ferias_view, excluir_ferias_view
 from metrologia.views import export_metrologia_view, export_etiquetas_view, detalhe_instrumento_view, modulo_metrologia_view, remover_historico_view, visualizar_historico_calibracao_view, salvar_edicao_historico_modal_view
@@ -161,6 +163,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     
     # 4. Autenticação com 2FA
+    *([path("account/login/", LoginViewIsentos2FA.as_view())] if LoginViewIsentos2FA else []),  # login sem token p/ grupo Isentos 2FA
     path("", include(tf_urls)),  # Inclui todas as URLs do two-factor (login, setup, etc.)
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     
