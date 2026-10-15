@@ -976,6 +976,68 @@
         tab-size: 4;
         white-space: pre;
     }
+
+    /* sem título do módulo, o cabeçalho vazio da página base não ocupa espaço */
+    .container-fluid:has(#editorMainContainer) > .d-flex.mb-4:has(h3:empty) { display: none !important; }
+
+    /* ===== Celular / tablet estreito ===== */
+    @media (max-width: 768px) {
+        /* a página some com o título/padding do módulo para dar espaço ao editor */
+        .editor-container {
+            height: calc(100dvh - 84px);
+            min-height: 480px;
+            border-radius: 8px;
+        }
+        .editor-container.zen-mode { height: 100dvh; }
+        .container-fluid:has(#editorMainContainer) { padding: 6px 4px !important; }
+        .editor-container { margin-bottom: 0 !important; }
+
+        /* cabeçalho: título quebra em vez de estourar; ações rolam na horizontal */
+        .editor-header { padding: 8px 10px; gap: 8px; flex-direction: column; align-items: stretch; }
+        .editor-header > div { min-width: 0; }
+        .editor-header h5 { font-size: 1rem; overflow-wrap: anywhere; }
+        .editor-header > div:last-child {
+            flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        }
+        .editor-header > div:last-child::-webkit-scrollbar { display: none; }
+        .editor-header > div:last-child > * { flex-shrink: 0; }
+        .editor-header .btn { white-space: nowrap; }
+
+        /* ribbon: uma linha só, rolando para o lado (botões com área de toque maior) */
+        .editor-ribbon {
+            flex-wrap: nowrap; overflow-x: auto; padding: 6px 8px; gap: 6px;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        }
+        .editor-ribbon::-webkit-scrollbar { display: none; }
+        .editor-ribbon > * { flex-shrink: 0; flex-wrap: nowrap !important; }
+        .ribbon-btn { min-height: 38px; padding: 6px 10px; white-space: nowrap; }
+        .ribbon-btn kbd, .ribbon-btn .badge, .ribbon-btn .atalho { display: none; }
+
+        /* painel do bloco vira gaveta na parte de baixo, sem esconder o canvas inteiro */
+        .inspector-panel {
+            position: absolute; left: 0; right: 0; bottom: 0; width: 100%;
+            height: 58%; border-left: none; border-top: 1px solid #cbd5e1;
+            border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.18);
+            transition: transform 0.2s ease;
+        }
+        .inspector-panel.collapsed {
+            width: 100%; margin-right: 0; transform: translateY(105%);
+            pointer-events: none; border-top: none; box-shadow: none; flex-shrink: 0;
+        }
+        .inspector-header { padding: 12px 14px; }
+        .inspector-header .btn-close { padding: 10px; }
+        .inspector-body { padding: 12px; -webkit-overflow-scrolling: touch; }
+
+        /* alvos de toque maiores no canvas */
+        .color-swatch-btn { width: 32px; height: 32px; }
+        .canvas-viewport { overscroll-behavior: contain; }
+
+        /* Outliner e Grelha: menos margem, tabela rolando na horizontal */
+        #viewGrelhaContainer { padding: 8px !important; }
+        #viewGrelhaContainer .card { padding: 10px !important; }
+        #tabelaGrelha { min-width: 760px; }
+    }
 </style>
 {% endblock %}
 

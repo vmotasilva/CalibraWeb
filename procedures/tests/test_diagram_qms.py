@@ -2202,6 +2202,11 @@ class OutlinerMencaoColaboradoresTestCase(TestCase):
             self.assertIn(item, js)
 
 
+    def test_enter_no_outliner_insere_logo_depois_do_irmao_de_referencia(self):
+        js = ler_js_editor()
+        self.assertIn('topologia.edges.splice(arestaRef + 1, 0, novaAresta)', js)
+
+
 class PerguntaDeLigacaoTestCase(TestCase):
     """Outliner e Grelha perguntam por onde a ligação sai do pai e entra no filho (layout por raias)."""
 

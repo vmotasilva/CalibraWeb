@@ -5,7 +5,7 @@ Mantidos aqui (pacote `procedures/tests/`) para evitar conflito com discovery
 quando existe um diretório `tests/`.
 """
 
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.auth.models import User
@@ -13,6 +13,7 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import RequestFactory
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from rh.models import Colaborador
 
@@ -349,7 +350,7 @@ class PlanejamentoConclusaoFlowTest(TestCase):
             titulo='Planejamento Flow',
             origem='LIVRE',
             instrutor=self.instrutor,
-            data_prevista=date(2026, 3, 20),
+            data_prevista=timezone.localdate() + timedelta(days=30),
             status='CONFIRMADO',
         )
         self.planejamento.procedimentos.set([self.procedimento])
@@ -383,7 +384,7 @@ class PlanejamentoConclusaoFlowTest(TestCase):
         self.planejamento.refresh_from_db()
         self.assertEqual(self.planejamento.status, 'REALIZADO')
         self.assertEqual(self.planejamento.data_realizada.isoformat(), '2026-03-21')
-        self.assertEqual(self.planejamento.horario_previsto.strftime('%H:%M'), '14:30')
+        self.assertEqual(timezone.localtime(self.planejamento.horario_previsto).strftime('%H:%M'), '14:30')
         self.assertEqual(self.planejamento.carga_horaria, 90)
 
         participantes_ids = set(self.planejamento.colaboradores.values_list('id', flat=True))

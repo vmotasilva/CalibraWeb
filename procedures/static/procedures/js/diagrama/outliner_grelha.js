@@ -621,12 +621,18 @@ async function criarProximoItemOutliner(refNodeId = null) {
     topologia.nodes.splice(insertIndexInNodes, 0, newNode);
 
     if (parentId) {
-        topologia.edges.push({
+        const novaAresta = {
             id: `e-${parentId}-${nextId}`,
             source: parentId,
             target: nextId,
             ...alcas
-        });
+        };
+        // a ordem dos irmãos no Outliner segue a das arestas: o novo item entra logo depois do irmão de referência
+        const arestaRef = refNodeId
+            ? topologia.edges.findIndex(e => e.source === parentId && e.target === refNodeId)
+            : -1;
+        if (arestaRef !== -1) topologia.edges.splice(arestaRef + 1, 0, novaAresta);
+        else topologia.edges.push(novaAresta);
     }
 
     sincronizarEdgesComGridData();

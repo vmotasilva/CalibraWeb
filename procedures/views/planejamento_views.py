@@ -1315,7 +1315,7 @@ def gerar_lista_presenca_view(request, planejamento_id):
     # Opção 1: Tela de Impressão Direta (HTML @media print + auto print)
     if formato in ['print', 'impressao']:
         if planejamento.horario_previsto:
-            data_hora_str = planejamento.horario_previsto.strftime("%d/%m/%Y às %H:%M")
+            data_hora_str = timezone.localtime(planejamento.horario_previsto).strftime("%d/%m/%Y às %H:%M")
         elif planejamento.data_prevista and hasattr(planejamento, 'horario_inicio') and planejamento.horario_inicio:
             data_hora_str = f"{planejamento.data_prevista.strftime('%d/%m/%Y')} às {planejamento.horario_inicio.strftime('%H:%M')}"
         elif planejamento.data_prevista:
