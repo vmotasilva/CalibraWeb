@@ -48,6 +48,8 @@ from .models import (
     RespostaChecklistManutencao,
     FluxoProcessoTMS,
     EtapaProcessoTMS,
+    PlanoHomologacao,
+    EtapaHomologacao,
 )
 from maquinas.models import Maquina
 from .coating_horarios import (
@@ -3712,3 +3714,124 @@ def tms_carregar_template_exemplo(request):
     messages.success(request, f"Fluxo de exemplo '{nome_padrao}' criado com 8 etapas completas!")
     return redirect("laboratorio:tms_dashboard")
 
+
+
+# ==============================================================================
+# HOMOLOGAÇÕES DE TRATAMENTOS - Acompanhamento de planos de teste
+# ==============================================================================
+
+def _parse_data_iso(valor):
+    valor = (valor or "").strip()
+    if not valor:
+        return None
+    try:
+        return date.fromisoformat(valor)
+    except ValueError:
+        return None
+
+
+@login_required
+def homologacoes_resumo(request):
+    """Matriz Tratamento x Máquina com o status do plano de testes mais recente de cada par."""
+    planos = list(
+        PlanoHomologacao.objects.select_related("tratamento", "maquina").prefetch_related("etapas")
+    )
+    # Plano mais recente de cada par (a lista já vem ordenada por data do plano desc)
+    ultimo = {}
+    for plano in planos:
+        ultimo.setdefault((plano.tratamento_id, plano.maquina_id), plano)
+
+    maquinas = sorted({p.maquina for p in planos}, key=lambda m: m.codigo)
+    tratamentos = list(TratamentoAntiReflexo.objects.filter(ativo=True).order_by("nome"))
+    ids_ativos = {t.id for t in tratamentos}
+    tratamentos += [
+        t for t in sorted({p.tratamento for p in planos}, key=lambda t: t.nome) if t.id not in ids_ativos
+    ]
+
+    linhas = [
+        {"tratamento": t, "celulas": [ultimo.get((t.id, m.id)) for m in maquinas]}
+        for t in tratamentos
+    ]
+
+    contagem = Counter(p.status for p in ultimo.values())
+    context = {
+        "maquinas": maquinas,
+        "linhas": linhas,
+        "planos": planos,
+        "kpis": {
+            "total": len(ultimo),
+            "aprovados": contagem.get(PlanoHomologacao.RESULTADO_APROVADO, 0),
+            "reprovados": contagem.get(PlanoHomologacao.RESULTADO_REPROVADO, 0),
+            "andamento": contagem.get(PlanoHomologacao.STATUS_EM_ANDAMENTO, 0),
+            "nao_iniciados": contagem.get(PlanoHomologacao.STATUS_NAO_INICIADO, 0),
+        },
+        "tratamentos_form": TratamentoAntiReflexo.objects.filter(ativo=True).order_by("nome"),
+        "maquinas_form": Maquina.objects.filter(status=True).order_by("codigo"),
+        "hoje": timezone.localdate().isoformat(),
+    }
+    return render(request, "laboratorio/homologacoes_resumo.html", context)
+
+
+@login_required
+@require_POST
+def homologacao_plano_create(request):
+    """Abre um novo plano de testes (com as etapas padrão) para um tratamento em uma máquina."""
+    tratamento = TratamentoAntiReflexo.objects.filter(pk=request.POST.get("tratamento") or 0).first()
+    maquina = Maquina.objects.filter(pk=request.POST.get("maquina") or 0).first()
+    if not tratamento or not maquina:
+        messages.error(request, "Selecione o tratamento e a máquina do plano de testes.")
+        return redirect("laboratorio:homologacoes_resumo")
+
+    plano = PlanoHomologacao.objects.create(
+        tratamento=tratamento,
+        maquina=maquina,
+        data_plano=_parse_data_iso(request.POST.get("data_plano")) or timezone.localdate(),
+        criado_por=request.user,
+    )
+    plano.criar_etapas_padrao()
+    messages.success(request, f"Plano de testes criado: {tratamento.nome} em {maquina.codigo}.")
+    return redirect("laboratorio:homologacao_plano_detail", pk=plano.pk)
+
+
+@login_required
+def homologacao_plano_detail(request, pk):
+    """Acompanhamento das etapas de um plano de testes (datas, resultado e observações)."""
+    plano = get_object_or_404(
+        PlanoHomologacao.objects.select_related("tratamento", "maquina").prefetch_related("etapas"), pk=pk
+    )
+
+    if request.method == "POST":
+        etapas = list(plano.etapas.all())
+        for etapa in etapas:
+            etapa.data = _parse_data_iso(request.POST.get(f"data_{etapa.pk}"))
+            etapa.observacoes = (request.POST.get(f"obs_{etapa.pk}") or "").strip()
+        EtapaHomologacao.objects.bulk_update(etapas, ["data", "observacoes"])
+
+        resultado = request.POST.get("resultado") or ""
+        plano.resultado = resultado if resultado in dict(PlanoHomologacao.RESULTADO_CHOICES) else ""
+        plano.observacoes = (request.POST.get("observacoes") or "").strip()
+        plano.data_plano = _parse_data_iso(request.POST.get("data_plano")) or plano.data_plano
+        plano.save()
+        messages.success(request, "Plano de testes atualizado.")
+        return redirect("laboratorio:homologacao_plano_detail", pk=plano.pk)
+
+    outros = (
+        PlanoHomologacao.objects.filter(tratamento=plano.tratamento, maquina=plano.maquina)
+        .exclude(pk=plano.pk)
+        .prefetch_related("etapas")
+    )
+    return render(
+        request,
+        "laboratorio/homologacao_plano_detail.html",
+        {"plano": plano, "etapas": plano.etapas.all(), "outros_planos": outros},
+    )
+
+
+@login_required
+@require_POST
+def homologacao_plano_delete(request, pk):
+    plano = get_object_or_404(PlanoHomologacao, pk=pk)
+    nome = str(plano)
+    plano.delete()
+    messages.success(request, f"Plano de testes excluído: {nome}.")
+    return redirect("laboratorio:homologacoes_resumo")

@@ -466,6 +466,11 @@ class NavigationPermission(models.Model):
             ("nav_laboratorio_tms_dashboard", "NAV: Laboratorio / TMS Previsão de Produção e Gargalos"),
             ("nav_laboratorio_tms_fluxos", "NAV: Laboratorio / TMS Linhas de Produção"),
             ("nav_laboratorio_tms_etapas", "NAV: Laboratorio / TMS Etapas e Balanceamento"),
+            ("nav_laboratorio_homologacoes_bloco", "NAV: Laboratorio / Bloco Homologações de Tratamentos"),
+            ("nav_laboratorio_homologacoes", "NAV: Laboratorio / Acompanhamento de Homologações"),
+            ("nav_laboratorio_homologacao_create", "NAV: Laboratorio / Novo Plano de Testes"),
+            ("nav_laboratorio_homologacao_detail", "NAV: Laboratorio / Detalhar e Atualizar Plano de Testes"),
+            ("nav_laboratorio_homologacao_delete", "NAV: Laboratorio / Excluir Plano de Testes"),
 
             # --- USUÁRIOS ---
             ("nav_mod_usuarios", "NAV: Módulo Usuários"),

@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <a href="{% url 'laboratorio:homologacoes_resumo' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Homologações
+            </a>
+            <h2 class="h3 fw-bold mt-2 mb-0">{{ plano.tratamento.nome }} <span class="text-muted fw-normal">em</span> {{ plano.maquina.codigo }}</h2>
+            <div class="small text-muted">
+                Plano de {{ plano.data_plano|date:"d/m/Y" }} · {{ plano.progresso_pct }}% das etapas concluídas ·
+                <strong>{{ plano.status_display }}</strong>
+            </div>
+        </div>
+        <form method="post" action="{% url 'laboratorio:homologacao_plano_delete' plano.pk %}"
+              onsubmit="return confirm('Excluir este plano de testes e todas as suas etapas?');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Excluir plano</button>
+        </form>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-bold">Etapas do plano de testes</div>
+                    <div class="table-responsive">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
+                                <tr><th>Etapa</th><th style="width: 190px;">Data</th><th>Observações</th></tr>
+                            </thead>
+                            <tbody>
+                                {% for etapa in etapas %}
+                                <tr class="{% if etapa.data %}table-success{% endif %}">
+                                    <td class="fw-semibold">{{ etapa.rotulo }}</td>
+                                    <td><input type="date" class="form-control form-control-sm" name="data_{{ etapa.pk }}" value="{{ etapa.data|date:'Y-m-d' }}"></td>
+                                    <td><input type="text" class="form-control form-control-sm" name="obs_{{ etapa.pk }}" value="{{ etapa.observacoes }}"></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header bg-white fw-bold">Resultado</div>
+                    <div class="card-body">
+                        <label class="form-label fw-semibold">Resultado da homologação</label>
+                        <select name="resultado" class="form-select mb-3">
+                            <option value="" {% if not plano.resultado %}selected{% endif %}>Sem resultado (em acompanhamento)</option>
+                            <option value="APROVADO" {% if plano.resultado == 'APROVADO' %}selected{% endif %}>Aprovado</option>
+                            <option value="REPROVADO" {% if plano.resultado == 'REPROVADO' %}selected{% endif %}>Reprovado</option>
+                        </select>
+                        <label class="form-label fw-semibold">Data do plano</label>
+                        <input type="date" name="data_plano" class="form-control mb-3" value="{{ plano.data_plano|date:'Y-m-d' }}">
+                        <label class="form-label fw-semibold">Observações gerais</label>
+                        <textarea name="observacoes" rows="4" class="form-control mb-3">{{ plano.observacoes }}</textarea>
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-check2-circle me-1"></i>Salvar</button>
+                    </div>
+                </div>
+
+                {% if outros_planos %}
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white fw-bold">Outros planos deste par</div>
+                    <ul class="list-group list-group-flush">
+                        {% for o in outros_planos %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <a href="{% url 'laboratorio:homologacao_plano_detail' o.pk %}">{{ o.data_plano|date:"d/m/Y" }}</a>
+                            <span class="small text-muted">{{ o.status_display }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

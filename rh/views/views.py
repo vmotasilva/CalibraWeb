@@ -3527,6 +3527,7 @@ def detalhe_usuario_view(request, user_id):
     # Módulo de exibição "Gestão": reúne Ferramentas Auxiliares (TMS, que pertence ao Laboratório; Quadros; Diagramas).
     # Só a exibição muda; as permissões e a lógica de acesso continuam nos módulos originais.
     MODULOS_GESTAO = ("boards", "diagramas")
+    GRUPOS_GESTAO = ("Ferramentas Auxiliares", "Processos", "Qualidade")
     gestao_itens, gestao_grupos, gestao_perms = [], {}, {}
 
     raw_modulos = sorted(get_nav_structure(), key=_chave_ordem)
@@ -3546,7 +3547,7 @@ def detalhe_usuario_view(request, user_id):
         for bloco in (modulo.get("blocos") or []):
             bloco_data = _bloco_data(bloco)
             grupo_nome = bloco.get("grupo")
-            if modulo.get("key") == "laboratorio" and (grupo_nome or "").startswith("Ferramentas Auxiliares"):
+            if modulo.get("key") == "laboratorio" and (grupo_nome or "").split(">")[0].strip() in GRUPOS_GESTAO:
                 _inserir(gestao_itens, gestao_grupos, "gestao", bloco_data, grupo_nome, gestao_perms)
             elif grupo_nome:
                 _inserir(itens_modulo, grupos_dict, modulo.get("key"), bloco_data, grupo_nome)
@@ -3567,6 +3568,8 @@ def detalhe_usuario_view(request, user_id):
     if gestao_itens:
         # Ordem das subseções de Ferramentas Auxiliares: TMS, Quadros, Diagramas
         ordem = {"Tempos e Movimentos (TMS)": 0, "Quadros": 1, "Diagramas": 2}
+        ordem_secoes = {"Ferramentas Auxiliares": 0, "Processos": 1, "Qualidade": 2}
+        gestao_itens.sort(key=lambda g: ordem_secoes.get(g.get("nome"), 9))
         for grupo in gestao_itens:
             grupo["itens"].sort(key=lambda g: ordem.get(g.get("nome"), 9))
         modulos.append(

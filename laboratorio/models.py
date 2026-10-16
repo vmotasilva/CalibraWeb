@@ -857,3 +857,122 @@ class EtapaProcessoTMS(models.Model):
         horas = float(self.fluxo.horas_trabalho_dia or 8.8) if self.fluxo else 8.8
         return int(round(self.capacidade_hora_pecas * horas))
 
+
+
+# ==============================================================================
+# HOMOLOGAÇÕES DE TRATAMENTOS (Plano de Testes por Tratamento x Máquina)
+# ==============================================================================
+
+ETAPAS_HOMOLOGACAO = [
+    "Documento",
+    "Solicitação ao Estoque",
+    "Liberação do Estoque",
+    "Entrada na Surfaçagem",
+    "Saída de Surfaçagem",
+    "HC",
+    "Estufa/Polimerização",
+    "Registros Indicativos",
+    "AR",
+    "Separação CC/CX",
+    "LIMS",
+    "Etiquetagem",
+    "Embalagem",
+    "Nota Fiscal de Remessa",
+    "Empacotar",
+    "Envio",
+    "Retorno do Resultado",
+]
+
+
+class PlanoHomologacao(models.Model):
+    RESULTADO_APROVADO = "APROVADO"
+    RESULTADO_REPROVADO = "REPROVADO"
+    RESULTADO_CHOICES = [
+        (RESULTADO_APROVADO, "Aprovado"),
+        (RESULTADO_REPROVADO, "Reprovado"),
+    ]
+
+    STATUS_NAO_INICIADO = "NAO_INICIADO"
+    STATUS_EM_ANDAMENTO = "EM_ANDAMENTO"
+
+    tratamento = models.ForeignKey(
+        TratamentoAntiReflexo, on_delete=models.PROTECT, related_name="planos_homologacao", verbose_name="Tratamento"
+    )
+    maquina = models.ForeignKey(
+        "maquinas.Maquina", on_delete=models.PROTECT, related_name="planos_homologacao", verbose_name="Máquina"
+    )
+    data_plano = models.DateField(default=timezone.localdate, verbose_name="Data do Plano de Testes")
+    resultado = models.CharField(max_length=10, choices=RESULTADO_CHOICES, blank=True, verbose_name="Resultado")
+    observacoes = models.TextField(blank=True, verbose_name="Observações")
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-data_plano", "-id"]
+        verbose_name = "Plano de Homologação"
+        verbose_name_plural = "Planos de Homologação"
+
+    def __str__(self):
+        return f"{self.tratamento} / {self.maquina.codigo} ({self.data_plano:%d/%m/%Y})"
+
+    @property
+    def status(self):
+        if self.resultado:
+            return self.resultado
+        if any(e.data for e in self.etapas.all()):
+            return self.STATUS_EM_ANDAMENTO
+        return self.STATUS_NAO_INICIADO
+
+    @property
+    def status_display(self):
+        return {
+            self.RESULTADO_APROVADO: "Aprovado",
+            self.RESULTADO_REPROVADO: "Reprovado",
+            self.STATUS_EM_ANDAMENTO: "Em Andamento",
+            self.STATUS_NAO_INICIADO: "Não Iniciado",
+        }[self.status]
+
+    @property
+    def etapa_atual(self):
+        etapas = list(self.etapas.all())
+        if not etapas:
+            return None
+        if self.resultado:
+            return etapas[-1]
+        return next((e for e in etapas if not e.data), etapas[-1])
+
+    @property
+    def progresso_pct(self):
+        etapas = list(self.etapas.all())
+        if not etapas:
+            return 0
+        return round(100 * sum(1 for e in etapas if e.data) / len(etapas))
+
+    def criar_etapas_padrao(self):
+        EtapaHomologacao.objects.bulk_create(
+            [EtapaHomologacao(plano=self, ordem=i, nome=nome) for i, nome in enumerate(ETAPAS_HOMOLOGACAO, start=1)]
+        )
+
+
+class EtapaHomologacao(models.Model):
+    plano = models.ForeignKey(PlanoHomologacao, on_delete=models.CASCADE, related_name="etapas")
+    ordem = models.PositiveSmallIntegerField()
+    nome = models.CharField(max_length=100)
+    data = models.DateField(null=True, blank=True, verbose_name="Data de conclusão")
+    observacoes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["plano_id", "ordem"]
+        unique_together = [("plano", "ordem")]
+        verbose_name = "Etapa de Homologação"
+        verbose_name_plural = "Etapas de Homologação"
+
+    def __str__(self):
+        return f"{self.ordem:02d} - {self.nome}"
+
+    @property
+    def rotulo(self):
+        return f"{self.ordem:02d} - {self.nome}"

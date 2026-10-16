@@ -377,7 +377,9 @@ CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
                 {% can_nav_view user 'laboratorio:tms_fluxos_list' 'laboratorio' as nav_tms_fluxos %}
                 {% can_nav_view user 'boards:dashboard' 'boards' as nav_boards_list %}
                 {% can_nav_view user 'procedures:diagramas_lista' 'diagramas' as nav_diagramas_list %}
-                {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos or nav_boards_list or nav_diagramas_list %}
+                {% can_nav_block user 'laboratorio' 'homologacoes' as nav_lab_homol %}
+                {% can_nav_view user 'laboratorio:homologacoes_resumo' 'laboratorio' as nav_homol_resumo %}
+                {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos or nav_boards_list or nav_diagramas_list or nav_laboratorio and nav_lab_homol and nav_homol_resumo %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-kanban nav-icon"></i><span class="nav-text">Gestão</span>
@@ -447,7 +449,7 @@ QUALIDADE <i class="bi bi-chevron-down transition-transform"></i>
 HOMOLOGAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
 <ul class="list-unstyled collapse ps-2" id="collapseGESTAOHOMOLMobile">
-<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+{% if nav_laboratorio and nav_lab_homol and nav_homol_resumo %}<li><a class="dropdown-item" href="{% url 'laboratorio:homologacoes_resumo' %}"><i class="bi bi-patch-check"></i> Acompanhamento de Homologações</a></li>{% else %}<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>{% endif %}
 </ul>
 </li>
 <li>

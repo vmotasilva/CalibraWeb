@@ -113,5 +113,10 @@ urlpatterns = [
     path("tms/api/simular/", views.api_tms_simular, name="api_tms_simular"),
     path("tms/fluxos/<int:fluxo_id>/excel/", views.tms_exportar_excel, name="tms_exportar_excel"),
     path("tms/carregar-exemplo/", views.tms_carregar_template_exemplo, name="tms_carregar_exemplo"),
-]
 
+    # Homologações de tratamentos (planos de teste por tratamento x máquina)
+    path("homologacoes/", views.homologacoes_resumo, name="homologacoes_resumo"),
+    path("homologacoes/novo/", views.homologacao_plano_create, name="homologacao_plano_create"),
+    path("homologacoes/<int:pk>/", views.homologacao_plano_detail, name="homologacao_plano_detail"),
+    path("homologacoes/<int:pk>/excluir/", views.homologacao_plano_delete, name="homologacao_plano_delete"),
+]

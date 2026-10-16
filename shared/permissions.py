@@ -1425,6 +1425,18 @@ NAV_STRUCTURE = [
                 ],
             },
             {
+                "key": "homologacoes",
+                "grupo": "Qualidade > Homologações",
+                "nome": "Homologações de Tratamentos",
+                "perm": "core.nav_laboratorio_homologacoes_bloco",
+                "funcoes": [
+                    {"nome": "Acompanhamento de Homologações", "view_name": "laboratorio:homologacoes_resumo", "perm": "core.nav_laboratorio_homologacoes"},
+                    {"nome": "Novo Plano de Testes", "view_name": "laboratorio:homologacao_plano_create", "perm": "core.nav_laboratorio_homologacao_create"},
+                    {"nome": "Detalhar e Atualizar Plano de Testes", "view_name": "laboratorio:homologacao_plano_detail", "perm": "core.nav_laboratorio_homologacao_detail"},
+                    {"nome": "Excluir Plano de Testes", "view_name": "laboratorio:homologacao_plano_delete", "perm": "core.nav_laboratorio_homologacao_delete"},
+                ],
+            },
+            {
                 "key": "especiais",
                 "nome": "PERMISSÕES ESPECIAIS",
                 "especial": True,
