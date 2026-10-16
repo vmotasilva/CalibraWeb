@@ -278,9 +278,9 @@ CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform rotate-180"></
 <ul class="list-unstyled collapse show ps-2" id="collapseOCCFG">
 <li>
 <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseMAQUINAS" style="cursor: pointer;">
-MÁQUINAS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+MÁQUINAS <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-3" id="collapseMAQUINAS">
+<ul class="list-unstyled collapse ps-3" id="collapseMAQUINAS">
 {% if nav_maq_lista %}<li><a class="dropdown-item" href="{% url 'maquinas:maquinas_list' %}"><i class="bi bi-cpu"></i> Cadastro de Maquinas</a></li>{% endif %}
 {% if nav_maq_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'maquinas:maquina_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Maquina</a></li>{% endif %}
 {% if nav_maq_categorias %}<li><a class="dropdown-item" href="{% url 'maquinas:categorias_list' %}"><i class="bi bi-diagram-3"></i> Categorias de Maquinas</a></li>{% endif %}
