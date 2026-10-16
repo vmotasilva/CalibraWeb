@@ -298,10 +298,18 @@ ANTI-REFLEXO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 {% if nav_coating_painel %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>{% endif %}
 {% if nav_coating_dashboard %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:dashboard_coating' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>{% endif %}
 {% if nav_coating_importacao %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:importar_lotes_coating' %}"><i class="bi bi-upload"></i> Importar Lotes</a></li>{% endif %}
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCARMobileCFG" style="cursor: pointer;">
+CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-3" id="collapseHMCARMobileCFG">
 {% if nav_coating_tratamentos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>{% endif %}
 {% if nav_coating_turnos %}<li><a class="dropdown-item" href="{% url 'laboratorio:regra_turno_list' %}"><i class="bi bi-clock-history"></i> Regras de Turno</a></li>{% endif %}
 {% if nav_coating_ciclos %}<li><a class="dropdown-item" href="{% url 'laboratorio:ciclo_coating_list' %}"><i class="bi bi-arrow-repeat"></i> Ciclos de Manutenção</a></li>{% endif %}
 {% if nav_coating_equipe %}<li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>{% endif %}
+
+</ul>
+</li>
 </ul>
 </li>
 <li>
@@ -309,7 +317,14 @@ ANTI-REFLEXO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 HC <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
 <ul class="list-unstyled collapse ps-2" id="collapseHMCHCMobile">
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCHCMobileCFG" style="cursor: pointer;">
+CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-3" id="collapseHMCHCMobileCFG">
 <li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+</ul>
+</li>
 </ul>
 </li>
 <li>
@@ -317,7 +332,14 @@ HC <i class="bi bi-chevron-down transition-transform"></i>
 CONTROLE FINAL <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
 <ul class="list-unstyled collapse ps-2" id="collapseHMCCFMobile">
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCCFMobileCFG" style="cursor: pointer;">
+CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-3" id="collapseHMCCFMobileCFG">
 <li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+</ul>
+</li>
 </ul>
 </li>
 <li>
@@ -325,15 +347,14 @@ CONTROLE FINAL <i class="bi bi-chevron-down transition-transform"></i>
 TESTES DE QUALIDADE <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
 <ul class="list-unstyled collapse ps-2" id="collapseHMCTQMobile">
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCTQMobileCFG" style="cursor: pointer;">
+CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-3" id="collapseHMCTQMobileCFG">
 <li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
 </ul>
 </li>
-<li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseHMCCFGMobile" style="cursor: pointer;">
-CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
-</h6>
-<ul class="list-unstyled collapse ps-2" id="collapseHMCCFGMobile">
-<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
 </ul>
 </li>
                                     </ul>
