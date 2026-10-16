@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">
+                Qualidade · Homologações
+            </span>
+            <h2 class="h3 fw-bold mt-2 mb-0">Acompanhamento de Homologações</h2>
+            <p class="text-muted small mb-0">Plano de testes de cada tratamento por máquina, do documento ao retorno do resultado.</p>
+        </div>
+        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoPlano">
+            <i class="bi bi-plus-circle me-1"></i>Novo Plano de Testes
+        </button>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg">
+            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">PLANOS</div><div class="h4 fw-bold mb-0">{{ kpis.total }}</div></div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">APROVADOS</div><div class="h4 fw-bold mb-0 text-success">{{ kpis.aprovados }}</div></div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">EM ANDAMENTO</div><div class="h4 fw-bold mb-0 text-warning">{{ kpis.andamento }}</div></div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">REPROVADOS</div><div class="h4 fw-bold mb-0 text-danger">{{ kpis.reprovados }}</div></div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">NÃO INICIADOS</div><div class="h4 fw-bold mb-0 text-secondary">{{ kpis.nao_iniciados }}</div></div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-bold">Resumo por tratamento e máquina</div>
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="min-width: 190px;">Tratamento</th>
+                        {% for m in maquinas %}
+                        <th class="text-center" style="min-width: 230px;">{{ m.codigo }}{% if m.nome %}<div class="small fw-normal text-muted">{{ m.nome }}</div>{% endif %}</th>
+                        {% empty %}
+                        <th class="text-muted fw-normal">Nenhuma máquina com plano de testes ainda.</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for linha in linhas %}
+                    <tr>
+                        <td class="fw-semibold">{{ linha.tratamento.nome }}</td>
+                        {% for plano in linha.celulas %}
+                        <td>
+                            {% if plano %}
+                            <a href="{% url 'laboratorio:homologacao_plano_detail' plano.pk %}" class="text-decoration-none text-reset d-block">
+                                <span class="badge rounded-pill
+                                    {% if plano.status == 'APROVADO' %}bg-success
+                                    {% elif plano.status == 'REPROVADO' %}bg-danger
+                                    {% elif plano.status == 'EM_ANDAMENTO' %}bg-warning text-dark
+                                    {% else %}bg-secondary{% endif %}">{{ plano.status_display }}</span>
+                                <div class="small text-muted mt-1">{{ plano.etapa_atual.rotulo }}</div>
+                                <div class="progress mt-1" style="height: 5px;"><div class="progress-bar {% if plano.status == 'REPROVADO' %}bg-danger{% else %}bg-success{% endif %}" style="width: {{ plano.progresso_pct }}%"></div></div>
+                                {% if plano.observacoes %}<div class="small mt-1 text-truncate" style="max-width: 220px;" title="{{ plano.observacoes }}">{{ plano.observacoes }}</div>{% endif %}
+                            </a>
+                            {% else %}
+                            <span class="text-muted small">—</span>
+                            {% endif %}
+                        </td>
+                        {% empty %}
+                        <td></td>
+                        {% endfor %}
+                    </tr>
+                    {% empty %}
+                    <tr><td class="text-center text-muted py-4">Nenhum tratamento cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-bold">Todos os planos de testes</div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr><th>Plano</th><th>Tratamento</th><th>Máquina</th><th>Etapa atual</th><th>Progresso</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for plano in planos %}
+                    <tr>
+                        <td>{{ plano.data_plano|date:"d/m/Y" }}</td>
+                        <td>{{ plano.tratamento.nome }}</td>
+                        <td>{{ plano.maquina.codigo }}</td>
+                        <td class="small">{{ plano.etapa_atual.rotulo }}</td>
+                        <td style="min-width: 120px;"><div class="progress" style="height: 6px;"><div class="progress-bar bg-success" style="width: {{ plano.progresso_pct }}%"></div></div></td>
+                        <td>{{ plano.status_display }}</td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'laboratorio:homologacao_plano_detail' plano.pk %}">Abrir</a></td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">Nenhum plano de testes cadastrado.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNovoPlano" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{% url 'laboratorio:homologacao_plano_create' %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">Novo Plano de Testes</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Tratamento</label>
+                    <select name="tratamento" class="form-select" required>
+                        <option value="">Selecione...</option>
+                        {% for t in tratamentos_form %}<option value="{{ t.pk }}">{{ t.nome }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Máquina</label>
+                    <select name="maquina" class="form-select" required>
+                        <option value="">Selecione...</option>
+                        {% for m in maquinas_form %}<option value="{{ m.pk }}">{{ m.codigo }}{% if m.nome %} - {{ m.nome }}{% endif %}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label fw-semibold">Data do plano de testes</label>
+                    <input type="date" name="data_plano" class="form-control" value="{{ hoje }}">
+                </div>
+                <div class="form-text">O plano é criado com as 17 etapas padrão, do Documento ao Retorno do Resultado.</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Criar plano</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
