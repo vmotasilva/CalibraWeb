@@ -70,6 +70,14 @@ def _hub_safe_reverse(view_name, *args, **kwargs):
         return ""
 
 
+def _hub_module_accessible(user, cfg):
+    """Módulo de exibição (ex.: Gestão) é liberado se qualquer área que ele reúne estiver acessível."""
+    chaves = cfg.get("module_keys")
+    if chaves:
+        return any(_hub_can_access(user, k) for k in chaves)
+    return _hub_can_access(user, cfg["module_key"])
+
+
 def _hub_can_access(user, module_key, view_name=None):
     if not getattr(user, "is_authenticated", False):
         return False
@@ -293,8 +301,74 @@ MODULE_HUBS_CONFIG = {
             },
         ],
     },
+    "gestao": {
+        "id": "gestao",
+        "title": "Gestão",
+        "module_key": "gestao",
+        # Módulo de exibição: acessível a quem acessa qualquer uma das áreas reunidas nele
+        "module_keys": ["boards", "diagramas", "laboratorio"],
+        "badge": "Processos, Quadros & Diagramas",
+        "description": "Gestão de processos (Tempos e Movimentos), quadros kanban e fluxogramas de processos em um só lugar.",
+        "icon": "bi-kanban",
+        "color": "#0f172a",
+        "color_light": "#f1f5f9",
+        "color_border": "rgba(15, 23, 42, 0.4)",
+        "gradient": "linear-gradient(135deg, #020617 0%, #14284b 50%, #1e3a8a 100%)",
+        "icon_bg": "#14284b",
+        "activities": [
+            {
+                "title": "Previsão de Produção & Gargalos",
+                "description": "Análise de balanceamento de linha, identificação de postos gargalo e previsão de produção (TMS).",
+                "icon": "bi-stopwatch",
+                "view_name": "laboratorio:tms_dashboard",
+                "module_key": "laboratorio",
+                "badge": "Processos",
+            },
+            {
+                "title": "Linhas de Produção",
+                "description": "Fluxos e linhas de produção com configuração de postos e tempos de ciclo (TMS).",
+                "icon": "bi-diagram-3",
+                "view_name": "laboratorio:tms_fluxos_list",
+                "module_key": "laboratorio",
+                "badge": "Processos",
+            },
+            {
+                "title": "Painel de Quadros",
+                "description": "Acesse e gerencie todos os fluxos de trabalho kanban, quadros departamentais e projetos ativos.",
+                "icon": "bi-kanban",
+                "view_name": "boards:dashboard",
+                "module_key": "boards",
+                "badge": "Quadros",
+            },
+            {
+                "title": "Fluxogramas e Diagramas",
+                "description": "Consulte, filtre e abra os fluxogramas cadastrados, com status de revisão e exportação em PDF.",
+                "icon": "bi-diagram-3-fill",
+                "view_name": "procedures:diagramas_lista",
+                "module_key": "diagramas",
+                "badge": "Diagramas",
+            },
+            {
+                "title": "Novo Fluxograma",
+                "description": "Crie um fluxograma com código documental e versão inicial para iniciar a modelagem do processo.",
+                "icon": "bi-plus-circle",
+                "view_name": "procedures:diagrama_novo",
+                "module_key": "diagramas",
+                "badge": "Diagramas",
+            },
+            {
+                "title": "Cadastro de Raias",
+                "description": "Mantenha o catálogo de raias (cor, ordem e vínculo com o setor do RH) usado nos diagramas.",
+                "icon": "bi-layout-three-columns",
+                "view_name": "procedures:diagramas_raias",
+                "module_key": "diagramas",
+                "badge": "Diagramas",
+            },
+        ],
+    },
     "boards": {
         "id": "boards",
+        "oculto_home": True,  # reunido no HUB de Gestão
         "title": "Quadros",
         "module_key": "boards",
         "badge": "Gestão Visual & Kanban",
@@ -317,6 +391,7 @@ MODULE_HUBS_CONFIG = {
     },
     "diagramas": {
         "id": "diagramas",
+        "oculto_home": True,  # reunido no HUB de Gestão
         "title": "Diagramas",
         "module_key": "diagramas",
         "badge": "Fluxogramas & Processos",
@@ -397,7 +472,7 @@ MODULE_HUBS_CONFIG = {
                 "description": "Controle de lotes, inspeções visuais e acompanhamento de tratamentos ópticos especiais.",
                 "icon": "bi-infinity",
                 "view_name": "laboratorio:tratamento_list",
-                "badge": "Processos",
+                "badge": "HMC",
             },
             {
                 "title": "Categorias de Ocorrência",
@@ -517,6 +592,7 @@ def module_hub_view(request, module_slug):
             "rh": "pessoas",
             "quadros": "boards",
             "fluxogramas": "diagramas",
+            "processos": "gestao",
         }
         target_slug = alias_map.get(slug)
         config = MODULE_HUBS_CONFIG.get(target_slug) if target_slug else None
@@ -526,7 +602,7 @@ def module_hub_view(request, module_slug):
         return redirect("hub")
 
     # Verificar se o usuário tem permissão para o módulo
-    if not _hub_can_access(request.user, config["module_key"]):
+    if not _hub_module_accessible(request.user, config):
         messages.error(request, f"Você não possui permissão para acessar o módulo {config['title']}.")
         return redirect("hub")
 
@@ -536,7 +612,7 @@ def module_hub_view(request, module_slug):
         url = _hub_safe_reverse(act["view_name"])
         if not url:
             continue
-        if not _hub_can_access(request.user, config["module_key"], act["view_name"]):
+        if not _hub_can_access(request.user, act.get("module_key", config["module_key"]), act["view_name"]):
             continue
         activities.append({
             "title": act["title"],
@@ -566,6 +642,10 @@ def metrologia_hub_view(request):
 
 def procedures_hub_view(request):
     return module_hub_view(request, "treinamentos")
+
+
+def gestao_hub_view(request):
+    return module_hub_view(request, "gestao")
 
 
 def boards_hub_view(request):
@@ -894,9 +974,9 @@ SYSTEM_FEATURES_CATALOG = [
     # QUADROS / BOARDS
     {
         "title": "Painel de Quadros (Kanban)",
-        "module": "Quadros",
+        "module": "Gestão",
         "module_key": "boards",
-        "session": "Principal",
+        "session": "Quadros",
         "description": "Acesse e gerencie todos os fluxos de trabalho kanban, quadros departamentais e projetos ativos.",
         "icon": "bi-kanban",
         "color": "#0891b2",
@@ -905,9 +985,9 @@ SYSTEM_FEATURES_CATALOG = [
     },
     {
         "title": "HUB de Quadros",
-        "module": "Quadros",
+        "module": "Gestão",
         "module_key": "boards",
-        "session": "HUB",
+        "session": "Quadros",
         "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Quadros.",
         "icon": "bi-kanban",
         "color": "#0891b2",
@@ -916,12 +996,26 @@ SYSTEM_FEATURES_CATALOG = [
         "keywords": ["hub", "central", "modulo"],
     },
 
+    {
+        "title": "HUB de Gestão",
+        "module": "Gestão",
+        "module_key": "gestao",
+        "module_keys": ["boards", "diagramas", "laboratorio"],
+        "session": "HUB",
+        "description": "Central de Processos (TMS), Quadros e Diagramas.",
+        "icon": "bi-kanban",
+        "color": "#14284b",
+        "view_name": "module_hub",
+        "view_kwargs": {"module_slug": "gestao"},
+        "keywords": ["hub", "central", "modulo", "gestao", "processos", "quadros", "diagramas"],
+    },
+
     # DIAGRAMAS
     {
         "title": "Fluxogramas e Diagramas",
-        "module": "Diagramas",
+        "module": "Gestão",
         "module_key": "diagramas",
-        "session": "Acervo",
+        "session": "Diagramas",
         "description": "Consulte, crie, edite e exporte fluxogramas de processos com editor visual (Modo Grelha + Canvas).",
         "icon": "bi-diagram-3-fill",
         "color": "#d97706",
@@ -930,9 +1024,9 @@ SYSTEM_FEATURES_CATALOG = [
     },
     {
         "title": "Novo Fluxograma",
-        "module": "Diagramas",
+        "module": "Gestão",
         "module_key": "diagramas",
-        "session": "Cadastro",
+        "session": "Diagramas",
         "description": "Crie um fluxograma com código documental e versão inicial.",
         "icon": "bi-plus-circle",
         "color": "#d97706",
@@ -941,9 +1035,9 @@ SYSTEM_FEATURES_CATALOG = [
     },
     {
         "title": "Cadastro de Raias",
-        "module": "Diagramas",
+        "module": "Gestão",
         "module_key": "diagramas",
-        "session": "Parâmetros",
+        "session": "Diagramas",
         "description": "Catálogo de raias (cor, ordem e vínculo com o setor do RH) usado nos diagramas.",
         "icon": "bi-layout-three-columns",
         "color": "#d97706",
@@ -952,9 +1046,9 @@ SYSTEM_FEATURES_CATALOG = [
     },
     {
         "title": "HUB de Diagramas",
-        "module": "Diagramas",
+        "module": "Gestão",
         "module_key": "diagramas",
-        "session": "HUB",
+        "session": "Diagramas",
         "description": "Acesse a central de atividades e rotinas dedicadas do módulo de Diagramas.",
         "icon": "bi-diagram-3-fill",
         "color": "#d97706",
@@ -1012,7 +1106,7 @@ SYSTEM_FEATURES_CATALOG = [
         "title": "Tratamento Antirreflexo",
         "module": "Laboratório",
         "module_key": "laboratorio",
-        "session": "Processos",
+        "session": "HMC · Anti-Reflexo",
         "description": "Controle de lotes, inspeções visuais e acompanhamento de tratamentos ópticos especiais.",
         "icon": "bi-infinity",
         "color": "#059669",
@@ -1173,9 +1267,9 @@ SYSTEM_FEATURES_CATALOG = [
     # LABORATÓRIO / TMS
     {
         "title": "TMS - Previsão de Produção & Gargalos",
-        "module": "Laboratório",
+        "module": "Gestão",
         "module_key": "laboratorio",
-        "session": "Tempos e Movimentos",
+        "session": "Processos · TMS",
         "description": "Análise de balanceamento de linha, identificação de postos gargalo e cálculo de previsão de produção.",
         "icon": "bi-stopwatch",
         "color": "#0d6efd",
@@ -1184,9 +1278,9 @@ SYSTEM_FEATURES_CATALOG = [
     },
     {
         "title": "Linhas de Produção TMS",
-        "module": "Laboratório",
+        "module": "Gestão",
         "module_key": "laboratorio",
-        "session": "Tempos e Movimentos",
+        "session": "Processos · TMS",
         "description": "Gerenciamento de fluxos e linhas de produção com configuração de postos e tempos de ciclo.",
         "icon": "bi-diagram-3",
         "color": "#0d6efd",
@@ -1197,7 +1291,7 @@ SYSTEM_FEATURES_CATALOG = [
         "title": "Painel Diário de Coating",
         "module": "Laboratório",
         "module_key": "laboratorio",
-        "session": "Coating",
+        "session": "HMC · Anti-Reflexo",
         "description": "Acompanhamento diário dos ciclos, lotes e manutenções de tratamento antirreflexo.",
         "icon": "bi-grid-3x3-gap",
         "color": "#0d6efd",
@@ -1241,7 +1335,10 @@ def api_hub_search(request):
         view_name = item.get("view_name")
         view_kwargs = item.get("view_kwargs", {})
 
-        if mod_key and not _hub_can_access(request.user, mod_key, view_name):
+        if item.get("module_keys"):
+            if not _hub_module_accessible(request.user, item):
+                continue
+        elif mod_key and not _hub_can_access(request.user, mod_key, view_name):
             continue
 
         url = _hub_safe_reverse(view_name, **view_kwargs)
@@ -1312,7 +1409,9 @@ def hub_view(request):
     """Página inicial do Calibra HUB: direcionamento aos HUBS dedicados dos módulos."""
     modules = []
     for cfg in MODULE_HUBS_CONFIG.values():
-        if not _hub_can_access(request.user, cfg["module_key"]):
+        if cfg.get("oculto_home"):
+            continue
+        if not _hub_module_accessible(request.user, cfg):
             continue
 
         url = _hub_safe_reverse("module_hub", module_slug=cfg["id"])

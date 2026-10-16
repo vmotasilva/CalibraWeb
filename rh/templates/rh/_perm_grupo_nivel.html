@@ -1,4 +1,4 @@
-<div class="card border mb-2 shadow-none perm-grupo perm-grupo-{{ estilo }}">
+<div class="card border mb-2 shadow-none perm-grupo perm-grupo-{{ estilo }}{% if grupo.perm %} perm-grupo-modulo{% endif %}">
     <div class="card-header block-header collapsed p-0 perm-grupo-header-{{ estilo }}"
         data-bs-toggle="collapse" data-bs-target="#collapseGrupo_{{ grupo.uid }}" aria-expanded="false">
         <div class="d-flex align-items-center justify-content-between px-3 py-2">
@@ -7,7 +7,19 @@
                 <strong class="small text-uppercase">{{ grupo.nome }}</strong>
                 <span class="badge bg-light text-dark rounded-pill">{{ grupo.total }} seções</span>
             </div>
-            <i class="bi bi-chevron-down collapse-icon"></i>
+            <div class="d-flex align-items-center gap-3">
+                {% if grupo.perm %}
+                <div class="form-check form-switch mb-0" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="form-check-input perm-checkbox perm-grupo-toggle"
+                        id="perm_{{ grupo.perm.app_label }}_{{ grupo.perm.codename }}"
+                        data-codename="{{ grupo.perm.codename }}"
+                        data-user-id="{{ usuario.id }}"
+                        data-app-label="{{ grupo.perm.app_label }}" {% with perm_key=grupo.perm.full %}{% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %}{% endwith %} {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
+                    <label class="form-check-label small" for="perm_{{ grupo.perm.app_label }}_{{ grupo.perm.codename }}">No menu</label>
+                </div>
+                {% endif %}
+                <i class="bi bi-chevron-down collapse-icon"></i>
+            </div>
         </div>
     </div>
     <div id="collapseGrupo_{{ grupo.uid }}" class="collapse p-2">

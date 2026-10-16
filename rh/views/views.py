@@ -3476,10 +3476,58 @@ def detalhe_usuario_view(request, user_id):
         return {"app_label": app_label, "codename": codename, "full": f"{app_label}.{codename}"}
 
     import unicodedata
+    import zlib
 
     def _chave_ordem(m):
         nome = unicodedata.normalize("NFKD", str(m.get("nome") or "")).encode("ascii", "ignore").decode().lower()
         return (m.get("key") == "global", nome)  # Permissões Globais sempre por último
+
+    def _bloco_data(bloco):
+        return {
+            "key": bloco.get("key"),
+            "nome": bloco.get("nome"),
+            "especial": bool(bloco.get("especial")),
+            "is_grupo": False,
+            "perm": _perm_parts(bloco.get("perm")),
+            "funcoes": [
+                {
+                    "nome": func.get("nome"),
+                    "view_name": func.get("view_name"),
+                    "descricao": func.get("descricao", ""),
+                    "perm": _perm_parts(func.get("perm")),
+                }
+                for func in (bloco.get("funcoes") or [])
+            ],
+        }
+
+    def _inserir(itens_modulo, grupos_dict, uid_base, bloco_data, grupo_nome, grupo_perms=None):
+        # "A > B > C" cria grupos aninhados (espelha as seções/subseções da navbar).
+        # grupo_perms: {nome_do_grupo: perm "No menu"} para grupos com chave mestra própria.
+        grupo_perms = grupo_perms or {}
+        destino = itens_modulo
+        caminho = []
+        for parte in [p.strip() for p in (grupo_nome or "").split(">") if p.strip()]:
+            caminho.append(parte)
+            chave = " > ".join(caminho)
+            if chave not in grupos_dict:
+                grupos_dict[chave] = {
+                    "is_grupo": True,
+                    "nome": parte,
+                    "nivel": len(caminho),
+                    "uid": f"{uid_base}_" + "_".join(str(zlib.crc32(p.encode())) for p in caminho),
+                    "perm": _perm_parts(grupo_perms[chave]) if grupo_perms.get(chave) else None,
+                    "itens": [],
+                    "total": 0,
+                }
+                destino.append(grupos_dict[chave])
+            grupos_dict[chave]["total"] += 1
+            destino = grupos_dict[chave]["itens"]
+        destino.append(bloco_data)
+
+    # Módulo de exibição "Gestão": reúne Processos (TMS, que pertence ao Laboratório), Quadros e Diagramas.
+    # Só a exibição muda; as permissões e a lógica de acesso continuam nos módulos originais.
+    MODULOS_GESTAO = ("boards", "diagramas")
+    gestao_itens, gestao_grupos, gestao_perms = [], {}, {}
 
     raw_modulos = sorted(get_nav_structure(), key=_chave_ordem)
     modulos = []
@@ -3487,49 +3535,22 @@ def detalhe_usuario_view(request, user_id):
         # O acesso a Usuários é só superusuário/staff (nenhuma nav_* do módulo é lida): não exibir toggles sem efeito
         if modulo.get("key") == "usuarios":
             continue
-        # Organizar blocos em itens diretos ou grupos (ex: grupo "ISO 13485")
+        if modulo.get("key") in MODULOS_GESTAO:
+            nome_secao = modulo.get("nome")
+            gestao_perms[nome_secao] = modulo.get("module_perm")
+            for bloco in (modulo.get("blocos") or []):
+                _inserir(gestao_itens, gestao_grupos, "gestao", _bloco_data(bloco), nome_secao, gestao_perms)
+            continue
         itens_modulo = []
         grupos_dict = {}
         for bloco in (modulo.get("blocos") or []):
-            bloco_data = {
-                "key": bloco.get("key"),
-                "nome": bloco.get("nome"),
-                "especial": bool(bloco.get("especial")),
-                "perm": _perm_parts(bloco.get("perm")),
-                "funcoes": [
-                    {
-                        "nome": func.get("nome"),
-                        "view_name": func.get("view_name"),
-                        "descricao": func.get("descricao", ""),
-                        "perm": _perm_parts(func.get("perm")),
-                    }
-                    for func in (bloco.get("funcoes") or [])
-                ],
-            }
+            bloco_data = _bloco_data(bloco)
             grupo_nome = bloco.get("grupo")
-            if grupo_nome:
-                # "A > B > C" cria grupos aninhados (espelha as seções/subseções da navbar)
-                destino = itens_modulo
-                caminho = []
-                for parte in [p.strip() for p in grupo_nome.split(">") if p.strip()]:
-                    caminho.append(parte)
-                    chave = " > ".join(caminho)
-                    if chave not in grupos_dict:
-                        grupos_dict[chave] = {
-                            "is_grupo": True,
-                            "nome": parte,
-                            "nivel": len(caminho),
-                            "uid": f"{modulo.get('key')}_" + "_".join(str(abs(hash(p)) % 10**6) for p in caminho),
-                            "itens": [],
-                            "total": 0,
-                        }
-                        destino.append(grupos_dict[chave])
-                    grupos_dict[chave]["total"] += 1
-                    destino = grupos_dict[chave]["itens"]
-                bloco_data["is_grupo"] = False
-                destino.append(bloco_data)
+            if modulo.get("key") == "laboratorio" and grupo_nome == "Processos":
+                _inserir(gestao_itens, gestao_grupos, "gestao", bloco_data, grupo_nome, gestao_perms)
+            elif grupo_nome:
+                _inserir(itens_modulo, grupos_dict, modulo.get("key"), bloco_data, grupo_nome)
             else:
-                bloco_data["is_grupo"] = False
                 itens_modulo.append(bloco_data)
 
         modulos.append(
@@ -3542,7 +3563,24 @@ def detalhe_usuario_view(request, user_id):
                 "itens": itens_modulo,
             }
         )
-    
+
+    if gestao_itens:
+        # Ordem das seções: Processos, Quadros, Diagramas
+        ordem = {"Processos": 0, "Quadros": 1, "Diagramas": 2}
+        gestao_itens.sort(key=lambda g: ordem.get(g.get("nome"), 9))
+        modulos.append(
+            {
+                "key": "gestao",
+                "nome": "Gestão",
+                "cor": "danger",
+                "icone": "bi bi-kanban",
+                "module_perm": _perm_parts(None),
+                "composto": True,
+                "itens": gestao_itens,
+            }
+        )
+        modulos.sort(key=_chave_ordem)
+
     # Combinar permissões do usuário para checar checkboxes no template
     all_user_perms = {f"core.{codename}" for codename in user_perms_core}
     # Permissões não-core exibidas na tela (ex.: rh.pode_alterar_foto_colaborador)

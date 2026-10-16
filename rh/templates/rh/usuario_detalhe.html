@@ -423,7 +423,7 @@
                                         for="perm_{{ modulo.module_perm.app_label }}_{{ modulo.module_perm.codename }}">No
                                         menu</label>
                                 </div>
-                                {% else %}
+                                {% elif not modulo.composto %}
                                 <span class="badge bg-light text-dark">Vale para todos os módulos</span>
                                 {% endif %}
                                 <i class="bi bi-chevron-down collapse-icon"></i>
@@ -741,6 +741,18 @@
             if (!cb.classList || !cb.classList.contains('perm-checkbox') || cb.disabled) return;
             const moduleCard = cb.closest('.module-card');
             if (!moduleCard) return;
+            // Grupo com chave mestra própria ("No menu" de uma seção do módulo Gestão)
+            const grupoMestre = cb.closest('.perm-grupo-modulo');
+            if (grupoMestre) {
+                const gCb = grupoMestre.querySelector('.perm-grupo-toggle');
+                if (cb === gCb) {
+                    if (!cb.checked) {
+                        grupoMestre.querySelectorAll('.perm-checkbox').forEach(o => { if (o !== cb && !o.disabled) o.checked = false; });
+                    }
+                    return;
+                }
+                if (cb.checked && gCb && !gCb.disabled) gCb.checked = true;
+            }
             const moduleCb = moduleCard.querySelector('.module-header .perm-checkbox');
             const blockCard = cb.closest('.card.border');
             const blockCb = blockCard ? blockCard.querySelector('.block-header .perm-checkbox') : null;
