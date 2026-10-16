@@ -79,7 +79,7 @@ jobs:
         DB_SSL_REQUIRE: 'False'
     
     - name: Run pytest with coverage
-      run: pytest --cov --cov-report=xml --cov-report=term
+      run: pytest
       env:
         SECRET_KEY: test-secret-key
         DEBUG: 'True'
