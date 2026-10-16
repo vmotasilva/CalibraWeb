@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 import json
 
-from laboratorio.models import FluxoProcessoTMS, EtapaProcessoTMS
+from laboratorio.models import FluxoProcessoTMS, EtapaProcessoTMS, MaterialTMS, AmostraTempoTMS
 
 User = get_user_model()
 
@@ -55,6 +55,18 @@ class TMSCalculosTestCase(TestCase):
             eficiencia_oee=100.0,
             perda_refugo_pct=0.0,
         )
+
+    def test_tc_ponderado_pelo_mix(self):
+        orma = MaterialTMS.objects.create(fluxo=self.fluxo, nome="ORMA", percentual_demanda=75)
+        poly = MaterialTMS.objects.create(fluxo=self.fluxo, nome="POLY", percentual_demanda=25)
+        for seg in (100, 120):
+            AmostraTempoTMS.objects.create(etapa=self.etapa2, material=orma, segundos=seg)
+        AmostraTempoTMS.objects.create(etapa=self.etapa2, material=poly, segundos=200)
+        # 0,75 * 110 + 0,25 * 200 = 132,5s ; 2 postos -> TC efetivo 66,25s
+        self.assertAlmostEqual(self.etapa2.tempo_ciclo_ponderado(), 132.5)
+        item = next(e for e in self.fluxo.calcular_metricas()["etapas"] if e["id"] == self.etapa2.id)
+        self.assertEqual(item["tempo_ciclo_segundos"], 132.5)
+        self.assertTrue(item["tc_ponderado"])
 
     def test_identificacao_correta_do_gargalo(self):
         metricas = self.fluxo.calcular_metricas()
@@ -124,6 +136,27 @@ class TMSViewsTestCase(TestCase):
             postos_paralelos=2,
             eficiencia_oee=85.0,
         )
+
+    def test_criar_etapa_simples_e_telas_de_mix(self):
+        r = self.client.post(reverse("laboratorio:tms_etapa_create", args=[self.fluxo.id]), {
+            "ordem": 1, "nome": "Triagem Inicial", "tipo_posto": "MANUAL", "maquina": "", "fluxo": self.fluxo.id,
+        })
+        self.assertEqual(r.status_code, 302)
+        etapa = EtapaProcessoTMS.objects.get(nome="Triagem Inicial")
+        self.assertEqual(etapa.postos_paralelos, 1)
+        self.assertEqual(self.client.get(reverse("laboratorio:tms_etapa_create", args=[self.fluxo.id])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("laboratorio:tms_etapa_update", args=[etapa.id])).status_code, 200)
+
+        self.client.post(reverse("laboratorio:tms_mix_materiais", args=[self.fluxo.id]),
+                         {"acao": "adicionar", "nome": "ORMA", "percentual": "76,48"})
+        mat = MaterialTMS.objects.get(nome="ORMA")
+        self.client.post(reverse("laboratorio:tms_etapa_amostras", args=[etapa.id]),
+                         {"material_id": mat.id, "tempos": "90 1:50"})
+        self.assertEqual(etapa.amostras_tempo.count(), 2)
+        self.assertAlmostEqual(etapa.tempo_ciclo_ponderado(), 100.0)
+        self.assertEqual(self.client.get(reverse("laboratorio:tms_etapa_amostras", args=[etapa.id])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("laboratorio:tms_mix_materiais", args=[self.fluxo.id])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("laboratorio:tms_etapas_list", args=[self.fluxo.id])).status_code, 200)
 
     def test_dashboard_view(self):
         url = reverse("laboratorio:tms_dashboard")

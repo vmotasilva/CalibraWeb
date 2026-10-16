@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 900px;">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <a href="{% url 'laboratorio:tms_etapas_list' fluxo.id %}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Etapas
+        </a>
+        <h2 class="h4 fw-bold mb-0">Tempos por Material - {{ etapa.nome }}</h2>
+    </div>
+
+    {% for m in messages %}<div class="alert alert-info py-2">{{ m }}</div>{% endfor %}
+
+    {% if not linhas %}
+    <div class="alert alert-warning">
+        Nenhum material ativo neste fluxo.
+        <a href="{% url 'laboratorio:tms_mix_materiais' fluxo.id %}">Cadastre o mix de materiais</a> primeiro.
+    </div>
+    {% else %}
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body text-center">
+            <span class="text-muted small text-uppercase d-block">Tempo médio ponderado desta etapa</span>
+            <strong class="h3 text-primary">{% if ponderado %}{{ ponderado }}s{% else %}sem amostras (usa o TC base de {{ etapa.tempo_ciclo_segundos }}s){% endif %}</strong>
+            <div class="small text-muted">Soma de (% da demanda x tempo médio do material){% if total_pct != 100 %} - mix soma {{ total_pct }}%, pesos normalizados{% endif %}</div>
+        </div>
+    </div>
+
+    <form method="POST" class="card border-0 shadow-sm mb-3">
+        {% csrf_token %}
+        <div class="card-body row g-2 align-items-end">
+            <div class="col-md-4"><label class="form-label small fw-semibold mb-1">Material</label>
+                <select name="material_id" class="form-select">
+                    {% for l in linhas %}<option value="{{ l.material.id }}">{{ l.material.nome }}</option>{% endfor %}
+                </select></div>
+            <div class="col-md-5"><label class="form-label small fw-semibold mb-1">Tempos medidos (s ou m:ss), separados por espaço</label>
+                <input name="tempos" class="form-control" placeholder="Ex.: 95 102 1:38" required></div>
+            <div class="col-md-3"><button class="btn btn-primary w-100"><i class="bi bi-plus-circle me-1"></i>Registrar</button></div>
+        </div>
+    </form>
+
+    <div class="card border-0 shadow-sm">
+        <table class="table align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+                <tr><th>Material</th><th class="text-center">% Demanda</th><th>Amostras</th><th class="text-center">Média</th><th class="text-center">Contribuição</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% for l in linhas %}
+                <tr>
+                    <td class="fw-semibold">{{ l.material.nome }}</td>
+                    <td class="text-center">{{ l.material.percentual_demanda }}%</td>
+                    <td>
+                        {% for a in l.amostras %}
+                        <form method="POST" class="d-inline">{% csrf_token %}
+                            <input type="hidden" name="acao" value="excluir"><input type="hidden" name="amostra_id" value="{{ a.id }}">
+                            <button class="badge bg-light text-dark border" title="Clique para remover">{{ a.segundos }}s &times;</button>
+                        </form>
+                        {% empty %}<span class="text-muted small">-</span>{% endfor %}
+                    </td>
+                    <td class="text-center fw-bold">{% if l.media is not None %}{{ l.media }}s{% else %}-{% endif %}</td>
+                    <td class="text-center">{% if l.contribuicao is not None %}{{ l.contribuicao }}s{% else %}-{% endif %}</td>
+                    <td class="text-end">
+                        {% if l.amostras %}
+                        <form method="POST" onsubmit="return confirm('Limpar as amostras deste material?');">{% csrf_token %}
+                            <input type="hidden" name="acao" value="limpar"><input type="hidden" name="material_id" value="{{ l.material.id }}">
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

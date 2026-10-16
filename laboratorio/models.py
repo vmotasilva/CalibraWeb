@@ -572,7 +572,9 @@ class FluxoProcessoTMS(models.Model):
         for etapa in etapas_qs:
             override = etapas_override.get(str(etapa.id)) or etapas_override.get(etapa.id) or {}
             
-            tempo_ciclo = float(override.get("tempo_ciclo_segundos", etapa.tempo_ciclo_segundos) or 1.0)
+            ponderado = etapa.tempo_ciclo_ponderado()
+            tc_base = ponderado if ponderado else etapa.tempo_ciclo_segundos
+            tempo_ciclo = float(override.get("tempo_ciclo_segundos", tc_base) or 1.0)
             tempo_setup = float(override.get("tempo_setup_minutos", etapa.tempo_setup_minutos) or 0.0)
             postos = int(override.get("postos_paralelos", etapa.postos_paralelos) or 1)
             eficiencia = float(override.get("eficiencia_oee", etapa.eficiencia_oee) or 100.0)
@@ -606,7 +608,8 @@ class FluxoProcessoTMS(models.Model):
                 "tipo_posto_display": etapa.get_tipo_posto_display(),
                 "maquina_codigo": etapa.maquina.codigo if etapa.maquina else None,
                 "maquina_nome": str(etapa.maquina) if etapa.maquina else None,
-                "tempo_ciclo_segundos": tempo_ciclo,
+                "tempo_ciclo_segundos": round(tempo_ciclo, 2),
+                "tc_ponderado": ponderado is not None,
                 "tempo_setup_minutos": tempo_setup,
                 "postos_paralelos": postos,
                 "eficiencia_oee": eficiencia,
@@ -856,6 +859,56 @@ class EtapaProcessoTMS(models.Model):
     def capacidade_dia_pecas(self):
         horas = float(self.fluxo.horas_trabalho_dia or 8.8) if self.fluxo else 8.8
         return int(round(self.capacidade_hora_pecas * horas))
+
+    def medias_por_material(self):
+        """Retorna {material_id: media_segundos} das amostras cronometradas desta etapa."""
+        soma, qtd = {}, {}
+        for mat_id, seg in self.amostras_tempo.values_list("material_id", "segundos"):
+            soma[mat_id] = soma.get(mat_id, 0.0) + float(seg)
+            qtd[mat_id] = qtd.get(mat_id, 0) + 1
+        return {m: soma[m] / qtd[m] for m in soma}
+
+    def tempo_ciclo_ponderado(self):
+        """
+        Tempo de ciclo medio ponderado pelo mix de demanda: soma(% do material x tempo medio do material).
+        Considera so materiais com amostras (pesos renormalizados). Sem amostras, retorna None.
+        """
+        medias = self.medias_por_material()
+        if not medias:
+            return None
+        pesos = {m.id: float(m.percentual_demanda) for m in self.fluxo.materiais.filter(ativo=True)}
+        total_peso = sum(pesos.get(m, 0.0) for m in medias)
+        if total_peso <= 0:
+            return sum(medias.values()) / len(medias)
+        return sum(medias[m] * pesos.get(m, 0.0) for m in medias) / total_peso
+
+
+class MaterialTMS(models.Model):
+    """Variacao de produto (ex.: ORMA, POLY, 1.67) com seu percentual de demanda no fluxo."""
+    fluxo = models.ForeignKey(FluxoProcessoTMS, on_delete=models.CASCADE, related_name="materiais")
+    nome = models.CharField(max_length=80, verbose_name="Material / Variacao")
+    percentual_demanda = models.DecimalField(
+        max_digits=6, decimal_places=2, default=0.0, verbose_name="% da Demanda"
+    )
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["-percentual_demanda", "nome"]
+        unique_together = [("fluxo", "nome")]
+
+    def __str__(self):
+        return f"{self.nome} ({self.percentual_demanda}%)"
+
+
+class AmostraTempoTMS(models.Model):
+    """Uma medicao de tempo (segundos por unidade/par) de um material em uma etapa."""
+    etapa = models.ForeignKey(EtapaProcessoTMS, on_delete=models.CASCADE, related_name="amostras_tempo")
+    material = models.ForeignKey(MaterialTMS, on_delete=models.CASCADE, related_name="amostras")
+    segundos = models.DecimalField(max_digits=10, decimal_places=2)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
 
 
 

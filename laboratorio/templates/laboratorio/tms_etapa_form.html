@@ -48,6 +48,9 @@
                     </div>
                 </div>
 
+                {% if simples %}
+                <p class="text-muted small mb-4"><i class="bi bi-info-circle me-1"></i>Depois de criar, edite a etapa para detalhar postos, tempos e instruções.</p>
+                {% else %}
                 <!-- Postos e tempos -->
                 <h6 class="fw-bold text-uppercase small text-muted border-bottom pb-2 mb-3">
                     <i class="bi bi-stopwatch me-1"></i>Postos & Tempos
@@ -101,6 +104,8 @@
                     <label class="form-check-label fw-semibold" for="{{ form.ativo.id_for_label }}">Etapa Ativa no Fluxo</label>
                 </div>
 
+                {% endif %}
+
                 <div class="d-flex justify-content-end gap-2 pt-3 border-top">
                     <a href="{% url 'laboratorio:tms_etapas_list' fluxo.id %}" class="btn btn-light border">Cancelar</a>
                     <button type="submit" class="btn btn-primary px-4 fw-semibold">
@@ -112,7 +117,7 @@
     </div>
 </div>
 
-<script>
+{% if not simples %}<script>
     function recalcularPrevia() {
         const tc = parseFloat(document.getElementById('id_tempo_ciclo_segundos')?.value) || 1.0;
         const postos = Math.max(1, parseInt(document.getElementById('id_postos_paralelos')?.value) || 1);
@@ -134,5 +139,5 @@
         });
         recalcularPrevia();
     });
-</script>
+</script>{% endif %}
 {% endblock %}

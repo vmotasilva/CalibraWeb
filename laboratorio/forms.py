@@ -419,7 +419,12 @@ class EtapaProcessoTMSForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         fluxo_id = kwargs.pop("fluxo_id", None)
+        simples = kwargs.pop("simples", False)
         super().__init__(*args, **kwargs)
+        if simples:
+            # Na criação só o essencial; o detalhamento vem na edição.
+            for nome in ("postos_paralelos", "tempo_ciclo_segundos", "tempo_setup_minutos", "observacoes", "ativo"):
+                self.fields.pop(nome, None)
         self.fields["maquina"].queryset = Maquina.objects.order_by("codigo", "fabricante")
         if fluxo_id:
             self.fields["fluxo"].initial = fluxo_id

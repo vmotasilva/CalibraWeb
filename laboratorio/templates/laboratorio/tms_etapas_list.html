@@ -22,6 +22,9 @@
             <a href="{% url 'laboratorio:tms_etapa_create' fluxo.id %}" class="btn btn-primary shadow-sm">
                 <i class="bi bi-plus-circle me-1"></i>Adicionar Etapa
             </a>
+            <a href="{% url 'laboratorio:tms_mix_materiais' fluxo.id %}" class="btn btn-outline-dark shadow-sm">
+                <i class="bi bi-pie-chart me-1"></i>Mix de Materiais
+            </a>
             <a href="{% url 'laboratorio:tms_dashboard' %}?fluxo_id={{ fluxo.id }}" class="btn btn-outline-primary shadow-sm">
                 <i class="bi bi-speedometer2 me-1"></i>Ver Dashboard & Previsão
             </a>
@@ -114,7 +117,7 @@
                                 {{ etapa.postos_paralelos }}
                             </span>
                         </td>
-                        <td class="text-center">{{ etapa.tempo_ciclo_segundos }}s</td>
+                        <td class="text-center">{{ etapa.tempo_ciclo_segundos }}s{% if etapa.tc_ponderado %} <i class="bi bi-pie-chart-fill text-primary" title="Média ponderada pelo mix de materiais"></i>{% endif %}</td>
                         <td class="text-center">{{ etapa.tempo_setup_minutos }} min</td>
                         <td class="text-center">{{ etapa.eficiencia_oee }}%</td>
                         <td class="text-center">{{ etapa.perda_refugo_pct }}%</td>
@@ -136,6 +139,9 @@
                         </td>
                         <td class="text-end pe-3">
                             <div class="btn-group btn-group-sm">
+                                <a href="{% url 'laboratorio:tms_etapa_amostras' etapa.id %}" class="btn btn-outline-primary" title="Tempos por material">
+                                    <i class="bi bi-stopwatch"></i>
+                                </a>
                                 <a href="{% url 'laboratorio:tms_etapa_update' etapa.id %}" class="btn btn-outline-secondary" title="Editar Etapa">
                                     <i class="bi bi-pencil"></i>
                                 </a>

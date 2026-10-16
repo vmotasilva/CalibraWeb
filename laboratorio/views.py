@@ -3537,7 +3537,7 @@ def tms_etapa_create(request, fluxo_id):
     """Adiciona uma nova etapa a um fluxo de produção."""
     fluxo = get_object_or_404(FluxoProcessoTMS, id=fluxo_id)
     if request.method == "POST":
-        form = EtapaProcessoTMSForm(request.POST, fluxo_id=fluxo.id)
+        form = EtapaProcessoTMSForm(request.POST, fluxo_id=fluxo.id, simples=True)
         if form.is_valid():
             etapa = form.save(commit=False)
             etapa.fluxo = fluxo
@@ -3545,13 +3545,14 @@ def tms_etapa_create(request, fluxo_id):
             messages.success(request, f"Etapa '{etapa.nome}' cadastrada com sucesso!")
             return redirect("laboratorio:tms_etapas_list", fluxo_id=fluxo.id)
     else:
-        form = EtapaProcessoTMSForm(fluxo_id=fluxo.id)
+        form = EtapaProcessoTMSForm(fluxo_id=fluxo.id, simples=True)
 
     return render(request, "laboratorio/tms_etapa_form.html", {
         "form": form,
         "fluxo": fluxo,
         "titulo": f"Nova Etapa - {fluxo.nome}",
-        "acao": "Adicionar Etapa",
+        "acao": "Criar Etapa",
+        "simples": True,
     })
 
 
@@ -3834,4 +3835,26 @@ def homologacao_plano_delete(request, pk):
     nome = str(plano)
     plano.delete()
     messages.success(request, f"Plano de testes excluído: {nome}.")
+    return redirect("laboratorio:homologacoes_resumo")
+
+
+@login_required
+@require_POST
+def homologacoes_importar(request):
+    """Importa a aba 'Dados' da planilha de acompanhamento de testes (planos já realizados)."""
+    from .homologacao_import import PlanilhaInvalida, importar_planilha, resumo_texto
+
+    arquivo = request.FILES.get("planilha")
+    if not arquivo:
+        messages.error(request, "Selecione a planilha de acompanhamento (.xlsx ou .xlsm).")
+    elif not arquivo.name.lower().endswith((".xlsx", ".xlsm")):
+        messages.error(request, "Formato inválido: envie um arquivo .xlsx ou .xlsm.")
+    elif arquivo.size > 10 * 1024 * 1024:
+        messages.error(request, "A planilha excede o limite de 10 MB.")
+    else:
+        try:
+            relatorio = importar_planilha(arquivo)
+            messages.success(request, "Importação concluída: " + resumo_texto(relatorio))
+        except PlanilhaInvalida as exc:
+            messages.error(request, str(exc))
     return redirect("laboratorio:homologacoes_resumo")

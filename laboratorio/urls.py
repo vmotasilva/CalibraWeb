@@ -34,7 +34,7 @@
 
 from django.urls import path
 
-from . import views
+from . import views, views_tms_mix
 from shared.views import laboratorio_hub_view
 
 app_name = "laboratorio"
@@ -109,6 +109,8 @@ urlpatterns = [
     path("tms/fluxos/<int:fluxo_id>/etapas/nova/", views.tms_etapa_create, name="tms_etapa_create"),
     path("tms/etapas/<int:pk>/editar/", views.tms_etapa_update, name="tms_etapa_update"),
     path("tms/etapas/<int:pk>/excluir/", views.tms_etapa_delete, name="tms_etapa_delete"),
+    path("tms/fluxos/<int:fluxo_id>/mix/", views_tms_mix.tms_mix_materiais, name="tms_mix_materiais"),
+    path("tms/etapas/<int:pk>/tempos/", views_tms_mix.tms_etapa_amostras, name="tms_etapa_amostras"),
     path("tms/api/reordenar-etapas/", views.api_tms_reordenar_etapas, name="api_tms_reordenar_etapas"),
     path("tms/api/simular/", views.api_tms_simular, name="api_tms_simular"),
     path("tms/fluxos/<int:fluxo_id>/excel/", views.tms_exportar_excel, name="tms_exportar_excel"),
@@ -117,6 +119,7 @@ urlpatterns = [
     # Homologações de tratamentos (planos de teste por tratamento x máquina)
     path("homologacoes/", views.homologacoes_resumo, name="homologacoes_resumo"),
     path("homologacoes/novo/", views.homologacao_plano_create, name="homologacao_plano_create"),
+    path("homologacoes/importar/", views.homologacoes_importar, name="homologacoes_importar"),
     path("homologacoes/<int:pk>/", views.homologacao_plano_detail, name="homologacao_plano_detail"),
     path("homologacoes/<int:pk>/excluir/", views.homologacao_plano_delete, name="homologacao_plano_delete"),
 ]
