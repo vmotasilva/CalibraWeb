@@ -406,14 +406,31 @@
                                     <h6 class="fw-bold mb-0 small text-uppercase">Ajustar Postos e Operadores em Paralelo</h6>
                                     <button type="button" class="btn btn-sm btn-link text-decoration-none p-0" onclick="resetarOverrides()">Resetar</button>
                                 </div>
-                                <div class="small text-muted mb-3">Aumente os postos do gargalo para ver o ganho imediato de capacidade!</div>
+                                <div class="small text-muted mb-3">Teste mais ou menos postos (investimento ou redução), outro tempo de ciclo, OEE e refugo. Nada é gravado.</div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label small mb-1">OEE da linha (%)</label>
+                                        <input type="number" id="simOee" class="form-control form-control-sm" min="1" max="100" step="0.1" placeholder="85 (padrão)" onchange="simularProducao()">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small mb-1">Refugo da linha (%)</label>
+                                        <input type="number" id="simRefugo" class="form-control form-control-sm" min="0" max="99" step="0.1" placeholder="0 (padrão)" onchange="simularProducao()">
+                                    </div>
+                                </div>
                                 
                                 <div id="containerAjustesEtapas" class="vstack gap-2">
                                     {% for etapa in metricas.etapas %}
                                     <div class="d-flex justify-content-between align-items-center p-2 rounded {% if etapa.is_gargalo %}bg-danger bg-opacity-10 border border-danger{% else %}bg-light{% endif %}">
                                         <div class="text-truncate me-2" style="max-width: 180px;">
                                             <span class="fw-semibold small d-block text-truncate">{{ etapa.ordem }}. {{ etapa.nome }}</span>
-                                            <span class="text-muted" style="font-size: 0.75rem;">TC: {{ etapa.tempo_ciclo_segundos }}s</span>
+                                            <span class="text-muted" style="font-size: 0.75rem;">TC (s):
+                                                <input type="number" class="form-control form-control-sm d-inline-block text-center input-kaizen-tc"
+                                                       style="width: 65px;" step="0.1" min="0.1"
+                                                       data-etapa-id="{{ etapa.id }}"
+                                                       data-orig-tc="{{ etapa.tempo_ciclo_segundos|stringformat:'.2f' }}"
+                                                       value="{{ etapa.tempo_ciclo_segundos|stringformat:'.2f' }}"
+                                                       onchange="simularProducao()">
+                                            </span>
                                         </div>
                                         <div class="d-flex align-items-center gap-1">
                                             <span class="small text-muted">Postos:</span>
@@ -421,7 +438,7 @@
                                                    style="width: 55px;" 
                                                    data-etapa-id="{{ etapa.id }}" 
                                                    data-orig-postos="{{ etapa.postos_paralelos }}"
-                                                   value="{{ etapa.postos_paralelos }}" min="1" max="20"
+                                                   value="{{ etapa.postos_paralelos }}" min="1" max="50"
                                                    onchange="simularProducao()">
                                         </div>
                                     </div>
@@ -688,6 +705,19 @@
             const postos = parseInt(input.value) || 1;
             overrides[etapaId] = { postos_paralelos: postos };
         });
+        document.querySelectorAll('.input-kaizen-tc').forEach(input => {
+            const etapaId = input.getAttribute('data-etapa-id');
+            const tc = parseFloat(input.value);
+            if (tc > 0) overrides[etapaId] = Object.assign(overrides[etapaId] || {}, { tempo_ciclo_segundos: tc });
+        });
+        const oee = parseFloat(document.getElementById('simOee').value);
+        const refugo = parseFloat(document.getElementById('simRefugo').value);
+        if (!isNaN(oee) || !isNaN(refugo)) {
+            Object.keys(overrides).forEach(id => {
+                if (!isNaN(oee)) overrides[id].eficiencia_oee = oee;
+                if (!isNaN(refugo)) overrides[id].perda_refugo_pct = refugo;
+            });
+        }
 
         fetch("{% url 'laboratorio:api_tms_simular' %}", {
             method: "POST",
@@ -723,6 +753,11 @@
         document.querySelectorAll('.input-kaizen-posto').forEach(input => {
             input.value = input.getAttribute('data-orig-postos');
         });
+        document.querySelectorAll('.input-kaizen-tc').forEach(input => {
+            input.value = input.getAttribute('data-orig-tc');
+        });
+        document.getElementById('simOee').value = '';
+        document.getElementById('simRefugo').value = '';
         simularProducao();
     }
 
