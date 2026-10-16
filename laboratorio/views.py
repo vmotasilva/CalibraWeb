@@ -3749,10 +3749,10 @@ def homologacoes_resumo(request):
         t for t in sorted({p.tratamento for p in planos}, key=lambda t: t.nome) if t.id not in ids_ativos
     ]
 
-    linhas = [
-        {"tratamento": t, "celulas": [ultimo.get((t.id, m.id)) for m in maquinas]}
-        for t in tratamentos
-    ]
+    linhas = []
+    for t in tratamentos:
+        celulas = [ultimo.get((t.id, m.id)) for m in maquinas]
+        linhas.append({"tratamento": t, "celulas": celulas, "planos": [p for p in celulas if p]})
 
     contagem = Counter(p.status for p in ultimo.values())
     context = {

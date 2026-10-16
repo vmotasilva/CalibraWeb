@@ -1,70 +1,75 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container-fluid px-4 py-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+<style>
+    @media (max-width: 767.98px) {
+        .homolog-kpis .kpi-label { font-size: .6rem; line-height: 1.1; letter-spacing: -.01em; }
+        .homolog-kpis .kpi-valor { font-size: 1.15rem; }
+        .homolog-titulo { font-size: 1.2rem; }
+        .homolog-plano { font-size: .85rem; }
+        .homolog-plano .progress { height: 4px; }
+    }
+</style>
+<div class="container-fluid px-2 px-md-4 py-3 py-md-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 gap-md-3 mb-3 mb-md-4">
         <div>
             <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">
                 Qualidade · Homologações
             </span>
-            <h2 class="h3 fw-bold mt-2 mb-0">Acompanhamento de Homologações</h2>
-            <p class="text-muted small mb-0">Plano de testes de cada tratamento por máquina, do documento ao retorno do resultado.</p>
+            <h2 class="h3 fw-bold mt-2 mb-0 homolog-titulo">Acompanhamento de Homologações</h2>
+            <p class="text-muted small mb-0 d-none d-md-block">Plano de testes de cada tratamento por máquina, do documento ao retorno do resultado.</p>
         </div>
-        <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalImportar">
+        <div class="d-flex gap-2 flex-grow-1 flex-md-grow-0">
+            <button type="button" class="btn btn-outline-primary shadow-sm flex-fill text-nowrap" data-bs-toggle="modal" data-bs-target="#modalImportar">
                 <i class="bi bi-file-earmark-excel me-1"></i>Importar Planilha
             </button>
-            <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoPlano">
-                <i class="bi bi-plus-circle me-1"></i>Novo Plano de Testes
+            <button type="button" class="btn btn-primary shadow-sm flex-fill text-nowrap" data-bs-toggle="modal" data-bs-target="#modalNovoPlano">
+                <i class="bi bi-plus-circle me-1"></i>Novo Plano<span class="d-none d-md-inline"> de Testes</span>
             </button>
         </div>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-lg">
-            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">PLANOS</div><div class="h4 fw-bold mb-0">{{ kpis.total }}</div></div>
+    <div class="row g-2 g-md-3 mb-3 mb-md-4 homolog-kpis">
+        <div class="col">
+            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100"><div class="small text-muted kpi-label">PLANOS</div><div class="h4 fw-bold mb-0 kpi-valor">{{ kpis.total }}</div></div>
         </div>
-        <div class="col-6 col-lg">
-            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">APROVADOS</div><div class="h4 fw-bold mb-0 text-success">{{ kpis.aprovados }}</div></div>
+        <div class="col">
+            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100"><div class="small text-muted kpi-label">APROVADOS</div><div class="h4 fw-bold mb-0 kpi-valor text-success">{{ kpis.aprovados }}</div></div>
         </div>
-        <div class="col-6 col-lg">
-            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">EM ANDAMENTO</div><div class="h4 fw-bold mb-0 text-warning">{{ kpis.andamento }}</div></div>
+        <div class="col">
+            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100"><div class="small text-muted kpi-label">EM ANDAMENTO</div><div class="h4 fw-bold mb-0 kpi-valor text-warning">{{ kpis.andamento }}</div></div>
         </div>
-        <div class="col-6 col-lg">
-            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">REPROVADOS</div><div class="h4 fw-bold mb-0 text-danger">{{ kpis.reprovados }}</div></div>
+        <div class="col">
+            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100"><div class="small text-muted kpi-label">REPROVADOS</div><div class="h4 fw-bold mb-0 kpi-valor text-danger">{{ kpis.reprovados }}</div></div>
         </div>
-        <div class="col-6 col-lg">
-            <div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">NÃO INICIADOS</div><div class="h4 fw-bold mb-0 text-secondary">{{ kpis.nao_iniciados }}</div></div>
+        <div class="col">
+            <div class="card border-0 shadow-sm text-center py-2 px-1 h-100"><div class="small text-muted kpi-label">NÃO INICIADOS</div><div class="h4 fw-bold mb-0 kpi-valor text-secondary">{{ kpis.nao_iniciados }}</div></div>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card border-0 shadow-sm mb-3 mb-md-4">
         <div class="card-header bg-white fw-bold">Resumo por tratamento e máquina</div>
         <div class="d-md-none p-2">
             {% for linha in linhas %}
-            <div class="card border shadow-sm mb-2">
-                <div class="card-body p-3">
-                    <div class="fw-bold mb-2">{{ linha.tratamento.nome }}</div>
-                    {% for plano in linha.celulas %}
-                    {% if plano %}
-                    {% with m=plano.maquina %}
-                    <a href="{% url 'laboratorio:homologacao_plano_detail' plano.pk %}" class="text-decoration-none text-reset d-block border-top pt-2 mt-2">
-                        <div class="d-flex justify-content-between align-items-center gap-2">
-                            <span class="small fw-semibold">{{ m.codigo }}{% if m.nome %} <span class="text-muted fw-normal">· {{ m.nome }}</span>{% endif %}</span>
-                            <span class="badge rounded-pill
+            <div class="border rounded-3 bg-body px-2 py-2 mb-2 homolog-plano">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <span class="fw-bold">{{ linha.tratamento.nome }}</span>
+                    {% if not linha.planos %}<span class="small text-muted">Sem plano</span>{% endif %}
+                </div>
+                {% for plano in linha.planos %}
+                <a href="{% url 'laboratorio:homologacao_plano_detail' plano.pk %}" class="text-decoration-none text-reset d-block border-top pt-1 mt-1">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <span class="fw-semibold text-truncate">{{ plano.maquina.codigo }} <span class="text-muted fw-normal small">· {{ plano.etapa_atual.rotulo }}</span></span>
+                        <span class="badge rounded-pill flex-shrink-0
                                 {% if plano.status == 'APROVADO' %}bg-success
                                 {% elif plano.status == 'REPROVADO' %}bg-danger
                                 {% elif plano.status == 'EM_ANDAMENTO' %}bg-warning text-dark
                                 {% else %}bg-secondary{% endif %}">{{ plano.status_display }}</span>
-                        </div>
-                        <div class="small text-muted mt-1">{{ plano.etapa_atual.rotulo }}</div>
-                        <div class="progress mt-1" style="height: 5px;"><div class="progress-bar {% if plano.status == 'REPROVADO' %}bg-danger{% else %}bg-success{% endif %}" style="width: {{ plano.progresso_pct }}%"></div></div>
-                        {% if plano.observacoes %}<div class="small mt-1 text-muted">{{ plano.observacoes }}</div>{% endif %}
-                    </a>
-                    {% endwith %}
-                    {% endif %}
-                    {% endfor %}
-                </div>
+                    </div>
+                    <div class="progress mt-1"><div class="progress-bar {% if plano.status == 'REPROVADO' %}bg-danger{% else %}bg-success{% endif %}" style="width: {{ plano.progresso_pct }}%"></div></div>
+                    {% if plano.observacoes %}<div class="small text-muted mt-1">{{ plano.observacoes }}</div>{% endif %}
+                </a>
+                {% endfor %}
             </div>
             {% empty %}
             <div class="text-center text-muted py-4">Nenhum tratamento cadastrado.</div>
@@ -119,24 +124,18 @@
         <div class="card-header bg-white fw-bold">Todos os planos de testes</div>
         <div class="d-md-none p-2">
             {% for plano in planos %}
-            <div class="card border shadow-sm mb-2">
-                <div class="card-body p-3">
-                    <div class="d-flex justify-content-between align-items-start gap-2">
-                        <div>
-                            <div class="fw-bold">{{ plano.tratamento.nome }}</div>
-                            <div class="small text-muted">{{ plano.maquina.codigo }} · {{ plano.data_plano|date:"d/m/Y" }}</div>
-                        </div>
-                        <span class="badge rounded-pill
-                            {% if plano.status == 'APROVADO' %}bg-success
-                            {% elif plano.status == 'REPROVADO' %}bg-danger
-                            {% elif plano.status == 'EM_ANDAMENTO' %}bg-warning text-dark
-                            {% else %}bg-secondary{% endif %}">{{ plano.status_display }}</span>
-                    </div>
-                    <div class="small mt-2">{{ plano.etapa_atual.rotulo }}</div>
-                    <div class="progress mt-1" style="height: 6px;"><div class="progress-bar {% if plano.status == 'REPROVADO' %}bg-danger{% else %}bg-success{% endif %}" style="width: {{ plano.progresso_pct }}%"></div></div>
-                    <a class="btn btn-sm btn-outline-primary w-100 mt-3" href="{% url 'laboratorio:homologacao_plano_detail' plano.pk %}">Abrir</a>
+            <a href="{% url 'laboratorio:homologacao_plano_detail' plano.pk %}" class="text-decoration-none text-reset d-block border rounded-3 bg-body px-2 py-2 mb-2 homolog-plano">
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                    <span class="fw-bold text-truncate">{{ plano.tratamento.nome }}</span>
+                    <span class="badge rounded-pill flex-shrink-0
+                                {% if plano.status == 'APROVADO' %}bg-success
+                                {% elif plano.status == 'REPROVADO' %}bg-danger
+                                {% elif plano.status == 'EM_ANDAMENTO' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}">{{ plano.status_display }}</span>
                 </div>
-            </div>
+                <div class="small text-muted text-truncate">{{ plano.maquina.codigo }} · {{ plano.data_plano|date:"d/m/Y" }} · {{ plano.etapa_atual.rotulo }}</div>
+                <div class="progress mt-1"><div class="progress-bar {% if plano.status == 'REPROVADO' %}bg-danger{% else %}bg-success{% endif %}" style="width: {{ plano.progresso_pct }}%"></div></div>
+            </a>
             {% empty %}
             <div class="text-center text-muted py-4">Nenhum plano de testes cadastrado.</div>
             {% endfor %}
