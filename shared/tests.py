@@ -290,6 +290,12 @@ class SharedInboxPlanejamentoTests(TestCase):
             matricula='1004', nome_completo='OPERADOR JUNIOR', lider=self.colab_lider
         )
 
+        # Acesso ao módulo Treinamentos + seção Planejamento (instrutor e líder; "outro" fica sem acesso)
+        from django.contrib.auth.models import Permission
+        perms = Permission.objects.filter(codename__in=['nav_mod_treinamentos', 'nav_treinamentos_planejamento'])
+        for u in (self.user_instrutor, self.user_lider):
+            u.user_permissions.add(*perms)
+
         self.procedimento = Procedimento.objects.create(
             codigo='PROC-999', nome='Procedimento Operacional', numero_revisao='01'
         )
@@ -366,6 +372,22 @@ class SharedInboxPlanejamentoTests(TestCase):
         self.assertIn(f"planejamento_treinamento_{self.plan_atrasado.id}", plan_ids)
         self.assertNotIn(f"planejamento_treinamento_{self.plan_realizado.id}", plan_ids)
         self.assertNotIn(f"planejamento_treinamento_{self.plan_cancelado.id}", plan_ids)
+
+    def test_usuario_sem_acesso_ao_modulo_nao_recebe_notificacoes(self):
+        """Sem permissão do módulo/seção, nada de Treinamentos aparece (mesmo sendo líder/instrutor)."""
+        from shared.inbox import get_user_inbox_items
+        cache.clear()
+
+        self.user_instrutor.user_permissions.clear()
+        user = User.objects.get(pk=self.user_instrutor.pk)
+        self.assertEqual([i for i in get_user_inbox_items(user) if i.module == "Treinamentos"], [])
+
+        # Módulo liberado mas sem a seção Planejamento: também não recebe
+        from django.contrib.auth.models import Permission
+        user.user_permissions.add(Permission.objects.get(codename='nav_mod_treinamentos'))
+        cache.clear()
+        user = User.objects.get(pk=user.pk)
+        self.assertEqual([i for i in get_user_inbox_items(user) if i.sub_type == "Treinamentos Planejados"], [])
 
     def test_planejamento_cancelado_vencido_e_case_insensitive(self):
         """Garante que planejamentos cancelados mesmo com data vencida não entram na inbox nem viram ATRASADO."""

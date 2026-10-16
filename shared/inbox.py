@@ -21,6 +21,18 @@ class InboxItem:
     sub_type: str = ""      # Sub-aba / Origem específica
 
 
+def _can(user: Any, module_key: str, *view_names: str) -> bool:
+    """Acesso ao módulo E a todas as seções (views) de destino do item.
+
+    Superuser/staff passam (regra de has_module_access/has_view_access).
+    """
+    from shared.permissions import has_module_access, has_view_access
+
+    if not has_module_access(user, module_key):
+        return False
+    return all(has_view_access(user, vn) for vn in view_names)
+
+
 def invalidar_cache_inbox(user: Optional[Any] = None) -> None:
     """Invalida caches de inbox para um usuário ou todos."""
     try:
@@ -30,6 +42,8 @@ def invalidar_cache_inbox(user: Optional[Any] = None) -> None:
             cache.delete(f"inbox_items:v9:user:{user_id}:global:True")
             cache.delete(f"inbox_items:v10:user:{user_id}:global:False")
             cache.delete(f"inbox_items:v10:user:{user_id}:global:True")
+            cache.delete(f"inbox_items:v11:user:{user_id}:global:False")
+            cache.delete(f"inbox_items:v11:user:{user_id}:global:True")
         if hasattr(cache, "delete_pattern"):
             cache.delete_pattern("inbox_items:*")
     except Exception:
@@ -41,7 +55,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v10:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v11:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -57,7 +71,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # 1. AUDITORIA
     # =========================================================================
     try:
-        if has_module_access(user, "auditoria") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+        if has_module_access(user, "auditoria"):
             from auditoria.models import ModeloAuditoria, RelatorioCompartilhadoAuditoria
             from django.db.models import Q
             from auditoria.utils_periodos import calcular_periodos_pendentes
@@ -86,6 +100,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
                         action_text = "Continuar" if is_em_andamento else "Preencher"
                         # Em andamento com período já encerrado = atrasada
+                        # Seção de destino: editar registro (em andamento) ou iniciar nova auditoria
+                        if not _can(user, "auditoria", "auditoria:registro_edit" if is_em_andamento and p.get('registro_id') else "auditoria:selecionar_modelo_preenchimento"):
+                            continue
                         is_atrasada = is_em_andamento and bool(p.get('atrasado'))
                         if is_atrasada:
                             title = f"Auditoria Atrasada: {modelo.nome}"
@@ -126,6 +143,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             shares_qs = RelatorioCompartilhadoAuditoria.objects.filter(
                 destinatario=user, ativo=True, recebido_em__isnull=True
             ).filter(Q(expira_em__isnull=True) | Q(expira_em__gt=now)).select_related("remetente", "modelo")
+            if not _can(user, "auditoria", "auditoria:registros_por_modelo_compartilhado"):
+                shares_qs = shares_qs.none()
             for s in shares_qs:
                 target = reverse("auditoria:registros_por_modelo_compartilhado", args=[s.modelo_id])
                 url = f"{target}?{urlencode({'share_token': s.token})}"
@@ -150,7 +169,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # 2. METROLOGIA - CALIBRAÇÕES VENCIDAS
     # =========================================================================
     try:
-        if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+        if _can(user, "metrologia", "modulo_metrologia"):
             from metrologia.models import Instrumento
             from django.db.models import Q
 
@@ -159,11 +178,12 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 data_proxima_calibracao__lt=hoje,
             ).select_related('responsavel')
             
-            if not is_global_viewer and colaborador:
-                scoped_vencidos = global_vencidos.filter(
+            if not is_global_viewer:
+                # Sem colaborador vinculado: só instrumentos sem responsável
+                target_vencidos = global_vencidos.filter(
                     Q(responsavel=colaborador) | Q(responsavel__isnull=True)
+                    if colaborador else Q(responsavel__isnull=True)
                 )
-                target_vencidos = scoped_vencidos
             else:
                 target_vencidos = global_vencidos
 
@@ -198,7 +218,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # 3. METROLOGIA - COTAÇÕES EM ATRASO
     # =========================================================================
     try:
-        if has_module_access(user, "metrologia") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+        if _can(user, "metrologia", "metrologia:solicitacao_list"):
             from metrologia.models import SolicitacaoCotacao
 
             global_cotacoes = SolicitacaoCotacao.objects.filter(
@@ -206,9 +226,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 data_necessidade__lt=hoje,
             ).select_related('responsavel')
             
-            if not is_global_viewer and colaborador:
-                scoped_cotacoes = global_cotacoes.filter(responsavel=colaborador)
-                target_cotacoes = scoped_cotacoes
+            if not is_global_viewer:
+                target_cotacoes = global_cotacoes.filter(responsavel=colaborador) if colaborador else global_cotacoes.none()
             else:
                 target_cotacoes = global_cotacoes
 
@@ -238,22 +257,13 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
         from qms.models import OcorrenciaInstrumento
         from django.db.models import Q
 
-        has_metro_access = has_module_access(user, "metrologia") or user.is_superuser or user.is_staff
-
-        if is_global_viewer:
-            ocorrencias_abertas = OcorrenciaInstrumento.objects.filter(
-                status="ABERTA"
-            ).select_related("instrumento", "instrumento__setor", "usuario_responsavel").order_by("-data_ocorrencia")
-        elif has_metro_access:
+        # Só quem acessa o módulo e o Relatório de Ocorrências (destino do item)
+        if _can(user, "metrologia", "metrologia:relatorio_ocorrencias"):
             ocorrencias_abertas = OcorrenciaInstrumento.objects.filter(
                 status="ABERTA"
             ).select_related("instrumento", "instrumento__setor", "usuario_responsavel").order_by("-data_ocorrencia")
         else:
-            # Notificação para o usuário associado (mesmo sem permissão global de metrologia)
-            ocorrencias_abertas = OcorrenciaInstrumento.objects.filter(
-                Q(usuario_responsavel=user) | Q(mensagens__destinatarios=user),
-                status="ABERTA",
-            ).distinct().select_related("instrumento", "instrumento__setor", "usuario_responsavel").order_by("-data_ocorrencia")
+            ocorrencias_abertas = OcorrenciaInstrumento.objects.none()
 
         for oc in ocorrencias_abertas[:50]:
             inst = oc.instrumento
@@ -310,7 +320,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # 5. TREINAMENTOS (Eficácia, Demandas por Liderança e Instrutor)
     # =========================================================================
     try:
-        if has_module_access(user, "procedures") or has_module_access(user, "treinamentos") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+        if has_module_access(user, "procedures"):
+            can_eficacia = _can(user, "procedures", "procedures:avaliacao_eficacia_list")
+            can_dash_trein = _can(user, "procedures", "procedures:dashboard_treinamentos")
+            can_matriz_val = _can(user, "procedures", "procedures:matriz_avaliacoes")
+            can_planej = _can(user, "procedures", "procedures:detalhe_planejamento")
             from procedures.models import (
                 RegistroTreinamento,
                 SolicitacaoValidacaoMatriz,
@@ -343,6 +357,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 colaborador__em_ferias=False,
             ).select_related("colaborador", "procedimento", "gestor_responsavel", "colaborador__lider", "colaborador__supervisor", "colaborador__gerente")
 
+            if not can_eficacia or (not is_global_viewer and not colaborador):
+                qs_eficacia = qs_eficacia.none()
             if not is_global_viewer and colaborador:
                 scoped_eficacia = qs_eficacia.filter(
                     Q(gestor_responsavel=colaborador)
@@ -447,6 +463,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
             ).select_related("colaborador", "procedimento")
 
             # 5.2 Demandas de Treinamento Pendentes por Liderança (Agrupadas por Colaborador)
+            if not can_dash_trein or (not is_global_viewer and not colaborador):
+                qs_base_pendentes = qs_base_pendentes.none()
             if not is_global_viewer and colaborador:
                 scoped_demandas = qs_base_pendentes.filter(
                     Q(colaborador=colaborador) | Q(colaborador__lider=colaborador) | Q(colaborador__supervisor=colaborador) | Q(colaborador__gerente=colaborador)
@@ -504,6 +522,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 qs_matriz = SolicitacaoValidacaoMatriz.objects.filter(
                     status="pendente",
                 ).select_related("colaborador")
+                if not can_matriz_val or (not is_global_viewer and not colaborador):
+                    qs_matriz = qs_matriz.none()
                 if not is_global_viewer and colaborador:
                     scoped_matriz = qs_matriz.filter(validador=colaborador)
                     target_matriz = scoped_matriz
@@ -534,7 +554,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 qs_resp_matriz = ResponsavelTreinamentoMatriz.objects.select_related(
                     "matriz", "sub_area", "colaborador"
                 )
-                if not is_global_viewer and colaborador:
+                if not can_dash_trein or (not is_global_viewer and not colaborador):
+                    qs_resp_matriz = qs_resp_matriz.none()
+                elif not is_global_viewer:
                     qs_resp_matriz = qs_resp_matriz.filter(colaborador=colaborador)
 
                 # Dicionário para agrupar todas as pendências por colaborador
@@ -573,7 +595,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
                 # B. Procedimentos com Instrutor Fixo
                 qs_procs_fixos = qs_base_pendentes.filter(procedimento__instrutor_fixo__isnull=False).select_related('procedimento__instrutor_fixo')
-                if not is_global_viewer and colaborador:
+                if not can_dash_trein or (not is_global_viewer and not colaborador):
+                    qs_procs_fixos = qs_procs_fixos.none()
+                elif not is_global_viewer:
                     qs_procs_fixos = qs_procs_fixos.filter(procedimento__instrutor_fixo=colaborador)
 
                 for d in qs_procs_fixos[:50]:
@@ -646,7 +670,9 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     Q(status__iexact="REALIZADO") | Q(status__iexact="CANCELADO")
                 ).select_related("instrutor").prefetch_related("colaboradores", "procedimentos")
 
-                if not is_global_viewer and colaborador:
+                if not can_planej or (not is_global_viewer and not colaborador):
+                    qs_plan = qs_plan.none()
+                elif not is_global_viewer:
                     qs_plan = qs_plan.filter(
                         Q(instrutor=colaborador)
                         | Q(colaboradores__lider=colaborador)
@@ -695,7 +721,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # 6. LABORATÓRIO (Ocorrências em aberto)
     # =========================================================================
     try:
-        if has_module_access(user, "laboratorio") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+        if _can(user, "laboratorio", "laboratorio:modulo"):
             from laboratorio.models import OcorrenciaLaboratorio
             qs_lab = OcorrenciaLaboratorio.objects.filter(data_encerramento__isnull=True)[:15]
             for oc in qs_lab:
@@ -720,7 +746,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     # 7. QUADROS DE ATIVIDADES (BOARDS)
     # =========================================================================
     try:
-        if has_module_access(user, "quadros") or has_module_access(user, "boards") or user.is_superuser or user.is_staff or getattr(user, "is_authenticated", False):
+        if _can(user, "boards", "boards:board_detail"):
             from boards.models import Card, BoardNotification
             from django.db.models import Q
 
@@ -763,11 +789,10 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     coluna__quadro__arquivado=False
                 ).select_related('coluna__quadro').prefetch_related('responsaveis')
 
-                if not is_global_viewer and colaborador:
-                    scoped_cards = base_cards.filter(
+                if not is_global_viewer:
+                    target_cards = base_cards.filter(
                         Q(responsaveis=colaborador) | Q(criado_por=colaborador) | Q(coluna__quadro__membros=colaborador) | Q(coluna__quadro__todos_colaboradores=True)
-                    ).distinct()
-                    target_cards = scoped_cards
+                    ).distinct() if colaborador else base_cards.none()
                 else:
                     target_cards = base_cards
 
@@ -852,12 +877,15 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     try:
         from django.conf import settings as dj_settings
         from procedures.models_diagram import DiagramaVersao, StatusDiagrama
+        from shared.permissions import _user_has_nav_perm
 
         def _data_ref(dt):
             return timezone.localtime(dt).date() if dt else hoje
 
+        tem_modulo_diagramas = has_module_access(user, "diagramas")
+
         # 8.1 Para aprovadores: revisões aguardando aprovação (exceto as que o próprio usuário submeteu, se há segregação)
-        if user.is_superuser or user.has_perm("core.nav_diagramas_aprovar"):
+        if tem_modulo_diagramas and (user.is_superuser or _user_has_nav_perm(user, "core.nav_diagramas_aprovar")):
             pendentes = DiagramaVersao.objects.filter(status=StatusDiagrama.EM_APROVACAO).select_related("diagrama", "submetido_por")
             if getattr(dj_settings, "DIAGRAMAS_EXIGIR_SEGREGACAO_FUNCOES", True):
                 pendentes = pendentes.exclude(submetido_por=user)
@@ -885,6 +913,8 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
         ).exclude(motivo_devolucao="").filter(
             Q(submetido_por=user) | Q(diagrama__criado_por=user)
         ).select_related("diagrama").distinct()
+        if not tem_modulo_diagramas:
+            devolvidas = devolvidas.none()
         for v in devolvidas:
             items.append(
                 InboxItem(

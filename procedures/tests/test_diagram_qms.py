@@ -500,7 +500,9 @@ class DiagramaPacote4TestCase(TestCase):
         from shared.inbox import get_user_inbox_items
         from django.core.cache import cache
         from django.contrib.auth.models import Permission
-        self.aprovador.user_permissions.add(Permission.objects.get(codename='nav_diagramas_aprovar'))
+        mod = Permission.objects.get(codename='nav_mod_diagramas')
+        self.aprovador.user_permissions.add(Permission.objects.get(codename='nav_diagramas_aprovar'), mod)
+        self.autor.user_permissions.add(mod)
         DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
 
         cache.clear()
