@@ -3524,7 +3524,7 @@ def detalhe_usuario_view(request, user_id):
             destino = grupos_dict[chave]["itens"]
         destino.append(bloco_data)
 
-    # Módulo de exibição "Gestão": reúne Processos (TMS, que pertence ao Laboratório), Quadros e Diagramas.
+    # Módulo de exibição "Gestão": reúne Ferramentas Auxiliares (TMS, que pertence ao Laboratório; Quadros; Diagramas).
     # Só a exibição muda; as permissões e a lógica de acesso continuam nos módulos originais.
     MODULOS_GESTAO = ("boards", "diagramas")
     gestao_itens, gestao_grupos, gestao_perms = [], {}, {}
@@ -3536,7 +3536,7 @@ def detalhe_usuario_view(request, user_id):
         if modulo.get("key") == "usuarios":
             continue
         if modulo.get("key") in MODULOS_GESTAO:
-            nome_secao = modulo.get("nome")
+            nome_secao = "Ferramentas Auxiliares > " + modulo.get("nome")
             gestao_perms[nome_secao] = modulo.get("module_perm")
             for bloco in (modulo.get("blocos") or []):
                 _inserir(gestao_itens, gestao_grupos, "gestao", _bloco_data(bloco), nome_secao, gestao_perms)
@@ -3546,7 +3546,7 @@ def detalhe_usuario_view(request, user_id):
         for bloco in (modulo.get("blocos") or []):
             bloco_data = _bloco_data(bloco)
             grupo_nome = bloco.get("grupo")
-            if modulo.get("key") == "laboratorio" and grupo_nome == "Processos":
+            if modulo.get("key") == "laboratorio" and (grupo_nome or "").startswith("Ferramentas Auxiliares"):
                 _inserir(gestao_itens, gestao_grupos, "gestao", bloco_data, grupo_nome, gestao_perms)
             elif grupo_nome:
                 _inserir(itens_modulo, grupos_dict, modulo.get("key"), bloco_data, grupo_nome)
@@ -3565,9 +3565,10 @@ def detalhe_usuario_view(request, user_id):
         )
 
     if gestao_itens:
-        # Ordem das seções: Processos, Quadros, Diagramas
-        ordem = {"Processos": 0, "Quadros": 1, "Diagramas": 2}
-        gestao_itens.sort(key=lambda g: ordem.get(g.get("nome"), 9))
+        # Ordem das subseções de Ferramentas Auxiliares: TMS, Quadros, Diagramas
+        ordem = {"Tempos e Movimentos (TMS)": 0, "Quadros": 1, "Diagramas": 2}
+        for grupo in gestao_itens:
+            grupo["itens"].sort(key=lambda g: ordem.get(g.get("nome"), 9))
         modulos.append(
             {
                 "key": "gestao",

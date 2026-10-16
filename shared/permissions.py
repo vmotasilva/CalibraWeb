@@ -1296,7 +1296,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "maquinas",
-                "grupo": "Máquinas",
+                "grupo": "Ocorrências Gerais > Configurações > Máquinas",
                 "nome": "Cadastro de Máquinas",
                 "perm": "core.nav_laboratorio_maquinas",
                 "funcoes": [
@@ -1308,7 +1308,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "maquinas_categorias",
-                "grupo": "Máquinas",
+                "grupo": "Ocorrências Gerais > Configurações > Máquinas",
                 "nome": "Categorias de Máquinas",
                 "perm": "core.nav_laboratorio_maquinas_categorias_bloco",
                 "funcoes": [
@@ -1415,7 +1415,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "tms",
-                "grupo": "Processos",
+                "grupo": "Ferramentas Auxiliares > Tempos e Movimentos (TMS)",
                 "nome": "TMS - Tempos e Movimentos",
                 "perm": "core.nav_laboratorio_tms_bloco",
                 "funcoes": [

@@ -233,47 +233,52 @@
                     <ul class="dropdown-menu">
                         {% can_nav_block user 'laboratorio' 'ocorrencias_gerais' as nav_lab_ocorrencias %}
                         {% if nav_lab_ocorrencias %}
-                            {% can_nav_view user 'laboratorio:modulo' 'laboratorio' as nav_lab_modulo %}
-                            {% can_nav_view user 'laboratorio:ocorrencia_create' 'laboratorio' as nav_lab_nova %}
-                            {% can_nav_view user 'laboratorio:ocorrencias_list' 'laboratorio' as nav_lab_lista %}
-                            {% can_nav_view user 'laboratorio:categorias_list' 'laboratorio' as nav_lab_categorias %}
-                            {% can_nav_view user 'laboratorio:dashboard' 'laboratorio' as nav_lab_dashboard %}
-                            {% if nav_lab_nova or nav_lab_modulo or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard %}
-                                <li>
-                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseOCORRENCIASGERAIS" style="cursor: pointer;">
-                                        OCORRENCIAS GERAIS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
-                                    </h6>
-                                    <ul class="list-unstyled collapse show" id="collapseOCORRENCIASGERAIS">
-                                {% if nav_lab_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:ocorrencia_create' %}"><i class="bi bi-plus-circle me-1"></i>NOVA OCORRENCIA</a></li>{% endif %}
-                                {% if nav_lab_modulo %}<li><a class="dropdown-item" href="{% url 'laboratorio:modulo' %}"><i class="bi bi-card-text"></i> Modulo de Observacoes Gerais</a></li>{% endif %}
-                                {% if nav_lab_lista %}<li><a class="dropdown-item" href="{% url 'laboratorio:ocorrencias_list' %}"><i class="bi bi-list-ul"></i> Listagem de Ocorrencias</a></li>{% endif %}
-                                {% if nav_lab_categorias %}<li><a class="dropdown-item" href="{% url 'laboratorio:categorias_list' %}"><i class="bi bi-tags"></i> Tabela de Categorias</a></li>{% endif %}
-                                {% if nav_lab_dashboard %}<li><a class="dropdown-item" href="{% url 'laboratorio:dashboard' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
-                                    </ul>
-                                </li>
-                                <li><hr class="dropdown-divider"></li>
-                            {% endif %}
+{% can_nav_view user 'laboratorio:modulo' 'laboratorio' as nav_lab_modulo %}
+{% can_nav_view user 'laboratorio:ocorrencia_create' 'laboratorio' as nav_lab_nova %}
+{% can_nav_view user 'laboratorio:ocorrencias_list' 'laboratorio' as nav_lab_lista %}
+{% can_nav_view user 'laboratorio:categorias_list' 'laboratorio' as nav_lab_categorias %}
+{% can_nav_view user 'laboratorio:dashboard' 'laboratorio' as nav_lab_dashboard %}
                         {% endif %}
-
                         {% can_nav_block user 'laboratorio' 'maquinas' as nav_lab_maquinas %}
                         {% if nav_lab_maquinas %}
-                            {% can_nav_view user 'maquinas:maquinas_list' 'laboratorio' as nav_maq_lista %}
-                            {% can_nav_view user 'maquinas:maquina_create' 'laboratorio' as nav_maq_nova %}
-                            {% can_nav_view user 'maquinas:categorias_list' 'laboratorio' as nav_maq_categorias %}
-                            {% if nav_maq_lista or nav_maq_nova or nav_maq_categorias %}
-                                <li>
-                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseMAQUINAS" style="cursor: pointer;">
-                                        MAQUINAS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
-                                    </h6>
-                                    <ul class="list-unstyled collapse show" id="collapseMAQUINAS">
-                                {% if nav_maq_lista %}<li><a class="dropdown-item" href="{% url 'maquinas:maquinas_list' %}"><i class="bi bi-cpu"></i> Cadastro de Maquinas</a></li>{% endif %}
-                                {% if nav_maq_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'maquinas:maquina_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Maquina</a></li>{% endif %}
-                                {% if nav_maq_categorias %}<li><a class="dropdown-item" href="{% url 'maquinas:categorias_list' %}"><i class="bi bi-diagram-3"></i> Categorias de Maquinas</a></li>{% endif %}
-                                    </ul>
-                                </li>
-                            {% endif %}
+{% can_nav_view user 'maquinas:maquinas_list' 'laboratorio' as nav_maq_lista %}
+{% can_nav_view user 'maquinas:maquina_create' 'laboratorio' as nav_maq_nova %}
+{% can_nav_view user 'maquinas:categorias_list' 'laboratorio' as nav_maq_categorias %}
                         {% endif %}
-                        
+                        {% if nav_lab_nova or nav_lab_modulo or nav_lab_lista or nav_lab_categorias or nav_lab_dashboard or nav_maq_lista or nav_maq_nova or nav_maq_categorias %}
+                            <li>
+                                <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseOCORRENCIASGERAIS" style="cursor: pointer;">
+                                    OCORRENCIAS GERAIS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                </h6>
+                                <ul class="list-unstyled collapse show" id="collapseOCORRENCIASGERAIS">
+{% if nav_lab_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:ocorrencia_create' %}"><i class="bi bi-plus-circle me-1"></i>NOVA OCORRENCIA</a></li>{% endif %}
+{% if nav_lab_modulo %}<li><a class="dropdown-item" href="{% url 'laboratorio:modulo' %}"><i class="bi bi-card-text"></i> Modulo de Observacoes Gerais</a></li>{% endif %}
+{% if nav_lab_lista %}<li><a class="dropdown-item" href="{% url 'laboratorio:ocorrencias_list' %}"><i class="bi bi-list-ul"></i> Listagem de Ocorrencias</a></li>{% endif %}
+{% if nav_lab_categorias %}<li><a class="dropdown-item" href="{% url 'laboratorio:categorias_list' %}"><i class="bi bi-tags"></i> Tabela de Categorias</a></li>{% endif %}
+{% if nav_lab_dashboard %}<li><a class="dropdown-item" href="{% url 'laboratorio:dashboard' %}"><i class="bi bi-graph-up"></i> Dashboard</a></li>{% endif %}
+{% if nav_maq_lista or nav_maq_nova or nav_maq_categorias %}
+<li>
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseOCCFGMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
+CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+</h6>
+<ul class="list-unstyled collapse show ps-2" id="collapseOCCFGMobile">
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseMAQUINAS" style="cursor: pointer;">
+MÁQUINAS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+</h6>
+<ul class="list-unstyled collapse show ps-3" id="collapseMAQUINAS">
+{% if nav_maq_lista %}<li><a class="dropdown-item" href="{% url 'maquinas:maquinas_list' %}"><i class="bi bi-cpu"></i> Cadastro de Maquinas</a></li>{% endif %}
+{% if nav_maq_nova %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'maquinas:maquina_create' %}"><i class="bi bi-plus-circle me-1"></i>Nova Maquina</a></li>{% endif %}
+{% if nav_maq_categorias %}<li><a class="dropdown-item" href="{% url 'maquinas:categorias_list' %}"><i class="bi bi-diagram-3"></i> Categorias de Maquinas</a></li>{% endif %}
+</ul>
+</li>
+</ul>
+</li>
+{% endif %}
+                                </ul>
+                            </li>
+                        {% endif %}
+
                         {% can_nav_block user 'laboratorio' 'coating' as nav_lab_coating %}
                         {% if nav_lab_coating %}
 {% can_nav_view user 'laboratorio:coating_painel' 'laboratorio' as nav_coating_painel %}
@@ -378,13 +383,12 @@ CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
                         <i class="bi bi-kanban nav-icon"></i><span class="nav-text">Gestão</span>
                     </a>
                     <ul class="dropdown-menu">
-{% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos %}
 <li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOPROCMobile" style="cursor: pointer;">
-PROCESSOS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOFERRMobile" style="cursor: pointer;">
+FERRAMENTAS AUXILIARES <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 </h6>
-<ul class="list-unstyled collapse show" id="collapseGESTAOPROCMobile">
-{% if nav_laboratorio and nav_lab_tms %}
+<ul class="list-unstyled collapse show" id="collapseGESTAOFERRMobile">
+{% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos %}
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseTMSMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
 TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform rotate-180"></i>
@@ -395,15 +399,12 @@ TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform rota
 </ul>
 </li>
 {% endif %}
-</ul>
-</li>
-{% endif %}
 {% if nav_boards_list %}
 <li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOQUADROSMobile" style="cursor: pointer;">
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOQUADROSMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
 QUADROS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 </h6>
-<ul class="list-unstyled collapse show" id="collapseGESTAOQUADROSMobile">
+<ul class="list-unstyled collapse show ps-2" id="collapseGESTAOQUADROSMobile">
 <li><a class="dropdown-item" href="{% url 'boards:dashboard' %}"><i class="bi bi-kanban"></i> Quadros
 {% if unread_board_mentions_count and unread_board_mentions_count > 0 %}<span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem;">{{ unread_board_mentions_count }}</span>{% endif %}</a></li>
 </ul>
@@ -411,14 +412,32 @@ QUADROS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 {% endif %}
 {% if nav_diagramas_list %}
 <li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAODIAGMobile" style="cursor: pointer;">
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAODIAGMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
 DIAGRAMAS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 </h6>
-<ul class="list-unstyled collapse show" id="collapseGESTAODIAGMobile">
+<ul class="list-unstyled collapse show ps-2" id="collapseGESTAODIAGMobile">
 <li><a class="dropdown-item" href="{% url 'procedures:diagramas_lista' %}"><i class="bi bi-diagram-3-fill"></i> Diagramas e Fluxogramas</a></li>
 </ul>
 </li>
 {% endif %}
+</ul>
+</li>
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOPROCMobile" style="cursor: pointer;">
+PROCESSOS <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse" id="collapseGESTAOPROCMobile">
+<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+</ul>
+</li>
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOQUALMobile" style="cursor: pointer;">
+QUALIDADE <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse" id="collapseGESTAOQUALMobile">
+<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+</ul>
+</li>
                     </ul>
                 </li>
                 {% endif %}
