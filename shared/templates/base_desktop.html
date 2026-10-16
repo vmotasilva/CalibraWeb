@@ -290,53 +290,98 @@
                         
                         {% can_nav_block user 'laboratorio' 'coating' as nav_lab_coating %}
                         {% if nav_lab_coating %}
-                            {% can_nav_view user 'laboratorio:coating_painel' 'laboratorio' as nav_coating_painel %}
-                            {% can_nav_view user 'laboratorio:dashboard_coating' 'laboratorio' as nav_coating_dashboard %}
-                            {% can_nav_view user 'laboratorio:importar_lotes_coating' 'laboratorio' as nav_coating_importacao %}
-                            {% can_nav_view user 'laboratorio:tratamento_list' 'laboratorio' as nav_coating_tratamentos %}
-                            {% can_nav_view user 'laboratorio:regra_turno_list' 'laboratorio' as nav_coating_turnos %}
-                            {% can_nav_view user 'laboratorio:ciclo_coating_list' 'laboratorio' as nav_coating_ciclos %}
-                            {% can_nav_view user 'laboratorio:equipe_coating_list' 'laboratorio' as nav_coating_equipe %}
-                            
+{% can_nav_view user 'laboratorio:coating_painel' 'laboratorio' as nav_coating_painel %}
+{% can_nav_view user 'laboratorio:dashboard_coating' 'laboratorio' as nav_coating_dashboard %}
+{% can_nav_view user 'laboratorio:importar_lotes_coating' 'laboratorio' as nav_coating_importacao %}
+{% can_nav_view user 'laboratorio:tratamento_list' 'laboratorio' as nav_coating_tratamentos %}
+{% can_nav_view user 'laboratorio:regra_turno_list' 'laboratorio' as nav_coating_turnos %}
+{% can_nav_view user 'laboratorio:ciclo_coating_list' 'laboratorio' as nav_coating_ciclos %}
+{% can_nav_view user 'laboratorio:equipe_coating_list' 'laboratorio' as nav_coating_equipe %}
                             {% if nav_coating_painel or nav_coating_dashboard or nav_coating_importacao or nav_coating_tratamentos or nav_coating_turnos or nav_coating_ciclos or nav_coating_equipe %}
+                                <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseCOATINGANTIREFLEXO" style="cursor: pointer;">
-                                        COATING (ANTI-REFLEXO) <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseHMC" style="cursor: pointer;">
+                                        HMC <i class="bi bi-chevron-down transition-transform rotate-180"></i>
                                     </h6>
-                                    <ul class="list-unstyled collapse show" id="collapseCOATINGANTIREFLEXO">
-                                {% if nav_coating_painel %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>{% endif %}
-                                {% if nav_coating_dashboard %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:dashboard_coating' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>{% endif %}
-                                {% if nav_coating_importacao %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:importar_lotes_coating' %}"><i class="bi bi-upload"></i> Importar Lotes</a></li>{% endif %}
-                                
-                                
-                                {% if nav_coating_tratamentos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>{% endif %}
-                                {% if nav_coating_turnos %}<li><a class="dropdown-item" href="{% url 'laboratorio:regra_turno_list' %}"><i class="bi bi-clock-history"></i> Regras de Turno</a></li>{% endif %}
-                                {% if nav_coating_ciclos %}<li><a class="dropdown-item" href="{% url 'laboratorio:ciclo_coating_list' %}"><i class="bi bi-arrow-repeat"></i> Ciclos de Manutenção</a></li>{% endif %}
-                                {% if nav_coating_equipe %}<li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>{% endif %}
+                                    <ul class="list-unstyled collapse show" id="collapseHMC">
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseHMCAR" style="cursor: pointer;">
+ANTI-REFLEXO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+</h6>
+<ul class="list-unstyled collapse show ps-2" id="collapseHMCAR">
+{% if nav_coating_painel %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>{% endif %}
+{% if nav_coating_dashboard %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:dashboard_coating' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>{% endif %}
+{% if nav_coating_importacao %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:importar_lotes_coating' %}"><i class="bi bi-upload"></i> Importar Lotes</a></li>{% endif %}
+{% if nav_coating_tratamentos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>{% endif %}
+{% if nav_coating_turnos %}<li><a class="dropdown-item" href="{% url 'laboratorio:regra_turno_list' %}"><i class="bi bi-clock-history"></i> Regras de Turno</a></li>{% endif %}
+{% if nav_coating_ciclos %}<li><a class="dropdown-item" href="{% url 'laboratorio:ciclo_coating_list' %}"><i class="bi bi-arrow-repeat"></i> Ciclos de Manutenção</a></li>{% endif %}
+{% if nav_coating_equipe %}<li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>{% endif %}
+</ul>
+</li>
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseHMCHC" style="cursor: pointer;">
+HC <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseHMCHC">
+<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+</ul>
+</li>
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseHMCCF" style="cursor: pointer;">
+CONTROLE FINAL <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseHMCCF">
+<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+</ul>
+</li>
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseHMCTQ" style="cursor: pointer;">
+TESTES DE QUALIDADE <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseHMCTQ">
+<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+</ul>
+</li>
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseHMCCFG" style="cursor: pointer;">
+CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseHMCCFG">
+<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+</ul>
+</li>
                                     </ul>
                                 </li>
-                                <li><hr class="dropdown-divider"></li>
                             {% endif %}
                         {% endif %}
 
-                        {% can_nav_block user 'laboratorio' 'tms' as nav_lab_tms %}
-                        {% if nav_lab_tms %}
-                            {% can_nav_view user 'laboratorio:tms_dashboard' 'laboratorio' as nav_tms_dash %}
-                            {% can_nav_view user 'laboratorio:tms_fluxos_list' 'laboratorio' as nav_tms_fluxos %}
-                            {% if nav_tms_dash or nav_tms_fluxos %}
-                                <li>
-                                    <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTMS" style="cursor: pointer;">
-                                        TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform rotate-180"></i>
-                                    </h6>
-                                    <ul class="list-unstyled collapse show" id="collapseTMS">
-                                {% if nav_tms_dash %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:tms_dashboard' %}"><i class="bi bi-stopwatch me-1"></i> Previsão & Gargalos</a></li>{% endif %}
-                                {% if nav_tms_fluxos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tms_fluxos_list' %}"><i class="bi bi-diagram-3 me-1"></i> Linhas de Produção</a></li>{% endif %}
-                                    </ul>
-                                </li>
-                            {% endif %}
-                        {% endif %}
+                        
                     </ul>
                 </li>
+                {% endif %}
+
+                {% can_nav_block user 'laboratorio' 'tms' as nav_lab_tms %}
+                {% if nav_laboratorio and nav_lab_tms %}
+                {% can_nav_view user 'laboratorio:tms_dashboard' 'laboratorio' as nav_tms_dash %}
+                {% can_nav_view user 'laboratorio:tms_fluxos_list' 'laboratorio' as nav_tms_fluxos %}
+                {% if nav_tms_dash or nav_tms_fluxos %}
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-gear-wide-connected nav-icon"></i><span class="nav-text">Processos</span>
+                    </a>
+                    <ul class="dropdown-menu shadow">
+                        <li>
+                            <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseTMS" style="cursor: pointer;">
+                                TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+                            </h6>
+                            <ul class="list-unstyled collapse show" id="collapseTMS">
+{% if nav_tms_dash %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:tms_dashboard' %}"><i class="bi bi-stopwatch me-1"></i> Previsão & Gargalos</a></li>{% endif %}
+{% if nav_tms_fluxos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tms_fluxos_list' %}"><i class="bi bi-diagram-3 me-1"></i> Linhas de Produção</a></li>{% endif %}
+                            </ul>
+                        </li>
+                    </ul>
+                </li>
+                {% endif %}
                 {% endif %}
 
                 {% if nav_metrologia %}
