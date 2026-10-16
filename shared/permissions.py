@@ -1432,6 +1432,7 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Acompanhamento de Homologações", "view_name": "laboratorio:homologacoes_resumo", "perm": "core.nav_laboratorio_homologacoes"},
                     {"nome": "Novo Plano de Testes", "view_name": "laboratorio:homologacao_plano_create", "perm": "core.nav_laboratorio_homologacao_create"},
+                    {"nome": "Importar Planilha de Homologações", "view_name": "laboratorio:homologacoes_importar", "perm": "core.nav_laboratorio_homologacao_importar"},
                     {"nome": "Detalhar e Atualizar Plano de Testes", "view_name": "laboratorio:homologacao_plano_detail", "perm": "core.nav_laboratorio_homologacao_detail"},
                     {"nome": "Excluir Plano de Testes", "view_name": "laboratorio:homologacao_plano_delete", "perm": "core.nav_laboratorio_homologacao_delete"},
                 ],

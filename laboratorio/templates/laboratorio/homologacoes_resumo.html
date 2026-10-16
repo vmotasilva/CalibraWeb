@@ -10,9 +10,14 @@
             <h2 class="h3 fw-bold mt-2 mb-0">Acompanhamento de Homologações</h2>
             <p class="text-muted small mb-0">Plano de testes de cada tratamento por máquina, do documento ao retorno do resultado.</p>
         </div>
-        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoPlano">
-            <i class="bi bi-plus-circle me-1"></i>Novo Plano de Testes
-        </button>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-outline-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalImportar">
+                <i class="bi bi-file-earmark-excel me-1"></i>Importar Planilha
+            </button>
+            <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNovoPlano">
+                <i class="bi bi-plus-circle me-1"></i>Novo Plano de Testes
+            </button>
+        </div>
     </div>
 
     <div class="row g-3 mb-4">
@@ -139,6 +144,31 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="submit" class="btn btn-primary">Criar plano</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalImportar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" enctype="multipart/form-data" action="{% url 'laboratorio:homologacoes_importar' %}" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h5 class="modal-title">Importar planilha de acompanhamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-semibold">Planilha (.xlsx ou .xlsm)</label>
+                <input type="file" name="planilha" class="form-control" accept=".xlsx,.xlsm" required>
+                <div class="form-text mt-2">
+                    Lê a aba <strong>Dados</strong> e cria um plano de testes para cada tratamento e máquina, já com as datas
+                    das etapas, de modo que o status e a etapa atual sejam reconhecidos automaticamente.
+                    Planos que já existem no sistema não são alterados.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Importar</button>
             </div>
         </form>
     </div>
