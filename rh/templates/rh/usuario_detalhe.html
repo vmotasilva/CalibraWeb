@@ -145,6 +145,14 @@
         .module-header:not(.bg-dark) .collapse-icon {
             color: #000 !important;
         }
+
+        /* Grupos de permissões aninhados (mesmas cores da navbar: preto / azul marinho / cinza) */
+        .perm-grupo-header-n1 { background-color: #000; color: #fff; }
+        .perm-grupo-header-n2 { background-color: #14284b; color: #fff; }
+        .perm-grupo-header-n3 { background-color: #e9ecef; color: #212529; }
+        .perm-grupo-header-n1 .collapse-icon, .perm-grupo-header-n2 .collapse-icon { color: #fff !important; }
+        .perm-grupo-header-n1 .collapse-icon, .perm-grupo-header-n2 .collapse-icon, .perm-grupo-header-n3 .collapse-icon { transition: transform .2s; }
+        .perm-grupo-header-n1:not(.collapsed) .collapse-icon, .perm-grupo-header-n2:not(.collapsed) .collapse-icon, .perm-grupo-header-n3:not(.collapsed) .collapse-icon { transform: rotate(180deg); }
 </style>
 {% endblock %}
 
@@ -426,72 +434,8 @@
                         <div class="card-body">
                             <div class="accordion" id="blocosAccordion{{ forloop.counter }}">
                                 {% for item in modulo.itens %}
-                                {% if item.is_grupo %}
-                                <div class="card border border-primary border-opacity-25 mb-3 bg-light bg-opacity-25">
-                                    <div class="card-header bg-primary bg-opacity-10 block-header collapsed p-0"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#collapseGrupo_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
-                                        aria-expanded="false">
-                                        <div class="d-flex align-items-center justify-content-between px-3 py-2">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <i class="bi bi-folder-symlink-fill text-primary"></i>
-                                                <strong class="small text-primary text-uppercase">{{ item.nome }}</strong>
-                                                <span class="badge bg-primary bg-opacity-25 text-primary rounded-pill">{{ item.blocos|length }} seções</span>
-                                            </div>
-                                            <i class="bi bi-chevron-down collapse-icon text-muted"></i>
-                                        </div>
-                                    </div>
-                                    <div id="collapseGrupo_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
-                                        class="collapse show p-2">
-                                        {% for bloco in item.blocos %}
-                                        <div class="card border mb-2 shadow-none">
-                                            <div class="card-header bg-white block-header collapsed p-0"
-                                                data-bs-toggle="collapse"
-                                                data-bs-target="#collapseSub_{{ forloop.parentloop.parentloop.counter }}_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
-                                                aria-expanded="false">
-                                                <div class="d-flex align-items-center justify-content-between px-3 py-2">
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <i class="bi bi-folder2-open text-muted"></i>
-                                                        <strong class="small text-uppercase">{{ bloco.nome }}</strong>
-                                                    </div>
-                                                    <div class="d-flex align-items-center gap-3">
-                                                        <div class="form-check form-switch mb-0"
-                                                            onclick="event.stopPropagation()">
-                                                            <input type="checkbox" class="form-check-input perm-checkbox"
-                                                                id="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}"
-                                                                data-codename="{{ bloco.perm.codename }}"
-                                                                data-user-id="{{ usuario.id }}"
-                                                                data-app-label="{{ bloco.perm.app_label }}" {% with perm_key=bloco.perm.full %} {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %} {% endwith %} {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
-                                                            <label class="form-check-label small"
-                                                                for="perm_{{ bloco.perm.app_label }}_{{ bloco.perm.codename }}">Exibir bloco</label>
-                                                        </div>
-                                                        <i class="bi bi-chevron-down collapse-icon text-muted"></i>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div id="collapseSub_{{ forloop.parentloop.parentloop.counter }}_{{ forloop.parentloop.counter }}_{{ forloop.counter }}"
-                                                class="collapse">
-                                                <div class="list-group list-group-flush">
-                                                    {% for funcao in bloco.funcoes %}
-                                                    <div class="list-group-item d-flex justify-content-between align-items-center">
-                                                        <div class="small">{{ funcao.nome }}</div>
-                                                        <div class="form-check form-switch mb-0">
-                                                            <input type="checkbox" class="form-check-input perm-checkbox"
-                                                                id="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}"
-                                                                data-codename="{{ funcao.perm.codename }}"
-                                                                data-user-id="{{ usuario.id }}"
-                                                                data-app-label="{{ funcao.perm.app_label }}" {% with perm_key=funcao.perm.full %} {% if perm_key in user_perms or usuario.is_superuser %}checked{% endif %} {% endwith %} {% if usuario.is_superuser or not request.user.is_superuser %}disabled{% endif %}>
-                                                            <label class="form-check-label small"
-                                                                for="perm_{{ funcao.perm.app_label }}_{{ funcao.perm.codename }}">Acessar</label>
-                                                        </div>
-                                                    </div>
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
+{% if item.is_grupo %}
+{% include "rh/_perm_grupo.html" with grupo=item modulo_key=modulo.key %}
                                 {% elif item.especial %}
                                 <div class="card border border-warning mb-2">
                                     <div class="card-header bg-warning bg-opacity-10 block-header collapsed p-0"

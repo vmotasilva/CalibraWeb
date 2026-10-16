@@ -1,0 +1,22 @@
+<div class="card border mb-2 shadow-none perm-grupo perm-grupo-{{ estilo }}">
+    <div class="card-header block-header collapsed p-0 perm-grupo-header-{{ estilo }}"
+        data-bs-toggle="collapse" data-bs-target="#collapseGrupo_{{ grupo.uid }}" aria-expanded="false">
+        <div class="d-flex align-items-center justify-content-between px-3 py-2">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-folder-symlink-fill"></i>
+                <strong class="small text-uppercase">{{ grupo.nome }}</strong>
+                <span class="badge bg-light text-dark rounded-pill">{{ grupo.total }} seções</span>
+            </div>
+            <i class="bi bi-chevron-down collapse-icon"></i>
+        </div>
+    </div>
+    <div id="collapseGrupo_{{ grupo.uid }}" class="collapse p-2">
+        {% for sub in grupo.itens %}
+            {% if sub.is_grupo %}
+                {% include "rh/_perm_grupo.html" with grupo=sub modulo_key=modulo_key %}
+            {% else %}
+                {% include "rh/_perm_bloco_card.html" with bloco=sub modulo_key=modulo_key %}
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>

@@ -1251,6 +1251,7 @@ NAV_STRUCTURE = [
         "blocos": [
             {
                 "key": "ocorrencias_gerais",
+                "grupo": "Ocorrências Gerais",
                 "nome": "Observações Gerais",
                 "perm": "core.nav_laboratorio_ocorrencias_gerais",
                 "funcoes": [
@@ -1259,6 +1260,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "ocorrencias",
+                "grupo": "Ocorrências Gerais",
                 "nome": "Ocorrências",
                 "perm": "core.nav_laboratorio_ocorrencias_bloco",
                 "funcoes": [
@@ -1273,6 +1275,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "categorias",
+                "grupo": "Ocorrências Gerais",
                 "nome": "Categorias de Ocorrência",
                 "perm": "core.nav_laboratorio_categorias_bloco",
                 "funcoes": [
@@ -1283,6 +1286,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "dashboard",
+                "grupo": "Ocorrências Gerais",
                 "nome": "Dashboard Laboratório",
                 "perm": "core.nav_laboratorio_dashboard_bloco",
                 "funcoes": [
@@ -1292,6 +1296,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "maquinas",
+                "grupo": "Máquinas",
                 "nome": "Cadastro de Máquinas",
                 "perm": "core.nav_laboratorio_maquinas",
                 "funcoes": [
@@ -1303,6 +1308,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "maquinas_categorias",
+                "grupo": "Máquinas",
                 "nome": "Categorias de Máquinas",
                 "perm": "core.nav_laboratorio_maquinas_categorias_bloco",
                 "funcoes": [
@@ -1314,6 +1320,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating",
+                "grupo": "HMC > Anti-Reflexo",
                 "nome": "Coating: Painel Diário",
                 "perm": "core.nav_laboratorio_coating",
                 "funcoes": [
@@ -1335,6 +1342,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_dashboard",
+                "grupo": "HMC > Anti-Reflexo",
                 "nome": "Coating: Dashboard",
                 "perm": "core.nav_laboratorio_coating_dashboard_bloco",
                 "funcoes": [
@@ -1343,6 +1351,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_importacao",
+                "grupo": "HMC > Anti-Reflexo",
                 "nome": "Coating: Importação",
                 "perm": "core.nav_laboratorio_coating_importacao_bloco",
                 "funcoes": [
@@ -1351,6 +1360,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_tratamentos",
+                "grupo": "HMC > Anti-Reflexo > Configurações",
                 "nome": "Coating: Tratamentos",
                 "perm": "core.nav_laboratorio_coating_tratamentos_bloco",
                 "funcoes": [
@@ -1361,6 +1371,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_turnos",
+                "grupo": "HMC > Anti-Reflexo > Configurações",
                 "nome": "Coating: Regras de Turno",
                 "perm": "core.nav_laboratorio_coating_turnos_bloco",
                 "funcoes": [
@@ -1371,6 +1382,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_ciclos",
+                "grupo": "HMC > Anti-Reflexo > Configurações",
                 "nome": "Coating: Ciclos de Manutenção",
                 "perm": "core.nav_laboratorio_coating_ciclos_bloco",
                 "funcoes": [
@@ -1392,6 +1404,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_equipe",
+                "grupo": "HMC > Anti-Reflexo > Configurações",
                 "nome": "Coating: Equipe",
                 "perm": "core.nav_laboratorio_coating_equipe_bloco",
                 "funcoes": [
@@ -1402,6 +1415,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "tms",
+                "grupo": "Processos",
                 "nome": "TMS - Tempos e Movimentos",
                 "perm": "core.nav_laboratorio_tms_bloco",
                 "funcoes": [

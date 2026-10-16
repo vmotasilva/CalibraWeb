@@ -1,0 +1,8 @@
+{# Grupo de permissões aninhável (espelha seções/subseções da navbar). Recursivo via include. #}
+{% if grupo.nivel == 1 %}
+  {% include "rh/_perm_grupo_nivel.html" with grupo=grupo modulo_key=modulo_key estilo="n1" %}
+{% elif grupo.nivel == 2 %}
+  {% include "rh/_perm_grupo_nivel.html" with grupo=grupo modulo_key=modulo_key estilo="n2" %}
+{% else %}
+  {% include "rh/_perm_grupo_nivel.html" with grupo=grupo modulo_key=modulo_key estilo="n3" %}
+{% endif %}

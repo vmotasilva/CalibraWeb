@@ -3508,16 +3508,26 @@ def detalhe_usuario_view(request, user_id):
             }
             grupo_nome = bloco.get("grupo")
             if grupo_nome:
-                if grupo_nome not in grupos_dict:
-                    grupo_obj = {
-                        "is_grupo": True,
-                        "nome": grupo_nome,
-                        "key": grupo_nome.lower().replace(" ", "_"),
-                        "blocos": []
-                    }
-                    grupos_dict[grupo_nome] = grupo_obj
-                    itens_modulo.append(grupo_obj)
-                grupos_dict[grupo_nome]["blocos"].append(bloco_data)
+                # "A > B > C" cria grupos aninhados (espelha as seções/subseções da navbar)
+                destino = itens_modulo
+                caminho = []
+                for parte in [p.strip() for p in grupo_nome.split(">") if p.strip()]:
+                    caminho.append(parte)
+                    chave = " > ".join(caminho)
+                    if chave not in grupos_dict:
+                        grupos_dict[chave] = {
+                            "is_grupo": True,
+                            "nome": parte,
+                            "nivel": len(caminho),
+                            "uid": f"{modulo.get('key')}_" + "_".join(str(abs(hash(p)) % 10**6) for p in caminho),
+                            "itens": [],
+                            "total": 0,
+                        }
+                        destino.append(grupos_dict[chave])
+                    grupos_dict[chave]["total"] += 1
+                    destino = grupos_dict[chave]["itens"]
+                bloco_data["is_grupo"] = False
+                destino.append(bloco_data)
             else:
                 bloco_data["is_grupo"] = False
                 itens_modulo.append(bloco_data)
