@@ -65,6 +65,12 @@
     letter-spacing: 0.02em;
 }
 
+/* Hierarquia de secoes: nivel 1 preto, nivel 2 azul marinho (inline), nivel 3 cinza (padrao) */
+.calibra-topbar .dropdown-menu > li > .dropdown-header {
+    background: #000 !important;
+    color: #fff !important;
+}
+
 .calibra-topbar .dropdown-menu::-webkit-scrollbar {
     width: 8px;
 }
