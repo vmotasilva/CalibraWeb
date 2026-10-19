@@ -96,9 +96,13 @@ def painel_view(request):
         meds = list(ind.medicoes.all())
         mensais = sorted((m for m in meds if m.granularidade == 'mensal'), key=lambda m: m.periodo, reverse=True)
         ultima = mensais[0] if mensais else None
-        motivos_tabs = _motivos(ind, dias)
-        grans = ['mensal'] + (['semanal', 'diaria'] if ind.acompanhamento_detalhado else [])
-        campos_js[str(ind.pk)] = {'campos': calculo.lista_campos(ind), 'formula': ind.formula}
+        motivos_tabs = [t for t in _motivos(ind, dias) if ind.permite_motivos(t['gran'])]
+        grans = ind.graficos()
+        campos_js[str(ind.pk)] = {
+            'campos': calculo.lista_campos(ind), 'formula': ind.formula,
+            'motivos': [g for g in ('diaria', 'semanal', 'mensal') if ind.permite_motivos(g)],
+            'unidade': ind.unidade,
+        }
         charts[str(ind.pk)] = {g: _serie(ind, g, meds) for g in grans}
         motivos_js[str(ind.pk)] = [
             {'g': m.granularidade, 'd': m.data.isoformat(), 'desc': m.descricao, 'qtd': str(m.quantidade)}
@@ -201,8 +205,8 @@ def medicao_salvar_view(request, pk):
         messages.error(request, 'Informe data e valor válidos.')
         return _voltar(ind.pk)
     gran = form.cleaned_data['granularidade']
-    if gran != 'mensal' and not ind.acompanhamento_detalhado:
-        messages.error(request, 'Este indicador não tem acompanhamento semanal/diário habilitado.')
+    if not ind.permite_valor(gran):
+        messages.error(request, 'Este indicador não tem o gráfico semanal/diário habilitado.')
         return _voltar(ind.pk)
     periodo = _normalizar(gran, form.cleaned_data['periodo'])
     Medicao.objects.update_or_create(
@@ -236,6 +240,9 @@ def motivo_salvar_view(request, pk):
     gran = request.POST.get('granularidade')
     if gran not in dict(Medicao.GRANULARIDADES):
         messages.error(request, 'Selecione o tipo de período.')
+        return _voltar(ind.pk, '&mot=0')
+    if not ind.permite_motivos(gran):
+        messages.error(request, 'A tabela de motivos deste período não está habilitada para o indicador.')
         return _voltar(ind.pk, '&mot=0')
     try:
         data = _normalizar(gran, datetime.date.fromisoformat(request.POST.get('data', '')))

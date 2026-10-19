@@ -13,7 +13,25 @@
             <div class="col-md-3">{{ form.unidade.label_tag }}{{ form.unidade }}</div>
             <div class="col-md-6">{{ form.sentido.label_tag }}{{ form.sentido }}</div>
             <div class="col-md-6">{{ form.periodicidade.label_tag }}{{ form.periodicidade }}</div>
-            <div class="col-md-6 form-check ms-2 mt-4">{{ form.acompanhamento_detalhado }} {{ form.acompanhamento_detalhado.label_tag }}<br><small class="text-muted">{{ form.acompanhamento_detalhado.help_text }}</small></div>
+            <div class="col-12">
+                <div class="border rounded p-3">
+                    <div class="fw-semibold mb-2">Exibição no painel <small class="text-muted fw-normal">— marque o que deve aparecer na aba deste indicador</small></div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="small text-muted mb-1">Gráficos</div>
+                            <div class="form-check">{{ form.exibir_mensal }} {{ form.exibir_mensal.label_tag }}</div>
+                            <div class="form-check">{{ form.exibir_semanal }} {{ form.exibir_semanal.label_tag }}</div>
+                            <div class="form-check">{{ form.exibir_diario }} {{ form.exibir_diario.label_tag }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted mb-1">Tabela Top principais motivos</div>
+                            <div class="form-check">{{ form.motivos_diario }} {{ form.motivos_diario.label_tag }}</div>
+                            <div class="form-check">{{ form.motivos_semanal }} {{ form.motivos_semanal.label_tag }}</div>
+                            <div class="form-check">{{ form.motivos_mensal }} {{ form.motivos_mensal.label_tag }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="col-md-6">{{ form.campos.label_tag }}{{ form.campos }}<small class="text-muted">{{ form.campos.help_text }}</small></div>
             <div class="col-md-6">{{ form.formula.label_tag }}{{ form.formula }}{{ form.formula.errors }}<small class="text-muted">{{ form.formula.help_text }}</small></div>
             <div class="col-md-4">{{ form.responsavel.label_tag }}{{ form.responsavel }}</div>

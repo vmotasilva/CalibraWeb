@@ -24,9 +24,12 @@ class Indicador(models.Model):
     meta = models.DecimalField('Meta', max_digits=14, decimal_places=2)
     sentido = models.CharField('Sentido da meta', max_length=5, choices=SENTIDOS, default=SENTIDO_MAIOR)
     periodicidade = models.CharField('Periodicidade', max_length=12, choices=PERIODICIDADES, default='mensal')
-    acompanhamento_detalhado = models.BooleanField(
-        'Acompanhar também por semana e por dia', default=False,
-        help_text='Habilita os gráficos e lançamentos semanais e diários, além do mensal.')
+    exibir_mensal = models.BooleanField('Gráfico mês a mês', default=True)
+    exibir_semanal = models.BooleanField('Gráfico semana a semana', default=False)
+    exibir_diario = models.BooleanField('Gráfico dia a dia', default=False)
+    motivos_diario = models.BooleanField('Tabela de motivos — Diário', default=False)
+    motivos_semanal = models.BooleanField('Tabela de motivos — Semanal', default=False)
+    motivos_mensal = models.BooleanField('Tabela de motivos — Mensal', default=False)
     campos = models.TextField(
         'Campos do indicador', blank=True,
         help_text='Um campo por linha (ex.: Lentes produzidas, Lentes perdidas). Aparecem nos lançamentos e nos modelos de importação.')
@@ -46,6 +49,20 @@ class Indicador(models.Model):
 
     def __str__(self):
         return self.nome
+
+    @property
+    def acompanhamento_detalhado(self):
+        return self.exibir_semanal or self.exibir_diario
+
+    def permite_valor(self, gran):
+        """Lançamento de valores: o mensal é sempre permitido; semanal/diário dependem do gráfico habilitado."""
+        return gran == 'mensal' or bool(getattr(self, {'semanal': 'exibir_semanal', 'diaria': 'exibir_diario'}[gran]))
+
+    def permite_motivos(self, gran):
+        return bool(getattr(self, {'diaria': 'motivos_diario', 'semanal': 'motivos_semanal', 'mensal': 'motivos_mensal'}[gran]))
+
+    def graficos(self):
+        return [g for g, on in (('mensal', self.exibir_mensal), ('semanal', self.exibir_semanal), ('diaria', self.exibir_diario)) if on]
 
     def atingiu(self, valor):
         if valor is None:

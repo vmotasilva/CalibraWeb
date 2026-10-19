@@ -127,8 +127,11 @@ def importar(arquivo, gran, usuario):
         if not ind:
             erros.append((n, aba, f'Indicador não encontrado: "{nome}"'))
             return None, None
-        if gran != 'mensal' and not ind.acompanhamento_detalhado:
-            erros.append((n, aba, f'"{ind.nome}" não tem acompanhamento semanal/diário habilitado'))
+        if aba == ABA_MOTIVOS and not ind.permite_motivos(gran):
+            erros.append((n, aba, f'"{ind.nome}" não tem a tabela de motivos {CABECALHO_PERIODO[gran].lower()} habilitada'))
+            return None, None
+        if aba == ABA_VALORES and not ind.permite_valor(gran):
+            erros.append((n, aba, f'"{ind.nome}" não tem o gráfico {CABECALHO_PERIODO[gran].lower()} habilitado'))
             return None, None
         try:
             return ind, _normalizar(gran, _data(periodo_bruto))

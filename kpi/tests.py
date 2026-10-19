@@ -11,7 +11,7 @@ class KpiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_superuser('kpi', 'k@x.com', 'x')
         self.client.force_login(self.user)
-        self.ind = Indicador.objects.create(nome='SR', meta=95, acompanhamento_detalhado=True)
+        self.ind = Indicador.objects.create(nome='SR', meta=95, exibir_semanal=True, exibir_diario=True, motivos_diario=True, motivos_semanal=True, motivos_mensal=True)
 
     def salvar(self, gran, periodo, valor):
         return self.client.post(reverse('kpi:medicao_salvar', args=[self.ind.pk]),
@@ -20,9 +20,11 @@ class KpiTests(TestCase):
     def test_cria_indicador(self):
         r = self.client.post(reverse('kpi:indicador_novo'), {
             'nome': 'Retrabalho', 'unidade': '%', 'meta': '4', 'sentido': 'menor',
-            'periodicidade': 'mensal', 'acompanhamento_detalhado': 'on', 'ativo': 'on'})
+            'periodicidade': 'mensal', 'ativo': 'on', 'exibir_mensal': 'on'})
         self.assertEqual(r.status_code, 302)
-        self.assertTrue(Indicador.objects.get(nome='Retrabalho').acompanhamento_detalhado)
+        novo = Indicador.objects.get(nome='Retrabalho')
+        self.assertTrue(novo.exibir_mensal)
+        self.assertFalse(novo.exibir_semanal or novo.motivos_diario)
 
     def test_normaliza_e_atualiza(self):
         self.salvar('mensal', '2026-10-05', '90')
@@ -38,7 +40,7 @@ class KpiTests(TestCase):
         self.assertEqual(Medicao.objects.count(), 3)
 
     def test_sem_acompanhamento_bloqueia_semanal(self):
-        self.ind.acompanhamento_detalhado = False
+        self.ind.exibir_semanal = False
         self.ind.save()
         self.salvar('semanal', '2026-10-15', '91')
         self.assertEqual(Medicao.objects.count(), 0)
@@ -151,3 +153,24 @@ class KpiTests(TestCase):
         novo = Medicao.objects.get(indicador=ind, periodo=date(2026, 11, 30))
         self.assertEqual(str(novo.valor), '2.00')
         self.assertEqual(novo.dados['Lentes produzidas'], '400')
+
+    def test_flags_de_exibicao(self):
+        base = {'nome': 'Flags', 'meta': '1', 'sentido': 'maior', 'periodicidade': 'mensal'}
+        self.client.post(reverse('kpi:indicador_novo'), dict(base, ativo='on', exibir_mensal='on', exibir_diario='on', motivos_semanal='on'))
+        ind = Indicador.objects.get(nome='Flags')
+        self.assertEqual(ind.graficos(), ['mensal', 'diaria'])
+        self.assertTrue(ind.permite_motivos('semanal') and not ind.permite_motivos('diaria'))
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d' % ind.pk)
+        html = r.content.decode()
+        pk = ind.pk
+        self.assertIn('kpi-chart-%d-mensal' % pk, html)
+        self.assertIn('kpi-chart-%d-diaria' % pk, html)
+        self.assertNotIn('kpi-chart-%d-semanal' % pk, html)
+        aba = [a for a in r.context['abas'] if a['ind'].pk == pk][0]
+        self.assertEqual([t['gran'] for t in aba['motivos_tabs']], ['semanal'])
+        # motivos de período não habilitado são recusados
+        url = reverse('kpi:motivo_salvar', args=[pk])
+        self.client.post(url, {'granularidade': 'diaria', 'data': '2026-10-15', 'descricao': ['X'], 'quantidade': ['1']})
+        self.assertEqual(Motivo.objects.count(), 0)
+        self.client.post(url, {'granularidade': 'semanal', 'data': '2026-10-15', 'descricao': ['X'], 'quantidade': ['1']})
+        self.assertEqual(Motivo.objects.count(), 1)

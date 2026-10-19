@@ -42,10 +42,8 @@
                     <td class="fw-semibold">{{ i.nome }}</td>
                     <td class="small text-muted">{{ i.campos|default:"—"|linebreaksbr }}</td>
                     <td class="text-end text-nowrap">
-                        {% if i.acompanhamento_detalhado %}
-                        <a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'diaria' %}?ind={{ i.pk }}">Diário</a>
-                        <a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'semanal' %}?ind={{ i.pk }}">Semanal</a>
-                        {% endif %}
+                        {% if i.exibir_diario or i.motivos_diario %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'diaria' %}?ind={{ i.pk }}">Diário</a>{% endif %}
+                        {% if i.exibir_semanal or i.motivos_semanal %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'semanal' %}?ind={{ i.pk }}">Semanal</a>{% endif %}
                         <a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'mensal' %}?ind={{ i.pk }}">Mensal</a>
                     </td>
                 </tr>
