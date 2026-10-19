@@ -11,20 +11,32 @@ from kpi.models import Indicador, Medicao
 def painel_view(request):
     """Painel: último valor de cada indicador ativo vs. meta."""
     cards = []
+    charts = {}
     for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes'):
-        meds = list(ind.medicoes.all()[:6])
-        ultima = meds[0] if meds else None
+        todas = list(ind.medicoes.all())
+        fech = [m for m in todas if not m.parcial]
+        parc = [m for m in todas if m.parcial]
+        ultima = fech[0] if fech else None
+        parcial = parc[0] if parc and (not ultima or parc[0].periodo > ultima.periodo) else None
+        ref = ultima or parcial
+        serie = list(reversed(fech[:12]))
+        charts[str(ind.pk)] = {
+            'labels': [m.periodo.strftime('%m/%Y') for m in serie],
+            'valores': [float(m.valor) for m in serie],
+            'meta': float(ind.meta),
+            'sentido': ind.sentido,
+        }
         cards.append({
             'ind': ind,
             'ultima': ultima,
-            'atingiu': ind.atingiu(ultima.valor) if ultima else None,
-            'serie': list(reversed(meds)),
+            'parcial': parcial,
+            'atingiu': ind.atingiu(ref.valor) if ref else None,
         })
     total = len(cards)
     ok = sum(1 for c in cards if c['atingiu'] is True)
     fora = sum(1 for c in cards if c['atingiu'] is False)
     return render(request, 'kpi/painel.html', {
-        'cards': cards, 'total': total, 'ok': ok, 'fora': fora, 'sem_dado': total - ok - fora,
+        'cards': cards, 'charts': charts, 'total': total, 'ok': ok, 'fora': fora, 'sem_dado': total - ok - fora,
     })
 
 
@@ -51,9 +63,12 @@ def indicador_form_view(request, pk=None):
 def indicador_detalhe_view(request, pk):
     ind = get_object_or_404(Indicador, pk=pk)
     form = MedicaoForm(request.POST or None)
+    if not ind.acompanhamento:
+        del form.fields['parcial']
     if request.method == 'POST' and form.is_valid():
         Medicao.objects.update_or_create(
             indicador=ind, periodo=form.cleaned_data['periodo'],
+            parcial=bool(ind.acompanhamento and form.cleaned_data.get('parcial')),
             defaults={
                 'valor': form.cleaned_data['valor'],
                 'observacao': form.cleaned_data['observacao'],
@@ -65,12 +80,17 @@ def indicador_detalhe_view(request, pk):
     meds = list(ind.medicoes.all())
     for m in meds:
         m.atingiu = ind.atingiu(m.valor)
-    serie = list(reversed(meds[:24]))
+    serie = sorted(meds, key=lambda m: m.periodo)[-60:]
+    datas = sorted({m.periodo for m in serie})
+    fech = {m.periodo: float(m.valor) for m in serie if not m.parcial}
+    parc = {m.periodo: float(m.valor) for m in serie if m.parcial}
+    freq_parcial = bool(parc)
     return render(request, 'kpi/indicador_detalhe.html', {
         'ind': ind, 'form': form, 'medicoes': meds,
         'dados': {
-            'labels': [m.periodo.strftime('%m/%Y') for m in serie],
-            'valores': [float(m.valor) for m in serie],
+            'labels': [d.strftime('%d/%m/%Y' if (freq_parcial or ind.periodicidade in ('diaria', 'semanal')) else '%m/%Y') for d in datas],
+            'fechamento': [fech.get(d) for d in datas],
+            'parcial': [parc.get(d) for d in datas],
             'meta': float(ind.meta),
         },
     })

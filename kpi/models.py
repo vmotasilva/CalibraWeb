@@ -24,6 +24,15 @@ class Indicador(models.Model):
     meta = models.DecimalField('Meta', max_digits=14, decimal_places=2)
     sentido = models.CharField('Sentido da meta', max_length=5, choices=SENTIDOS, default=SENTIDO_MAIOR)
     periodicidade = models.CharField('Periodicidade', max_length=12, choices=PERIODICIDADES, default='mensal')
+    ACOMPANHAMENTOS = [
+        ('', 'Somente fechamento do período'),
+        ('diario', 'Acompanhamento diário'),
+        ('quinzenal', 'Acompanhamento quinzenal'),
+        ('semanal', 'Acompanhamento semanal'),
+    ]
+    acompanhamento = models.CharField(
+        'Acompanhamento parcial', max_length=10, choices=ACOMPANHAMENTOS, blank=True, default='',
+        help_text='Permite lançar valores parciais (diários, semanais ou quinzenais) dentro do período do indicador.')
     responsavel = models.CharField('Responsável', max_length=120, blank=True)
     ativo = models.BooleanField('Ativo', default=True)
     criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
@@ -47,13 +56,14 @@ class Medicao(models.Model):
     indicador = models.ForeignKey(Indicador, on_delete=models.CASCADE, related_name='medicoes')
     periodo = models.DateField('Período (data de referência)')
     valor = models.DecimalField('Valor', max_digits=14, decimal_places=2)
+    parcial = models.BooleanField('Parcial (acompanhamento)', default=False)
     observacao = models.CharField('Observação', max_length=255, blank=True)
     registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     registrado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-periodo']
-        unique_together = [('indicador', 'periodo')]
+        unique_together = [('indicador', 'periodo', 'parcial')]
         verbose_name = 'Medição'
         verbose_name_plural = 'Medições'
 

@@ -6,7 +6,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
             <h4 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>KPI — Painel de Indicadores</h4>
-            <small class="text-muted">Último valor lançado de cada indicador ativo em relação à meta.</small>
+            <small class="text-muted">Evolução dos fechamentos de cada indicador ativo em relação à meta.</small>
         </div>
         <div class="d-flex gap-2">
             <a href="{% url 'kpi:indicadores' %}" class="btn btn-outline-primary"><i class="bi bi-list-ul me-1"></i>Indicadores</a>
@@ -24,35 +24,69 @@
     <div class="row g-3">
         {% for c in cards %}
         <div class="col-12 col-md-6 col-xl-4">
-            <a href="{% url 'kpi:indicador_detalhe' c.ind.pk %}" class="text-decoration-none text-reset">
-                <div class="card h-100 border-start border-4 {% if c.atingiu is True %}border-success{% elif c.atingiu is False %}border-danger{% else %}border-secondary{% endif %}">
-                    <div class="card-body">
-                        <small class="text-muted">{{ c.ind.area|default:"Sem área" }}</small>
-                        <h6 class="mb-2">{{ c.ind.nome }}</h6>
-                        <div class="d-flex justify-content-between align-items-end">
-                            <div>
-                                <div class="fs-3 fw-bold {% if c.atingiu is True %}text-success{% elif c.atingiu is False %}text-danger{% endif %}">
-                                    {% if c.ultima %}{{ c.ultima.valor }} {{ c.ind.unidade }}{% else %}—{% endif %}
-                                </div>
-                                {% if c.ultima %}<small class="text-muted">{{ c.ultima.periodo|date:"m/Y" }}</small>{% endif %}
-                            </div>
-                            <div class="text-end">
-                                <small class="text-muted d-block">Meta {% if c.ind.sentido == 'maior' %}≥{% else %}≤{% endif %}</small>
-                                <strong>{{ c.ind.meta }} {{ c.ind.unidade }}</strong>
-                            </div>
+            <div class="card h-100 border-start border-4 {% if c.atingiu is True %}border-success{% elif c.atingiu is False %}border-danger{% else %}border-secondary{% endif %}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <small class="text-muted">{{ c.ind.area|default:"Sem área" }} · {{ c.ind.get_periodicidade_display }}</small>
+                            <h6 class="mb-1"><a href="{% url 'kpi:indicador_detalhe' c.ind.pk %}" class="text-decoration-none text-reset stretched-link">{{ c.ind.nome }}</a></h6>
                         </div>
-                        {% if c.serie %}
-                        <div class="mt-2 d-flex gap-1 align-items-center">
-                            {% for m in c.serie %}<span class="badge bg-light text-dark border" title="{{ m.periodo|date:'m/Y' }}">{{ m.valor }}</span>{% endfor %}
+                        <div class="text-end">
+                            <div class="fs-4 fw-bold {% if c.atingiu is True %}text-success{% elif c.atingiu is False %}text-danger{% endif %}">
+                                {% if c.ultima %}{{ c.ultima.valor }} {{ c.ind.unidade }}{% elif c.parcial %}{{ c.parcial.valor }} {{ c.ind.unidade }}{% else %}—{% endif %}
+                            </div>
+                            <small class="text-muted">Meta {% if c.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ c.ind.meta }} {{ c.ind.unidade }}</small>
                         </div>
+                    </div>
+                    <div style="height: 150px;" class="mt-2"><canvas id="kpi-chart-{{ c.ind.pk }}"></canvas></div>
+                    <div class="small text-muted mt-1">
+                        {% if c.ultima %}Fechamento {{ c.ultima.periodo|date:"m/Y" }}{% endif %}
+                        {% if c.parcial %}
+                            {% if c.ultima %} · {% endif %}<span class="badge bg-info text-dark">Parcial {{ c.parcial.periodo|date:"d/m" }}: {{ c.parcial.valor }} {{ c.ind.unidade }}</span>
                         {% endif %}
                     </div>
                 </div>
-            </a>
+            </div>
         </div>
         {% empty %}
         <div class="col-12"><div class="alert alert-info">Nenhum indicador cadastrado ainda. Clique em <strong>Novo indicador</strong> para começar.</div></div>
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+{{ charts|json_script:"kpi-charts" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    if (typeof Chart === 'undefined') return;
+    var charts = JSON.parse(document.getElementById('kpi-charts').textContent);
+    Object.keys(charts).forEach(function (id) {
+        var d = charts[id], el = document.getElementById('kpi-chart-' + id);
+        if (!el || !d.labels.length) return;
+        var cores = d.valores.map(function (v) {
+            var ok = d.sentido === 'maior' ? v >= d.meta : v <= d.meta;
+            return ok ? '#198754' : '#dc3545';
+        });
+        new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: d.labels,
+                datasets: [
+                    {type: 'bar', label: 'Fechamento', data: d.valores, backgroundColor: cores, borderRadius: 3, order: 2},
+                    {type: 'line', label: 'Meta', data: d.labels.map(function () { return d.meta; }),
+                     borderColor: '#6c757d', borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5, order: 1}
+                ]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {legend: {display: false}},
+                scales: {y: {beginAtZero: false, ticks: {maxTicksLimit: 4}}, x: {ticks: {maxRotation: 0, autoSkip: true}}}
+            }
+        });
+    });
+})();
+</script>
 {% endblock %}

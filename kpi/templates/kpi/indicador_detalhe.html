@@ -8,7 +8,7 @@
             <a href="{% url 'kpi:painel' %}" class="small text-decoration-none">&larr; Painel</a>
             <h4 class="mb-0">{{ ind.nome }}</h4>
             <small class="text-muted">
-                {{ ind.area|default:"Sem área" }} · {{ ind.get_periodicidade_display }} · Meta {% if ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ ind.meta }} {{ ind.unidade }}
+                {{ ind.area|default:"Sem área" }} · {{ ind.get_periodicidade_display }}{% if ind.acompanhamento %} (+ {{ ind.get_acompanhamento_display|lower }}){% endif %} · Meta {% if ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ ind.meta }} {{ ind.unidade }}
                 {% if ind.responsavel %}· Resp.: {{ ind.responsavel }}{% endif %}
             </small>
             {% if ind.descricao %}<div class="small mt-1">{{ ind.descricao|linebreaksbr }}</div>{% endif %}
@@ -24,11 +24,12 @@
             </div>
             <div class="card"><div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
-                    <thead><tr><th>Período</th><th>Valor</th><th>Meta</th><th>Observação</th><th></th></tr></thead>
+                    <thead><tr><th>Período</th><th>Tipo</th><th>Valor</th><th>Meta</th><th>Observação</th><th></th></tr></thead>
                     <tbody>
                     {% for m in medicoes %}
                         <tr>
                             <td>{{ m.periodo|date:"d/m/Y" }}</td>
+                            <td>{% if m.parcial %}<span class="badge bg-info text-dark">Parcial</span>{% else %}Fechamento{% endif %}</td>
                             <td class="fw-bold {% if m.atingiu %}text-success{% else %}text-danger{% endif %}">{{ m.valor }} {{ ind.unidade }}</td>
                             <td>{% if m.atingiu %}<span class="badge bg-success">Atingida</span>{% else %}<span class="badge bg-danger">Não atingida</span>{% endif %}</td>
                             <td>{{ m.observacao }}</td>
@@ -47,6 +48,7 @@
             <form method="post" class="card card-body">
                 {% csrf_token %}
                 <h6 class="mb-3">Lançar medição</h6>
+                {% if form.parcial %}<div class="form-check mb-2">{{ form.parcial }} <label class="form-check-label" for="{{ form.parcial.id_for_label }}">Lançamento parcial ({{ ind.get_acompanhamento_display|lower }})</label></div>{% endif %}
                 <div class="mb-2">{{ form.periodo.label_tag }}{{ form.periodo }}{{ form.periodo.errors }}</div>
                 <div class="mb-2">{{ form.valor.label_tag }}{{ form.valor }}{{ form.valor.errors }}</div>
                 <div class="mb-3">{{ form.observacao.label_tag }}{{ form.observacao }}</div>
@@ -66,15 +68,15 @@
 (function () {
     var dados = JSON.parse(document.getElementById('kpi-dados').textContent);
     var labels = dados.labels;
-    var valores = dados.valores;
-    var meta = dados.meta;
+        var meta = dados.meta;
     if (!labels.length || typeof Chart === 'undefined') return;
     new Chart(document.getElementById('kpiChart'), {
         type: 'line',
         data: {
             labels: labels,
             datasets: [
-                {label: 'Valor', data: valores, borderColor: '#0d6efd', backgroundColor: '#0d6efd', tension: 0.25},
+                {label: 'Fechamento', data: dados.fechamento, borderColor: '#0d6efd', backgroundColor: '#0d6efd', tension: 0.25, spanGaps: true, pointRadius: 4},
+                {label: 'Parcial', data: dados.parcial, borderColor: '#0dcaf0', backgroundColor: '#0dcaf0', borderDash: [3, 3], spanGaps: true, pointRadius: 3},
                 {label: 'Meta', data: labels.map(function () { return meta; }), borderColor: '#198754', borderDash: [6, 4], pointRadius: 0}
             ]
         },
