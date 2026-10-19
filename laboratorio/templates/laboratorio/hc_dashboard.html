@@ -12,6 +12,7 @@
             <p class="text-muted small mb-0">Consolidação e análise dos lançamentos do formulário ({{ total_registros|milhar }} registros).</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:hc_dia_hora' %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history me-1"></i>Dia hora a hora</a>
             <a href="{% url 'laboratorio:hc_registros' %}" class="btn btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Registros</a>
             <a href="{% url 'laboratorio:hc_registro_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Novo lançamento</a>
         </div>

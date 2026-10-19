@@ -347,3 +347,44 @@ class PermissoesCFTests(CFBase):
         resp = self.client.get(reverse("laboratorio:cf_dashboard"))
         self.assertContains(resp, reverse("laboratorio:cf_config_campos"))
         self.assertContains(resp, reverse("laboratorio:cf_registro_create"))
+
+
+class DiaHoraCFTests(CFBase):
+    def _reg(self, hora, total, ret=0, **kw):
+        from django.utils import timezone
+
+        r = RetrabalhoCFRegistro.objects.create(data=date(2026, 10, 5), total_lentes=total, qtd_retrabalho=ret, teve_retrabalho=bool(ret), **kw)
+        if hora is not None:
+            RetrabalhoCFRegistro.objects.filter(pk=r.pk).update(
+                criado_em=timezone.make_aware(datetime(2026, 10, 5, hora, 30)))
+        return r
+
+    def test_agrupa_por_hora_e_isola_registros_sem_hora(self):
+        from laboratorio.models import RetrabalhoCFItem
+
+        self._reg(8, 100, 4)
+        r = self._reg(8, 100, 0, reprovado=True)
+        self._reg(10, 50, 5)
+        RetrabalhoCFItem.objects.create(registro=RetrabalhoCFRegistro.objects.get(total_lentes=50), motivo=self.ar_risco, quantidade=5)
+        self._reg(None, 200, 2, origem=RetrabalhoCFRegistro.ORIGEM_IMPORT)
+        d = cf.por_hora(date(2026, 10, 5))
+        self.assertEqual([l["rotulo"] for l in d["linhas"]], ["08h", "09h", "10h"])
+        h8, h9, h10 = d["linhas"]
+        self.assertEqual((h8["lentes"], h8["lotes"], h8["ret"], h8["pct_ret"], h8["lentes_rep"]), (200, 2, 4, 2.0, 100))
+        self.assertEqual((h9["lotes"], h9["pct_ret"]), (0, None))
+        self.assertEqual((h10["ar"], h10["pct_ar"], h10["pct_ret"]), (5, 10.0, 10.0))
+        self.assertEqual((d["sem_hora"]["lentes"], d["total"]["lentes"], d["total"]["ret"]), (200, 450, 11))
+
+    def test_tela_renderiza(self):
+        url = reverse("laboratorio:cf_dia_hora")
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self._reg(14, 100, 5)
+        resp = self.client.get(url, {"data": "2026-10-05"})
+        self.assertContains(resp, "14h")
+        self.assertContains(resp, "5,00%")
+        self.assertEqual(self.client.get(url, {"data": "lixo"}).status_code, 200)
+
+    def test_view_no_mapa_de_permissoes(self):
+        from shared.permissions import get_view_permission_map
+
+        self.assertIn("laboratorio:cf_dia_hora", get_view_permission_map())

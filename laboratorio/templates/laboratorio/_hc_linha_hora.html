@@ -1,0 +1,7 @@
+{% load laboratorio_tags %}
+<tr {% if not l.produzidas %}class="text-muted"{% endif %}>
+    <td class="text-start">{{ l.rotulo }}</td>
+    <td>{{ l.pct_ret1|pc }}</td><td class="fw-semibold {{ l.rend1|cor_meta:meta }}">{{ l.rend1|pc }}</td>
+    <td>{{ l.pct_ret2|pc }}</td><td class="fw-semibold {{ l.rend2|cor_meta:meta }}">{{ l.rend2|pc }}</td>
+    <td>{{ l.produzidas|milhar }}</td><td>{{ l.retrabalho|milhar }}</td><td class="fw-semibold {{ l.rendimento|cor_meta:meta }}">{{ l.rendimento|pc }}</td>
+</tr>

@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load laboratorio_tags %}
+
+{% block title %}Rendimento HC por hora | CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · HC</span>
+            <h2 class="h3 fw-bold mt-2 mb-0">Rendimento HC — dia hora a hora <span class="text-muted fs-6 fw-normal">— meta {{ meta|pc:0 }}</span></h2>
+            <p class="text-muted small mb-0">A hora é a do lançamento da garra no formulário. Lançamentos importados ou feitos em outro dia aparecem em "Sem horário".</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:hc_dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Dashboard mensal</a>
+        </div>
+    </div>
+
+    <form method="get" class="card border-0 shadow-sm mb-3"><div class="card-body row g-2 align-items-end">
+        <div class="col-6 col-md-3"><label class="form-label small mb-1">Data</label><input type="date" name="data" value="{{ dia|date:'Y-m-d' }}" class="form-control"></div>
+        <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Aplicar</button></div>
+    </div></form>
+
+    {% with t=dados.total %}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">LENTES PRODUZIDAS</div><div class="h4 fw-bold mb-0">{{ t.produzidas|milhar }}</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">RETRABALHO</div><div class="h4 fw-bold mb-0 text-danger">{{ t.retrabalho|milhar }}</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">% RENDIMENTO 1º PASSO</div><div class="h4 fw-bold mb-0 {{ t.rend1|cor_meta:meta }}">{{ t.rend1|pc }}</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">% RENDIMENTO 2º PASSO</div><div class="h4 fw-bold mb-0 {{ t.rend2|cor_meta:meta }}">{{ t.rend2|pc }}</div></div></div>
+    </div>
+    {% endwith %}
+
+    {% if grafico %}
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body"><div style="height: 300px;"><canvas id="hcChart"></canvas></div></div></div>
+    {{ grafico|json_script:"hc-grafico" }}
+    {% endif %}
+
+    <div class="card border-0 shadow-sm"><div class="table-responsive">
+        <table class="table table-sm table-hover align-middle text-center mb-0 small">
+            <thead class="table-light"><tr>
+                <th class="text-start">Hora</th><th>% Retrab. 1º passo</th><th>% Rend. 1º passo</th><th>% Retrab. 2º passo</th><th>% Rend. 2º passo</th><th>Lentes produzidas</th><th>Retrabalho</th><th>% Rend. geral</th>
+            </tr></thead>
+            <tbody>
+            {% for l in dados.linhas %}{% include 'laboratorio/_hc_linha_hora.html' %}{% empty %}
+                {% if not dados.sem_hora %}<tr><td colspan="8" class="text-muted py-3">Sem lançamentos neste dia.</td></tr>{% endif %}
+            {% endfor %}
+            {% if dados.sem_hora %}{% with l=dados.sem_hora %}{% include 'laboratorio/_hc_linha_hora.html' %}{% endwith %}{% endif %}
+            </tbody>
+            {% with t=dados.total %}
+            <tfoot class="table-light fw-bold"><tr>
+                <td class="text-start">Total do dia</td><td>{{ t.pct_ret1|pc }}</td><td>{{ t.rend1|pc }}</td><td>{{ t.pct_ret2|pc }}</td><td>{{ t.rend2|pc }}</td>
+                <td>{{ t.produzidas|milhar }}</td><td>{{ t.retrabalho|milhar }}</td><td>{{ t.rendimento|pc }}</td>
+            </tr></tfoot>
+            {% endwith %}
+        </table>
+    </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    const el = document.getElementById('hc-grafico');
+    if (!el) return;
+    const g = JSON.parse(el.textContent);
+    const cores = ['#0d6efd', '#fd7e14', '#198754', '#6f42c1'];
+    const datasets = g.datasets.map((d, i) => ({
+        label: d.label, data: d.data, borderColor: cores[i % 4], backgroundColor: cores[i % 4] + '33',
+        tension: .25, spanGaps: true, pointRadius: 3, borderWidth: 2,
+    }));
+    if (g.meta != null) {
+        datasets.push({label: 'Meta ' + g.meta + '%', data: g.labels.map(() => g.meta), borderColor: '#dc3545', borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5});
+    }
+    new Chart(document.getElementById('hcChart'), {
+        type: 'line', data: {labels: g.labels, datasets: datasets},
+        options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+            scales: {y: {suggestedMin: 80, suggestedMax: 100, ticks: {callback: v => v + '%'}}}},
+    });
+})();
+</script>
+{% endblock %}

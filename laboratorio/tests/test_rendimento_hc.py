@@ -401,3 +401,41 @@ class PermissoesHCTests(RendimentoHCBase):
         resp = self.client.get(reverse("laboratorio:hc_dashboard"))
         self.assertContains(resp, reverse("laboratorio:hc_config_campos"))
         self.assertContains(resp, reverse("laboratorio:hc_registro_create"))
+
+
+class DiaHoraHCTests(RendimentoHCBase):
+    def _reg(self, hora, qtd, ret, garra, **kw):
+        from datetime import datetime
+
+        from django.utils import timezone
+
+        r = RendimentoHCRegistro.objects.create(data=date(2026, 10, 5), qtd_lentes=qtd, qtd_retrabalho=ret, teve_retrabalho=bool(ret), tipo_garra=garra, **kw)
+        if hora is not None:
+            RendimentoHCRegistro.objects.filter(pk=r.pk).update(criado_em=timezone.make_aware(datetime(2026, 10, 5, hora, 15)))
+
+    def test_agrupa_por_hora_com_passos(self):
+        self._reg(9, 100, 5, self.nova)
+        self._reg(9, 20, 4, self.retr1)
+        self._reg(11, 50, 0, self.nova)
+        self._reg(None, 30, 3, self.nova, origem=RendimentoHCRegistro.ORIGEM_IMPORT)
+        d = hc.por_hora(date(2026, 10, 5))
+        self.assertEqual([l["rotulo"] for l in d["linhas"]], ["09h", "10h", "11h"])
+        h9, h10, h11 = d["linhas"]
+        self.assertEqual((h9["produzidas"], h9["retrabalho"], h9["rend1"], h9["rend2"], h9["rendimento"]), (120, 9, 95.0, 80.0, 92.5))
+        self.assertEqual((h10["produzidas"], h10["rendimento"]), (0, None))
+        self.assertEqual(h11["rend1"], 100.0)
+        self.assertEqual((d["sem_hora"]["produzidas"], d["total"]["produzidas"], d["total"]["retrabalho"]), (30, 200, 12))
+
+    def test_tela_renderiza(self):
+        url = reverse("laboratorio:hc_dia_hora")
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self._reg(9, 100, 5, self.nova)
+        resp = self.client.get(url, {"data": "2026-10-05"})
+        self.assertContains(resp, "09h")
+        self.assertContains(resp, "95,00%")
+        self.assertEqual(self.client.get(url, {"data": "lixo"}).status_code, 200)
+
+    def test_view_no_mapa_de_permissoes(self):
+        from shared.permissions import get_view_permission_map
+
+        self.assertIn("laboratorio:hc_dia_hora", get_view_permission_map())

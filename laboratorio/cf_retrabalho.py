@@ -8,6 +8,7 @@ from django import forms
 from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.db.models import Count, Q, Sum
+from django.utils import timezone
 
 from maquinas.models import Maquina
 from rh.models import Colaborador
@@ -295,6 +296,56 @@ def geral(inicio, fim):
     for o in ("AR", "HC", "CF"):
         total[o.lower()], total[f"pct_{o.lower()}"] = tot_o[o], pct(tot_o[o], total["lentes"])
     return {"linhas": linhas, "total": total, "meta": meta()}
+
+
+def hora_registro(r):
+    """Hora (0-23) do lançamento, ou None se não for confiável.
+
+    O modelo não guarda a hora da inspeção: só `data` e `criado_em`. A hora de `criado_em` vale quando o lote foi
+    lançado pelo formulário no próprio dia; importações e lançamentos retroativos ficam sem hora.
+    """
+    if r.origem != RetrabalhoCFRegistro.ORIGEM_FORM or not r.criado_em:
+        return None
+    local = timezone.localtime(r.criado_em)
+    return local.hour if local.date() == r.data else None
+
+
+def por_hora(dia):
+    """Mesmos indicadores do consolidado diário, calculados por hora de lançamento no dia."""
+    regs = list(RetrabalhoCFRegistro.objects.filter(data=dia))
+    ids = [r.pk for r in regs]
+    motivos = defaultdict(lambda: defaultdict(int))
+    for it in RetrabalhoCFItem.objects.filter(registro_id__in=ids).select_related("motivo"):
+        motivos[it.registro_id][it.motivo.grupo] += it.quantidade
+    acc = defaultdict(lambda: {"lentes": 0, "lotes": 0, "ret": 0, "lentes_rep": 0, "lotes_rep": 0, "AR": 0, "HC": 0, "CF": 0})
+    for r in regs:
+        a = acc[hora_registro(r)]
+        a["lentes"] += r.total_lentes
+        a["lotes"] += 1
+        a["ret"] += r.qtd_retrabalho
+        if r.reprovado:
+            a["lentes_rep"] += r.total_lentes
+            a["lotes_rep"] += 1
+        for o in ("AR", "HC", "CF"):
+            a[o] += motivos[r.pk][o]
+
+    def montar(a):
+        l = _linha(a)
+        for o in ("AR", "HC", "CF"):
+            l[o.lower()], l[f"pct_{o.lower()}"] = a[o], pct(a[o], l["lentes"])
+        return l
+
+    horas = sorted(h for h in acc if h is not None)
+    linhas = []
+    for h in (range(horas[0], horas[-1] + 1) if horas else []):
+        l = montar(acc.get(h, {"lentes": 0, "lotes": 0, "ret": 0, "lentes_rep": 0, "lotes_rep": 0, "AR": 0, "HC": 0, "CF": 0}))
+        l["hora"], l["rotulo"] = h, f"{h:02d}h"
+        linhas.append(l)
+    sem_hora = montar(acc[None]) if None in acc else None
+    if sem_hora:
+        sem_hora["rotulo"] = "Sem horário"
+    total = montar({k: sum(a[k] for a in acc.values()) for k in ("lentes", "lotes", "ret", "lentes_rep", "lotes_rep", "AR", "HC", "CF")})
+    return {"linhas": linhas, "sem_hora": sem_hora, "total": total, "meta": meta(), "dia": dia}
 
 
 def retrabalho_motivo(inicio, fim):

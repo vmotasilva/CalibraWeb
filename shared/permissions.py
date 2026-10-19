@@ -1420,6 +1420,7 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_laboratorio_hc_dashboard_bloco",
                 "funcoes": [
                     {"nome": "Dashboard Rendimento HC", "view_name": "laboratorio:hc_dashboard", "perm": "core.nav_laboratorio_hc_dashboard"},
+                    {"nome": "Dashboard Rendimento HC: Dia Hora a Hora", "view_name": "laboratorio:hc_dia_hora", "perm": "core.nav_laboratorio_hc_dia_hora"},
                 ],
             },
             {
@@ -1475,6 +1476,7 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_laboratorio_cf_dashboard_bloco",
                 "funcoes": [
                     {"nome": "Dashboard Retrabalho CF", "view_name": "laboratorio:cf_dashboard", "perm": "core.nav_laboratorio_cf_dashboard"},
+                    {"nome": "Dashboard Retrabalho CF: Dia Hora a Hora", "view_name": "laboratorio:cf_dia_hora", "perm": "core.nav_laboratorio_cf_dia_hora"},
                 ],
             },
             {

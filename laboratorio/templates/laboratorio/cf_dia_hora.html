@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load laboratorio_tags %}
+
+{% block title %}Retrabalho CF por hora | CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · Controle Final</span>
+            <h2 class="h3 fw-bold mt-2 mb-0">Retrabalho CF — dia hora a hora <span class="text-muted fs-6 fw-normal">— meta máxima {{ meta|pc:0 }}</span></h2>
+            <p class="text-muted small mb-0">A hora é a do lançamento do lote no formulário. Lotes importados ou lançados em outro dia aparecem em "Sem horário".</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:cf_dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Dashboard mensal</a>
+        </div>
+    </div>
+
+    <form method="get" class="card border-0 shadow-sm mb-3"><div class="card-body row g-2 align-items-end">
+        <div class="col-6 col-md-3"><label class="form-label small mb-1">Data</label><input type="date" name="data" value="{{ dia|date:'Y-m-d' }}" class="form-control"></div>
+        <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Aplicar</button></div>
+    </div></form>
+
+    {% with t=dados.total %}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">LENTES INSPECIONADAS</div><div class="h4 fw-bold mb-0">{{ t.lentes|milhar }}</div></div></div>
+        <div class="col-6 col-lg"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">LOTES</div><div class="h4 fw-bold mb-0">{{ t.lotes|milhar }}</div></div></div>
+        <div class="col-6 col-lg"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">LENTES RETRABALHADAS</div><div class="h4 fw-bold mb-0 text-danger">{{ t.ret|milhar }}</div></div></div>
+        <div class="col-6 col-lg"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">% RETRABALHO</div><div class="h4 fw-bold mb-0 {{ t.pct_ret|cor_meta_max:meta }}">{{ t.pct_ret|pc }}</div></div></div>
+        <div class="col-6 col-lg"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">% LENTES REPROVADAS</div><div class="h4 fw-bold mb-0">{{ t.pct_lentes_rep|pc }}</div></div></div>
+    </div>
+    {% endwith %}
+
+    {% if grafico %}
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body"><div style="height: 280px;"><canvas id="cfChart"></canvas></div></div></div>
+    {{ grafico|json_script:"cf-grafico" }}
+    {% endif %}
+
+    <div class="card border-0 shadow-sm"><div class="table-responsive">
+        <table class="table table-sm table-hover align-middle text-center mb-0 small">
+            <thead class="table-light"><tr>
+                <th class="text-start">Hora</th><th>Lentes inspecionadas</th><th>Lotes</th><th>Lentes retrabalhadas</th><th>% retrabalho</th><th>Lentes reprovadas</th><th>% reprovadas</th>
+                <th>Motivos AR</th><th>% AR</th><th>Motivos HC</th><th>% HC</th><th>Motivos CF</th><th>% CF</th>
+            </tr></thead>
+            <tbody>
+            {% for l in dados.linhas %}{% include 'laboratorio/_cf_linha_hora.html' %}{% empty %}
+                {% if not dados.sem_hora %}<tr><td colspan="13" class="text-muted py-3">Sem lançamentos neste dia.</td></tr>{% endif %}
+            {% endfor %}
+            {% if dados.sem_hora %}{% with l=dados.sem_hora %}{% include 'laboratorio/_cf_linha_hora.html' %}{% endwith %}{% endif %}
+            </tbody>
+            {% with t=dados.total %}
+            <tfoot class="table-light fw-bold"><tr>
+                <td class="text-start">Total do dia</td><td>{{ t.lentes|milhar }}</td><td>{{ t.lotes }}</td><td>{{ t.ret }}</td><td>{{ t.pct_ret|pc }}</td><td>{{ t.lentes_rep }}</td><td>{{ t.pct_lentes_rep|pc }}</td>
+                <td>{{ t.ar }}</td><td>{{ t.pct_ar|pc }}</td><td>{{ t.hc }}</td><td>{{ t.pct_hc|pc }}</td><td>{{ t.cf }}</td><td>{{ t.pct_cf|pc }}</td>
+            </tr></tfoot>
+            {% endwith %}
+        </table>
+    </div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    const el = document.getElementById('cf-grafico');
+    if (!el) return;
+    const g = JSON.parse(el.textContent);
+    const cores = ['#dc3545', '#6f42c1', '#0d6efd', '#198754'];
+    const datasets = g.datasets.map((d, i) => ({
+        label: d.label, data: d.data, borderColor: cores[i % 4], backgroundColor: cores[i % 4] + '33',
+        tension: .25, spanGaps: true, pointRadius: 3, borderWidth: 2,
+    }));
+    if (g.meta != null) {
+        datasets.push({label: 'Meta máx. ' + g.meta + '%', data: g.labels.map(() => g.meta), borderColor: '#198754', borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5});
+    }
+    new Chart(document.getElementById('cfChart'), {
+        type: 'line', data: {labels: g.labels, datasets: datasets},
+        options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+            scales: {y: {beginAtZero: true, ticks: {callback: v => v + '%'}}}},
+    });
+})();
+</script>
+{% endblock %}

@@ -476,6 +476,7 @@ class NavigationPermission(models.Model):
             # --- HMC > HC (Rendimento HC) ---
             ("nav_laboratorio_hc_dashboard_bloco", "NAV: Laboratorio / Bloco HC: Dashboard de Rendimento"),
             ("nav_laboratorio_hc_dashboard", "NAV: Laboratorio / HC / Dashboard Rendimento HC"),
+            ("nav_laboratorio_hc_dia_hora", "NAV: Laboratorio / HC / Dashboard Rendimento HC: Dia Hora a Hora"),
             ("nav_laboratorio_hc_registros_bloco", "NAV: Laboratorio / Bloco HC: Formulario e Registros"),
             ("nav_laboratorio_hc_registros", "NAV: Laboratorio / HC / Registros de Rendimento"),
             ("nav_laboratorio_hc_registro_create", "NAV: Laboratorio / HC / Novo Lancamento de Rendimento"),
@@ -498,6 +499,7 @@ class NavigationPermission(models.Model):
             # --- HMC > Controle Final (Retrabalho CF) ---
             ("nav_laboratorio_cf_dashboard_bloco", "NAV: Laboratorio / Bloco CF: Dashboard de Retrabalho"),
             ("nav_laboratorio_cf_dashboard", "NAV: Laboratorio / CF / Dashboard Retrabalho CF"),
+            ("nav_laboratorio_cf_dia_hora", "NAV: Laboratorio / CF / Dashboard Retrabalho CF: Dia Hora a Hora"),
             ("nav_laboratorio_cf_registros_bloco", "NAV: Laboratorio / Bloco CF: Formulario e Registros"),
             ("nav_laboratorio_cf_registros", "NAV: Laboratorio / CF / Registros de Retrabalho"),
             ("nav_laboratorio_cf_registro_create", "NAV: Laboratorio / CF / Novo Lancamento de Retrabalho"),

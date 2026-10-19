@@ -8,6 +8,7 @@ from django import forms
 from django.core.validators import MinValueValidator
 from django.db import transaction
 from django.db.models import Count, Q, Sum
+from django.utils import timezone
 
 from rh.models import Colaborador
 
@@ -312,6 +313,43 @@ def consolidado(inicio, fim):
         linha["data"] = dia
         linhas.append(linha)
     return {"linhas": linhas, "total": _linha_passos(_base(inicio, fim).aggregate(**_agg_passos())), "meta": meta()}
+
+
+def hora_registro(r):
+    """Hora (0-23) do lançamento, ou None se não for confiável.
+
+    O modelo só guarda `data` e `criado_em`; a hora de `criado_em` vale quando a garra foi lançada pelo formulário
+    no próprio dia. Importações e lançamentos retroativos ficam sem hora.
+    """
+    if r.origem != RendimentoHCRegistro.ORIGEM_FORM or not r.criado_em:
+        return None
+    local = timezone.localtime(r.criado_em)
+    return local.hour if local.date() == r.data else None
+
+
+def por_hora(dia):
+    """Mesmos indicadores do consolidado (1º/2º passo e geral), por hora de lançamento no dia."""
+    chaves = ("prod", "ret", "p1", "r1", "p2", "r2")
+    acc = defaultdict(lambda: dict.fromkeys(chaves, 0))
+    for r in RendimentoHCRegistro.objects.filter(data=dia).select_related("tipo_garra"):
+        a = acc[hora_registro(r)]
+        a["prod"] += r.qtd_lentes
+        a["ret"] += r.qtd_retrabalho
+        passo = r.tipo_garra.passo if r.tipo_garra_id else None
+        if passo in (1, 2):
+            a[f"p{passo}"] += r.qtd_lentes
+            a[f"r{passo}"] += r.qtd_retrabalho
+    horas = sorted(h for h in acc if h is not None)
+    linhas = []
+    for h in (range(horas[0], horas[-1] + 1) if horas else []):
+        l = _linha_passos(acc.get(h, {}))
+        l["hora"], l["rotulo"] = h, f"{h:02d}h"
+        linhas.append(l)
+    sem_hora = _linha_passos(acc[None]) if None in acc else None
+    if sem_hora:
+        sem_hora["rotulo"] = "Sem horário"
+    total = _linha_passos({k: sum(a[k] for a in acc.values()) for k in chaves})
+    return {"linhas": linhas, "sem_hora": sem_hora, "total": total, "meta": meta(), "dia": dia}
 
 
 def _soma_por_cadastro(itens_qs, tipo_item, tipo_cadastro):

@@ -125,6 +125,7 @@ urlpatterns = [
 
     # HMC > HC: Rendimento HC
     path("hc/", views_hc.hc_dashboard, name="hc_dashboard"),
+    path("hc/dia/", views_hc.hc_dia_hora, name="hc_dia_hora"),
     path("hc/registros/", views_hc.hc_registros, name="hc_registros"),
     path("hc/registros/novo/", views_hc.hc_registro_create, name="hc_registro_create"),
     path("hc/importar/", views_hc.hc_importar, name="hc_importar"),
@@ -150,6 +151,7 @@ urlpatterns = [
 
     # HMC > Controle Final: Retrabalho CF
     path("cf/", views_cf.cf_dashboard, name="cf_dashboard"),
+    path("cf/dia/", views_cf.cf_dia_hora, name="cf_dia_hora"),
     path("cf/registros/", views_cf.cf_registros, name="cf_registros"),
     path("cf/registros/novo/", views_cf.cf_registro_create, name="cf_registro_create"),
     path("cf/registros/<int:pk>/detalhe/", views_cf.cf_registro_detalhe, name="cf_registro_detalhe"),

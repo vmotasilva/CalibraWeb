@@ -139,6 +139,21 @@ def hc_dashboard(request):
     return render(request, "laboratorio/hc_dashboard.html", ctx)
 
 
+@login_required
+def hc_dia_hora(request):
+    """Rendimento HC de um dia, hora a hora (hora = hora do lançamento no formulário)."""
+    hc.garantir_padroes()
+    _, _, ultimo = _mes_referencia()
+    dia = _data(request.GET.get("data"), ultimo)
+    dados = hc.por_hora(dia)
+    linhas = dados["linhas"]
+    grafico = {"tipo": "line", "meta": dados["meta"], "labels": [l["rotulo"] for l in linhas], "datasets": [
+        {"label": "% Rendimento 1º passo", "data": [l["rend1"] for l in linhas]},
+        {"label": "% Rendimento 2º passo", "data": [l["rend2"] for l in linhas]},
+        {"label": "% Rendimento geral", "data": [l["rendimento"] for l in linhas]}]} if linhas else None
+    return render(request, "laboratorio/hc_dia_hora.html", {"dia": dia, "dados": dados, "meta": dados["meta"], "grafico": grafico})
+
+
 # --------------------------------------------------------------------------- registros
 def _filtrar_registros(request):
     """Queryset de registros conforme os filtros da tela (usado na listagem e na exportação)."""

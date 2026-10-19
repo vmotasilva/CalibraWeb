@@ -1,0 +1,7 @@
+{% load laboratorio_tags %}
+<tr {% if not l.lotes %}class="text-muted"{% endif %}>
+    <td class="text-start">{{ l.rotulo }}</td>
+    <td>{{ l.lentes|milhar }}</td><td>{{ l.lotes }}</td><td>{{ l.ret }}</td><td class="fw-semibold {{ l.pct_ret|cor_meta_max:meta }}">{{ l.pct_ret|pc }}</td>
+    <td>{{ l.lentes_rep }}</td><td>{{ l.pct_lentes_rep|pc }}</td>
+    <td>{{ l.ar }}</td><td>{{ l.pct_ar|pc }}</td><td>{{ l.hc }}</td><td>{{ l.pct_hc|pc }}</td><td>{{ l.cf }}</td><td>{{ l.pct_cf|pc }}</td>
+</tr>

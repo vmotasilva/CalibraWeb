@@ -93,6 +93,20 @@ def cf_dashboard(request):
     return render(request, "laboratorio/cf_dashboard.html", ctx)
 
 
+@login_required
+def cf_dia_hora(request):
+    """Retrabalho CF de um dia, hora a hora (hora = hora do lançamento no formulário)."""
+    cf.garantir_padroes()
+    ultimo = RetrabalhoCFRegistro.objects.order_by("-data").values_list("data", flat=True).first() or date.today()
+    dia = _data(request.GET.get("data"), ultimo)
+    dados = cf.por_hora(dia)
+    linhas = dados["linhas"]
+    grafico = {"tipo": "line", "meta": dados["meta"], "labels": [l["rotulo"] for l in linhas], "datasets": [
+        {"label": "% Retrabalho", "data": [l["pct_ret"] for l in linhas]},
+        {"label": "% Lentes reprovadas", "data": [l["pct_lentes_rep"] for l in linhas]}]} if linhas else None
+    return render(request, "laboratorio/cf_dia_hora.html", {"dia": dia, "dados": dados, "meta": dados["meta"], "grafico": grafico})
+
+
 # --------------------------------------------------------------------------- registros
 def _filtrar_registros(request):
     qs = RetrabalhoCFRegistro.objects.select_related("colaborador_cf", "colaborador_ar", "turno", "maquina", "tratamento")
