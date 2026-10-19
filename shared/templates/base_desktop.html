@@ -274,9 +274,9 @@
 {% if nav_maq_lista or nav_maq_nova or nav_maq_categorias %}
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseOCCFG" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-2" id="collapseOCCFG">
+<ul class="list-unstyled collapse ps-2" id="collapseOCCFG">
 <li>
 <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseMAQUINAS" style="cursor: pointer;">
 MÁQUINAS <i class="bi bi-chevron-down transition-transform"></i>
@@ -327,9 +327,9 @@ MÁQUINAS <i class="bi bi-chevron-down transition-transform"></i>
                                     <ul class="list-unstyled collapse show" id="collapseHMC">
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseHMCAR" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-ANTI-REFLEXO <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+ANTI-REFLEXO <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-2" id="collapseHMCAR">
+<ul class="list-unstyled collapse ps-2" id="collapseHMCAR">
 {% if nav_coating_painel %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>{% endif %}
 {% if nav_coating_dashboard %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:dashboard_coating' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>{% endif %}
 {% if nav_coating_importacao %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:importar_lotes_coating' %}"><i class="bi bi-upload"></i> Importar Lotes</a></li>{% endif %}
@@ -449,9 +449,9 @@ FERRAMENTAS AUXILIARES <i class="bi bi-chevron-down transition-transform rotate-
 {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos %}
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseTMS" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-2" id="collapseTMS">
+<ul class="list-unstyled collapse ps-2" id="collapseTMS">
 {% if nav_tms_dash %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:tms_dashboard' %}"><i class="bi bi-stopwatch me-1"></i> Previsão & Gargalos</a></li>{% endif %}
 {% if nav_tms_fluxos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tms_fluxos_list' %}"><i class="bi bi-diagram-3 me-1"></i> Linhas de Produção</a></li>{% endif %}
 </ul>
@@ -460,9 +460,9 @@ TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform rota
 {% if nav_boards_list %}
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOQUADROS" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-QUADROS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+QUADROS <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-2" id="collapseGESTAOQUADROS">
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAOQUADROS">
 <li><a class="dropdown-item" href="{% url 'boards:dashboard' %}"><i class="bi bi-kanban"></i> Quadros
 {% if unread_board_mentions_count and unread_board_mentions_count > 0 %}<span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem;">{{ unread_board_mentions_count }}</span>{% endif %}</a></li>
 </ul>
@@ -471,9 +471,9 @@ QUADROS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 {% if nav_diagramas_list %}
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAODIAG" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-DIAGRAMAS <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-2" id="collapseGESTAODIAG">
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAODIAG">
 <li><a class="dropdown-item" href="{% url 'procedures:diagramas_lista' %}"><i class="bi bi-diagram-3-fill"></i> Diagramas e Fluxogramas</a></li>
 </ul>
 </li>
@@ -488,9 +488,9 @@ PROCESSOS <i class="bi bi-chevron-down transition-transform"></i>
 <ul class="list-unstyled collapse" id="collapseGESTAOPROC">
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOPCP" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-PCP <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+PCP <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-2" id="collapseGESTAOPCP">
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAOPCP">
 <li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
 </ul>
 </li>
@@ -507,18 +507,18 @@ QUALIDADE <i class="bi bi-chevron-down transition-transform"></i>
 {% if nav_grp_homol %}
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOHOMOL" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-HOMOLOGAÇÕES <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+HOMOLOGAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-2" id="collapseGESTAOHOMOL">
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAOHOMOL">
 {% if nav_laboratorio and nav_lab_homol and nav_homol_resumo %}<li><a class="dropdown-item" href="{% url 'laboratorio:homologacoes_resumo' %}"><i class="bi bi-patch-check"></i> Acompanhamento de Homologações</a></li>{% else %}<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>{% endif %}
 </ul>
 </li>
 {% endif %}
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOTQ" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-TESTES DE QUALIDADE <i class="bi bi-chevron-down transition-transform rotate-180"></i>
+TESTES DE QUALIDADE <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
-<ul class="list-unstyled collapse show ps-2" id="collapseGESTAOTQ">
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAOTQ">
 <li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
 </ul>
 </li>
