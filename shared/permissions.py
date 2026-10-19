@@ -1432,7 +1432,8 @@ NAV_STRUCTURE = [
                     {"nome": "Novo Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_create", "perm": "core.nav_laboratorio_hc_registro_create"},
                     {"nome": "Editar Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_update", "perm": "core.nav_laboratorio_hc_registro_update"},
                     {"nome": "Excluir Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_delete", "perm": "core.nav_laboratorio_hc_registro_delete"},
-                    {"nome": "Importar Planilha de Rendimento HC", "view_name": ["laboratorio:hc_importar", "laboratorio:hc_importar_preview"], "perm": "core.nav_laboratorio_hc_importar"},
+                    {"nome": "Importar Planilha de Rendimento HC", "view_name": ["laboratorio:hc_importar", "laboratorio:hc_importar_preview", "laboratorio:hc_modelo"], "perm": "core.nav_laboratorio_hc_importar"},
+                    {"nome": "Exportar Registros de Rendimento HC (planilha)", "view_name": "laboratorio:hc_exportar", "perm": "core.nav_laboratorio_hc_exportar"},
                 ],
             },
             {
@@ -1486,7 +1487,8 @@ NAV_STRUCTURE = [
                     {"nome": "Novo Lançamento de Retrabalho", "view_name": "laboratorio:cf_registro_create", "perm": "core.nav_laboratorio_cf_registro_create"},
                     {"nome": "Editar Lançamento de Retrabalho", "view_name": "laboratorio:cf_registro_update", "perm": "core.nav_laboratorio_cf_registro_update"},
                     {"nome": "Excluir Lançamento de Retrabalho", "view_name": "laboratorio:cf_registro_delete", "perm": "core.nav_laboratorio_cf_registro_delete"},
-                    {"nome": "Importar Planilha de Retrabalho CF", "view_name": ["laboratorio:cf_importar", "laboratorio:cf_importar_preview"], "perm": "core.nav_laboratorio_cf_importar"},
+                    {"nome": "Importar Planilha de Retrabalho CF", "view_name": ["laboratorio:cf_importar", "laboratorio:cf_importar_preview", "laboratorio:cf_modelo"], "perm": "core.nav_laboratorio_cf_importar"},
+                    {"nome": "Exportar Registros de Retrabalho CF (planilha)", "view_name": "laboratorio:cf_exportar", "perm": "core.nav_laboratorio_cf_exportar"},
                 ],
             },
             {

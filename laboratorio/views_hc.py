@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 from rh.models import Colaborador
 
 from . import hc_importacao as imp
+from . import planilhas
 from . import hc_rendimento as hc
 from .models import (
     EquipeHC,
@@ -139,9 +140,9 @@ def hc_dashboard(request):
 
 
 # --------------------------------------------------------------------------- registros
-@login_required
-def hc_registros(request):
-    qs = RendimentoHCRegistro.objects.select_related("colaborador", "turno", "tipo_garra")
+def _filtrar_registros(request):
+    """Queryset de registros conforme os filtros da tela (usado na listagem e na exportação)."""
+    qs = RendimentoHCRegistro.objects.select_related("colaborador", "turno", "tipo_garra", "tratamento")
     ini, fim = _data(request.GET.get("inicio"), None), _data(request.GET.get("fim"), None)
     if ini:
         qs = qs.filter(data__gte=ini)
@@ -153,6 +154,12 @@ def hc_registros(request):
     busca = (request.GET.get("q") or "").strip()
     if busca:
         qs = qs.filter(Q(colaborador__nome_completo__icontains=busca) | Q(colaborador_nome__icontains=busca) | Q(numero_garra__icontains=busca))
+    return qs, turno, busca
+
+
+@login_required
+def hc_registros(request):
+    qs, turno, busca = _filtrar_registros(request)
     pagina = Paginator(qs, 50).get_page(request.GET.get("page"))
     params = request.GET.copy()
     params.pop("page", None)
@@ -490,3 +497,17 @@ def hc_importar_preview(request):
         "abas": dados["abas"], "aba": dados["aba"], "cabecalhos": dados["cabecalhos"], "total": len(dados["linhas"]),
         "sugestao": imp.sugerir_mapa(dados["cabecalhos"]), "amostra": amostra,
     })
+
+
+# --------------------------------------------------------------------------- modelo e exportação
+@login_required
+def hc_modelo(request):
+    """Baixa o modelo de planilha pronto para preencher e importar."""
+    return planilhas.modelo("hc")
+
+
+@login_required
+def hc_exportar(request):
+    """Exporta os registros (respeitando os filtros da tela) no formato do importador."""
+    qs, _turno, _busca = _filtrar_registros(request)
+    return planilhas.exportar("hc", qs)

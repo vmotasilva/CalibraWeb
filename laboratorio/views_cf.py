@@ -18,6 +18,7 @@ from rh.models import Colaborador
 
 from . import cf_importacao as imp
 from . import cf_retrabalho as cf
+from . import planilhas
 from .models import (
     CFCadastro,
     CFCampoFormulario,
@@ -93,9 +94,8 @@ def cf_dashboard(request):
 
 
 # --------------------------------------------------------------------------- registros
-@login_required
-def cf_registros(request):
-    qs = RetrabalhoCFRegistro.objects.select_related("colaborador_cf", "turno")
+def _filtrar_registros(request):
+    qs = RetrabalhoCFRegistro.objects.select_related("colaborador_cf", "colaborador_ar", "turno", "maquina", "tratamento")
     ini, fim = _data(request.GET.get("inicio"), None), _data(request.GET.get("fim"), None)
     if ini:
         qs = qs.filter(data__gte=ini)
@@ -108,6 +108,12 @@ def cf_registros(request):
     if busca:
         qs = qs.filter(Q(numero_lote__icontains=busca) | Q(colaborador_cf__nome_completo__icontains=busca) | Q(colaborador_cf_nome__icontains=busca)
                        | Q(maquina_nome__icontains=busca) | Q(tratamento_nome__icontains=busca))
+    return qs, turno, busca
+
+
+@login_required
+def cf_registros(request):
+    qs, turno, busca = _filtrar_registros(request)
     pagina = Paginator(qs, 50).get_page(request.GET.get("page"))
     params = request.GET.copy()
     params.pop("page", None)
@@ -444,3 +450,15 @@ def cf_importar_preview(request):
     amostra = [["" if v is None else str(v)[:40] for v in linha] for linha in dados["linhas"][:2]]
     return JsonResponse({"abas": dados["abas"], "aba": dados["aba"], "cabecalhos": dados["cabecalhos"], "total": len(dados["linhas"]),
                          "sugestao": imp.sugerir_mapa(dados["cabecalhos"]), "amostra": amostra})
+
+
+# --------------------------------------------------------------------------- modelo e exportação
+@login_required
+def cf_modelo(request):
+    return planilhas.modelo("cf")
+
+
+@login_required
+def cf_exportar(request):
+    qs, _turno, _busca = _filtrar_registros(request)
+    return planilhas.exportar("cf", qs)
