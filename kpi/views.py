@@ -5,12 +5,13 @@ from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from kpi.forms import IndicadorForm, MedicaoForm, MotivoForm
+from kpi.forms import IndicadorForm, MedicaoForm
 from kpi.models import Indicador, Medicao, Motivo
 
 JANELAS = {'mensal': 12, 'semanal': 12, 'diaria': 31}
@@ -50,20 +51,34 @@ def _serie(ind, gran, medicoes):
 
 
 def _motivos(ind, dias):
-    qs = list(ind.motivos.all())
-    if dias:
-        corte = timezone.localdate() - datetime.timedelta(days=dias)
-        qs = [m for m in qs if m.data >= corte]
-    agregados = OrderedDict()
-    for m in qs:
-        chave = m.descricao.strip().lower()
-        ag = agregados.setdefault(chave, {'descricao': m.descricao.strip(), 'total': Decimal(0)})
-        ag['total'] += m.quantidade
-    top = sorted(agregados.values(), key=lambda a: a['total'], reverse=True)[:10]
-    soma = sum((a['total'] for a in agregados.values()), Decimal(0))
-    for a in top:
-        a['pct'] = float(a['total'] / soma * 100) if soma else 0
-    return top, qs
+    """Por granularidade: Top motivos (somados) e lançamentos agrupados por período."""
+    corte = timezone.localdate() - datetime.timedelta(days=dias) if dias else None
+    todos = [m for m in ind.motivos.all() if not corte or m.data >= corte]
+    saida = OrderedDict()
+    for gran, _ in Medicao.GRANULARIDADES[::-1]:  # diário, semanal, mensal
+        itens = [m for m in todos if m.granularidade == gran]
+        agregados = OrderedDict()
+        periodos = OrderedDict()
+        for m in itens:
+            chave = m.descricao.strip().lower()
+            ag = agregados.setdefault(chave, {'descricao': m.descricao.strip(), 'total': Decimal(0)})
+            ag['total'] += m.quantidade
+            periodos.setdefault(m.data, []).append(m)
+        top = sorted(agregados.values(), key=lambda a: a['total'], reverse=True)[:10]
+        soma = sum((a['total'] for a in agregados.values()), Decimal(0))
+        for a in top:
+            a['pct'] = float(a['total'] / soma * 100) if soma else 0
+        saida[gran] = {
+            'gran': gran,
+            'nome': dict(Medicao.GRANULARIDADES)[gran].replace('Diária', 'Diário'),
+            'top': top,
+            'periodos': [
+                {'data': d, 'rotulo': _rotulo(gran, d), 'itens': sorted(v, key=lambda x: -x.quantidade),
+                 'total': sum((x.quantidade for x in v), Decimal(0))}
+                for d, v in sorted(periodos.items(), reverse=True)
+            ],
+        }
+    return list(saida.values())
 
 
 @login_required
@@ -74,20 +89,23 @@ def painel_view(request):
         dias = 90
     if dias not in dict(PERIODOS_MOTIVOS):
         dias = 90
-    abas, charts = [], {}
+    abas, charts, motivos_js = [], {}, {}
     for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos'):
         meds = list(ind.medicoes.all())
         mensais = sorted((m for m in meds if m.granularidade == 'mensal'), key=lambda m: m.periodo, reverse=True)
         ultima = mensais[0] if mensais else None
-        top, lancamentos = _motivos(ind, dias)
+        motivos_tabs = _motivos(ind, dias)
         grans = ['mensal'] + (['semanal', 'diaria'] if ind.acompanhamento_detalhado else [])
         charts[str(ind.pk)] = {g: _serie(ind, g, meds) for g in grans}
+        motivos_js[str(ind.pk)] = [
+            {'g': m.granularidade, 'd': m.data.isoformat(), 'desc': m.descricao, 'qtd': str(m.quantidade)}
+            for m in ind.motivos.all()
+        ]
         abas.append({
             'ind': ind,
             'ultima': ultima,
             'atingiu': ind.atingiu(ultima.valor) if ultima else None,
-            'top': top,
-            'lancamentos': lancamentos,
+            'motivos_tabs': motivos_tabs,
         })
     ativo_pk = request.GET.get('ind')
     if not any(str(a['ind'].pk) == ativo_pk for a in abas) and abas:
@@ -96,7 +114,7 @@ def painel_view(request):
     ok = sum(1 for a in abas if a['atingiu'] is True)
     fora = sum(1 for a in abas if a['atingiu'] is False)
     return render(request, 'kpi/painel.html', {
-        'abas': abas, 'charts': charts, 'ativo_pk': ativo_pk, 'mot_dias': dias, 'periodos_motivos': PERIODOS_MOTIVOS,
+        'abas': abas, 'charts': charts, 'motivos_js': motivos_js, 'ativo_pk': ativo_pk, 'mot_dias': dias, 'periodos_motivos': PERIODOS_MOTIVOS,
         'total': total, 'ok': ok, 'fora': fora, 'sem_dado': total - ok - fora,
     })
 
@@ -122,6 +140,23 @@ def indicador_form_view(request, pk=None):
         messages.success(request, 'Indicador salvo.')
         return _voltar(obj.pk)
     return render(request, 'kpi/indicador_form.html', {'form': form, 'ind': ind})
+
+
+@login_required
+@require_POST
+def indicador_mover_view(request, pk):
+    """Move o indicador uma posição para cima/baixo na ordem das abas (renumera 1..n)."""
+    lista = list(Indicador.objects.all())
+    idx = next((i for i, x in enumerate(lista) if x.pk == pk), None)
+    if idx is None:
+        return redirect('kpi:indicadores')
+    alvo = idx - 1 if request.POST.get('dir') == 'up' else idx + 1
+    if 0 <= alvo < len(lista):
+        lista[idx], lista[alvo] = lista[alvo], lista[idx]
+    for n, x in enumerate(lista, start=1):
+        if x.ordem != n:
+            Indicador.objects.filter(pk=x.pk).update(ordem=n)
+    return redirect('kpi:indicadores')
 
 
 @login_required
@@ -175,27 +210,35 @@ def medicao_excluir_view(request, pk):
 @login_required
 @require_POST
 def motivo_salvar_view(request, pk):
+    """Grava os motivos de um período (dia/semana/mês): substitui os existentes pelos enviados."""
     ind = get_object_or_404(Indicador, pk=pk)
-    existente = None
-    if request.POST.get('motivo_id'):
-        existente = get_object_or_404(Motivo, pk=request.POST['motivo_id'], indicador=ind)
-    form = MotivoForm(request.POST, instance=existente)
-    if form.is_valid():
-        obj = form.save(commit=False)
-        obj.indicador = ind
-        obj.registrado_por = request.user
-        obj.save()
-        messages.success(request, 'Motivo salvo.')
+    gran = request.POST.get('granularidade')
+    if gran not in dict(Medicao.GRANULARIDADES):
+        messages.error(request, 'Selecione o tipo de período.')
+        return _voltar(ind.pk, '&mot=0')
+    try:
+        data = _normalizar(gran, datetime.date.fromisoformat(request.POST.get('data', '')))
+    except ValueError:
+        messages.error(request, 'Informe uma data válida.')
+        return _voltar(ind.pk, '&mot=0')
+    linhas = []
+    for desc, qtd in zip(request.POST.getlist('descricao'), request.POST.getlist('quantidade')):
+        desc = desc.strip()[:200]
+        if not desc:
+            continue
+        try:
+            q = Decimal((qtd or '1').replace(',', '.'))
+        except Exception:
+            q = Decimal(1)
+        linhas.append((desc, q))
+    with transaction.atomic():
+        ind.motivos.filter(granularidade=gran, data=data).delete()
+        Motivo.objects.bulk_create([
+            Motivo(indicador=ind, granularidade=gran, data=data, descricao=d, quantidade=q, registrado_por=request.user)
+            for d, q in linhas
+        ])
+    if linhas:
+        messages.success(request, f'{len(linhas)} motivo(s) salvo(s) para {_rotulo(gran, data)}.')
     else:
-        messages.error(request, 'Informe data, motivo e quantidade válidos.')
+        messages.success(request, f'Motivos de {_rotulo(gran, data)} removidos.')
     return _voltar(ind.pk, '&mot=0')
-
-
-@login_required
-@require_POST
-def motivo_excluir_view(request, pk):
-    m = get_object_or_404(Motivo, pk=pk)
-    ind_pk = m.indicador_id
-    m.delete()
-    messages.success(request, 'Motivo excluído.')
-    return _voltar(ind_pk, '&mot=0')

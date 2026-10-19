@@ -12,10 +12,20 @@
     </div>
     <div class="card"><div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead><tr><th>Indicador</th><th>Área</th><th>Meta</th><th>Periodicidade</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th style="width:6.5rem">Ordem</th><th>Indicador</th><th>Área</th><th>Meta</th><th>Periodicidade</th><th>Responsável</th><th>Status</th><th></th></tr></thead>
             <tbody>
             {% for i in indicadores %}
                 <tr>
+                    <td class="text-nowrap">
+                        <form method="post" action="{% url 'kpi:indicador_mover' i.pk %}" class="d-inline">{% csrf_token %}
+                            <input type="hidden" name="dir" value="up">
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subir" {% if forloop.first %}disabled{% endif %}><i class="bi bi-arrow-up"></i></button>
+                        </form>
+                        <form method="post" action="{% url 'kpi:indicador_mover' i.pk %}" class="d-inline">{% csrf_token %}
+                            <input type="hidden" name="dir" value="down">
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="Descer" {% if forloop.last %}disabled{% endif %}><i class="bi bi-arrow-down"></i></button>
+                        </form>
+                    </td>
                     <td><a href="{% url 'kpi:indicador_detalhe' i.pk %}" class="fw-semibold text-decoration-none">{{ i.nome }}</a></td>
                     <td>{{ i.area|default:"—" }}</td>
                     <td>{% if i.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ i.meta }} {{ i.unidade }}</td>
@@ -25,7 +35,7 @@
                     <td class="text-end"><a href="{% url 'kpi:indicador_editar' i.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a></td>
                 </tr>
             {% empty %}
-                <tr><td colspan="7" class="text-center text-muted py-4">Nenhum indicador cadastrado.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted py-4">Nenhum indicador cadastrado.</td></tr>
             {% endfor %}
             </tbody>
         </table>

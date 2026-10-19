@@ -28,12 +28,13 @@ class Indicador(models.Model):
         'Acompanhar também por semana e por dia', default=False,
         help_text='Habilita os gráficos e lançamentos semanais e diários, além do mensal.')
     responsavel = models.CharField('Responsável', max_length=120, blank=True)
+    ordem = models.PositiveIntegerField('Ordem de exibição', default=0, help_text='Define a ordem das abas no painel (menor primeiro).')
     ativo = models.BooleanField('Ativo', default=True)
     criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['area', 'nome']
+        ordering = ['ordem', 'area', 'nome']
         verbose_name = 'Indicador'
         verbose_name_plural = 'Indicadores'
 
@@ -69,7 +70,8 @@ class Medicao(models.Model):
 class Motivo(models.Model):
     """Motivo (causa) associado a um indicador em uma data; alimenta a tabela Top principais motivos."""
     indicador = models.ForeignKey(Indicador, on_delete=models.CASCADE, related_name='motivos')
-    data = models.DateField('Data')
+    granularidade = models.CharField('Período', max_length=8, choices=Medicao.GRANULARIDADES, default='diaria')
+    data = models.DateField('Data de referência')
     descricao = models.CharField('Motivo', max_length=200)
     quantidade = models.DecimalField('Quantidade', max_digits=14, decimal_places=2, default=1)
     registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')

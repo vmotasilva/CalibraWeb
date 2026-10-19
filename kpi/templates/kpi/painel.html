@@ -109,47 +109,55 @@
                                         {% for v, l in periodos_motivos %}<option value="{{ v }}" {% if v == mot_dias %}selected{% endif %}>{{ l }}</option>{% endfor %}
                                     </select>
                                 </form>
-                                <button type="button" class="btn btn-primary btn-sm" title="Adicionar motivo" onclick="kpiAbrirMotivo({{ pk }})"><i class="bi bi-plus-lg"></i></button>
+                                <button type="button" class="btn btn-primary btn-sm" title="Adicionar motivos" onclick="kpiAbrirMotivo({{ pk }})"><i class="bi bi-plus-lg"></i></button>
                             </div>
                         </div>
-                        <table class="table table-sm align-middle mb-2">
-                            <thead><tr><th style="width:2rem">#</th><th>Motivo</th><th class="text-end">Qtd</th><th style="width:35%">%</th></tr></thead>
-                            <tbody>
-                            {% for t in a.top %}
-                                <tr>
-                                    <td>{{ forloop.counter }}</td>
-                                    <td>{{ t.descricao }}</td>
-                                    <td class="text-end fw-semibold">{{ t.total|floatformat:"-2" }}</td>
-                                    <td>
-                                        <div class="progress" style="height: 14px;" title="{{ t.pct|floatformat:1 }}%">
-                                            <div class="progress-bar" style="width: {{ t.pct|stringformat:'.1f' }}%">{{ t.pct|floatformat:0 }}%</div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% empty %}
-                                <tr><td colspan="4" class="text-center text-muted py-3">Nenhum motivo lançado no período.</td></tr>
+                        <ul class="nav nav-tabs nav-fill mb-2" role="tablist">
+                            {% for mt in a.motivos_tabs %}
+                            <li class="nav-item"><button type="button" class="nav-link {% if forloop.first %}active{% endif %}" data-mgran="{{ mt.gran }}" data-bs-toggle="tab" data-bs-target="#kpi-mot-{{ pk }}-{{ mt.gran }}">{{ mt.nome }}</button></li>
                             {% endfor %}
-                            </tbody>
-                        </table>
-                        {% if a.lancamentos %}
-                        <details>
-                            <summary class="small text-primary" style="cursor:pointer;">Lançamentos do período ({{ a.lancamentos|length }}) — editar / excluir</summary>
-                            <table class="table table-sm small mt-2 mb-0">
-                                {% for m in a.lancamentos %}
-                                <tr>
-                                    <td>{{ m.data|date:"d/m/Y" }}</td>
-                                    <td>{{ m.descricao }}</td>
-                                    <td class="text-end">{{ m.quantidade|floatformat:"-2" }}</td>
-                                    <td class="text-end">
-                                        <button type="button" class="btn btn-sm btn-link p-0 me-2" title="Editar"
-                                            data-id="{{ m.pk }}" data-data="{{ m.data|date:'Y-m-d' }}" data-desc="{{ m.descricao }}" data-qtd="{{ m.quantidade|stringformat:'s' }}"
-                                            onclick="kpiAbrirMotivo({{ pk }}, this)"><i class="bi bi-pencil"></i></button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </table>
-                        </details>
-                        {% endif %}
+                        </ul>
+                        <div class="tab-content">
+                            {% for mt in a.motivos_tabs %}
+                            <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="kpi-mot-{{ pk }}-{{ mt.gran }}">
+                                <table class="table table-sm align-middle mb-2">
+                                    <thead><tr><th style="width:2rem">#</th><th>Motivo</th><th class="text-end">Qtd</th><th style="width:35%">%</th></tr></thead>
+                                    <tbody>
+                                    {% for t in mt.top %}
+                                        <tr>
+                                            <td>{{ forloop.counter }}</td>
+                                            <td>{{ t.descricao }}</td>
+                                            <td class="text-end fw-semibold">{{ t.total|floatformat:"-2" }}</td>
+                                            <td>
+                                                <div class="progress" style="height: 14px;" title="{{ t.pct|floatformat:1 }}%">
+                                                    <div class="progress-bar" style="width: {{ t.pct|stringformat:'.1f' }}%">{{ t.pct|floatformat:0 }}%</div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="4" class="text-center text-muted py-3">Nenhum motivo lançado neste período.</td></tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% if mt.periodos %}
+                                <details>
+                                    <summary class="small text-primary" style="cursor:pointer;">Lançamentos ({{ mt.periodos|length }}) — editar</summary>
+                                    <table class="table table-sm small mt-2 mb-0">
+                                        {% for p in mt.periodos %}
+                                        <tr>
+                                            <td class="text-nowrap fw-semibold">{{ p.rotulo }}</td>
+                                            <td>{% for it in p.itens %}{{ it.descricao }} <span class="text-muted">({{ it.quantidade|floatformat:"-2" }})</span>{% if not forloop.last %}; {% endif %}{% endfor %}</td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-sm btn-link p-0" title="Editar" onclick="kpiAbrirMotivo({{ pk }}, '{{ mt.gran }}', '{{ p.data|date:'Y-m-d' }}')"><i class="bi bi-pencil"></i></button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </table>
+                                </details>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div></div>
                 </div>
             </div>
@@ -198,30 +206,43 @@
     </div>
 </div>
 
-<!-- Pop-up: motivo -->
+<!-- Pop-up: motivos do período -->
 <div class="modal fade" id="kpiMotivoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <form method="post" class="modal-content" id="kpiMotivoForm">
             {% csrf_token %}
             <div class="modal-header">
-                <h5 class="modal-title" id="kpiMotivoTitulo">Motivo</h5>
+                <h5 class="modal-title">Registrar motivos</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                <input type="hidden" name="motivo_id" id="kpiMotId">
-                <div class="mb-2"><label class="form-label" for="kpiMotData">Data</label><input type="date" class="form-control" name="data" id="kpiMotData" required></div>
-                <div class="mb-2"><label class="form-label" for="kpiMotDesc">Motivo</label><input type="text" class="form-control" name="descricao" id="kpiMotDesc" maxlength="200" required></div>
-                <div class="mb-2"><label class="form-label" for="kpiMotQtd">Quantidade</label><input type="number" step="0.01" min="0" class="form-control" name="quantidade" id="kpiMotQtd" value="1" required></div>
-            </div>
-            <div class="modal-footer justify-content-between">
-                <button type="submit" form="kpiMotDelForm" class="btn btn-outline-danger d-none" id="kpiMotExcluir" onclick="return confirm('Excluir este motivo?');"><i class="bi bi-trash me-1"></i>Excluir</button>
-                <div class="ms-auto">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-5">
+                        <label class="form-label" for="kpiMotGran">Registrar de um…</label>
+                        <select class="form-select" name="granularidade" id="kpiMotGran" required>
+                            <option value="diaria">Dia</option>
+                            <option value="semanal">Semana</option>
+                            <option value="mensal">Mês</option>
+                        </select>
+                    </div>
+                    <div class="col-md-7">
+                        <label class="form-label" for="kpiMotData" id="kpiMotDataLabel">Dia</label>
+                        <input type="date" class="form-control" name="data" id="kpiMotData" required>
+                        <div class="form-text" id="kpiMotAjuda"></div>
+                    </div>
                 </div>
+                <div class="d-flex justify-content-between small text-muted fw-semibold px-1">
+                    <span>Motivo</span><span style="width: 9.5rem;">Quantidade</span>
+                </div>
+                <div id="kpiMotLinhas"></div>
+                <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="kpiMotMais"><i class="bi bi-plus-lg me-1"></i>Adicionar motivo</button>
+                <div class="small fw-semibold mt-3" id="kpiMotEstado"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
             </div>
         </form>
-        <form method="post" id="kpiMotDelForm">{% csrf_token %}</form>
     </div>
 </div>
 {% endblock %}
@@ -229,12 +250,14 @@
 {% block extra_js %}
 {{ block.super }}
 {{ charts|json_script:"kpi-charts" }}
+{{ motivos_js|json_script:"kpi-motivos" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
     var CHARTS = JSON.parse(document.getElementById('kpi-charts').textContent);
     var URL_MED = "{% url 'kpi:medicao_salvar' 0 %}", URL_MED_DEL = "{% url 'kpi:medicao_excluir' 0 %}";
-    var URL_MOT = "{% url 'kpi:motivo_salvar' 0 %}", URL_MOT_DEL = "{% url 'kpi:motivo_excluir' 0 %}";
+    var URL_MOT = "{% url 'kpi:motivo_salvar' 0 %}";
+    var MOTIVOS = JSON.parse(document.getElementById('kpi-motivos').textContent);
     var TITULOS = {mensal: 'mês', semanal: 'semana', diaria: 'dia'};
     var AJUDAS = {
         mensal: 'Informe qualquer data do mês: o valor vale para o mês todo.',
@@ -289,18 +312,53 @@
     };
     el('kpiMedData').addEventListener('change', function () { el('kpiMedValor').value = ''; el('kpiMedObs').value = ''; atualizarEstado(); });
 
-    window.kpiAbrirMotivo = function (pk, btn) {
+    var motPk = null;
+
+    function linhaMotivo(desc, qtd) {
+        var div = document.createElement('div');
+        div.className = 'input-group mt-2';
+        div.innerHTML = '<input type="text" class="form-control" name="descricao" maxlength="200" placeholder="Motivo">' +
+            '<input type="number" class="form-control" name="quantidade" step="0.01" min="0" style="max-width: 9.5rem;" placeholder="Qtd">' +
+            '<button type="button" class="btn btn-outline-danger" title="Remover"><i class="bi bi-x-lg"></i></button>';
+        div.children[0].value = desc || '';
+        div.children[1].value = qtd || '1';
+        div.children[2].addEventListener('click', function () { div.remove(); });
+        el('kpiMotLinhas').appendChild(div);
+        return div;
+    }
+
+    function carregarMotivos() {
+        var gran = el('kpiMotGran').value, iso = el('kpiMotData').value;
+        el('kpiMotLinhas').innerHTML = '';
+        el('kpiMotDataLabel').textContent = {diaria: 'Dia', semanal: 'Semana de referência', mensal: 'Mês de referência'}[gran];
+        el('kpiMotAjuda').textContent = AJUDAS[gran];
+        var existentes = [];
+        if (iso) {
+            var k = chaveDe(gran, iso);
+            existentes = (MOTIVOS[motPk] || []).filter(function (m) { return m.g === gran && chaveDe(gran, m.d) === k; });
+        }
+        existentes.forEach(function (m) { linhaMotivo(m.desc, m.qtd); });
+        if (!existentes.length) linhaMotivo();
+        el('kpiMotEstado').textContent = !iso ? '' : existentes.length
+            ? 'Editando ' + existentes.length + ' motivo(s) já registrado(s) neste ' + TITULOS[gran] + '. Remova uma linha para excluí-la.'
+            : 'Novo registro para este ' + TITULOS[gran] + '. Use "Adicionar motivo" para incluir quantos precisar.';
+    }
+
+    window.kpiAbrirMotivo = function (pk, gran, iso) {
+        motPk = String(pk);
+        if (!gran) {
+            var ativa = document.querySelector('#kpi-pane-' + pk + ' [data-mgran].active');
+            gran = ativa ? ativa.dataset.mgran : 'diaria';
+        }
         el('kpiMotivoForm').action = setUrl(URL_MOT, pk);
-        var edit = btn && btn.dataset;
-        el('kpiMotId').value = edit ? edit.id : '';
-        el('kpiMotData').value = edit ? edit.data : new Date().toISOString().slice(0, 10);
-        el('kpiMotDesc').value = edit ? edit.desc : '';
-        el('kpiMotQtd').value = edit ? edit.qtd : '1';
-        el('kpiMotivoTitulo').textContent = edit ? 'Editar motivo' : 'Adicionar motivo';
-        el('kpiMotExcluir').classList.toggle('d-none', !edit);
-        if (edit) { el('kpiMotDelForm').action = setUrl(URL_MOT_DEL, edit.id); }
+        el('kpiMotGran').value = gran;
+        el('kpiMotData').value = iso || new Date().toISOString().slice(0, 10);
+        carregarMotivos();
         modal('kpiMotivoModal').show();
     };
+    el('kpiMotGran').addEventListener('change', carregarMotivos);
+    el('kpiMotData').addEventListener('change', carregarMotivos);
+    el('kpiMotMais').addEventListener('click', function () { linhaMotivo().children[0].focus(); });
 
     function montar(pk, gran) {
         var chave = pk + '-' + gran;

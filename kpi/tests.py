@@ -43,24 +43,41 @@ class KpiTests(TestCase):
         self.salvar('semanal', '2026-10-15', '91')
         self.assertEqual(Medicao.objects.count(), 0)
 
-    def test_painel_motivos_e_exclusao(self):
+    def test_motivos_por_periodo(self):
         self.salvar('mensal', '2026-10-05', '90')
         url = reverse('kpi:motivo_salvar', args=[self.ind.pk])
         hoje = date.today().isoformat()
-        self.client.post(url, {'data': hoje, 'descricao': 'Quebra', 'quantidade': '3'})
-        self.client.post(url, {'data': hoje, 'descricao': 'quebra ', 'quantidade': '2'})
-        self.client.post(url, {'data': hoje, 'descricao': 'Trinca', 'quantidade': '1'})
-        r = self.client.get(reverse('kpi:painel') + '?ind=%d' % self.ind.pk)
+        self.client.post(url, {'granularidade': 'diaria', 'data': hoje,
+                               'descricao': ['Quebra', 'quebra ', 'Trinca', ''], 'quantidade': ['3', '2', '1', '5']})
+        self.assertEqual(Motivo.objects.count(), 3)
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d&mot=0' % self.ind.pk)
         self.assertEqual(r.status_code, 200)
-        top = r.context['abas'][0]['top']
-        self.assertEqual([t['descricao'] for t in top], ['Quebra', 'Trinca'])
-        self.assertEqual(float(top[0]['total']), 5.0)
-        mot = Motivo.objects.first()
-        self.client.post(url, {'motivo_id': mot.pk, 'data': hoje, 'descricao': 'Editado', 'quantidade': '9'})
-        mot.refresh_from_db()
-        self.assertEqual(mot.descricao, 'Editado')
-        self.client.post(reverse('kpi:motivo_excluir', args=[mot.pk]))
-        self.assertEqual(Motivo.objects.count(), 2)
+        diario = r.context['abas'][0]['motivos_tabs'][0]
+        self.assertEqual(diario['gran'], 'diaria')
+        self.assertEqual([t['descricao'] for t in diario['top']], ['Quebra', 'Trinca'])
+        self.assertEqual(float(diario['top'][0]['total']), 5.0)
+        # regravar o mesmo período substitui os motivos
+        self.client.post(url, {'granularidade': 'diaria', 'data': hoje, 'descricao': ['Editado'], 'quantidade': ['9']})
+        self.assertEqual(list(Motivo.objects.values_list('descricao', flat=True)), ['Editado'])
+        # semana normaliza para segunda-feira; mês para o último dia
+        self.client.post(url, {'granularidade': 'semanal', 'data': '2026-10-15', 'descricao': ['A'], 'quantidade': ['1']})
+        self.client.post(url, {'granularidade': 'mensal', 'data': '2026-10-15', 'descricao': ['B'], 'quantidade': ['1']})
+        self.assertEqual(Motivo.objects.get(granularidade='semanal').data, date(2026, 10, 12))
+        self.assertEqual(Motivo.objects.get(granularidade='mensal').data, date(2026, 10, 31))
+        # enviar vazio apaga o período
+        self.client.post(url, {'granularidade': 'diaria', 'data': hoje, 'descricao': [''], 'quantidade': ['1']})
+        self.assertEqual(Motivo.objects.filter(granularidade='diaria').count(), 0)
         self.client.post(reverse('kpi:medicao_excluir', args=[Medicao.objects.get().pk]))
         self.assertEqual(Medicao.objects.count(), 0)
+        self.assertEqual(self.client.get(reverse('kpi:indicadores')).status_code, 200)
+
+    def test_ordem_das_abas(self):
+        b = Indicador.objects.create(nome='B', meta=1)
+        c = Indicador.objects.create(nome='C', meta=1)
+        nomes = lambda: [x.nome for x in Indicador.objects.all()]
+        self.client.post(reverse('kpi:indicador_mover', args=[c.pk]), {'dir': 'up'})
+        self.client.post(reverse('kpi:indicador_mover', args=[c.pk]), {'dir': 'up'})
+        self.assertEqual(nomes()[0], 'C')
+        r = self.client.get(reverse('kpi:painel'))
+        self.assertEqual(r.context['abas'][0]['ind'].nome, 'C')
         self.assertEqual(self.client.get(reverse('kpi:indicadores')).status_code, 200)
