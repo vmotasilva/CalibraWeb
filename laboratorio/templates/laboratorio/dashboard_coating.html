@@ -629,8 +629,26 @@
                 labels.forEach(label => { tableHTML += `<th>${label}</th>`; });
                 tableHTML += '</tr></thead><tbody>';
                 
+                const agrupar = visaoAtual === 'maq_trat';
+                let maquinaAtual = null;
                 datasets.forEach(dataset => {
-                    tableHTML += `<tr><td class="text-start fw-bold" style="width: 150px; min-width: 150px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${dataset.label}</td>`;
+                    let rotulo = dataset.label;
+                    let estiloCelula = 'font-weight: bold;';
+                    if (agrupar) {
+                        if (dataset.stack !== maquinaAtual) {
+                            maquinaAtual = dataset.stack;
+                            tableHTML += `<tr class="table-light fw-bold"><td class="text-start" style="width: 150px; min-width: 150px; max-width: 150px;">${maquinaAtual}</td>`;
+                            for (let i = 0; i < labels.length; i++) {
+                                const sub = datasets.filter(d => d.stack === maquinaAtual).reduce((s, d) => s + (d.data[i] || 0), 0);
+                                tableHTML += `<td>${sub > 0 ? sub : '-'}</td>`;
+                            }
+                            tableHTML += '</tr>';
+                        }
+                        const prefixo = dataset.stack + ' - ';
+                        rotulo = rotulo.startsWith(prefixo) ? rotulo.slice(prefixo.length) : rotulo;
+                        estiloCelula = 'font-weight: normal; padding-left: 1.25rem;';
+                    }
+                    tableHTML += `<tr><td class="text-start" title="${rotulo}" style="${estiloCelula} width: 150px; min-width: 150px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><span style="display:inline-block;width:12px;height:12px;background-color:${dataset.backgroundColor};margin-right:8px;border-radius:2px;"></span>${rotulo}</td>`;
                     dataset.data.forEach(val => {
                         tableHTML += `<td>${val > 0 ? val : '-'}</td>`;
                     });

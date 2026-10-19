@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% load laboratorio_tags %}
+
+{% block title %}Registros | Rendimento HC{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · HC</span>
+            <h2 class="h3 fw-bold mt-2 mb-0">Registros de Rendimento</h2>
+            <p class="text-muted small mb-0">Lançamentos do formulário (equivalem à aba “Respostas” da planilha).</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'laboratorio:hc_dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-bar-chart-line me-1"></i>Dashboard</a>
+            <a href="{% url 'laboratorio:hc_registro_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Novo lançamento</a>
+        </div>
+    </div>
+
+    <form method="get" class="card border-0 shadow-sm mb-3"><div class="card-body row g-2 align-items-end">
+        <div class="col-6 col-md-2"><label class="form-label small mb-1">De</label><input type="date" name="inicio" value="{{ inicio }}" class="form-control"></div>
+        <div class="col-6 col-md-2"><label class="form-label small mb-1">Até</label><input type="date" name="fim" value="{{ fim }}" class="form-control"></div>
+        <div class="col-6 col-md-2"><label class="form-label small mb-1">Turno</label>
+            <select name="turno" class="form-select"><option value="">Todos</option>{% for t in turnos %}<option value="{{ t.pk }}" {% if t.pk == turno_sel %}selected{% endif %}>{{ t.nome }}</option>{% endfor %}</select></div>
+        <div class="col-6 col-md-4"><label class="form-label small mb-1">Colaborador / nº da garra</label><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar..."></div>
+        <div class="col-12 col-md-2 d-flex gap-2"><button class="btn btn-primary flex-fill">Filtrar</button><a href="{% url 'laboratorio:hc_registros' %}" class="btn btn-light">Limpar</a></div>
+    </div></form>
+
+    <div class="card border-0 shadow-sm"><div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+            <thead class="table-light"><tr>
+                <th>Data</th><th>Turno</th><th>Colaborador</th><th>Garra</th><th>Tipo</th>
+                <th class="text-end">Lentes</th><th class="text-end">Retrabalho</th><th class="text-end">% Retrab.</th><th>Origem</th><th class="text-end">Ações</th>
+            </tr></thead>
+            <tbody>
+            {% for r in pagina %}
+                <tr>
+                    <td class="text-nowrap">{{ r.data|date:"d/m/Y" }}</td>
+                    <td>{{ r.turno_nome|default:"–" }}</td>
+                    <td>{{ r.colaborador_display|default:"–" }}</td>
+                    <td>{{ r.numero_garra|default:"–" }}</td>
+                    <td>{{ r.tipo_garra.nome|default:"–" }}</td>
+                    <td class="text-end">{{ r.qtd_lentes }}</td>
+                    <td class="text-end">{% if r.qtd_retrabalho %}<span class="badge bg-danger">{{ r.qtd_retrabalho }}</span>{% else %}0{% endif %}</td>
+                    <td class="text-end">{% widthratio r.qtd_retrabalho r.qtd_lentes 100 %}%</td>
+                    <td><span class="badge bg-light text-dark border">{% if r.origem == 'IMPORT' %}Planilha{% else %}Formulário{% endif %}</span></td>
+                    <td class="text-end text-nowrap">
+                        <a href="{% url 'laboratorio:hc_registro_update' r.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                        <form method="post" action="{% url 'laboratorio:hc_registro_delete' r.pk %}" class="d-inline" onsubmit="return confirm('Excluir este lançamento?');">{% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="10" class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum lançamento encontrado.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+
+    {% if pagina.paginator.num_pages > 1 %}
+    <nav class="mt-3"><ul class="pagination pagination-sm justify-content-center mb-0">
+        {% if pagina.has_previous %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ pagina.previous_page_number }}">&laquo;</a></li>{% endif %}
+        <li class="page-item disabled"><span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }} ({{ pagina.paginator.count|milhar }} registros)</span></li>
+        {% if pagina.has_next %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ pagina.next_page_number }}">&raquo;</a></li>{% endif %}
+    </ul></nav>
+    {% endif %}
+</div>
+{% endblock %}

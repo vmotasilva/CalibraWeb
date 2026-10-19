@@ -4,6 +4,7 @@ from django import template
 
 from shared.permissions import (
     has_block_nav_flag,
+    has_group_nav_flag,
     has_module_access,
     has_module_nav_flag,
     has_view_access,
@@ -58,6 +59,15 @@ def can_nav_block(user, module_key: str, block_key: str) -> bool:
         return True
 
     return bool(has_block_nav_flag(user, module_key, block_key))
+
+
+@register.simple_tag
+def can_nav_group(user, group_path: str) -> bool:
+    """True se a seção/subseção do menu (ex.: 'Qualidade > Homologações') está liberada pela flag "No menu"."""
+    if _is_admin_user(user):
+        return True
+
+    return bool(has_group_nav_flag(user, group_path))
 
 
 @register.simple_tag

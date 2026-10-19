@@ -89,7 +89,7 @@ class MappedViewsBlockedTests(TestCase):
         user = get_user_model().objects.create_user("u_liberado", password="x")
         for vn, data in VIEW_NAME_TO_PERMISSION.items():
             cfg = _nav_module_config(data["module"])
-            perms = [data["perm"]] + ([cfg["module_perm"]] if cfg and cfg.get("module_perm") else [])
+            perms = [data["perm"], *data.get("grupos", [])] + ([cfg["module_perm"]] if cfg and cfg.get("module_perm") else [])
             user.user_permissions.set(
                 [Permission.objects.get(content_type__app_label=f.split(".", 1)[0], codename=f.split(".", 1)[1]) for f in perms]
             )

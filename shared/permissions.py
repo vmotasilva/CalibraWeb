@@ -1414,6 +1414,59 @@ NAV_STRUCTURE = [
                 ],
             },
             {
+                "key": "hc_dashboard",
+                "grupo": "HMC > HC",
+                "nome": "HC: Dashboard de Rendimento",
+                "perm": "core.nav_laboratorio_hc_dashboard_bloco",
+                "funcoes": [
+                    {"nome": "Dashboard Rendimento HC", "view_name": "laboratorio:hc_dashboard", "perm": "core.nav_laboratorio_hc_dashboard"},
+                ],
+            },
+            {
+                "key": "hc_registros",
+                "grupo": "HMC > HC",
+                "nome": "HC: Formulário e Registros",
+                "perm": "core.nav_laboratorio_hc_registros_bloco",
+                "funcoes": [
+                    {"nome": "Registros de Rendimento", "view_name": "laboratorio:hc_registros", "perm": "core.nav_laboratorio_hc_registros"},
+                    {"nome": "Novo Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_create", "perm": "core.nav_laboratorio_hc_registro_create"},
+                    {"nome": "Editar Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_update", "perm": "core.nav_laboratorio_hc_registro_update"},
+                    {"nome": "Excluir Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_delete", "perm": "core.nav_laboratorio_hc_registro_delete"},
+                ],
+            },
+            {
+                "key": "hc_campos",
+                "grupo": "HMC > HC > Configurações",
+                "nome": "HC: Campos do Formulário",
+                "perm": "core.nav_laboratorio_hc_campos_bloco",
+                "funcoes": [
+                    {"nome": "Campos do Formulário", "view_name": "laboratorio:hc_config_campos", "perm": "core.nav_laboratorio_hc_campos"},
+                    {"nome": "Salvar/Reordenar Campos e Meta", "view_name": ["laboratorio:hc_campo_save", "laboratorio:hc_campo_mover", "laboratorio:hc_config_meta"], "perm": "core.nav_laboratorio_hc_campo_save"},
+                    {"nome": "Excluir Campo do Formulário", "view_name": "laboratorio:hc_campo_delete", "perm": "core.nav_laboratorio_hc_campo_delete"},
+                ],
+            },
+            {
+                "key": "hc_cadastros",
+                "grupo": "HMC > HC > Configurações",
+                "nome": "HC: Cadastros Base",
+                "perm": "core.nav_laboratorio_hc_cadastros_bloco",
+                "funcoes": [
+                    {"nome": "Cadastros Base (garras, materiais, motivos, equipe)", "view_name": "laboratorio:hc_config_cadastros", "perm": "core.nav_laboratorio_hc_cadastros"},
+                    {"nome": "Salvar Cadastro Base / Membro da Equipe HC", "view_name": ["laboratorio:hc_cadastro_save", "laboratorio:hc_equipe_save"], "perm": "core.nav_laboratorio_hc_cadastro_save"},
+                    {"nome": "Excluir Cadastro Base / Membro da Equipe HC", "view_name": ["laboratorio:hc_cadastro_delete", "laboratorio:hc_equipe_delete"], "perm": "core.nav_laboratorio_hc_cadastro_delete"},
+                ],
+            },
+            {
+                "key": "hc_integracoes",
+                "grupo": "HMC > HC > Configurações",
+                "nome": "HC: Integrações e Sincronização",
+                "perm": "core.nav_laboratorio_hc_integracoes_bloco",
+                "funcoes": [
+                    {"nome": "Integrações com cadastros do HMC e RH", "view_name": "laboratorio:hc_config_integracoes", "perm": "core.nav_laboratorio_hc_integracoes"},
+                    {"nome": "Sincronizar Equipe / Vincular Nomes", "view_name": ["laboratorio:hc_sincronizar", "laboratorio:hc_vincular_nome"], "perm": "core.nav_laboratorio_hc_sincronizar"},
+                ],
+            },
+            {
                 "key": "tms",
                 "grupo": "Ferramentas Auxiliares > Tempos e Movimentos (TMS)",
                 "nome": "TMS - Tempos e Movimentos",
@@ -1507,6 +1560,88 @@ NAV_STRUCTURE = [
 ]
 
 
+# ==============================================================================
+# GRUPOS (seções/subseções do menu) COM CHAVE MESTRA PRÓPRIA ("No menu")
+# ==============================================================================
+# Todo card do painel de permissões tem a sua flag. Um grupo desligado esconde o menu e bloqueia
+# (middleware / has_view_access) todos os blocos e funções que estão dentro dele.
+# Chave: caminho "A > B > C" do campo "grupo" dos blocos. "Gestão" é o módulo de exibição que reúne
+# Ferramentas Auxiliares (TMS, Quadros, Diagramas), Processos e Qualidade.
+# Quadros e Diagramas já têm a flag do próprio módulo (nav_mod_boards / nav_mod_diagramas).
+GESTAO_GROUP = "Gestão"
+NAV_GROUP_PERMS = {
+    GESTAO_GROUP: "core.nav_mod_gestao",
+    "Ferramentas Auxiliares": "core.nav_gestao_ferramentas",
+    "Ferramentas Auxiliares > Tempos e Movimentos (TMS)": "core.nav_gestao_tms",
+    "Qualidade": "core.nav_gestao_qualidade",
+    "Qualidade > Homologações": "core.nav_gestao_homologacoes",
+    "ISO 13485": "core.nav_auditoria_iso_grupo",
+    "Ocorrências Gerais": "core.nav_laboratorio_grupo_ocorrencias_gerais",
+    "Ocorrências Gerais > Configurações": "core.nav_laboratorio_grupo_ocorrencias_config",
+    "Ocorrências Gerais > Configurações > Máquinas": "core.nav_laboratorio_grupo_maquinas",
+    "HMC": "core.nav_laboratorio_grupo_hmc",
+    "HMC > Anti-Reflexo": "core.nav_laboratorio_grupo_hmc_ar",
+    "HMC > Anti-Reflexo > Configurações": "core.nav_laboratorio_grupo_hmc_ar_config",
+    "HMC > HC": "core.nav_laboratorio_grupo_hmc_hc",
+    "HMC > HC > Configurações": "core.nav_laboratorio_grupo_hmc_hc_config",
+}
+# Seções do módulo de exibição "Gestão" e módulos inteiros exibidos dentro dele.
+GESTAO_SECOES = ("Ferramentas Auxiliares", "Processos", "Qualidade")
+GESTAO_MODULES = {"boards": "Ferramentas Auxiliares", "diagramas": "Ferramentas Auxiliares"}
+
+
+def _group_paths(module_key: str, grupo: str | None) -> list[str]:
+    """Caminhos de grupo (do mais externo ao mais interno) que contêm um item."""
+    partes = [p.strip() for p in (grupo or GESTAO_MODULES.get(module_key, "")).split(">") if p.strip()]
+    if module_key in GESTAO_MODULES or (partes and partes[0] in GESTAO_SECOES and module_key == "laboratorio"):
+        caminhos = [GESTAO_GROUP]
+    else:
+        caminhos = []
+    for i in range(len(partes)):
+        caminhos.append(" > ".join(partes[: i + 1]))
+    return caminhos
+
+
+def get_block_group_perms(module_key: str, bloco: dict) -> list[str]:
+    """Flags de grupo (core.nav_*) exigidas para o bloco e suas funções."""
+    return [NAV_GROUP_PERMS[c] for c in _group_paths(module_key, bloco.get("grupo")) if c in NAV_GROUP_PERMS]
+
+
+def get_nav_group_requirements() -> dict[str, list[str]]:
+    """codename -> codenames das flags de grupo exigidas (módulos de Gestão, grupos aninhados, blocos e funções)."""
+
+    def cn(full):
+        return str(full).split(".", 1)[1]
+
+    req: dict[str, list[str]] = {}
+    for caminho, perm in NAV_GROUP_PERMS.items():
+        if caminho == GESTAO_GROUP:
+            req[cn(perm)] = []
+            continue
+        pais = [NAV_GROUP_PERMS[c] for c in _group_paths("laboratorio", caminho)[:-1] if c in NAV_GROUP_PERMS]
+        req[cn(perm)] = [cn(p) for p in pais]
+    for modulo in NAV_STRUCTURE:
+        key = modulo.get("key")
+        if key in GESTAO_MODULES and modulo.get("module_perm"):
+            req[cn(modulo["module_perm"])] = [cn(p) for p in get_block_group_perms(key, {})]
+        for bloco in modulo.get("blocos") or []:
+            grupos = [cn(p) for p in get_block_group_perms(key, bloco)]
+            if not grupos:
+                continue
+            if bloco.get("perm"):
+                req[cn(bloco["perm"])] = grupos
+            for func in bloco.get("funcoes") or []:
+                if func.get("perm") and not bloco.get("especial"):
+                    req[cn(func["perm"])] = grupos
+    return req
+
+
+def filter_codenames_by_groups(codenames: set[str]) -> set[str]:
+    """Remove codenames cujas flags de grupo (seção do menu) não estão no conjunto."""
+    req = get_nav_group_requirements()
+    return {c for c in codenames if all(r in codenames for r in req.get(c, []))}
+
+
 def get_nav_structure():
     return list(NAV_STRUCTURE)
 
@@ -1536,13 +1671,18 @@ def get_view_permission_map() -> dict[str, dict[str, str]]:
                 if not view_name or not perm:
                     continue
 
+                entry = {"perm": perm, "module": module_key}
+                grupos = get_block_group_perms(module_key, bloco)
+                if grupos:
+                    entry["grupos"] = grupos
+
                 # Suporta aliases: view_name pode ser uma lista/tupla/set de nomes.
                 if isinstance(view_name, (list, tuple, set)):
                     for vn in view_name:
                         if vn:
-                            result[vn] = {"perm": perm, "module": module_key}
+                            result[vn] = dict(entry)
                 else:
-                    result[view_name] = {"perm": perm, "module": module_key}
+                    result[view_name] = dict(entry)
     return result
 
 
@@ -1651,6 +1791,12 @@ def has_block_nav_flag(user, module_key: str, block_key: str) -> bool:
     return False
 
 
+def has_group_nav_flag(user, group_path: str) -> bool:
+    """Flag "No menu" de uma seção/subseção do menu (ver NAV_GROUP_PERMS)."""
+    perm = NAV_GROUP_PERMS.get(group_path)
+    return bool(perm and _user_has_nav_perm(user, perm))
+
+
 def has_view_access(user, view_name: str) -> bool:
     """Valida acesso a uma função (view_name).
 
@@ -1672,6 +1818,11 @@ def has_view_access(user, view_name: str) -> bool:
 
     module_key = data.get("module")
     required_perm = data.get("perm")
+
+    # Cada seção do menu (grupo) tem a sua flag "No menu": desligada, bloqueia tudo o que está dentro dela.
+    for group_perm in data.get("grupos") or []:
+        if not _user_has_nav_perm(user, group_perm):
+            return False
 
     def _is_destructive_nav_perm(full_perm: str | None) -> bool:
         if not full_perm or "." not in str(full_perm):

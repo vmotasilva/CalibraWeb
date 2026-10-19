@@ -2968,7 +2968,7 @@ def api_atualizar_permissoes_lote(request):
         # O flag do MÓDULO (nav_mod_*) é a chave mestra ("No menu").
         # Se o módulo estiver desmarcado, ignorar/remover quaisquer nav_* de blocos/funções
         # desse módulo no payload (evita estado inconsistente: bloco/função ativa sem módulo).
-        from shared.permissions import get_nav_structure
+        from shared.permissions import filter_codenames_by_groups, get_nav_structure
 
         nav_structure = get_nav_structure()
         module_codenames: set[str] = set()
@@ -3031,6 +3031,8 @@ def api_atualizar_permissoes_lote(request):
                         for c in codenames
                         if str(c).startswith('nav_')
                     }
+                    # Seção do menu (grupo) desligada: descarta tudo o que está dentro dela
+                    codenames_set = filter_codenames_by_groups(codenames_set)
 
                     # Módulo (nav_mod_*) como mestre: se o módulo não estiver selecionado,
                     # descartar permissões de bloco/função do módulo.
@@ -3187,7 +3189,7 @@ def api_copiar_permissoes(request):
             )
 
         # Estrutura de navegação para mapear permissões CORE (nav_*), respeitando hierarquia
-        from shared.permissions import get_nav_structure
+        from shared.permissions import NAV_GROUP_PERMS, filter_codenames_by_groups, get_nav_structure
 
         nav_structure = get_nav_structure()
 
@@ -3225,7 +3227,7 @@ def api_copiar_permissoes(request):
 
         # Determinar permissões core.nav_* de origem
         if source.is_superuser:
-            source_core_nav = set()
+            source_core_nav = {_core_codename(p) for p in NAV_GROUP_PERMS.values()}
             for module in nav_structure:
                 mc = _core_codename(module.get('module_perm'))
                 if mc:
@@ -3247,7 +3249,7 @@ def api_copiar_permissoes(request):
             )
 
         # Copiar todas as permissões de navegação (incluindo edições e exclusões)
-        source_core_nav = {c for c in source_core_nav}
+        source_core_nav = filter_codenames_by_groups({c for c in source_core_nav})
 
         # Mestre: módulos (nav_mod_*) controlam blocos/funções
         selected_modules = {c for c in source_core_nav if c in module_codenames}
@@ -3467,7 +3469,13 @@ def detalhe_usuario_view(request, user_id):
     user_perms_core = set(user.user_permissions.filter(content_type__app_label='core').values_list('codename', flat=True))
 
     # Nova estrutura de permissões (Módulo -> Blocos -> Funções) baseada em core.nav_*
-    from shared.permissions import get_nav_structure
+    from shared.permissions import (
+        GESTAO_GROUP,
+        GESTAO_MODULES,
+        GESTAO_SECOES,
+        NAV_GROUP_PERMS,
+        get_nav_structure,
+    )
 
     def _perm_parts(full_perm: str | None):
         if not full_perm or "." not in str(full_perm):
@@ -3526,9 +3534,10 @@ def detalhe_usuario_view(request, user_id):
 
     # Módulo de exibição "Gestão": reúne Ferramentas Auxiliares (TMS, que pertence ao Laboratório; Quadros; Diagramas).
     # Só a exibição muda; as permissões e a lógica de acesso continuam nos módulos originais.
-    MODULOS_GESTAO = ("boards", "diagramas")
-    GRUPOS_GESTAO = ("Ferramentas Auxiliares", "Processos", "Qualidade")
-    gestao_itens, gestao_grupos, gestao_perms = [], {}, {}
+    MODULOS_GESTAO = tuple(GESTAO_MODULES)
+    GRUPOS_GESTAO = GESTAO_SECOES
+    # Todo grupo (card) tem a sua flag "No menu"; Quadros/Diagramas usam a flag do próprio módulo.
+    gestao_itens, gestao_grupos, gestao_perms = [], {}, dict(NAV_GROUP_PERMS)
 
     raw_modulos = sorted(get_nav_structure(), key=_chave_ordem)
     modulos = []
@@ -3550,7 +3559,7 @@ def detalhe_usuario_view(request, user_id):
             if modulo.get("key") == "laboratorio" and (grupo_nome or "").split(">")[0].strip() in GRUPOS_GESTAO:
                 _inserir(gestao_itens, gestao_grupos, "gestao", bloco_data, grupo_nome, gestao_perms)
             elif grupo_nome:
-                _inserir(itens_modulo, grupos_dict, modulo.get("key"), bloco_data, grupo_nome)
+                _inserir(itens_modulo, grupos_dict, modulo.get("key"), bloco_data, grupo_nome, NAV_GROUP_PERMS)
             else:
                 itens_modulo.append(bloco_data)
 
@@ -3578,7 +3587,7 @@ def detalhe_usuario_view(request, user_id):
                 "nome": "Gestão",
                 "cor": "danger",
                 "icone": "bi bi-kanban",
-                "module_perm": _perm_parts(None),
+                "module_perm": _perm_parts(NAV_GROUP_PERMS[GESTAO_GROUP]),
                 "composto": True,
                 "itens": gestao_itens,
             }

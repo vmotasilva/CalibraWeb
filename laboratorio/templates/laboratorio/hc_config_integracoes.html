@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Integrações | Rendimento HC{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="mb-3">
+        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · HC · Configurações</span>
+        <h2 class="h3 fw-bold mt-2 mb-0">Integrações e sincronização</h2>
+        <p class="text-muted small mb-0">O Rendimento HC reaproveita cadastros que já existem no HMC e no RH, em vez de duplicá-los.</p>
+    </div>
+    {% include 'laboratorio/_hc_menu_config.html' with ativa='integracoes' %}
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-clock-history me-1 text-primary"></i>Turnos <span class="badge bg-secondary">{{ turnos|length }}</span></h6>
+            <p class="small text-muted">Fonte única: <strong>Regras de Turno</strong> do Anti-Reflexo. O campo “Turno” do formulário usa essa lista.</p>
+            <a href="{% url 'laboratorio:regra_turno_list' %}" class="btn btn-sm btn-outline-primary">Gerenciar regras de turno</a>
+        </div></div></div>
+        <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-droplet-half me-1 text-primary"></i>Tratamentos <span class="badge bg-secondary">{{ tratamentos|length }}</span></h6>
+            <p class="small text-muted">Fonte única: <strong>Tratamentos</strong> do Anti-Reflexo. A pergunta “Tratamento” está <strong>{% if tratamento_ativo.visivel %}ativa{% else %}oculta{% endif %}</strong> no formulário.</p>
+            <a href="{% url 'laboratorio:tratamento_list' %}" class="btn btn-sm btn-outline-primary">Gerenciar tratamentos</a>
+            <a href="{% url 'laboratorio:hc_config_campos' %}" class="btn btn-sm btn-outline-secondary">Exibir/ocultar no formulário</a>
+        </div></div></div>
+        <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-people me-1 text-primary"></i>Colaboradores</h6>
+            <p class="small text-muted">Fonte única: <strong>RH</strong>. A Equipe HC é um recorte dos colaboradores do RH (como a Equipe Coating).</p>
+            <a href="{% url 'laboratorio:hc_config_cadastros' %}?aba=EQUIPE" class="btn btn-sm btn-outline-primary">Gerenciar Equipe HC</a>
+        </div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span class="fw-bold"><i class="bi bi-arrow-repeat me-1"></i>Proposta de sincronização da Equipe HC</span>
+            {% if propostas.adicionar or propostas.inativos %}
+            <form method="post" action="{% url 'laboratorio:hc_sincronizar' %}" onsubmit="return confirm('Aplicar as alterações propostas na Equipe HC?');">{% csrf_token %}
+                <button class="btn btn-primary btn-sm"><i class="bi bi-check2-circle me-1"></i>Aplicar sincronização</button></form>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if not propostas.adicionar and not propostas.inativos %}
+                <div class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Equipe HC já está alinhada com a Equipe Coating e com o RH.</div>
+            {% endif %}
+            {% if propostas.adicionar %}
+                <h6 class="mt-1">Adicionar à Equipe HC <span class="badge bg-success">{{ propostas.adicionar|length }}</span></h6>
+                <p class="small text-muted mb-1">Estão na Equipe Coating (ativos no RH) e ainda não estão na Equipe HC:</p>
+                <ul class="small">{% for c in propostas.adicionar %}<li>{{ c.nome_completo }}</li>{% endfor %}</ul>
+            {% endif %}
+            {% if propostas.inativos %}
+                <h6>Desativar na Equipe HC <span class="badge bg-warning text-dark">{{ propostas.inativos|length }}</span></h6>
+                <p class="small text-muted mb-1">Foram inativados no RH:</p>
+                <ul class="small">{% for e in propostas.inativos %}<li>{{ e.colaborador.nome_completo }}</li>{% endfor %}</ul>
+            {% endif %}
+            {% if propostas.fora_coating %}
+                <h6>Na Equipe HC mas fora da Equipe Coating <span class="badge bg-secondary">{{ propostas.fora_coating|length }}</span></h6>
+                <p class="small text-muted mb-0">Apenas informativo (podem atuar só no HC): {% for e in propostas.fora_coating %}{{ e.colaborador.nome_completo }}{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-bold"><i class="bi bi-link-45deg me-1"></i>Nomes dos lançamentos sem vínculo com o RH <span class="badge bg-secondary">{{ propostas.sem_vinculo|length }}</span></div>
+        <div class="card-body p-0">
+            {% if propostas.sem_vinculo %}
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0 small">
+                <thead class="table-light"><tr><th>Nome digitado</th><th class="text-end">Lançamentos</th><th style="min-width:280px">Vincular ao colaborador</th></tr></thead>
+                <tbody>
+                {% for s in propostas.sem_vinculo %}
+                    <tr><td>{{ s.colaborador_nome }}</td><td class="text-end">{{ s.n }}</td>
+                        <td><form method="post" action="{% url 'laboratorio:hc_vincular_nome' %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="nome" value="{{ s.colaborador_nome }}">
+                            <select name="colaborador" class="form-select form-select-sm" required><option value="">Selecione...</option>{% for c in colaboradores %}<option value="{{ c.pk }}">{{ c.nome_completo }}</option>{% endfor %}</select>
+                            <button class="btn btn-sm btn-outline-primary">Vincular</button></form></td></tr>
+                {% endfor %}
+                </tbody></table></div>
+            {% else %}
+                <div class="p-3 text-muted small">{% if tem_dados %}Todos os lançamentos estão vinculados a colaboradores do RH.{% else %}Sem lançamentos ainda.{% endif %}</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -501,8 +501,10 @@ class DiagramaPacote4TestCase(TestCase):
         from django.core.cache import cache
         from django.contrib.auth.models import Permission
         mod = Permission.objects.get(codename='nav_mod_diagramas')
-        self.aprovador.user_permissions.add(Permission.objects.get(codename='nav_diagramas_aprovar'), mod)
-        self.autor.user_permissions.add(mod)
+        # Diagramas ficam dentro de Gestão > Ferramentas Auxiliares: as flags das seções também são exigidas
+        grupos = Permission.objects.filter(codename__in=['nav_mod_gestao', 'nav_gestao_ferramentas'])
+        self.aprovador.user_permissions.add(Permission.objects.get(codename='nav_diagramas_aprovar'), mod, *grupos)
+        self.autor.user_permissions.add(mod, *grupos)
         DiagramaQMSService.submeter_para_aprovacao(self.versao, self.autor)
 
         cache.clear()

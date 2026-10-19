@@ -34,7 +34,7 @@
 
 from django.urls import path
 
-from . import views, views_tms_mix
+from . import views, views_hc, views_tms_mix
 from shared.views import laboratorio_hub_view
 
 app_name = "laboratorio"
@@ -122,4 +122,24 @@ urlpatterns = [
     path("homologacoes/importar/", views.homologacoes_importar, name="homologacoes_importar"),
     path("homologacoes/<int:pk>/", views.homologacao_plano_detail, name="homologacao_plano_detail"),
     path("homologacoes/<int:pk>/excluir/", views.homologacao_plano_delete, name="homologacao_plano_delete"),
+
+    # HMC > HC: Rendimento HC
+    path("hc/", views_hc.hc_dashboard, name="hc_dashboard"),
+    path("hc/registros/", views_hc.hc_registros, name="hc_registros"),
+    path("hc/registros/novo/", views_hc.hc_registro_create, name="hc_registro_create"),
+    path("hc/registros/<int:pk>/editar/", views_hc.hc_registro_update, name="hc_registro_update"),
+    path("hc/registros/<int:pk>/excluir/", views_hc.hc_registro_delete, name="hc_registro_delete"),
+    path("hc/config/campos/", views_hc.hc_config_campos, name="hc_config_campos"),
+    path("hc/config/campos/salvar/", views_hc.hc_campo_save, name="hc_campo_save"),
+    path("hc/config/campos/<int:pk>/mover/", views_hc.hc_campo_mover, name="hc_campo_mover"),
+    path("hc/config/campos/<int:pk>/excluir/", views_hc.hc_campo_delete, name="hc_campo_delete"),
+    path("hc/config/meta/", views_hc.hc_config_meta, name="hc_config_meta"),
+    path("hc/config/cadastros/", views_hc.hc_config_cadastros, name="hc_config_cadastros"),
+    path("hc/config/cadastros/salvar/", views_hc.hc_cadastro_save, name="hc_cadastro_save"),
+    path("hc/config/cadastros/<int:pk>/excluir/", views_hc.hc_cadastro_delete, name="hc_cadastro_delete"),
+    path("hc/config/equipe/salvar/", views_hc.hc_equipe_save, name="hc_equipe_save"),
+    path("hc/config/equipe/<int:pk>/excluir/", views_hc.hc_equipe_delete, name="hc_equipe_delete"),
+    path("hc/config/integracoes/", views_hc.hc_config_integracoes, name="hc_config_integracoes"),
+    path("hc/config/integracoes/sincronizar/", views_hc.hc_sincronizar, name="hc_sincronizar"),
+    path("hc/config/integracoes/vincular/", views_hc.hc_vincular_nome, name="hc_vincular_nome"),
 ]

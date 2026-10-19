@@ -281,3 +281,91 @@ class MigracaoPermissoesPorTelaTests(TestCase):
         self.assertFalse(Permission.objects.filter(codename="nav_acoes_plano").exists())
         self.assertFalse(Permission.objects.filter(codename="nav_metrologia_importacao").exists())
         self.assertNotIn("nav_acoes_plano", self._codenames(self.antigo))
+
+
+class FlagsDeGrupoTests(TestCase):
+    """Todo card (seção/subseção do menu) tem flag "No menu"; desligada, bloqueia tudo o que está dentro."""
+
+    def test_flags_de_grupo_existem_no_banco_e_no_model(self):
+        from shared.permissions import NAV_GROUP_PERMS
+
+        declaradas = {f"core.{codename}" for codename, _ in NavigationPermission._meta.permissions}
+        self.assertEqual(sorted(set(NAV_GROUP_PERMS.values()) - declaradas), [])
+        for perm in NAV_GROUP_PERMS.values():
+            self.assertTrue(Permission.objects.filter(content_type__app_label="core", codename=perm.split(".", 1)[1]).exists(), perm)
+
+    def test_todo_grupo_do_painel_tem_flag(self):
+        from shared.permissions import NAV_GROUP_PERMS
+
+        caminhos = set()
+        for modulo in NAV_STRUCTURE:
+            for bloco in modulo["blocos"]:
+                partes = [p.strip() for p in (bloco.get("grupo") or "").split(">") if p.strip()]
+                caminhos.update(" > ".join(partes[: i + 1]) for i in range(len(partes)))
+        self.assertEqual(sorted(c for c in caminhos if c not in NAV_GROUP_PERMS), [])
+
+    def test_homologacoes_exigem_gestao_qualidade_e_homologacoes(self):
+        user = User.objects.create_user("homolog", password="x")
+        base = ["nav_mod_laboratorio", "nav_laboratorio_homologacoes_bloco", "nav_laboratorio_homologacoes"]
+        user.user_permissions.add(*[_perm(c) for c in base])
+        self.assertFalse(has_view_access(User.objects.get(pk=user.pk), "laboratorio:homologacoes_resumo"))
+        for grupo in ("nav_mod_gestao", "nav_gestao_qualidade"):
+            user.user_permissions.add(_perm(grupo))
+            self.assertFalse(has_view_access(User.objects.get(pk=user.pk), "laboratorio:homologacoes_resumo"), grupo)
+        user.user_permissions.add(_perm("nav_gestao_homologacoes"))
+        self.assertTrue(has_view_access(User.objects.get(pk=user.pk), "laboratorio:homologacoes_resumo"))
+
+    def test_tag_can_nav_group(self):
+        from shared.templatetags.nav_access import can_nav_group
+
+        user = User.objects.create_user("tag", password="x")
+        self.assertFalse(can_nav_group(user, "Qualidade"))
+        user.user_permissions.add(_perm("nav_gestao_qualidade"))
+        self.assertTrue(can_nav_group(User.objects.get(pk=user.pk), "Qualidade"))
+        self.assertTrue(can_nav_group(User.objects.create_superuser("su", "s@s.com", "x"), "Qualidade"))
+
+    def test_painel_salva_grupo_como_mestre_dos_filhos(self):
+        admin = User.objects.create_superuser("admin_grp", "a@a.com", "x")
+        alvo = User.objects.create_user("alvo_grp", password="x")
+        self.client.force_login(admin)
+
+        def salvar(codenames):
+            self.client.post(
+                reverse("rh:api_atualizar_permissoes_lote"),
+                data=json.dumps({"user_id": alvo.pk, "permissoes": {"core": codenames}}),
+                content_type="application/json",
+            )
+            return set(alvo.user_permissions.values_list("codename", flat=True))
+
+        itens = ["nav_mod_laboratorio", "nav_laboratorio_homologacoes_bloco", "nav_laboratorio_homologacoes"]
+        self.assertEqual(salvar(itens), {"nav_mod_laboratorio"})
+        completo = itens + ["nav_mod_gestao", "nav_gestao_qualidade", "nav_gestao_homologacoes"]
+        self.assertEqual(salvar(completo), set(completo))
+        # Desligar o grupo intermediário derruba tudo que está abaixo dele
+        sem_qualidade = [c for c in completo if c != "nav_gestao_qualidade"]
+        self.assertEqual(salvar(sem_qualidade), {"nav_mod_laboratorio", "nav_mod_gestao"})
+
+    def test_painel_exibe_flag_em_todos_os_cards_de_grupo(self):
+        admin = User.objects.create_superuser("admin_card", "a@a.com", "x")
+        alvo = User.objects.create_user("alvo_card", password="x")
+        self.client.force_login(admin)
+        html = self.client.get(reverse("rh:detalhe_usuario", args=[alvo.pk])).content.decode("utf-8")
+        from shared.permissions import NAV_GROUP_PERMS
+
+        for perm in NAV_GROUP_PERMS.values():
+            self.assertIn(f'id="perm_core_{perm.split(".", 1)[1]}"', html, perm)
+
+    def test_migration_concede_flag_a_quem_ja_tinha_itens_do_grupo(self):
+        ct, _ = ContentType.objects.get_or_create(app_label="core", model="navigationpermission")
+        antigo = User.objects.create_user("antigo_grp", password="x")
+        antigo.user_permissions.add(_perm("nav_laboratorio_tms_dashboard"), _perm("nav_laboratorio_coating_painel"))
+        vazio = User.objects.create_user("vazio_grp", password="x")
+        import_module("core.migrations.0037_nav_grupos_flag").forwards(django_apps, None)
+        perms = set(User.objects.get(pk=antigo.pk).user_permissions.values_list("codename", flat=True))
+        esperadas = {
+            "nav_mod_gestao", "nav_gestao_ferramentas", "nav_gestao_tms",
+            "nav_laboratorio_grupo_hmc", "nav_laboratorio_grupo_hmc_ar",
+        }
+        self.assertTrue(esperadas <= perms, sorted(esperadas - perms))
+        self.assertNotIn("nav_gestao_qualidade", perms)
+        self.assertEqual(set(User.objects.get(pk=vazio.pk).user_permissions.values_list("codename", flat=True)), set())

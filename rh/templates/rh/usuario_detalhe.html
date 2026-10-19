@@ -741,19 +741,27 @@
             if (!cb.classList || !cb.classList.contains('perm-checkbox') || cb.disabled) return;
             const moduleCard = cb.closest('.module-card');
             if (!moduleCard) return;
-            // Grupo com chave mestra própria ("No menu" de uma seção do módulo Gestão)
-            const grupoMestre = cb.closest('.perm-grupo-modulo');
-            if (grupoMestre) {
-                const gCb = grupoMestre.querySelector('.perm-grupo-toggle');
-                if (cb === gCb) {
-                    if (!cb.checked) {
-                        grupoMestre.querySelectorAll('.perm-checkbox').forEach(o => { if (o !== cb && !o.disabled) o.checked = false; });
-                    }
+            const moduleCb = moduleCard.querySelector('.module-header .perm-checkbox');
+            // Grupos com chave mestra própria ("No menu" de cada seção/subseção), do mais interno ao mais externo
+            const gruposMestres = [];
+            for (let g = cb.closest('.perm-grupo-modulo'); g; g = g.parentElement.closest('.perm-grupo-modulo')) {
+                gruposMestres.push(g);
+            }
+            if (gruposMestres.length) {
+                const proprio = gruposMestres[0].querySelector('.perm-grupo-toggle');
+                if (cb === proprio && !cb.checked) {
+                    gruposMestres[0].querySelectorAll('.perm-checkbox').forEach(o => { if (o !== cb && !o.disabled) o.checked = false; });
                     return;
                 }
-                if (cb.checked && gCb && !gCb.disabled) gCb.checked = true;
+                if (cb.checked) {
+                    gruposMestres.forEach(g => {
+                        const gCb = g.querySelector('.perm-grupo-toggle');
+                        if (gCb && !gCb.disabled) gCb.checked = true;
+                    });
+                    if (moduleCb && !moduleCb.disabled) moduleCb.checked = true;
+                }
+                if (cb === proprio) return;
             }
-            const moduleCb = moduleCard.querySelector('.module-header .perm-checkbox');
             const blockCard = cb.closest('.card.border');
             const blockCb = blockCard ? blockCard.querySelector('.block-header .perm-checkbox') : null;
 

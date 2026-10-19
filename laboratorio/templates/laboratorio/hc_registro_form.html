@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} | Rendimento HC{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 880px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · HC</span>
+            <h2 class="h3 fw-bold mt-2 mb-0">{{ titulo }}</h2>
+            <p class="text-muted small mb-0">Um lançamento por garra. As perguntas deste formulário são configuráveis em Configurações &gt; Campos do formulário.</p>
+        </div>
+        <a href="{% url 'laboratorio:hc_registros' %}" class="btn btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Registros</a>
+    </div>
+
+    <form method="post" id="hcForm" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+        <div class="card border-0 shadow-sm"><div class="card-body">
+            <div class="row g-3">
+                {% for bloco in form.blocos %}
+                    {% if bloco.grupo %}
+                    <div class="col-12 hc-bloco {% if bloco.so_retrabalho %}hc-so-retrabalho{% endif %}" data-prefixo="{{ bloco.campo.chave }}">
+                        <div class="border rounded p-3 bg-light">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="fw-bold mb-0">{{ bloco.campo.rotulo }}</h6>
+                                <span class="badge bg-secondary hc-soma" data-bloco="{{ bloco.campo.chave }}">Soma: 0</span>
+                            </div>
+                            {% if bloco.campo.ajuda %}<div class="small text-muted mb-2">{{ bloco.campo.ajuda }}</div>{% endif %}
+                            <div class="row g-2">
+                                {% for f in bloco.campos %}
+                                <div class="col-6 col-md-4">
+                                    <label class="form-label small mb-1" for="{{ f.id_for_label }}">{{ f.label }}</label>
+                                    {{ f }}
+                                    {% for e in f.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                        {% with f=bloco.campos.0 %}
+                        <div class="{% if bloco.campo.tipo == 'TEXTO_LONGO' or f.name == 'observacoes' %}col-12{% else %}col-12 col-md-6{% endif %}">
+                            <label class="form-label fw-semibold" for="{{ f.id_for_label }}">{{ f.label }}{% if f.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                            {{ f }}
+                            {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}
+                            {% for e in f.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                        </div>
+                        {% endwith %}
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card-footer bg-white d-flex flex-wrap gap-2 justify-content-end">
+            <a href="{% url 'laboratorio:hc_registros' %}" class="btn btn-light">Cancelar</a>
+            {% if not registro %}<button type="submit" name="salvar_novo" value="1" class="btn btn-outline-primary">Salvar e lançar outro</button>{% endif %}
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Salvar</button>
+        </div></div>
+    </form>
+</div>
+
+<script>
+(function () {
+    const teve = document.getElementById('id_teve_retrabalho');
+    const blocos = document.querySelectorAll('.hc-so-retrabalho');
+    const qtd = document.getElementById('id_qtd_lentes');
+    function alterna() {
+        const sim = teve && teve.value === '1';
+        blocos.forEach(b => { b.style.display = sim ? '' : 'none'; });
+    }
+    const prefixos = {producao_materiais: 'pm_', retrabalho_materiais: 'rm_', retrabalho_motivos: 'rt_'};
+    function somas() {
+        document.querySelectorAll('.hc-soma').forEach(el => {
+            const pref = prefixos[el.dataset.bloco];
+            let s = 0;
+            document.querySelectorAll('input[name^="' + pref + '"]').forEach(i => { s += parseInt(i.value || '0', 10) || 0; });
+            el.textContent = 'Soma: ' + s;
+            const total = parseInt((qtd && qtd.value) || '0', 10) || 0;
+            el.className = 'badge hc-soma ' + (pref !== 'pm_' && s > total ? 'bg-danger' : 'bg-secondary');
+        });
+    }
+    if (teve) teve.addEventListener('change', alterna);
+    document.getElementById('hcForm').addEventListener('input', somas);
+    alterna(); somas();
+})();
+</script>
+{% endblock %}

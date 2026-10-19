@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% load laboratorio_tags %}
+
+{% block title %}Dashboard Rendimento HC | CalibraWeb{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · HC</span>
+            <h2 class="h3 fw-bold mt-2 mb-0">Rendimento HC <span class="text-muted fs-6 fw-normal">— meta {{ meta|pc:0 }}</span></h2>
+            <p class="text-muted small mb-0">Consolidação e análise dos lançamentos do formulário ({{ total_registros|milhar }} registros).</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:hc_registros' %}" class="btn btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Registros</a>
+            <a href="{% url 'laboratorio:hc_registro_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Novo lançamento</a>
+        </div>
+    </div>
+
+    <ul class="nav nav-tabs mb-3 flex-nowrap overflow-auto">
+        {% for chave, nome, icone in abas %}
+        <li class="nav-item"><a class="nav-link text-nowrap {% if chave == aba %}active fw-semibold{% endif %}" href="?aba={{ chave }}"><i class="bi {{ icone }} me-1"></i>{{ nome }}</a></li>
+        {% endfor %}
+    </ul>
+
+    {# ---------------- filtros por aba ---------------- #}
+    <form method="get" class="card border-0 shadow-sm mb-3"><div class="card-body row g-2 align-items-end">
+        <input type="hidden" name="aba" value="{{ aba }}">
+        {% if aba == 'diaria' %}
+            <div class="col-6 col-md-3"><label class="form-label small mb-1">Data</label><input type="date" name="data" value="{{ dia|date:'Y-m-d' }}" class="form-control"></div>
+        {% elif aba == 'ano' %}
+            <div class="col-6 col-md-3"><label class="form-label small mb-1">Ano</label>
+                <select name="ano" class="form-select">{% for a in anos %}<option value="{{ a }}" {% if a == ano %}selected{% endif %}>{{ a }}</option>{% endfor %}</select></div>
+        {% else %}
+            <div class="col-6 col-md-3"><label class="form-label small mb-1">Data inicial</label><input type="date" name="inicio" value="{{ inicio|date:'Y-m-d' }}" class="form-control"></div>
+            <div class="col-6 col-md-3"><label class="form-label small mb-1">Data final</label><input type="date" name="fim" value="{{ fim|date:'Y-m-d' }}" class="form-control"></div>
+            {% if aba == 'colaborador' %}
+            <div class="col-12 col-md-4"><label class="form-label small mb-1">Colaborador</label>
+                <select name="colaborador" class="form-select"><option value="">Selecione...</option>
+                {% for chave, nome in colaboradores %}<option value="{{ chave }}" {% if chave == colaborador_sel %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+            {% elif aba == 'material' %}
+            <div class="col-12 col-md-4"><label class="form-label small mb-1">Material</label>
+                <select name="material" class="form-select">{% for m in materiais %}<option value="{{ m.pk }}" {% if m.pk == material_sel %}selected{% endif %}>{{ m.nome }}</option>{% endfor %}</select></div>
+            {% endif %}
+        {% endif %}
+        <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-funnel me-1"></i>Aplicar</button></div>
+    </div></form>
+
+    {% if not total_registros %}
+    <div class="alert alert-info"><i class="bi bi-info-circle me-1"></i>Ainda não há lançamentos. Use o <a href="{% url 'laboratorio:hc_registro_create' %}">formulário</a> ou importe a planilha com <code>python manage.py importar_rendimento_hc &lt;arquivo.xlsx&gt;</code>.</div>
+    {% endif %}
+
+    {# ---------------- KPIs (Consolidado / Ano / Diária) ---------------- #}
+    {% if aba == 'consolidado' or aba == 'ano' or aba == 'diaria' %}
+    {% with t=dados.total %}
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">LENTES PRODUZIDAS</div><div class="h4 fw-bold mb-0">{{ t.produzidas|milhar }}</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">RETRABALHO</div><div class="h4 fw-bold mb-0 text-danger">{{ t.retrabalho|milhar }}</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">% RENDIMENTO 1º PASSO</div><div class="h4 fw-bold mb-0 {{ t.rend1|cor_meta:meta }}">{{ t.rend1|pc }}</div></div></div>
+        <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">% RENDIMENTO 2º PASSO</div><div class="h4 fw-bold mb-0 {{ t.rend2|cor_meta:meta }}">{{ t.rend2|pc }}</div></div></div>
+    </div>
+    {% endwith %}
+    {% endif %}
+
+    {% if grafico %}
+    <div class="card border-0 shadow-sm mb-3"><div class="card-body"><div style="height: 300px;"><canvas id="hcChart"></canvas></div></div></div>
+    {{ grafico|json_script:"hc-grafico" }}
+    {% endif %}
+
+    {# ---------------- ABA: Consolidado ---------------- #}
+    {% if aba == 'consolidado' %}
+    <div class="card border-0 shadow-sm"><div class="table-responsive">
+        <table class="table table-sm table-hover align-middle text-center mb-0 small">
+            <thead class="table-light"><tr>
+                <th class="text-start">Data</th><th>% Retrab. 1º passo</th><th>% Rend. 1º passo</th><th>% Retrab. 2º passo</th><th>% Rend. 2º passo</th><th>Lentes produzidas</th><th>Retrabalho</th><th>% Rend. geral</th>
+            </tr></thead>
+            <tbody>
+            {% for l in dados.linhas %}
+                <tr {% if not l.produzidas %}class="text-muted"{% endif %}>
+                    <td class="text-start">{{ l.data|date:"d/m/Y" }} <span class="text-muted">{{ l.data|date:"D" }}</span></td>
+                    <td>{{ l.pct_ret1|pc }}</td><td class="fw-semibold {{ l.rend1|cor_meta:meta }}">{{ l.rend1|pc }}</td>
+                    <td>{{ l.pct_ret2|pc }}</td><td class="fw-semibold {{ l.rend2|cor_meta:meta }}">{{ l.rend2|pc }}</td>
+                    <td>{{ l.produzidas|milhar }}</td><td>{{ l.retrabalho|milhar }}</td><td class="fw-semibold {{ l.rendimento|cor_meta:meta }}">{{ l.rendimento|pc }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+            {% with t=dados.total %}
+            <tfoot class="table-light fw-bold"><tr>
+                <td class="text-start">Total do período</td><td>{{ t.pct_ret1|pc }}</td><td>{{ t.rend1|pc }}</td><td>{{ t.pct_ret2|pc }}</td><td>{{ t.rend2|pc }}</td>
+                <td>{{ t.produzidas|milhar }}</td><td>{{ t.retrabalho|milhar }}</td><td>{{ t.rendimento|pc }}</td>
+            </tr></tfoot>
+            {% endwith %}
+        </table>
+    </div></div>
+    {% endif %}
+
+    {# ---------------- ABA: Análise Diária ---------------- #}
+    {% if aba == 'diaria' %}
+    <div class="row g-3">
+        <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-header bg-white fw-bold">Motivos de retrabalho</div>
+            <div class="table-responsive"><table class="table table-sm mb-0 small"><thead class="table-light"><tr><th>Motivo</th><th class="text-end">Quant.</th><th class="text-end">% s/ produção</th></tr></thead><tbody>
+            {% for m in dados.motivos %}<tr><td>{{ m.nome }}</td><td class="text-end">{{ m.qtd }}</td><td class="text-end">{{ m.pct|pc }}</td></tr>{% endfor %}
+            </tbody></table></div></div></div>
+        <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-header bg-white fw-bold">Por turno</div>
+            <div class="table-responsive"><table class="table table-sm mb-0 small"><thead class="table-light"><tr><th>Turno</th><th class="text-end">Produzida</th><th class="text-end">%</th><th class="text-end">Retrabalho</th><th class="text-end">% retrab.</th></tr></thead><tbody>
+            {% for r in dados.turnos %}<tr><td>{{ r.nome }}</td><td class="text-end">{{ r.prod }}</td><td class="text-end">{{ r.pct_prod|pc }}</td><td class="text-end">{{ r.ret }}</td><td class="text-end">{{ r.pct_ret|pc }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted text-center">Sem lançamentos no dia.</td></tr>{% endfor %}
+            </tbody></table></div>
+            <div class="card-header bg-white fw-bold border-top">Por tipo de garra</div>
+            <div class="table-responsive"><table class="table table-sm mb-0 small"><thead class="table-light"><tr><th>Tipo</th><th class="text-end">Produzida</th><th class="text-end">%</th><th class="text-end">Retrabalho</th><th class="text-end">% retrab.</th></tr></thead><tbody>
+            {% for r in dados.garras %}<tr><td>{{ r.nome }}</td><td class="text-end">{{ r.prod }}</td><td class="text-end">{{ r.pct_prod|pc }}</td><td class="text-end">{{ r.ret }}</td><td class="text-end">{{ r.pct_ret|pc }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted text-center">Sem lançamentos no dia.</td></tr>{% endfor %}
+            </tbody></table></div></div></div>
+        <div class="col-lg-6"><div class="card border-0 shadow-sm"><div class="card-header bg-white fw-bold">Por material</div>
+            <div class="table-responsive"><table class="table table-sm mb-0 small"><thead class="table-light"><tr><th>Material</th><th class="text-end">Produzida</th><th class="text-end">%</th><th class="text-end">Retrabalhada</th><th class="text-end">% retrab.</th></tr></thead><tbody>
+            {% for r in dados.materiais %}<tr><td>{{ r.nome }}</td><td class="text-end">{{ r.prod }}</td><td class="text-end">{{ r.pct_prod|pc }}</td><td class="text-end">{{ r.ret }}</td><td class="text-end">{{ r.pct_ret|pc }}</td></tr>{% endfor %}
+            </tbody></table></div></div></div>
+        <div class="col-lg-6"><div class="card border-0 shadow-sm"><div class="card-header bg-white fw-bold">Por colaborador</div>
+            <div class="table-responsive"><table class="table table-sm mb-0 small"><thead class="table-light"><tr><th>Colaborador</th><th class="text-end">Produzida</th><th class="text-end">%</th><th class="text-end">Retrabalhada</th><th class="text-end">% retrab.</th></tr></thead><tbody>
+            {% for r in dados.colaboradores %}<tr><td>{{ r.nome }}</td><td class="text-end">{{ r.prod }}</td><td class="text-end">{{ r.pct_prod|pc }}</td><td class="text-end">{{ r.ret }}</td><td class="text-end">{{ r.pct_ret|pc }}</td></tr>{% empty %}<tr><td colspan="5" class="text-muted text-center">Sem lançamentos no dia.</td></tr>{% endfor %}
+            </tbody></table></div></div></div>
+    </div>
+    {% endif %}
+
+    {# ---------------- ABA: Retrabalho x Motivo ---------------- #}
+    {% if aba == 'motivo' %}
+    <div class="card border-0 shadow-sm"><div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0 small text-center">
+            <thead class="table-light"><tr>
+                <th class="text-start" rowspan="2">Defeito</th><th rowspan="2">% geral</th><th rowspan="2">Quantidade total</th>
+                {% for t in dados.turnos %}<th colspan="2">{{ t }}</th>{% endfor %}
+            </tr><tr>{% for t in dados.turnos %}<th>Quant.</th><th>%</th>{% endfor %}</tr></thead>
+            <tbody>
+            {% for l in dados.linhas %}
+                <tr><td class="text-start">{{ l.nome }}</td><td>{{ l.pct|pc }}</td><td class="fw-semibold">{{ l.total }}</td>
+                    {% for c in l.turnos %}<td>{{ c.qtd }}</td><td>{{ c.pct|pc }}</td>{% endfor %}</tr>
+            {% endfor %}
+            </tbody>
+            <tfoot class="table-light fw-bold"><tr><td class="text-start">Total</td><td>100%</td><td>{{ dados.total }}</td>{% for t in dados.turnos %}<td colspan="2"></td>{% endfor %}</tr></tfoot>
+        </table>
+    </div></div>
+    {% endif %}
+
+    {# ---------------- ABA: Colaborador / Material (série diária) ---------------- #}
+    {% if aba == 'colaborador' or aba == 'material' %}
+        {% if aba == 'colaborador' and not dados %}
+            <div class="alert alert-secondary">Selecione um colaborador e aplique o filtro.</div>
+        {% else %}
+            {% if aba == 'material' %}
+            <div class="card border-0 shadow-sm mb-3"><div class="card-header bg-white fw-bold">Resumo por material no período</div>
+                <div class="table-responsive"><table class="table table-sm mb-0 small"><thead class="table-light"><tr><th>Material</th><th class="text-end">Produzida</th><th class="text-end">% da produção</th><th class="text-end">Retrabalhada</th><th class="text-end">% retrab.</th><th class="text-end">% rendimento</th></tr></thead><tbody>
+                {% for r in dados.resumo %}<tr><td>{{ r.nome }}</td><td class="text-end">{{ r.prod|milhar }}</td><td class="text-end">{{ r.pct_prod|pc }}</td><td class="text-end">{{ r.ret|milhar }}</td><td class="text-end">{{ r.pct_ret|pc }}</td><td class="text-end fw-semibold {{ r.rend|cor_meta:meta }}">{{ r.rend|pc }}</td></tr>{% endfor %}
+                </tbody></table></div></div>
+            {% endif %}
+            {% if dados.total %}
+            <div class="row g-3 mb-3">
+                <div class="col-4"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">PRODUZIDA</div><div class="h4 fw-bold mb-0">{{ dados.total.prod|milhar }}</div></div></div>
+                <div class="col-4"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">RETRABALHADA</div><div class="h4 fw-bold mb-0 text-danger">{{ dados.total.ret|milhar }}</div></div></div>
+                <div class="col-4"><div class="card border-0 shadow-sm text-center py-2"><div class="small text-muted">% RENDIMENTO</div><div class="h4 fw-bold mb-0 {{ dados.total.rend|cor_meta:meta }}">{{ dados.total.rend|pc }}</div></div></div>
+            </div>
+            <div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-sm table-hover text-center mb-0 small">
+                <thead class="table-light"><tr><th class="text-start">Data</th><th>Quant. produzida</th><th>Quant. retrabalhada</th><th>% retrabalhada</th><th>% rendimento</th></tr></thead>
+                <tbody>{% for l in dados.linhas %}<tr {% if not l.prod %}class="text-muted"{% endif %}><td class="text-start">{{ l.data|date:"d/m/Y" }}</td><td>{{ l.prod }}</td><td>{{ l.ret }}</td><td>{{ l.pct_ret|pc }}</td><td class="fw-semibold {{ l.rend|cor_meta:meta }}">{{ l.rend|pc }}</td></tr>{% endfor %}</tbody>
+            </table></div></div>
+            {% if aba == 'colaborador' and dados.motivos %}
+            <div class="card border-0 shadow-sm mt-3"><div class="card-header bg-white fw-bold">Retrabalho por motivo</div>
+                <div class="table-responsive"><table class="table table-sm mb-0 small"><tbody>{% for m in dados.motivos %}<tr><td>{{ m.nome }}</td><td class="text-end">{{ m.qtd }}</td></tr>{% endfor %}</tbody></table></div></div>
+            {% endif %}
+            {% endif %}
+        {% endif %}
+    {% endif %}
+
+    {# ---------------- ABA: Retrabalho x Ano ---------------- #}
+    {% if aba == 'ano' %}
+    <div class="card border-0 shadow-sm"><div class="table-responsive">
+        <table class="table table-sm table-hover text-center align-middle mb-0 small">
+            <thead class="table-light"><tr><th class="text-start">Mês</th><th>Meta</th><th>% Rend. 1º passo</th><th>% Retrab. 1º passo</th><th>% Rend. 2º passo</th><th>% Retrab. 2º passo</th><th>Lentes produzidas</th><th>Retrabalho</th><th>Lentes novas</th><th>Retrab. lentes novas</th><th>1º retrabalho</th><th>Retrab. do 1º retrabalho</th></tr></thead>
+            <tbody>{% for l in dados.linhas %}<tr {% if not l.produzidas %}class="text-muted"{% endif %}>
+                <td class="text-start fw-semibold">{{ l.mes }}</td><td>{{ dados.meta|pc:0 }}</td>
+                <td class="fw-semibold {{ l.rend1|cor_meta:dados.meta }}">{{ l.rend1|pc }}</td><td>{{ l.pct_ret1|pc }}</td>
+                <td class="fw-semibold {{ l.rend2|cor_meta:dados.meta }}">{{ l.rend2|pc }}</td><td>{{ l.pct_ret2|pc }}</td>
+                <td>{{ l.produzidas|milhar }}</td><td>{{ l.retrabalho|milhar }}</td><td>{{ l.prod1|milhar }}</td><td>{{ l.ret1|milhar }}</td><td>{{ l.prod2|milhar }}</td><td>{{ l.ret2|milhar }}</td></tr>{% endfor %}</tbody>
+        </table>
+    </div></div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function () {
+    const el = document.getElementById('hc-grafico');
+    if (!el) return;
+    const g = JSON.parse(el.textContent);
+    const cores = ['#0d6efd', '#fd7e14', '#198754', '#6f42c1'];
+    const datasets = g.datasets.map((d, i) => ({
+        label: d.label, data: d.data, borderColor: cores[i % 4], backgroundColor: g.tipo === 'bar' ? '#dc3545' : cores[i % 4] + '33',
+        tension: .25, spanGaps: true, pointRadius: 2, borderWidth: 2,
+    }));
+    if (g.tipo === 'line' && g.meta != null) {
+        datasets.push({label: 'Meta ' + g.meta + '%', data: g.labels.map(() => g.meta), borderColor: '#dc3545', borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5});
+    }
+    new Chart(document.getElementById('hcChart'), {
+        type: g.tipo, data: {labels: g.labels, datasets: datasets},
+        options: {responsive: true, maintainAspectRatio: false, interaction: {mode: 'index', intersect: false},
+            scales: g.tipo === 'line' ? {y: {suggestedMin: 80, suggestedMax: 100, ticks: {callback: v => v + '%'}}} : {y: {beginAtZero: true}}},
+    });
+})();
+</script>
+{% endblock %}

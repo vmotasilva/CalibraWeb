@@ -503,7 +503,12 @@ class Iso13485PermissionsTests(TestCase):
         # Conceder módulo Auditoria e ferramenta de Modo Entrevista
         perm_mod = Permission.objects.get(codename='nav_mod_auditoria')
         perm_lista = Permission.objects.get(codename='nav_auditoria_iso_lista')
+        perm_grupo = Permission.objects.get(codename='nav_auditoria_iso_grupo')
         self.operador.user_permissions.add(perm_mod, perm_lista)
+
+        # A seção ISO 13485 tem flag própria: sem ela a função continua bloqueada
+        self.assertFalse(has_view_access(self.operador, 'auditoria:iso_auditoria_list'))
+        self.operador.user_permissions.add(perm_grupo)
 
         self.assertTrue(has_view_access(self.operador, 'auditoria:iso_auditoria_list'))
         self.assertFalse(has_view_access(self.operador, 'auditoria:iso_setup_dashboard'))

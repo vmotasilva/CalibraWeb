@@ -48,7 +48,7 @@ class BoardsTestCase(TestCase):
         # Permissões do painel (core.nav_*): módulo Quadros, dashboard e criação de quadros
         self.user.user_permissions.set(Permission.objects.filter(
             content_type__app_label='core',
-            codename__in=['nav_mod_boards', 'nav_boards_dashboard', 'nav_boards_create'],
+            codename__in=['nav_mod_gestao', 'nav_gestao_ferramentas', 'nav_mod_boards', 'nav_boards_dashboard', 'nav_boards_create'],
         ))
 
         self.client = Client()

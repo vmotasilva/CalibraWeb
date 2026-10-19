@@ -1029,3 +1029,186 @@ class EtapaHomologacao(models.Model):
     @property
     def rotulo(self):
         return f"{self.ordem:02d} - {self.nome}"
+
+
+# ==============================================================================
+# HMC > HC: RENDIMENTO HC (substitui a planilha "Rendimento HC" / Forms "Respostas")
+# ==============================================================================
+
+class HCCadastro(models.Model):
+    """Cadastro base (listas suspensas) do Rendimento HC: tipos de garra, materiais e motivos de retrabalho."""
+
+    TIPO_GARRA = "GARRA"
+    TIPO_MATERIAL = "MATERIAL"
+    TIPO_MOTIVO = "MOTIVO"
+    TIPO_CHOICES = [
+        (TIPO_GARRA, "Tipo de garra"),
+        (TIPO_MATERIAL, "Material"),
+        (TIPO_MOTIVO, "Motivo de retrabalho"),
+    ]
+    PASSO_CHOICES = [
+        (1, "1º passo (lente nova)"),
+        (2, "2º passo (1º retrabalho)"),
+    ]
+
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    nome = models.CharField(max_length=120)
+    ordem = models.PositiveSmallIntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+    passo = models.PositiveSmallIntegerField(
+        null=True, blank=True, choices=PASSO_CHOICES,
+        help_text="Só para tipos de garra: define em qual passo (1º/2º) o rendimento da garra é contabilizado. "
+                  "Vazio = não entra no rendimento por passo.",
+    )
+
+    class Meta:
+        ordering = ["tipo", "ordem", "nome"]
+        unique_together = [("tipo", "nome")]
+        verbose_name = "Cadastro base do Rendimento HC"
+        verbose_name_plural = "Cadastros base do Rendimento HC"
+
+    def __str__(self):
+        return self.nome
+
+
+class EquipeHC(models.Model):
+    """Colaboradores que lançam/operam no HC. Sincronizável com a Equipe Coating e com o RH."""
+
+    colaborador = models.OneToOneField("rh.Colaborador", on_delete=models.CASCADE, related_name="equipe_hc")
+    apelidos = models.CharField(
+        max_length=255, blank=True,
+        help_text="Outros nomes usados nos lançamentos antigos, separados por vírgula (ex.: Matheus, Matheus Lima).",
+    )
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["colaborador__nome_completo"]
+        verbose_name = "Equipe HC"
+        verbose_name_plural = "Equipe HC"
+
+    def __str__(self):
+        return self.colaborador.nome_completo
+
+
+class RendimentoHCConfig(models.Model):
+    """Parâmetros gerais do Rendimento HC (registro único)."""
+
+    meta_rendimento = models.DecimalField(max_digits=5, decimal_places=2, default=95)
+
+    class Meta:
+        verbose_name = "Parâmetros do Rendimento HC"
+        verbose_name_plural = "Parâmetros do Rendimento HC"
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class HCCampoFormulario(models.Model):
+    """Campo/pergunta do formulário de Rendimento HC. Campos de sistema podem ser renomeados, reordenados,
+    ocultados e tornados (des)obrigatórios, mas não excluídos; campos personalizados ficam em `extras`."""
+
+    TIPO_TEXTO = "TEXTO"
+    TIPO_TEXTO_LONGO = "TEXTO_LONGO"
+    TIPO_NUMERO = "NUMERO"
+    TIPO_DATA = "DATA"
+    TIPO_SELECAO = "SELECAO"
+    TIPO_SIM_NAO = "SIM_NAO"
+    TIPO_CHOICES = [
+        (TIPO_TEXTO, "Texto curto"),
+        (TIPO_TEXTO_LONGO, "Texto longo"),
+        (TIPO_NUMERO, "Número"),
+        (TIPO_DATA, "Data"),
+        (TIPO_SELECAO, "Lista suspensa (opções abaixo)"),
+        (TIPO_SIM_NAO, "Sim / Não"),
+    ]
+
+    # Chaves de sistema (alimentam os cálculos do dashboard)
+    CHAVES_BLOCO = ("producao_materiais", "retrabalho_materiais", "retrabalho_motivos")
+    CHAVES_OBRIGATORIAS = ("data", "qtd_lentes", "teve_retrabalho")  # nunca podem ser ocultadas
+
+    chave = models.SlugField(max_length=50, unique=True)
+    rotulo = models.CharField(max_length=200, verbose_name="Pergunta / rótulo")
+    tipo = models.CharField(max_length=12, choices=TIPO_CHOICES, default=TIPO_TEXTO)
+    ajuda = models.CharField(max_length=255, blank=True, verbose_name="Texto de ajuda")
+    opcoes = models.TextField(blank=True, help_text="Uma opção por linha (só para lista suspensa).")
+    obrigatorio = models.BooleanField(default=False)
+    visivel = models.BooleanField(default=True, verbose_name="Exibir no formulário")
+    ordem = models.PositiveSmallIntegerField(default=0)
+    sistema = models.BooleanField(default=False, editable=False)
+
+    class Meta:
+        ordering = ["ordem", "id"]
+        verbose_name = "Campo do formulário de Rendimento HC"
+        verbose_name_plural = "Campos do formulário de Rendimento HC"
+
+    def __str__(self):
+        return self.rotulo
+
+    @property
+    def lista_opcoes(self):
+        return [o.strip() for o in self.opcoes.splitlines() if o.strip()]
+
+    @property
+    def eh_bloco(self):
+        return self.chave in self.CHAVES_BLOCO
+
+
+class RendimentoHCRegistro(models.Model):
+    """Um lançamento (garra) do formulário de Rendimento HC — equivale a uma linha da aba 'Respostas'."""
+
+    ORIGEM_FORM = "FORM"
+    ORIGEM_IMPORT = "IMPORT"
+
+    data = models.DateField(db_index=True)
+    turno = models.ForeignKey(RegraTurnoCoating, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    turno_nome = models.CharField(max_length=50, blank=True, db_index=True)
+    colaborador = models.ForeignKey("rh.Colaborador", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    colaborador_nome = models.CharField(max_length=150, blank=True, db_index=True)
+    numero_garra = models.CharField(max_length=10, blank=True)
+    tipo_garra = models.ForeignKey(
+        HCCadastro, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+        limit_choices_to={"tipo": HCCadastro.TIPO_GARRA},
+    )
+    tratamento = models.ForeignKey(TratamentoAntiReflexo, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    qtd_lentes = models.PositiveIntegerField(default=0)
+    teve_retrabalho = models.BooleanField(default=False)
+    qtd_retrabalho = models.PositiveIntegerField(default=0, help_text="Total retrabalhado (soma dos motivos).")
+    observacoes = models.TextField(blank=True)
+    extras = models.JSONField(default=dict, blank=True)
+    origem = models.CharField(max_length=6, default=ORIGEM_FORM)
+    id_externo = models.PositiveIntegerField(null=True, blank=True, unique=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-data", "-id"]
+        indexes = [models.Index(fields=["data", "turno"])]
+        verbose_name = "Registro de Rendimento HC"
+        verbose_name_plural = "Registros de Rendimento HC"
+
+    def __str__(self):
+        return f"{self.data:%d/%m/%Y} - {self.colaborador_nome or 'sem colaborador'} ({self.qtd_lentes})"
+
+    @property
+    def colaborador_display(self):
+        return self.colaborador.nome_completo if self.colaborador_id else self.colaborador_nome
+
+
+class RendimentoHCItem(models.Model):
+    """Quantidades por material (produção/retrabalho) e por motivo de retrabalho de um registro."""
+
+    PROD_MATERIAL = "PM"
+    RET_MATERIAL = "RM"
+    RET_MOTIVO = "RT"
+    TIPO_CHOICES = [(PROD_MATERIAL, "Produção por material"), (RET_MATERIAL, "Retrabalho por material"), (RET_MOTIVO, "Retrabalho por motivo")]
+
+    registro = models.ForeignKey(RendimentoHCRegistro, on_delete=models.CASCADE, related_name="itens")
+    tipo = models.CharField(max_length=2, choices=TIPO_CHOICES)
+    cadastro = models.ForeignKey(HCCadastro, on_delete=models.PROTECT, related_name="+")
+    quantidade = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = [("registro", "tipo", "cadastro")]
+        indexes = [models.Index(fields=["tipo", "cadastro"])]

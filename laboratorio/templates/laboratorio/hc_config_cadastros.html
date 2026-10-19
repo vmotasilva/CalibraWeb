@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block title %}Cadastros Base | Rendimento HC{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="mb-3">
+        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · HC · Configurações</span>
+        <h2 class="h3 fw-bold mt-2 mb-0">Cadastros base</h2>
+        <p class="text-muted small mb-0">Listas que alimentam o formulário e o dashboard. Turnos e tratamentos são compartilhados com o Anti-Reflexo (veja <a href="{% url 'laboratorio:hc_config_integracoes' %}">Integrações</a>).</p>
+    </div>
+    {% include 'laboratorio/_hc_menu_config.html' with ativa='cadastros' %}
+
+    <ul class="nav nav-tabs mb-3">
+        {% for v, n in tipos %}<li class="nav-item"><a class="nav-link {% if aba == v %}active fw-semibold{% endif %}" href="?aba={{ v }}">{{ n }}s</a></li>{% endfor %}
+        <li class="nav-item"><a class="nav-link {% if aba == 'EQUIPE' %}active fw-semibold{% endif %}" href="?aba=EQUIPE"><i class="bi bi-people me-1"></i>Equipe HC (colaboradores)</a></li>
+    </ul>
+
+    {% if aba == 'EQUIPE' %}
+    <div class="row g-3">
+        <div class="col-lg-8"><div class="card border-0 shadow-sm"><div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light"><tr><th>Colaborador</th><th>Apelidos (lançamentos antigos)</th><th class="text-center">Ativo</th><th class="text-end">Ações</th></tr></thead>
+                <tbody>
+                {% for m in equipe %}
+                    <tr>
+                        <td class="fw-semibold">{{ m.colaborador.nome_completo }}{% if not m.colaborador.is_active %} <span class="badge bg-warning text-dark">inativo no RH</span>{% endif %}</td>
+                        <td><input form="fe{{ m.pk }}" name="apelidos" value="{{ m.apelidos }}" class="form-control form-control-sm" placeholder="Matheus, Matheus Lima"></td>
+                        <td class="text-center"><input form="fe{{ m.pk }}" type="checkbox" name="ativo" class="form-check-input" {% if m.ativo %}checked{% endif %}></td>
+                        <td class="text-end text-nowrap">
+                            <form id="fe{{ m.pk }}" method="post" action="{% url 'laboratorio:hc_equipe_save' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="id" value="{{ m.pk }}"><button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button></form>
+                            <form method="post" action="{% url 'laboratorio:hc_equipe_delete' m.pk %}" class="d-inline" onsubmit="return confirm('Remover da Equipe HC?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted py-4">Equipe HC vazia: o formulário lista todos os colaboradores ativos do RH. Adicione membros ou sincronize em <a href="{% url 'laboratorio:hc_config_integracoes' %}">Integrações</a>.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div></div></div>
+        <div class="col-lg-4"><div class="card border-0 shadow-sm"><div class="card-body">
+            <h6 class="fw-bold">Adicionar colaborador</h6>
+            <form method="post" action="{% url 'laboratorio:hc_equipe_save' %}">{% csrf_token %}
+                <select name="colaborador" class="form-select mb-2" required><option value="">Selecione...</option>{% for c in disponiveis %}<option value="{{ c.pk }}">{{ c.nome_completo }}</option>{% endfor %}</select>
+                <input name="apelidos" class="form-control mb-2" placeholder="Apelidos (opcional, separados por vírgula)">
+                <button class="btn btn-primary w-100"><i class="bi bi-plus-circle me-1"></i>Adicionar à Equipe HC</button>
+            </form>
+        </div></div></div>
+    </div>
+    {% else %}
+    <div class="row g-3">
+        <div class="col-lg-8"><div class="card border-0 shadow-sm"><div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light"><tr><th style="width:80px">Ordem</th><th>{{ tipo_nome }}</th>{% if aba == 'GARRA' %}<th>Passo do rendimento</th>{% endif %}<th class="text-center">Ativo</th><th class="text-end">Ações</th></tr></thead>
+                <tbody>
+                {% for i in itens %}
+                    <tr {% if not i.ativo %}class="text-muted"{% endif %}>
+                        <td><input form="fc{{ i.pk }}" type="number" min="0" name="ordem" value="{{ i.ordem }}" class="form-control form-control-sm"></td>
+                        <td><input form="fc{{ i.pk }}" name="nome" value="{{ i.nome }}" class="form-control form-control-sm" maxlength="120" required></td>
+                        {% if aba == 'GARRA' %}<td><select form="fc{{ i.pk }}" name="passo" class="form-select form-select-sm"><option value="">Fora do rendimento por passo</option>{% for v, n in passos %}<option value="{{ v }}" {% if i.passo == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></td>{% endif %}
+                        <td class="text-center"><input form="fc{{ i.pk }}" type="checkbox" name="ativo" class="form-check-input" {% if i.ativo %}checked{% endif %}></td>
+                        <td class="text-end text-nowrap">
+                            <form id="fc{{ i.pk }}" method="post" action="{% url 'laboratorio:hc_cadastro_save' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="id" value="{{ i.pk }}"><input type="hidden" name="tipo" value="{{ aba }}"><button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button></form>
+                            <form method="post" action="{% url 'laboratorio:hc_cadastro_delete' i.pk %}" class="d-inline" onsubmit="return confirm('Excluir? Se já houver lançamentos, será apenas inativado.');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-4">Nenhum item cadastrado.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table></div></div></div>
+        <div class="col-lg-4"><div class="card border-0 shadow-sm"><div class="card-body">
+            <h6 class="fw-bold">Novo item: {{ tipo_nome }}</h6>
+            <form method="post" action="{% url 'laboratorio:hc_cadastro_save' %}">{% csrf_token %}<input type="hidden" name="tipo" value="{{ aba }}">
+                <input name="nome" class="form-control mb-2" maxlength="120" placeholder="Nome" required>
+                {% if aba == 'GARRA' %}<select name="passo" class="form-select mb-2"><option value="">Fora do rendimento por passo</option>{% for v, n in passos %}<option value="{{ v }}">{{ n }}</option>{% endfor %}</select>{% endif %}
+                <button class="btn btn-primary w-100"><i class="bi bi-plus-circle me-1"></i>Adicionar</button>
+            </form>
+            {% if aba == 'GARRA' %}<p class="form-text mt-3 mb-0">O <strong>passo</strong> define como o rendimento é separado no dashboard: “1º passo” = lente nova; “2º passo” = 1º retrabalho.</p>
+            {% elif aba == 'MATERIAL' %}<p class="form-text mt-3 mb-0">Cada material ativo vira um campo de “lentes produzidas” e de “retrabalho” no formulário.</p>
+            {% else %}<p class="form-text mt-3 mb-0">Cada motivo ativo vira um campo de quantidade no bloco de retrabalho do formulário.</p>{% endif %}
+        </div></div></div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
