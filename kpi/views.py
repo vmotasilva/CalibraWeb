@@ -68,9 +68,11 @@ def indicador_detalhe_view(request, pk):
     serie = list(reversed(meds[:24]))
     return render(request, 'kpi/indicador_detalhe.html', {
         'ind': ind, 'form': form, 'medicoes': meds,
-        'labels': [m.periodo.strftime('%m/%Y') for m in serie],
-        'valores': [float(m.valor) for m in serie],
-        'meta': float(ind.meta),
+        'dados': {
+            'labels': [m.periodo.strftime('%m/%Y') for m in serie],
+            'valores': [float(m.valor) for m in serie],
+            'meta': float(ind.meta),
+        },
     })
 
 

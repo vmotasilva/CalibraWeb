@@ -60,12 +60,14 @@
 
 {% block extra_js %}
 {{ block.super }}
+{{ dados|json_script:"kpi-dados" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-    var labels = {{ labels|safe }};
-    var valores = {{ valores|safe }};
-    var meta = {{ meta }};
+    var dados = JSON.parse(document.getElementById('kpi-dados').textContent);
+    var labels = dados.labels;
+    var valores = dados.valores;
+    var meta = dados.meta;
     if (!labels.length || typeof Chart === 'undefined') return;
     new Chart(document.getElementById('kpiChart'), {
         type: 'line',
