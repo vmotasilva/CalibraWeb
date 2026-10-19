@@ -1,5 +1,6 @@
 from django import forms
 
+from kpi import calculo
 from kpi.models import Indicador, Medicao
 
 
@@ -7,8 +8,8 @@ class IndicadorForm(forms.ModelForm):
     class Meta:
         model = Indicador
         fields = ['nome', 'area', 'unidade', 'meta', 'sentido', 'periodicidade', 'acompanhamento_detalhado',
-                  'responsavel', 'ordem', 'descricao', 'ativo']
-        widgets = {'descricao': forms.Textarea(attrs={'rows': 3})}
+                  'campos', 'formula', 'responsavel', 'ordem', 'descricao', 'ativo']
+        widgets = {'descricao': forms.Textarea(attrs={'rows': 3}), 'campos': forms.Textarea(attrs={'rows': 3})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,6 +18,15 @@ class IndicadorForm(forms.ModelForm):
         self.fields['ordem'].required = False
         self.fields['sentido'].widget.attrs['class'] = 'form-select'
         self.fields['periodicidade'].widget.attrs['class'] = 'form-select'
+
+    def clean(self):
+        dados = super().clean()
+        class _I:
+            campos = dados.get('campos', '')
+        erro = calculo.validar_formula(dados.get('formula', ''), calculo.lista_campos(_I))
+        if erro:
+            self.add_error('formula', erro)
+        return dados
 
     def clean_ordem(self):
         return self.cleaned_data.get('ordem') or 0

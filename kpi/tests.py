@@ -113,3 +113,41 @@ class KpiTests(TestCase):
         self.assertEqual((res['valores'], res['motivos'], len(res['erros'])), (1, 2, 1))
         self.assertEqual(str(Medicao.objects.get(granularidade='semanal').valor), '94.50')
         self.assertEqual(Motivo.objects.filter(granularidade='semanal', data=date(2026, 10, 12)).count(), 2)
+
+    def test_campos_formula_e_modelo_por_indicador(self):
+        import io
+        from openpyxl import Workbook, load_workbook
+        ind = Indicador.objects.create(
+            nome='Quebras', meta=5, sentido='menor', campos='Lentes produzidas\nLentes perdidas',
+            formula='[Lentes perdidas] / [Lentes produzidas] * 100')
+        # pop-up: calcula o valor pela fórmula quando vazio
+        self.client.post(reverse('kpi:medicao_salvar', args=[ind.pk]), {
+            'granularidade': 'mensal', 'periodo': '2026-10-10', 'valor': '', 'campo_0': '200', 'campo_1': '10', 'observacao': ''})
+        m = Medicao.objects.get(indicador=ind)
+        self.assertEqual(str(m.valor), '5.00')
+        self.assertEqual(m.dados['Lentes perdidas'], '10')
+        # fórmula inválida no cadastro
+        r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), {
+            'nome': 'Quebras', 'meta': '5', 'sentido': 'menor', 'periodicidade': 'mensal',
+            'campos': 'A', 'formula': '[B] / 2'})
+        self.assertEqual(r.status_code, 200)
+        # modelo específico traz as colunas dos campos
+        r = self.client.get(reverse('kpi:modelo_importacao', args=['mensal']) + '?ind=%d' % ind.pk)
+        wb = load_workbook(io.BytesIO(r.content))
+        cab = [c.value for c in wb['Valores'][1]]
+        self.assertEqual(cab[:4], ['Indicador', 'Mês', 'Lentes produzidas', 'Lentes perdidas'])
+        # importação lê os campos pelo cabeçalho e calcula o valor
+        wb = Workbook()
+        v = wb.active
+        v.title = 'Valores'
+        v.append(['Indicador', 'Mês', 'Lentes produzidas', 'Lentes perdidas', 'Valor (opcional)', 'Observação'])
+        v.append(['Quebras', '11/2026', 400, 8, None, ''])
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        buf.name = 'x.xlsx'
+        r = self.client.post(reverse('kpi:importar'), {'granularidade': 'mensal', 'arquivo': buf})
+        self.assertEqual(len(r.context['resultado']['erros']), 0)
+        novo = Medicao.objects.get(indicador=ind, periodo=date(2026, 11, 30))
+        self.assertEqual(str(novo.valor), '2.00')
+        self.assertEqual(novo.dados['Lentes produzidas'], '400')

@@ -9,6 +9,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
+from kpi import calculo
 from kpi.models import Indicador, Medicao, Motivo
 from kpi.views import _normalizar, _rotulo
 
@@ -22,16 +23,20 @@ EXEMPLOS = {
 ABA_VALORES, ABA_MOTIVOS = 'Valores', 'Motivos'
 
 
-def gerar_modelo(gran):
-    """Cria o .xlsx modelo da granularidade informada. Retorna bytes."""
+def gerar_modelo(gran, ind_especifico=None):
+    """Cria o .xlsx modelo da granularidade. Com `ind_especifico`, inclui os campos definidos nesse indicador."""
     periodo = CABECALHO_PERIODO[gran]
     exemplo, dica = EXEMPLOS[gran]
-    nomes = list(Indicador.objects.values_list('nome', flat=True))
+    nomes = [ind_especifico.nome] if ind_especifico else list(Indicador.objects.values_list('nome', flat=True))
+    campos = calculo.lista_campos(ind_especifico) if ind_especifico else []
+    formula = ind_especifico.formula if ind_especifico else ''
     wb = Workbook()
     ws = wb.active
     ws.title = ABA_VALORES
-    ws.append(['Indicador', periodo, 'Valor', 'Observação'])
-    ws.append([nomes[0] if nomes else 'Nome do indicador', exemplo, 1.5, 'exemplo (apague esta linha)'])
+    cab_valor = 'Valor (opcional: calculado pela fórmula)' if formula else 'Valor'
+    ws.append(['Indicador', periodo] + campos + [cab_valor, 'Observação'])
+    ws.append([nomes[0] if nomes else 'Nome do indicador', exemplo] + [1] * len(campos)
+              + [None if formula else 1.5, 'exemplo (apague esta linha)'])
     mot = wb.create_sheet(ABA_MOTIVOS)
     mot.append(['Indicador', periodo, 'Motivo', 'Quantidade'])
     mot.append([nomes[0] if nomes else 'Nome do indicador', exemplo, 'Exemplo de motivo', 3])
@@ -40,7 +45,9 @@ def gerar_modelo(gran):
     for linha in [
         [f'Modelo de importação — {NOMES[gran]}'],
         [],
-        ['Aba Valores: uma linha por indicador e período (Indicador, ' + periodo + ', Valor, Observação).'],
+        ['Aba Valores: uma linha por período (colunas: Indicador, ' + periodo + (', ' + ', '.join(campos) if campos else '') + ', Valor, Observação).'],
+        *([['Campos deste indicador: ' + ', '.join(campos) + '.']] if campos else []),
+        *([['Fórmula do valor: ' + formula + ' — se a coluna Valor ficar vazia, o valor é calculado a partir dos campos.']] if formula else []),
         ['Aba Motivos: uma linha por motivo; repita Indicador e ' + periodo + ' para vários motivos no mesmo período.'],
         [dica],
         ['O nome do indicador deve ser igual ao cadastrado (veja a aba Indicadores).'],
@@ -50,7 +57,7 @@ def gerar_modelo(gran):
         info.append(linha)
     ind = wb.create_sheet('Indicadores')
     ind.append(['Indicadores cadastrados', 'Meta', 'Semanal/diário habilitado'])
-    for i in Indicador.objects.all():
+    for i in ([ind_especifico] if ind_especifico else Indicador.objects.all()):
         ind.append([i.nome, float(i.meta), 'Sim' if i.acompanhamento_detalhado else 'Não'])
     cor = PatternFill('solid', fgColor='14284B')
     for folha in (ws, mot, ind):
@@ -131,19 +138,42 @@ def importar(arquivo, gran, usuario):
 
     with transaction.atomic():
         if ABA_VALORES in wb.sheetnames:
-            for n, row in _linhas(wb[ABA_VALORES]):
-                nome, per, val, obs = (list(row) + [None] * 4)[:4]
-                ind, periodo = achar(ABA_VALORES, n, nome, per)
+            planilha = wb[ABA_VALORES]
+            cab = [str(c or '').strip() for c in next(planilha.iter_rows(min_row=1, max_row=1, values_only=True), [])]
+            col_val = next((i for i, c in enumerate(cab) if c.lower().startswith('valor')), 2)
+            col_obs = next((i for i, c in enumerate(cab) if c.lower().startswith('observa')), None)
+            for n, row in _linhas(planilha):
+                row = list(row) + [None] * (len(cab) + 1)
+                ind, periodo = achar(ABA_VALORES, n, row[0], row[1])
                 if not ind:
                     continue
+                dados, falha = {}, False
+                for nome_campo in calculo.lista_campos(ind):
+                    col = next((i for i, c in enumerate(cab) if c.lower() == nome_campo.lower()), None)
+                    if col is None or row[col] in (None, ''):
+                        continue
+                    try:
+                        dados[nome_campo] = _numero(row[col])
+                    except ValueError as e:
+                        erros.append((n, ABA_VALORES, f'{nome_campo}: {e}'))
+                        falha = True
+                if falha:
+                    continue
                 try:
-                    valor = _numero(val)
-                except ValueError as e:
+                    if row[col_val] not in (None, ''):
+                        valor = _numero(row[col_val])
+                    elif ind.formula:
+                        valor = calculo.calcular(ind.formula, dados)
+                    else:
+                        raise ValueError('valor vazio')
+                except (ValueError, ZeroDivisionError) as e:
                     erros.append((n, ABA_VALORES, str(e)))
                     continue
+                obs = row[col_obs] if col_obs is not None else ''
                 Medicao.objects.update_or_create(
                     indicador=ind, periodo=periodo, granularidade=gran,
-                    defaults={'valor': valor, 'observacao': str(obs or '')[:255], 'registrado_por': usuario})
+                    defaults={'valor': valor, 'observacao': str(obs or '')[:255],
+                              'dados': {k: str(v) for k, v in dados.items()}, 'registrado_por': usuario})
                 valores += 1
         if ABA_MOTIVOS in wb.sheetnames:
             grupos = {}

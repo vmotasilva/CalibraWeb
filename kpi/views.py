@@ -1,5 +1,6 @@
 import calendar
 import datetime
+import re
 from collections import OrderedDict
 from decimal import Decimal
 
@@ -11,6 +12,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from kpi import calculo
 from kpi.forms import IndicadorForm, MedicaoForm
 from kpi.models import Indicador, Medicao, Motivo
 
@@ -44,7 +46,7 @@ def _serie(ind, gran, medicoes):
         'meta': float(ind.meta),
         'sentido': ind.sentido,
         'entradas': [
-            {'id': m.pk, 'data': m.periodo.isoformat(), 'valor': str(m.valor), 'obs': m.observacao}
+            {'id': m.pk, 'data': m.periodo.isoformat(), 'valor': str(m.valor), 'obs': m.observacao, 'dados': m.dados or {}}
             for m in meds
         ],
     }
@@ -89,13 +91,14 @@ def painel_view(request):
         dias = 90
     if dias not in dict(PERIODOS_MOTIVOS):
         dias = 90
-    abas, charts, motivos_js = [], {}, {}
+    abas, charts, motivos_js, campos_js = [], {}, {}, {}
     for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos'):
         meds = list(ind.medicoes.all())
         mensais = sorted((m for m in meds if m.granularidade == 'mensal'), key=lambda m: m.periodo, reverse=True)
         ultima = mensais[0] if mensais else None
         motivos_tabs = _motivos(ind, dias)
         grans = ['mensal'] + (['semanal', 'diaria'] if ind.acompanhamento_detalhado else [])
+        campos_js[str(ind.pk)] = {'campos': calculo.lista_campos(ind), 'formula': ind.formula}
         charts[str(ind.pk)] = {g: _serie(ind, g, meds) for g in grans}
         motivos_js[str(ind.pk)] = [
             {'g': m.granularidade, 'd': m.data.isoformat(), 'desc': m.descricao, 'qtd': str(m.quantidade)}
@@ -114,7 +117,7 @@ def painel_view(request):
     ok = sum(1 for a in abas if a['atingiu'] is True)
     fora = sum(1 for a in abas if a['atingiu'] is False)
     return render(request, 'kpi/painel.html', {
-        'abas': abas, 'charts': charts, 'motivos_js': motivos_js, 'ativo_pk': ativo_pk, 'mot_dias': dias, 'periodos_motivos': PERIODOS_MOTIVOS,
+        'abas': abas, 'charts': charts, 'campos_js': campos_js, 'motivos_js': motivos_js, 'ativo_pk': ativo_pk, 'mot_dias': dias, 'periodos_motivos': PERIODOS_MOTIVOS,
         'total': total, 'ok': ok, 'fora': fora, 'sem_dado': total - ok - fora,
     })
 
@@ -176,7 +179,24 @@ def indicador_excluir_view(request, pk):
 @require_POST
 def medicao_salvar_view(request, pk):
     ind = get_object_or_404(Indicador, pk=pk)
-    form = MedicaoForm(request.POST)
+    post = request.POST.copy()
+    campos = calculo.lista_campos(ind)
+    dados = {}
+    for n, nome in enumerate(campos):
+        bruto = (post.get(f'campo_{n}') or '').strip().replace(',', '.')
+        if bruto:
+            try:
+                dados[nome] = Decimal(bruto)
+            except Exception:
+                messages.error(request, f'Valor inválido no campo "{nome}".')
+                return _voltar(ind.pk)
+    if not (post.get('valor') or '').strip() and ind.formula:
+        try:
+            post['valor'] = str(calculo.calcular(ind.formula, dados))
+        except (ValueError, ZeroDivisionError) as e:
+            messages.error(request, f'Não foi possível calcular o valor: {e}')
+            return _voltar(ind.pk)
+    form = MedicaoForm(post)
     if not form.is_valid():
         messages.error(request, 'Informe data e valor válidos.')
         return _voltar(ind.pk)
@@ -190,6 +210,7 @@ def medicao_salvar_view(request, pk):
         defaults={
             'valor': form.cleaned_data['valor'],
             'observacao': form.cleaned_data['observacao'],
+            'dados': {k: str(v) for k, v in dados.items()},
             'registrado_por': request.user,
         },
     )
@@ -255,7 +276,8 @@ def importar_view(request):
             messages.error(request, 'Escolha o tipo do modelo e envie o arquivo .xlsx.')
         else:
             resultado = importacao.importar(arquivo, gran, request.user)
-    return render(request, 'kpi/importar.html', {'resultado': resultado, 'gran': gran})
+    return render(request, 'kpi/importar.html', {
+        'resultado': resultado, 'gran': gran, 'indicadores': Indicador.objects.filter(ativo=True)})
 
 
 @login_required
@@ -264,8 +286,10 @@ def modelo_importacao_view(request, gran):
     from kpi import importacao
     if gran not in importacao.NOMES:
         raise Http404
+    ind = get_object_or_404(Indicador, pk=request.GET['ind']) if request.GET.get('ind', '').isdigit() else None
     resp = HttpResponse(
-        importacao.gerar_modelo(gran),
+        importacao.gerar_modelo(gran, ind),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    resp['Content-Disposition'] = f'attachment; filename="modelo_kpi_{importacao.NOMES[gran].lower()}.xlsx"'
+    sufixo = '_' + re.sub(r'[^a-z0-9]+', '_', ind.nome.lower()).strip('_') if ind else ''
+    resp['Content-Disposition'] = f'attachment; filename="modelo_kpi_{importacao.NOMES[gran].lower()}{sufixo}.xlsx"'
     return resp

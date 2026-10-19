@@ -27,6 +27,12 @@ class Indicador(models.Model):
     acompanhamento_detalhado = models.BooleanField(
         'Acompanhar também por semana e por dia', default=False,
         help_text='Habilita os gráficos e lançamentos semanais e diários, além do mensal.')
+    campos = models.TextField(
+        'Campos do indicador', blank=True,
+        help_text='Um campo por linha (ex.: Lentes produzidas, Lentes perdidas). Aparecem nos lançamentos e nos modelos de importação.')
+    formula = models.CharField(
+        'Fórmula do valor', max_length=200, blank=True,
+        help_text='Opcional. Calcula o valor a partir dos campos. Ex.: [Lentes perdidas] / [Lentes produzidas] * 100')
     responsavel = models.CharField('Responsável', max_length=120, blank=True)
     ordem = models.PositiveIntegerField('Ordem de exibição', default=0, help_text='Define a ordem das abas no painel (menor primeiro).')
     ativo = models.BooleanField('Ativo', default=True)
@@ -53,6 +59,7 @@ class Medicao(models.Model):
     valor = models.DecimalField('Valor', max_digits=14, decimal_places=2)
     GRANULARIDADES = [('mensal', 'Mensal'), ('semanal', 'Semanal'), ('diaria', 'Diária')]
     granularidade = models.CharField('Granularidade', max_length=8, choices=GRANULARIDADES, default='mensal')
+    dados = models.JSONField('Campos do indicador', default=dict, blank=True)
     observacao = models.CharField('Observação', max_length=255, blank=True)
     registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     registrado_em = models.DateTimeField(auto_now=True)

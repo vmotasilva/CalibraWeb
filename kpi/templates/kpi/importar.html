@@ -21,7 +21,7 @@
     {% endif %}
 
     <div class="card card-body mb-3">
-        <h6>1. Baixe o modelo</h6>
+        <h6>1. Baixe o modelo geral <small class="text-muted fw-normal">(vários indicadores, sem campos específicos)</small></h6>
         <p class="small text-muted mb-2">Cada modelo tem a aba Valores, a aba Motivos, as instruções e a lista dos indicadores cadastrados.</p>
         <div class="d-flex flex-wrap gap-2">
             <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'diaria' %}"><i class="bi bi-calendar-day me-1"></i>Modelo Diário</a>
@@ -29,6 +29,32 @@
             <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'mensal' %}"><i class="bi bi-calendar3 me-1"></i>Modelo Mensal</a>
         </div>
     </div>
+
+    {% if indicadores %}
+    <div class="card card-body mb-3">
+        <h6>Modelos por indicador <small class="text-muted fw-normal">— já trazem os campos definidos em cada indicador</small></h6>
+        <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Indicador</th><th>Campos</th><th class="text-end">Baixar modelo</th></tr></thead>
+            <tbody>
+            {% for i in indicadores %}
+                <tr>
+                    <td class="fw-semibold">{{ i.nome }}</td>
+                    <td class="small text-muted">{{ i.campos|default:"—"|linebreaksbr }}</td>
+                    <td class="text-end text-nowrap">
+                        {% if i.acompanhamento_detalhado %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'diaria' %}?ind={{ i.pk }}">Diário</a>
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'semanal' %}?ind={{ i.pk }}">Semanal</a>
+                        {% endif %}
+                        <a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'mensal' %}?ind={{ i.pk }}">Mensal</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    {% endif %}
 
     <form method="post" enctype="multipart/form-data" class="card card-body">
         {% csrf_token %}
