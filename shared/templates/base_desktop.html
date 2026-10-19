@@ -492,9 +492,6 @@ MONITORAMENTO/ ENVIOS EQC <i class="bi bi-chevron-down transition-transform"></i
 </ul>
 </li>
 {% endif %}
-                    </ul>
-                </li>
-                {% endif %}
 {% can_nav_group user 'Ferramentas Auxiliares' as nav_grp_ferr %}
 {% if nav_grp_ferr %}
 <li>
@@ -537,6 +534,9 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
 </ul>
 </li>
 {% endif %}
+                    </ul>
+                </li>
+                {% endif %}
 
                 {% if nav_metrologia %}
                 {% if nav_acoes or nav_auditoria or nav_forn or nav_laboratorio %}<li class="nav-divider"></li>{% endif %}
