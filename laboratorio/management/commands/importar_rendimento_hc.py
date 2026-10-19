@@ -2,8 +2,10 @@
 
 Uso: python manage.py importar_rendimento_hc "Rendimento HC - TEC - 2025.xlsx" [--dry-run]
 
-Idempotente: cada linha é identificada pela coluna "Id" do Forms; reexecutar não duplica.
+Idempotente: cada linha é identificada pela coluna "Id" do Forms (ou, sem Id, por um hash da linha);
+reexecutar não duplica, e linhas repetidas na própria planilha são importadas uma única vez.
 """
+import hashlib
 import re
 from datetime import date, datetime
 
@@ -98,13 +100,13 @@ class Command(BaseCommand):
             motivos.append((i, cad[(HCCadastro.TIPO_MOTIVO, nome)]))
         turnos = {}
         for t in RegraTurnoCoating.objects.all():
-            m = re.search(r"\d", t.nome)
+            m = re.search(r"[1-9]", t.nome)
             if m:
                 turnos.setdefault(int(m.group()), t)
         candidatos = hc.candidatos_colaborador()
         cache_colab = {}
 
-        existentes = set(RendimentoHCRegistro.objects.exclude(id_externo=None).values_list("id_externo", flat=True))
+        existentes = set(RendimentoHCRegistro.objects.exclude(chave_importacao=None).values_list("chave_importacao", flat=True))
         novos, itens_pend, ignoradas, duplicadas, sem_turno = [], [], 0, 0, 0
         hoje = date.today()
         c_id, c_data, c_turno, c_colab, c_garra = col("Id"), col("Data"), col("Turno"), col("Colaborador"), col("Tipo de Garra")
@@ -117,13 +119,13 @@ class Command(BaseCommand):
             if not dia or dia.year < ANO_MIN or dia > date(hoje.year + 1, 12, 31):
                 ignoradas += 1
                 continue
-            if id_ext and id_ext in existentes:
+            chave = f"id:{id_ext}" if id_ext else "sha:" + hashlib.md5(repr(row[:36]).encode()).hexdigest()[:24]
+            if chave in existentes:
                 duplicadas += 1
                 continue
-            if id_ext:
-                existentes.add(id_ext)
+            existentes.add(chave)
             turno_txt = str(row[c_turno] or "")
-            m = re.search(r"\d", turno_txt)
+            m = re.search(r"[1-9]", turno_txt)
             turno = turnos.get(int(m.group())) if m else None
             if m and not turno:
                 sem_turno += 1
@@ -139,7 +141,7 @@ class Command(BaseCommand):
                 numero_garra=str(row[c_num] or "").strip()[:10] if c_num is not None else "",
                 tipo_garra=garras.get(hc.norm(str(row[c_garra] or ""))), qtd_lentes=_int(row[c_qtd]),
                 teve_retrabalho=total_ret > 0, qtd_retrabalho=total_ret,
-                origem=RendimentoHCRegistro.ORIGEM_IMPORT, id_externo=id_ext or None,
+                origem=RendimentoHCRegistro.ORIGEM_IMPORT, chave_importacao=chave,
             )
             novos.append(reg)
             pend = []
@@ -155,9 +157,11 @@ class Command(BaseCommand):
             itens_pend.append(pend)
 
         vinculados = sum(1 for r in novos if r.colaborador_id)
+        anomalias = sum(1 for r in novos if r.qtd_lentes == 0 or r.qtd_retrabalho > r.qtd_lentes)
         self.stdout.write(
-            f"Linhas válidas: {len(novos)} | já importadas: {duplicadas} | ignoradas (data inválida): {ignoradas} | "
-            f"turno sem regra cadastrada: {sem_turno} | com colaborador vinculado ao RH: {vinculados}"
+            f"Linhas válidas: {len(novos)} | repetidas/já importadas: {duplicadas} | ignoradas (data inválida): {ignoradas} | "
+            f"turno sem regra cadastrada: {sem_turno} | com colaborador vinculado ao RH: {vinculados} | "
+            f"a revisar (lentes = 0 ou retrabalho > lentes): {anomalias}"
         )
         if dry_run:
             self.stdout.write(self.style.WARNING("Dry-run: nada foi gravado."))
@@ -169,10 +173,10 @@ class Command(BaseCommand):
                 lote = novos[ini: ini + 500]
                 # Salva sem depender de pk retornado pelo bulk_create (compatível com qualquer banco).
                 RendimentoHCRegistro.objects.bulk_create(lote)
-                ids = {r.id_externo: r.pk for r in RendimentoHCRegistro.objects.filter(id_externo__in=[r.id_externo for r in lote if r.id_externo])}
+                ids = {r.chave_importacao: r.pk for r in RendimentoHCRegistro.objects.filter(chave_importacao__in=[r.chave_importacao for r in lote])}
                 itens = []
                 for reg, pend in zip(lote, itens_pend[ini: ini + 500]):
-                    pk = reg.pk or ids.get(reg.id_externo)
+                    pk = reg.pk or ids.get(reg.chave_importacao)
                     itens += [RendimentoHCItem(registro_id=pk, tipo=t, cadastro=c_, quantidade=q) for t, c_, q in pend if pk]
                 RendimentoHCItem.objects.bulk_create(itens)
                 criados += len(lote)

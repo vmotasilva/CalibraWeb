@@ -1178,7 +1178,7 @@ class RendimentoHCRegistro(models.Model):
     observacoes = models.TextField(blank=True)
     extras = models.JSONField(default=dict, blank=True)
     origem = models.CharField(max_length=6, default=ORIGEM_FORM)
-    id_externo = models.PositiveIntegerField(null=True, blank=True, unique=True)
+    chave_importacao = models.CharField(max_length=40, null=True, blank=True, unique=True, help_text="Evita duplicar linhas ao reimportar a planilha.")
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     criado_em = models.DateTimeField(auto_now_add=True)
 
