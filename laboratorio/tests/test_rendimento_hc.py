@@ -124,6 +124,44 @@ class DetalhePopupTests(RendimentoHCBase):
         self.assertEqual(self.client.get(reverse("laboratorio:hc_registro_detalhe", args=[999999])).status_code, 404)
 
 
+class ModeloEExportacaoTests(RendimentoHCBase):
+    def _ler(self, resp):
+        import io
+
+        wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True)
+        return wb, [list(r) for r in wb["Respostas"].iter_rows(values_only=True)]
+
+    def test_modelo_tem_cabecalhos_e_instrucoes(self):
+        resp = self.client.get(reverse("laboratorio:hc_modelo"))
+        self.assertIn("spreadsheetml", resp["Content-Type"])
+        wb, linhas = self._ler(resp)
+        self.assertEqual(len(linhas), 1)  # só o cabeçalho
+        self.assertIn("Quantidade de Lentes", linhas[0])
+        self.assertIn("Retrabalho Risco", linhas[0])
+        self.assertIn("Instruções", wb.sheetnames)
+
+    def test_exporta_filtrado_e_reimporta(self):
+        self.post_registro(teve_retrabalho=1, **{f"rt_{self.risco.pk}": 2, f"rm_{self.orma.pk}": 2, f"pm_{self.orma.pk}": 20})
+        self.post_registro(data="2026-09-01", numero_lote="x")
+        wb, linhas = self._ler(self.client.get(reverse("laboratorio:hc_exportar")))
+        self.assertEqual(len(linhas), 3)
+        _wb, filtrado = self._ler(self.client.get(reverse("laboratorio:hc_exportar"), {"inicio": "2026-10-01"}))
+        self.assertEqual(len(filtrado), 2)
+        cab = filtrado[0]
+        linha = dict(zip(cab, filtrado[1]))
+        self.assertEqual((linha["Colaborador"], linha["Quantidade de Lentes"], linha["Retrabalho Risco"], linha["Teve Retrabalho ?"]), ("ANA PAULA SOUZA", 20, 2, "Sim"))
+        # round-trip: apaga tudo e importa o arquivo exportado com o mapeamento sugerido
+        fd, caminho = tempfile.mkstemp(suffix=".xlsx")
+        os.close(fd)
+        self.addCleanup(os.remove, caminho)
+        wb.save(caminho)
+        RendimentoHCRegistro.objects.all().delete()
+        call_command("importar_rendimento_hc", caminho, verbosity=0)
+        r = RendimentoHCRegistro.objects.get(data=date(2026, 10, 5))
+        self.assertEqual((r.qtd_lentes, r.qtd_retrabalho, r.colaborador, r.tipo_garra), (20, 2, self.ana, self.nova))
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 2)
+
+
 class CamposConfiguraveisTests(RendimentoHCBase):
     def test_campo_personalizado_aparece_e_grava_em_extras(self):
         self.client.post(reverse("laboratorio:hc_campo_save"), {
@@ -356,7 +394,7 @@ class PermissoesHCTests(RendimentoHCBase):
         for nome in ("hc_dashboard", "hc_registros", "hc_registro_create", "hc_registro_update", "hc_registro_delete",
                      "hc_config_campos", "hc_campo_save", "hc_campo_mover", "hc_campo_delete", "hc_config_meta",
                      "hc_config_cadastros", "hc_cadastro_save", "hc_cadastro_delete", "hc_equipe_save", "hc_equipe_delete",
-                     "hc_config_integracoes", "hc_sincronizar", "hc_vincular_nome", "hc_importar", "hc_importar_preview"):
+                     "hc_config_integracoes", "hc_sincronizar", "hc_vincular_nome", "hc_importar", "hc_importar_preview", "hc_modelo", "hc_exportar"):
             self.assertIn(f"laboratorio:{nome}", mapa, nome)
 
     def test_menu_mostra_itens_do_hc(self):

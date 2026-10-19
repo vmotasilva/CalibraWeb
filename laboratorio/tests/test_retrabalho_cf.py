@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from laboratorio import cf_importacao as imp
 from laboratorio import cf_retrabalho as cf
 from laboratorio.models import (
     CFCadastro,
@@ -121,6 +122,44 @@ class DetalhePopupTests(CFBase):
         self.assertNotIn("<th>Origem</th>", lista)  # coluna removida
         self.assertIn("card-registro", lista)  # cards no mobile
         self.assertIn("DOMContentLoaded", lista)  # o bootstrap só existe depois do conteúdo
+
+
+class ModeloEExportacaoTests(CFBase):
+    def _ler(self, resp):
+        import io
+
+        wb = openpyxl.load_workbook(io.BytesIO(resp.content), data_only=True)
+        return wb, [list(r) for r in wb["Respostas"].iter_rows(values_only=True)]
+
+    def test_modelo_tem_cabecalhos_e_instrucoes(self):
+        wb, linhas = self._ler(self.client.get(reverse("laboratorio:cf_modelo")))
+        self.assertEqual(len(linhas), 1)
+        self.assertIn("Total de Lentes no Lote", linhas[0])
+        self.assertIn("Retrabalho CF - CF - FOG ID errado", linhas[0])
+        self.assertIn("Instruções", wb.sheetnames)
+
+    def test_exporta_filtrado_e_reimporta(self):
+        motivo = CFCadastro.objects.get(tipo="REPROVACAO").nome
+        self.post_registro(necessidade_retrabalho=1, lote_reprovado=1, motivo_reprovacao=motivo, **{f"mt_{self.ar_risco.pk}": 3, f"mt_{self.cf_fog.pk}": 2})
+        self.post_registro(data="2026-09-01", numero_lote="velho")
+        wb, linhas = self._ler(self.client.get(reverse("laboratorio:cf_exportar")))
+        self.assertEqual(len(linhas), 3)
+        _wb, filtrado = self._ler(self.client.get(reverse("laboratorio:cf_exportar"), {"inicio": "2026-10-01"}))
+        self.assertEqual(len(filtrado), 2)
+        linha = dict(zip(filtrado[0], filtrado[1]))
+        self.assertEqual((linha["Total de Lentes no Lote"], linha["Retrabalho AR - AR - Risco"], linha["Lote Reprovado?"], linha["Máquina"]), (100, 3, "Sim", "DLX 1200"))
+        fd, caminho = tempfile.mkstemp(suffix=".xlsx")
+        os.close(fd)
+        self.addCleanup(os.remove, caminho)
+        wb.save(caminho)
+        RetrabalhoCFRegistro.objects.all().delete()
+        with open(caminho, "rb") as f:
+            dados = imp.ler_planilha(f)
+        resultado = imp.importar(dados["linhas"], imp.sugerir_mapa(dados["cabecalhos"]))
+        self.assertEqual(resultado["importadas"], 2)
+        r = RetrabalhoCFRegistro.objects.get(data=date(2026, 10, 5))
+        self.assertEqual((r.qtd_retrabalho, r.reprovado, r.colaborador_cf, r.colaborador_ar, r.tratamento), (5, True, self.gisele, self.montador, self.trat))
+        self.assertEqual(r.itens.count(), 2)
 
 
 class ConfiguracaoTests(CFBase):
@@ -301,7 +340,7 @@ class PermissoesCFTests(CFBase):
         for nome in ("cf_dashboard", "cf_registros", "cf_registro_create", "cf_registro_update", "cf_registro_delete", "cf_importar",
                      "cf_importar_preview", "cf_config_campos", "cf_campo_save", "cf_campo_mover", "cf_campo_delete", "cf_config_meta",
                      "cf_config_cadastros", "cf_cadastro_save", "cf_cadastro_delete", "cf_equipe_save", "cf_equipe_delete",
-                     "cf_config_integracoes", "cf_sincronizar", "cf_vincular", "cf_criar_tratamento"):
+                     "cf_config_integracoes", "cf_sincronizar", "cf_vincular", "cf_criar_tratamento", "cf_modelo", "cf_exportar"):
             self.assertIn(f"laboratorio:{nome}", mapa, nome)
 
     def test_menu_mostra_itens_do_cf(self):

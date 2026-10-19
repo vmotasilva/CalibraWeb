@@ -418,54 +418,21 @@ CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
                 {% can_nav_view user 'procedures:diagramas_lista' 'diagramas' as nav_diagramas_list %}
                 {% can_nav_block user 'laboratorio' 'homologacoes' as nav_lab_homol %}
                 {% can_nav_view user 'laboratorio:homologacoes_resumo' 'laboratorio' as nav_homol_resumo %}
-                {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos or nav_boards_list or nav_diagramas_list or nav_laboratorio and nav_lab_homol and nav_homol_resumo %}
+                {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos or nav_boards_list or nav_diagramas_list or nav_laboratorio and nav_lab_homol and nav_homol_resumo or user.is_authenticated %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                         <i class="bi bi-kanban nav-icon"></i><span class="nav-text">Gestão</span>
                     </a>
                     <ul class="dropdown-menu">
-{% can_nav_group user 'Ferramentas Auxiliares' as nav_grp_ferr %}
-{% if nav_grp_ferr %}
 <li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOFERRMobile" style="cursor: pointer;">
-FERRAMENTAS AUXILIARES <i class="bi bi-chevron-down transition-transform"></i>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOKPIMobile" style="cursor: pointer;">
+KPI <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 </h6>
-<ul class="list-unstyled collapse" id="collapseGESTAOFERRMobile">
-{% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos %}
-<li>
-<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseTMSMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform"></i>
-</h6>
-<ul class="list-unstyled collapse ps-2" id="collapseTMSMobile">
-{% if nav_tms_dash %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:tms_dashboard' %}"><i class="bi bi-stopwatch me-1"></i> Previsão & Gargalos</a></li>{% endif %}
-{% if nav_tms_fluxos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tms_fluxos_list' %}"><i class="bi bi-diagram-3 me-1"></i> Linhas de Produção</a></li>{% endif %}
+<ul class="list-unstyled collapse show" id="collapseGESTAOKPIMobile">
+<li><a class="dropdown-item" href="{% url 'kpi:painel' %}"><i class="bi bi-speedometer2"></i> Painel de Indicadores</a></li>
+<li><a class="dropdown-item" href="{% url 'kpi:indicadores' %}"><i class="bi bi-bullseye"></i> Cadastro de Indicadores</a></li>
 </ul>
 </li>
-{% endif %}
-{% if nav_boards_list %}
-<li>
-<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOQUADROSMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-QUADROS <i class="bi bi-chevron-down transition-transform"></i>
-</h6>
-<ul class="list-unstyled collapse ps-2" id="collapseGESTAOQUADROSMobile">
-<li><a class="dropdown-item" href="{% url 'boards:dashboard' %}"><i class="bi bi-kanban"></i> Quadros
-{% if unread_board_mentions_count and unread_board_mentions_count > 0 %}<span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem;">{{ unread_board_mentions_count }}</span>{% endif %}</a></li>
-</ul>
-</li>
-{% endif %}
-{% if nav_diagramas_list %}
-<li>
-<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAODIAGMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
-DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
-</h6>
-<ul class="list-unstyled collapse ps-2" id="collapseGESTAODIAGMobile">
-<li><a class="dropdown-item" href="{% url 'procedures:diagramas_lista' %}"><i class="bi bi-diagram-3-fill"></i> Diagramas e Fluxogramas</a></li>
-</ul>
-</li>
-{% endif %}
-</ul>
-</li>
-{% endif %}
 <li>
 <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOPROCMobile" style="cursor: pointer;">
 PROCESSOS <i class="bi bi-chevron-down transition-transform"></i>
@@ -513,6 +480,48 @@ MONITORAMENTO/ ENVIOS EQC <i class="bi bi-chevron-down transition-transform"></i
                     </ul>
                 </li>
                 {% endif %}
+{% can_nav_group user 'Ferramentas Auxiliares' as nav_grp_ferr %}
+{% if nav_grp_ferr %}
+<li>
+<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOFERRMobile" style="cursor: pointer;">
+FERRAMENTAS AUXILIARES <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse" id="collapseGESTAOFERRMobile">
+{% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos %}
+<li>
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseTMSMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
+TEMPOS E MOVIMENTOS (TMS) <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseTMSMobile">
+{% if nav_tms_dash %}<li><a class="dropdown-item fw-bold text-primary" href="{% url 'laboratorio:tms_dashboard' %}"><i class="bi bi-stopwatch me-1"></i> Previsão & Gargalos</a></li>{% endif %}
+{% if nav_tms_fluxos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tms_fluxos_list' %}"><i class="bi bi-diagram-3 me-1"></i> Linhas de Produção</a></li>{% endif %}
+</ul>
+</li>
+{% endif %}
+{% if nav_boards_list %}
+<li>
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOQUADROSMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
+QUADROS <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAOQUADROSMobile">
+<li><a class="dropdown-item" href="{% url 'boards:dashboard' %}"><i class="bi bi-kanban"></i> Quadros
+{% if unread_board_mentions_count and unread_board_mentions_count > 0 %}<span class="badge rounded-pill bg-danger ms-1" style="font-size: 0.65rem;">{{ unread_board_mentions_count }}</span>{% endif %}</a></li>
+</ul>
+</li>
+{% endif %}
+{% if nav_diagramas_list %}
+<li>
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAODIAGMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
+DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAODIAGMobile">
+<li><a class="dropdown-item" href="{% url 'procedures:diagramas_lista' %}"><i class="bi bi-diagram-3-fill"></i> Diagramas e Fluxogramas</a></li>
+</ul>
+</li>
+{% endif %}
+</ul>
+</li>
+{% endif %}
 
                 {% if nav_metrologia %}
                 <li class="nav-item dropdown">
