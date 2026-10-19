@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -14,6 +15,7 @@ from django.views.decorators.http import require_POST
 
 from rh.models import Colaborador
 
+from . import hc_importacao as imp
 from . import hc_rendimento as hc
 from .models import (
     EquipeHC,
@@ -411,3 +413,54 @@ def hc_vincular_nome(request):
         membro.save(update_fields=["apelidos"])
     messages.success(request, f"{n} lançamento(s) de '{nome}' vinculados a {colab.nome_completo}.")
     return redirect("laboratorio:hc_config_integracoes")
+
+
+# --------------------------------------------------------------------------- importação de planilha
+MAX_UPLOAD = 15 * 1024 * 1024
+
+
+def _ler_upload(request):
+    arquivo = request.FILES.get("arquivo")
+    if not arquivo:
+        raise ValueError("Selecione a planilha (.xlsx ou .csv).")
+    if arquivo.size > MAX_UPLOAD:
+        raise ValueError("Arquivo maior que 15 MB.")
+    if not arquivo.name.lower().endswith((".xlsx", ".xlsm", ".csv")):
+        raise ValueError("Formato não suportado: use .xlsx ou .csv.")
+    return imp.ler_planilha(arquivo, request.POST.get("aba") or None)
+
+
+@login_required
+def hc_importar(request):
+    """Tela de importação: o navegador consulta o preview (cabeçalhos) e envia arquivo + mapeamento aqui."""
+    hc.garantir_padroes()
+    resultado = None
+    if request.method == "POST":
+        try:
+            dados = _ler_upload(request)
+            mapa = {k[4:]: v for k, v in request.POST.items() if k.startswith("map_") and v != ""}
+            resultado = imp.importar(
+                dados["linhas"], mapa, a_partir=_data(request.POST.get("a_partir"), None),
+                simular=request.POST.get("acao") == "simular", usuario=request.user,
+            )
+            if resultado["simulado"]:
+                messages.info(request, f"Simulação: {resultado['validas']} lançamento(s) seriam importados. Nada foi gravado.")
+            else:
+                messages.success(request, f"{resultado['importadas']} lançamento(s) importados.")
+        except ValueError as exc:
+            messages.error(request, str(exc))
+    return render(request, "laboratorio/hc_importar.html", {"alvos": imp.alvos(), "resultado": resultado})
+
+
+@login_required
+@require_POST
+def hc_importar_preview(request):
+    try:
+        dados = _ler_upload(request)
+    except ValueError as exc:
+        return JsonResponse({"erro": str(exc)}, status=400)
+    amostra = [["" if v is None else str(v)[:40] for v in linha] for linha in dados["linhas"][:2]]
+    return JsonResponse({
+        "abas": dados["abas"], "aba": dados["aba"], "cabecalhos": dados["cabecalhos"], "total": len(dados["linhas"]),
+        "sugestao": imp.sugerir_mapa(dados["cabecalhos"]), "amostra": amostra,
+    })

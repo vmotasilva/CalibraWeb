@@ -292,6 +292,44 @@ class ImportacaoPlanilhaTests(RendimentoHCBase):
         self.assertEqual(RendimentoHCRegistro.objects.count(), 0)
 
 
+class ImportacaoPorTelaTests(ImportacaoPlanilhaTests):
+    def _upload(self, url, caminho, **extra):
+        with open(caminho, "rb") as f:
+            return self.client.post(reverse(url), {"arquivo": f, **extra})
+
+    def test_preview_sugere_o_mapeamento(self):
+        resp = self._upload("laboratorio:hc_importar_preview", self._planilha())
+        dados = resp.json()
+        self.assertEqual(dados["aba"], "Respostas")
+        self.assertEqual(dados["total"], 3)
+        sug = dados["sugestao"]
+        cab = dados["cabecalhos"]
+        self.assertEqual(cab[sug["data"]], "Data")
+        self.assertEqual(cab[sug["qtd_lentes"]], "Quantidade de Lentes")
+        self.assertEqual(cab[sug[f"pm_{self.orma.pk}"]], "Quantidade de Orma")
+        self.assertEqual(cab[sug[f"rt_{self.risco.pk}"]], "Retrabalho Risco")
+        self.assertEqual(self.client.post(reverse("laboratorio:hc_importar_preview"), {}).status_code, 400)
+
+    def test_importar_com_mapeamento_escolhido_pelo_usuario(self):
+        caminho = self._planilha()
+        sug = self._upload("laboratorio:hc_importar_preview", caminho).json()["sugestao"]
+        mapa = {f"map_{k}": v for k, v in sug.items()}
+        resp = self._upload("laboratorio:hc_importar", caminho, acao="simular", **mapa)
+        self.assertEqual(resp.context["resultado"]["validas"], 2)
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 0)
+        resp = self._upload("laboratorio:hc_importar", caminho, acao="importar", **mapa)
+        self.assertEqual(resp.context["resultado"]["importadas"], 2)
+        self.assertEqual(RendimentoHCRegistro.objects.get(chave_importacao="id:100").colaborador, self.ana)
+        # coluna de lentes não relacionada -> erro e nada gravado
+        sem_lentes = {k: v for k, v in mapa.items() if k != "map_qtd_lentes"}
+        resp = self._upload("laboratorio:hc_importar", caminho, acao="importar", **sem_lentes)
+        self.assertIsNone(resp.context["resultado"])
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 2)
+
+    def test_pagina_abre(self):
+        self.assertEqual(self.client.get(reverse("laboratorio:hc_importar")).status_code, 200)
+
+
 class PermissoesHCTests(RendimentoHCBase):
     def test_todas_as_views_hc_estao_no_mapa_de_permissoes(self):
         from shared.permissions import get_view_permission_map
@@ -300,7 +338,7 @@ class PermissoesHCTests(RendimentoHCBase):
         for nome in ("hc_dashboard", "hc_registros", "hc_registro_create", "hc_registro_update", "hc_registro_delete",
                      "hc_config_campos", "hc_campo_save", "hc_campo_mover", "hc_campo_delete", "hc_config_meta",
                      "hc_config_cadastros", "hc_cadastro_save", "hc_cadastro_delete", "hc_equipe_save", "hc_equipe_delete",
-                     "hc_config_integracoes", "hc_sincronizar", "hc_vincular_nome"):
+                     "hc_config_integracoes", "hc_sincronizar", "hc_vincular_nome", "hc_importar", "hc_importar_preview"):
             self.assertIn(f"laboratorio:{nome}", mapa, nome)
 
     def test_menu_mostra_itens_do_hc(self):

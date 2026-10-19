@@ -481,6 +481,7 @@ class NavigationPermission(models.Model):
             ("nav_laboratorio_hc_registro_create", "NAV: Laboratorio / HC / Novo Lancamento de Rendimento"),
             ("nav_laboratorio_hc_registro_update", "NAV: Laboratorio / HC / Editar Lancamento de Rendimento"),
             ("nav_laboratorio_hc_registro_delete", "NAV: Laboratorio / HC / Excluir Lancamento de Rendimento"),
+            ("nav_laboratorio_hc_importar", "NAV: Laboratorio / HC / Importar Planilha de Rendimento"),
             ("nav_laboratorio_hc_campos_bloco", "NAV: Laboratorio / Bloco HC: Campos do Formulario"),
             ("nav_laboratorio_hc_campos", "NAV: Laboratorio / HC / Campos do Formulario"),
             ("nav_laboratorio_hc_campo_save", "NAV: Laboratorio / HC / Salvar e Reordenar Campos e Meta"),

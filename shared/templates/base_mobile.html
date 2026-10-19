@@ -283,11 +283,12 @@ MÁQUINAS <i class="bi bi-chevron-down transition-transform"></i>
                         {% can_nav_view user 'laboratorio:hc_dashboard' 'laboratorio' as nav_hc_dashboard %}
 {% can_nav_view user 'laboratorio:hc_registros' 'laboratorio' as nav_hc_registros %}
 {% can_nav_view user 'laboratorio:hc_registro_create' 'laboratorio' as nav_hc_novo %}
+{% can_nav_view user 'laboratorio:hc_importar' 'laboratorio' as nav_hc_importar %}
 {% can_nav_view user 'laboratorio:hc_config_campos' 'laboratorio' as nav_hc_campos %}
 {% can_nav_view user 'laboratorio:hc_config_cadastros' 'laboratorio' as nav_hc_cadastros %}
 {% can_nav_view user 'laboratorio:hc_config_integracoes' 'laboratorio' as nav_hc_integracoes %}
                         {% can_nav_block user 'laboratorio' 'coating' as nav_lab_coating %}
-                        {% if nav_lab_coating or nav_hc_dashboard or nav_hc_registros or nav_hc_novo or nav_hc_campos or nav_hc_cadastros or nav_hc_integracoes %}
+                        {% if nav_lab_coating or nav_hc_dashboard or nav_hc_registros or nav_hc_novo or nav_hc_importar or nav_hc_campos or nav_hc_cadastros or nav_hc_integracoes %}
 {% can_nav_view user 'laboratorio:coating_painel' 'laboratorio' as nav_coating_painel %}
 {% can_nav_view user 'laboratorio:dashboard_coating' 'laboratorio' as nav_coating_dashboard %}
 {% can_nav_view user 'laboratorio:importar_lotes_coating' 'laboratorio' as nav_coating_importacao %}
@@ -295,7 +296,7 @@ MÁQUINAS <i class="bi bi-chevron-down transition-transform"></i>
 {% can_nav_view user 'laboratorio:regra_turno_list' 'laboratorio' as nav_coating_turnos %}
 {% can_nav_view user 'laboratorio:ciclo_coating_list' 'laboratorio' as nav_coating_ciclos %}
 {% can_nav_view user 'laboratorio:equipe_coating_list' 'laboratorio' as nav_coating_equipe %}
-                            {% if nav_coating_painel or nav_coating_dashboard or nav_coating_importacao or nav_coating_tratamentos or nav_coating_turnos or nav_coating_ciclos or nav_coating_equipe or nav_hc_dashboard or nav_hc_registros or nav_hc_novo or nav_hc_campos or nav_hc_cadastros or nav_hc_integracoes %}
+                            {% if nav_coating_painel or nav_coating_dashboard or nav_coating_importacao or nav_coating_tratamentos or nav_coating_turnos or nav_coating_ciclos or nav_coating_equipe or nav_hc_dashboard or nav_hc_registros or nav_hc_novo or nav_hc_importar or nav_hc_campos or nav_hc_cadastros or nav_hc_integracoes %}
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseHMCMobile" style="cursor: pointer; background-color: #000 !important; color: #fff !important;">
@@ -336,6 +337,7 @@ HC <i class="bi bi-chevron-down transition-transform"></i>
 {% if nav_hc_dashboard %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:hc_dashboard' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>{% endif %}
 {% if nav_hc_novo %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:hc_registro_create' %}"><i class="bi bi-plus-circle"></i> Novo Lançamento</a></li>{% endif %}
 {% if nav_hc_registros %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:hc_registros' %}"><i class="bi bi-card-checklist"></i> Registros</a></li>{% endif %}
+{% if nav_hc_importar %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:hc_importar' %}"><i class="bi bi-upload"></i> Importar Planilha</a></li>{% endif %}
 {% if nav_hc_campos or nav_hc_cadastros or nav_hc_integracoes %}
 <li>
 <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCHCMobileCFG" style="cursor: pointer;">
