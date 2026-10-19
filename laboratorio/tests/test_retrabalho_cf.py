@@ -118,6 +118,9 @@ class DetalhePopupTests(CFBase):
         self.assertIn(reverse("laboratorio:cf_registro_detalhe", args=[r.pk]), lista)
         self.assertNotIn(reverse("laboratorio:cf_registro_update", args=[r.pk]), lista)
         self.assertNotIn(reverse("laboratorio:cf_registro_delete", args=[r.pk]), lista)
+        self.assertNotIn("<th>Origem</th>", lista)  # coluna removida
+        self.assertIn("card-registro", lista)  # cards no mobile
+        self.assertIn("DOMContentLoaded", lista)  # o bootstrap só existe depois do conteúdo
 
 
 class ConfiguracaoTests(CFBase):

@@ -118,6 +118,9 @@ class DetalhePopupTests(RendimentoHCBase):
         self.assertIn(reverse("laboratorio:hc_registro_detalhe", args=[r.pk]), lista)
         self.assertNotIn(reverse("laboratorio:hc_registro_update", args=[r.pk]), lista)
         self.assertNotIn(reverse("laboratorio:hc_registro_delete", args=[r.pk]), lista)
+        self.assertNotIn("<th>Origem</th>", lista)  # coluna removida
+        self.assertIn("card-registro", lista)  # cards no mobile
+        self.assertIn("DOMContentLoaded", lista)  # o bootstrap só existe depois do conteúdo
         self.assertEqual(self.client.get(reverse("laboratorio:hc_registro_detalhe", args=[999999])).status_code, 404)
 
 
