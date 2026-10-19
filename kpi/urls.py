@@ -1,0 +1,15 @@
+from django.urls import path
+
+from kpi import views
+
+app_name = 'kpi'
+
+urlpatterns = [
+    path('', views.painel_view, name='painel'),
+    path('indicadores/', views.indicadores_view, name='indicadores'),
+    path('indicadores/novo/', views.indicador_form_view, name='indicador_novo'),
+    path('indicadores/<int:pk>/', views.indicador_detalhe_view, name='indicador_detalhe'),
+    path('indicadores/<int:pk>/editar/', views.indicador_form_view, name='indicador_editar'),
+    path('indicadores/<int:pk>/excluir/', views.indicador_excluir_view, name='indicador_excluir'),
+    path('medicoes/<int:pk>/excluir/', views.medicao_excluir_view, name='medicao_excluir'),
+]

@@ -250,6 +250,9 @@ urlpatterns = [
     
     # 10. Boards app URLs
     path("boards/", include("boards.urls")),
+
+    # 11. KPI (indicadores)
+    path("kpi/", include("kpi.urls")),
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug

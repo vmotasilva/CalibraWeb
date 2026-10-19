@@ -1,0 +1,58 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI - Painel de Indicadores - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>KPI — Painel de Indicadores</h4>
+            <small class="text-muted">Último valor lançado de cada indicador ativo em relação à meta.</small>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'kpi:indicadores' %}" class="btn btn-outline-primary"><i class="bi bi-list-ul me-1"></i>Indicadores</a>
+            <a href="{% url 'kpi:indicador_novo' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo indicador</a>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3"><div class="card text-center p-3"><small class="text-muted">INDICADORES</small><div class="fs-2 fw-bold">{{ total }}</div></div></div>
+        <div class="col-6 col-md-3"><div class="card text-center p-3"><small class="text-muted">NA META</small><div class="fs-2 fw-bold text-success">{{ ok }}</div></div></div>
+        <div class="col-6 col-md-3"><div class="card text-center p-3"><small class="text-muted">FORA DA META</small><div class="fs-2 fw-bold text-danger">{{ fora }}</div></div></div>
+        <div class="col-6 col-md-3"><div class="card text-center p-3"><small class="text-muted">SEM LANÇAMENTO</small><div class="fs-2 fw-bold text-secondary">{{ sem_dado }}</div></div></div>
+    </div>
+
+    <div class="row g-3">
+        {% for c in cards %}
+        <div class="col-12 col-md-6 col-xl-4">
+            <a href="{% url 'kpi:indicador_detalhe' c.ind.pk %}" class="text-decoration-none text-reset">
+                <div class="card h-100 border-start border-4 {% if c.atingiu is True %}border-success{% elif c.atingiu is False %}border-danger{% else %}border-secondary{% endif %}">
+                    <div class="card-body">
+                        <small class="text-muted">{{ c.ind.area|default:"Sem área" }}</small>
+                        <h6 class="mb-2">{{ c.ind.nome }}</h6>
+                        <div class="d-flex justify-content-between align-items-end">
+                            <div>
+                                <div class="fs-3 fw-bold {% if c.atingiu is True %}text-success{% elif c.atingiu is False %}text-danger{% endif %}">
+                                    {% if c.ultima %}{{ c.ultima.valor }} {{ c.ind.unidade }}{% else %}—{% endif %}
+                                </div>
+                                {% if c.ultima %}<small class="text-muted">{{ c.ultima.periodo|date:"m/Y" }}</small>{% endif %}
+                            </div>
+                            <div class="text-end">
+                                <small class="text-muted d-block">Meta {% if c.ind.sentido == 'maior' %}≥{% else %}≤{% endif %}</small>
+                                <strong>{{ c.ind.meta }} {{ c.ind.unidade }}</strong>
+                            </div>
+                        </div>
+                        {% if c.serie %}
+                        <div class="mt-2 d-flex gap-1 align-items-center">
+                            {% for m in c.serie %}<span class="badge bg-light text-dark border" title="{{ m.periodo|date:'m/Y' }}">{{ m.valor }}</span>{% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% empty %}
+        <div class="col-12"><div class="alert alert-info">Nenhum indicador cadastrado ainda. Clique em <strong>Novo indicador</strong> para começar.</div></div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
