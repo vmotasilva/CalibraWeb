@@ -6,6 +6,8 @@ app_name = 'kpi'
 
 urlpatterns = [
     path('', views.painel_view, name='painel'),
+    path('importar/', views.importar_view, name='importar'),
+    path('importar/modelo/<str:gran>/', views.modelo_importacao_view, name='modelo_importacao'),
     path('indicadores/', views.indicadores_view, name='indicadores'),
     path('indicadores/novo/', views.indicador_form_view, name='indicador_novo'),
     path('indicadores/<int:pk>/', views.indicador_detalhe_view, name='indicador_detalhe'),

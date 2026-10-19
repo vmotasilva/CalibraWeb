@@ -242,3 +242,30 @@ def motivo_salvar_view(request, pk):
     else:
         messages.success(request, f'Motivos de {_rotulo(gran, data)} removidos.')
     return _voltar(ind.pk, '&mot=0')
+
+
+@login_required
+def importar_view(request):
+    from kpi import importacao
+    resultado = None
+    gran = request.POST.get('granularidade', 'mensal')
+    if request.method == 'POST':
+        arquivo = request.FILES.get('arquivo')
+        if gran not in importacao.NOMES or not arquivo:
+            messages.error(request, 'Escolha o tipo do modelo e envie o arquivo .xlsx.')
+        else:
+            resultado = importacao.importar(arquivo, gran, request.user)
+    return render(request, 'kpi/importar.html', {'resultado': resultado, 'gran': gran})
+
+
+@login_required
+def modelo_importacao_view(request, gran):
+    from django.http import Http404, HttpResponse
+    from kpi import importacao
+    if gran not in importacao.NOMES:
+        raise Http404
+    resp = HttpResponse(
+        importacao.gerar_modelo(gran),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = f'attachment; filename="modelo_kpi_{importacao.NOMES[gran].lower()}.xlsx"'
+    return resp

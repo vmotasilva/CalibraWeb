@@ -81,3 +81,35 @@ class KpiTests(TestCase):
         r = self.client.get(reverse('kpi:painel'))
         self.assertEqual(r.context['abas'][0]['ind'].nome, 'C')
         self.assertEqual(self.client.get(reverse('kpi:indicadores')).status_code, 200)
+
+    def test_modelos_e_importacao(self):
+        import io
+        from openpyxl import load_workbook
+        for gran in ('diaria', 'semanal', 'mensal'):
+            r = self.client.get(reverse('kpi:modelo_importacao', args=[gran]))
+            self.assertEqual(r.status_code, 200)
+            wb = load_workbook(io.BytesIO(r.content))
+            self.assertEqual(wb.sheetnames[:2], ['Valores', 'Motivos'])
+        self.assertEqual(self.client.get(reverse('kpi:modelo_importacao', args=['x'])).status_code, 404)
+        self.assertEqual(self.client.get(reverse('kpi:importar')).status_code, 200)
+
+        from openpyxl import Workbook
+        wb = Workbook()
+        v = wb.active
+        v.title = 'Valores'
+        v.append(['Indicador', 'Semana', 'Valor', 'Observação'])
+        v.append(['SR', '15/10/2026', '94,5', 'ok'])
+        v.append(['Inexistente', '15/10/2026', 1, ''])
+        m = wb.create_sheet('Motivos')
+        m.append(['Indicador', 'Semana', 'Motivo', 'Quantidade'])
+        m.append(['SR', '13/10/2026', 'Quebra', 3])
+        m.append(['SR', '14/10/2026', 'Trinca', 1])
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        buf.name = 'x.xlsx'
+        r = self.client.post(reverse('kpi:importar'), {'granularidade': 'semanal', 'arquivo': buf})
+        res = r.context['resultado']
+        self.assertEqual((res['valores'], res['motivos'], len(res['erros'])), (1, 2, 1))
+        self.assertEqual(str(Medicao.objects.get(granularidade='semanal').valor), '94.50')
+        self.assertEqual(Motivo.objects.filter(granularidade='semanal', data=date(2026, 10, 12)).count(), 2)

@@ -1,0 +1,54 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI - Importar - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 900px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-upload me-2"></i>Importar valores e motivos</h4>
+        <a href="{% url 'kpi:painel' %}" class="btn btn-outline-secondary">Painel</a>
+    </div>
+
+    {% if resultado %}
+    <div class="alert {% if resultado.erros %}alert-warning{% else %}alert-success{% endif %}">
+        <strong>Importação concluída:</strong> {{ resultado.valores }} valor(es) e {{ resultado.motivos }} motivo(s) importados.
+        {% if resultado.erros %}<br>{{ resultado.erros|length }} linha(s) ignorada(s):{% endif %}
+        {% if resultado.erros %}
+        <ul class="mb-0 mt-2 small">
+            {% for linha, aba, msg in resultado.erros|slice:":50" %}<li>Aba {{ aba }}, linha {{ linha }}: {{ msg }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="card card-body mb-3">
+        <h6>1. Baixe o modelo</h6>
+        <p class="small text-muted mb-2">Cada modelo tem a aba Valores, a aba Motivos, as instruções e a lista dos indicadores cadastrados.</p>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'diaria' %}"><i class="bi bi-calendar-day me-1"></i>Modelo Diário</a>
+            <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'semanal' %}"><i class="bi bi-calendar-week me-1"></i>Modelo Semanal</a>
+            <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'mensal' %}"><i class="bi bi-calendar3 me-1"></i>Modelo Mensal</a>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="card card-body">
+        {% csrf_token %}
+        <h6>2. Envie a planilha preenchida</h6>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label" for="gran">Tipo do modelo</label>
+                <select class="form-select" name="granularidade" id="gran" required>
+                    <option value="diaria" {% if gran == 'diaria' %}selected{% endif %}>Diário</option>
+                    <option value="semanal" {% if gran == 'semanal' %}selected{% endif %}>Semanal</option>
+                    <option value="mensal" {% if gran == 'mensal' %}selected{% endif %}>Mensal</option>
+                </select>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label" for="arq">Arquivo (.xlsx)</label>
+                <input type="file" class="form-control" name="arquivo" id="arq" accept=".xlsx" required>
+            </div>
+        </div>
+        <div class="small text-muted mt-2">Valores já existentes no mesmo período são atualizados; os motivos de um período presente na planilha substituem os atuais. Semanal e diário exigem o acompanhamento habilitado no indicador.</div>
+        <div class="text-end mt-3"><button class="btn btn-primary" type="submit"><i class="bi bi-upload me-1"></i>Importar</button></div>
+    </form>
+</div>
+{% endblock %}
