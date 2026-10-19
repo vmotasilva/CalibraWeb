@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block title %}Campos do Formulário | Retrabalho CF{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · Controle Final · Configurações</span>
+            <h2 class="h3 fw-bold mt-2 mb-0">Campos do formulário</h2>
+            <p class="text-muted small mb-0">Defina as perguntas, a ordem e a obrigatoriedade. Os motivos de retrabalho e de reprovação vêm dos <a href="{% url 'laboratorio:cf_config_cadastros' %}">Cadastros base</a>.</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCampo" onclick="novoCampo()"><i class="bi bi-plus-circle me-1"></i>Nova pergunta</button>
+    </div>
+    {% include 'laboratorio/_cf_menu_config.html' with ativa='campos' %}
+
+    <div class="row g-3">
+        <div class="col-lg-9">
+            <div class="card border-0 shadow-sm"><div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light"><tr><th style="width:90px">Ordem</th><th>Pergunta / rótulo</th><th>Tipo</th><th class="text-center">Obrigatório</th><th class="text-center">No formulário</th><th class="text-end">Ações</th></tr></thead>
+                    <tbody>
+                    {% for c in campos %}
+                        <tr {% if not c.visivel %}class="text-muted"{% endif %}>
+                            <td class="text-nowrap">
+                                <form method="post" action="{% url 'laboratorio:cf_campo_mover' c.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="direcao" value="up"><button class="btn btn-sm btn-light py-0" {% if forloop.first %}disabled{% endif %}><i class="bi bi-arrow-up"></i></button></form>
+                                <form method="post" action="{% url 'laboratorio:cf_campo_mover' c.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="direcao" value="down"><button class="btn btn-sm btn-light py-0" {% if forloop.last %}disabled{% endif %}><i class="bi bi-arrow-down"></i></button></form>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{ c.rotulo }}</div>
+                                <div class="text-muted" style="font-size:.75rem">{{ c.chave }}{% if c.ajuda %} · {{ c.ajuda }}{% endif %}</div>
+                            </td>
+                            <td>{% if c.sistema %}<span class="badge bg-secondary">Sistema{% if c.eh_bloco %} · grupo{% endif %}</span>{% else %}<span class="badge bg-info text-dark">{{ c.get_tipo_display }}</span>{% endif %}</td>
+                            <td class="text-center">{% if c.obrigatorio %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}–{% endif %}</td>
+                            <td class="text-center">{% if c.visivel %}<i class="bi bi-eye-fill text-primary"></i>{% else %}<i class="bi bi-eye-slash"></i>{% endif %}</td>
+                            <td class="text-end text-nowrap">
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCampo"
+                                    data-id="{{ c.pk }}" data-rotulo="{{ c.rotulo }}" data-ajuda="{{ c.ajuda }}" data-tipo="{{ c.tipo }}" data-opcoes="{{ c.opcoes }}"
+                                    data-obrigatorio="{{ c.obrigatorio|yesno:'1,0' }}" data-visivel="{{ c.visivel|yesno:'1,0' }}" data-sistema="{{ c.sistema|yesno:'1,0' }}" data-bloco="{{ c.eh_bloco|yesno:'1,0' }}"
+                                    onclick="editarCampo(this)"><i class="bi bi-pencil"></i></button>
+                                {% if not c.sistema %}
+                                <form method="post" action="{% url 'laboratorio:cf_campo_delete' c.pk %}" class="d-inline" onsubmit="return confirm('Excluir esta pergunta?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div></div>
+            <p class="small text-muted mt-2"><i class="bi bi-info-circle me-1"></i>Campos de sistema (data, total de lentes, “necessidade de retrabalho”) alimentam os cálculos e não podem ser ocultados. Perguntas personalizadas ficam guardadas em cada lançamento.</p>
+        </div>
+        <div class="col-lg-3">
+            <div class="card border-0 shadow-sm"><div class="card-body">
+                <h6 class="fw-bold"><i class="bi bi-bullseye me-1"></i>Meta máxima de retrabalho</h6>
+                <form method="post" action="{% url 'laboratorio:cf_config_meta' %}" class="input-group">{% csrf_token %}
+                    <input type="number" step="0.01" min="1" max="100" name="meta_retrabalho" value="{{ config.meta_retrabalho|stringformat:'s' }}" class="form-control">
+                    <span class="input-group-text">%</span><button class="btn btn-primary">Salvar</button>
+                </form>
+                <div class="form-text">Limite de % de retrabalho usado nos gráficos e nas cores do dashboard.</div>
+            </div></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCampo" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+    <form method="post" action="{% url 'laboratorio:cf_campo_save' %}">{% csrf_token %}
+        <input type="hidden" name="id" id="campoId">
+        <div class="modal-header"><h5 class="modal-title" id="campoTitulo">Nova pergunta</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <div class="mb-3"><label class="form-label fw-semibold">Pergunta / rótulo</label><input name="rotulo" id="campoRotulo" class="form-control" maxlength="200" required></div>
+            <div class="mb-3"><label class="form-label">Texto de ajuda (opcional)</label><input name="ajuda" id="campoAjuda" class="form-control" maxlength="255"></div>
+            <div id="grpTipo">
+                <div class="mb-3"><label class="form-label">Tipo de resposta</label>
+                    <select name="tipo" id="campoTipo" class="form-select" onchange="mostraOpcoes()">{% for v, n in tipos %}<option value="{{ v }}">{{ n }}</option>{% endfor %}</select></div>
+                <div class="mb-3" id="grpOpcoes" style="display:none"><label class="form-label">Opções (uma por linha)</label><textarea name="opcoes" id="campoOpcoes" rows="4" class="form-control"></textarea></div>
+            </div>
+            <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" name="obrigatorio" id="campoObrig"><label class="form-check-label" for="campoObrig">Resposta obrigatória</label></div>
+            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" name="visivel" id="campoVisivel" checked><label class="form-check-label" for="campoVisivel">Exibir no formulário</label></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Salvar</button></div>
+    </form>
+</div></div></div>
+
+<script>
+function mostraOpcoes() {
+    document.getElementById('grpOpcoes').style.display = document.getElementById('campoTipo').value === 'SELECAO' ? '' : 'none';
+}
+function novoCampo() {
+    document.getElementById('campoTitulo').textContent = 'Nova pergunta';
+    ['campoId', 'campoRotulo', 'campoAjuda', 'campoOpcoes'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('campoTipo').value = 'TEXTO';
+    document.getElementById('campoObrig').checked = false;
+    document.getElementById('campoVisivel').checked = true;
+    document.getElementById('campoVisivel').disabled = false;
+    document.getElementById('grpTipo').style.display = '';
+    mostraOpcoes();
+}
+function editarCampo(btn) {
+    const d = btn.dataset;
+    document.getElementById('campoTitulo').textContent = 'Editar pergunta';
+    document.getElementById('campoId').value = d.id;
+    document.getElementById('campoRotulo').value = d.rotulo;
+    document.getElementById('campoAjuda').value = d.ajuda;
+    document.getElementById('campoTipo').value = d.tipo;
+    document.getElementById('campoOpcoes').value = d.opcoes;
+    document.getElementById('campoObrig').checked = d.obrigatorio === '1';
+    document.getElementById('campoVisivel').checked = d.visivel === '1';
+    document.getElementById('grpTipo').style.display = d.sistema === '1' ? 'none' : '';
+    mostraOpcoes();
+}
+</script>
+{% endblock %}

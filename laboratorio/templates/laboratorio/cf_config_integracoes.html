@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block title %}Integrações | Retrabalho CF{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="mb-3">
+        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · Controle Final · Configurações</span>
+        <h2 class="h3 fw-bold mt-2 mb-0">Integrações e sincronização</h2>
+        <p class="text-muted small mb-0">O Retrabalho CF reaproveita cadastros que já existem no HMC e no RH, em vez de duplicá-los.</p>
+    </div>
+    {% include 'laboratorio/_cf_menu_config.html' with ativa='integracoes' %}
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-clock-history me-1 text-primary"></i>Turnos <span class="badge bg-secondary">{{ turnos }}</span></h6>
+            <p class="small text-muted">Fonte única: <strong>Regras de Turno</strong> do Anti-Reflexo.</p>
+            <a href="{% url 'laboratorio:regra_turno_list' %}" class="btn btn-sm btn-outline-primary">Gerenciar</a>
+        </div></div></div>
+        <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-droplet-half me-1 text-primary"></i>Tratamentos <span class="badge bg-secondary">{{ tratamentos }}</span></h6>
+            <p class="small text-muted">Fonte única: <strong>Tratamentos</strong> do Anti-Reflexo.</p>
+            <a href="{% url 'laboratorio:tratamento_list' %}" class="btn btn-sm btn-outline-primary">Gerenciar</a>
+        </div></div></div>
+        <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-gear me-1 text-primary"></i>Máquinas <span class="badge bg-secondary">{{ maquinas }}</span></h6>
+            <p class="small text-muted">Fonte única: <strong>Cadastro de Máquinas</strong> (evaporadoras; sem categoria correspondente, todas as ativas).</p>
+            <a href="{% url 'maquinas:maquinas_list' %}" class="btn btn-sm btn-outline-primary">Gerenciar</a>
+        </div></div></div>
+        <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <h6 class="fw-bold"><i class="bi bi-people me-1 text-primary"></i>Montagem (AR) <span class="badge bg-secondary">{{ montagem }}</span></h6>
+            <p class="small text-muted">O “Colaborador AR” vem da <strong>Equipe Coating</strong> (quem pode montar). A inspeção usa a Equipe Controle Final.</p>
+            <a href="{% url 'laboratorio:equipe_coating_list' %}" class="btn btn-sm btn-outline-primary">Equipe Coating</a>
+            <a href="{% url 'laboratorio:cf_config_cadastros' %}?aba=EQUIPE" class="btn btn-sm btn-outline-secondary">Equipe CF</a>
+        </div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <span class="fw-bold"><i class="bi bi-arrow-repeat me-1"></i>Proposta de sincronização da Equipe Controle Final</span>
+            {% if propostas.adicionar or propostas.inativos %}
+            <form method="post" action="{% url 'laboratorio:cf_sincronizar' %}" onsubmit="return confirm('Aplicar as alterações propostas?');">{% csrf_token %}
+                <button class="btn btn-primary btn-sm"><i class="bi bi-check2-circle me-1"></i>Aplicar sincronização</button></form>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            {% if not propostas.adicionar and not propostas.inativos %}<div class="text-success"><i class="bi bi-check-circle-fill me-1"></i>A Equipe Controle Final está alinhada com os lançamentos e com o RH.</div>{% endif %}
+            {% if propostas.adicionar %}
+                <h6>Adicionar à Equipe CF <span class="badge bg-success">{{ propostas.adicionar|length }}</span></h6>
+                <p class="small text-muted mb-1">Já inspecionaram lotes e estão ativos no RH, mas não estão na equipe:</p>
+                <ul class="small">{% for c in propostas.adicionar %}<li>{{ c.nome_completo }}</li>{% endfor %}</ul>
+            {% endif %}
+            {% if propostas.inativos %}
+                <h6>Desativar na Equipe CF <span class="badge bg-warning text-dark">{{ propostas.inativos|length }}</span></h6>
+                <p class="small text-muted mb-1">Foram inativados no RH:</p>
+                <ul class="small mb-0">{% for e in propostas.inativos %}<li>{{ e.colaborador.nome_completo }}</li>{% endfor %}</ul>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-bold"><i class="bi bi-link-45deg me-1"></i>Nomes dos lançamentos sem vínculo com os cadastros oficiais <span class="badge bg-secondary">{{ pendencias }}</span></div>
+        <div class="card-body p-0">
+            {% for chave, grupo in propostas.vinculos.items %}
+                {% if grupo.itens %}
+                <div class="px-3 pt-3 fw-bold small text-uppercase text-muted">{{ grupo.rotulo }}</div>
+                <div class="table-responsive"><table class="table table-sm align-middle mb-2 small">
+                    <thead class="table-light"><tr><th>Nome digitado</th><th class="text-end">Lançamentos</th><th style="min-width:300px">Vincular a</th></tr></thead>
+                    <tbody>
+                    {% for s in grupo.itens %}
+                        <tr><td>{{ s.nome }}</td><td class="text-end">{{ s.n }}</td>
+                            <td><form method="post" action="{% url 'laboratorio:cf_vincular' %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="chave" value="{{ chave }}"><input type="hidden" name="nome" value="{{ s.nome }}">
+                                <select name="objeto" class="form-select form-select-sm" required><option value="">Selecione...</option>
+                                    {% if grupo.tipo == 'colaborador' %}{% for c in colaboradores %}<option value="{{ c.pk }}">{{ c.nome_completo }}</option>{% endfor %}
+                                    {% elif grupo.tipo == 'maquina' %}{% for m in lista_maquinas %}<option value="{{ m.pk }}">{{ m }}</option>{% endfor %}
+                                    {% else %}{% for t in lista_tratamentos %}<option value="{{ t.pk }}">{{ t.nome }}</option>{% endfor %}{% endif %}
+                                </select>
+                                <button class="btn btn-sm btn-outline-primary">Vincular</button></form>
+                                {% if grupo.tipo == 'tratamento' %}<form method="post" action="{% url 'laboratorio:cf_criar_tratamento' %}" class="mt-1">{% csrf_token %}<input type="hidden" name="nome" value="{{ s.nome }}"><button class="btn btn-sm btn-link p-0">ou criar “{{ s.nome }}” no cadastro de tratamentos</button></form>{% endif %}</td></tr>
+                    {% endfor %}
+                    </tbody></table></div>
+                {% endif %}
+            {% endfor %}
+            {% if not pendencias %}<div class="p-3 text-muted small">Todos os nomes dos lançamentos estão vinculados aos cadastros oficiais.</div>{% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

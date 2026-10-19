@@ -34,7 +34,7 @@
 
 from django.urls import path
 
-from . import views, views_hc, views_tms_mix
+from . import views, views_cf, views_hc, views_tms_mix
 from shared.views import laboratorio_hub_view
 
 app_name = "laboratorio"
@@ -129,6 +129,7 @@ urlpatterns = [
     path("hc/registros/novo/", views_hc.hc_registro_create, name="hc_registro_create"),
     path("hc/importar/", views_hc.hc_importar, name="hc_importar"),
     path("hc/importar/preview/", views_hc.hc_importar_preview, name="hc_importar_preview"),
+    path("hc/registros/<int:pk>/detalhe/", views_hc.hc_registro_detalhe, name="hc_registro_detalhe"),
     path("hc/registros/<int:pk>/editar/", views_hc.hc_registro_update, name="hc_registro_update"),
     path("hc/registros/<int:pk>/excluir/", views_hc.hc_registro_delete, name="hc_registro_delete"),
     path("hc/config/campos/", views_hc.hc_config_campos, name="hc_config_campos"),
@@ -144,4 +145,28 @@ urlpatterns = [
     path("hc/config/integracoes/", views_hc.hc_config_integracoes, name="hc_config_integracoes"),
     path("hc/config/integracoes/sincronizar/", views_hc.hc_sincronizar, name="hc_sincronizar"),
     path("hc/config/integracoes/vincular/", views_hc.hc_vincular_nome, name="hc_vincular_nome"),
+
+    # HMC > Controle Final: Retrabalho CF
+    path("cf/", views_cf.cf_dashboard, name="cf_dashboard"),
+    path("cf/registros/", views_cf.cf_registros, name="cf_registros"),
+    path("cf/registros/novo/", views_cf.cf_registro_create, name="cf_registro_create"),
+    path("cf/registros/<int:pk>/detalhe/", views_cf.cf_registro_detalhe, name="cf_registro_detalhe"),
+    path("cf/registros/<int:pk>/editar/", views_cf.cf_registro_update, name="cf_registro_update"),
+    path("cf/registros/<int:pk>/excluir/", views_cf.cf_registro_delete, name="cf_registro_delete"),
+    path("cf/importar/", views_cf.cf_importar, name="cf_importar"),
+    path("cf/importar/preview/", views_cf.cf_importar_preview, name="cf_importar_preview"),
+    path("cf/config/campos/", views_cf.cf_config_campos, name="cf_config_campos"),
+    path("cf/config/campos/salvar/", views_cf.cf_campo_save, name="cf_campo_save"),
+    path("cf/config/campos/<int:pk>/mover/", views_cf.cf_campo_mover, name="cf_campo_mover"),
+    path("cf/config/campos/<int:pk>/excluir/", views_cf.cf_campo_delete, name="cf_campo_delete"),
+    path("cf/config/meta/", views_cf.cf_config_meta, name="cf_config_meta"),
+    path("cf/config/cadastros/", views_cf.cf_config_cadastros, name="cf_config_cadastros"),
+    path("cf/config/cadastros/salvar/", views_cf.cf_cadastro_save, name="cf_cadastro_save"),
+    path("cf/config/cadastros/<int:pk>/excluir/", views_cf.cf_cadastro_delete, name="cf_cadastro_delete"),
+    path("cf/config/equipe/salvar/", views_cf.cf_equipe_save, name="cf_equipe_save"),
+    path("cf/config/equipe/<int:pk>/excluir/", views_cf.cf_equipe_delete, name="cf_equipe_delete"),
+    path("cf/config/integracoes/", views_cf.cf_config_integracoes, name="cf_config_integracoes"),
+    path("cf/config/integracoes/sincronizar/", views_cf.cf_sincronizar, name="cf_sincronizar"),
+    path("cf/config/integracoes/vincular/", views_cf.cf_vincular, name="cf_vincular"),
+    path("cf/config/integracoes/criar-tratamento/", views_cf.cf_criar_tratamento, name="cf_criar_tratamento"),
 ]

@@ -28,14 +28,13 @@
     </div></form>
 
     <div class="card border-0 shadow-sm"><div class="table-responsive">
-        <table class="table table-hover align-middle mb-0 small">
+        <table class="table table-hover align-middle mb-0 small" id="tabelaRegistros">
             <thead class="table-light"><tr>
                 <th>Data</th><th>Turno</th><th>Colaborador</th><th>Garra</th><th>Tipo</th>
-                <th class="text-end">Lentes</th><th class="text-end">Retrabalho</th><th class="text-end">% Retrab.</th><th>Origem</th><th class="text-end">Ações</th>
-            </tr></thead>
+                <th class="text-end">Lentes</th><th class="text-end">Retrabalho</th><th class="text-end">% Retrab.</th><th>Origem</th></tr></thead>
             <tbody>
             {% for r in pagina %}
-                <tr>
+                <tr data-url="{% url 'laboratorio:hc_registro_detalhe' r.pk %}" title="Clique para ver os detalhes">
                     <td class="text-nowrap">{{ r.data|date:"d/m/Y" }}</td>
                     <td>{{ r.turno_nome|default:"–" }}</td>
                     <td>{{ r.colaborador_display|default:"–" }}</td>
@@ -45,14 +44,9 @@
                     <td class="text-end">{% if r.qtd_retrabalho %}<span class="badge bg-danger">{{ r.qtd_retrabalho }}</span>{% else %}0{% endif %}</td>
                     <td class="text-end">{% widthratio r.qtd_retrabalho r.qtd_lentes 100 %}%</td>
                     <td><span class="badge bg-light text-dark border">{% if r.origem == 'IMPORT' %}Planilha{% else %}Formulário{% endif %}</span></td>
-                    <td class="text-end text-nowrap">
-                        <a href="{% url 'laboratorio:hc_registro_update' r.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
-                        <form method="post" action="{% url 'laboratorio:hc_registro_delete' r.pk %}" class="d-inline" onsubmit="return confirm('Excluir este lançamento?');">{% csrf_token %}
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
-                    </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="10" class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum lançamento encontrado.</td></tr>
+                <tr><td colspan="9" class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum lançamento encontrado.</td></tr>
             {% endfor %}
             </tbody>
         </table>
@@ -66,4 +60,29 @@
     </ul></nav>
     {% endif %}
 </div>
+
+<div class="modal fade" id="modalRegistro" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content" id="modalRegistroConteudo">
+    <div class="modal-body text-center text-muted py-5"><div class="spinner-border spinner-border-sm me-2"></div>Carregando...</div>
+</div></div></div>
+<style>#tabelaRegistros tbody tr[data-url] { cursor: pointer; }</style>
+<script>
+(function () {
+    const modalEl = document.getElementById('modalRegistro');
+    const conteudo = document.getElementById('modalRegistroConteudo');
+    const carregando = conteudo.innerHTML;
+    const modal = new bootstrap.Modal(modalEl);
+    document.getElementById('tabelaRegistros').addEventListener('click', async ev => {
+        const tr = ev.target.closest('tr[data-url]');
+        if (!tr) return;
+        conteudo.innerHTML = carregando;
+        modal.show();
+        try {
+            const r = await fetch(tr.dataset.url, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+            conteudo.innerHTML = r.ok ? await r.text() : '<div class="modal-body text-danger">Não foi possível carregar o lançamento.</div>';
+        } catch (e) {
+            conteudo.innerHTML = '<div class="modal-body text-danger">Não foi possível carregar o lançamento.</div>';
+        }
+    });
+})();
+</script>
 {% endblock %}

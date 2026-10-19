@@ -164,6 +164,32 @@ def hc_registros(request):
 
 
 @login_required
+def hc_registro_detalhe(request, pk):
+    """Conteúdo do pop-up de um lançamento (somente leitura, com editar/excluir)."""
+    r = get_object_or_404(RendimentoHCRegistro.objects.select_related("colaborador", "turno", "tipo_garra", "tratamento", "usuario"), pk=pk)
+    rot = {c.chave: c.rotulo for c in HCCampoFormulario.objects.all()}
+    sim_nao = lambda v: "Sim" if v else "Não"
+    campos = [
+        (rot.get("data", "Data"), r.data.strftime("%d/%m/%Y")), (rot.get("turno", "Turno"), r.turno_nome or "–"),
+        (rot.get("colaborador", "Colaborador"), r.colaborador_display or "–"), (rot.get("numero_garra", "Número da Garra"), r.numero_garra or "–"),
+        (rot.get("tipo_garra", "Tipo de Garra"), r.tipo_garra.nome if r.tipo_garra else "–"),
+        (rot.get("tratamento", "Tratamento"), r.tratamento.nome if r.tratamento else "–"),
+        (rot.get("qtd_lentes", "Quantidade de Lentes"), r.qtd_lentes), (rot.get("teve_retrabalho", "Teve Retrabalho?"), sim_nao(r.teve_retrabalho)),
+        ("Total retrabalhado", f"{r.qtd_retrabalho} ({r.qtd_retrabalho * 100 // r.qtd_lentes}%)" if r.qtd_lentes else r.qtd_retrabalho),
+    ]
+    itens = list(r.itens.select_related("cadastro").order_by("cadastro__ordem", "cadastro__nome"))
+    grupos = []
+    for tipo, chave, titulo in ((RendimentoHCItem.PROD_MATERIAL, "producao_materiais", "Quantidade de Lentes por Material"),
+                                (RendimentoHCItem.RET_MATERIAL, "retrabalho_materiais", "Quantidade de Retrabalho por Material"),
+                                (RendimentoHCItem.RET_MOTIVO, "retrabalho_motivos", "Retrabalho por Motivo")):
+        linhas = [(i.cadastro.nome, i.quantidade) for i in itens if i.tipo == tipo]
+        if linhas:
+            grupos.append({"titulo": rot.get(chave, titulo), "linhas": linhas, "total": sum(q for _n, q in linhas)})
+    extras = [(rot.get(k, k), v) for k, v in (r.extras or {}).items() if v not in (None, "")]
+    return render(request, "laboratorio/_hc_registro_detalhe.html", {"r": r, "campos": campos, "grupos": grupos, "extras": extras})
+
+
+@login_required
 def hc_registro_create(request):
     form = hc.RegistroHCForm(request.POST or None, initial={"data": date.today()})
     if request.method == "POST" and form.is_valid():

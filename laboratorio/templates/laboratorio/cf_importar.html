@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+{% load laboratorio_tags %}
+
+{% block title %}Importar Planilha | Retrabalho CF{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4" style="max-width: 1100px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · Controle Final</span>
+            <h2 class="h3 fw-bold mt-2 mb-0">Importar planilha de retrabalho</h2>
+            <p class="text-muted small mb-0">Envie a planilha (aba “Respostas” do Retrabalho CF), relacione cada campo do sistema a uma coluna e importe. Reenviar a mesma planilha não duplica lançamentos.</p>
+        </div>
+        <a href="{% url 'laboratorio:cf_registros' %}" class="btn btn-outline-secondary"><i class="bi bi-list-ul me-1"></i>Registros</a>
+    </div>
+
+    {% if resultado %}
+    <div class="card border-0 shadow-sm mb-3 {% if resultado.simulado %}border-start border-4 border-info{% else %}border-start border-4 border-success{% endif %}"><div class="card-body">
+        <h6 class="fw-bold">{% if resultado.simulado %}Resultado da simulação (nada foi gravado){% else %}Importação concluída{% endif %}</h6>
+        <div class="row g-2 text-center">
+            <div class="col-6 col-md-2"><div class="h4 mb-0">{{ resultado.validas|milhar }}</div><div class="small text-muted">{% if resultado.simulado %}a importar{% else %}importadas{% endif %}</div></div>
+            <div class="col-6 col-md-2"><div class="h4 mb-0">{{ resultado.repetidas|milhar }}</div><div class="small text-muted">repetidas / já existentes</div></div>
+            <div class="col-6 col-md-2"><div class="h4 mb-0">{{ resultado.ignoradas|milhar }}</div><div class="small text-muted">data inválida</div></div>
+            <div class="col-6 col-md-2"><div class="h4 mb-0">{{ resultado.datas_corrigidas|milhar }}</div><div class="small text-muted">datas corrigidas (dia/mês)</div></div>
+            <div class="col-6 col-md-2"><div class="h4 mb-0">{{ resultado.com_colaborador|milhar }}</div><div class="small text-muted">vinculadas ao RH</div></div>
+            <div class="col-6 col-md-2"><div class="h4 mb-0 {% if resultado.a_revisar %}text-warning{% endif %}">{{ resultado.a_revisar|milhar }}</div><div class="small text-muted">a revisar</div></div>
+        </div>
+        {% if resultado.turno_sem_regra %}<div class="alert alert-warning py-2 mt-3 mb-0 small"><strong>Turnos sem regra cadastrada</strong> (ficam só como texto): {% for k, v in resultado.turno_sem_regra.items %}{{ k }} ({{ v }}){% if not forloop.last %}, {% endif %}{% endfor %}. Cadastre em <a href="{% url 'laboratorio:regra_turno_list' %}">Regras de Turno</a>.</div>{% endif %}
+        {% if resultado.maquina_sem_cadastro %}<div class="alert alert-warning py-2 mt-2 mb-0 small"><strong>Máquinas sem vínculo com o cadastro de Máquinas</strong> (ficam só como texto): {% for k, v in resultado.maquina_sem_cadastro.items %}{{ k }} ({{ v }}){% if not forloop.last %}, {% endif %}{% endfor %}. Vincule em <a href="{% url 'laboratorio:cf_config_integracoes' %}">Integrações</a>.</div>{% endif %}
+        {% if resultado.tratamento_sem_cadastro %}<div class="alert alert-warning py-2 mt-2 mb-0 small"><strong>Tratamentos sem cadastro:</strong> {% for k, v in resultado.tratamento_sem_cadastro.items %}{{ k }} ({{ v }}){% if not forloop.last %}, {% endif %}{% endfor %}.</div>{% endif %}
+        {% if resultado.sem_colaborador %}<div class="small text-muted mt-2">Inspetores sem vínculo com o RH: {{ resultado.sem_colaborador|join:", " }}. Vincule em <a href="{% url 'laboratorio:cf_config_integracoes' %}">Integrações</a>.</div>{% endif %}
+    </div></div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="formImportar">
+        {% csrf_token %}
+        <input type="hidden" name="aba" id="abaHidden">
+        <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+            <h6 class="fw-bold">1. Planilha</h6>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-6"><input type="file" name="arquivo" id="arquivo" class="form-control" accept=".xlsx,.xlsm,.csv" required></div>
+                <div class="col-md-3"><label class="form-label small mb-1">Aba</label><select id="abaSelect" class="form-select" disabled><option>—</option></select></div>
+                <div class="col-md-3"><label class="form-label small mb-1">Importar a partir de (opcional)</label><input type="date" name="a_partir" class="form-control"></div>
+            </div>
+            <div id="infoArquivo" class="small text-muted mt-2"></div>
+            <div id="erroArquivo" class="text-danger small mt-2"></div>
+        </div></div>
+
+        <div class="card border-0 shadow-sm mb-3" id="cardMapa" style="display:none"><div class="card-body">
+            <h6 class="fw-bold">2. Relacione os campos do sistema às colunas da planilha</h6>
+            <p class="small text-muted">O sistema sugeriu a relação pelos nomes das colunas; ajuste o que for necessário. Campos “— não importar —” ficam em branco. Data e Total de lentes são obrigatórios.</p>
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                <thead class="table-light"><tr><th style="width:38%">Campo do sistema</th><th style="width:35%">Coluna da planilha</th><th>Exemplo (1ª linha)</th></tr></thead>
+                <tbody id="tabelaMapa"></tbody>
+            </table></div>
+        </div></div>
+
+        <div class="d-flex flex-wrap gap-2 justify-content-end" id="acoes" style="display:none">
+            <button type="submit" name="acao" value="simular" class="btn btn-outline-primary" disabled><i class="bi bi-eye me-1"></i>Simular (não grava)</button>
+            <button type="submit" name="acao" value="importar" class="btn btn-primary" disabled onclick="return confirm('Importar os lançamentos para o sistema?');"><i class="bi bi-upload me-1"></i>Importar</button>
+        </div>
+    </form>
+</div>
+
+{{ alvos|json_script:"cf-alvos" }}
+<script>
+(function () {
+    const alvos = JSON.parse(document.getElementById('cf-alvos').textContent);
+    const arquivo = document.getElementById('arquivo'), abaSel = document.getElementById('abaSelect');
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const botoes = document.querySelectorAll('#acoes button');
+    const info = document.getElementById('infoArquivo'), erro = document.getElementById('erroArquivo');
+
+    async function preview(aba) {
+        erro.textContent = ''; info.textContent = 'Lendo planilha...';
+        const fd = new FormData();
+        fd.append('arquivo', arquivo.files[0]); fd.append('csrfmiddlewaretoken', csrf);
+        if (aba) fd.append('aba', aba);
+        let r, d;
+        try { r = await fetch('{% url "laboratorio:cf_importar_preview" %}', {method: 'POST', body: fd}); d = await r.json(); }
+        catch (e) { info.textContent = ''; erro.textContent = 'Não foi possível ler o arquivo.'; return; }
+        if (!r.ok) { info.textContent = ''; erro.textContent = d.erro || 'Erro ao ler o arquivo.'; return; }
+        info.textContent = d.total.toLocaleString('pt-BR') + ' linhas na aba “' + d.aba + '”.';
+        abaSel.innerHTML = d.abas.map(a => '<option ' + (a === d.aba ? 'selected' : '') + '>' + a + '</option>').join('');
+        abaSel.disabled = d.abas.length < 2;
+        document.getElementById('abaHidden').value = d.aba;
+        montaMapa(d);
+    }
+
+    function montaMapa(d) {
+        const opcoes = '<option value="">— não importar —</option>' +
+            d.cabecalhos.map((c, i) => '<option value="' + i + '">' + c.replace(/</g, '&lt;') + '</option>').join('');
+        let grupo = '', html = '';
+        alvos.forEach(a => {
+            if (a.grupo !== grupo) { grupo = a.grupo; html += '<tr class="table-secondary"><td colspan="3" class="fw-bold small">' + grupo + '</td></tr>'; }
+            html += '<tr><td>' + a.rotulo + (a.obrigatorio ? ' <span class="text-danger">*</span>' : '') + '</td>' +
+                '<td><select class="form-select form-select-sm" name="map_' + a.chave + '" data-chave="' + a.chave + '">' + opcoes + '</select></td>' +
+                '<td class="small text-muted" id="ex_' + a.chave + '"></td></tr>';
+        });
+        document.getElementById('tabelaMapa').innerHTML = html;
+        document.querySelectorAll('#tabelaMapa select').forEach(sel => {
+            const idx = d.sugestao[sel.dataset.chave];
+            if (idx !== undefined) sel.value = idx;
+            const atualiza = () => {
+                const ex = document.getElementById('ex_' + sel.dataset.chave);
+                ex.textContent = sel.value !== '' && d.amostra[0] ? (d.amostra[0][sel.value] || '') : '';
+                const obrig = ['data', 'total_lentes'].every(k => document.querySelector('[data-chave="' + k + '"]').value !== '');
+                botoes.forEach(b => b.disabled = !obrig);
+            };
+            sel.addEventListener('change', atualiza); atualiza();
+        });
+        document.getElementById('cardMapa').style.display = '';
+        document.getElementById('acoes').style.display = '';
+    }
+
+    arquivo.addEventListener('change', () => { if (arquivo.files.length) preview(null); });
+    abaSel.addEventListener('change', () => preview(abaSel.value));
+})();
+</script>
+{% endblock %}

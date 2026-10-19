@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% load laboratorio_tags %}
+
+{% block title %}Registros | Retrabalho CF{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">HMC · Controle Final</span>
+            <h2 class="h3 fw-bold mt-2 mb-0">Registros de Retrabalho</h2>
+            <p class="text-muted small mb-0">Lotes inspecionados no Controle Final (equivalem à aba “Respostas” da planilha).</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'laboratorio:cf_importar' %}" class="btn btn-outline-primary"><i class="bi bi-upload me-1"></i>Importar planilha</a>
+            <a href="{% url 'laboratorio:cf_dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-bar-chart-line me-1"></i>Dashboard</a>
+            <a href="{% url 'laboratorio:cf_registro_create' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Novo lançamento</a>
+        </div>
+    </div>
+
+    <form method="get" class="card border-0 shadow-sm mb-3"><div class="card-body row g-2 align-items-end">
+        <div class="col-6 col-md-2"><label class="form-label small mb-1">De</label><input type="date" name="inicio" value="{{ inicio }}" class="form-control"></div>
+        <div class="col-6 col-md-2"><label class="form-label small mb-1">Até</label><input type="date" name="fim" value="{{ fim }}" class="form-control"></div>
+        <div class="col-6 col-md-2"><label class="form-label small mb-1">Turno</label>
+            <select name="turno" class="form-select"><option value="">Todos</option>{% for t in turnos %}<option value="{{ t.pk }}" {% if t.pk == turno_sel %}selected{% endif %}>{{ t.nome }}</option>{% endfor %}</select></div>
+        <div class="col-6 col-md-4"><label class="form-label small mb-1">Lote / colaborador / máquina / tratamento</label><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar..."></div>
+        <div class="col-12 col-md-2 d-flex gap-2"><button class="btn btn-primary flex-fill">Filtrar</button><a href="{% url 'laboratorio:cf_registros' %}" class="btn btn-light">Limpar</a></div>
+    </div></form>
+
+    <div class="card border-0 shadow-sm"><div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small" id="tabelaRegistros">
+            <thead class="table-light"><tr>
+                <th>Data</th><th>Turno</th><th>Lote</th><th>Máquina</th><th>Tratamento</th><th>Inspeção (CF)</th>
+                <th class="text-end">Lentes</th><th class="text-end">Retrab.</th><th class="text-end">%</th><th>Reprovado</th><th>Origem</th></tr></thead>
+            <tbody>
+            {% for r in pagina %}
+                <tr data-url="{% url 'laboratorio:cf_registro_detalhe' r.pk %}" title="Clique para ver os detalhes">
+                    <td class="text-nowrap">{{ r.data|date:"d/m/Y" }}</td>
+                    <td>{{ r.turno_nome|default:"–" }}</td>
+                    <td>{{ r.numero_lote|default:"–" }}</td>
+                    <td>{{ r.maquina_nome|default:"–" }}</td>
+                    <td>{{ r.tratamento_nome|default:"–" }}</td>
+                    <td>{{ r.colaborador_cf_display|default:"–" }}</td>
+                    <td class="text-end">{{ r.total_lentes }}</td>
+                    <td class="text-end">{% if r.qtd_retrabalho %}<span class="badge bg-danger">{{ r.qtd_retrabalho }}</span>{% else %}0{% endif %}</td>
+                    <td class="text-end">{% widthratio r.qtd_retrabalho r.total_lentes 100 %}%</td>
+                    <td>{% if r.reprovado %}<span class="badge bg-dark">Sim</span>{% else %}–{% endif %}</td>
+                    <td><span class="badge bg-light text-dark border">{% if r.origem == 'IMPORT' %}Planilha{% else %}Formulário{% endif %}</span></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="11" class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum lançamento encontrado.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+
+    {% if pagina.paginator.num_pages > 1 %}
+    <nav class="mt-3"><ul class="pagination pagination-sm justify-content-center mb-0">
+        {% if pagina.has_previous %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ pagina.previous_page_number }}">&laquo;</a></li>{% endif %}
+        <li class="page-item disabled"><span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }} ({{ pagina.paginator.count|milhar }} registros)</span></li>
+        {% if pagina.has_next %}<li class="page-item"><a class="page-link" href="?{{ querystring }}&page={{ pagina.next_page_number }}">&raquo;</a></li>{% endif %}
+    </ul></nav>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="modalRegistro" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content" id="modalRegistroConteudo">
+    <div class="modal-body text-center text-muted py-5"><div class="spinner-border spinner-border-sm me-2"></div>Carregando...</div>
+</div></div></div>
+<style>#tabelaRegistros tbody tr[data-url] { cursor: pointer; }</style>
+<script>
+(function () {
+    const modalEl = document.getElementById('modalRegistro');
+    const conteudo = document.getElementById('modalRegistroConteudo');
+    const carregando = conteudo.innerHTML;
+    const modal = new bootstrap.Modal(modalEl);
+    document.getElementById('tabelaRegistros').addEventListener('click', async ev => {
+        const tr = ev.target.closest('tr[data-url]');
+        if (!tr) return;
+        conteudo.innerHTML = carregando;
+        modal.show();
+        try {
+            const r = await fetch(tr.dataset.url, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
+            conteudo.innerHTML = r.ok ? await r.text() : '<div class="modal-body text-danger">Não foi possível carregar o lançamento.</div>';
+        } catch (e) {
+            conteudo.innerHTML = '<div class="modal-body text-danger">Não foi possível carregar o lançamento.</div>';
+        }
+    });
+})();
+</script>
+{% endblock %}

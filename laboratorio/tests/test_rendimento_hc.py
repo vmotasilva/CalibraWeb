@@ -106,6 +106,21 @@ class FormularioTests(RendimentoHCBase):
         self.assertEqual(nomes, ["ANA PAULA SOUZA", "BIA LIMA"])
 
 
+class DetalhePopupTests(RendimentoHCBase):
+    def test_detalhe_mostra_dados_e_acoes_so_no_popup(self):
+        self.post_registro(teve_retrabalho=1, **{f"rt_{self.risco.pk}": 2, f"rm_{self.orma.pk}": 2, f"pm_{self.orma.pk}": 20})
+        r = RendimentoHCRegistro.objects.get()
+        html = self.client.get(reverse("laboratorio:hc_registro_detalhe", args=[r.pk])).content.decode()
+        for trecho in ("ANA PAULA SOUZA", "Risco", "Retrabalho por Motivo", reverse("laboratorio:hc_registro_update", args=[r.pk]),
+                       reverse("laboratorio:hc_registro_delete", args=[r.pk])):
+            self.assertIn(trecho, html)
+        lista = self.client.get(reverse("laboratorio:hc_registros")).content.decode()
+        self.assertIn(reverse("laboratorio:hc_registro_detalhe", args=[r.pk]), lista)
+        self.assertNotIn(reverse("laboratorio:hc_registro_update", args=[r.pk]), lista)
+        self.assertNotIn(reverse("laboratorio:hc_registro_delete", args=[r.pk]), lista)
+        self.assertEqual(self.client.get(reverse("laboratorio:hc_registro_detalhe", args=[999999])).status_code, 404)
+
+
 class CamposConfiguraveisTests(RendimentoHCBase):
     def test_campo_personalizado_aparece_e_grava_em_extras(self):
         self.client.post(reverse("laboratorio:hc_campo_save"), {

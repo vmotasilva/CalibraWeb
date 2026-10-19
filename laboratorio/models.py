@@ -1212,3 +1212,164 @@ class RendimentoHCItem(models.Model):
     class Meta:
         unique_together = [("registro", "tipo", "cadastro")]
         indexes = [models.Index(fields=["tipo", "cadastro"])]
+
+
+# ==============================================================================
+# HMC > CONTROLE FINAL: RETRABALHO CF (substitui a planilha "Retrabalho CF" / Forms "Respostas")
+# ==============================================================================
+
+class CFCadastro(models.Model):
+    """Cadastro base (listas suspensas) do Retrabalho CF: motivos de retrabalho (por origem) e motivos de reprovação."""
+
+    TIPO_MOTIVO = "MOTIVO"
+    TIPO_REPROVACAO = "REPROVACAO"
+    TIPO_CHOICES = [(TIPO_MOTIVO, "Motivo de retrabalho"), (TIPO_REPROVACAO, "Motivo de reprovação do lote")]
+    ORIGEM_CHOICES = [("AR", "Anti-Reflexo"), ("HC", "Hard Coat"), ("CF", "Controle Final")]
+
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    grupo = models.CharField(max_length=2, blank=True, choices=ORIGEM_CHOICES, help_text="Origem do defeito (só para motivos de retrabalho).")
+    nome = models.CharField(max_length=150)
+    ordem = models.PositiveSmallIntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["tipo", "grupo", "ordem", "nome"]
+        unique_together = [("tipo", "grupo", "nome")]
+        verbose_name = "Cadastro base do Retrabalho CF"
+        verbose_name_plural = "Cadastros base do Retrabalho CF"
+
+    def __str__(self):
+        return f"{self.grupo} - {self.nome}" if self.grupo else self.nome
+
+
+class EquipeCF(models.Model):
+    """Colaboradores do Controle Final (inspeção de lotes)."""
+
+    colaborador = models.OneToOneField("rh.Colaborador", on_delete=models.CASCADE, related_name="equipe_cf")
+    apelidos = models.CharField(max_length=255, blank=True, help_text="Outros nomes usados nos lançamentos antigos, separados por vírgula.")
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["colaborador__nome_completo"]
+        verbose_name = "Equipe Controle Final"
+        verbose_name_plural = "Equipe Controle Final"
+
+    def __str__(self):
+        return self.colaborador.nome_completo
+
+
+class RetrabalhoCFConfig(models.Model):
+    """Parâmetros gerais do Retrabalho CF (registro único)."""
+
+    meta_retrabalho = models.DecimalField(max_digits=5, decimal_places=2, default=4, help_text="Meta máxima de % de retrabalho.")
+
+    class Meta:
+        verbose_name = "Parâmetros do Retrabalho CF"
+        verbose_name_plural = "Parâmetros do Retrabalho CF"
+
+    @classmethod
+    def get(cls):
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj
+
+
+class CFCampoFormulario(models.Model):
+    """Campo/pergunta do formulário de Retrabalho CF (mesma lógica do HC: campos de sistema + personalizados em `extras`)."""
+
+    TIPO_CHOICES = HCCampoFormulario.TIPO_CHOICES
+    TIPO_TEXTO = "TEXTO"
+    TIPO_TEXTO_LONGO = "TEXTO_LONGO"
+    TIPO_NUMERO = "NUMERO"
+    TIPO_DATA = "DATA"
+    TIPO_SELECAO = "SELECAO"
+    TIPO_SIM_NAO = "SIM_NAO"
+    CHAVES_BLOCO = ("retrabalho_motivos",)
+    CHAVES_OBRIGATORIAS = ("data", "total_lentes", "necessidade_retrabalho")
+
+    chave = models.SlugField(max_length=50, unique=True)
+    rotulo = models.CharField(max_length=200, verbose_name="Pergunta / rótulo")
+    tipo = models.CharField(max_length=12, choices=TIPO_CHOICES, default="TEXTO")
+    ajuda = models.CharField(max_length=255, blank=True, verbose_name="Texto de ajuda")
+    opcoes = models.TextField(blank=True, help_text="Uma opção por linha (só para lista suspensa).")
+    obrigatorio = models.BooleanField(default=False)
+    visivel = models.BooleanField(default=True, verbose_name="Exibir no formulário")
+    ordem = models.PositiveSmallIntegerField(default=0)
+    sistema = models.BooleanField(default=False, editable=False)
+
+    class Meta:
+        ordering = ["ordem", "id"]
+        verbose_name = "Campo do formulário de Retrabalho CF"
+        verbose_name_plural = "Campos do formulário de Retrabalho CF"
+
+    def __str__(self):
+        return self.rotulo
+
+    @property
+    def lista_opcoes(self):
+        return [o.strip() for o in self.opcoes.splitlines() if o.strip()]
+
+    @property
+    def eh_bloco(self):
+        return self.chave in self.CHAVES_BLOCO
+
+    def get_tipo_display(self):
+        return dict(self.TIPO_CHOICES).get(self.tipo, self.tipo)
+
+
+class RetrabalhoCFRegistro(models.Model):
+    """Um lote inspecionado no Controle Final — equivale a uma linha da aba 'Respostas'."""
+
+    ORIGEM_FORM = "FORM"
+    ORIGEM_IMPORT = "IMPORT"
+
+    data = models.DateField(db_index=True)
+    turno = models.ForeignKey(RegraTurnoCoating, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    turno_nome = models.CharField(max_length=50, blank=True, db_index=True)
+    numero_lote = models.CharField(max_length=30, blank=True)
+    total_lentes = models.PositiveIntegerField(default=0)
+    maquina = models.ForeignKey("maquinas.Maquina", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    maquina_nome = models.CharField(max_length=100, blank=True, db_index=True)
+    tratamento = models.ForeignKey(TratamentoAntiReflexo, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    tratamento_nome = models.CharField(max_length=150, blank=True, db_index=True)
+    colaborador_cf = models.ForeignKey("rh.Colaborador", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    colaborador_cf_nome = models.CharField(max_length=150, blank=True, db_index=True)
+    colaborador_ar = models.ForeignKey("rh.Colaborador", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    colaborador_ar_nome = models.CharField(max_length=150, blank=True, db_index=True)
+    teve_retrabalho = models.BooleanField(default=False)
+    qtd_retrabalho = models.PositiveIntegerField(default=0, help_text="Total retrabalhado (soma dos motivos).")
+    reprovado = models.BooleanField(default=False)
+    motivo_reprovacao = models.CharField(max_length=150, blank=True)
+    observacoes = models.TextField(blank=True)
+    extras = models.JSONField(default=dict, blank=True)
+    origem = models.CharField(max_length=6, default=ORIGEM_FORM)
+    chave_importacao = models.CharField(max_length=40, null=True, blank=True, unique=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-data", "-id"]
+        indexes = [models.Index(fields=["data", "turno"])]
+        verbose_name = "Registro de Retrabalho CF"
+        verbose_name_plural = "Registros de Retrabalho CF"
+
+    def __str__(self):
+        return f"{self.data:%d/%m/%Y} - lote {self.numero_lote or '?'} ({self.total_lentes})"
+
+    @property
+    def colaborador_cf_display(self):
+        return self.colaborador_cf.nome_completo if self.colaborador_cf_id else self.colaborador_cf_nome
+
+    @property
+    def colaborador_ar_display(self):
+        return self.colaborador_ar.nome_completo if self.colaborador_ar_id else self.colaborador_ar_nome
+
+
+class RetrabalhoCFItem(models.Model):
+    """Quantidade retrabalhada por motivo em um lote."""
+
+    registro = models.ForeignKey(RetrabalhoCFRegistro, on_delete=models.CASCADE, related_name="itens")
+    motivo = models.ForeignKey(CFCadastro, on_delete=models.PROTECT, related_name="+")
+    quantidade = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = [("registro", "motivo")]

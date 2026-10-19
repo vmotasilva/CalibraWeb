@@ -1428,7 +1428,7 @@ NAV_STRUCTURE = [
                 "nome": "HC: Formulário e Registros",
                 "perm": "core.nav_laboratorio_hc_registros_bloco",
                 "funcoes": [
-                    {"nome": "Registros de Rendimento", "view_name": "laboratorio:hc_registros", "perm": "core.nav_laboratorio_hc_registros"},
+                    {"nome": "Registros de Rendimento", "view_name": ["laboratorio:hc_registros", "laboratorio:hc_registro_detalhe"], "perm": "core.nav_laboratorio_hc_registros"},
                     {"nome": "Novo Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_create", "perm": "core.nav_laboratorio_hc_registro_create"},
                     {"nome": "Editar Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_update", "perm": "core.nav_laboratorio_hc_registro_update"},
                     {"nome": "Excluir Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_delete", "perm": "core.nav_laboratorio_hc_registro_delete"},
@@ -1465,6 +1465,60 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Integrações com cadastros do HMC e RH", "view_name": "laboratorio:hc_config_integracoes", "perm": "core.nav_laboratorio_hc_integracoes"},
                     {"nome": "Sincronizar Equipe / Vincular Nomes", "view_name": ["laboratorio:hc_sincronizar", "laboratorio:hc_vincular_nome"], "perm": "core.nav_laboratorio_hc_sincronizar"},
+                ],
+            },
+            {
+                "key": "cf_dashboard",
+                "grupo": "HMC > Controle Final",
+                "nome": "CF: Dashboard de Retrabalho",
+                "perm": "core.nav_laboratorio_cf_dashboard_bloco",
+                "funcoes": [
+                    {"nome": "Dashboard Retrabalho CF", "view_name": "laboratorio:cf_dashboard", "perm": "core.nav_laboratorio_cf_dashboard"},
+                ],
+            },
+            {
+                "key": "cf_registros",
+                "grupo": "HMC > Controle Final",
+                "nome": "CF: Formulário e Registros",
+                "perm": "core.nav_laboratorio_cf_registros_bloco",
+                "funcoes": [
+                    {"nome": "Registros de Retrabalho", "view_name": ["laboratorio:cf_registros", "laboratorio:cf_registro_detalhe"], "perm": "core.nav_laboratorio_cf_registros"},
+                    {"nome": "Novo Lançamento de Retrabalho", "view_name": "laboratorio:cf_registro_create", "perm": "core.nav_laboratorio_cf_registro_create"},
+                    {"nome": "Editar Lançamento de Retrabalho", "view_name": "laboratorio:cf_registro_update", "perm": "core.nav_laboratorio_cf_registro_update"},
+                    {"nome": "Excluir Lançamento de Retrabalho", "view_name": "laboratorio:cf_registro_delete", "perm": "core.nav_laboratorio_cf_registro_delete"},
+                    {"nome": "Importar Planilha de Retrabalho CF", "view_name": ["laboratorio:cf_importar", "laboratorio:cf_importar_preview"], "perm": "core.nav_laboratorio_cf_importar"},
+                ],
+            },
+            {
+                "key": "cf_campos",
+                "grupo": "HMC > Controle Final > Configurações",
+                "nome": "CF: Campos do Formulário",
+                "perm": "core.nav_laboratorio_cf_campos_bloco",
+                "funcoes": [
+                    {"nome": "Campos do Formulário CF", "view_name": "laboratorio:cf_config_campos", "perm": "core.nav_laboratorio_cf_campos"},
+                    {"nome": "Salvar/Reordenar Campos e Meta CF", "view_name": ["laboratorio:cf_campo_save", "laboratorio:cf_campo_mover", "laboratorio:cf_config_meta"], "perm": "core.nav_laboratorio_cf_campo_save"},
+                    {"nome": "Excluir Campo do Formulário CF", "view_name": "laboratorio:cf_campo_delete", "perm": "core.nav_laboratorio_cf_campo_delete"},
+                ],
+            },
+            {
+                "key": "cf_cadastros",
+                "grupo": "HMC > Controle Final > Configurações",
+                "nome": "CF: Cadastros Base",
+                "perm": "core.nav_laboratorio_cf_cadastros_bloco",
+                "funcoes": [
+                    {"nome": "Cadastros Base CF (motivos, reprovação, equipe)", "view_name": "laboratorio:cf_config_cadastros", "perm": "core.nav_laboratorio_cf_cadastros"},
+                    {"nome": "Salvar Cadastro Base / Membro da Equipe CF", "view_name": ["laboratorio:cf_cadastro_save", "laboratorio:cf_equipe_save"], "perm": "core.nav_laboratorio_cf_cadastro_save"},
+                    {"nome": "Excluir Cadastro Base / Membro da Equipe CF", "view_name": ["laboratorio:cf_cadastro_delete", "laboratorio:cf_equipe_delete"], "perm": "core.nav_laboratorio_cf_cadastro_delete"},
+                ],
+            },
+            {
+                "key": "cf_integracoes",
+                "grupo": "HMC > Controle Final > Configurações",
+                "nome": "CF: Integrações e Sincronização",
+                "perm": "core.nav_laboratorio_cf_integracoes_bloco",
+                "funcoes": [
+                    {"nome": "Integrações CF com HMC e RH", "view_name": "laboratorio:cf_config_integracoes", "perm": "core.nav_laboratorio_cf_integracoes"},
+                    {"nome": "Sincronizar Equipe CF / Vincular Nomes", "view_name": ["laboratorio:cf_sincronizar", "laboratorio:cf_vincular", "laboratorio:cf_criar_tratamento"], "perm": "core.nav_laboratorio_cf_sincronizar"},
                 ],
             },
             {
@@ -1585,6 +1639,8 @@ NAV_GROUP_PERMS = {
     "HMC > Anti-Reflexo > Configurações": "core.nav_laboratorio_grupo_hmc_ar_config",
     "HMC > HC": "core.nav_laboratorio_grupo_hmc_hc",
     "HMC > HC > Configurações": "core.nav_laboratorio_grupo_hmc_hc_config",
+    "HMC > Controle Final": "core.nav_laboratorio_grupo_hmc_cf",
+    "HMC > Controle Final > Configurações": "core.nav_laboratorio_grupo_hmc_cf_config",
 }
 # Seções do módulo de exibição "Gestão" e módulos inteiros exibidos dentro dele.
 GESTAO_SECOES = ("Ferramentas Auxiliares", "Processos", "Qualidade")

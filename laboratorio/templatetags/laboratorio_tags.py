@@ -34,3 +34,13 @@ def cor_meta(valor, meta):
     except (TypeError, ValueError):
         return "text-muted"
     return "text-success" if v >= m else ("text-warning" if v >= m - 3 else "text-danger")
+
+
+@register.filter
+def cor_meta_max(valor, meta):
+    """Cor de um indicador 'quanto menor, melhor' frente à meta máxima (ex.: % de retrabalho)."""
+    try:
+        v, m = float(valor), float(meta)
+    except (TypeError, ValueError):
+        return "text-muted"
+    return "text-success" if v <= m else ("text-warning" if v <= m * 1.25 else "text-danger")
