@@ -1162,6 +1162,7 @@ class RendimentoHCRegistro(models.Model):
     ORIGEM_IMPORT = "IMPORT"
 
     data = models.DateField(db_index=True)
+    hora = models.TimeField(null=True, blank=True, help_text="Hora do lançamento/inspeção (vazia em registros antigos).")
     turno = models.ForeignKey(RegraTurnoCoating, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     turno_nome = models.CharField(max_length=50, blank=True, db_index=True)
     colaborador = models.ForeignKey("rh.Colaborador", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
@@ -1323,6 +1324,7 @@ class RetrabalhoCFRegistro(models.Model):
     ORIGEM_IMPORT = "IMPORT"
 
     data = models.DateField(db_index=True)
+    hora = models.TimeField(null=True, blank=True, help_text="Hora do lançamento/inspeção (vazia em registros antigos).")
     turno = models.ForeignKey(RegraTurnoCoating, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     turno_nome = models.CharField(max_length=50, blank=True, db_index=True)
     numero_lote = models.CharField(max_length=30, blank=True)

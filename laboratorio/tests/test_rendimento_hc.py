@@ -439,3 +439,24 @@ class DiaHoraHCTests(RendimentoHCBase):
         from shared.permissions import get_view_permission_map
 
         self.assertIn("laboratorio:hc_dia_hora", get_view_permission_map())
+
+
+class HoraRegistroHCTests(RendimentoHCBase):
+    def test_formulario_grava_data_e_hora(self):
+        self.post_registro(data="2026-10-05T08:20", **{f"pm_{self.orma.pk}": 20})
+        r = RendimentoHCRegistro.objects.get()
+        self.assertEqual((r.data, r.hora), (date(2026, 10, 5), time(8, 20)))
+        self.assertContains(self.client.get(reverse("laboratorio:hc_registro_create")), 'type="datetime-local"')
+
+    def test_importacao_le_hora_e_reimportacao_preenche(self):
+        from datetime import datetime
+
+        from laboratorio import hc_importacao as imp
+
+        mapa = {"data": 0, "qtd_lentes": 1, "data_ref": 2, "id": 3}
+        linhas = [[date(2026, 10, 5), 20, datetime(2026, 10, 5, 10, 5), 55]]
+        imp.importar(linhas, {k: v for k, v in mapa.items() if k != "data_ref"})
+        self.assertIsNone(RendimentoHCRegistro.objects.get().hora)
+        res = imp.importar(linhas, mapa)
+        self.assertEqual(res["horas_preenchidas"], 1)
+        self.assertEqual(RendimentoHCRegistro.objects.get().hora, time(10, 5))

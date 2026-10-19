@@ -388,3 +388,28 @@ class DiaHoraCFTests(CFBase):
         from shared.permissions import get_view_permission_map
 
         self.assertIn("laboratorio:cf_dia_hora", get_view_permission_map())
+
+
+class HoraRegistroCFTests(CFBase):
+    def test_formulario_grava_data_e_hora(self):
+        resp = self.post_registro(data="2026-10-05T14:35")
+        self.assertEqual(resp.status_code, 302)
+        r = RetrabalhoCFRegistro.objects.get()
+        self.assertEqual((r.data, r.hora), (date(2026, 10, 5), time(14, 35)))
+        d = cf.por_hora(date(2026, 10, 5))
+        self.assertEqual([l["rotulo"] for l in d["linhas"]], ["14h"])
+
+    def test_edicao_mantem_hora_e_data_sem_hora_fica_sem_hora(self):
+        self.post_registro(data="2026-10-05")
+        r = RetrabalhoCFRegistro.objects.get()
+        self.assertIsNone(r.hora)
+        self.assertContains(self.client.get(reverse("laboratorio:cf_registro_update", args=[r.pk])), 'type="datetime-local"')
+
+    def test_hora_na_importacao_e_reimportacao_preenche_existentes(self):
+        mapa = {"data": 0, "total_lentes": 1, "data_ref": 2, "id": 3}
+        linhas = [[date(2026, 10, 5), 100, datetime(2026, 10, 5, 9, 41), 77]]
+        imp.importar(linhas, {**mapa, "data_ref": 9})
+        self.assertIsNone(RetrabalhoCFRegistro.objects.get().hora)
+        res = imp.importar(linhas, mapa)
+        self.assertEqual(res["horas_preenchidas"], 1)
+        self.assertEqual(RetrabalhoCFRegistro.objects.get().hora, time(9, 41))

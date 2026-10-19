@@ -1,7 +1,7 @@
 """Regras de negócio do Rendimento HC: cadastros padrão, formulário dinâmico, cálculos do dashboard e sincronizações."""
 import unicodedata
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django import forms
@@ -85,6 +85,21 @@ def garantir_padroes():
     RendimentoHCConfig.get()
 
 
+def campo_data_hora(rotulo):
+    """Campo único Data + Hora (datetime-local); o padrão é o momento atual."""
+    return forms.DateTimeField(
+        label=rotulo, required=True, initial=lambda: timezone.localtime().replace(second=0, microsecond=0, tzinfo=None),
+        widget=forms.DateTimeInput(attrs={"class": "form-control", "type": "datetime-local"}, format="%Y-%m-%dT%H:%M"))
+
+
+def separar_data_hora(valor):
+    """(data, hora) de um datetime do formulário; meia-noite = sem hora informada."""
+    if isinstance(valor, datetime):
+        hora = valor.time().replace(second=0, microsecond=0)
+        return valor.date(), (hora if hora != time() else None)
+    return valor, None
+
+
 def norm(texto):
     t = unicodedata.normalize("NFKD", texto or "")
     return " ".join("".join(c for c in t if not unicodedata.combining(c)).upper().split())
@@ -133,7 +148,7 @@ class RegistroHCForm(forms.Form):
         sel = {"class": "form-select"}
         txt = {"class": "form-control"}
         if k == "data":
-            self.fields[k] = forms.DateField(label=c.rotulo, required=True, widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"))
+            self.fields[k] = campo_data_hora("Data e hora" if c.rotulo == "Data" else c.rotulo)
         elif k == "turno":
             self.fields[k] = forms.ModelChoiceField(label=c.rotulo, required=c.obrigatorio, queryset=RegraTurnoCoating.objects.filter(ativo=True), widget=forms.Select(attrs=sel))
         elif k == "colaborador":
@@ -181,7 +196,7 @@ class RegistroHCForm(forms.Form):
 
     def _carregar(self, r):
         ini = {
-            "data": r.data, "turno": r.turno_id, "colaborador": r.colaborador_id, "numero_garra": r.numero_garra,
+            "data": datetime.combine(r.data, r.hora or time()), "turno": r.turno_id, "colaborador": r.colaborador_id, "numero_garra": r.numero_garra,
             "tipo_garra": r.tipo_garra_id, "tratamento": r.tratamento_id, "qtd_lentes": r.qtd_lentes,
             "teve_retrabalho": "1" if r.teve_retrabalho else "0", "observacoes": r.observacoes,
         }
@@ -223,7 +238,7 @@ class RegistroHCForm(forms.Form):
     def save(self, usuario=None):
         d = self.cleaned_data
         r = self.instance or RendimentoHCRegistro(origem=RendimentoHCRegistro.ORIGEM_FORM, usuario=usuario)
-        r.data = d["data"]
+        r.data, r.hora = separar_data_hora(d["data"])
         r.turno = d.get("turno")
         r.turno_nome = r.turno.nome if r.turno else ""
         r.colaborador = d.get("colaborador")
@@ -316,11 +331,10 @@ def consolidado(inicio, fim):
 
 
 def hora_registro(r):
-    """Hora (0-23) do lançamento, ou None se não for confiável.
-
-    O modelo só guarda `data` e `criado_em`; a hora de `criado_em` vale quando a garra foi lançada pelo formulário
-    no próprio dia. Importações e lançamentos retroativos ficam sem hora.
-    """
+    """Hora (0-23) do lançamento: o campo `hora`; em registros antigos, a hora de `criado_em` quando a garra foi
+    lançada pelo formulário no próprio dia; senão None (linha "Sem horário")."""
+    if r.hora is not None:
+        return r.hora.hour
     if r.origem != RendimentoHCRegistro.ORIGEM_FORM or not r.criado_em:
         return None
     local = timezone.localtime(r.criado_em)

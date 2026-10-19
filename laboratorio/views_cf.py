@@ -10,6 +10,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
@@ -143,7 +144,7 @@ def cf_registro_detalhe(request, pk):
     rot = {c.chave: c.rotulo for c in CFCampoFormulario.objects.all()}
     sim_nao = lambda v: "Sim" if v else "Não"
     campos = [
-        (rot.get("data", "Data"), r.data.strftime("%d/%m/%Y")), (rot.get("turno", "Turno"), r.turno_nome or "–"),
+        (rot.get("data", "Data"), r.data.strftime("%d/%m/%Y") + (r.hora.strftime(" %H:%M") if r.hora else "")), (rot.get("turno", "Turno"), r.turno_nome or "–"),
         (rot.get("numero_lote", "Número do Lote"), r.numero_lote or "–"), (rot.get("total_lentes", "Total de Lentes no Lote"), r.total_lentes),
         (rot.get("maquina", "Máquina"), r.maquina_nome or "–"), (rot.get("tratamento", "Tratamento"), r.tratamento_nome or "–"),
         (rot.get("colaborador_cf", "Colaborador CF"), r.colaborador_cf_display or "–"), (rot.get("colaborador_ar", "Colaborador AR"), r.colaborador_ar_display or "–"),
@@ -165,7 +166,7 @@ def cf_registro_detalhe(request, pk):
 
 @login_required
 def cf_registro_create(request):
-    form = cf.RegistroCFForm(request.POST or None, initial={"data": date.today()})
+    form = cf.RegistroCFForm(request.POST or None, initial={"data": timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)})
     if request.method == "POST" and form.is_valid():
         r = form.save(usuario=request.user)
         messages.success(request, f"Lote registrado: {r.total_lentes} lentes, {r.qtd_retrabalho} retrabalho(s).")

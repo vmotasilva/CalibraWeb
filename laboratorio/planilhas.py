@@ -43,6 +43,7 @@ def colunas_hc():
     cols = [
         ("Id", lambda r, q: int(r.chave_importacao[3:]) if (r.chave_importacao or "").startswith("id:") else None),
         ("Data", lambda r, q: r.data),
+        ("Hora", lambda r, q: r.hora.strftime("%H:%M") if r.hora else ""),
         ("Turno", lambda r, q: r.turno_nome),
         ("Colaborador", lambda r, q: r.colaborador_display),
         ("Número da Garra", lambda r, q: r.numero_garra),
@@ -65,6 +66,7 @@ def colunas_cf():
     cols = [
         ("Id", lambda r, q: int(r.chave_importacao[3:]) if (r.chave_importacao or "").startswith("id:") else None),
         ("Data", lambda r, q: r.data),
+        ("Hora", lambda r, q: r.hora.strftime("%H:%M") if r.hora else ""),
         ("Turno", lambda r, q: r.turno_nome),
         ("Número do Lote", lambda r, q: r.numero_lote),
         ("Total de Lentes no Lote", lambda r, q: r.total_lentes),

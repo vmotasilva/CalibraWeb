@@ -1,7 +1,7 @@
 """Regras de negócio do Retrabalho CF (Controle Final): cadastros padrão, formulário dinâmico, cálculos e sincronizações."""
 import re
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django import forms
@@ -13,7 +13,7 @@ from django.utils import timezone
 from maquinas.models import Maquina
 from rh.models import Colaborador
 
-from .hc_rendimento import norm
+from .hc_rendimento import campo_data_hora, norm, separar_data_hora
 from .models import (
     CFCadastro,
     CFCampoFormulario,
@@ -114,7 +114,7 @@ class RegistroCFForm(forms.Form):
         k, sel, txt = c.chave, {"class": "form-select"}, {"class": "form-control"}
         dep = ""
         if k == "data":
-            f = forms.DateField(label=c.rotulo, required=True, widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}, format="%Y-%m-%d"))
+            f = campo_data_hora("Data e hora" if c.rotulo == "Data" else c.rotulo)
         elif k == "turno":
             f = forms.ModelChoiceField(label=c.rotulo, required=c.obrigatorio, queryset=RegraTurnoCoating.objects.filter(ativo=True), widget=forms.Select(attrs=sel))
         elif k == "numero_lote":
@@ -161,7 +161,7 @@ class RegistroCFForm(forms.Form):
 
     def _carregar(self, r):
         ini = {
-            "data": r.data, "turno": r.turno_id, "numero_lote": r.numero_lote, "total_lentes": r.total_lentes, "maquina": r.maquina_id,
+            "data": datetime.combine(r.data, r.hora or time()), "turno": r.turno_id, "numero_lote": r.numero_lote, "total_lentes": r.total_lentes, "maquina": r.maquina_id,
             "tratamento": r.tratamento_id, "colaborador_cf": r.colaborador_cf_id, "colaborador_ar": r.colaborador_ar_id,
             "necessidade_retrabalho": "1" if r.teve_retrabalho else "0", "lote_reprovado": "1" if r.reprovado else "0",
             "motivo_reprovacao": r.motivo_reprovacao, "observacoes": r.observacoes,
@@ -194,7 +194,7 @@ class RegistroCFForm(forms.Form):
     def save(self, usuario=None):
         d = self.cleaned_data
         r = self.instance or RetrabalhoCFRegistro(origem=RetrabalhoCFRegistro.ORIGEM_FORM, usuario=usuario)
-        r.data = d["data"]
+        r.data, r.hora = separar_data_hora(d["data"])
         r.turno = d.get("turno")
         r.turno_nome = r.turno.nome if r.turno else ""
         r.numero_lote = d.get("numero_lote") or ""
@@ -299,11 +299,10 @@ def geral(inicio, fim):
 
 
 def hora_registro(r):
-    """Hora (0-23) do lançamento, ou None se não for confiável.
-
-    O modelo não guarda a hora da inspeção: só `data` e `criado_em`. A hora de `criado_em` vale quando o lote foi
-    lançado pelo formulário no próprio dia; importações e lançamentos retroativos ficam sem hora.
-    """
+    """Hora (0-23) do lançamento: o campo `hora`; em registros antigos, a hora de `criado_em` quando o lote foi
+    lançado pelo formulário no próprio dia; senão None (linha "Sem horário")."""
+    if r.hora is not None:
+        return r.hora.hour
     if r.origem != RetrabalhoCFRegistro.ORIGEM_FORM or not r.criado_em:
         return None
     local = timezone.localtime(r.criado_em)

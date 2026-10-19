@@ -192,7 +192,7 @@ def hc_registro_detalhe(request, pk):
     rot = {c.chave: c.rotulo for c in HCCampoFormulario.objects.all()}
     sim_nao = lambda v: "Sim" if v else "Não"
     campos = [
-        (rot.get("data", "Data"), r.data.strftime("%d/%m/%Y")), (rot.get("turno", "Turno"), r.turno_nome or "–"),
+        (rot.get("data", "Data"), r.data.strftime("%d/%m/%Y") + (r.hora.strftime(" %H:%M") if r.hora else "")), (rot.get("turno", "Turno"), r.turno_nome or "–"),
         (rot.get("colaborador", "Colaborador"), r.colaborador_display or "–"), (rot.get("numero_garra", "Número da Garra"), r.numero_garra or "–"),
         (rot.get("tipo_garra", "Tipo de Garra"), r.tipo_garra.nome if r.tipo_garra else "–"),
         (rot.get("tratamento", "Tratamento"), r.tratamento.nome if r.tratamento else "–"),

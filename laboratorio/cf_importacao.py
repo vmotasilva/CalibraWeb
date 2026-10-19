@@ -9,7 +9,7 @@ from django.db import transaction
 from maquinas.models import Maquina
 
 from . import cf_retrabalho as cf
-from .hc_importacao import _compacto, _data, _int, ler_planilha  # noqa: F401  (ler_planilha reexportada para as views)
+from .hc_importacao import _atualizar_horas, _compacto, _data, _hora, _int, ler_planilha  # noqa: F401  (ler_planilha reexportada para as views)
 from .hc_rendimento import norm
 from .models import (
     CFCadastro,
@@ -27,7 +27,7 @@ LOTE = 500
 CAMPOS_FIXOS = [
     ("id", "Id do registro (evita duplicar ao reimportar)", False, ["ID"]),
     ("data", "Data do lote", True, ["DATA"]),
-    ("data_ref", "Data/hora de preenchimento (corrige datas com dia/mês invertidos)", False, ["STARTTIME", "COMPLETIONTIME"]),
+    ("data_ref", "Data/hora de preenchimento (hora do lançamento; corrige datas com dia/mês invertidos)", False, ["STARTTIME", "COMPLETIONTIME", "HORA", "HORADOLANCAMENTO"]),
     ("turno", "Turno", False, ["TURNO"]),
     ("numero_lote", "Número do lote", False, ["NUMERODOLOTE", "LOTE"]),
     ("total_lentes", "Total de lentes no lote", True, ["TOTALDELENTESNOLOTE", "TOTALDELENTES"]),
@@ -127,6 +127,7 @@ def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
     existentes = set(RetrabalhoCFRegistro.objects.exclude(chave_importacao=None).values_list("chave_importacao", flat=True))
     hoje = date.today()
     novos, pendentes, st = [], [], Counter()
+    horas_existentes = {}
     sem_turno, sem_trat, sem_maq = Counter(), Counter(), Counter()
 
     for row in linhas:
@@ -143,8 +144,12 @@ def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
             continue
         id_ext = _int(cel(row, "id")) if "id" in mapa else 0
         chave = f"id:{id_ext}" if id_ext else "sha:" + hashlib.md5(repr(tuple(row)).encode()).hexdigest()[:24]
+        hora = _hora(cel(row, "data_ref")) if "data_ref" in mapa else None
+        hora = hora or _hora(cel(row, "data"))
         if chave in existentes:
             st["repetidas"] += 1
+            if hora:
+                horas_existentes[chave] = hora
             continue
         existentes.add(chave)
 
@@ -186,7 +191,7 @@ def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
                 extras[k[2:]] = v.isoformat() if isinstance(v, (date, datetime)) else v
         numero = cel(row, "numero_lote")
         novos.append(RetrabalhoCFRegistro(
-            data=dia, turno=turno, turno_nome=turno.nome if turno else turno_txt[:50],
+            data=dia, hora=hora, turno=turno, turno_nome=turno.nome if turno else turno_txt[:50],
             numero_lote=("" if numero is None else str(int(numero)) if isinstance(numero, float) and numero.is_integer() else str(numero)).strip()[:30],
             total_lentes=qtd, maquina=maq, maquina_nome=cf.nome_maquina(maq) if maq else maq_txt[:100],
             tratamento=trat, tratamento_nome=trat.nome if trat else trat_txt[:150],
@@ -209,6 +214,7 @@ def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
         "turno_sem_regra": dict(sem_turno), "maquina_sem_cadastro": dict(sem_maq), "tratamento_sem_cadastro": dict(sem_trat),
         "simulado": simular, "importadas": 0,
     }
+    resultado["horas_preenchidas"] = len(horas_existentes) if simular else _atualizar_horas(RetrabalhoCFRegistro, horas_existentes)
     if simular or not novos:
         return resultado
     with transaction.atomic():

@@ -4,7 +4,7 @@ import hashlib
 import io
 import re
 from collections import Counter
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 import openpyxl
 from django.db import transaction
@@ -26,6 +26,7 @@ LOTE = 500
 CAMPOS_FIXOS = [
     ("id", "Id do registro (evita duplicar ao reimportar)", False, ["ID"]),
     ("data", "Data", True, ["DATA"]),
+    ("data_ref", "Hora / data e hora de preenchimento", False, ["HORA", "STARTTIME", "COMPLETIONTIME", "HORADOLANCAMENTO", "CARIMBODEDATAHORA"]),
     ("turno", "Turno", False, ["TURNO"]),
     ("colaborador", "Colaborador", False, ["COLABORADOR", "NOME"]),
     ("numero_garra", "Número da garra", False, ["NUMERODAGARRA", "GARRA"]),
@@ -146,6 +147,36 @@ def _data(v):
     return None
 
 
+def _hora(v):
+    """Hora (HH:MM) de um valor de planilha (datetime, time ou texto 'dd/mm/aaaa HH:MM[:SS]'); meia-noite = sem hora."""
+    if isinstance(v, datetime):
+        t = v.time()
+    elif isinstance(v, time):
+        t = v
+    else:
+        m = re.search(r"(?<!\d)([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?(?!\d)", str(v or ""))
+        t = time(int(m.group(1)), int(m.group(2))) if m else None
+    if t is None:
+        return None
+    t = t.replace(second=0, microsecond=0)
+    return t if t != time() else None
+
+
+def _atualizar_horas(modelo, horas):
+    """Preenche `hora` de registros já importados (reimportação) que ainda não a tinham. Devolve quantos."""
+    if not horas:
+        return 0
+    n = 0
+    for ini in range(0, len(horas), LOTE):
+        parte = dict(list(horas.items())[ini: ini + LOTE])
+        regs = list(modelo.objects.filter(chave_importacao__in=parte, hora__isnull=True))
+        for r in regs:
+            r.hora = parte[r.chave_importacao]
+        modelo.objects.bulk_update(regs, ["hora"])
+        n += len(regs)
+    return n
+
+
 # --------------------------------------------------------------------------- importação
 def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
     """Importa as linhas conforme `mapa` ({chave: índice}). Devolve um dicionário de estatísticas."""
@@ -178,6 +209,7 @@ def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
     novos, pendentes = [], []
     st = Counter()
     sem_garra, sem_turno, sem_trat = Counter(), Counter(), Counter()
+    horas_existentes = {}
 
     for row in linhas:
         dia = _data(cel(row, "data"))
@@ -189,8 +221,12 @@ def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
             continue
         id_ext = _int(cel(row, "id")) if "id" in mapa else 0
         chave = f"id:{id_ext}" if id_ext else "sha:" + hashlib.md5(repr(tuple(row)).encode()).hexdigest()[:24]
+        hora = _hora(cel(row, "data_ref")) if "data_ref" in mapa else None
+        hora = hora or _hora(cel(row, "data"))
         if chave in existentes:
             st["repetidas"] += 1
+            if hora:
+                horas_existentes[chave] = hora
             continue
         existentes.add(chave)
 
@@ -229,7 +265,7 @@ def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
                 extras[k[2:]] = v.isoformat() if isinstance(v, (date, datetime)) else v
         numero = cel(row, "numero_garra")
         novos.append(RendimentoHCRegistro(
-            data=dia, turno=turno, turno_nome=turno.nome if turno else turno_txt[:50],
+            data=dia, hora=hora, turno=turno, turno_nome=turno.nome if turno else turno_txt[:50],
             colaborador=colab, colaborador_nome=colab.nome_completo if colab else nome[:150],
             numero_garra=("" if numero is None else str(int(numero)) if isinstance(numero, float) and numero.is_integer() else str(numero)).strip()[:10],
             tipo_garra=garra, tratamento=trat, qtd_lentes=qtd, teve_retrabalho=total > 0, qtd_retrabalho=total,
@@ -247,6 +283,7 @@ def importar(linhas, mapa, a_partir=None, simular=False, usuario=None):
         "turno_sem_regra": dict(sem_turno), "garra_sem_cadastro": dict(sem_garra), "tratamento_sem_cadastro": dict(sem_trat),
         "simulado": simular, "importadas": 0,
     }
+    resultado["horas_preenchidas"] = len(horas_existentes) if simular else _atualizar_horas(RendimentoHCRegistro, horas_existentes)
     if simular or not novos:
         return resultado
     with transaction.atomic():
