@@ -11,5 +11,8 @@ urlpatterns = [
     path('indicadores/<int:pk>/', views.indicador_detalhe_view, name='indicador_detalhe'),
     path('indicadores/<int:pk>/editar/', views.indicador_form_view, name='indicador_editar'),
     path('indicadores/<int:pk>/excluir/', views.indicador_excluir_view, name='indicador_excluir'),
+    path('indicadores/<int:pk>/medicao/', views.medicao_salvar_view, name='medicao_salvar'),
     path('medicoes/<int:pk>/excluir/', views.medicao_excluir_view, name='medicao_excluir'),
+    path('indicadores/<int:pk>/motivo/', views.motivo_salvar_view, name='motivo_salvar'),
+    path('motivos/<int:pk>/excluir/', views.motivo_excluir_view, name='motivo_excluir'),
 ]

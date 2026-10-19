@@ -1,45 +1,66 @@
 from datetime import date
-from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from kpi.models import Indicador, Medicao
+from kpi.models import Indicador, Medicao, Motivo
 
 
 class KpiTests(TestCase):
     def setUp(self):
         self.user = User.objects.create_superuser('kpi', 'k@x.com', 'x')
         self.client.force_login(self.user)
+        self.ind = Indicador.objects.create(nome='SR', meta=95, acompanhamento_detalhado=True)
 
-    def test_fluxo_completo(self):
+    def salvar(self, gran, periodo, valor):
+        return self.client.post(reverse('kpi:medicao_salvar', args=[self.ind.pk]),
+                                {'granularidade': gran, 'periodo': periodo, 'valor': valor, 'observacao': ''})
+
+    def test_cria_indicador(self):
         r = self.client.post(reverse('kpi:indicador_novo'), {
-            'nome': 'Retrabalho', 'area': 'Lab', 'unidade': '%', 'meta': '4', 'sentido': 'menor',
-            'periodicidade': 'mensal', 'ativo': 'on'})
-        ind = Indicador.objects.get()
-        self.assertRedirects(r, reverse('kpi:indicador_detalhe', args=[ind.pk]))
-        url = reverse('kpi:indicador_detalhe', args=[ind.pk])
-        self.client.post(url, {'periodo': '2026-10-01', 'valor': '2.85', 'observacao': ''})
-        self.client.post(url, {'periodo': '2026-10-01', 'valor': '5', 'observacao': ''})
-        self.assertEqual(Medicao.objects.count(), 1)
-        self.assertFalse(ind.atingiu(Decimal('5')))
-        self.assertTrue(ind.atingiu(Decimal('3')))
-        for name in ('kpi:painel', 'kpi:indicadores'):
-            self.assertEqual(self.client.get(reverse(name)).status_code, 200)
-        self.assertEqual(self.client.get(url).status_code, 200)
-        self.client.post(reverse('kpi:medicao_excluir', args=[Medicao.objects.get().pk]))
+            'nome': 'Retrabalho', 'unidade': '%', 'meta': '4', 'sentido': 'menor',
+            'periodicidade': 'mensal', 'acompanhamento_detalhado': 'on', 'ativo': 'on'})
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(Indicador.objects.get(nome='Retrabalho').acompanhamento_detalhado)
+
+    def test_normaliza_e_atualiza(self):
+        self.salvar('mensal', '2026-10-05', '90')
+        self.salvar('mensal', '2026-10-20', '96')
+        m = Medicao.objects.get(granularidade='mensal')
+        self.assertEqual(m.periodo, date(2026, 10, 31))
+        self.assertEqual(str(m.valor), '96.00')
+        self.salvar('semanal', '2026-10-15', '91')  # quinta -> segunda 12/10
+        self.salvar('semanal', '2026-10-13', '92')
+        s = Medicao.objects.get(granularidade='semanal')
+        self.assertEqual(s.periodo, date(2026, 10, 12))
+        self.salvar('diaria', '2026-10-15', '93')
+        self.assertEqual(Medicao.objects.count(), 3)
+
+    def test_sem_acompanhamento_bloqueia_semanal(self):
+        self.ind.acompanhamento_detalhado = False
+        self.ind.save()
+        self.salvar('semanal', '2026-10-15', '91')
         self.assertEqual(Medicao.objects.count(), 0)
 
-    def test_parcial(self):
-        ind = Indicador.objects.create(nome='SR', meta=95, acompanhamento='semanal')
-        url = reverse('kpi:indicador_detalhe', args=[ind.pk])
-        self.client.post(url, {'periodo': '2026-10-12', 'valor': '90', 'parcial': 'on'})
-        self.client.post(url, {'periodo': '2026-10-05', 'valor': '96'})
-        self.assertEqual(Medicao.objects.filter(indicador=ind, parcial=True).count(), 1)
-        self.assertEqual(Medicao.objects.filter(indicador=ind, parcial=False).count(), 1)
-        self.assertEqual(self.client.get(url).status_code, 200)
-        self.assertContains(self.client.get(reverse('kpi:painel')), 'Parcial 12/10')
-        sem = Indicador.objects.create(nome='X', meta=1)
-        self.client.post(reverse('kpi:indicador_detalhe', args=[sem.pk]), {'periodo': '2026-10-05', 'valor': '1', 'parcial': 'on'})
-        self.assertFalse(Medicao.objects.get(indicador=sem).parcial)
+    def test_painel_motivos_e_exclusao(self):
+        self.salvar('mensal', '2026-10-05', '90')
+        url = reverse('kpi:motivo_salvar', args=[self.ind.pk])
+        hoje = date.today().isoformat()
+        self.client.post(url, {'data': hoje, 'descricao': 'Quebra', 'quantidade': '3'})
+        self.client.post(url, {'data': hoje, 'descricao': 'quebra ', 'quantidade': '2'})
+        self.client.post(url, {'data': hoje, 'descricao': 'Trinca', 'quantidade': '1'})
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d' % self.ind.pk)
+        self.assertEqual(r.status_code, 200)
+        top = r.context['abas'][0]['top']
+        self.assertEqual([t['descricao'] for t in top], ['Quebra', 'Trinca'])
+        self.assertEqual(float(top[0]['total']), 5.0)
+        mot = Motivo.objects.first()
+        self.client.post(url, {'motivo_id': mot.pk, 'data': hoje, 'descricao': 'Editado', 'quantidade': '9'})
+        mot.refresh_from_db()
+        self.assertEqual(mot.descricao, 'Editado')
+        self.client.post(reverse('kpi:motivo_excluir', args=[mot.pk]))
+        self.assertEqual(Motivo.objects.count(), 2)
+        self.client.post(reverse('kpi:medicao_excluir', args=[Medicao.objects.get().pk]))
+        self.assertEqual(Medicao.objects.count(), 0)
+        self.assertEqual(self.client.get(reverse('kpi:indicadores')).status_code, 200)
