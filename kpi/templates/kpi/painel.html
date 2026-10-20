@@ -173,7 +173,7 @@
                                         {% for p in mt.periodos %}
                                         <tr>
                                             <td class="text-nowrap fw-semibold">{{ p.rotulo }}</td>
-                                            <td>{% for it in p.itens %}{{ it.descricao }} <span class="text-muted">({{ it.quantidade|floatformat:"-2" }})</span>{% if not forloop.last %}; {% endif %}{% endfor %}</td>
+                                            <td>{% for it in p.itens %}{{ it.descricao }} <span class="text-muted">({{ it.quantidade|floatformat:"-2" }}{% if it.setor_nome %} · {{ it.setor_nome }}{% endif %})</span>{% if not forloop.last %}; {% endif %}{% endfor %}</td>
                                             <td class="text-end">
                                                 <button type="button" class="btn btn-sm btn-link p-0" title="Editar" onclick="kpiAbrirMotivo({{ pk }}, '{{ mt.gran }}', '{{ p.data|date:'Y-m-d' }}')"><i class="bi bi-pencil"></i></button>
                                             </td>

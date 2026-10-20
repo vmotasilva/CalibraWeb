@@ -239,6 +239,13 @@ class KpiTests(TestCase):
         self.client.post(m_url, {'granularidade': 'mensal', 'data': '2026-10-01', 'descricao': ['Do setor'], 'quantidade': ['2'], 'setor': surf.pk})
         self.assertEqual(Motivo.objects.filter(setor=surf).count(), 1)
         self.assertEqual(Motivo.objects.filter(setor__isnull=True).count(), 1)
+        # visão geral soma os motivos de todos os setores; a do setor mostra só os dele
+        def top(qs):
+            aba = [a for a in self.client.get(reverse('kpi:painel') + qs).context['abas'] if a['ind'].pk == ind.pk][0]
+            return {t['descricao']: float(t['total']) for t in aba['motivos_tabs'][0]['top']}
+        self.assertEqual(top('?ind=%d&mot=0' % ind.pk), {'Do setor': 2.0, 'Geral': 1.0})
+        self.assertEqual(top('?ind=%d&setor=%d&mot=0' % (ind.pk, surf.pk)), {'Do setor': 2.0})
+        self.assertEqual(top('?ind=%d&setor=%d&mot=0' % (ind.pk, ar.pk)), {})
         # setor com lançamentos não pode ser removido
         r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), dict(base, setores_texto='AR'))
         self.assertEqual(r.status_code, 200)

@@ -53,9 +53,13 @@ def _serie(ind, gran, medicoes, meta=None):
 
 
 def _motivos(ind, dias, setor_id=None):
-    """Por granularidade: Top motivos (somados) e lançamentos agrupados por período."""
+    """Por granularidade: Top motivos (somados) e lançamentos agrupados por período.
+    Visão geral (setor_id=None) considera todos os motivos, de qualquer setor; com setor, só os dele."""
     corte = timezone.localdate() - datetime.timedelta(days=dias) if dias else None
-    todos = [m for m in ind.motivos.all() if m.setor_id == setor_id and (not corte or m.data >= corte)]
+    nomes = {s.pk: s.nome for s in ind.setores.all()}
+    todos = [m for m in ind.motivos.all() if (setor_id is None or m.setor_id == setor_id) and (not corte or m.data >= corte)]
+    for m in todos:
+        m.setor_nome = nomes.get(m.setor_id, '')
     saida = OrderedDict()
     for gran, _ in Medicao.GRANULARIDADES[::-1]:  # diário, semanal, mensal
         itens = [m for m in todos if m.granularidade == gran]
