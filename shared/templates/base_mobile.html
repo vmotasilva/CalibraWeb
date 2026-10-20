@@ -318,20 +318,6 @@ ANTI-REFLEXO <i class="bi bi-chevron-down transition-transform"></i>
 {% if nav_coating_painel %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:coating_painel' %}"><i class="bi bi-grid-3x3-gap"></i> Painel Diário</a></li>{% endif %}
 {% if nav_coating_dashboard %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:dashboard_coating' %}"><i class="bi bi-bar-chart-line"></i> Dashboard</a></li>{% endif %}
 {% if nav_coating_importacao %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:importar_lotes_coating' %}"><i class="bi bi-upload"></i> Importar Lotes</a></li>{% endif %}
-{% if nav_coating_tratamentos or nav_coating_turnos or nav_coating_ciclos or nav_coating_equipe %}
-<li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCARMobileCFG" style="cursor: pointer;">
-CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
-</h6>
-<ul class="list-unstyled collapse ps-3" id="collapseHMCARMobileCFG">
-{% if nav_coating_tratamentos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>{% endif %}
-{% if nav_coating_turnos %}<li><a class="dropdown-item" href="{% url 'laboratorio:regra_turno_list' %}"><i class="bi bi-clock-history"></i> Regras de Turno</a></li>{% endif %}
-{% if nav_coating_ciclos %}<li><a class="dropdown-item" href="{% url 'laboratorio:ciclo_coating_list' %}"><i class="bi bi-arrow-repeat"></i> Ciclos de Manutenção</a></li>{% endif %}
-{% if nav_coating_equipe %}<li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>{% endif %}
-
-</ul>
-</li>
-{% endif %}
 </ul>
 </li>
 {% can_nav_group user 'HMC > HC' as nav_grp_hc %}
@@ -345,18 +331,6 @@ HC <i class="bi bi-chevron-down transition-transform"></i>
 {% if nav_hc_novo %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:hc_registro_create' %}"><i class="bi bi-plus-circle"></i> Novo Lançamento</a></li>{% endif %}
 {% if nav_hc_registros %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:hc_registros' %}"><i class="bi bi-card-checklist"></i> Registros</a></li>{% endif %}
 {% if nav_hc_importar %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:hc_importar' %}"><i class="bi bi-upload"></i> Importar Planilha</a></li>{% endif %}
-{% if nav_hc_campos or nav_hc_cadastros or nav_hc_integracoes %}
-<li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCHCMobileCFG" style="cursor: pointer;">
-CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
-</h6>
-<ul class="list-unstyled collapse ps-3" id="collapseHMCHCMobileCFG">
-{% if nav_hc_campos %}<li><a class="dropdown-item" href="{% url 'laboratorio:hc_config_campos' %}"><i class="bi bi-ui-checks-grid"></i> Campos do Formulário</a></li>{% endif %}
-{% if nav_hc_cadastros %}<li><a class="dropdown-item" href="{% url 'laboratorio:hc_config_cadastros' %}"><i class="bi bi-list-ul"></i> Cadastros Base</a></li>{% endif %}
-{% if nav_hc_integracoes %}<li><a class="dropdown-item" href="{% url 'laboratorio:hc_config_integracoes' %}"><i class="bi bi-arrow-repeat"></i> Integrações</a></li>{% endif %}
-</ul>
-</li>
-{% endif %}
 </ul>
 </li>
 {% endif %}
@@ -371,18 +345,6 @@ CONTROLE FINAL <i class="bi bi-chevron-down transition-transform"></i>
 {% if nav_cf_novo %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:cf_registro_create' %}"><i class="bi bi-plus-circle"></i> Novo Lançamento</a></li>{% endif %}
 {% if nav_cf_registros %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:cf_registros' %}"><i class="bi bi-card-checklist"></i> Registros</a></li>{% endif %}
 {% if nav_cf_importar %}<li><a class="dropdown-item fw-bold" href="{% url 'laboratorio:cf_importar' %}"><i class="bi bi-upload"></i> Importar Planilha</a></li>{% endif %}
-{% if nav_cf_campos or nav_cf_cadastros or nav_cf_integracoes %}
-<li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCCFMobileCFG" style="cursor: pointer;">
-CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
-</h6>
-<ul class="list-unstyled collapse ps-3" id="collapseHMCCFMobileCFG">
-{% if nav_cf_campos %}<li><a class="dropdown-item" href="{% url 'laboratorio:cf_config_campos' %}"><i class="bi bi-ui-checks-grid"></i> Campos do Formulário</a></li>{% endif %}
-{% if nav_cf_cadastros %}<li><a class="dropdown-item" href="{% url 'laboratorio:cf_config_cadastros' %}"><i class="bi bi-list-ul"></i> Cadastros Base</a></li>{% endif %}
-{% if nav_cf_integracoes %}<li><a class="dropdown-item" href="{% url 'laboratorio:cf_config_integracoes' %}"><i class="bi bi-arrow-repeat"></i> Integrações</a></li>{% endif %}
-</ul>
-</li>
-{% endif %}
 </ul>
 </li>
 {% endif %}
@@ -391,16 +353,29 @@ CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
 TESTES DE QUALIDADE <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
 <ul class="list-unstyled collapse ps-2" id="collapseHMCTQMobile">
-<li>
-<h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center ps-5" data-bs-toggle="collapse" data-bs-target="#collapseHMCTQMobileCFG" style="cursor: pointer;">
-CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
-</h6>
-<ul class="list-unstyled collapse ps-3" id="collapseHMCTQMobileCFG">
 <li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
 </ul>
 </li>
+{% can_nav_group user 'HMC > Configurações' as nav_grp_cfg %}
+{% if nav_grp_cfg %}
+<li>
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseHMCCFGMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
+CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseHMCCFGMobile">
+{% if nav_coating_tratamentos %}<li><a class="dropdown-item" href="{% url 'laboratorio:tratamento_list' %}"><i class="bi bi-droplet-half"></i> Tratamentos</a></li>{% endif %}
+{% if nav_coating_turnos %}<li><a class="dropdown-item" href="{% url 'laboratorio:regra_turno_list' %}"><i class="bi bi-clock-history"></i> Regras de Turno</a></li>{% endif %}
+{% if nav_coating_ciclos %}<li><a class="dropdown-item" href="{% url 'laboratorio:ciclo_coating_list' %}"><i class="bi bi-arrow-repeat"></i> Ciclos de Manutenção</a></li>{% endif %}
+{% if nav_coating_equipe %}<li><a class="dropdown-item" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people"></i> Equipe Coating</a></li>{% endif %}
+{% if nav_hc_campos %}<li><a class="dropdown-item" href="{% url 'laboratorio:hc_config_campos' %}"><i class="bi bi-ui-checks-grid"></i> HC · Campos do Formulário</a></li>{% endif %}
+{% if nav_hc_cadastros %}<li><a class="dropdown-item" href="{% url 'laboratorio:hc_config_cadastros' %}"><i class="bi bi-list-ul"></i> HC · Cadastros Base</a></li>{% endif %}
+{% if nav_hc_integracoes %}<li><a class="dropdown-item" href="{% url 'laboratorio:hc_config_integracoes' %}"><i class="bi bi-arrow-repeat"></i> HC · Integrações</a></li>{% endif %}
+{% if nav_cf_campos %}<li><a class="dropdown-item" href="{% url 'laboratorio:cf_config_campos' %}"><i class="bi bi-ui-checks-grid"></i> Controle Final · Campos do Formulário</a></li>{% endif %}
+{% if nav_cf_cadastros %}<li><a class="dropdown-item" href="{% url 'laboratorio:cf_config_cadastros' %}"><i class="bi bi-list-ul"></i> Controle Final · Cadastros Base</a></li>{% endif %}
+{% if nav_cf_integracoes %}<li><a class="dropdown-item" href="{% url 'laboratorio:cf_config_integracoes' %}"><i class="bi bi-arrow-repeat"></i> Controle Final · Integrações</a></li>{% endif %}
 </ul>
 </li>
+{% endif %}
                                     </ul>
                                 </li>
                             {% endif %}
