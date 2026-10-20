@@ -1,5 +1,6 @@
 import calendar
 import datetime
+import heapq
 import re
 from collections import OrderedDict
 from decimal import Decimal
@@ -17,7 +18,8 @@ from kpi import calculo
 from kpi.forms import IndicadorForm, MedicaoForm
 from kpi.models import Indicador, Medicao, Motivo
 
-JANELAS = {'mensal': 12, 'semanal': 12, 'diaria': 31}
+JANELAS = {'mensal': 12, 'semanal': 6, 'diaria': 15}  # barras exibidas por vez
+LIMITES = {'mensal': 12, 'semanal': 52, 'diaria': 120}  # histórico enviado ao navegador (navegável pelas setas)
 PERIODOS_MOTIVOS = [('30', 'Últimos 30 dias'), ('90', 'Últimos 90 dias'), ('365', 'Últimos 12 meses'), ('0', 'Todo o período'),
                     ('mes', 'Mês específico…'), ('periodo', 'Período específico…')]
 
@@ -40,11 +42,12 @@ def _rotulo(gran, d):
 
 
 def _serie(ind, gran, medicoes, meta=None):
-    meds = sorted((m for m in medicoes if m.granularidade == gran), key=lambda m: m.periodo)
-    meds = meds[-JANELAS[gran]:]
+    meds = heapq.nlargest(LIMITES[gran], (m for m in medicoes if m.granularidade == gran), key=lambda m: m.periodo)
+    meds.reverse()
     return {
         'labels': [_rotulo(gran, m.periodo) for m in meds],
         'valores': [float(m.valor) for m in meds],
+        'janela': JANELAS[gran],
         'meta': float(ind.meta if meta is None else meta),
         'sentido': ind.sentido,
         'entradas': [

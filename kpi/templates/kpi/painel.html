@@ -101,7 +101,11 @@
                     <div class="card h-100"><div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="mb-0"><i class="bi bi-calendar-week me-1"></i>Semana a semana</h6>
-                            <button type="button" class="btn btn-primary btn-sm" title="Adicionar ou editar" onclick="kpiAbrirMedicao({{ pk }}, 'semanal')"><i class="bi bi-plus-lg"></i></button>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-prev-{{ pk }}-semanal" title="Período anterior" disabled><i class="bi bi-chevron-left"></i></button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-next-{{ pk }}-semanal" title="Próximo período" disabled><i class="bi bi-chevron-right"></i></button>
+                                <button type="button" class="btn btn-primary btn-sm ms-1" title="Adicionar ou editar" onclick="kpiAbrirMedicao({{ pk }}, 'semanal')"><i class="bi bi-plus-lg"></i></button>
+                            </div>
                         </div>
                         <div style="height: 260px;"><canvas id="kpi-chart-{{ pk }}-semanal"></canvas></div>
                     </div></div>
@@ -112,7 +116,11 @@
                     <div class="card h-100"><div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="mb-0"><i class="bi bi-calendar-day me-1"></i>Dia a dia</h6>
-                            <button type="button" class="btn btn-primary btn-sm" title="Adicionar ou editar" onclick="kpiAbrirMedicao({{ pk }}, 'diaria')"><i class="bi bi-plus-lg"></i></button>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-prev-{{ pk }}-diaria" title="Período anterior" disabled><i class="bi bi-chevron-left"></i></button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-next-{{ pk }}-diaria" title="Próximo período" disabled><i class="bi bi-chevron-right"></i></button>
+                                <button type="button" class="btn btn-primary btn-sm ms-1" title="Adicionar ou editar" onclick="kpiAbrirMedicao({{ pk }}, 'diaria')"><i class="bi bi-plus-lg"></i></button>
+                            </div>
                         </div>
                         <div style="height: 260px;"><canvas id="kpi-chart-{{ pk }}-diaria"></canvas></div>
                     </div></div>
@@ -488,18 +496,23 @@
         var canvas = el('kpi-chart-' + chave), d = (CHARTS[pk] || {})[gran];
         if (!canvas || !d) return;
         if (instancias[chave]) { instancias[chave].resize(); return; }
-        var cores = d.valores.map(function (v) {
-            return (d.sentido === 'maior' ? v >= d.meta : v <= d.meta) ? '#198754' : '#dc3545';
-        });
+        var jan = d.janela || d.labels.length, fim = d.labels.length;
+        var prev = el('kpi-prev-' + chave), next = el('kpi-next-' + chave);
+        function fatia() {
+            var ini = Math.max(0, fim - jan), v = d.valores.slice(ini, fim);
+            return {ini: ini, labels: d.labels.slice(ini, fim), valores: v,
+                    cores: v.map(function (x) { return (d.sentido === 'maior' ? x >= d.meta : x <= d.meta) ? '#198754' : '#dc3545'; })};
+        }
+        var f = fatia();
         instancias[chave] = new Chart(canvas, {
             type: 'bar',
             data: {
-                labels: d.labels,
+                labels: f.labels,
                 datasets: [
-                    {type: 'bar', label: 'Valor', data: d.valores, backgroundColor: cores, borderRadius: 3, order: 2,
+                    {type: 'bar', label: 'Valor', data: f.valores, backgroundColor: f.cores, borderRadius: 3, order: 2,
                      datalabels: {display: true, anchor: 'end', align: 'end', clamp: true, color: '#212529',
                                   font: {weight: 'bold', size: 11}, formatter: rotulo}},
-                    {type: 'line', label: 'Meta', data: d.labels.map(function () { return d.meta; }),
+                    {type: 'line', label: 'Meta', data: f.labels.map(function () { return d.meta; }),
                      borderColor: '#6c757d', borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5, order: 1,
                      datalabels: {display: function (c) { return c.dataIndex === c.dataset.data.length - 1; },
                                   align: 'top', anchor: 'end', color: '#6c757d', font: {size: 10},
@@ -511,13 +524,29 @@
                 layout: {padding: {top: 22, right: 8}},
                 plugins: {legend: {position: 'bottom'}},
                 onClick: function (evt, els) {
-                    if (els.length && els[0].datasetIndex === 0 && d.entradas[els[0].index]) {
-                        window.kpiAbrirMedicao(pk, gran, d.entradas[els[0].index].data);
-                    }
+                    var e = els.length && els[0].datasetIndex === 0 && d.entradas[fatia().ini + els[0].index];
+                    if (e) { window.kpiAbrirMedicao(pk, gran, e.data); }
                 },
                 scales: {y: {ticks: {maxTicksLimit: 6}}, x: {ticks: {maxRotation: 0, autoSkip: true}}}
             }
         });
+        function mover(passo) {
+            fim = Math.min(d.labels.length, Math.max(Math.min(jan, d.labels.length), fim + passo * jan));
+            var g = fatia(), c = instancias[chave];
+            c.data.labels = g.labels;
+            c.data.datasets[0].data = g.valores;
+            c.data.datasets[0].backgroundColor = g.cores;
+            c.data.datasets[1].data = g.labels.map(function () { return d.meta; });
+            c.update();
+            atualizarSetas();
+        }
+        function atualizarSetas() {
+            if (prev) prev.disabled = fim - jan <= 0;
+            if (next) next.disabled = fim >= d.labels.length;
+        }
+        if (prev) prev.addEventListener('click', function () { mover(-1); });
+        if (next) next.addEventListener('click', function () { mover(1); });
+        atualizarSetas();
         if (!d.labels.length) {
             canvas.parentNode.insertAdjacentHTML('beforeend', '<div class="text-center text-muted small">Sem informações. Use o botão + para adicionar.</div>');
         }
