@@ -64,14 +64,39 @@ class Indicador(models.Model):
     def graficos(self):
         return [g for g, on in (('mensal', self.exibir_mensal), ('semanal', self.exibir_semanal), ('diaria', self.exibir_diario)) if on]
 
-    def atingiu(self, valor):
+    def atingiu(self, valor, meta=None):
+        """Compara com a meta geral ou, se informada, com a meta do setor."""
         if valor is None:
             return None
-        return valor >= self.meta if self.sentido == self.SENTIDO_MAIOR else valor <= self.meta
+        meta = self.meta if meta is None else meta
+        return valor >= meta if self.sentido == self.SENTIDO_MAIOR else valor <= meta
+
+
+class SetorIndicador(models.Model):
+    """Setor que influencia a meta de um indicador; tem meta e lançamentos próprios. Opcional."""
+    indicador = models.ForeignKey(Indicador, on_delete=models.CASCADE, related_name='setores')
+    nome = models.CharField('Setor', max_length=100)
+    meta = models.DecimalField('Meta do setor', max_digits=14, decimal_places=2, null=True, blank=True,
+                               help_text='Se vazia, vale a meta geral do indicador.')
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        unique_together = [('indicador', 'nome')]
+        verbose_name = 'Setor do indicador'
+        verbose_name_plural = 'Setores do indicador'
+
+    def __str__(self):
+        return f'{self.indicador} / {self.nome}'
+
+    @property
+    def meta_efetiva(self):
+        return self.meta if self.meta is not None else self.indicador.meta
 
 
 class Medicao(models.Model):
     indicador = models.ForeignKey(Indicador, on_delete=models.CASCADE, related_name='medicoes')
+    setor = models.ForeignKey(SetorIndicador, null=True, blank=True, on_delete=models.PROTECT, related_name='medicoes')
     periodo = models.DateField('Período (data de referência)')
     valor = models.DecimalField('Valor', max_digits=14, decimal_places=2)
     GRANULARIDADES = [('mensal', 'Mensal'), ('semanal', 'Semanal'), ('diaria', 'Diária')]
@@ -83,7 +108,7 @@ class Medicao(models.Model):
 
     class Meta:
         ordering = ['-periodo']
-        unique_together = [('indicador', 'periodo', 'granularidade')]
+        unique_together = [('indicador', 'setor', 'periodo', 'granularidade')]
         verbose_name = 'Medição'
         verbose_name_plural = 'Medições'
 
@@ -94,6 +119,7 @@ class Medicao(models.Model):
 class Motivo(models.Model):
     """Motivo (causa) associado a um indicador em uma data; alimenta a tabela Top principais motivos."""
     indicador = models.ForeignKey(Indicador, on_delete=models.CASCADE, related_name='motivos')
+    setor = models.ForeignKey(SetorIndicador, null=True, blank=True, on_delete=models.PROTECT, related_name='motivos')
     granularidade = models.CharField('Período', max_length=8, choices=Medicao.GRANULARIDADES, default='diaria')
     data = models.DateField('Data de referência')
     descricao = models.CharField('Motivo', max_length=200)

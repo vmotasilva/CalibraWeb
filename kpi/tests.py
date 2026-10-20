@@ -174,3 +174,72 @@ class KpiTests(TestCase):
         self.assertEqual(Motivo.objects.count(), 0)
         self.client.post(url, {'granularidade': 'semanal', 'data': '2026-10-15', 'descricao': ['X'], 'quantidade': ['1']})
         self.assertEqual(Motivo.objects.count(), 1)
+
+    def test_setores_opcionais(self):
+        import io
+        from openpyxl import Workbook, load_workbook
+        sem = Indicador.objects.create(nome='Sem setor', meta=5, sentido='menor', ativo=True)
+        self.assertEqual(sem.setores.count(), 0)
+        base = {'nome': 'Quebras', 'meta': '5', 'sentido': 'menor', 'periodicidade': 'mensal', 'ativo': 'on',
+                'exibir_mensal': 'on', 'motivos_mensal': 'on'}
+        r = self.client.post(reverse('kpi:indicador_novo'), dict(base, setores_texto='Surfaçagem | 2,5\nAR\n'))
+        self.assertEqual(r.status_code, 302)
+        ind = Indicador.objects.get(nome='Quebras')
+        surf, ar = list(ind.setores.all())
+        self.assertEqual((surf.nome, str(surf.meta), ar.meta), ('Surfaçagem', '2.50', None))
+        # meta inválida / repetida
+        r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), dict(base, setores_texto='A | x'))
+        self.assertEqual(r.status_code, 200)
+        # lançamento geral e por setor convivem no mesmo período
+        url = reverse('kpi:medicao_salvar', args=[ind.pk])
+        self.client.post(url, {'granularidade': 'mensal', 'periodo': '2026-10-05', 'valor': '4'})
+        self.client.post(url, {'granularidade': 'mensal', 'periodo': '2026-10-05', 'valor': '3', 'setor': surf.pk})
+        self.client.post(url, {'granularidade': 'mensal', 'periodo': '2026-10-09', 'valor': '2', 'setor': surf.pk})
+        self.assertEqual(Medicao.objects.filter(indicador=ind).count(), 2)
+        self.assertEqual(str(Medicao.objects.get(indicador=ind, setor=surf).valor), '2.00')
+        # setor de outro indicador é recusado
+        outro = Indicador.objects.create(nome='Outro', meta=1)
+        self.client.post(reverse('kpi:medicao_salvar', args=[outro.pk]),
+                         {'granularidade': 'mensal', 'periodo': '2026-10-05', 'valor': '1', 'setor': surf.pk})
+        self.assertEqual(Medicao.objects.filter(indicador=outro).count(), 0)
+        # painel: escopo geral x setor, com a meta do setor
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d' % ind.pk)
+        aba = [a for a in r.context['abas'] if a['ind'].pk == ind.pk][0]
+        self.assertEqual((aba['setor'], str(aba['ultima'].valor), str(aba['meta'])), (None, '4.00', '5.00'))
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d&setor=%d' % (ind.pk, surf.pk))
+        aba = [a for a in r.context['abas'] if a['ind'].pk == ind.pk][0]
+        self.assertEqual((aba['setor'], str(aba['ultima'].valor), str(aba['meta'])), (surf, '2.00', '2.50'))
+        self.assertTrue(aba['atingiu_escopo'])
+        # setor sem meta usa a geral
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d&setor=%d' % (ind.pk, ar.pk))
+        aba = [a for a in r.context['abas'] if a['ind'].pk == ind.pk][0]
+        self.assertEqual(str(aba['meta']), '5.00')
+        # motivos por setor
+        m_url = reverse('kpi:motivo_salvar', args=[ind.pk])
+        self.client.post(m_url, {'granularidade': 'mensal', 'data': '2026-10-01', 'descricao': ['Geral'], 'quantidade': ['1']})
+        self.client.post(m_url, {'granularidade': 'mensal', 'data': '2026-10-01', 'descricao': ['Do setor'], 'quantidade': ['2'], 'setor': surf.pk})
+        self.assertEqual(Motivo.objects.filter(setor=surf).count(), 1)
+        self.assertEqual(Motivo.objects.filter(setor__isnull=True).count(), 1)
+        # setor com lançamentos não pode ser removido
+        r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), dict(base, setores_texto='AR'))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(ind.setores.count(), 2)
+        # modelo traz a coluna Setor e a importação a respeita
+        r = self.client.get(reverse('kpi:modelo_importacao', args=['mensal']) + '?ind=%d' % ind.pk)
+        wb = load_workbook(io.BytesIO(r.content))
+        self.assertIn('Setor', [c.value for c in wb['Valores'][1]])
+        self.assertIn('Setor', [c.value for c in wb['Motivos'][1]])
+        wb = Workbook()
+        v = wb.active
+        v.title = 'Valores'
+        v.append(['Indicador', 'Mês', 'Setor', 'Valor', 'Observação'])
+        v.append(['Quebras', '11/2026', 'AR', 1.5, ''])
+        v.append(['Quebras', '11/2026', 'Inexistente', 1, ''])
+        v.append(['Quebras', '11/2026', None, 4, ''])
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        buf.name = 'x.xlsx'
+        r = self.client.post(reverse('kpi:importar'), {'granularidade': 'mensal', 'arquivo': buf})
+        self.assertEqual((r.context['resultado']['valores'], len(r.context['resultado']['erros'])), (2, 1))
+        self.assertEqual(Medicao.objects.filter(indicador=ind, periodo=date(2026, 11, 30)).count(), 2)

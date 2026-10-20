@@ -37,13 +37,13 @@ def _rotulo(gran, d):
     return d.strftime('%d/%m')
 
 
-def _serie(ind, gran, medicoes):
+def _serie(ind, gran, medicoes, meta=None):
     meds = sorted((m for m in medicoes if m.granularidade == gran), key=lambda m: m.periodo)
     meds = meds[-JANELAS[gran]:]
     return {
         'labels': [_rotulo(gran, m.periodo) for m in meds],
         'valores': [float(m.valor) for m in meds],
-        'meta': float(ind.meta),
+        'meta': float(ind.meta if meta is None else meta),
         'sentido': ind.sentido,
         'entradas': [
             {'id': m.pk, 'data': m.periodo.isoformat(), 'valor': str(m.valor), 'obs': m.observacao, 'dados': m.dados or {}}
@@ -52,10 +52,10 @@ def _serie(ind, gran, medicoes):
     }
 
 
-def _motivos(ind, dias):
+def _motivos(ind, dias, setor_id=None):
     """Por granularidade: Top motivos (somados) e lançamentos agrupados por período."""
     corte = timezone.localdate() - datetime.timedelta(days=dias) if dias else None
-    todos = [m for m in ind.motivos.all() if not corte or m.data >= corte]
+    todos = [m for m in ind.motivos.all() if m.setor_id == setor_id and (not corte or m.data >= corte)]
     saida = OrderedDict()
     for gran, _ in Medicao.GRANULARIDADES[::-1]:  # diário, semanal, mensal
         itens = [m for m in todos if m.granularidade == gran]
@@ -92,26 +92,40 @@ def painel_view(request):
     if dias not in dict(PERIODOS_MOTIVOS):
         dias = 90
     abas, charts, motivos_js, campos_js = [], {}, {}, {}
-    for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos'):
-        meds = list(ind.medicoes.all())
+    ativo_req = request.GET.get('ind')
+    for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos', 'setores'):
+        todas = list(ind.medicoes.all())
+        setores = list(ind.setores.all())
+        # setor selecionado só vale para o indicador da aba ativa; sem setor = acompanhamento geral
+        setor = None
+        if str(ind.pk) == ativo_req and request.GET.get('setor', '').isdigit():
+            setor = next((x for x in setores if x.pk == int(request.GET['setor'])), None)
+        setor_id = setor.pk if setor else None
+        meta = setor.meta_efetiva if setor else ind.meta
+        meds = [m for m in todas if m.setor_id == setor_id]
         mensais = sorted((m for m in meds if m.granularidade == 'mensal'), key=lambda m: m.periodo, reverse=True)
         ultima = mensais[0] if mensais else None
-        motivos_tabs = [t for t in _motivos(ind, dias) if ind.permite_motivos(t['gran'])]
-        grans = ind.graficos()
+        gerais = sorted((m for m in todas if m.setor_id is None and m.granularidade == 'mensal'),
+                        key=lambda m: m.periodo, reverse=True)
+        motivos_tabs = [t for t in _motivos(ind, dias, setor_id) if ind.permite_motivos(t['gran'])]
         campos_js[str(ind.pk)] = {
             'campos': calculo.lista_campos(ind), 'formula': ind.formula,
             'motivos': [g for g in ('diaria', 'semanal', 'mensal') if ind.permite_motivos(g)],
-            'unidade': ind.unidade,
+            'unidade': ind.unidade, 'setor': setor_id or '', 'setor_nome': setor.nome if setor else '',
         }
-        charts[str(ind.pk)] = {g: _serie(ind, g, meds) for g in grans}
+        charts[str(ind.pk)] = {g: _serie(ind, g, meds, meta) for g in ind.graficos()}
         motivos_js[str(ind.pk)] = [
             {'g': m.granularidade, 'd': m.data.isoformat(), 'desc': m.descricao, 'qtd': str(m.quantidade)}
-            for m in ind.motivos.all()
+            for m in ind.motivos.all() if m.setor_id == setor_id
         ]
         abas.append({
             'ind': ind,
             'ultima': ultima,
-            'atingiu': ind.atingiu(ultima.valor) if ultima else None,
+            'atingiu': ind.atingiu(gerais[0].valor) if gerais else None,  # situação geral (cards e marcador da aba)
+            'atingiu_escopo': ind.atingiu(ultima.valor, meta) if ultima else None,
+            'setores': setores,
+            'setor': setor,
+            'meta': meta,
             'motivos_tabs': motivos_tabs,
         })
     ativo_pk = request.GET.get('ind')
@@ -126,8 +140,18 @@ def painel_view(request):
     })
 
 
-def _voltar(ind_pk, extra=''):
+def _voltar(ind_pk, extra='', setor=None):
+    extra += f'&setor={setor.pk}' if setor else ''
     return redirect(f"{reverse('kpi:painel')}?ind={ind_pk}{extra}")
+
+
+def _setor_do_post(request, ind):
+    """Setor enviado no formulário (vazio = geral). Retorna (setor, valido)."""
+    bruto = (request.POST.get('setor') or '').strip()
+    if not bruto:
+        return None, True
+    setor = ind.setores.filter(pk=bruto).first() if bruto.isdigit() else None
+    return setor, setor is not None
 
 
 @login_required
@@ -144,6 +168,7 @@ def indicador_form_view(request, pk=None):
         if not ind:
             obj.criado_por = request.user
         obj.save()
+        form.salvar_setores(obj)
         messages.success(request, 'Indicador salvo.')
         return _voltar(obj.pk)
     return render(request, 'kpi/indicador_form.html', {'form': form, 'ind': ind})
@@ -183,6 +208,10 @@ def indicador_excluir_view(request, pk):
 @require_POST
 def medicao_salvar_view(request, pk):
     ind = get_object_or_404(Indicador, pk=pk)
+    setor, setor_ok = _setor_do_post(request, ind)
+    if not setor_ok:
+        messages.error(request, 'Setor inválido para este indicador.')
+        return _voltar(ind.pk)
     post = request.POST.copy()
     campos = calculo.lista_campos(ind)
     dados = {}
@@ -203,14 +232,14 @@ def medicao_salvar_view(request, pk):
     form = MedicaoForm(post)
     if not form.is_valid():
         messages.error(request, 'Informe data e valor válidos.')
-        return _voltar(ind.pk)
+        return _voltar(ind.pk, setor=setor)
     gran = form.cleaned_data['granularidade']
     if not ind.permite_valor(gran):
         messages.error(request, 'Este indicador não tem o gráfico semanal/diário habilitado.')
-        return _voltar(ind.pk)
+        return _voltar(ind.pk, setor=setor)
     periodo = _normalizar(gran, form.cleaned_data['periodo'])
     Medicao.objects.update_or_create(
-        indicador=ind, periodo=periodo, granularidade=gran,
+        indicador=ind, setor=setor, periodo=periodo, granularidade=gran,
         defaults={
             'valor': form.cleaned_data['valor'],
             'observacao': form.cleaned_data['observacao'],
@@ -218,18 +247,18 @@ def medicao_salvar_view(request, pk):
             'registrado_por': request.user,
         },
     )
-    messages.success(request, f'Informação de {_rotulo(gran, periodo)} salva.')
-    return _voltar(ind.pk)
+    messages.success(request, f'Informação de {_rotulo(gran, periodo)} salva' + (f' ({setor.nome}).' if setor else '.'))
+    return _voltar(ind.pk, setor=setor)
 
 
 @login_required
 @require_POST
 def medicao_excluir_view(request, pk):
     m = get_object_or_404(Medicao, pk=pk)
-    ind_pk = m.indicador_id
+    ind_pk, setor = m.indicador_id, m.setor
     m.delete()
     messages.success(request, 'Informação excluída.')
-    return _voltar(ind_pk)
+    return _voltar(ind_pk, setor=setor)
 
 
 @login_required
@@ -237,18 +266,22 @@ def medicao_excluir_view(request, pk):
 def motivo_salvar_view(request, pk):
     """Grava os motivos de um período (dia/semana/mês): substitui os existentes pelos enviados."""
     ind = get_object_or_404(Indicador, pk=pk)
+    setor, setor_ok = _setor_do_post(request, ind)
+    if not setor_ok:
+        messages.error(request, 'Setor inválido para este indicador.')
+        return _voltar(ind.pk, '&mot=0')
     gran = request.POST.get('granularidade')
     if gran not in dict(Medicao.GRANULARIDADES):
         messages.error(request, 'Selecione o tipo de período.')
-        return _voltar(ind.pk, '&mot=0')
+        return _voltar(ind.pk, '&mot=0', setor)
     if not ind.permite_motivos(gran):
         messages.error(request, 'A tabela de motivos deste período não está habilitada para o indicador.')
-        return _voltar(ind.pk, '&mot=0')
+        return _voltar(ind.pk, '&mot=0', setor)
     try:
         data = _normalizar(gran, datetime.date.fromisoformat(request.POST.get('data', '')))
     except ValueError:
         messages.error(request, 'Informe uma data válida.')
-        return _voltar(ind.pk, '&mot=0')
+        return _voltar(ind.pk, '&mot=0', setor)
     linhas = []
     for desc, qtd in zip(request.POST.getlist('descricao'), request.POST.getlist('quantidade')):
         desc = desc.strip()[:200]
@@ -260,16 +293,16 @@ def motivo_salvar_view(request, pk):
             q = Decimal(1)
         linhas.append((desc, q))
     with transaction.atomic():
-        ind.motivos.filter(granularidade=gran, data=data).delete()
+        ind.motivos.filter(granularidade=gran, data=data, setor=setor).delete()
         Motivo.objects.bulk_create([
-            Motivo(indicador=ind, granularidade=gran, data=data, descricao=d, quantidade=q, registrado_por=request.user)
+            Motivo(indicador=ind, setor=setor, granularidade=gran, data=data, descricao=d, quantidade=q, registrado_por=request.user)
             for d, q in linhas
         ])
     if linhas:
         messages.success(request, f'{len(linhas)} motivo(s) salvo(s) para {_rotulo(gran, data)}.')
     else:
         messages.success(request, f'Motivos de {_rotulo(gran, data)} removidos.')
-    return _voltar(ind.pk, '&mot=0')
+    return _voltar(ind.pk, '&mot=0', setor)
 
 
 @login_required

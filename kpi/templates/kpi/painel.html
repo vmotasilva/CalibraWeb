@@ -43,7 +43,8 @@
                 <div>
                     <h5 class="mb-0">{{ a.ind.nome }}</h5>
                     <small class="text-muted">
-                        {{ a.ind.area|default:"Sem área" }} · Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.ind.meta }} {{ a.ind.unidade }}
+                        {{ a.ind.area|default:"Sem área" }} · Meta{% if a.setor %} do setor{% endif %} {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta }} {{ a.ind.unidade }}
+                        {% if a.setor and a.setor.meta is None %}<span title="Setor usa a meta geral">(geral)</span>{% endif %}
                         {% if a.ind.responsavel %}· Resp.: {{ a.ind.responsavel }}{% endif %}
                     </small>
                     {% if a.ind.descricao %}<div class="small mt-1">{{ a.ind.descricao|linebreaksbr }}</div>{% endif %}
@@ -51,13 +52,23 @@
                 <div class="d-flex align-items-center gap-3">
                     {% if a.ultima %}
                     <div class="text-end">
-                        <div class="fs-3 fw-bold {% if a.atingiu %}text-success{% else %}text-danger{% endif %}">{{ a.ultima.valor }} {{ a.ind.unidade }}</div>
+                        <div class="fs-3 fw-bold {% if a.atingiu_escopo %}text-success{% else %}text-danger{% endif %}">{{ a.ultima.valor }} {{ a.ind.unidade }}</div>
                         <small class="text-muted">Último mês: {{ a.ultima.periodo|date:"m/Y" }}</small>
                     </div>
                     {% endif %}
                     <a href="{% url 'kpi:indicador_editar' pk %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil me-1"></i>Editar indicador</a>
                 </div>
             </div>
+
+            {% if a.setores %}
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                <span class="small text-muted me-1"><i class="bi bi-diagram-3 me-1"></i>Acompanhamento:</span>
+                <a class="btn btn-sm {% if not a.setor %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?ind={{ pk }}&mot={{ mot_dias }}">Geral</a>
+                {% for s in a.setores %}
+                <a class="btn btn-sm {% if a.setor.pk == s.pk %}btn-primary{% else %}btn-outline-primary{% endif %}" href="?ind={{ pk }}&setor={{ s.pk }}&mot={{ mot_dias }}">{{ s.nome }}{% if s.meta is not None %} <small>({% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %}{{ s.meta|floatformat:"-2" }})</small>{% endif %}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
 
             <div class="row g-3">
                 {% if a.ind.exibir_mensal %}
@@ -107,6 +118,7 @@
                             <div class="d-flex gap-2">
                                 <form method="get" class="d-flex">
                                     <input type="hidden" name="ind" value="{{ pk }}">
+                                    {% if a.setor %}<input type="hidden" name="setor" value="{{ a.setor.pk }}">{% endif %}
                                     <select name="mot" class="form-select form-select-sm" onchange="this.form.submit()">
                                         {% for v, l in periodos_motivos %}<option value="{{ v }}" {% if v == mot_dias %}selected{% endif %}>{{ l }}</option>{% endfor %}
                                     </select>
@@ -182,6 +194,7 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" name="granularidade" id="kpiMedGran">
+                <input type="hidden" name="setor" id="kpiMedSetor">
                 <div class="mb-2">
                     <label class="form-label" for="kpiMedData" id="kpiMedDataLabel">Data</label>
                     <input type="date" class="form-control" name="periodo" id="kpiMedData" required>
@@ -221,6 +234,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
+                <input type="hidden" name="setor" id="kpiMotSetor">
+                <div class="small fw-semibold mb-2" id="kpiMotEscopo"></div>
                 <div class="row g-2 mb-3">
                     <div class="col-md-5">
                         <label class="form-label" for="kpiMotGran">Registrar de um…</label>
@@ -354,7 +369,9 @@
         atual = {pk: String(pk), gran: gran};
         el('kpiMedicaoForm').action = setUrl(URL_MED, pk);
         el('kpiMedGran').value = gran;
-        el('kpiMedicaoTitulo').textContent = 'Adicionar / editar — ' + {mensal: 'mês a mês', semanal: 'semana a semana', diaria: 'dia a dia'}[gran];
+        el('kpiMedSetor').value = (CAMPOS[pk] || {}).setor || '';
+        el('kpiMedicaoTitulo').textContent = 'Adicionar / editar — ' + {mensal: 'mês a mês', semanal: 'semana a semana', diaria: 'dia a dia'}[gran] +
+            ((CAMPOS[pk] || {}).setor_nome ? ' · Setor: ' + CAMPOS[pk].setor_nome : '');
         el('kpiMedDataLabel').textContent = LABELS[gran];
         el('kpiMedAjuda').textContent = AJUDAS[gran];
         el('kpiMedData').value = iso || '';
@@ -404,6 +421,8 @@
             gran = ativa ? ativa.dataset.mgran : 'diaria';
         }
         el('kpiMotivoForm').action = setUrl(URL_MOT, pk);
+        el('kpiMotSetor').value = (CAMPOS[pk] || {}).setor || '';
+        el('kpiMotEscopo').textContent = (CAMPOS[pk] || {}).setor_nome ? 'Setor: ' + CAMPOS[pk].setor_nome : 'Acompanhamento geral';
         var permitidos = (CAMPOS[pk] || {}).motivos || ['diaria', 'semanal', 'mensal'];
         Array.prototype.forEach.call(el('kpiMotGran').options, function (o) { o.hidden = o.disabled = permitidos.indexOf(o.value) < 0; });
         if (permitidos.indexOf(gran) < 0) gran = permitidos[0] || 'diaria';
