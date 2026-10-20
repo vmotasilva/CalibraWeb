@@ -69,7 +69,7 @@
                 {% for s in propostas.sem_vinculo %}
                     <tr><td>{{ s.colaborador_nome }}</td><td class="text-end">{{ s.n }}</td>
                         <td><form method="post" action="{% url 'laboratorio:hc_vincular_nome' %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="nome" value="{{ s.colaborador_nome }}">
-                            <select name="colaborador" class="form-select form-select-sm" required><option value="">Selecione...</option>{% for c in colaboradores %}<option value="{{ c.pk }}">{{ c.nome_completo }}</option>{% endfor %}</select>
+                            <select name="colaborador" class="form-select form-select-sm" required><option value="">Selecione...</option>{% for c in colaboradores %}<option value="{{ c.pk }}">{{ c.nome_completo }}{% if not c.is_active %} (inativo){% endif %}</option>{% endfor %}</select>
                             <button class="btn btn-sm btn-outline-primary">Vincular</button></form></td></tr>
                 {% endfor %}
                 </tbody></table></div>

@@ -1360,7 +1360,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_tratamentos",
-                "grupo": "HMC > Anti-Reflexo > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "Coating: Tratamentos",
                 "perm": "core.nav_laboratorio_coating_tratamentos_bloco",
                 "funcoes": [
@@ -1371,7 +1371,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_turnos",
-                "grupo": "HMC > Anti-Reflexo > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "Coating: Regras de Turno",
                 "perm": "core.nav_laboratorio_coating_turnos_bloco",
                 "funcoes": [
@@ -1382,7 +1382,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_ciclos",
-                "grupo": "HMC > Anti-Reflexo > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "Coating: Ciclos de Manutenção",
                 "perm": "core.nav_laboratorio_coating_ciclos_bloco",
                 "funcoes": [
@@ -1404,7 +1404,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "coating_equipe",
-                "grupo": "HMC > Anti-Reflexo > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "Coating: Equipe",
                 "perm": "core.nav_laboratorio_coating_equipe_bloco",
                 "funcoes": [
@@ -1439,7 +1439,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "hc_campos",
-                "grupo": "HMC > HC > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "HC: Campos do Formulário",
                 "perm": "core.nav_laboratorio_hc_campos_bloco",
                 "funcoes": [
@@ -1450,7 +1450,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "hc_cadastros",
-                "grupo": "HMC > HC > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "HC: Cadastros Base",
                 "perm": "core.nav_laboratorio_hc_cadastros_bloco",
                 "funcoes": [
@@ -1461,7 +1461,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "hc_integracoes",
-                "grupo": "HMC > HC > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "HC: Integrações e Sincronização",
                 "perm": "core.nav_laboratorio_hc_integracoes_bloco",
                 "funcoes": [
@@ -1495,7 +1495,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "cf_campos",
-                "grupo": "HMC > Controle Final > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "CF: Campos do Formulário",
                 "perm": "core.nav_laboratorio_cf_campos_bloco",
                 "funcoes": [
@@ -1506,7 +1506,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "cf_cadastros",
-                "grupo": "HMC > Controle Final > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "CF: Cadastros Base",
                 "perm": "core.nav_laboratorio_cf_cadastros_bloco",
                 "funcoes": [
@@ -1517,7 +1517,7 @@ NAV_STRUCTURE = [
             },
             {
                 "key": "cf_integracoes",
-                "grupo": "HMC > Controle Final > Configurações",
+                "grupo": "HMC > Configurações",
                 "nome": "CF: Integrações e Sincronização",
                 "perm": "core.nav_laboratorio_cf_integracoes_bloco",
                 "funcoes": [
@@ -1640,11 +1640,9 @@ NAV_GROUP_PERMS = {
     "Ocorrências Gerais > Configurações > Máquinas": "core.nav_laboratorio_grupo_maquinas",
     "HMC": "core.nav_laboratorio_grupo_hmc",
     "HMC > Anti-Reflexo": "core.nav_laboratorio_grupo_hmc_ar",
-    "HMC > Anti-Reflexo > Configurações": "core.nav_laboratorio_grupo_hmc_ar_config",
     "HMC > HC": "core.nav_laboratorio_grupo_hmc_hc",
-    "HMC > HC > Configurações": "core.nav_laboratorio_grupo_hmc_hc_config",
     "HMC > Controle Final": "core.nav_laboratorio_grupo_hmc_cf",
-    "HMC > Controle Final > Configurações": "core.nav_laboratorio_grupo_hmc_cf_config",
+    "HMC > Configurações": "core.nav_laboratorio_grupo_hmc_config",
 }
 # Seções do módulo de exibição "Gestão" e módulos inteiros exibidos dentro dele.
 GESTAO_SECOES = ("Ferramentas Auxiliares", "Processos", "Qualidade")

@@ -519,7 +519,7 @@ class NavigationPermission(models.Model):
             ("nav_laboratorio_cf_integracoes", "NAV: Laboratorio / CF / Integracoes com HMC e RH"),
             ("nav_laboratorio_cf_sincronizar", "NAV: Laboratorio / CF / Sincronizar Equipe e Vincular Nomes"),
             ("nav_laboratorio_grupo_hmc_cf", "NAV: Laboratorio / Seção HMC > Controle Final"),
-            ("nav_laboratorio_grupo_hmc_cf_config", "NAV: Laboratorio / Seção HMC > Controle Final > Configurações"),
+            ("nav_laboratorio_grupo_hmc_config", "NAV: Laboratorio / Seção HMC > Configurações (Anti-Reflexo, HC e Controle Final)"),
 
             # --- GRUPOS (seções do menu) COM CHAVE "No menu" PRÓPRIA ---
             ("nav_mod_gestao", "NAV: Gestão (módulo de exibição) / No menu"),
@@ -533,9 +533,7 @@ class NavigationPermission(models.Model):
             ("nav_laboratorio_grupo_maquinas", "NAV: Laboratorio / Seção Máquinas"),
             ("nav_laboratorio_grupo_hmc", "NAV: Laboratorio / Seção HMC"),
             ("nav_laboratorio_grupo_hmc_ar", "NAV: Laboratorio / Seção HMC > Anti-Reflexo"),
-            ("nav_laboratorio_grupo_hmc_ar_config", "NAV: Laboratorio / Seção HMC > Anti-Reflexo > Configurações"),
             ("nav_laboratorio_grupo_hmc_hc", "NAV: Laboratorio / Seção HMC > HC"),
-            ("nav_laboratorio_grupo_hmc_hc_config", "NAV: Laboratorio / Seção HMC > HC > Configurações"),
 
             # --- USUÁRIOS ---
             ("nav_mod_usuarios", "NAV: Módulo Usuários"),

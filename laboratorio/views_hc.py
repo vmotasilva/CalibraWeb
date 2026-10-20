@@ -432,7 +432,7 @@ def hc_config_integracoes(request):
     propostas = hc.propostas_sincronizacao()
     return render(request, "laboratorio/hc_config_integracoes.html", {
         "propostas": propostas,
-        "colaboradores": Colaborador.objects.filter(is_active=True).order_by("nome_completo"),
+        "colaboradores": Colaborador.objects.order_by("nome_completo"),
         "turnos": RegraTurnoCoating.objects.all(),
         "tratamentos": TratamentoAntiReflexo.objects.all(),
         "tratamento_ativo": next((c for c in HCCampoFormulario.objects.filter(chave="tratamento")), None),

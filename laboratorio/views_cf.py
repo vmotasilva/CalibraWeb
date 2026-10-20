@@ -420,7 +420,7 @@ def cf_config_integracoes(request):
     return render(request, "laboratorio/cf_config_integracoes.html", {
         "propostas": p, "turnos": RegraTurnoCoating.objects.count(), "tratamentos": TratamentoAntiReflexo.objects.count(),
         "maquinas": cf.maquinas_cf().count(), "montagem": cf.colaboradores_montagem().count(),
-        "colaboradores": Colaborador.objects.filter(is_active=True).order_by("nome_completo"),
+        "colaboradores": Colaborador.objects.order_by("nome_completo"),
         "lista_maquinas": Maquina.objects.order_by("codigo"), "lista_tratamentos": TratamentoAntiReflexo.objects.order_by("nome"),
         "pendencias": sum(len(v["itens"]) for v in p["vinculos"].values())})
 

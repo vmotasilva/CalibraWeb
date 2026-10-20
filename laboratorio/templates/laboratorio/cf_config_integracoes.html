@@ -71,7 +71,7 @@
                         <tr><td>{{ s.nome }}</td><td class="text-end">{{ s.n }}</td>
                             <td><form method="post" action="{% url 'laboratorio:cf_vincular' %}" class="d-flex gap-1">{% csrf_token %}<input type="hidden" name="chave" value="{{ chave }}"><input type="hidden" name="nome" value="{{ s.nome }}">
                                 <select name="objeto" class="form-select form-select-sm" required><option value="">Selecione...</option>
-                                    {% if grupo.tipo == 'colaborador' %}{% for c in colaboradores %}<option value="{{ c.pk }}">{{ c.nome_completo }}</option>{% endfor %}
+                                    {% if grupo.tipo == 'colaborador' %}{% for c in colaboradores %}<option value="{{ c.pk }}">{{ c.nome_completo }}{% if not c.is_active %} (inativo){% endif %}</option>{% endfor %}
                                     {% elif grupo.tipo == 'maquina' %}{% for m in lista_maquinas %}<option value="{{ m.pk }}">{{ m }}</option>{% endfor %}
                                     {% else %}{% for t in lista_tratamentos %}<option value="{{ t.pk }}">{{ t.nome }}</option>{% endfor %}{% endif %}
                                 </select>
