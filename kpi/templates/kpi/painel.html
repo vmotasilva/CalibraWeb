@@ -41,13 +41,26 @@
         <div class="tab-pane fade {% if pk|stringformat:'s' == ativo_pk %}show active{% endif %}" id="kpi-pane-{{ pk }}" role="tabpanel">
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
                 <div>
-                    <h5 class="mb-0">{{ a.ind.nome }}</h5>
+                    <h5 class="mb-0">{{ a.ind.nome }}
+                        {% if a.ind.descricao %}<button type="button" class="btn btn-link p-0 ms-1 align-baseline" title="Sobre este indicador" data-bs-toggle="modal" data-bs-target="#kpi-info-{{ pk }}"><i class="bi bi-info-circle"></i></button>{% endif %}
+                    </h5>
                     <small class="text-muted">
                         {{ a.ind.area|default:"Sem área" }} · Meta{% if a.setor %} do setor{% endif %} {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta }} {{ a.ind.unidade }}
                         {% if a.setor and a.setor.meta is None %}<span title="Setor usa a meta geral">(geral)</span>{% endif %}
                         {% if a.ind.responsavel %}· Resp.: {{ a.ind.responsavel }}{% endif %}
                     </small>
-                    {% if a.ind.descricao %}<div class="small mt-1">{{ a.ind.descricao|linebreaksbr }}</div>{% endif %}
+                    {% if a.ind.descricao %}
+                    <div class="modal fade" id="kpi-info-{{ pk }}" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog"><div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>{{ a.ind.nome }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">{{ a.ind.descricao|linebreaksbr }}</div>
+                            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button></div>
+                        </div></div>
+                    </div>
+                    {% endif %}
                 </div>
                 <div class="d-flex align-items-center gap-3">
                     {% if a.ultima %}
