@@ -92,6 +92,25 @@ class FormularioTests(CFBase):
         self.assertNotIn(outro, form.fields["colaborador_ar"].queryset)
         self.assertEqual(list(form.fields["maquina"].queryset), [self.maq])
 
+    def test_matriz_colaboradores_por_campo(self):
+        from laboratorio.models import EquipeHC
+        novo = _colab("20", "NOVO COLAB")
+        url = reverse("laboratorio:cf_equipe_save")
+        self.client.post(url, {"colaborador": novo.pk, "cf": "on", "hc": "on"})
+        self.assertTrue(EquipeCF.objects.get(colaborador=novo).ativo)
+        self.assertTrue(EquipeHC.objects.get(colaborador=novo).ativo)
+        self.assertFalse(EquipeCoating.objects.filter(colaborador=novo, pode_montar=True).exists())
+        # desmarcar CF e marcar montagem (sem dar acesso à Preparação)
+        self.client.post(url, {"colaborador": novo.pk, "ar": "on", "hc": "on"})
+        self.assertFalse(EquipeCF.objects.get(colaborador=novo).ativo)
+        ar = EquipeCoating.objects.get(colaborador=novo)
+        self.assertEqual((ar.pode_montar, ar.pode_preparar), (True, False))
+        form = self.client.get(reverse("laboratorio:cf_registro_create")).context["form"]
+        self.assertNotIn(novo, form.fields["colaborador_cf"].queryset)
+        self.assertIn(novo, form.fields["colaborador_ar"].queryset)
+        busca = self.client.get(reverse("laboratorio:cf_colaboradores_busca"), {"q": "novo"}).json()["results"]
+        self.assertEqual(busca, [])  # já está na matriz
+
     def test_editar_e_excluir(self):
         self.post_registro(necessidade_retrabalho=1, **{f"mt_{self.ar_risco.pk}": 3})
         r = RetrabalhoCFRegistro.objects.get()

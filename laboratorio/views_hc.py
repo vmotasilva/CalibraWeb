@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
@@ -213,7 +214,7 @@ def hc_registro_detalhe(request, pk):
 
 @login_required
 def hc_registro_create(request):
-    form = hc.RegistroHCForm(request.POST or None, initial={"data": date.today()})
+    form = hc.RegistroHCForm(request.POST or None, initial={"data": timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)})
     if request.method == "POST" and form.is_valid():
         r = form.save(usuario=request.user)
         messages.success(request, f"Lançamento registrado: {r.qtd_lentes} lentes, {r.qtd_retrabalho} retrabalho(s).")

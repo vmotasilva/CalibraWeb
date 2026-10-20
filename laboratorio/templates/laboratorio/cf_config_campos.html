@@ -29,6 +29,8 @@
                             <td>
                                 <div class="fw-semibold">{{ c.rotulo }}</div>
                                 <div class="text-muted" style="font-size:.75rem">{{ c.chave }}{% if c.ajuda %} · {{ c.ajuda }}{% endif %}</div>
+                                {% if c.chave == 'colaborador_cf' %}<a class="small" href="{% url 'laboratorio:cf_config_cadastros' %}?aba=EQUIPE"><i class="bi bi-people me-1"></i>Limitar quem aparece (Equipe Controle Final)</a>{% endif %}
+                                {% if c.chave == 'colaborador_ar' %}<a class="small" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people me-1"></i>Limitar quem aparece (Equipe Coating &rsaquo; pode montar)</a>{% endif %}
                             </td>
                             <td>{% if c.sistema %}<span class="badge bg-secondary">Sistema{% if c.eh_bloco %} · grupo{% endif %}</span>{% else %}<span class="badge bg-info text-dark">{{ c.get_tipo_display }}</span>{% endif %}</td>
                             <td class="text-center">{% if c.obrigatorio %}<i class="bi bi-check-circle-fill text-success"></i>{% else %}–{% endif %}</td>

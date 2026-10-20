@@ -169,6 +169,7 @@ urlpatterns = [
     path("cf/config/cadastros/", views_cf.cf_config_cadastros, name="cf_config_cadastros"),
     path("cf/config/cadastros/salvar/", views_cf.cf_cadastro_save, name="cf_cadastro_save"),
     path("cf/config/cadastros/<int:pk>/excluir/", views_cf.cf_cadastro_delete, name="cf_cadastro_delete"),
+    path("cf/config/equipe/buscar/", views_cf.cf_colaboradores_busca, name="cf_colaboradores_busca"),
     path("cf/config/equipe/salvar/", views_cf.cf_equipe_save, name="cf_equipe_save"),
     path("cf/config/equipe/<int:pk>/excluir/", views_cf.cf_equipe_delete, name="cf_equipe_delete"),
     path("cf/config/integracoes/", views_cf.cf_config_integracoes, name="cf_config_integracoes"),

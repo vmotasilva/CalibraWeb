@@ -24,6 +24,8 @@ from .models import (
     CFCadastro,
     CFCampoFormulario,
     EquipeCF,
+    EquipeCoating,
+    EquipeHC,
     RegraTurnoCoating,
     RetrabalhoCFConfig,
     RetrabalhoCFItem,
@@ -287,8 +289,7 @@ def cf_config_cadastros(request):
         aba = "MOTIVO"
     ctx = {"aba": aba, "origens": CFCadastro.ORIGEM_CHOICES}
     if aba == "EQUIPE":
-        ctx["equipe"] = EquipeCF.objects.select_related("colaborador")
-        ctx["disponiveis"] = Colaborador.objects.filter(is_active=True).exclude(pk__in=ctx["equipe"].values_list("colaborador_id", flat=True)).order_by("nome_completo")
+        ctx["equipe"] = _matriz_equipe()
     elif aba == "MOTIVO":
         ctx["grupos"] = [(o, n, CFCadastro.objects.filter(tipo="MOTIVO", grupo=o)) for o, n in CFCadastro.ORIGEM_CHOICES]
     else:
@@ -349,28 +350,65 @@ def cf_cadastro_delete(request, pk):
 
 
 @login_required
+def cf_colaboradores_busca(request):
+    """Busca (Ajax) de colaboradores ativos do RH que ainda não estão na Equipe Controle Final."""
+    q = (request.GET.get("q") or "").strip()
+    qs = Colaborador.objects.filter(is_active=True).exclude(pk__in=[l["colaborador"].pk for l in _matriz_equipe()])
+    if q:
+        qs = qs.filter(Q(nome_completo__icontains=q) | Q(matricula__icontains=q))
+    return JsonResponse({"results": list(qs.order_by("nome_completo").values("id", "nome_completo", "matricula")[:20])})
+
+
+def _matriz_equipe():
+    """Uma linha por colaborador com o que ele pode aparecer em cada campo de colaborador (CF inspeção, CF montagem/AR, HC)."""
+    cf_eq = {e.colaborador_id: e for e in EquipeCF.objects.select_related("colaborador")}
+    hc_eq = {e.colaborador_id: e for e in EquipeHC.objects.select_related("colaborador")}
+    ar_eq = {e.colaborador_id: e for e in EquipeCoating.objects.filter(pode_montar=True).select_related("colaborador")}
+    linhas = []
+    for pk in set(cf_eq) | set(hc_eq) | set(ar_eq):
+        colab = (cf_eq.get(pk) or hc_eq.get(pk) or ar_eq.get(pk)).colaborador
+        linhas.append({"colaborador": colab, "cf": bool(pk in cf_eq and cf_eq[pk].ativo), "ar": pk in ar_eq,
+                       "hc": bool(pk in hc_eq and hc_eq[pk].ativo), "apelidos": cf_eq[pk].apelidos if pk in cf_eq else ""})
+    return sorted(linhas, key=lambda x: x["colaborador"].nome_completo)
+
+
+@login_required
 @require_POST
 def cf_equipe_save(request):
-    pk = _inteiro(request.POST.get("id"))
-    if pk:
-        membro = get_object_or_404(EquipeCF, pk=pk)
-        membro.apelidos = (request.POST.get("apelidos") or "").strip()[:255]
-        membro.ativo = request.POST.get("ativo") == "on"
-        membro.save()
-        messages.success(request, f"{membro.colaborador.nome_completo} atualizado.")
+    """Define em quais campos de colaborador o colaborador aparece (inclui adicionar um novo à lista)."""
+    colab = get_object_or_404(Colaborador, pk=_inteiro(request.POST.get("colaborador"), 0))
+    marcou = lambda k: request.POST.get(k) == "on"
+    if marcou("cf") or EquipeCF.objects.filter(colaborador=colab).exists():
+        eq, _ = EquipeCF.objects.get_or_create(colaborador=colab)
+        eq.ativo = marcou("cf")
+        if "apelidos" in request.POST:
+            eq.apelidos = (request.POST.get("apelidos") or "").strip()[:255]
+        eq.save()
+    if marcou("hc") or EquipeHC.objects.filter(colaborador=colab).exists():
+        eq, _ = EquipeHC.objects.get_or_create(colaborador=colab)
+        eq.ativo = marcou("hc")
+        eq.save()
+    if marcou("ar"):
+        # quem entra só por aqui não ganha acesso à Preparação do Coating
+        eq, criado = EquipeCoating.objects.get_or_create(colaborador=colab, defaults={"pode_preparar": False, "pode_montar": True})
+        if not criado and not eq.pode_montar:
+            eq.pode_montar = True
+            eq.save(update_fields=["pode_montar"])
     else:
-        colab = get_object_or_404(Colaborador, pk=_inteiro(request.POST.get("colaborador"), 0))
-        EquipeCF.objects.get_or_create(colaborador=colab, defaults={"apelidos": (request.POST.get("apelidos") or "").strip()[:255]})
-        messages.success(request, f"{colab.nome_completo} adicionado à Equipe Controle Final.")
+        EquipeCoating.objects.filter(colaborador=colab).update(pode_montar=False)
+    messages.success(request, f"{colab.nome_completo} atualizado.")
     return _volta("EQUIPE")
 
 
 @login_required
 @require_POST
 def cf_equipe_delete(request, pk):
-    membro = get_object_or_404(EquipeCF, pk=pk)
-    membro.delete()
-    messages.success(request, f"{membro.colaborador.nome_completo} removido da Equipe Controle Final.")
+    """Remove o colaborador das listas dos campos (CF, HC e montagem); a Equipe Coating continua válida para a Preparação."""
+    colab = get_object_or_404(Colaborador, pk=pk)
+    EquipeCF.objects.filter(colaborador=colab).delete()
+    EquipeHC.objects.filter(colaborador=colab).delete()
+    EquipeCoating.objects.filter(colaborador=colab).update(pode_montar=False)
+    messages.success(request, f"{colab.nome_completo} removido das listas de colaboradores.")
     return _volta("EQUIPE")
 
 

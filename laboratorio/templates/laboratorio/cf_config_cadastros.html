@@ -14,34 +14,86 @@
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item"><a class="nav-link {% if aba == 'MOTIVO' %}active fw-semibold{% endif %}" href="?aba=MOTIVO">Motivos de retrabalho</a></li>
         <li class="nav-item"><a class="nav-link {% if aba == 'REPROVACAO' %}active fw-semibold{% endif %}" href="?aba=REPROVACAO">Motivos de reprovação</a></li>
-        <li class="nav-item"><a class="nav-link {% if aba == 'EQUIPE' %}active fw-semibold{% endif %}" href="?aba=EQUIPE"><i class="bi bi-people me-1"></i>Equipe Controle Final</a></li>
+        <li class="nav-item"><a class="nav-link {% if aba == 'EQUIPE' %}active fw-semibold{% endif %}" href="?aba=EQUIPE"><i class="bi bi-people me-1"></i>Colaboradores por campo</a></li>
     </ul>
 
     {% if aba == 'EQUIPE' %}
     <div class="row g-3">
-        <div class="col-lg-8"><div class="card border-0 shadow-sm"><div class="table-responsive">
+        <div class="col-xl-8"><div class="card border-0 shadow-sm"><div class="table-responsive">
             <table class="table table-hover align-middle mb-0 small">
-                <thead class="table-light"><tr><th>Colaborador</th><th>Apelidos (lançamentos antigos)</th><th class="text-center">Ativo</th><th class="text-end">Ações</th></tr></thead>
+                <thead class="table-light"><tr>
+                    <th>Colaborador</th>
+                    <th class="text-center">Retrabalho CF<br><span class="fw-normal text-muted">Inspeção do lote</span></th>
+                    <th class="text-center">Retrabalho CF<br><span class="fw-normal text-muted">Montagem (AR)</span></th>
+                    <th class="text-center">Rendimento HC<br><span class="fw-normal text-muted">Colaborador</span></th>
+                    <th>Apelidos (lanç. antigos)</th><th class="text-end">Ações</th></tr></thead>
                 <tbody>
                 {% for m in equipe %}
                     <tr>
                         <td class="fw-semibold">{{ m.colaborador.nome_completo }}{% if not m.colaborador.is_active %} <span class="badge bg-warning text-dark">inativo no RH</span>{% endif %}</td>
-                        <td><input form="fe{{ m.pk }}" name="apelidos" value="{{ m.apelidos }}" class="form-control form-control-sm" placeholder="Gecildo, Gisele"></td>
-                        <td class="text-center"><input form="fe{{ m.pk }}" type="checkbox" name="ativo" class="form-check-input" {% if m.ativo %}checked{% endif %}></td>
+                        <td class="text-center"><input form="fe{{ m.colaborador.pk }}" type="checkbox" name="cf" class="form-check-input" {% if m.cf %}checked{% endif %}></td>
+                        <td class="text-center"><input form="fe{{ m.colaborador.pk }}" type="checkbox" name="ar" class="form-check-input" {% if m.ar %}checked{% endif %}></td>
+                        <td class="text-center"><input form="fe{{ m.colaborador.pk }}" type="checkbox" name="hc" class="form-check-input" {% if m.hc %}checked{% endif %}></td>
+                        <td><input form="fe{{ m.colaborador.pk }}" name="apelidos" value="{{ m.apelidos }}" class="form-control form-control-sm" placeholder="Gecildo, Gisele"></td>
                         <td class="text-end text-nowrap">
-                            <form id="fe{{ m.pk }}" method="post" action="{% url 'laboratorio:cf_equipe_save' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="id" value="{{ m.pk }}"><button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button></form>
-                            <form method="post" action="{% url 'laboratorio:cf_equipe_delete' m.pk %}" class="d-inline" onsubmit="return confirm('Remover da Equipe Controle Final?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+                            <form id="fe{{ m.colaborador.pk }}" method="post" action="{% url 'laboratorio:cf_equipe_save' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="colaborador" value="{{ m.colaborador.pk }}"><button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button></form>
+                            <form method="post" action="{% url 'laboratorio:cf_equipe_delete' m.colaborador.pk %}" class="d-inline" onsubmit="return confirm('Remover das listas de colaboradores?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Remover de todas as listas"><i class="bi bi-trash"></i></button></form>
                         </td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="4" class="text-center text-muted py-4">Equipe vazia: o formulário lista todos os colaboradores ativos do RH. Adicione membros ou sincronize em <a href="{% url 'laboratorio:cf_config_integracoes' %}">Integrações</a>.</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">Nenhum colaborador cadastrado: os formulários listam todos os colaboradores ativos do RH. Adicione membros ao lado.</td></tr>
                 {% endfor %}
                 </tbody>
-            </table></div></div></div>
-        <div class="col-lg-4"><div class="card border-0 shadow-sm"><div class="card-body">
+            </table></div>
+            <div class="card-footer bg-white small text-muted">Marque em quais campos cada pessoa aparece. Se nenhum colaborador estiver marcado em uma coluna, aquele campo lista todos os ativos do RH. Salve cada linha no botão <i class="bi bi-check2"></i>.</div></div></div>
+        <div class="col-xl-4"><div class="card border-0 shadow-sm"><div class="card-body">
             <h6 class="fw-bold">Adicionar colaborador</h6>
             <form method="post" action="{% url 'laboratorio:cf_equipe_save' %}">{% csrf_token %}
-                <select name="colaborador" class="form-select mb-2" required><option value="">Selecione...</option>{% for c in disponiveis %}<option value="{{ c.pk }}">{{ c.nome_completo }}</option>{% endfor %}</select>
+                <div class="position-relative mb-2" id="buscaColab" data-url="{% url 'laboratorio:cf_colaboradores_busca' %}">
+                    <input type="hidden" name="colaborador" id="buscaColabId" required>
+                    <input type="search" id="buscaColabInput" class="form-control" placeholder="Digite o nome ou a matrícula..." autocomplete="off">
+                    <div id="buscaColabLista" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index:1050;max-height:260px;overflow-y:auto"></div>
+                </div>
+                <script>
+                (function () {
+                    var box = document.getElementById('buscaColab'), input = document.getElementById('buscaColabInput'),
+                        hid = document.getElementById('buscaColabId'), lista = document.getElementById('buscaColabLista'), timer, seq = 0;
+                    function fechar() { lista.classList.add('d-none'); }
+                    function buscar() {
+                        var n = ++seq;
+                        fetch(box.dataset.url + '?q=' + encodeURIComponent(input.value.trim()), {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                            .then(function (r) { return r.json(); })
+                            .then(function (d) {
+                                if (n !== seq) return;
+                                lista.innerHTML = '';
+                                if (!d.results.length) {
+                                    lista.innerHTML = '<div class="list-group-item small text-muted">Nenhum colaborador encontrado.</div>';
+                                }
+                                d.results.forEach(function (c) {
+                                    var b = document.createElement('button');
+                                    b.type = 'button'; b.className = 'list-group-item list-group-item-action small';
+                                    b.textContent = c.nome_completo + (c.matricula ? ' (' + c.matricula + ')' : '');
+                                    b.addEventListener('mousedown', function (e) {
+                                        e.preventDefault(); hid.value = c.id; input.value = c.nome_completo; fechar();
+                                    });
+                                    lista.appendChild(b);
+                                });
+                                lista.classList.remove('d-none');
+                            });
+                    }
+                    input.addEventListener('input', function () { hid.value = ''; clearTimeout(timer); timer = setTimeout(buscar, 250); });
+                    input.addEventListener('focus', buscar);
+                    input.addEventListener('blur', fechar);
+                    input.form.addEventListener('submit', function (e) {
+                        if (!hid.value) { e.preventDefault(); input.focus(); input.setCustomValidity('Selecione um colaborador da lista.'); input.reportValidity(); input.setCustomValidity(''); }
+                    });
+                })();
+                </script>
+                <div class="mb-2 small">
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="cf" id="addCf" checked><label class="form-check-label" for="addCf">Retrabalho CF · Inspeção do lote</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="ar" id="addAr" checked><label class="form-check-label" for="addAr">Retrabalho CF · Montagem (AR)</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" name="hc" id="addHc" checked><label class="form-check-label" for="addHc">Rendimento HC · Colaborador</label></div>
+                </div>
                 <input name="apelidos" class="form-control mb-2" placeholder="Apelidos (opcional, separados por vírgula)">
                 <button class="btn btn-primary w-100"><i class="bi bi-plus-circle me-1"></i>Adicionar à equipe</button>
             </form>
