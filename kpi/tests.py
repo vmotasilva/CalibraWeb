@@ -246,6 +246,17 @@ class KpiTests(TestCase):
         self.assertEqual(top('?ind=%d&mot=0' % ind.pk), {'Do setor': 2.0, 'Geral': 1.0})
         self.assertEqual(top('?ind=%d&setor=%d&mot=0' % (ind.pk, surf.pk)), {'Do setor': 2.0})
         self.assertEqual(top('?ind=%d&setor=%d&mot=0' % (ind.pk, ar.pk)), {})
+        # filtro de período dos motivos: mês específico e intervalo
+        def total(qs):
+            aba = [a for a in self.client.get(reverse('kpi:painel') + qs).context['abas'] if a['ind'].pk == ind.pk][0]
+            return sum(t['total'] for t in aba['motivos_tabs'][0]['top'])
+        self.client.post(m_url, {'granularidade': 'mensal', 'data': '2026-09-15', 'descricao': ['Setembro'], 'quantidade': ['5']})
+        self.assertEqual(total('?ind=%d&mot=mes&mes=2026-09' % ind.pk), 5)
+        self.assertEqual(total('?ind=%d&mot=mes&mes=2026-10' % ind.pk), 3)
+        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-09-01&ate=2026-10-31' % ind.pk), 8)
+        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-10-31&ate=2026-09-30' % ind.pk), 8)  # invertido é corrigido
+        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-10-01' % ind.pk), 3)
+        self.assertEqual(total('?ind=%d&mot=mes&mes=lixo' % ind.pk), 8)  # inválido cai em "todo o período"
         # setor com lançamentos não pode ser removido
         r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), dict(base, setores_texto='AR'))
         self.assertEqual(r.status_code, 200)

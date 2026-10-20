@@ -7,6 +7,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.utils.http import urlencode
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -17,7 +18,8 @@ from kpi.forms import IndicadorForm, MedicaoForm
 from kpi.models import Indicador, Medicao, Motivo
 
 JANELAS = {'mensal': 12, 'semanal': 12, 'diaria': 31}
-PERIODOS_MOTIVOS = [(30, 'Últimos 30 dias'), (90, 'Últimos 90 dias'), (365, 'Últimos 12 meses'), (0, 'Todo o período')]
+PERIODOS_MOTIVOS = [('30', 'Últimos 30 dias'), ('90', 'Últimos 90 dias'), ('365', 'Últimos 12 meses'), ('0', 'Todo o período'),
+                    ('mes', 'Mês específico…'), ('periodo', 'Período específico…')]
 
 
 def _normalizar(gran, d):
@@ -52,12 +54,42 @@ def _serie(ind, gran, medicoes, meta=None):
     }
 
 
-def _motivos(ind, dias, setor_id=None):
+def _filtro_motivos(params):
+    """Interpreta o filtro de período da tabela de motivos (GET). Retorna (inicio, fim, estado para a tela)."""
+    mot = params.get('mot', '90')
+    if mot not in dict(PERIODOS_MOTIVOS):
+        mot = '90'
+    mes, de, ate = params.get('mes', ''), params.get('de', ''), params.get('ate', '')
+    inicio = fim = None
+    if mot == 'mes':
+        try:
+            ano, m = (int(x) for x in mes.split('-'))
+            inicio = datetime.date(ano, m, 1)
+            fim = datetime.date(ano, m, calendar.monthrange(ano, m)[1])
+        except (ValueError, TypeError):
+            mot, mes = '0', ''
+    elif mot == 'periodo':
+        try:
+            inicio = datetime.date.fromisoformat(de) if de else None
+            fim = datetime.date.fromisoformat(ate) if ate else None
+        except ValueError:
+            inicio = fim = None
+            de = ate = ''
+        if inicio and fim and inicio > fim:
+            inicio, fim, de, ate = fim, inicio, ate, de
+    elif mot != '0':
+        inicio = timezone.localdate() - datetime.timedelta(days=int(mot))
+    qs = {k: v for k, v in (('mot', mot), ('mes', mes if mot == 'mes' else ''), ('de', de if mot == 'periodo' else ''),
+                            ('ate', ate if mot == 'periodo' else '')) if v}
+    return inicio, fim, {'mot': mot, 'mes': mes, 'de': de, 'ate': ate, 'qs': urlencode(qs)}
+
+
+def _motivos(ind, inicio, fim, setor_id=None):
     """Por granularidade: Top motivos (somados) e lançamentos agrupados por período.
     Visão geral (setor_id=None) considera todos os motivos, de qualquer setor; com setor, só os dele."""
-    corte = timezone.localdate() - datetime.timedelta(days=dias) if dias else None
     nomes = {s.pk: s.nome for s in ind.setores.all()}
-    todos = [m for m in ind.motivos.all() if (setor_id is None or m.setor_id == setor_id) and (not corte or m.data >= corte)]
+    todos = [m for m in ind.motivos.all() if (setor_id is None or m.setor_id == setor_id)
+             and (not inicio or m.data >= inicio) and (not fim or m.data <= fim)]
     for m in todos:
         m.setor_nome = nomes.get(m.setor_id, '')
     saida = OrderedDict()
@@ -89,12 +121,7 @@ def _motivos(ind, dias, setor_id=None):
 
 @login_required
 def painel_view(request):
-    try:
-        dias = int(request.GET.get('mot', 90))
-    except ValueError:
-        dias = 90
-    if dias not in dict(PERIODOS_MOTIVOS):
-        dias = 90
+    inicio, fim, filtro = _filtro_motivos(request.GET)
     abas, charts, motivos_js, campos_js = [], {}, {}, {}
     ativo_req = request.GET.get('ind')
     for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos', 'setores'):
@@ -111,7 +138,7 @@ def painel_view(request):
         ultima = mensais[0] if mensais else None
         gerais = sorted((m for m in todas if m.setor_id is None and m.granularidade == 'mensal'),
                         key=lambda m: m.periodo, reverse=True)
-        motivos_tabs = [t for t in _motivos(ind, dias, setor_id) if ind.permite_motivos(t['gran'])]
+        motivos_tabs = [t for t in _motivos(ind, inicio, fim, setor_id) if ind.permite_motivos(t['gran'])]
         campos_js[str(ind.pk)] = {
             'campos': calculo.lista_campos(ind), 'formula': ind.formula,
             'motivos': [g for g in ('diaria', 'semanal', 'mensal') if ind.permite_motivos(g)],
@@ -139,7 +166,7 @@ def painel_view(request):
     ok = sum(1 for a in abas if a['atingiu'] is True)
     fora = sum(1 for a in abas if a['atingiu'] is False)
     return render(request, 'kpi/painel.html', {
-        'abas': abas, 'charts': charts, 'campos_js': campos_js, 'motivos_js': motivos_js, 'ativo_pk': ativo_pk, 'mot_dias': dias, 'periodos_motivos': PERIODOS_MOTIVOS,
+        'abas': abas, 'charts': charts, 'campos_js': campos_js, 'motivos_js': motivos_js, 'ativo_pk': ativo_pk, 'filtro': filtro, 'periodos_motivos': PERIODOS_MOTIVOS,
         'total': total, 'ok': ok, 'fora': fora, 'sem_dado': total - ok - fora,
     })
 
