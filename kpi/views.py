@@ -81,20 +81,81 @@ def _filtro_motivos(params):
         inicio = timezone.localdate() - datetime.timedelta(days=int(mot))
     qs = {k: v for k, v in (('mot', mot), ('mes', mes if mot == 'mes' else ''), ('de', de if mot == 'periodo' else ''),
                             ('ate', ate if mot == 'periodo' else '')) if v}
-    return inicio, fim, {'mot': mot, 'mes': mes, 'de': de, 'ate': ate, 'qs': urlencode(qs)}
+    fmt = lambda d: d.strftime('%d/%m/%Y')
+    if mot == 'mes':
+        rotulo = f'Mês {mes[5:7]}/{mes[:4]}'
+    elif mot == 'periodo':
+        rotulo = ('Período ' + ' – '.join(fmt(d) if d else '…' for d in (inicio, fim))) if (inicio or fim) else 'Todo o período'
+    else:
+        rotulo = dict(PERIODOS_MOTIVOS)[mot]
+    return inicio, fim, {'mot': mot, 'mes': mes, 'de': de, 'ate': ate, 'qs': urlencode(qs), 'rotulo': rotulo}
 
 
-def _motivos(ind, inicio, fim, setor_id=None):
-    """Por granularidade: Top motivos (somados) e lançamentos agrupados por período.
+DIAS_SEMANA = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+
+
+def _vizinho(gran, d, sentido):
+    """Período anterior (-1) ou seguinte (+1), já normalizado."""
+    if gran == 'diaria':
+        return d + datetime.timedelta(days=sentido)
+    if gran == 'semanal':
+        return d + datetime.timedelta(days=7 * sentido)
+    ano, mes = d.year, d.month + sentido
+    if mes == 0:
+        ano, mes = ano - 1, 12
+    elif mes == 13:
+        ano, mes = ano + 1, 1
+    return datetime.date(ano, mes, calendar.monthrange(ano, mes)[1])
+
+
+def _rotulo_longo(gran, d):
+    if gran == 'diaria':
+        return f'Dia {d:%d/%m/%Y} ({DIAS_SEMANA[d.weekday()]})'
+    if gran == 'semanal':
+        return f'Semana {d:%d/%m} – {d + datetime.timedelta(days=6):%d/%m/%Y} (S{d.isocalendar()[1]})'
+    return f'Mês {d:%m/%Y}'
+
+
+def _url_nav(get, ind_pk, setor_id, remover=(), **mudar):
+    """Link do painel mantendo o filtro atual, com o indicador/setor desta aba e as mudanças pedidas."""
+    p = get.copy()
+    p['ind'] = ind_pk
+    if setor_id:
+        p['setor'] = setor_id
+    else:
+        p.pop('setor', None)
+    for k in remover:
+        p.pop(k, None)
+    for k, v in mudar.items():
+        p[k] = v
+    return '?' + p.urlencode()
+
+
+def _motivos(ind, inicio, fim, setor_id, get, rotulo_acum):
+    """Por granularidade: Top motivos (somados) de UM período navegável (dia/semana/mês) ou acumulado
+    (filtro de período), e os lançamentos agrupados por período.
     Visão geral (setor_id=None) considera todos os motivos, de qualquer setor; com setor, só os dele."""
     nomes = {s.pk: s.nome for s in ind.setores.all()}
-    todos = [m for m in ind.motivos.all() if (setor_id is None or m.setor_id == setor_id)
-             and (not inicio or m.data >= inicio) and (not fim or m.data <= fim)]
-    for m in todos:
+    base = [m for m in ind.motivos.all() if setor_id is None or m.setor_id == setor_id]
+    for m in base:
         m.setor_nome = nomes.get(m.setor_id, '')
-    saida = OrderedDict()
+    hoje = timezone.localdate()
+    saida = []
     for gran, _ in Medicao.GRANULARIDADES[::-1]:  # diário, semanal, mensal
-        itens = [m for m in todos if m.granularidade == gran]
+        param = 'p_' + gran
+        do_gran = [m for m in base if m.granularidade == gran]
+        acum = get.get(param) == 'acum'
+        ref = None
+        if not acum:
+            try:
+                ref = _normalizar(gran, datetime.date.fromisoformat(get.get(param, '')))
+            except ValueError:
+                ref = None
+            if ref is None:  # padrão: período mais recente com motivos (ou o atual, se não houver nenhum)
+                ref = max((_normalizar(gran, m.data) for m in do_gran), default=None) or _normalizar(gran, hoje)
+            itens = [m for m in do_gran if _normalizar(gran, m.data) == ref]
+        else:
+            itens = [m for m in do_gran if (not inicio or m.data >= inicio) and (not fim or m.data <= fim)]
         agregados = OrderedDict()
         periodos = OrderedDict()
         for m in itens:
@@ -106,17 +167,28 @@ def _motivos(ind, inicio, fim, setor_id=None):
         soma = sum((a['total'] for a in agregados.values()), Decimal(0))
         for a in top:
             a['pct'] = float(a['total'] / soma * 100) if soma else 0
-        saida[gran] = {
+        ctx = {'ind_pk': ind.pk, 'setor_id': setor_id}
+        nav = {'acum': acum, 'rotulo': rotulo_acum if acum else _rotulo_longo(gran, ref), 'ref': ref}
+        if acum:
+            nav['por_periodo'] = _url_nav(get, ind.pk, setor_id, remover=(param,), mtab=gran)
+        else:
+            nav['prev'] = _url_nav(get, ind.pk, setor_id, mtab=gran, **{param: _vizinho(gran, ref, -1).isoformat()})
+            nav['next'] = _url_nav(get, ind.pk, setor_id, mtab=gran, **{param: _vizinho(gran, ref, 1).isoformat()})
+            nav['recente'] = _url_nav(get, ind.pk, setor_id, remover=(param,), mtab=gran)
+            nav['acumulado'] = _url_nav(get, ind.pk, setor_id, mtab=gran, **{param: 'acum'})
+        saida.append({
             'gran': gran,
             'nome': dict(Medicao.GRANULARIDADES)[gran].replace('Diária', 'Diário'),
             'top': top,
+            'nav': nav,
+            'data_ref': ref.isoformat() if ref and not acum else '',
             'periodos': [
                 {'data': d, 'rotulo': _rotulo(gran, d), 'itens': sorted(v, key=lambda x: -x.quantidade),
                  'total': sum((x.quantidade for x in v), Decimal(0))}
                 for d, v in sorted(periodos.items(), reverse=True)
             ],
-        }
-    return list(saida.values())
+        })
+    return saida
 
 
 @login_required
@@ -138,7 +210,13 @@ def painel_view(request):
         ultima = mensais[0] if mensais else None
         gerais = sorted((m for m in todas if m.setor_id is None and m.granularidade == 'mensal'),
                         key=lambda m: m.periodo, reverse=True)
-        motivos_tabs = [t for t in _motivos(ind, inicio, fim, setor_id) if ind.permite_motivos(t['gran'])]
+        motivos_tabs = [t for t in _motivos(ind, inicio, fim, setor_id, request.GET, filtro['rotulo'])
+                        if ind.permite_motivos(t['gran'])]
+        mtab = request.GET.get('mtab') if str(ind.pk) == ativo_req else None
+        if motivos_tabs:
+            ativa = mtab if mtab in [t['gran'] for t in motivos_tabs] else motivos_tabs[0]['gran']
+            for t in motivos_tabs:
+                t['ativo'] = t['gran'] == ativa
         campos_js[str(ind.pk)] = {
             'campos': calculo.lista_campos(ind), 'formula': ind.formula,
             'motivos': [g for g in ('diaria', 'semanal', 'mensal') if ind.permite_motivos(g)],

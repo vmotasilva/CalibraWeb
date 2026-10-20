@@ -131,6 +131,8 @@
                             <div class="d-flex gap-2">
                                 <form method="get" class="d-flex flex-wrap gap-1 align-items-center">
                                     <input type="hidden" name="ind" value="{{ pk }}">
+                                    <input type="hidden" name="p_diaria" value="acum"><input type="hidden" name="p_semanal" value="acum"><input type="hidden" name="p_mensal" value="acum">
+                                    <span class="small text-muted">Acumulado:</span>
                                     {% if a.setor %}<input type="hidden" name="setor" value="{{ a.setor.pk }}">{% endif %}
                                     <select name="mot" class="form-select form-select-sm w-auto" onchange="kpiFiltroMot(this)">
                                         {% for v, l in periodos_motivos %}<option value="{{ v }}" {% if v == filtro.mot %}selected{% endif %}>{{ l }}</option>{% endfor %}
@@ -148,12 +150,25 @@
                         </div>
                         <ul class="nav nav-tabs nav-fill mb-2" role="tablist">
                             {% for mt in a.motivos_tabs %}
-                            <li class="nav-item"><button type="button" class="nav-link {% if forloop.first %}active{% endif %}" data-mgran="{{ mt.gran }}" data-bs-toggle="tab" data-bs-target="#kpi-mot-{{ pk }}-{{ mt.gran }}">{{ mt.nome }}</button></li>
+                            <li class="nav-item"><button type="button" class="nav-link {% if mt.ativo %}active{% endif %}" data-mgran="{{ mt.gran }}"{% if mt.data_ref %} data-mdata="{{ mt.data_ref }}"{% endif %} data-bs-toggle="tab" data-bs-target="#kpi-mot-{{ pk }}-{{ mt.gran }}">{{ mt.nome }}</button></li>
                             {% endfor %}
                         </ul>
                         <div class="tab-content">
                             {% for mt in a.motivos_tabs %}
-                            <div class="tab-pane fade {% if forloop.first %}show active{% endif %}" id="kpi-mot-{{ pk }}-{{ mt.gran }}">
+                            <div class="tab-pane fade {% if mt.ativo %}show active{% endif %}" id="kpi-mot-{{ pk }}-{{ mt.gran }}">
+                                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                                    {% if mt.nav.acum %}
+                                    <span class="small fw-semibold"><i class="bi bi-collection me-1"></i>Acumulado: {{ mt.nav.rotulo }}</span>
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ mt.nav.por_periodo }}">Ver {% if mt.gran == 'diaria' %}por dia{% elif mt.gran == 'semanal' %}por semana{% else %}por mês{% endif %}</a>
+                                    {% else %}
+                                    <div class="btn-group btn-group-sm" role="group" aria-label="Navegar entre períodos">
+                                        <a class="btn btn-outline-secondary" href="{{ mt.nav.prev }}" title="Período anterior"><i class="bi bi-chevron-left"></i></a>
+                                        <a class="btn btn-light border fw-semibold text-dark" href="{{ mt.nav.recente }}" title="Ir para o período mais recente com lançamentos">{{ mt.nav.rotulo }}</a>
+                                        <a class="btn btn-outline-secondary" href="{{ mt.nav.next }}" title="Próximo período"><i class="bi bi-chevron-right"></i></a>
+                                    </div>
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ mt.nav.acumulado }}" title="Somar todo o período do filtro ao lado"><i class="bi bi-collection me-1"></i>Acumulado</a>
+                                    {% endif %}
+                                </div>
                                 <table class="table table-sm align-middle mb-2">
                                     <thead><tr><th style="width:2rem">#</th><th>Motivo</th><th class="text-end">Qtd</th><th style="width:35%">%</th></tr></thead>
                                     <tbody>
@@ -447,6 +462,7 @@
         if (!gran) {
             var ativa = document.querySelector('#kpi-pane-' + pk + ' [data-mgran].active');
             gran = ativa ? ativa.dataset.mgran : 'diaria';
+            if (!iso && ativa && ativa.dataset.mdata) iso = ativa.dataset.mdata;
         }
         el('kpiMotivoForm').action = setUrl(URL_MOT, pk);
         el('kpiMotSetor').value = (CAMPOS[pk] || {}).setor || '';

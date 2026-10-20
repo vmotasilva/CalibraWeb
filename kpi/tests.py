@@ -52,7 +52,7 @@ class KpiTests(TestCase):
         self.client.post(url, {'granularidade': 'diaria', 'data': hoje,
                                'descricao': ['Quebra', 'quebra ', 'Trinca', ''], 'quantidade': ['3', '2', '1', '5']})
         self.assertEqual(Motivo.objects.count(), 3)
-        r = self.client.get(reverse('kpi:painel') + '?ind=%d&mot=0' % self.ind.pk)
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d&mot=0&p_diaria=acum' % self.ind.pk)
         self.assertEqual(r.status_code, 200)
         diario = r.context['abas'][0]['motivos_tabs'][0]
         self.assertEqual(diario['gran'], 'diaria')
@@ -243,20 +243,20 @@ class KpiTests(TestCase):
         def top(qs):
             aba = [a for a in self.client.get(reverse('kpi:painel') + qs).context['abas'] if a['ind'].pk == ind.pk][0]
             return {t['descricao']: float(t['total']) for t in aba['motivos_tabs'][0]['top']}
-        self.assertEqual(top('?ind=%d&mot=0' % ind.pk), {'Do setor': 2.0, 'Geral': 1.0})
-        self.assertEqual(top('?ind=%d&setor=%d&mot=0' % (ind.pk, surf.pk)), {'Do setor': 2.0})
-        self.assertEqual(top('?ind=%d&setor=%d&mot=0' % (ind.pk, ar.pk)), {})
+        self.assertEqual(top('?ind=%d&mot=0&p_mensal=acum' % ind.pk), {'Do setor': 2.0, 'Geral': 1.0})
+        self.assertEqual(top('?ind=%d&setor=%d&mot=0&p_mensal=acum' % (ind.pk, surf.pk)), {'Do setor': 2.0})
+        self.assertEqual(top('?ind=%d&setor=%d&mot=0&p_mensal=acum' % (ind.pk, ar.pk)), {})
         # filtro de período dos motivos: mês específico e intervalo
         def total(qs):
             aba = [a for a in self.client.get(reverse('kpi:painel') + qs).context['abas'] if a['ind'].pk == ind.pk][0]
             return sum(t['total'] for t in aba['motivos_tabs'][0]['top'])
         self.client.post(m_url, {'granularidade': 'mensal', 'data': '2026-09-15', 'descricao': ['Setembro'], 'quantidade': ['5']})
-        self.assertEqual(total('?ind=%d&mot=mes&mes=2026-09' % ind.pk), 5)
-        self.assertEqual(total('?ind=%d&mot=mes&mes=2026-10' % ind.pk), 3)
-        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-09-01&ate=2026-10-31' % ind.pk), 8)
-        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-10-31&ate=2026-09-30' % ind.pk), 8)  # invertido é corrigido
-        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-10-01' % ind.pk), 3)
-        self.assertEqual(total('?ind=%d&mot=mes&mes=lixo' % ind.pk), 8)  # inválido cai em "todo o período"
+        self.assertEqual(total('?ind=%d&mot=mes&mes=2026-09&p_mensal=acum' % ind.pk), 5)
+        self.assertEqual(total('?ind=%d&mot=mes&mes=2026-10&p_mensal=acum' % ind.pk), 3)
+        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-09-01&ate=2026-10-31&p_mensal=acum' % ind.pk), 8)
+        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-10-31&ate=2026-09-30&p_mensal=acum' % ind.pk), 8)  # invertido é corrigido
+        self.assertEqual(total('?ind=%d&mot=periodo&de=2026-10-01&p_mensal=acum' % ind.pk), 3)
+        self.assertEqual(total('?ind=%d&mot=mes&mes=lixo&p_mensal=acum' % ind.pk), 8)  # inválido cai em "todo o período"
         # setor com lançamentos não pode ser removido
         r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), dict(base, setores_texto='AR'))
         self.assertEqual(r.status_code, 200)
@@ -280,3 +280,44 @@ class KpiTests(TestCase):
         r = self.client.post(reverse('kpi:importar'), {'tipo': 'valores', 'granularidade': 'mensal', 'arquivo': buf})
         self.assertEqual((r.context['resultado']['valores'], len(r.context['resultado']['erros'])), (2, 1))
         self.assertEqual(Medicao.objects.filter(indicador=ind, periodo=date(2026, 11, 30)).count(), 2)
+
+    def test_navegacao_por_periodo_dos_motivos(self):
+        ind = Indicador.objects.create(nome='Nav', meta=1, ativo=True, motivos_diario=True, motivos_semanal=True, motivos_mensal=True)
+        url = reverse('kpi:motivo_salvar', args=[ind.pk])
+        for dia, desc, q in (('2026-10-14', 'A', '4'), ('2026-10-15', 'B', '2'), ('2026-09-20', 'C', '7')):
+            for gran in ('diaria', 'mensal'):
+                self.client.post(url, {'granularidade': gran, 'data': dia, 'descricao': [desc], 'quantidade': [q]})
+        self.client.post(url, {'granularidade': 'semanal', 'data': '2026-10-15', 'descricao': ['S'], 'quantidade': ['1']})
+
+        def aba(qs=''):
+            r = self.client.get(reverse('kpi:painel') + '?ind=%d%s' % (ind.pk, qs))
+            return {t['gran']: t for t in [a for a in r.context['abas'] if a['ind'].pk == ind.pk][0]['motivos_tabs']}
+
+        d = aba()
+        # padrão: período mais recente com lançamentos em cada aba
+        self.assertEqual([t['descricao'] for t in d['diaria']['top']], ['B'])
+        self.assertIn('15/10/2026', d['diaria']['nav']['rotulo'])
+        self.assertEqual([t['descricao'] for t in d['mensal']['top']], ['B'])  # B substituiu A (mesmo mês)
+        self.assertIn('Semana 12/10', d['semanal']['nav']['rotulo'])
+        # navegar para o dia anterior
+        d = aba('&p_diaria=2026-10-14&mtab=diaria')
+        self.assertEqual([t['descricao'] for t in d['diaria']['top']], ['A'])
+        self.assertTrue(d['diaria']['ativo'] and not d['mensal']['ativo'])
+        self.assertIn('p_diaria=2026-10-13', d['diaria']['nav']['prev'])
+        self.assertIn('p_diaria=2026-10-15', d['diaria']['nav']['next'])
+        self.assertIn('mtab=diaria', d['diaria']['nav']['prev'])
+        # mês: anterior / seguinte atravessam o ano
+        d = aba('&p_mensal=2026-01-31')
+        self.assertIn('p_mensal=2025-12-31', d['mensal']['nav']['prev'])
+        self.assertIn('p_mensal=2026-02-28', d['mensal']['nav']['next'])
+        self.assertEqual(d['mensal']['top'], [])
+        # semana é normalizada para segunda-feira e o rótulo mostra o intervalo
+        d = aba('&p_semanal=2026-10-14')
+        self.assertIn('12/10 – 18/10/2026', d['semanal']['nav']['rotulo'])
+        # acumulado usa o filtro de período
+        d = aba('&p_mensal=acum&mot=0')
+        self.assertEqual(sorted(t['descricao'] for t in d['mensal']['top']), ['B', 'C'])
+        self.assertTrue(d['mensal']['nav']['acum'])
+        d = aba('&p_mensal=acum&mot=mes&mes=2026-09')
+        self.assertEqual([t['descricao'] for t in d['mensal']['top']], ['C'])
+        self.assertIn('09/2026', d['mensal']['nav']['rotulo'])
