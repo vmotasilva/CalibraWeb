@@ -2,77 +2,104 @@
 {% block title %}KPI - Importar - Calibra QMS{% endblock %}
 
 {% block content %}
-<div class="container py-3" style="max-width: 900px;">
+<div class="container py-3" style="max-width: 960px;">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="mb-0"><i class="bi bi-upload me-2"></i>Importar valores e motivos</h4>
+        <h4 class="mb-0"><i class="bi bi-upload me-2"></i>Importar</h4>
         <a href="{% url 'kpi:painel' %}" class="btn btn-outline-secondary">Painel</a>
     </div>
 
     {% if resultado %}
     <div class="alert {% if resultado.erros %}alert-warning{% else %}alert-success{% endif %}">
-        <strong>Importação concluída:</strong> {{ resultado.valores }} valor(es) e {{ resultado.motivos }} motivo(s) importados.
+        <strong>Importação de {% if resultado.tipo == 'motivos' %}tabelas (motivos){% else %}gráficos (valores){% endif %}:</strong>
+        {% if resultado.tipo == 'motivos' %}{{ resultado.motivos }} motivo(s) importado(s).{% else %}{{ resultado.valores }} valor(es) importado(s).{% endif %}
         {% if resultado.erros %}<br>{{ resultado.erros|length }} linha(s) ignorada(s):{% endif %}
         {% if resultado.erros %}
         <ul class="mb-0 mt-2 small">
-            {% for linha, aba, msg in resultado.erros|slice:":50" %}<li>Aba {{ aba }}, linha {{ linha }}: {{ msg }}</li>{% endfor %}
+            {% for linha, aba, msg in resultado.erros|slice:":50" %}<li>{% if linha != '—' %}Aba {{ aba }}, linha {{ linha }}: {% endif %}{{ msg }}</li>{% endfor %}
         </ul>
         {% endif %}
     </div>
     {% endif %}
 
-    <div class="card card-body mb-3">
-        <h6>1. Baixe o modelo geral <small class="text-muted fw-normal">(vários indicadores, sem campos específicos)</small></h6>
-        <p class="small text-muted mb-2">Cada modelo tem a aba Valores, a aba Motivos, as instruções e a lista dos indicadores cadastrados.</p>
-        <div class="d-flex flex-wrap gap-2">
-            <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'diaria' %}"><i class="bi bi-calendar-day me-1"></i>Modelo Diário</a>
-            <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'semanal' %}"><i class="bi bi-calendar-week me-1"></i>Modelo Semanal</a>
-            <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'mensal' %}"><i class="bi bi-calendar3 me-1"></i>Modelo Mensal</a>
-        </div>
-    </div>
+    <p class="text-muted small">São dois modelos diferentes: o de <strong>Gráficos</strong> traz os valores (e campos) de cada período; o de <strong>Tabelas</strong> traz os motivos e quantidades do Top principais motivos. Cada um é importado na sua própria seção.</p>
 
-    {% if indicadores %}
-    <div class="card card-body mb-3">
-        <h6>Modelos por indicador <small class="text-muted fw-normal">— já trazem os campos definidos em cada indicador</small></h6>
-        <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-            <thead><tr><th>Indicador</th><th>Campos</th><th class="text-end">Baixar modelo</th></tr></thead>
-            <tbody>
-            {% for i in indicadores %}
-                <tr>
-                    <td class="fw-semibold">{{ i.nome }}</td>
-                    <td class="small text-muted">{{ i.campos|default:"—"|linebreaksbr }}</td>
-                    <td class="text-end text-nowrap">
-                        {% if i.exibir_diario or i.motivos_diario %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'diaria' %}?ind={{ i.pk }}">Diário</a>{% endif %}
-                        {% if i.exibir_semanal or i.motivos_semanal %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'semanal' %}?ind={{ i.pk }}">Semanal</a>{% endif %}
-                        <a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' 'mensal' %}?ind={{ i.pk }}">Mensal</a>
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-        </div>
-    </div>
-    {% endif %}
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item"><button class="nav-link {% if tipo != 'motivos' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#imp-valores" type="button"><i class="bi bi-bar-chart me-1"></i>Gráficos (valores)</button></li>
+        <li class="nav-item"><button class="nav-link {% if tipo == 'motivos' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#imp-motivos" type="button"><i class="bi bi-list-ol me-1"></i>Tabelas (motivos)</button></li>
+    </ul>
 
-    <form method="post" enctype="multipart/form-data" class="card card-body">
-        {% csrf_token %}
-        <h6>2. Envie a planilha preenchida</h6>
-        <div class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label" for="gran">Tipo do modelo</label>
-                <select class="form-select" name="granularidade" id="gran" required>
-                    <option value="diaria" {% if gran == 'diaria' %}selected{% endif %}>Diário</option>
-                    <option value="semanal" {% if gran == 'semanal' %}selected{% endif %}>Semanal</option>
-                    <option value="mensal" {% if gran == 'mensal' %}selected{% endif %}>Mensal</option>
-                </select>
+    <div class="tab-content">
+    {% for t, titulo in tipos.items %}
+        <div class="tab-pane fade {% if tipo == t or t == 'valores' and tipo != 'motivos' %}show active{% endif %}" id="imp-{{ t }}">
+            <div class="card card-body mb-3">
+                <h6>1. Baixe o modelo de {{ titulo|lower }} <small class="text-muted fw-normal">(geral: vários indicadores, sem campos específicos)</small></h6>
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'diaria' %}"><i class="bi bi-calendar-day me-1"></i>Modelo Diário</a>
+                    <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'semanal' %}"><i class="bi bi-calendar-week me-1"></i>Modelo Semanal</a>
+                    <a class="btn btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'mensal' %}"><i class="bi bi-calendar3 me-1"></i>Modelo Mensal</a>
+                </div>
             </div>
-            <div class="col-md-8">
-                <label class="form-label" for="arq">Arquivo (.xlsx)</label>
-                <input type="file" class="form-control" name="arquivo" id="arq" accept=".xlsx" required>
+
+            {% if indicadores %}
+            <div class="card card-body mb-3">
+                <h6>Modelos por indicador <small class="text-muted fw-normal">— já trazem {% if t == 'valores' %}os campos e setores{% else %}os setores{% endif %} definidos em cada indicador</small></h6>
+                <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Indicador</th><th>{% if t == 'valores' %}Campos{% else %}Setores{% endif %}</th><th class="text-end">Baixar modelo</th></tr></thead>
+                    <tbody>
+                    {% for i in indicadores %}
+                        <tr>
+                            <td class="fw-semibold">{{ i.nome }}</td>
+                            <td class="small text-muted">
+                                {% if t == 'valores' %}{{ i.campos|default:"—"|linebreaksbr }}
+                                {% else %}{% for s in i.setores.all %}{{ s.nome }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}{% endif %}
+                            </td>
+                            <td class="text-end text-nowrap">
+                                {% if t == 'valores' %}
+                                    {% if i.exibir_diario %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'diaria' %}?ind={{ i.pk }}">Diário</a>{% endif %}
+                                    {% if i.exibir_semanal %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'semanal' %}?ind={{ i.pk }}">Semanal</a>{% endif %}
+                                    <a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'mensal' %}?ind={{ i.pk }}">Mensal</a>
+                                {% else %}
+                                    {% if i.motivos_diario %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'diaria' %}?ind={{ i.pk }}">Diário</a>{% endif %}
+                                    {% if i.motivos_semanal %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'semanal' %}?ind={{ i.pk }}">Semanal</a>{% endif %}
+                                    {% if i.motivos_mensal %}<a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:modelo_importacao' t 'mensal' %}?ind={{ i.pk }}">Mensal</a>{% endif %}
+                                    {% if not i.motivos_diario and not i.motivos_semanal and not i.motivos_mensal %}<span class="small text-muted">Tabela não habilitada</span>{% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                </div>
             </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" class="card card-body">
+                {% csrf_token %}
+                <input type="hidden" name="tipo" value="{{ t }}">
+                <h6>2. Envie a planilha de {{ titulo|lower }} preenchida</h6>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label" for="gran-{{ t }}">Período do modelo</label>
+                        <select class="form-select" name="granularidade" id="gran-{{ t }}" required>
+                            <option value="diaria" {% if tipo == t and gran == 'diaria' %}selected{% endif %}>Diário</option>
+                            <option value="semanal" {% if tipo == t and gran == 'semanal' %}selected{% endif %}>Semanal</option>
+                            <option value="mensal" {% if tipo != t or gran == 'mensal' %}selected{% endif %}>Mensal</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label" for="arq-{{ t }}">Arquivo (.xlsx)</label>
+                        <input type="file" class="form-control" name="arquivo" id="arq-{{ t }}" accept=".xlsx" required>
+                    </div>
+                </div>
+                <div class="small text-muted mt-2">
+                    {% if t == 'valores' %}Valores já existentes no mesmo período são atualizados. Semanal e diário exigem o gráfico correspondente habilitado no indicador.
+                    {% else %}Os motivos de um período presente na planilha substituem os atuais desse período. Exige a tabela de motivos do período habilitada no indicador.{% endif %}
+                </div>
+                <div class="text-end mt-3"><button class="btn btn-primary" type="submit"><i class="bi bi-upload me-1"></i>Importar {{ titulo|lower }}</button></div>
+            </form>
         </div>
-        <div class="small text-muted mt-2">Valores já existentes no mesmo período são atualizados; os motivos de um período presente na planilha substituem os atuais. Semanal e diário exigem o acompanhamento habilitado no indicador.</div>
-        <div class="text-end mt-3"><button class="btn btn-primary" type="submit"><i class="bi bi-upload me-1"></i>Importar</button></div>
-    </form>
+    {% endfor %}
+    </div>
 </div>
 {% endblock %}

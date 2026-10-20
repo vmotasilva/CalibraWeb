@@ -23,47 +23,64 @@ EXEMPLOS = {
 ABA_VALORES, ABA_MOTIVOS = 'Valores', 'Motivos'
 
 
-def gerar_modelo(gran, ind_especifico=None):
-    """Cria o .xlsx modelo da granularidade. Com `ind_especifico`, inclui os campos definidos nesse indicador."""
+TIPOS = {'valores': 'Gráficos', 'motivos': 'Tabelas'}
+ABA_POR_TIPO = {'valores': ABA_VALORES, 'motivos': ABA_MOTIVOS}
+
+
+def gerar_modelo(gran, ind_especifico=None, tipo='valores'):
+    """Cria o .xlsx modelo. tipo='valores' alimenta os gráficos; tipo='motivos' alimenta as tabelas Top motivos.
+    Com `ind_especifico`, inclui os campos e setores definidos nesse indicador."""
     periodo = CABECALHO_PERIODO[gran]
     exemplo, dica = EXEMPLOS[gran]
     nomes = [ind_especifico.nome] if ind_especifico else list(Indicador.objects.values_list('nome', flat=True))
+    nome_ex = nomes[0] if nomes else 'Nome do indicador'
     campos = calculo.lista_campos(ind_especifico) if ind_especifico else []
     formula = ind_especifico.formula if ind_especifico else ''
-    wb = Workbook()
-    ws = wb.active
-    ws.title = ABA_VALORES
-    cab_valor = 'Valor (opcional: calculado pela fórmula)' if formula else 'Valor'
     setores = list(ind_especifico.setores.all()) if ind_especifico else []
     col_setor = ['Setor'] if setores else []
-    ws.append(['Indicador', periodo] + col_setor + campos + [cab_valor, 'Observação'])
-    ws.append([nomes[0] if nomes else 'Nome do indicador', exemplo] + ([None] if setores else []) + [1] * len(campos)
-              + [None if formula else 1.5, 'exemplo (apague esta linha)'])
-    mot = wb.create_sheet(ABA_MOTIVOS)
-    mot.append(['Indicador', periodo, 'Motivo', 'Quantidade'] + col_setor)
-    mot.append([nomes[0] if nomes else 'Nome do indicador', exemplo, 'Exemplo de motivo', 3] + ([None] if setores else []))
-    mot.append([nomes[0] if nomes else 'Nome do indicador', exemplo, 'Outro motivo (mesmo período)', 1] + ([None] if setores else []))
+    vazio_setor = [None] if setores else []
+    wb = Workbook()
+    ws = wb.active
+    ws.title = ABA_POR_TIPO[tipo]
+    if tipo == 'valores':
+        cab_valor = 'Valor (opcional: calculado pela fórmula)' if formula else 'Valor'
+        ws.append(['Indicador', periodo] + col_setor + campos + [cab_valor, 'Observação'])
+        ws.append([nome_ex, exemplo] + vazio_setor + [1] * len(campos)
+                  + [None if formula else 1.5, 'exemplo (apague esta linha)'])
+        instrucoes = [
+            ['Uma linha por período (colunas: Indicador, ' + periodo + (', Setor' if setores else '')
+             + (', ' + ', '.join(campos) if campos else '') + ', Valor, Observação).'],
+            *([['Campos deste indicador: ' + ', '.join(campos) + '.']] if campos else []),
+            *([['Fórmula do valor: ' + formula + ' — se a coluna Valor ficar vazia, o valor é calculado a partir dos campos.']] if formula else []),
+            ['Valor já existente no mesmo período é atualizado.'],
+        ]
+    else:
+        ws.append(['Indicador', periodo, 'Motivo', 'Quantidade'] + col_setor)
+        ws.append([nome_ex, exemplo, 'Exemplo de motivo', 3] + vazio_setor)
+        ws.append([nome_ex, exemplo, 'Outro motivo (mesmo período)', 1] + vazio_setor)
+        instrucoes = [
+            ['Uma linha por motivo (colunas: Indicador, ' + periodo + ', Motivo, Quantidade' + (', Setor' if setores else '') + ').'],
+            ['Repita Indicador e ' + periodo + ' para vários motivos no mesmo período.'],
+            ['Os motivos de um período presente na planilha substituem os motivos atuais desse período.'],
+        ]
     info = wb.create_sheet('Instruções')
     for linha in [
-        [f'Modelo de importação — {NOMES[gran]}'],
+        [f'Modelo de importação de {TIPOS[tipo].upper()} — {NOMES[gran]}'],
         [],
-        ['Aba Valores: uma linha por período (colunas: Indicador, ' + periodo + (', ' + ', '.join(campos) if campos else '') + ', Valor, Observação).'],
-        *([['Setores deste indicador: ' + ', '.join(s.nome + (f' (meta {s.meta})' if s.meta is not None else '') for s in setores) + '. Deixe a coluna Setor vazia para o acompanhamento geral.']] if setores else []),
-        *([['Campos deste indicador: ' + ', '.join(campos) + '.']] if campos else []),
-        *([['Fórmula do valor: ' + formula + ' — se a coluna Valor ficar vazia, o valor é calculado a partir dos campos.']] if formula else []),
-        ['Aba Motivos: uma linha por motivo; repita Indicador e ' + periodo + ' para vários motivos no mesmo período.'],
+        *instrucoes,
+        *([['Setores deste indicador: ' + ', '.join(x.nome + (f' (meta {x.meta})' if x.meta is not None else '') for x in setores)
+            + '. Deixe a coluna Setor vazia para o acompanhamento geral.']] if setores else []),
         [dica],
         ['O nome do indicador deve ser igual ao cadastrado (veja a aba Indicadores).'],
-        ['Valor já existente no mesmo período é atualizado. Os motivos de um período presente na planilha substituem os atuais.'],
         ['Apague as linhas de exemplo antes de importar. Use ponto ou vírgula como separador decimal.'],
     ]:
         info.append(linha)
     ind = wb.create_sheet('Indicadores')
-    ind.append(['Indicadores cadastrados', 'Meta', 'Semanal/diário habilitado'])
+    ind.append(['Indicadores cadastrados', 'Meta'])
     for i in ([ind_especifico] if ind_especifico else Indicador.objects.all()):
-        ind.append([i.nome, float(i.meta), 'Sim' if i.acompanhamento_detalhado else 'Não'])
+        ind.append([i.nome, float(i.meta)])
     cor = PatternFill('solid', fgColor='14284B')
-    for folha in (ws, mot, ind):
+    for folha in (ws, ind):
         for c in folha[1]:
             c.font = Font(bold=True, color='FFFFFF')
             c.fill = cor
@@ -116,12 +133,19 @@ def _linhas(ws):
             yield n, row
 
 
-def importar(arquivo, gran, usuario):
-    """Importa a planilha. Retorna dict com contadores e a lista de erros (linha, aba, mensagem)."""
+def importar(arquivo, gran, usuario, tipo='valores'):
+    """Importa a planilha do tipo informado (valores = gráficos; motivos = tabelas).
+    Retorna dict com contadores e a lista de erros (linha, aba, mensagem)."""
     try:
         wb = load_workbook(arquivo, data_only=True)
     except Exception:
         return {'valores': 0, 'motivos': 0, 'erros': [('—', '—', 'Arquivo inválido: envie um .xlsx gerado pelo modelo.')]}
+    aba = ABA_POR_TIPO[tipo]
+    if aba not in wb.sheetnames:
+        outro = TIPOS['motivos' if tipo == 'valores' else 'valores']
+        return {'valores': 0, 'motivos': 0, 'tipo': tipo, 'rotulo': CABECALHO_PERIODO[gran], 'erros': [(
+            '—', '—', f'Esta planilha não é um modelo de {TIPOS[tipo].upper()} (falta a aba "{aba}"). '
+                      f'Parece ser de {outro.upper()}: use a importação correspondente.')]}
     indicadores = {i.nome.strip().lower(): i for i in Indicador.objects.prefetch_related('setores')}
     erros, valores, motivos_n = [], 0, 0
 
@@ -154,7 +178,7 @@ def importar(arquivo, gran, usuario):
             return None, None
 
     with transaction.atomic():
-        if ABA_VALORES in wb.sheetnames:
+        if tipo == 'valores':
             planilha = wb[ABA_VALORES]
             cab = [str(c or '').strip() for c in next(planilha.iter_rows(min_row=1, max_row=1, values_only=True), [])]
             col_val = next((i for i, c in enumerate(cab) if c.lower().startswith('valor')), 2)
@@ -196,7 +220,7 @@ def importar(arquivo, gran, usuario):
                     defaults={'valor': valor, 'observacao': str(obs or '')[:255],
                               'dados': {k: str(v) for k, v in dados.items()}, 'registrado_por': usuario})
                 valores += 1
-        if ABA_MOTIVOS in wb.sheetnames:
+        if tipo == 'motivos':
             grupos = {}
             cab_m = [str(c or '').strip().lower() for c in next(wb[ABA_MOTIVOS].iter_rows(min_row=1, max_row=1, values_only=True), [])]
             col_setor_m = cab_m.index('setor') if 'setor' in cab_m else None
@@ -225,4 +249,4 @@ def importar(arquivo, gran, usuario):
                     Motivo(indicador=ind, setor=setor, granularidade=gran, data=periodo, descricao=d, quantidade=q, registrado_por=usuario)
                     for ind, setor, d, q in itens])
                 motivos_n += len(itens)
-    return {'valores': valores, 'motivos': motivos_n, 'erros': erros, 'rotulo': CABECALHO_PERIODO[gran]}
+    return {'valores': valores, 'motivos': motivos_n, 'erros': erros, 'tipo': tipo, 'rotulo': CABECALHO_PERIODO[gran]}

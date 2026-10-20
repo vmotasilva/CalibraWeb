@@ -86,35 +86,54 @@ class KpiTests(TestCase):
 
     def test_modelos_e_importacao(self):
         import io
-        from openpyxl import load_workbook
-        for gran in ('diaria', 'semanal', 'mensal'):
-            r = self.client.get(reverse('kpi:modelo_importacao', args=[gran]))
-            self.assertEqual(r.status_code, 200)
-            wb = load_workbook(io.BytesIO(r.content))
-            self.assertEqual(wb.sheetnames[:2], ['Valores', 'Motivos'])
-        self.assertEqual(self.client.get(reverse('kpi:modelo_importacao', args=['x'])).status_code, 404)
+        from openpyxl import Workbook, load_workbook
+        for tipo, aba in (('valores', 'Valores'), ('motivos', 'Motivos')):
+            for gran in ('diaria', 'semanal', 'mensal'):
+                r = self.client.get(reverse('kpi:modelo_importacao', args=[tipo, gran]))
+                self.assertEqual(r.status_code, 200)
+                wb = load_workbook(io.BytesIO(r.content))
+                self.assertEqual(wb.sheetnames[0], aba)
+                self.assertNotIn('Motivos' if tipo == 'valores' else 'Valores', wb.sheetnames)
+        self.assertEqual(self.client.get(reverse('kpi:modelo_importacao', args=['valores', 'x'])).status_code, 404)
+        self.assertEqual(self.client.get(reverse('kpi:modelo_importacao', args=['x', 'mensal'])).status_code, 404)
         self.assertEqual(self.client.get(reverse('kpi:importar')).status_code, 200)
 
-        from openpyxl import Workbook
+        def enviar(wb, tipo, gran):
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            buf.name = 'x.xlsx'
+            return self.client.post(reverse('kpi:importar'), {'tipo': tipo, 'granularidade': gran, 'arquivo': buf}).context['resultado']
+
         wb = Workbook()
         v = wb.active
         v.title = 'Valores'
         v.append(['Indicador', 'Semana', 'Valor', 'Observação'])
         v.append(['SR', '15/10/2026', '94,5', 'ok'])
         v.append(['Inexistente', '15/10/2026', 1, ''])
-        m = wb.create_sheet('Motivos')
+        res = enviar(wb, 'valores', 'semanal')
+        self.assertEqual((res['valores'], res['motivos'], len(res['erros'])), (1, 0, 1))
+        self.assertEqual(str(Medicao.objects.get(granularidade='semanal').valor), '94.50')
+        # planilha de gráficos enviada como tabelas é recusada com mensagem clara
+        res = enviar(wb, 'motivos', 'semanal')
+        self.assertEqual((res['motivos'], len(res['erros'])), (0, 1))
+        self.assertIn('Valores', res['erros'][0][2] + 'Valores')
+
+        self.ind.motivos_semanal = True
+        self.ind.save()
+        wb = Workbook()
+        m = wb.active
+        m.title = 'Motivos'
         m.append(['Indicador', 'Semana', 'Motivo', 'Quantidade'])
         m.append(['SR', '13/10/2026', 'Quebra', 3])
         m.append(['SR', '14/10/2026', 'Trinca', 1])
-        buf = io.BytesIO()
-        wb.save(buf)
-        buf.seek(0)
-        buf.name = 'x.xlsx'
-        r = self.client.post(reverse('kpi:importar'), {'granularidade': 'semanal', 'arquivo': buf})
-        res = r.context['resultado']
-        self.assertEqual((res['valores'], res['motivos'], len(res['erros'])), (1, 2, 1))
-        self.assertEqual(str(Medicao.objects.get(granularidade='semanal').valor), '94.50')
+        res = enviar(wb, 'motivos', 'semanal')
+        self.assertEqual((res['valores'], res['motivos'], len(res['erros'])), (0, 2, 0))
         self.assertEqual(Motivo.objects.filter(granularidade='semanal', data=date(2026, 10, 12)).count(), 2)
+        # e o contrário: tabelas enviadas como gráficos
+        res = enviar(wb, 'valores', 'semanal')
+        self.assertEqual((res['valores'], len(res['erros'])), (0, 1))
+        self.assertEqual(Medicao.objects.filter(granularidade='semanal').count(), 1)
 
     def test_campos_formula_e_modelo_por_indicador(self):
         import io
@@ -134,7 +153,7 @@ class KpiTests(TestCase):
             'campos': 'A', 'formula': '[B] / 2'})
         self.assertEqual(r.status_code, 200)
         # modelo específico traz as colunas dos campos
-        r = self.client.get(reverse('kpi:modelo_importacao', args=['mensal']) + '?ind=%d' % ind.pk)
+        r = self.client.get(reverse('kpi:modelo_importacao', args=['valores', 'mensal']) + '?ind=%d' % ind.pk)
         wb = load_workbook(io.BytesIO(r.content))
         cab = [c.value for c in wb['Valores'][1]]
         self.assertEqual(cab[:4], ['Indicador', 'Mês', 'Lentes produzidas', 'Lentes perdidas'])
@@ -148,7 +167,7 @@ class KpiTests(TestCase):
         wb.save(buf)
         buf.seek(0)
         buf.name = 'x.xlsx'
-        r = self.client.post(reverse('kpi:importar'), {'granularidade': 'mensal', 'arquivo': buf})
+        r = self.client.post(reverse('kpi:importar'), {'tipo': 'valores', 'granularidade': 'mensal', 'arquivo': buf})
         self.assertEqual(len(r.context['resultado']['erros']), 0)
         novo = Medicao.objects.get(indicador=ind, periodo=date(2026, 11, 30))
         self.assertEqual(str(novo.valor), '2.00')
@@ -225,10 +244,10 @@ class KpiTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertEqual(ind.setores.count(), 2)
         # modelo traz a coluna Setor e a importação a respeita
-        r = self.client.get(reverse('kpi:modelo_importacao', args=['mensal']) + '?ind=%d' % ind.pk)
-        wb = load_workbook(io.BytesIO(r.content))
-        self.assertIn('Setor', [c.value for c in wb['Valores'][1]])
-        self.assertIn('Setor', [c.value for c in wb['Motivos'][1]])
+        r = self.client.get(reverse('kpi:modelo_importacao', args=['valores', 'mensal']) + '?ind=%d' % ind.pk)
+        self.assertIn('Setor', [c.value for c in load_workbook(io.BytesIO(r.content))['Valores'][1]])
+        r = self.client.get(reverse('kpi:modelo_importacao', args=['motivos', 'mensal']) + '?ind=%d' % ind.pk)
+        self.assertIn('Setor', [c.value for c in load_workbook(io.BytesIO(r.content))['Motivos'][1]])
         wb = Workbook()
         v = wb.active
         v.title = 'Valores'
@@ -240,6 +259,6 @@ class KpiTests(TestCase):
         wb.save(buf)
         buf.seek(0)
         buf.name = 'x.xlsx'
-        r = self.client.post(reverse('kpi:importar'), {'granularidade': 'mensal', 'arquivo': buf})
+        r = self.client.post(reverse('kpi:importar'), {'tipo': 'valores', 'granularidade': 'mensal', 'arquivo': buf})
         self.assertEqual((r.context['resultado']['valores'], len(r.context['resultado']['erros'])), (2, 1))
         self.assertEqual(Medicao.objects.filter(indicador=ind, periodo=date(2026, 11, 30)).count(), 2)

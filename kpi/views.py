@@ -310,26 +310,28 @@ def importar_view(request):
     from kpi import importacao
     resultado = None
     gran = request.POST.get('granularidade', 'mensal')
+    tipo = request.POST.get('tipo', 'valores')
     if request.method == 'POST':
         arquivo = request.FILES.get('arquivo')
-        if gran not in importacao.NOMES or not arquivo:
-            messages.error(request, 'Escolha o tipo do modelo e envie o arquivo .xlsx.')
+        if gran not in importacao.NOMES or tipo not in importacao.TIPOS or not arquivo:
+            messages.error(request, 'Escolha o período e envie o arquivo .xlsx.')
         else:
-            resultado = importacao.importar(arquivo, gran, request.user)
+            resultado = importacao.importar(arquivo, gran, request.user, tipo)
     return render(request, 'kpi/importar.html', {
-        'resultado': resultado, 'gran': gran, 'indicadores': Indicador.objects.filter(ativo=True)})
+        'resultado': resultado, 'gran': gran, 'tipo': tipo, 'tipos': importacao.TIPOS,
+        'indicadores': Indicador.objects.filter(ativo=True).prefetch_related('setores')})
 
 
 @login_required
-def modelo_importacao_view(request, gran):
+def modelo_importacao_view(request, tipo, gran):
     from django.http import Http404, HttpResponse
     from kpi import importacao
-    if gran not in importacao.NOMES:
+    if gran not in importacao.NOMES or tipo not in importacao.TIPOS:
         raise Http404
     ind = get_object_or_404(Indicador, pk=request.GET['ind']) if request.GET.get('ind', '').isdigit() else None
     resp = HttpResponse(
-        importacao.gerar_modelo(gran, ind),
+        importacao.gerar_modelo(gran, ind, tipo),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     sufixo = '_' + re.sub(r'[^a-z0-9]+', '_', ind.nome.lower()).strip('_') if ind else ''
-    resp['Content-Disposition'] = f'attachment; filename="modelo_kpi_{importacao.NOMES[gran].lower()}{sufixo}.xlsx"'
+    resp['Content-Disposition'] = f'attachment; filename="modelo_kpi_{tipo}_{importacao.NOMES[gran].lower()}{sufixo}.xlsx"'
     return resp
