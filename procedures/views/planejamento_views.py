@@ -549,7 +549,8 @@ def criar_registros_planejamento_view(request, planejamento_id):
 
             # Criar registros para cada colaborador final e cada procedimento
             procedimentos = list(planejamento.procedimentos.all())
-            if not procedimentos:
+            # Planejamento livre pode ser apenas reunião/alinhamento, sem procedimentos.
+            if not procedimentos and planejamento.origem != 'LIVRE':
                 messages.error(request, 'Não é possível concluir sem procedimentos vinculados ao planejamento.')
                 return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
 
@@ -621,7 +622,7 @@ def criar_registros_planejamento_view(request, planejamento_id):
 
             messages.success(
                 request,
-                f'{registros_criados} registros criados. Participantes confirmados: {len(colaboradores_finais)}. '
+                f'{registros_criados} registros criados{" (planejamento sem procedimentos)" if not procedimentos else ""}. Participantes confirmados: {len(colaboradores_finais)}. '
                 f'Lista de presença gerada: {lista_presenca.codigo}.',
             )
             return redirect('procedures:detalhe_planejamento', planejamento_id=planejamento.id)
