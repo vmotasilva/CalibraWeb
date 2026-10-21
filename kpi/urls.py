@@ -25,4 +25,6 @@ urlpatterns = [
     path('indicadores/<int:pk>/analise/', views.analise_dados_view, name='analise_dados'),
     path('indicadores/<int:pk>/analise/salvar/', views.analise_salvar_view, name='analise_salvar'),
     path('indicadores/<int:pk>/analise/dispensar/', views.analise_dispensar_view, name='analise_dispensar'),
+    path('indicadores/<int:pk>/analise/massa/salvar/', views.analise_salvar_massa_view, name='analise_salvar_massa'),
+    path('indicadores/<int:pk>/analise/massa/dispensar/', views.analise_dispensar_massa_view, name='analise_dispensar_massa'),
 ]

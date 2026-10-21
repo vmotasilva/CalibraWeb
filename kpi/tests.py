@@ -327,6 +327,29 @@ class KpiTests(TestCase):
         # com análise registrada não dá para dispensar sem remover antes
         self.assertEqual(self.client.post(dispensar, dict(base, motivo='Feriado')).status_code, 400)
 
+    def test_justificativa_e_dispensa_em_massa(self):
+        ind = Indicador.objects.create(nome='Qx', meta=2, sentido='menor', exibir_diario=True)
+        for dia in ('2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16'):
+            Medicao.objects.create(indicador=ind, granularidade='diaria', periodo=date.fromisoformat(dia), valor=5)
+        salvar = reverse('kpi:analise_salvar', args=[ind.pk])
+        just = reverse('kpi:analise_salvar_massa', args=[ind.pk])
+        disp = reverse('kpi:analise_dispensar_massa', args=[ind.pk])
+        self.client.post(salvar, {'gran': 'diaria', 'data': '2026-10-13', 'causa': 'Já analisado'})
+        # justificar em massa: o que já tem análise é mantido
+        r = self.client.post(just, {'gran': 'diaria', 'datas': '2026-10-13,2026-10-14,2026-10-15', 'causa': 'Falha de máquina', 'analise': 'Manutenção'}).json()
+        self.assertEqual((sorted(r['aplicados']), r['ignorados']), (['2026-10-14', '2026-10-15'], 1))
+        self.assertEqual(ind.analises.get(periodo=date(2026, 10, 13)).causa, 'Já analisado')
+        self.assertEqual(ind.analises.get(periodo=date(2026, 10, 14)).analise, 'Manutenção')
+        # dispensar em massa exige motivo; períodos com análise são preservados
+        self.assertEqual(self.client.post(disp, {'gran': 'diaria', 'datas': '2026-10-16'}).status_code, 400)
+        r = self.client.post(disp, {'gran': 'diaria', 'datas': '2026-10-13,2026-10-14,2026-10-16', 'motivo': 'Feriado'}).json()
+        self.assertEqual((sorted(r['aplicados']), r['ignorados']), (['2026-10-16'], 2))
+        self.assertTrue(ind.analises.get(periodo=date(2026, 10, 16)).dispensada)
+        # validações
+        self.assertEqual(self.client.post(just, {'gran': 'diaria', 'datas': '', 'causa': 'x'}).status_code, 400)
+        self.assertEqual(self.client.post(just, {'gran': 'diaria', 'datas': '2026-10-13', 'causa': ''}).status_code, 400)
+        self.assertEqual(self.client.post(just, {'gran': 'diaria', 'datas': 'lixo', 'causa': 'x'}).status_code, 400)
+
     def test_consolidacao_usa_media_quando_dias_sem_variaveis_sem_trocar_valor_existente(self):
         from kpi.consolidacao import OBS_MEDIA
         ind = Indicador.objects.create(nome='Qm', meta=2, sentido='menor', exibir_semanal=True, exibir_diario=True,

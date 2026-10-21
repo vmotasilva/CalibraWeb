@@ -268,9 +268,28 @@
                             <div class="form-check"><input class="form-check-input" type="checkbox" id="anDisp"><label class="form-check-label small" for="anDisp">Mostrar dispensados</label></div>
                         </div>
                     </div>
+                    <div id="anSelBar" class="alert alert-primary py-2 d-none align-items-center flex-wrap gap-2 mb-2">
+                        <strong id="anSelN"></strong>
+                        <button type="button" class="btn btn-sm btn-primary" id="anMassaJust"><i class="bi bi-chat-left-text me-1"></i>Justificar selecionados</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="anMassaDisp"><i class="bi bi-slash-circle me-1"></i>Dispensar selecionados</button>
+                        <button type="button" class="btn btn-sm btn-link ms-auto" id="anSelLimpar">Limpar seleção</button>
+                    </div>
+                    <div id="anMassaForm" class="border rounded p-3 mb-3 d-none">
+                        <div class="fw-semibold mb-2">Justificar os períodos selecionados com o mesmo texto</div>
+                        <label class="form-label mb-1" for="anMCausa">Causa</label>
+                        <textarea class="form-control mb-2" id="anMCausa" rows="3"></textarea>
+                        <label class="form-label mb-1" for="anMAnalise">Análise e ações</label>
+                        <textarea class="form-control mb-2" id="anMAnalise" rows="3"></textarea>
+                        <div class="form-text mb-2">Períodos que já têm análise ou estão dispensados são mantidos como estão.</div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="anMCancelar">Cancelar</button>
+                            <button type="button" class="btn btn-primary btn-sm" id="anMAplicar">Aplicar aos selecionados</button>
+                        </div>
+                        <div class="small text-danger mt-2" id="anMErro"></div>
+                    </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0">
-                            <thead class="table-light"><tr><th>Período</th><th class="text-end">Valor</th><th class="text-end">Meta</th><th>Situação</th><th>Causa registrada</th><th></th></tr></thead>
+                            <thead class="table-light"><tr><th style="width: 2rem;"><input type="checkbox" class="form-check-input" id="anSelTodos" title="Selecionar todos os pendentes visíveis"></th><th>Período</th><th class="text-end">Valor</th><th class="text-end">Meta</th><th>Situação</th><th>Causa registrada</th><th></th></tr></thead>
                             <tbody id="anCorpo"></tbody>
                         </table>
                     </div>
@@ -728,9 +747,10 @@
         if (!btn) return;
         var ANALISES = JSON.parse(document.getElementById('kpi-analises').textContent);
         var PODE_ANALISAR = {{ pode_analisar|yesno:"true,false" }}, PODE_DISPENSAR = {{ pode_dispensar|yesno:"true,false" }};
-        var URL_DADOS = "{% url 'kpi:analise_dados' 0 %}", URL_SALVAR = "{% url 'kpi:analise_salvar' 0 %}", URL_DISPENSAR = "{% url 'kpi:analise_dispensar' 0 %}";
+        var URL_DADOS = "{% url 'kpi:analise_dados' 0 %}", URL_SALVAR = "{% url 'kpi:analise_salvar' 0 %}", URL_DISPENSAR = "{% url 'kpi:analise_dispensar' 0 %}", URL_MASSA_SALVAR = "{% url 'kpi:analise_salvar_massa' 0 %}", URL_MASSA_DISPENSAR = "{% url 'kpi:analise_dispensar_massa' 0 %}";
         var NOMES = {mensal: 'Mês a mês', semanal: 'Semana a semana', diaria: 'Dia a dia'};
-        var pk = null, gran = null, atual = null;
+        var pk = null, gran = null, atual = null, sel = {};
+        function podeMassa() { return PODE_ANALISAR || PODE_DISPENSAR; }
 
         function indAtivo() { var a = document.querySelector('#kpiTabs .nav-link.active'); return a ? a.dataset.ind : null; }
         function fmt(v) { return Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 2}); }
@@ -749,7 +769,7 @@
                 b.type = 'button'; b.className = 'nav-link' + (g === gran ? ' active' : '');
                 var pend = pendentes(g);
                 b.textContent = NOMES[g] + (pend ? ' (' + pend + ' sem análise)' : '');
-                b.addEventListener('click', function () { gran = g; abas(); lista(); });
+                b.addEventListener('click', function () { gran = g; sel = {}; abas(); lista(); });
                 li.appendChild(b); ul.appendChild(li);
             });
         }
@@ -782,6 +802,13 @@
                 if (!disp && !f && !todos && !a) continue;
                 linhas++;
                 var tr = corpo.insertRow();
+                var cs = tr.insertCell();
+                if (!disp && !a && podeMassa()) {
+                    var cb = document.createElement('input');
+                    cb.type = 'checkbox'; cb.className = 'form-check-input an-sel'; cb.dataset.iso = e.data; cb.checked = !!sel[e.data];
+                    cb.addEventListener('change', function () { if (this.checked) sel[this.dataset.iso] = 1; else delete sel[this.dataset.iso]; atualizarSel(); });
+                    cs.appendChild(cb);
+                }
                 td(tr, d.labels[i], 'fw-semibold text-nowrap');
                 td(tr, fmt(v), 'text-end fw-bold ' + (f ? 'text-danger' : 'text-success'));
                 td(tr, fmt(d.meta), 'text-end text-muted');
@@ -806,10 +833,70 @@
             }
             if (!linhas) {
                 var r = corpo.insertRow(), c = r.insertCell();
-                c.colSpan = 6; c.className = 'text-center text-muted py-3'; c.textContent = 'Nenhum período pendente neste gráfico.';
+                c.colSpan = 7; c.className = 'text-center text-muted py-3'; c.textContent = 'Nenhum período pendente neste gráfico.';
             }
             el('anInfo').textContent = linhas ? 'Períodos fora da meta do mais recente ao mais antigo.' : '';
+            atualizarSel();
         }
+
+        function selecionados() { return Object.keys(sel); }
+
+        function atualizarSel() {
+            var n = selecionados().length, barra = el('anSelBar');
+            barra.classList.toggle('d-none', n === 0 || !podeMassa());
+            barra.classList.toggle('d-flex', n > 0 && podeMassa());
+            el('anSelN').textContent = n + (n === 1 ? ' período selecionado' : ' períodos selecionados');
+            el('anMassaJust').classList.toggle('d-none', !PODE_ANALISAR);
+            el('anMassaDisp').classList.toggle('d-none', !PODE_DISPENSAR);
+            var caixas = document.querySelectorAll('#anCorpo .an-sel'), marcadas = document.querySelectorAll('#anCorpo .an-sel:checked');
+            el('anSelTodos').checked = caixas.length > 0 && caixas.length === marcadas.length;
+            el('anSelTodos').classList.toggle('d-none', !podeMassa());
+            if (n === 0) el('anMassaForm').classList.add('d-none');
+        }
+
+        function aplicarMassa(url_, extra, rotuloAcao) {
+            var datas = selecionados();
+            var corpo = new URLSearchParams();
+            corpo.set('gran', gran); corpo.set('setor', setor()); corpo.set('datas', datas.join(','));
+            Object.keys(extra).forEach(function (k) { corpo.set(k, extra[k]); });
+            return fetch(url(url_, pk), {method: 'POST', credentials: 'same-origin', headers: {'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded'}, body: corpo.toString()})
+                .then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); })
+                .then(function (res) {
+                    if (!res[0]) { return {erro: res[1].erro || 'Não foi possível concluir.'}; }
+                    ANALISES[pk] = ANALISES[pk] || {}; ANALISES[pk][gran] = ANALISES[pk][gran] || {};
+                    Object.keys(res[1].aplicados).forEach(function (iso) { ANALISES[pk][gran][iso] = res[1].aplicados[iso]; });
+                    sel = {};
+                    abas(); lista(); atualizarSelo();
+                    var n = Object.keys(res[1].aplicados).length;
+                    if (res[1].ignorados) alert(rotuloAcao + ': ' + n + ' período(s). ' + res[1].ignorados + ' foram mantidos (já tinham análise).');
+                    return {};
+                })
+                .catch(function () { return {erro: 'Não foi possível concluir.'}; });
+        }
+
+        el('anSelTodos').addEventListener('change', function () {
+            var marcar = this.checked;
+            document.querySelectorAll('#anCorpo .an-sel').forEach(function (c) { c.checked = marcar; if (marcar) sel[c.dataset.iso] = 1; else delete sel[c.dataset.iso]; });
+            atualizarSel();
+        });
+        el('anSelLimpar').addEventListener('click', function () { sel = {}; lista(); });
+        el('anMassaJust').addEventListener('click', function () { el('anMErro').textContent = ''; el('anMassaForm').classList.remove('d-none'); el('anMCausa').focus(); });
+        el('anMCancelar').addEventListener('click', function () { el('anMassaForm').classList.add('d-none'); });
+        el('anMAplicar').addEventListener('click', function () {
+            var causa = el('anMCausa').value, analise = el('anMAnalise').value;
+            if (!causa.trim() && !analise.trim()) { el('anMErro').textContent = 'Informe a causa ou a análise.'; return; }
+            aplicarMassa(URL_MASSA_SALVAR, {causa: causa, analise: analise}, 'Justificados').then(function (r) {
+                if (r.erro) { el('anMErro').textContent = r.erro; return; }
+                el('anMCausa').value = ''; el('anMAnalise').value = ''; el('anMassaForm').classList.add('d-none');
+            });
+        });
+        el('anMassaDisp').addEventListener('click', function () {
+            var n = selecionados().length;
+            var motivo = prompt('Dispensar a análise de ' + n + ' período(s)?\nInforme o motivo da dispensa (obrigatório):', '');
+            if (motivo === null) return;
+            if (!motivo.trim()) { alert('Informe o motivo da dispensa.'); return; }
+            aplicarMassa(URL_MASSA_DISPENSAR, {motivo: motivo.trim()}, 'Dispensados').then(function (r) { if (r.erro) alert(r.erro); });
+        });
 
         function dispensar(iso, rotulo, reativar) {
             var motivo = '';
@@ -906,7 +993,7 @@
             var aba = document.querySelector('#kpiTabs [data-ind="' + pk + '"]');
             el('anNome').textContent = aba ? aba.textContent.trim() : '';
             el('anSetor').textContent = (CAMPOS[pk] || {}).setor_nome ? '· ' + CAMPOS[pk].setor_nome : '';
-            el('anTodos').checked = false; el('anDisp').checked = false;
+            el('anTodos').checked = false; el('anDisp').checked = false; sel = {};
             mostrar(false); abas(); lista();
             modal('kpiAnaliseModal').show();
         });

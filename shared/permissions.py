@@ -273,13 +273,13 @@ NAV_STRUCTURE = [
                     {"nome": "Ver Painel de Indicadores", "view_name": ["kpi:painel", "kpi:analise_dados"], "perm": "core.nav_kpi_painel"},
                     {
                         "nome": "Registrar Causas e Análises",
-                        "view_name": "kpi:analise_salvar",
+                        "view_name": ["kpi:analise_salvar", "kpi:analise_salvar_massa"],
                         "perm": "core.nav_kpi_analise",
                         "descricao": "Registra a causa e a análise dos períodos fora da meta (dia, semana e mês) e remove os registros existentes.",
                     },
                     {
                         "nome": "Dispensar Períodos da Análise",
-                        "view_name": "kpi:analise_dispensar",
+                        "view_name": ["kpi:analise_dispensar", "kpi:analise_dispensar_massa"],
                         "perm": "core.nav_kpi_analise_dispensar",
                         "descricao": "Autorização especial: marca períodos fora da meta como dispensados de causa e análise (deixam de ser cobrados e de aparecer como pendentes) e reativa os dispensados.",
                     },

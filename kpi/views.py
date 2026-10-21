@@ -674,3 +674,76 @@ def analise_dispensar_view(request, pk):
     AnaliseCausa.objects.update_or_create(**filtro, defaults={
         'dispensada': True, 'motivo_dispensa': motivo, 'causa': '', 'analise': '', 'registrado_por': request.user})
     return JsonResponse({'ok': True, 'data': periodo.isoformat(), 'motivo': motivo})
+
+
+def _parametros_lote(request, ind):
+    """(gran, setor, [períodos normalizados], erro) para as ações em massa: `datas` = datas ISO separadas por vírgula."""
+    gran, _periodo, setor, erro = _parametros_analise(request, ind, dict(request.POST.items(), data=datetime.date.today().isoformat()))
+    if erro:
+        return None, None, [], erro
+    periodos = []
+    for bruto in (request.POST.get('datas') or '').split(','):
+        bruto = bruto.strip()
+        if not bruto:
+            continue
+        try:
+            periodos.append(_normalizar(gran, datetime.date.fromisoformat(bruto)))
+        except ValueError:
+            return None, None, [], f'Data inválida: {bruto}.'
+    periodos = sorted(set(periodos))
+    if not periodos:
+        return None, None, [], 'Selecione ao menos um período.'
+    if len(periodos) > 400:
+        return None, None, [], 'Selecione no máximo 400 períodos por vez.'
+    return gran, setor, periodos, None
+
+
+@login_required
+@require_POST
+def analise_salvar_massa_view(request, pk):
+    """Aplica a mesma causa/análise a vários períodos. Períodos dispensados ou que já têm análise são preservados."""
+    from django.http import JsonResponse
+    from kpi.models import AnaliseCausa
+    ind = get_object_or_404(Indicador, pk=pk)
+    gran, setor, periodos, erro = _parametros_lote(request, ind)
+    if erro:
+        return JsonResponse({'erro': erro}, status=400)
+    causa, analise = request.POST.get('causa', '').strip(), request.POST.get('analise', '').strip()
+    if not causa and not analise:
+        return JsonResponse({'erro': 'Informe a causa ou a análise.'}, status=400)
+    existentes = {a.periodo: a for a in AnaliseCausa.objects.filter(indicador=ind, setor=setor, granularidade=gran, periodo__in=periodos)}
+    aplicados, ignorados = {}, 0
+    for p in periodos:
+        if p in existentes:
+            ignorados += 1
+            continue
+        AnaliseCausa.objects.create(indicador=ind, setor=setor, granularidade=gran, periodo=p, causa=causa, analise=analise,
+                                    registrado_por=request.user)
+        aplicados[p.isoformat()] = {'c': causa[:140], 'a': bool(analise)}
+    return JsonResponse({'ok': True, 'aplicados': aplicados, 'ignorados': ignorados})
+
+
+@login_required
+@require_POST
+def analise_dispensar_massa_view(request, pk):
+    """Dispensa vários períodos de uma vez, com o mesmo motivo. Períodos com análise registrada são preservados."""
+    from django.http import JsonResponse
+    from kpi.models import AnaliseCausa
+    ind = get_object_or_404(Indicador, pk=pk)
+    gran, setor, periodos, erro = _parametros_lote(request, ind)
+    if erro:
+        return JsonResponse({'erro': erro}, status=400)
+    motivo = request.POST.get('motivo', '').strip()[:200]
+    if not motivo:
+        return JsonResponse({'erro': 'Informe o motivo da dispensa.'}, status=400)
+    existentes = {a.periodo: a for a in AnaliseCausa.objects.filter(indicador=ind, setor=setor, granularidade=gran, periodo__in=periodos)}
+    aplicados, ignorados = {}, 0
+    for p in periodos:
+        atual = existentes.get(p)
+        if atual is not None and not atual.dispensada:
+            ignorados += 1
+            continue
+        AnaliseCausa.objects.update_or_create(indicador=ind, setor=setor, granularidade=gran, periodo=p, defaults={
+            'dispensada': True, 'motivo_dispensa': motivo, 'causa': '', 'analise': '', 'registrado_por': request.user})
+        aplicados[p.isoformat()] = {'c': '', 'a': False, 'd': True, 'm': motivo}
+    return JsonResponse({'ok': True, 'aplicados': aplicados, 'ignorados': ignorados})
