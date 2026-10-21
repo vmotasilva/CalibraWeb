@@ -174,3 +174,19 @@ class AnaliseCausa(models.Model):
 
     def __str__(self):
         return f'{self.indicador} - {self.get_granularidade_display()} {self.periodo:%d/%m/%Y}'
+
+
+class AnaliseItem(models.Model):
+    """Um card de causa, análise e ação de um período fora da meta. Um período pode ter vários."""
+    registro = models.ForeignKey(AnaliseCausa, on_delete=models.CASCADE, related_name='itens')
+    ordem = models.PositiveSmallIntegerField(default=0)
+    causa = models.TextField('Causa', blank=True)
+    analise = models.TextField('Análise', blank=True)
+    acao = models.TextField('Ação', blank=True)
+    ocorrencias = models.ManyToManyField('laboratorio.OcorrenciaLaboratorio', blank=True, related_name='+',
+                                         verbose_name='Ocorrências do laboratório que afetaram o indicador')
+
+    class Meta:
+        ordering = ['ordem', 'id']
+        verbose_name = 'Item de causa e análise'
+        verbose_name_plural = 'Itens de causa e análise'

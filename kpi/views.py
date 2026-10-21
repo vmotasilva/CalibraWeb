@@ -200,7 +200,7 @@ def painel_view(request):
     inicio, fim, filtro = _filtro_motivos(request.GET)
     abas, charts, motivos_js, campos_js, analises_js = [], {}, {}, {}, {}
     ativo_req = request.GET.get('ind')
-    for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos', 'setores', 'analises'):
+    for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos', 'setores', 'analises__itens'):
         todas = list(ind.medicoes.all())
         setores = list(ind.setores.all())
         # setor selecionado só vale para o indicador da aba ativa; sem setor = acompanhamento geral
@@ -230,8 +230,7 @@ def painel_view(request):
         analises_js[str(ind.pk)] = {}
         for a in ind.analises.all():
             if a.setor_id == setor_id:
-                analises_js[str(ind.pk)].setdefault(a.granularidade, {})[a.periodo.isoformat()] = {
-                    'c': a.causa[:140], 'a': bool(a.analise.strip()), 'd': a.dispensada, 'm': a.motivo_dispensa}
+                analises_js[str(ind.pk)].setdefault(a.granularidade, {})[a.periodo.isoformat()] = _resumo_registro(a)
         motivos_js[str(ind.pk)] = [
             {'g': m.granularidade, 'd': m.data.isoformat(), 'desc': m.descricao, 'qtd': str(m.quantidade)}
             for m in ind.motivos.all() if m.setor_id == setor_id
@@ -563,6 +562,16 @@ def _num(v):
     return f'{Decimal(v):.2f}'.rstrip('0').rstrip('.').replace('.', ',')
 
 
+def _texto_itens(registro):
+    """Texto corrido dos cards (causa, análise e ação) de um registro."""
+    partes = []
+    for it in registro.itens.all():
+        texto = ' '.join(x.strip() for x in (it.causa, it.analise, it.acao) if x.strip())
+        if texto:
+            partes.append(texto)
+    return ' | '.join(partes)
+
+
 def _rascunho_analise(ind, setor_id, gran, periodo, meta):
     """Texto-base da justificativa: reúne o que foi apontado nos registros dos dias (e semanas) do período."""
     from kpi.models import AnaliseCausa
@@ -576,8 +585,8 @@ def _rascunho_analise(ind, setor_id, gran, periodo, meta):
             linhas.append('Dias fora da meta: ' + ', '.join(f'{m.periodo:%d/%m} ({_num(m.valor)})' for m in fora) + '.')
         grans = ['diaria'] + (['semanal'] if gran == 'mensal' else [])
         for a in AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade__in=grans,
-                                             periodo__range=(ini, fim)).order_by('periodo'):
-            texto = ' '.join(x.strip() for x in (a.causa, a.analise) if x.strip())
+                                             periodo__range=(ini, fim)).prefetch_related('itens').order_by('periodo'):
+            texto = _texto_itens(a)
             if texto:
                 rotulo = f'{a.periodo:%d/%m}' if a.granularidade == 'diaria' else f'semana de {a.periodo:%d/%m}'
                 linhas.append(f'- {rotulo}: {texto}')
@@ -589,6 +598,41 @@ def _rascunho_analise(ind, setor_id, gran, periodo, meta):
         top = sorted(soma.items(), key=lambda x: x[1], reverse=True)[:5]
         linhas.append('Principais motivos registrados: ' + '; '.join(f'{d} ({_num(q)})' for d, q in top) + '.')
     return '\n'.join(linhas)
+
+
+def _ocorrencias_periodo(gran, periodo):
+    """Ocorrências do laboratório que estiveram abertas em algum momento do período (para o usuário vincular)."""
+    from django.db.models import Q
+    from laboratorio.models import OcorrenciaLaboratorio
+    ini, fim = _janela(gran, periodo)
+    inicio = timezone.make_aware(datetime.datetime.combine(ini, datetime.time.min))
+    limite = timezone.make_aware(datetime.datetime.combine(fim, datetime.time.max))
+    qs = (OcorrenciaLaboratorio.objects.filter(data_abertura__lte=limite)
+          .filter(Q(data_encerramento__isnull=True) | Q(data_encerramento__gte=inicio))
+          .select_related('categoria', 'responsavel').order_by('-data_abertura')[:200])
+    saida = []
+    for o in qs:
+        saida.append({
+            'id': o.pk, 'assunto': o.assunto, 'categoria': o.categoria.nome if o.categoria else '',
+            'responsavel': (o.responsavel.get_full_name() or o.responsavel.get_username()) if o.responsavel else '',
+            'abertura': timezone.localtime(o.data_abertura).strftime('%d/%m %H:%M'),
+            'encerramento': timezone.localtime(o.data_encerramento).strftime('%d/%m %H:%M') if o.data_encerramento else '',
+            'impacto': o.get_impacto_display() if hasattr(o, 'get_impacto_display') else o.impacto,
+        })
+    return saida
+
+
+def _itens_json(registro):
+    return [{'causa': i.causa, 'analise': i.analise, 'acao': i.acao,
+             'ocorrencias': list(i.ocorrencias.values_list('pk', flat=True))} for i in registro.itens.all()]
+
+
+def _resumo_registro(registro):
+    """Resumo para a lista: primeira causa e quantidade de cards."""
+    itens = list(registro.itens.all())
+    primeira = next((i.causa for i in itens if i.causa.strip()), '')
+    return {'c': (primeira or registro.causa)[:140], 'a': any(i.analise.strip() or i.acao.strip() for i in itens) or bool(registro.analise.strip()),
+            'n': len(itens), 'd': registro.dispensada, 'm': registro.motivo_dispensa}
 
 
 def _parametros_analise(request, ind, origem):
@@ -620,15 +664,52 @@ def analise_dados_view(request, pk):
     setor_id = setor.pk if setor else None
     meta = setor.meta_efetiva if setor else ind.meta
     med = Medicao.objects.filter(indicador=ind, setor_id=setor_id, granularidade=gran, periodo=periodo).first()
-    atual = AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade=gran, periodo=periodo).first()
+    atual = AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade=gran, periodo=periodo).prefetch_related('itens').first()
     return JsonResponse({
         'rotulo': _rotulo(gran, periodo), 'data': periodo.isoformat(), 'meta': float(meta), 'unidade': ind.unidade,
         'valor': float(med.valor) if med else None,
         'atingiu': ind.atingiu(med.valor, meta) if med else None,
-        'existente': {'causa': atual.causa, 'analise': atual.analise} if atual and not atual.dispensada else None,
+        'itens': _itens_json(atual) if atual and not atual.dispensada else [],
         'dispensada': bool(atual and atual.dispensada), 'motivo_dispensa': atual.motivo_dispensa if atual else '',
         'rascunho': _rascunho_analise(ind, setor_id, gran, periodo, meta),
+        'ocorrencias': _ocorrencias_periodo(gran, periodo),
     })
+
+
+def _itens_do_post(post):
+    """Cards enviados: JSON em `itens` ou, por compatibilidade, os campos únicos causa/analise/acao."""
+    import json
+    bruto = post.get('itens')
+    if bruto is not None:
+        try:
+            lista = json.loads(bruto)
+        except ValueError:
+            raise ValueError('Cards inválidos.')
+        if not isinstance(lista, list):
+            raise ValueError('Cards inválidos.')
+    else:
+        lista = [{'causa': post.get('causa', ''), 'analise': post.get('analise', ''), 'acao': post.get('acao', '')}]
+    itens = []
+    for i in lista[:50]:
+        if not isinstance(i, dict):
+            continue
+        causa, analise, acao = (str(i.get(k, '')).strip() for k in ('causa', 'analise', 'acao'))
+        ocs = [int(x) for x in (i.get('ocorrencias') or []) if str(x).isdigit()]
+        if causa or analise or acao or ocs:
+            itens.append({'causa': causa, 'analise': analise, 'acao': acao, 'ocorrencias': ocs})
+    return itens
+
+
+def _gravar_itens(registro, itens):
+    from laboratorio.models import OcorrenciaLaboratorio
+    registro.itens.all().delete()
+    for n, i in enumerate(itens):
+        card = registro.itens.create(ordem=n, causa=i['causa'], analise=i['analise'], acao=i['acao'])
+        if i['ocorrencias']:
+            card.ocorrencias.set(OcorrenciaLaboratorio.objects.filter(pk__in=i['ocorrencias']))
+    primeiro = itens[0] if itens else {'causa': '', 'analise': ''}
+    registro.causa, registro.analise = primeiro['causa'], primeiro['analise']  # resumo do primeiro card
+    registro.save(update_fields=['causa', 'analise', 'atualizado_em'])
 
 
 @login_required
@@ -640,15 +721,21 @@ def analise_salvar_view(request, pk):
     gran, periodo, setor, erro = _parametros_analise(request, ind, request.POST)
     if erro:
         return JsonResponse({'erro': erro}, status=400)
-    causa, analise = request.POST.get('causa', '').strip(), request.POST.get('analise', '').strip()
+    try:
+        itens = _itens_do_post(request.POST)
+    except ValueError as e:
+        return JsonResponse({'erro': str(e)}, status=400)
     filtro = dict(indicador=ind, setor=setor, granularidade=gran, periodo=periodo)
     if AnaliseCausa.objects.filter(**filtro, dispensada=True).exists():
         return JsonResponse({'erro': 'Este período está dispensado de análise. Reative-o para registrar causa e análise.'}, status=400)
-    if not causa and not analise:
+    if not itens:
         AnaliseCausa.objects.filter(**filtro).delete()
         return JsonResponse({'ok': True, 'removida': True})
-    AnaliseCausa.objects.update_or_create(**filtro, defaults={'causa': causa, 'analise': analise, 'registrado_por': request.user})
-    return JsonResponse({'ok': True, 'data': periodo.isoformat(), 'causa': causa[:140], 'tem_analise': bool(analise)})
+    registro, _ = AnaliseCausa.objects.get_or_create(**filtro, defaults={'registrado_por': request.user})
+    registro.registrado_por = request.user
+    _gravar_itens(registro, itens)
+    registro = AnaliseCausa.objects.prefetch_related('itens').get(pk=registro.pk)
+    return JsonResponse({'ok': True, 'data': periodo.isoformat(), **_resumo_registro(registro)})
 
 
 @login_required
@@ -717,9 +804,9 @@ def analise_salvar_massa_view(request, pk):
         if p in existentes:
             ignorados += 1
             continue
-        AnaliseCausa.objects.create(indicador=ind, setor=setor, granularidade=gran, periodo=p, causa=causa, analise=analise,
-                                    registrado_por=request.user)
-        aplicados[p.isoformat()] = {'c': causa[:140], 'a': bool(analise)}
+        registro = AnaliseCausa.objects.create(indicador=ind, setor=setor, granularidade=gran, periodo=p, registrado_por=request.user)
+        _gravar_itens(registro, [{'causa': causa, 'analise': analise, 'acao': request.POST.get('acao', '').strip(), 'ocorrencias': []}])
+        aplicados[p.isoformat()] = {'c': causa[:140], 'a': bool(analise), 'n': 1, 'd': False, 'm': ''}
     return JsonResponse({'ok': True, 'aplicados': aplicados, 'ignorados': ignorados})
 
 

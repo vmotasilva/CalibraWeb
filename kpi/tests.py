@@ -286,7 +286,7 @@ class KpiTests(TestCase):
         # a semana junta os dias fora da meta, as causas já registradas nos dias e os motivos (sem duplicar os consolidados)
         j = self.client.get(dados, {'gran': 'semanal', 'data': '2026-10-15'}).json()
         self.assertEqual(j['data'], '2026-10-12')  # normalizada para a segunda-feira
-        self.assertIsNone(j['existente'])
+        self.assertEqual(j['itens'], [])
         self.assertIn('13/10 (3)', j['rascunho'])
         self.assertIn('15/10 (4)', j['rascunho'])
         self.assertNotIn('14/10 (1)', j['rascunho'])
@@ -298,7 +298,7 @@ class KpiTests(TestCase):
         m = self.client.get(dados, {'gran': 'mensal', 'data': '2026-10-20'}).json()
         self.assertIn('semana de 12/10: Semana ruim', m['rascunho'])
         # existente volta preenchido; vazio remove; painel entrega o mapa das análises
-        self.assertEqual(self.client.get(dados, {'gran': 'diaria', 'data': '2026-10-13'}).json()['existente']['causa'], 'Troca de turno')
+        self.assertEqual(self.client.get(dados, {'gran': 'diaria', 'data': '2026-10-13'}).json()['itens'][0]['causa'], 'Troca de turno')
         r = self.client.get(reverse('kpi:painel') + '?ind=%d' % ind.pk)
         self.assertIn('2026-10-13', r.context['analises_js'][str(ind.pk)]['diaria'])
         self.client.post(salvar, {'gran': 'diaria', 'data': '2026-10-13', 'causa': '', 'analise': ''})
@@ -320,7 +320,7 @@ class KpiTests(TestCase):
         self.assertEqual(marca['m'], 'Feriado')
         j = self.client.get(dados, base).json()
         self.assertTrue(j['dispensada'])
-        self.assertIsNone(j['existente'])
+        self.assertEqual(j['itens'], [])
         self.assertEqual(self.client.post(salvar, dict(base, causa='x')).status_code, 400)  # dispensado não recebe análise
         self.assertTrue(self.client.post(dispensar, dict(base, acao='reativar')).json()['reativada'])
         self.assertTrue(self.client.post(salvar, dict(base, causa='x')).json()['ok'])
@@ -349,6 +349,50 @@ class KpiTests(TestCase):
         self.assertEqual(self.client.post(just, {'gran': 'diaria', 'datas': '', 'causa': 'x'}).status_code, 400)
         self.assertEqual(self.client.post(just, {'gran': 'diaria', 'datas': '2026-10-13', 'causa': ''}).status_code, 400)
         self.assertEqual(self.client.post(just, {'gran': 'diaria', 'datas': 'lixo', 'causa': 'x'}).status_code, 400)
+
+    def test_varios_cards_por_periodo_com_ocorrencias_do_laboratorio(self):
+        import json
+        from django.utils import timezone
+        from laboratorio.models import OcorrenciaLaboratorio
+        ind = Indicador.objects.create(nome='Qc', meta=2, sentido='menor', exibir_diario=True)
+        Medicao.objects.create(indicador=ind, granularidade='diaria', periodo=date(2026, 10, 14), valor=5)
+        tz = timezone.get_current_timezone()
+        dentro = OcorrenciaLaboratorio.objects.create(
+            assunto='Máquina parada', detalhamento='x', data_abertura=timezone.datetime(2026, 10, 14, 8, 0, tzinfo=tz),
+            data_encerramento=timezone.datetime(2026, 10, 14, 12, 0, tzinfo=tz))
+        fora = OcorrenciaLaboratorio.objects.create(
+            assunto='Outro dia', detalhamento='x', data_abertura=timezone.datetime(2026, 10, 1, 8, 0, tzinfo=tz),
+            data_encerramento=timezone.datetime(2026, 10, 1, 12, 0, tzinfo=tz))
+        aberta = OcorrenciaLaboratorio.objects.create(
+            assunto='Ainda aberta', detalhamento='x', data_abertura=timezone.datetime(2026, 10, 10, 8, 0, tzinfo=tz))
+        dados = reverse('kpi:analise_dados', args=[ind.pk])
+        salvar = reverse('kpi:analise_salvar', args=[ind.pk])
+        base = {'gran': 'diaria', 'data': '2026-10-14'}
+        j = self.client.get(dados, base).json()
+        assuntos = {o['assunto'] for o in j['ocorrencias']}
+        self.assertEqual(assuntos, {'Máquina parada', 'Ainda aberta'})  # só as que estiveram abertas no dia
+        itens = [
+            {'causa': 'Máquina parada', 'analise': 'Quebra de correia', 'acao': 'Trocar correia', 'ocorrencias': [dentro.pk]},
+            {'causa': 'Falta de pessoal', 'analise': '', 'acao': 'Remanejar', 'ocorrencias': []},
+            {'causa': '', 'analise': '', 'acao': '', 'ocorrencias': []},  # card vazio é descartado
+        ]
+        r = self.client.post(salvar, dict(base, itens=json.dumps(itens))).json()
+        self.assertEqual((r['ok'], r['n'], r['c']), (True, 2, 'Máquina parada'))
+        j = self.client.get(dados, base).json()
+        self.assertEqual([i['causa'] for i in j['itens']], ['Máquina parada', 'Falta de pessoal'])
+        self.assertEqual(j['itens'][0]['ocorrencias'], [dentro.pk])
+        self.assertEqual(j['itens'][0]['acao'], 'Trocar correia')
+        # regravar substitui os cards; sem nenhum card remove o registro
+        self.client.post(salvar, dict(base, itens=json.dumps([{'causa': 'Só um', 'ocorrencias': [aberta.pk]}])))
+        self.assertEqual(ind.analises.get().itens.count(), 1)
+        self.client.post(salvar, dict(base, itens=json.dumps([])))
+        self.assertFalse(ind.analises.exists())
+        self.assertEqual(self.client.post(salvar, dict(base, itens='{ruim')).status_code, 400)
+        # o rascunho de uma semana enxerga os cards dos dias
+        self.client.post(salvar, dict(base, itens=json.dumps([{'causa': 'A', 'acao': 'B'}, {'causa': 'C'}])))
+        sem = self.client.get(dados, {'gran': 'semanal', 'data': '2026-10-14'}).json()['rascunho']
+        self.assertIn('- 14/10: A B | C', sem)
+        self.assertIsNotNone(fora.pk)
 
     def test_consolidacao_usa_media_quando_dias_sem_variaveis_sem_trocar_valor_existente(self):
         from kpi.consolidacao import OBS_MEDIA

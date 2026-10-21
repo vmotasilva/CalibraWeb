@@ -79,7 +79,7 @@
                 <div class="col-12 {% if ng > 1 %}col-lg-6{% endif %}">
                     <div class="card h-100"><div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0"><i class="bi bi-calendar3 me-1"></i>Mês a mês</h6>
+                            <h6 class="mb-0"><i class="bi bi-calendar3 me-1"></i>Mês a mês <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
                             <button type="button" class="btn btn-primary btn-sm" title="Adicionar ou editar" onclick="kpiAbrirMedicao({{ pk }}, 'mensal')"><i class="bi bi-plus-lg"></i></button>
                         </div>
                         <div style="height: 280px;"><canvas id="kpi-chart-{{ pk }}-mensal"></canvas></div>
@@ -91,7 +91,7 @@
                 <div class="col-12 {% if ng > 1 %}col-lg-6{% endif %}">
                     <div class="card h-100"><div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0"><i class="bi bi-calendar-week me-1"></i>Semana a semana</h6>
+                            <h6 class="mb-0"><i class="bi bi-calendar-week me-1"></i>Semana a semana <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
                             <div class="d-flex align-items-center gap-1">
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-prev-{{ pk }}-semanal" title="Período anterior" disabled><i class="bi bi-chevron-left"></i></button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-next-{{ pk }}-semanal" title="Próximo período" disabled><i class="bi bi-chevron-right"></i></button>
@@ -106,7 +106,7 @@
                 <div class="col-12 {% if ng == 2 %}col-lg-6{% endif %}">
                     <div class="card h-100"><div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0"><i class="bi bi-calendar-day me-1"></i>Dia a dia</h6>
+                            <h6 class="mb-0"><i class="bi bi-calendar-day me-1"></i>Dia a dia <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
                             <div class="d-flex align-items-center gap-1">
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-prev-{{ pk }}-diaria" title="Período anterior" disabled><i class="bi bi-chevron-left"></i></button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-next-{{ pk }}-diaria" title="Próximo período" disabled><i class="bi bi-chevron-right"></i></button>
@@ -300,18 +300,15 @@
                         <h5 class="mb-0" id="anTitulo"></h5>
                         <span id="anResumo" class="fw-semibold"></span>
                     </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-end">
-                            <label class="form-label mb-1" for="anCausa">Causa</label>
-                            <button type="button" class="btn btn-sm btn-outline-primary" id="anRascunho"><i class="bi bi-magic me-1"></i>Preencher com os registros do período</button>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <div class="fw-semibold">Causas, análises e ações <small class="text-muted fw-normal">— um card para cada conjunto</small></div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="anRascunho"><i class="bi bi-magic me-1"></i>Trazer registros do período</button>
+                            <button type="button" class="btn btn-sm btn-primary" id="anAddCard"><i class="bi bi-plus-lg me-1"></i>Adicionar card</button>
                         </div>
-                        <textarea class="form-control" id="anCausa" rows="6"></textarea>
-                        <div class="form-text" id="anAjudaRascunho"></div>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label mb-1" for="anAnalise">Análise e ações</label>
-                        <textarea class="form-control" id="anAnalise" rows="5" placeholder="O que foi analisado e quais ações foram ou serão tomadas."></textarea>
-                    </div>
+                    <div class="form-text mb-2" id="anAjudaRascunho"></div>
+                    <div id="anCards"></div>
                     <div class="d-flex justify-content-between">
                         <button type="button" class="btn btn-outline-danger" id="anRemover"><i class="bi bi-trash me-1"></i>Remover registro</button>
                         <button type="button" class="btn btn-primary" id="anSalvar"><i class="bi bi-check2 me-1"></i>Salvar</button>
@@ -814,7 +811,7 @@
                 td(tr, fmt(d.meta), 'text-end text-muted');
                 var s = td(tr, '', '');
                 s.innerHTML = disp ? '<span class="badge text-bg-secondary">Dispensado</span>' : (a ? '<span class="badge text-bg-success">Analisado</span>' : (f ? '<span class="badge text-bg-warning">Sem análise</span>' : '<span class="badge text-bg-light border text-muted">Na meta</span>'));
-                td(tr, disp ? 'Dispensa: ' + a.m : (a ? a.c : ''), 'small text-muted');
+                td(tr, disp ? 'Dispensa: ' + a.m : (a ? a.c + (a.n > 1 ? '  (+' + (a.n - 1) + ' card' + (a.n > 2 ? 's' : '') + ')' : '') : ''), 'small text-muted');
                 var ac = tr.insertCell(); ac.className = 'text-end text-nowrap';
                 (function (iso, rot) {
                     function botao(html, classe, aoClicar) {
@@ -924,62 +921,129 @@
             el('anEditor').classList.toggle('d-none', !editor);
         }
 
+        function esc(v) { var d = document.createElement('div'); d.textContent = v == null ? '' : String(v); return d.innerHTML; }
+
+        function renumerarCards() {
+            var cards = el('anCards').children;
+            Array.prototype.forEach.call(cards, function (c, i) { c.querySelector('.an-card-n').textContent = 'Card ' + (i + 1); });
+        }
+
+        function novoCard(dados) {
+            dados = dados || {};
+            var ro = !PODE_ANALISAR, marcadas = {};
+            (dados.ocorrencias || []).forEach(function (id) { marcadas[id] = 1; });
+            var card = document.createElement('div');
+            card.className = 'border rounded p-3 mb-3 an-card';
+            var ocs = (atual && atual.ocorrencias) || [];
+            // ocorrências já vinculadas que saíram da janela do período continuam marcadas
+            var conhecidas = {};
+            ocs.forEach(function (o) { conhecidas[o.id] = 1; });
+            var lista = ocs.map(function (o) {
+                return '<label class="d-flex gap-2 align-items-start py-1 border-bottom small"><input type="checkbox" class="form-check-input mt-1 an-oc" value="' + o.id + '"' + (marcadas[o.id] ? ' checked' : '') + (ro ? ' disabled' : '') + '>' +
+                    '<span><strong>' + esc(o.assunto) + '</strong>' + (o.categoria ? ' · ' + esc(o.categoria) : '') + '<br><span class="text-muted">' +
+                    esc(o.responsavel || 'sem responsável') + ' · ' + esc(o.abertura) + (o.encerramento ? ' → ' + esc(o.encerramento) : ' → em aberto') + ' · impacto ' + esc(o.impacto) + '</span></span></label>';
+            }).join('');
+            Object.keys(marcadas).forEach(function (id) {
+                if (!conhecidas[id]) lista += '<input type="hidden" class="an-oc-extra" value="' + esc(id) + '">';
+            });
+            card.innerHTML =
+                '<div class="d-flex justify-content-between align-items-center mb-2"><strong class="an-card-n"></strong>' +
+                (ro ? '' : '<button type="button" class="btn btn-sm btn-link text-danger p-0 an-card-rem" title="Remover card"><i class="bi bi-trash"></i> Remover card</button>') + '</div>' +
+                '<div class="row g-2">' +
+                '<div class="col-lg-4"><label class="form-label small mb-1">Causa</label><textarea class="form-control an-c" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
+                '<div class="col-lg-4"><label class="form-label small mb-1">Análise</label><textarea class="form-control an-a" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
+                '<div class="col-lg-4"><label class="form-label small mb-1">Ação</label><textarea class="form-control an-x" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
+                '</div>' +
+                '<details class="mt-2"><summary class="small text-primary an-oc-resumo" style="cursor:pointer;"></summary>' +
+                '<div class="mt-2 border rounded px-2" style="max-height: 220px; overflow:auto;">' +
+                (lista || '<div class="text-muted small py-2">Nenhuma ocorrência do laboratório esteve aberta neste período.</div>') + '</div>' +
+                '<div class="form-text">Marque as ocorrências que, na sua avaliação, afetaram o indicador neste período.</div></details>';
+            card.querySelector('.an-c').value = dados.causa || '';
+            card.querySelector('.an-a').value = dados.analise || '';
+            card.querySelector('.an-x').value = dados.acao || '';
+            function resumo() {
+                var n = card.querySelectorAll('.an-oc:checked, .an-oc-extra').length;
+                card.querySelector('.an-oc-resumo').textContent = 'Ocorrências do laboratório que afetaram o indicador (' + n + ' vinculada' + (n === 1 ? '' : 's') + ')';
+            }
+            card.addEventListener('change', resumo);
+            resumo();
+            var rem = card.querySelector('.an-card-rem');
+            if (rem) rem.addEventListener('click', function () { card.remove(); renumerarCards(); });
+            el('anCards').appendChild(card);
+            renumerarCards();
+            return card;
+        }
+
+        function coletarCards() {
+            return Array.prototype.map.call(el('anCards').children, function (card) {
+                var ocs = Array.prototype.map.call(card.querySelectorAll('.an-oc:checked'), function (c) { return Number(c.value); })
+                    .concat(Array.prototype.map.call(card.querySelectorAll('.an-oc-extra'), function (c) { return Number(c.value); }));
+                return {causa: card.querySelector('.an-c').value, analise: card.querySelector('.an-a').value, acao: card.querySelector('.an-x').value, ocorrencias: ocs};
+            });
+        }
+
         function editar(iso, rotulo) {
             el('anErro').textContent = '';
             el('anTitulo').textContent = NOMES[gran] + ' · ' + rotulo;
             el('anResumo').textContent = 'Carregando…';
-            el('anCausa').value = ''; el('anAnalise').value = ''; el('anAjudaRascunho').textContent = '';
+            el('anCards').innerHTML = ''; el('anAjudaRascunho').textContent = '';
             mostrar(true);
             fetch(url(URL_DADOS, pk) + '?gran=' + gran + '&data=' + iso + '&setor=' + setor(), {credentials: 'same-origin'})
                 .then(function (r) { return r.json(); })
                 .then(function (j) {
                     if (j.erro) { el('anErro').textContent = j.erro; return; }
                     if (j.dispensada) { el('anErro').textContent = 'Período dispensado de análise: ' + j.motivo_dispensa; }
-                    atual = {iso: j.data, rascunho: j.rascunho || '', existente: j.existente};
+                    atual = {iso: j.data, rascunho: j.rascunho || '', ocorrencias: j.ocorrencias || [], itens: j.itens || []};
                     var un = j.unidade ? ' ' + j.unidade : '';
                     el('anResumo').innerHTML = (j.valor === null ? 'Sem valor registrado' : 'Valor <span class="' + (j.atingiu ? 'text-success' : 'text-danger') + '">' + fmt(j.valor) + un + '</span>') + ' · meta ' + fmt(j.meta) + un;
-                    if (j.existente) {
-                        el('anCausa').value = j.existente.causa; el('anAnalise').value = j.existente.analise;
-                        el('anAjudaRascunho').textContent = j.rascunho ? 'Há registros do período para compor a causa: use o botão acima para trazê-los.' : '';
+                    if (atual.itens.length) {
+                        atual.itens.forEach(novoCard);
+                        el('anAjudaRascunho').textContent = j.rascunho ? 'Há registros do período para compor uma causa: use "Trazer registros do período".' : '';
                     } else if (j.rascunho) {
-                        el('anCausa').value = j.rascunho;
-                        el('anAjudaRascunho').textContent = 'Texto montado a partir dos registros dos dias e dos motivos do período. Ajuste antes de salvar.';
+                        novoCard({causa: j.rascunho});
+                        el('anAjudaRascunho').textContent = 'A causa do primeiro card foi montada a partir dos registros dos dias e dos motivos do período. Ajuste antes de salvar.';
                     } else {
+                        novoCard();
                         el('anAjudaRascunho').textContent = 'Não há registros anteriores neste período.';
                     }
                     el('anSalvar').classList.toggle('d-none', !PODE_ANALISAR);
-                    el('anRemover').classList.toggle('d-none', !PODE_ANALISAR || !j.existente);
-                    el('anCausa').readOnly = el('anAnalise').readOnly = !PODE_ANALISAR;
+                    el('anRemover').classList.toggle('d-none', !PODE_ANALISAR || !atual.itens.length);
+                    el('anAddCard').classList.toggle('d-none', !PODE_ANALISAR);
                     el('anRascunho').classList.toggle('d-none', !PODE_ANALISAR);
                 })
                 .catch(function () { el('anErro').textContent = 'Não foi possível carregar os dados.'; });
         }
 
-        function salvar(causa, analise) {
+        function salvar(itens) {
             var corpo = new URLSearchParams();
-            corpo.set('gran', gran); corpo.set('data', atual.iso); corpo.set('setor', setor()); corpo.set('causa', causa); corpo.set('analise', analise);
+            corpo.set('gran', gran); corpo.set('data', atual.iso); corpo.set('setor', setor()); corpo.set('itens', JSON.stringify(itens));
             fetch(url(URL_SALVAR, pk), {method: 'POST', credentials: 'same-origin', headers: {'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded'}, body: corpo.toString()})
                 .then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); })
                 .then(function (res) {
                     if (!res[0]) { el('anErro').textContent = res[1].erro || 'Não foi possível salvar.'; return; }
                     ANALISES[pk] = ANALISES[pk] || {}; ANALISES[pk][gran] = ANALISES[pk][gran] || {};
                     if (res[1].removida) { delete ANALISES[pk][gran][atual.iso]; }
-                    else { ANALISES[pk][gran][atual.iso] = {c: res[1].causa, a: res[1].tem_analise}; }
+                    else { ANALISES[pk][gran][atual.iso] = {c: res[1].c, a: res[1].a, n: res[1].n, d: false, m: ''}; }
                     mostrar(false); abas(); lista(); atualizarSelo();
                 })
                 .catch(function () { el('anErro').textContent = 'Não foi possível salvar.'; });
         }
 
-        el('anSalvar').addEventListener('click', function () { salvar(el('anCausa').value, el('anAnalise').value); });
-        el('anRemover').addEventListener('click', function () { if (confirm('Remover a causa e a análise deste período?')) salvar('', ''); });
+        el('anSalvar').addEventListener('click', function () { salvar(coletarCards()); });
+        el('anRemover').addEventListener('click', function () { if (confirm('Remover todos os cards deste período?')) salvar([]); });
+        el('anAddCard').addEventListener('click', function () { var c = novoCard(); c.querySelector('.an-c').focus(); });
+
         el('anVoltar').addEventListener('click', function () { mostrar(false); });
         el('anTodos').addEventListener('change', lista);
         el('anDisp').addEventListener('change', lista);
         el('anRascunho').addEventListener('click', function () {
             if (!atual || !atual.rascunho) { el('anAjudaRascunho').textContent = 'Não há registros do período para trazer.'; return; }
-            var c = el('anCausa');
-            if (c.value.trim() && c.value.trim() !== atual.rascunho.trim() && !confirm('Substituir o texto da causa pelos registros do período?')) return;
-            c.value = atual.rascunho;
+            var cards = el('anCards').children, vazio = null;
+            Array.prototype.forEach.call(cards, function (c) {
+                if (!vazio && !c.querySelector('.an-c').value.trim() && !c.querySelector('.an-a').value.trim() && !c.querySelector('.an-x').value.trim()) vazio = c;
+            });
+            (vazio || novoCard()).querySelector('.an-c').value = atual.rascunho;
+            el('anAjudaRascunho').textContent = 'Registros do período trazidos para um card. Ajuste antes de salvar.';
         });
 
         atualizarSelo();
@@ -1035,10 +1099,8 @@
                      datalabels: {display: true, anchor: 'end', align: 'end', clamp: true, color: '#212529',
                                   font: {weight: 'bold', size: 11}, formatter: rotulo}},
                     {type: 'line', label: 'Meta', data: f.labels.map(function () { return d.meta; }),
-                     borderColor: '#6c757d', borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5, order: 1,
-                     datalabels: {display: function (c) { return c.dataIndex === c.dataset.data.length - 1; },
-                                  align: 'top', anchor: 'end', color: '#6c757d', font: {size: 10},
-                                  formatter: function (v) { return 'Meta ' + rotulo(v); }}}
+                     borderColor: '#343a40', borderDash: [8, 5], pointRadius: 0, borderWidth: 3, order: 1,
+                     datalabels: {display: false}}
                 ]
             },
             options: {
