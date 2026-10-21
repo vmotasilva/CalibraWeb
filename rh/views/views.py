@@ -3472,6 +3472,7 @@ def detalhe_usuario_view(request, user_id):
     from shared.permissions import (
         GESTAO_GROUP,
         GESTAO_MODULES,
+        GESTAO_MODULOS_COM_SECAO,
         GESTAO_SECOES,
         NAV_GROUP_PERMS,
         get_nav_structure,
@@ -3556,13 +3557,15 @@ def detalhe_usuario_view(request, user_id):
         for bloco in (modulo.get("blocos") or []):
             bloco_data = _bloco_data(bloco)
             grupo_nome = bloco.get("grupo")
-            if modulo.get("key") == "laboratorio" and (grupo_nome or "").split(">")[0].strip() in GRUPOS_GESTAO:
+            if modulo.get("key") in GESTAO_MODULOS_COM_SECAO and (grupo_nome or "").split(">")[0].strip() in GRUPOS_GESTAO:
                 _inserir(gestao_itens, gestao_grupos, "gestao", bloco_data, grupo_nome, gestao_perms)
             elif grupo_nome:
                 _inserir(itens_modulo, grupos_dict, modulo.get("key"), bloco_data, grupo_nome, NAV_GROUP_PERMS)
             else:
                 itens_modulo.append(bloco_data)
 
+        if not itens_modulo and modulo.get("key") == "kpi":
+            continue  # todos os blocos do KPI ficam em Gestão > KPI
         modulos.append(
             {
                 "key": modulo.get("key"),
@@ -3577,7 +3580,7 @@ def detalhe_usuario_view(request, user_id):
     if gestao_itens:
         # Ordem das subseções de Ferramentas Auxiliares: TMS, Quadros, Diagramas
         ordem = {"Tempos e Movimentos (TMS)": 0, "Quadros": 1, "Diagramas": 2}
-        ordem_secoes = {"Ferramentas Auxiliares": 0, "Processos": 1, "Qualidade": 2}
+        ordem_secoes = {"Ferramentas Auxiliares": 0, "KPI": 1, "Processos": 2, "Qualidade": 3}
         gestao_itens.sort(key=lambda g: ordem_secoes.get(g.get("nome"), 9))
         for grupo in gestao_itens:
             grupo["itens"].sort(key=lambda g: ordem.get(g.get("nome"), 9))

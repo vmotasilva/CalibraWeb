@@ -257,6 +257,47 @@ NAV_STRUCTURE = [
         ],
     },
     {
+        "key": "kpi",
+        "nome": "KPI",
+        "cor": "danger",
+        "icone": "bi bi-speedometer2",
+        # Módulo exibido só dentro de Gestão > KPI: a flag do módulo é a própria chave do grupo.
+        "module_perm": "core.nav_gestao_kpi",
+        "blocos": [
+            {
+                "key": "painel",
+                "grupo": "KPI",
+                "nome": "Painel de Indicadores",
+                "perm": "core.nav_kpi_bloco_painel",
+                "funcoes": [
+                    {"nome": "Ver Painel de Indicadores", "view_name": "kpi:painel", "perm": "core.nav_kpi_painel"},
+                    {"nome": "Lançar Valores e Motivos", "view_name": ["kpi:medicao_salvar", "kpi:motivo_salvar"], "perm": "core.nav_kpi_lancar"},
+                    {"nome": "Excluir Lançamento", "view_name": "kpi:medicao_excluir", "perm": "core.nav_kpi_lancamento_excluir"},
+                ],
+            },
+            {
+                "key": "importacao",
+                "grupo": "KPI",
+                "nome": "Importação de Planilhas",
+                "perm": "core.nav_kpi_bloco_importacao",
+                "funcoes": [
+                    {"nome": "Importar Valores e Tabelas", "view_name": ["kpi:importar", "kpi:modelo_importacao"], "perm": "core.nav_kpi_importar"},
+                ],
+            },
+            {
+                "key": "indicadores",
+                "grupo": "KPI",
+                "nome": "Cadastro de Indicadores",
+                "perm": "core.nav_kpi_bloco_indicadores",
+                "funcoes": [
+                    {"nome": "Listar e Detalhar Indicadores", "view_name": ["kpi:indicadores", "kpi:indicador_detalhe"], "perm": "core.nav_kpi_indicadores"},
+                    {"nome": "Criar e Editar Indicador", "view_name": ["kpi:indicador_novo", "kpi:indicador_editar", "kpi:indicador_mover"], "perm": "core.nav_kpi_indicador_editar"},
+                    {"nome": "Excluir Indicador", "view_name": "kpi:indicador_excluir", "perm": "core.nav_kpi_indicador_excluir"},
+                ],
+            },
+        ],
+    },
+    {
         "key": "metrologia",
         "nome": "Metrologia",
 
@@ -1632,6 +1673,7 @@ NAV_GROUP_PERMS = {
     GESTAO_GROUP: "core.nav_mod_gestao",
     "Ferramentas Auxiliares": "core.nav_gestao_ferramentas",
     "Ferramentas Auxiliares > Tempos e Movimentos (TMS)": "core.nav_gestao_tms",
+    "KPI": "core.nav_gestao_kpi",
     "Qualidade": "core.nav_gestao_qualidade",
     "Qualidade > Homologações": "core.nav_gestao_homologacoes",
     "ISO 13485": "core.nav_auditoria_iso_grupo",
@@ -1645,14 +1687,16 @@ NAV_GROUP_PERMS = {
     "HMC > Configurações": "core.nav_laboratorio_grupo_hmc_config",
 }
 # Seções do módulo de exibição "Gestão" e módulos inteiros exibidos dentro dele.
-GESTAO_SECOES = ("Ferramentas Auxiliares", "Processos", "Qualidade")
+GESTAO_SECOES = ("Ferramentas Auxiliares", "KPI", "Processos", "Qualidade")
+# Módulos cujos blocos (campo "grupo") aparecem dentro de uma seção de Gestão.
+GESTAO_MODULOS_COM_SECAO = ("laboratorio", "kpi")
 GESTAO_MODULES = {"boards": "Ferramentas Auxiliares", "diagramas": "Ferramentas Auxiliares"}
 
 
 def _group_paths(module_key: str, grupo: str | None) -> list[str]:
     """Caminhos de grupo (do mais externo ao mais interno) que contêm um item."""
     partes = [p.strip() for p in (grupo or GESTAO_MODULES.get(module_key, "")).split(">") if p.strip()]
-    if module_key in GESTAO_MODULES or (partes and partes[0] in GESTAO_SECOES and module_key == "laboratorio"):
+    if module_key in GESTAO_MODULES or (partes and partes[0] in GESTAO_SECOES and module_key in GESTAO_MODULOS_COM_SECAO):
         caminhos = [GESTAO_GROUP]
     else:
         caminhos = []
