@@ -2,6 +2,7 @@
 import datetime
 import io
 import re
+from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
@@ -133,6 +134,27 @@ def _linhas(ws):
             yield n, row
 
 
+def consolidar_motivos_diarios(chaves, usuario):
+    """Compõe as tabelas de motivos semanal e mensal a partir das diárias (soma por descrição).
+    chaves: conjunto de (indicador, setor_id, data_diária) alterados na importação.
+    Só recompõe períodos sem motivos lançados manualmente."""
+    periodos = {(g, ind.pk, setor_id, _normalizar(g, d)): ind
+                for ind, setor_id, d in chaves for g in ('semanal', 'mensal') if ind.permite_motivos(g)}
+    for (g, _pk, setor_id, periodo), ind in periodos.items():
+        existentes = Motivo.objects.filter(indicador=ind, setor_id=setor_id, granularidade=g, data=periodo)
+        if existentes.exclude(consolidado=True).exists():
+            continue
+        ini, fim = (periodo, periodo + datetime.timedelta(days=6)) if g == 'semanal' else (periodo.replace(day=1), periodo)
+        soma = defaultdict(Decimal)
+        for desc, q in Motivo.objects.filter(indicador=ind, setor_id=setor_id, granularidade='diaria',
+                                             data__range=(ini, fim)).values_list('descricao', 'quantidade'):
+            soma[desc] += q
+        existentes.delete()
+        Motivo.objects.bulk_create([
+            Motivo(indicador=ind, setor_id=setor_id, granularidade=g, data=periodo, descricao=d, quantidade=q,
+                   consolidado=True, registrado_por=usuario) for d, q in soma.items()])
+
+
 def importar(arquivo, gran, usuario, tipo='valores'):
     """Importa a planilha do tipo informado (valores = gráficos; motivos = tabelas).
     Retorna dict com contadores e a lista de erros (linha, aba, mensagem)."""
@@ -148,6 +170,7 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                       f'Parece ser de {outro.upper()}: use a importação correspondente.')]}
     indicadores = {i.nome.strip().lower(): i for i in Indicador.objects.prefetch_related('setores')}
     erros, valores, motivos_n = [], 0, 0
+    alt_motivos = set()  # (indicador, setor_id, data) diários alterados
 
     def achar_setor(aba, n, ind, nome_setor):
         """Retorna (setor, valido); vazio = acompanhamento geral."""
@@ -249,4 +272,8 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                     Motivo(indicador=ind, setor=setor, granularidade=gran, data=periodo, descricao=d, quantidade=q, registrado_por=usuario)
                     for ind, setor, d, q in itens])
                 motivos_n += len(itens)
+                if gran == 'diaria':
+                    alt_motivos.add((itens[0][0], setor_pk, periodo))
+        if gran == 'diaria':
+            consolidar_motivos_diarios(alt_motivos, usuario)
     return {'valores': valores, 'motivos': motivos_n, 'erros': erros, 'tipo': tipo, 'rotulo': CABECALHO_PERIODO[gran]}

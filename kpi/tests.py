@@ -84,6 +84,39 @@ class KpiTests(TestCase):
         self.assertEqual(r.context['abas'][0]['ind'].nome, 'C')
         self.assertEqual(self.client.get(reverse('kpi:indicadores')).status_code, 200)
 
+    def test_importacao_diaria_de_motivos_compoe_semanal_e_mensal(self):
+        import io
+        from openpyxl import Workbook
+
+        def enviar(linhas):
+            wb = Workbook()
+            ws = wb.active
+            ws.title = 'Motivos'
+            ws.append(['Indicador', 'Dia', 'Motivo', 'Quantidade'])
+            for l in linhas:
+                ws.append(l)
+            buf = io.BytesIO()
+            wb.save(buf)
+            buf.seek(0)
+            buf.name = 'x.xlsx'
+            return self.client.post(reverse('kpi:importar'), {'tipo': 'motivos', 'granularidade': 'diaria', 'arquivo': buf})
+
+        enviar([['SR', '13/10/2026', 'Quebra', 3], ['SR', '14/10/2026', 'Quebra', 2], ['SR', '14/10/2026', 'Trinca', 1]])
+        sem = {m.descricao: m.quantidade for m in Motivo.objects.filter(granularidade='semanal', data=date(2026, 10, 12))}
+        mes = {m.descricao: m.quantidade for m in Motivo.objects.filter(granularidade='mensal', data=date(2026, 10, 31))}
+        self.assertEqual(sem, {'Quebra': 5, 'Trinca': 1})
+        self.assertEqual(mes, sem)
+        # nova importação diária atualiza a composição; gráficos (valores) não são afetados
+        enviar([['SR', '15/10/2026', 'Quebra', 4]])
+        sem = Motivo.objects.get(granularidade='semanal', data=date(2026, 10, 12), descricao='Quebra')
+        self.assertEqual(sem.quantidade, 9)
+        self.assertFalse(Medicao.objects.filter(granularidade__in=('semanal', 'mensal')).exists())
+        # lançamento manual no período não é sobrescrito
+        Motivo.objects.filter(granularidade='mensal').delete()
+        Motivo.objects.create(indicador=self.ind, granularidade='mensal', data=date(2026, 10, 31), descricao='Manual', quantidade=7)
+        enviar([['SR', '16/10/2026', 'Quebra', 1]])
+        self.assertEqual(list(Motivo.objects.filter(granularidade='mensal').values_list('descricao', flat=True)), ['Manual'])
+
     def test_modelos_e_importacao(self):
         import io
         from openpyxl import Workbook, load_workbook

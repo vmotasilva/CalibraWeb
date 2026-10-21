@@ -124,6 +124,7 @@ class Motivo(models.Model):
     data = models.DateField('Data de referência')
     descricao = models.CharField('Motivo', max_length=200)
     quantidade = models.DecimalField('Quantidade', max_digits=14, decimal_places=2, default=1)
+    consolidado = models.BooleanField('Consolidado dos lançamentos diários', default=False)
     registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
 
     class Meta:
