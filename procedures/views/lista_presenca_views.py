@@ -9,7 +9,7 @@ from django.utils import timezone
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from datetime import datetime, timedelta
-import pandas as pd
+from shared import planilha as pd
 import os
 
 from django.http import FileResponse
@@ -1627,8 +1627,8 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
             return None
         # pandas NaT
         try:
-            import pandas as _pd
-            if isinstance(val, _pd._libs.tslibs.nattype.NaTType) or (_pd.isna(val) if hasattr(_pd, 'isna') else False):
+            from shared import planilha as _pd
+            if _pd.isna(val):
                 return None
         except Exception:
             pass
@@ -1638,7 +1638,7 @@ def processar_importacao(df, criar_listas, sobrescrever, usuario, criar_particip
             return val
         try:
             # Try pandas conversion
-            import pandas as _pd
+            from shared import planilha as _pd
             return _pd.to_datetime(val).date()
         except Exception:
             return None

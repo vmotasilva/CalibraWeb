@@ -13,7 +13,7 @@ from django.contrib import messages
 from django.http import HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
-import pandas as pd
+from shared import planilha as pd
 from qms.models import ImportJob
 from qms.views_helpers import parse_date, export_to_excel_response
 

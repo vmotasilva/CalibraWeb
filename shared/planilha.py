@@ -9,6 +9,7 @@ import csv
 import datetime
 import io
 import math
+import os
 import re
 import unicodedata
 
@@ -346,7 +347,10 @@ class DataFrame:
         idx = [self._idx(c) for c in chaves]
         grupos = {}
         for r in self._linhas:
-            grupos.setdefault(tuple(r[i] for i in idx), []).append(r)
+            chave = tuple(r[i] for i in idx)
+            if any(isna(k) for k in chave):
+                continue  # como o pandas, linhas com chave ausente ficam de fora dos grupos
+            grupos.setdefault(chave, []).append(r)
         try:
             ordem = sorted(grupos)
         except TypeError:
@@ -463,7 +467,11 @@ class ExcelFile:
     def __init__(self, fonte, engine=None):
         if engine == 'xlrd':
             raise ImportError('Leitura de .xls (xlrd) não está disponível; salve o arquivo como .xlsx.')
-        if hasattr(fonte, 'seek'):
+        if isinstance(fonte, (str, os.PathLike)):
+            # lê para a memória: o openpyxl recusa caminhos sem extensão .xlsx (arquivos temporários de upload)
+            with open(fonte, 'rb') as f:
+                fonte = io.BytesIO(f.read())
+        elif hasattr(fonte, 'seek'):
             fonte.seek(0)
         self._wb = load_workbook(fonte, read_only=True, data_only=True)
         self.sheet_names = list(self._wb.sheetnames)
@@ -499,7 +507,11 @@ def _converte_coluna(valores):
 
 
 def read_csv(fonte, sep=',', encoding=None, dtype=None, engine=None, **_):
-    conteudo = fonte.read() if hasattr(fonte, 'read') else open(fonte, 'rb').read()
+    if hasattr(fonte, 'read'):
+        conteudo = fonte.read()
+    else:
+        with open(fonte, 'rb') as f:
+            conteudo = f.read()
     if isinstance(conteudo, bytes):
         texto = conteudo.decode(encoding or 'utf-8')
     else:

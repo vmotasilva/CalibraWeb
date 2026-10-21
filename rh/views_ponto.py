@@ -4,7 +4,7 @@ Views para Importação e Tratativa de Falhas de Batida de Ponto
 """
 import logging
 import json
-import pandas as pd
+from shared import planilha as pd
 from datetime import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required

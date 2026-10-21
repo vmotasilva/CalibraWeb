@@ -109,7 +109,7 @@ from .forms import FornecedorForm
 from .forms_documento import DocumentoFornecedorForm
 from .forms_avaliacao import AvaliacaoFornecedorForm, RespostaAvaliacaoForm
 from django.contrib import messages
-import pandas as pd
+from shared import planilha as pd
 from django.http import HttpResponse
 from django.db.models import Q
 from django.utils import timezone

@@ -3181,15 +3181,13 @@ def dashboard_coating(request):
 @login_required
 @nav_permission_required('core.nav_laboratorio_coating_importacao')
 def baixar_modelo_importacao_coating(request):
-    import pandas as pd
+    from shared import planilha as pd
     import io
     
-    df = pd.DataFrame(columns=[
-        'Data (DD/MM/YYYY)', 'Turno', 'Maquina', 'Lote', 
-        'Tratamento', 'Lado', 'Observacao'
-    ])
-    df.loc[0] = ['24/07/2026', 'TURNO 01', 'DLX1200', '1', 'BLUE CUT', 'CC', 'Atraso na liberação']
-    df.loc[1] = ['24/07/2026', 'TURNO 01', 'DLX1200', '1', 'BLUE CUT', 'CX', '']
+    df = pd.DataFrame([
+        ['24/07/2026', 'TURNO 01', 'DLX1200', '1', 'BLUE CUT', 'CC', 'Atraso na liberação'],
+        ['24/07/2026', 'TURNO 01', 'DLX1200', '1', 'BLUE CUT', 'CX', ''],
+    ], columns=['Data (DD/MM/YYYY)', 'Turno', 'Maquina', 'Lote', 'Tratamento', 'Lado', 'Observacao'])
     
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -3206,7 +3204,7 @@ def baixar_modelo_importacao_coating(request):
 @require_POST
 @nav_permission_required('core.nav_laboratorio_coating_importacao')
 def importar_lotes_coating(request):
-    import pandas as pd
+    from shared import planilha as pd
     from django.db import transaction
     
     if 'arquivo' not in request.FILES:
@@ -3608,7 +3606,7 @@ def api_tms_reordenar_etapas(request):
 @login_required
 def tms_exportar_excel(request, fluxo_id):
     """Exporta o estudo completo de TMS e capacidade para planilha Excel."""
-    import pandas as pd
+    from shared import planilha as pd
 
     fluxo = get_object_or_404(FluxoProcessoTMS, id=fluxo_id)
     metricas = fluxo.calcular_metricas()

@@ -21,7 +21,7 @@ from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.csrf import csrf_exempt
-import pandas as pd
+from shared import planilha as pd
 import logging
 from django.conf import settings
 from urllib.parse import urlencode

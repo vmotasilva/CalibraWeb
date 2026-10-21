@@ -10,7 +10,7 @@ Características:
 - Transação segura com rollback
 """
 
-import pandas as pd
+from shared import planilha as pd
 import logging
 from typing import Dict, List, Tuple, Any
 from datetime import datetime

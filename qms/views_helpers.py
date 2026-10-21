@@ -14,7 +14,7 @@ import tempfile
 from decimal import Decimal
 import unicodedata
 import logging
-import pandas as pd
+from shared import planilha as pd
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required

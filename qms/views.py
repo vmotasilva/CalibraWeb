@@ -1377,7 +1377,7 @@ def editar_procedimento_view(request, procedimento_id):
 @login_required
 def dl_template_historico(request):
     """Template para importação de históricos de calibração com exemplos."""
-    import pandas as pd
+    from shared import planilha as pd
     from datetime import date, timedelta
     
     # Criar DataFrame com exemplos

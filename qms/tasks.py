@@ -18,7 +18,7 @@ def import_instruments_task(job_id, filepath):
     asynchronously. For now it just returns success so integration tests can be built.
     """
     import os
-    import pandas as pd
+    from shared import planilha as pd
     from django.db import transaction
     from .models import ImportJob
     from metrologia.models import Instrumento, CategoriaInstrumento, FaixaMedicao
@@ -68,7 +68,7 @@ def import_instruments_task(job_id, filepath):
 
         def excel_date_to_date(val):
             try:
-                import pandas as pd
+                from shared import planilha as pd
                 if pd.isnull(val):
                     return None
                 s = str(val).strip()
@@ -270,7 +270,7 @@ def import_historico_task(job_id, filepath):
     - RESPONSÁVEL
     - OBSERVAÇÕES
     """
-    import pandas as pd
+    from shared import planilha as pd
     from django.db import transaction
     from .models import ImportJob
     from metrologia.models import Instrumento, HistoricoCalibracao
@@ -508,7 +508,7 @@ def import_historico_task(job_id, filepath):
 def import_colab_task(job_id, filepath):
     """Importa colaboradores (RH) a partir de planilha."""
     import re
-    import pandas as pd
+    from shared import planilha as pd
     from django.db import transaction
     from .models import ImportJob
     from rh.models import Colaborador
@@ -663,7 +663,7 @@ def import_colab_task(job_id, filepath):
 @shared_task
 def import_hierarquia_task(job_id, filepath):
     """Importa hierarquia Setor/Turno (RH) a partir de planilha."""
-    import pandas as pd
+    from shared import planilha as pd
     from django.db import transaction
     from .models import ImportJob
     from rh.models import Colaborador
@@ -753,7 +753,7 @@ def import_hierarquia_task(job_id, filepath):
 def import_ferias_task(job_id, filepath):
     """Importa férias (RH) a partir de planilha."""
     import os
-    import pandas as pd
+    from shared import planilha as pd
     from django.db import transaction
     from .models import ImportJob
     from rh.models import Colaborador, Ferias

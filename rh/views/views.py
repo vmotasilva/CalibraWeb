@@ -1403,7 +1403,7 @@ def exportar_ferias_view(request):
         return redirect("rh:gestao_ferias")
     
     try:
-        import pandas as pd
+        from shared import planilha as pd
         
         # Buscar todas as férias
         ferias_qs = Ferias.objects.select_related('colaborador').order_by(
@@ -2344,7 +2344,7 @@ def importar_ferias_view(request):
         try:
             import os
             from io import StringIO
-            import pandas as pd
+            from shared import planilha as pd
             from rh.models import Ferias, Colaborador
             from datetime import datetime
             

@@ -1,7 +1,7 @@
 import os
 import re
 from pathlib import Path
-import pandas as pd
+from shared import planilha as pd
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from rh.models import Colaborador

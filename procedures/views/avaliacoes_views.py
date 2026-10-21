@@ -1123,7 +1123,7 @@ def exportar_matriz_excel_view(request):
         rows.append(row)
 
     import io
-    import pandas as pd
+    from shared import planilha as pd
     from django.http import HttpResponse
     
     df = pd.DataFrame(rows)

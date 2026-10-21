@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Max
 from django.http import HttpResponse, JsonResponse
-import pandas as pd
+from shared import planilha as pd
 from io import BytesIO
 from datetime import datetime
 
@@ -1442,7 +1442,7 @@ def exportar_estrutura_view(request):
     """Exporta estrutura completa: Perfis, Grupos, Subgrupos e Procedimentos para Excel"""
     from django.http import HttpResponse
     from io import BytesIO
-    import pandas as pd
+    from shared import planilha as pd
     
     output = BytesIO()
     

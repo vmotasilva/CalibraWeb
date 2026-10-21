@@ -15,7 +15,7 @@ from django.http import HttpResponse
 from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_http_methods
-import pandas as pd
+from shared import planilha as pd
 
 logger = logging.getLogger(__name__)
 

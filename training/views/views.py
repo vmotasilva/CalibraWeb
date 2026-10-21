@@ -12,7 +12,6 @@ from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
 from django.core.paginator import Paginator
-import pandas as pd
 import logging
 
 logger = logging.getLogger(__name__)

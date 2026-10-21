@@ -102,6 +102,20 @@ class PlanilhaTests(SimpleTestCase):
         self.assertEqual(g['V'].dropna().iloc[0], 5)
         self.assertEqual(len(df[['Reg', 'Data']].drop_duplicates(subset=['Reg'])), 2)
 
+    def test_caminho_sem_extensao_e_groupby_ignora_chave_ausente(self):
+        import os
+        import tempfile
+        arq = _xlsx({'S': [['a', 'b'], [1, 'x']]})
+        with tempfile.NamedTemporaryFile(delete=False) as tmp:  # sem extensão, como nos uploads temporários
+            tmp.write(arq.read())
+        try:
+            df = planilha.read_excel(tmp.name, engine='openpyxl')
+            self.assertEqual(df.iloc[0]['b'], 'x')
+        finally:
+            os.unlink(tmp.name)
+        d = planilha.DataFrame({'k': ['a', None, 'a'], 'v': [1, 2, 3]})
+        self.assertEqual([(k, len(g)) for k, g in d.groupby('k')], [('a', 2)])
+
     def test_to_datetime(self):
         self.assertEqual(planilha.to_datetime('21/10/2026', format='%d/%m/%Y').date(), datetime.date(2026, 10, 21))
         self.assertEqual(planilha.to_datetime('13/10/2026', dayfirst=True).date(), datetime.date(2026, 10, 13))

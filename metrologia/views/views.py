@@ -34,7 +34,6 @@ from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.http import HttpResponse, JsonResponse
 from django.db.models import Q
-import pandas as pd
 import logging
 
 try:
