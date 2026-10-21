@@ -16,7 +16,10 @@
         <div class="d-flex justify-content-between align-items-end mb-2">
             <div>
                 <div class="fw-semibold">Posições, na ordem em que os números são colados</div>
-                <small class="text-muted">Escolha para cada posição o indicador e a variável que ela alimenta. Sem indicador, a posição é lida mas não alimenta nada. Dica: digite <kbd>@</kbd> no rótulo para buscar indicador e variável.</small>
+                <small class="text-muted">
+                    Cada posição pode alimentar vários indicadores/variáveis, cada vínculo com sua operação (soma, subtrai ou substitui) e um fator.
+                    Dica: digite <kbd>@</kbd> no rótulo para buscar indicador e variável.
+                </small>
             </div>
             <span class="badge text-bg-secondary" id="modContagem"></span>
         </div>
@@ -26,11 +29,9 @@
                 <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
                     <tr>
                         <th style="width: 3rem;">#</th>
-                        <th>Rótulo (como aparece na origem)</th>
-                        <th style="width: 20%;">Indicador</th>
-                        <th style="width: 20%;">Variável</th>
-                        <th style="width: 14%;">Setor</th>
-                        <th style="width: 6.5rem;"></th>
+                        <th style="width: 34%;">Rótulo (como aparece na origem)</th>
+                        <th>Alimenta</th>
+                        <th style="width: 9rem;"></th>
                     </tr>
                 </thead>
                 <tbody id="modGrade"></tbody>
@@ -53,77 +54,49 @@
         </div>
     </form>
 </div>
+
+<!-- Pop-up: vínculos de uma posição -->
+<div class="modal fade" id="modVinc" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-link-45deg me-2"></i>Vínculos de <span id="vincRotulo"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                    <input type="search" class="form-control form-control-sm" id="vincBusca" placeholder="Buscar indicador, variável ou setor…" style="max-width: 340px;">
+                    <div class="form-check ms-2"><input class="form-check-input" type="checkbox" id="vincSo"><label class="form-check-label small" for="vincSo">Só marcados</label></div>
+                    <small class="text-muted ms-auto">Operação: <b>+</b> soma ao que outras posições mandam para a mesma variável · <b>−</b> subtrai · <b>=</b> substitui. Fator multiplica o número antes.</small>
+                </div>
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light"><tr><th style="width:2.5rem;"></th><th>Variável · Setor</th><th style="width:6rem;">Operação</th><th style="width:7rem;">Fator</th><th>Também alimentada por</th></tr></thead>
+                    <tbody id="vincCorpo"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <small class="text-muted" id="vincContagem"></small>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="vincAplicar">Aplicar vínculos</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{ ind_dados|json_script:"kpi-ind-dados" }}
 <script>
 (function () {
     var DADOS = JSON.parse(document.getElementById('kpi-ind-dados').textContent);
     var grade = document.getElementById('modGrade'), area = document.getElementById('modLinhas');
-    var VALOR = 'Valor';
+    var SIMBOLO = {'+': '+', '-': '−', '=': '='};
+    var linhaAtual = null;
 
-    function opcoes(select, itens, atual, vazio) {
-        select.innerHTML = '';
-        if (vazio !== undefined) { var o = document.createElement('option'); o.value = ''; o.textContent = vazio; select.appendChild(o); }
-        itens.forEach(function (it) {
-            var o = document.createElement('option');
-            o.value = it.valor; o.textContent = it.rotulo; select.appendChild(o);
-        });
-        var existe = Array.prototype.some.call(select.options, function (o) { return o.value === atual; });
-        select.value = existe ? atual : (vazio !== undefined ? '' : (select.options[0] || {}).value);
-    }
-
-    var lista = document.createElement('div');
-    lista.className = 'list-group shadow position-fixed d-none';
-    lista.style.cssText = 'z-index: 2000; max-height: 260px; overflow: auto; min-width: 320px;';
-    document.body.appendChild(lista);
-
-    function combinacoes() {
-        var out = [];
-        Object.keys(DADOS).forEach(function (nome) {
-            var d = DADOS[nome], vars = [{valor: VALOR, rotulo: 'Valor do indicador'}].concat(d.variaveis.map(function (v) { return {valor: v, rotulo: v}; }));
-            vars.forEach(function (v) {
-                out.push({ind: nome, variavel: v.valor, setor: '', texto: nome + ' · ' + v.rotulo});
-                d.setores.forEach(function (st) { out.push({ind: nome, variavel: v.valor, setor: st, texto: nome + ' · ' + v.rotulo + ' · ' + st}); });
-            });
-        });
-        return out;
-    }
-
-    function ligarBusca(inp, tr) {
-        function fechar() { lista.classList.add('d-none'); }
-        inp.addEventListener('input', function () {
-            var v = inp.value, i = v.lastIndexOf('@');
-            if (i === -1) { fechar(); return; }
-            var termo = v.slice(i + 1).trim().toLowerCase();
-            var achadas = combinacoes().filter(function (c) { return c.texto.toLowerCase().indexOf(termo) !== -1; }).slice(0, 40);
-            lista.innerHTML = '';
-            if (!achadas.length) { fechar(); return; }
-            achadas.forEach(function (c) {
-                var b = document.createElement('button');
-                b.type = 'button'; b.className = 'list-group-item list-group-item-action py-1 small'; b.textContent = c.texto;
-                b.addEventListener('mousedown', function (e) { e.preventDefault(); });
-                b.addEventListener('click', function () {
-                    inp.value = v.slice(0, i).trim();
-                    tr.querySelector('.m-ind').value = c.ind;
-                    atualizarDependentes(tr, c.variavel, c.setor);
-                    fechar(); inp.focus();
-                });
-                lista.appendChild(b);
-            });
-            var r = inp.getBoundingClientRect();
-            lista.style.left = r.left + 'px'; lista.style.top = (r.bottom + 2) + 'px';
-            lista.classList.remove('d-none');
-        });
-        inp.addEventListener('blur', function () { setTimeout(fechar, 150); });
-    }
-
-    function sel(classe) { var s = document.createElement('select'); s.className = 'form-select form-select-sm ' + classe; return s; }
-
-    function atualizarDependentes(tr, variavel, setor) {
-        var ind = DADOS[tr.querySelector('.m-ind').value], vs = tr.querySelector('.m-var'), ss = tr.querySelector('.m-setor');
-        vs.disabled = ss.disabled = !ind;
-        if (!ind) { vs.innerHTML = ss.innerHTML = ''; return; }
-        opcoes(vs, [{valor: VALOR, rotulo: 'Valor do indicador'}].concat(ind.variaveis.map(function (v) { return {valor: v, rotulo: v}; })), variavel || VALOR);
-        opcoes(ss, ind.setores.map(function (v) { return {valor: v, rotulo: v}; }), setor || '', 'Geral');
+    function chave(d) { return d.ind + '\u0001' + (d.variavel || '') + '\u0001' + (d.setor || ''); }
+    function txtDestino(d) {
+        var t = d.ind + ' · ' + (d.variavel || 'Valor') + (d.setor ? ' · ' + d.setor : '');
+        return SIMBOLO[d.op] + ' ' + t + (Number(d.fator) !== 1 ? ' × ' + d.fator : '');
     }
 
     function botao(icone, titulo, aoClicar, classe) {
@@ -138,35 +111,109 @@
         document.getElementById('modContagem').textContent = grade.rows.length + ' posição(ões)';
     }
 
-    function linha(dados) {
-        dados = dados || {};
+    function desenharDestinos(tr) {
+        var cel = tr.querySelector('.m-dest');
+        cel.innerHTML = '';
+        if (!tr._dest.length) {
+            cel.innerHTML = '<span class="text-muted fst-italic small">não alimenta indicador</span>';
+            return;
+        }
+        tr._dest.forEach(function (d) {
+            var b = document.createElement('span');
+            b.className = 'badge text-bg-light border text-dark fw-normal me-1 mb-1';
+            b.textContent = txtDestino(d);
+            cel.appendChild(b);
+        });
+    }
+
+    // ---- busca por @ no rótulo ----
+    var lista = document.createElement('div');
+    lista.className = 'list-group shadow position-fixed d-none';
+    lista.style.cssText = 'z-index: 2000; max-height: 260px; overflow: auto; min-width: 320px;';
+    document.body.appendChild(lista);
+
+    function todasOpcoes() {
+        var out = [];
+        Object.keys(DADOS).forEach(function (nome) {
+            var d = DADOS[nome];
+            [''].concat(d.variaveis).forEach(function (v) {
+                [''].concat(d.setores).forEach(function (st) { out.push({ind: nome, variavel: v, setor: st, op: '+', fator: 1}); });
+            });
+        });
+        return out;
+    }
+
+    function ligarBusca(inp, tr) {
+        function fechar() { lista.classList.add('d-none'); }
+        inp.addEventListener('input', function () {
+            var v = inp.value, i = v.lastIndexOf('@');
+            if (i === -1) { fechar(); return; }
+            var termo = v.slice(i + 1).trim().toLowerCase();
+            var achadas = todasOpcoes().filter(function (c) { return txtDestino(c).toLowerCase().indexOf(termo) !== -1; }).slice(0, 40);
+            lista.innerHTML = '';
+            if (!achadas.length) { fechar(); return; }
+            achadas.forEach(function (c) {
+                var b = document.createElement('button');
+                b.type = 'button'; b.className = 'list-group-item list-group-item-action py-1 small'; b.textContent = txtDestino(c).slice(2);
+                b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+                b.addEventListener('click', function () {
+                    inp.value = v.slice(0, i).trim();
+                    if (!tr._dest.some(function (d) { return chave(d) === chave(c); })) tr._dest.push(c);
+                    desenharDestinos(tr); fechar(); inp.focus();
+                });
+                lista.appendChild(b);
+            });
+            var r = inp.getBoundingClientRect();
+            lista.style.left = r.left + 'px'; lista.style.top = (r.bottom + 2) + 'px';
+            lista.classList.remove('d-none');
+        });
+        inp.addEventListener('blur', function () { setTimeout(fechar, 150); });
+    }
+
+    // ---- grade ----
+    function linha(rotulo, destinos) {
         var tr = grade.insertRow();
+        tr._dest = destinos || [];
         tr.insertCell().className = 'text-muted';
         var c = tr.insertCell(), inp = document.createElement('input');
-        inp.className = 'form-control form-control-sm m-rotulo'; inp.value = dados.rotulo || '';
+        inp.className = 'form-control form-control-sm m-rotulo'; inp.value = rotulo || '';
         c.appendChild(inp);
         ligarBusca(inp, tr);
-        var ci = tr.insertCell(), si = sel('m-ind');
-        opcoes(si, Object.keys(DADOS).map(function (n) { return {valor: n, rotulo: n}; }), dados.ind || '', '— não alimenta —');
-        si.addEventListener('change', function () { atualizarDependentes(tr); });
-        ci.appendChild(si);
-        tr.insertCell().appendChild(sel('m-var'));
-        tr.insertCell().appendChild(sel('m-setor'));
-        atualizarDependentes(tr, dados.variavel, dados.setor);
+        tr.insertCell().className = 'm-dest';
         var acoes = tr.insertCell(); acoes.className = 'text-end text-nowrap';
+        var bv = document.createElement('button');
+        bv.type = 'button'; bv.className = 'btn btn-sm btn-outline-primary py-0 me-2'; bv.innerHTML = '<i class="bi bi-link-45deg me-1"></i>Vínculos';
+        bv.addEventListener('click', function () { abrirVinculos(tr); });
+        acoes.appendChild(bv);
         acoes.appendChild(botao('bi-arrow-up', 'Subir', function () { if (tr.previousElementSibling) { grade.insertBefore(tr, tr.previousElementSibling); numerar(); } }));
         acoes.appendChild(botao('bi-arrow-down', 'Descer', function () { if (tr.nextElementSibling) { grade.insertBefore(tr.nextElementSibling, tr); numerar(); } }));
         acoes.appendChild(botao('bi-trash', 'Remover', function () { tr.remove(); numerar(); }, 'text-danger'));
+        desenharDestinos(tr);
         return tr;
+    }
+
+    function destinoDeTexto(partes) {
+        var ind = (partes[0] || '').trim();
+        if (!DADOS[ind]) return null;
+        var v = (partes[1] || '').trim(), op = (partes[3] || '+').trim(), f = (partes[4] || '1').trim().replace(',', '.');
+        return {ind: ind, variavel: v.toLowerCase() === 'valor' ? '' : v, setor: (partes[2] || '').trim(),
+                op: SIMBOLO[op] ? op : '+', fator: isNaN(Number(f)) || f === '' ? 1 : Number(f)};
     }
 
     function carregar(texto) {
         grade.innerHTML = '';
         texto.split('\n').forEach(function (l) {
             if (!l.trim()) return;
-            var p = l.split('|').map(function (x) { return x.trim(); });
-            var ind = DADOS[p[1]] ? p[1] : '';
-            linha({rotulo: p[0], ind: ind, variavel: p[2], setor: p[3]});
+            var dest = [];
+            if (l.indexOf('||') !== -1) {
+                var blocos = l.split('||'), rotulo = blocos.shift().trim();
+                blocos.forEach(function (b) { var d = destinoDeTexto(b.split('|')); if (d) dest.push(d); });
+                linha(rotulo, dest);
+            } else {
+                var p = l.split('|');
+                var d1 = p.length > 1 && p[1].trim() ? destinoDeTexto([p[1], p[2], p[3]]) : null;
+                linha(p[0].trim(), d1 ? [d1] : []);
+            }
         });
         numerar();
     }
@@ -175,12 +222,93 @@
         var out = [];
         Array.prototype.forEach.call(grade.rows, function (tr) {
             var rotulo = tr.querySelector('.m-rotulo').value.trim().replace(/\|/g, '/') || ('Posição ' + (out.length + 1));
-            var ind = tr.querySelector('.m-ind').value;
-            if (!ind) { out.push(rotulo); return; }
-            out.push([rotulo, ind, tr.querySelector('.m-var').value, tr.querySelector('.m-setor').value].join(' | ').replace(/( \| )+$/, function (m) { return m; }));
+            if (!tr._dest.length) { out.push(rotulo); return; }
+            out.push(rotulo + ' || ' + tr._dest.map(function (d) {
+                return [d.ind, d.variavel || 'Valor', d.setor, d.op, String(d.fator)].join(' | ');
+            }).join(' || '));
         });
         area.value = out.join('\n');
     }
+
+    // ---- pop-up de vínculos ----
+    var modalEl = document.getElementById('modVinc'), corpo = document.getElementById('vincCorpo');
+
+    function outrasPosicoes(chv, atual) {
+        var nomes = [];
+        Array.prototype.forEach.call(grade.rows, function (tr) {
+            if (tr === atual) return;
+            tr._dest.forEach(function (d) {
+                if (chave(d) === chv) nomes.push(tr.cells[0].textContent + ' ' + (tr.querySelector('.m-rotulo').value.trim() || 'sem rótulo') + ' (' + SIMBOLO[d.op] + ')');
+            });
+        });
+        return nomes;
+    }
+
+    function abrirVinculos(tr) {
+        linhaAtual = tr;
+        document.getElementById('vincRotulo').textContent = tr.querySelector('.m-rotulo').value.trim() || ('posição ' + tr.cells[0].textContent);
+        var atuais = {};
+        tr._dest.forEach(function (d) { atuais[chave(d)] = d; });
+        corpo.innerHTML = '';
+        Object.keys(DADOS).forEach(function (nome) {
+            var d = DADOS[nome], cab = corpo.insertRow(), tdc = cab.insertCell();
+            cab.className = 'table-secondary vinc-cab'; cab.dataset.ind = nome;
+            tdc.colSpan = 5; tdc.className = 'fw-semibold'; tdc.textContent = nome;
+            [''].concat(d.variaveis).forEach(function (v) {
+                [''].concat(d.setores).forEach(function (st) {
+                    var item = {ind: nome, variavel: v, setor: st}, chv = chave(item), existente = atuais[chv];
+                    var r = corpo.insertRow(); r.className = 'vinc-linha'; r.dataset.ind = nome; r.dataset.chave = chv;
+                    r.dataset.texto = (nome + ' ' + (v || 'valor') + ' ' + st).toLowerCase();
+                    var c1 = r.insertCell(), cb = document.createElement('input');
+                    cb.type = 'checkbox'; cb.className = 'form-check-input v-on'; cb.checked = !!existente; c1.appendChild(cb);
+                    r.insertCell().textContent = (v || 'Valor do indicador') + (st ? ' · ' + st : ' · Geral');
+                    var c3 = r.insertCell(), so = document.createElement('select');
+                    so.className = 'form-select form-select-sm v-op';
+                    [['+', '+ somar'], ['-', '− subtrair'], ['=', '= substituir']].forEach(function (o) {
+                        var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; so.appendChild(op);
+                    });
+                    so.value = existente ? existente.op : '+'; c3.appendChild(so);
+                    var c4 = r.insertCell(), fi = document.createElement('input');
+                    fi.type = 'number'; fi.step = 'any'; fi.className = 'form-control form-control-sm v-fator'; fi.value = existente ? existente.fator : 1; c4.appendChild(fi);
+                    var outras = outrasPosicoes(chv, tr);
+                    var c5 = r.insertCell(); c5.className = 'small text-muted'; c5.textContent = outras.join('; ');
+                    cb.addEventListener('change', filtrar);
+                });
+            });
+        });
+        document.getElementById('vincBusca').value = '';
+        document.getElementById('vincSo').checked = false;
+        filtrar();
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function filtrar() {
+        var termo = document.getElementById('vincBusca').value.trim().toLowerCase(), so = document.getElementById('vincSo').checked;
+        var visiveisPorInd = {}, marcados = 0;
+        Array.prototype.forEach.call(corpo.querySelectorAll('.vinc-linha'), function (r) {
+            var marcado = r.querySelector('.v-on').checked;
+            if (marcado) marcados++;
+            var ok = (!termo || r.dataset.texto.indexOf(termo) !== -1) && (!so || marcado);
+            r.classList.toggle('d-none', !ok);
+            if (ok) visiveisPorInd[r.dataset.ind] = true;
+        });
+        Array.prototype.forEach.call(corpo.querySelectorAll('.vinc-cab'), function (c) { c.classList.toggle('d-none', !visiveisPorInd[c.dataset.ind]); });
+        document.getElementById('vincContagem').textContent = marcados + ' vínculo(s) marcado(s)';
+    }
+
+    document.getElementById('vincBusca').addEventListener('input', filtrar);
+    document.getElementById('vincSo').addEventListener('change', filtrar);
+    document.getElementById('vincAplicar').addEventListener('click', function () {
+        var novos = [];
+        Array.prototype.forEach.call(corpo.querySelectorAll('.vinc-linha'), function (r) {
+            if (!r.querySelector('.v-on').checked) return;
+            var p = r.dataset.chave.split('\u0001'), f = Number(r.querySelector('.v-fator').value);
+            novos.push({ind: p[0], variavel: p[1], setor: p[2], op: r.querySelector('.v-op').value, fator: isNaN(f) || r.querySelector('.v-fator').value === '' ? 1 : f});
+        });
+        linhaAtual._dest = novos;
+        desenharDestinos(linhaAtual);
+        bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+    });
 
     document.getElementById('modAdd').addEventListener('click', function () { linha(); numerar(); grade.lastElementChild.querySelector('.m-rotulo').focus(); });
     document.getElementById('modForm').addEventListener('submit', serializar);

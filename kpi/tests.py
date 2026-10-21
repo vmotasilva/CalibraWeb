@@ -171,6 +171,30 @@ class KpiTests(TestCase):
         self.client.post(url, {'granularidade': 'diaria', 'periodo': '2026-10-20', 'valor': '', 'campo_0': '2', 'campo_1': '200', 'observacao': ''})
         self.assertEqual(str(Medicao.objects.get(indicador=ind, granularidade='semanal', periodo=date(2026, 10, 19)).valor), '1.00')
 
+    def test_colagem_varios_destinos_com_operacao_e_fator(self):
+        from kpi.models import ModeloColagem
+        hmc = Indicador.objects.create(nome='HMC', meta=5, sentido='menor', exibir_diario=True,
+                                       campos='Perdidas\nProduzidas', formula='[Perdidas] / [Produzidas] * 100')
+        qb = Indicador.objects.create(nome='Qb', meta=5, sentido='menor', exibir_diario=True,
+                                      campos='Perdidas\nProduzidas', formula='[Perdidas] / [Produzidas] * 100')
+        modelo = ModeloColagem.objects.create(nome='Multi', linhas='\n'.join([
+            'HC boas || HMC | Produzidas | | + | 1 || Qb | Produzidas | | + | 1',
+            'AR boas || HMC | Produzidas | | + | 1',
+            'HC quebradas || HMC | Perdidas | | + | 1 || Qb | Perdidas | | - | 1',
+            'AR quebradas || HMC | Perdidas | | + | 1',
+            'Ajuste || Qb | Perdidas | | + | 2',
+            'Solta',
+        ]))
+        r = self.client.post(reverse('kpi:colagem'), {
+            'modelo': modelo.pk, 'granularidade': 'diaria', 'data': '2026-10-14', 'confirmar': '1',
+            'texto': '1000\n500\n20\n10\n5\n99'})
+        self.assertFalse(r.context.get('erros'))
+        h = Medicao.objects.get(indicador=hmc, granularidade='diaria')
+        self.assertEqual(h.dados, {'Produzidas': '1500', 'Perdidas': '30'})  # soma das posições
+        self.assertEqual(str(h.valor), '2.00')
+        q = Medicao.objects.get(indicador=qb, granularidade='diaria')
+        self.assertEqual(q.dados, {'Produzidas': '1000', 'Perdidas': '-10'})  # -20 + (5 × 2)
+
     def test_variavel_de_tabela_fica_fora_do_calculo(self):
         from kpi import calculo
         ind = Indicador.objects.create(nome='Q2', meta=5, campos='Motivo | tabela\nPerdidas\nProduzidas')
