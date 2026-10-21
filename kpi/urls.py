@@ -22,4 +22,6 @@ urlpatterns = [
     path('indicadores/<int:pk>/medicao/', views.medicao_salvar_view, name='medicao_salvar'),
     path('medicoes/<int:pk>/excluir/', views.medicao_excluir_view, name='medicao_excluir'),
     path('indicadores/<int:pk>/motivo/', views.motivo_salvar_view, name='motivo_salvar'),
+    path('indicadores/<int:pk>/analise/', views.analise_dados_view, name='analise_dados'),
+    path('indicadores/<int:pk>/analise/salvar/', views.analise_salvar_view, name='analise_salvar'),
 ]

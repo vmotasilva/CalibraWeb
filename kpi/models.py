@@ -151,3 +151,24 @@ class ModeloColagem(models.Model):
 
     def __str__(self):
         return self.nome
+
+
+class AnaliseCausa(models.Model):
+    """Causa e análise (justificativa/plano de ação) de um período fora da meta: dia, semana ou mês."""
+    indicador = models.ForeignKey(Indicador, on_delete=models.CASCADE, related_name='analises')
+    setor = models.ForeignKey(SetorIndicador, null=True, blank=True, on_delete=models.CASCADE, related_name='analises')
+    granularidade = models.CharField('Período', max_length=8, choices=Medicao.GRANULARIDADES)
+    periodo = models.DateField('Período (data de referência)')
+    causa = models.TextField('Causa', blank=True)
+    analise = models.TextField('Análise e ações', blank=True)
+    registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('indicador', 'setor', 'granularidade', 'periodo')]
+        ordering = ['-periodo']
+        verbose_name = 'Causa e análise'
+        verbose_name_plural = 'Causas e análises'
+
+    def __str__(self):
+        return f'{self.indicador} - {self.get_granularidade_display()} {self.periodo:%d/%m/%Y}'

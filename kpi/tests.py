@@ -270,6 +270,41 @@ class KpiTests(TestCase):
         r = self.client.post(url, dict(base, texto='10\n5'))
         self.assertTrue(r.context['erros'])
 
+    def test_causas_e_analises_com_rascunho_dos_registros_dos_dias(self):
+        ind = Indicador.objects.create(nome='Qa', meta=2, sentido='menor', exibir_semanal=True, exibir_diario=True,
+                                       campos='P\nQ', formula='[P] / [Q] * 100')
+        for dia, v in (('2026-10-13', 3), ('2026-10-14', 1), ('2026-10-15', 4)):
+            Medicao.objects.create(indicador=ind, granularidade='diaria', periodo=date.fromisoformat(dia), valor=v)
+        Motivo.objects.create(indicador=ind, granularidade='diaria', data=date(2026, 10, 13), descricao='Risco de garra', quantidade=3)
+        Motivo.objects.create(indicador=ind, granularidade='diaria', data=date(2026, 10, 15), descricao='Risco de garra', quantidade=2)
+        Motivo.objects.create(indicador=ind, granularidade='semanal', data=date(2026, 10, 12), descricao='Duplicado consolidado',
+                              quantidade=9, consolidado=True)
+        salvar = reverse('kpi:analise_salvar', args=[ind.pk])
+        dados = reverse('kpi:analise_dados', args=[ind.pk])
+        r = self.client.post(salvar, {'gran': 'diaria', 'data': '2026-10-13', 'causa': 'Troca de turno', 'analise': 'Treinar'})
+        self.assertTrue(r.json()['ok'])
+        # a semana junta os dias fora da meta, as causas já registradas nos dias e os motivos (sem duplicar os consolidados)
+        j = self.client.get(dados, {'gran': 'semanal', 'data': '2026-10-15'}).json()
+        self.assertEqual(j['data'], '2026-10-12')  # normalizada para a segunda-feira
+        self.assertIsNone(j['existente'])
+        self.assertIn('13/10 (3)', j['rascunho'])
+        self.assertIn('15/10 (4)', j['rascunho'])
+        self.assertNotIn('14/10 (1)', j['rascunho'])
+        self.assertIn('- 13/10: Troca de turno Treinar', j['rascunho'])
+        self.assertIn('Risco de garra (5)', j['rascunho'])
+        self.assertNotIn('Duplicado', j['rascunho'])
+        # o mês também recolhe as análises das semanas
+        self.client.post(salvar, {'gran': 'semanal', 'data': '2026-10-12', 'causa': 'Semana ruim'})
+        m = self.client.get(dados, {'gran': 'mensal', 'data': '2026-10-20'}).json()
+        self.assertIn('semana de 12/10: Semana ruim', m['rascunho'])
+        # existente volta preenchido; vazio remove; painel entrega o mapa das análises
+        self.assertEqual(self.client.get(dados, {'gran': 'diaria', 'data': '2026-10-13'}).json()['existente']['causa'], 'Troca de turno')
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d' % ind.pk)
+        self.assertIn('2026-10-13', r.context['analises_js'][str(ind.pk)]['diaria'])
+        self.client.post(salvar, {'gran': 'diaria', 'data': '2026-10-13', 'causa': '', 'analise': ''})
+        self.assertFalse(Medicao.objects.none().exists() or ind.analises.filter(granularidade='diaria').exists())
+        self.assertEqual(self.client.post(salvar, {'gran': 'x', 'data': '2026-10-13'}).status_code, 400)
+
     def test_variavel_de_tabela_fica_fora_do_calculo(self):
         from kpi import calculo
         ind = Indicador.objects.create(nome='Q2', meta=5, campos='Motivo | tabela\nPerdidas\nProduzidas')

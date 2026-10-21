@@ -528,6 +528,7 @@ class NavigationPermission(models.Model):
             ("nav_gestao_kpi", "NAV: Gestão / Seção KPI"),
             ("nav_kpi_bloco_painel", "NAV: KPI / Bloco Painel de Indicadores"),
             ("nav_kpi_painel", "NAV: KPI / Ver Painel de Indicadores"),
+            ("nav_kpi_analise", "NAV: KPI / Registrar Causas e Análises"),
             ("nav_kpi_lancar", "NAV: KPI / Lançar Valores e Motivos"),
             ("nav_kpi_lancamento_excluir", "NAV: KPI / Excluir Lançamento"),
             ("nav_kpi_bloco_importacao", "NAV: KPI / Bloco Importação de Planilhas"),

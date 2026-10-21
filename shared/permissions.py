@@ -270,7 +270,13 @@ NAV_STRUCTURE = [
                 "nome": "Painel de Indicadores",
                 "perm": "core.nav_kpi_bloco_painel",
                 "funcoes": [
-                    {"nome": "Ver Painel de Indicadores", "view_name": "kpi:painel", "perm": "core.nav_kpi_painel"},
+                    {"nome": "Ver Painel de Indicadores", "view_name": ["kpi:painel", "kpi:analise_dados"], "perm": "core.nav_kpi_painel"},
+                    {
+                        "nome": "Registrar Causas e Análises",
+                        "view_name": "kpi:analise_salvar",
+                        "perm": "core.nav_kpi_analise",
+                        "descricao": "Registra a causa e a análise dos períodos fora da meta (dia, semana e mês) e remove os registros existentes.",
+                    },
                     {"nome": "Lançar Valores e Motivos", "view_name": ["kpi:medicao_salvar", "kpi:motivo_salvar"], "perm": "core.nav_kpi_lancar"},
                     {"nome": "Excluir Lançamento", "view_name": "kpi:medicao_excluir", "perm": "core.nav_kpi_lancamento_excluir"},
                 ],

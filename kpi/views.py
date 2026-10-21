@@ -198,9 +198,9 @@ def _motivos(ind, inicio, fim, setor_id, get, rotulo_acum):
 @login_required
 def painel_view(request):
     inicio, fim, filtro = _filtro_motivos(request.GET)
-    abas, charts, motivos_js, campos_js = [], {}, {}, {}
+    abas, charts, motivos_js, campos_js, analises_js = [], {}, {}, {}, {}
     ativo_req = request.GET.get('ind')
-    for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos', 'setores'):
+    for ind in Indicador.objects.filter(ativo=True).prefetch_related('medicoes', 'motivos', 'setores', 'analises'):
         todas = list(ind.medicoes.all())
         setores = list(ind.setores.all())
         # setor selecionado só vale para o indicador da aba ativa; sem setor = acompanhamento geral
@@ -227,6 +227,11 @@ def painel_view(request):
             'unidade': ind.unidade, 'setor': setor_id or '', 'setor_nome': setor.nome if setor else '',
         }
         charts[str(ind.pk)] = {g: _serie(ind, g, meds, meta) for g in ind.graficos()}
+        analises_js[str(ind.pk)] = {}
+        for a in ind.analises.all():
+            if a.setor_id == setor_id:
+                analises_js[str(ind.pk)].setdefault(a.granularidade, {})[a.periodo.isoformat()] = {
+                    'c': a.causa[:140], 'a': bool(a.analise.strip())}
         motivos_js[str(ind.pk)] = [
             {'g': m.granularidade, 'd': m.data.isoformat(), 'desc': m.descricao, 'qtd': str(m.quantidade)}
             for m in ind.motivos.all() if m.setor_id == setor_id
@@ -248,10 +253,11 @@ def painel_view(request):
     ok = sum(1 for a in abas if a['atingiu'] is True)
     fora = sum(1 for a in abas if a['atingiu'] is False)
     return render(request, 'kpi/painel.html', {
-        'abas': abas, 'charts': charts, 'campos_js': campos_js, 'motivos_js': motivos_js, 'ativo_pk': ativo_pk, 'filtro': filtro, 'periodos_motivos': PERIODOS_MOTIVOS,
+        'abas': abas, 'charts': charts, 'campos_js': campos_js, 'analises_js': analises_js, 'motivos_js': motivos_js, 'ativo_pk': ativo_pk, 'filtro': filtro, 'periodos_motivos': PERIODOS_MOTIVOS,
         'total': total, 'ok': ok, 'fora': fora, 'sem_dado': total - ok - fora,
         'pode_editar_dados': has_view_access(request.user, 'kpi:medicao_salvar'),
         'pode_excluir_dados': has_view_access(request.user, 'kpi:medicao_excluir'),
+        'pode_analisar': has_view_access(request.user, 'kpi:analise_salvar'),
     })
 
 
@@ -541,3 +547,101 @@ def colagem_modelo_excluir_view(request, pk):
     get_object_or_404(ModeloColagem, pk=pk).delete()
     messages.success(request, 'Modelo excluído.')
     return redirect('kpi:colagem_modelos')
+
+
+# ---------------------------------------------------------------- causas e análises (períodos fora da meta)
+def _janela(gran, periodo):
+    if gran == 'semanal':
+        return periodo, periodo + datetime.timedelta(days=6)
+    if gran == 'mensal':
+        return periodo.replace(day=1), periodo
+    return periodo, periodo
+
+
+def _num(v):
+    return f'{Decimal(v):.2f}'.rstrip('0').rstrip('.').replace('.', ',')
+
+
+def _rascunho_analise(ind, setor_id, gran, periodo, meta):
+    """Texto-base da justificativa: reúne o que foi apontado nos registros dos dias (e semanas) do período."""
+    from kpi.models import AnaliseCausa
+    ini, fim = _janela(gran, periodo)
+    linhas = []
+    if gran != 'diaria':
+        dias = Medicao.objects.filter(indicador=ind, setor_id=setor_id, granularidade='diaria',
+                                      periodo__range=(ini, fim)).order_by('periodo')
+        fora = [m for m in dias if not ind.atingiu(m.valor, meta)]
+        if fora:
+            linhas.append('Dias fora da meta: ' + ', '.join(f'{m.periodo:%d/%m} ({_num(m.valor)})' for m in fora) + '.')
+        grans = ['diaria'] + (['semanal'] if gran == 'mensal' else [])
+        for a in AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade__in=grans,
+                                             periodo__range=(ini, fim)).order_by('periodo'):
+            texto = ' '.join(x.strip() for x in (a.causa, a.analise) if x.strip())
+            if texto:
+                rotulo = f'{a.periodo:%d/%m}' if a.granularidade == 'diaria' else f'semana de {a.periodo:%d/%m}'
+                linhas.append(f'- {rotulo}: {texto}')
+    soma = {}
+    for desc, q in Motivo.objects.filter(indicador=ind, setor_id=setor_id, data__range=(ini, fim),
+                                         consolidado=False).values_list('descricao', 'quantidade'):
+        soma[desc.strip()] = soma.get(desc.strip(), Decimal(0)) + q
+    if soma:
+        top = sorted(soma.items(), key=lambda x: x[1], reverse=True)[:5]
+        linhas.append('Principais motivos registrados: ' + '; '.join(f'{d} ({_num(q)})' for d, q in top) + '.')
+    return '\n'.join(linhas)
+
+
+def _parametros_analise(request, ind, origem):
+    """(gran, periodo, setor, erro) a partir do GET/POST."""
+    gran = origem.get('gran', '')
+    try:
+        data = datetime.date.fromisoformat(origem.get('data', ''))
+    except ValueError:
+        return None, None, None, 'Data inválida.'
+    if gran not in JANELAS:
+        return None, None, None, 'Período inválido.'
+    setor = None
+    bruto = (origem.get('setor') or '').strip()
+    if bruto:
+        setor = ind.setores.filter(pk=bruto).first() if bruto.isdigit() else None
+        if setor is None:
+            return None, None, None, 'Setor inválido.'
+    return gran, _normalizar(gran, data), setor, None
+
+
+@login_required
+def analise_dados_view(request, pk):
+    from django.http import JsonResponse
+    from kpi.models import AnaliseCausa
+    ind = get_object_or_404(Indicador, pk=pk)
+    gran, periodo, setor, erro = _parametros_analise(request, ind, request.GET)
+    if erro:
+        return JsonResponse({'erro': erro}, status=400)
+    setor_id = setor.pk if setor else None
+    meta = setor.meta_efetiva if setor else ind.meta
+    med = Medicao.objects.filter(indicador=ind, setor_id=setor_id, granularidade=gran, periodo=periodo).first()
+    atual = AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade=gran, periodo=periodo).first()
+    return JsonResponse({
+        'rotulo': _rotulo(gran, periodo), 'data': periodo.isoformat(), 'meta': float(meta), 'unidade': ind.unidade,
+        'valor': float(med.valor) if med else None,
+        'atingiu': ind.atingiu(med.valor, meta) if med else None,
+        'existente': {'causa': atual.causa, 'analise': atual.analise} if atual else None,
+        'rascunho': _rascunho_analise(ind, setor_id, gran, periodo, meta),
+    })
+
+
+@login_required
+@require_POST
+def analise_salvar_view(request, pk):
+    from django.http import JsonResponse
+    from kpi.models import AnaliseCausa
+    ind = get_object_or_404(Indicador, pk=pk)
+    gran, periodo, setor, erro = _parametros_analise(request, ind, request.POST)
+    if erro:
+        return JsonResponse({'erro': erro}, status=400)
+    causa, analise = request.POST.get('causa', '').strip(), request.POST.get('analise', '').strip()
+    filtro = dict(indicador=ind, setor=setor, granularidade=gran, periodo=periodo)
+    if not causa and not analise:
+        AnaliseCausa.objects.filter(**filtro).delete()
+        return JsonResponse({'ok': True, 'removida': True})
+    AnaliseCausa.objects.update_or_create(**filtro, defaults={'causa': causa, 'analise': analise, 'registrado_por': request.user})
+    return JsonResponse({'ok': True, 'data': periodo.isoformat(), 'causa': causa[:140], 'tem_analise': bool(analise)})
