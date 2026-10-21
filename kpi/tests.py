@@ -157,6 +157,13 @@ class KpiTests(TestCase):
             self.client.post(reverse('kpi:medicao_excluir', args=[m.pk]))
         self.assertFalse(Medicao.objects.filter(pk=mes.pk).exists())
 
+    def test_variavel_de_tabela_fica_fora_do_calculo(self):
+        from kpi import calculo
+        ind = Indicador.objects.create(nome='Q2', meta=5, campos='Motivo | tabela\nPerdidas\nProduzidas')
+        self.assertEqual(calculo.lista_campos(ind), ['Perdidas', 'Produzidas'])
+        self.assertEqual(calculo.lista_campos_tabela(ind), ['Motivo'])
+        self.assertEqual(calculo.resolver_aliases('Var 01 / Var 02', calculo.lista_campos(ind)), '[Perdidas] / [Produzidas]')
+
     def test_modelos_e_importacao(self):
         import io
         from openpyxl import Workbook, load_workbook

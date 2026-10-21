@@ -65,7 +65,8 @@
     function variaveis() {
         var vistos = {}, lista = [];
         campos.value.split('\n').forEach(function (l) {
-            var nome = l.trim();
+            var partes = l.split('|'), nome = partes[0].trim(), marca = (partes[1] || '').trim().toLowerCase();
+            if (marca === 'tabela' || marca === 'texto') return;  // variável de tabela (ex.: Motivo): fora do cálculo
             if (nome && !vistos[nome.toLowerCase()]) { vistos[nome.toLowerCase()] = 1; lista.push(nome); }
         });
         return lista.map(function (nome, i) { return {nome: nome, rotulo: 'Var ' + String(i + 1).padStart(2, '0')}; });

@@ -184,7 +184,7 @@
                                     {% endif %}
                                 </div>
                                 <table class="table table-sm align-middle mb-2 kpi-top">
-                                    <thead><tr><th style="width:2rem">#</th><th>Motivo</th><th class="text-end">Qtd</th><th style="width:80px">%</th></tr></thead>
+                                    <thead><tr><th style="width:2rem">#</th><th>Motivo</th><th class="text-end">Qtd</th><th style="width:120px">%</th></tr></thead>
                                     <tbody>
                                     {% for t in mt.top %}
                                         <tr>
@@ -192,8 +192,11 @@
                                             <td class="text-nowrap">{{ t.descricao }}</td>
                                             <td class="text-end fw-semibold">{{ t.total|floatformat:"-2" }}</td>
                                             <td>
-                                                <div class="progress" style="height: 14px;" title="{{ t.pct|floatformat:1 }}%">
-                                                    <div class="progress-bar" style="width: {{ t.pct|stringformat:'.1f' }}%">{{ t.pct|floatformat:0 }}%</div>
+                                                <div class="d-flex align-items-center gap-2" title="{{ t.pct|floatformat:1 }}%">
+                                                    <div class="progress flex-shrink-0" style="height: 8px; width: 56px;">
+                                                        <div class="progress-bar" style="width: {{ t.pct|stringformat:'.1f' }}%"></div>
+                                                    </div>
+                                                    <span class="small fw-semibold text-end" style="min-width: 2.6rem;">{{ t.pct|floatformat:0 }}%</span>
                                                 </div>
                                             </td>
                                         </tr>

@@ -32,7 +32,7 @@ class IndicadorForm(forms.ModelForm):
         for name, f in self.fields.items():
             f.widget.attrs['class'] = 'form-check-input' if name == 'ativo' or name.startswith(('exibir_', 'motivos_')) else 'form-control'
         self.fields['campos'].label = 'Variáveis do indicador'
-        self.fields['campos'].help_text = 'Uma variável por linha (ex.: Lentes perdidas). A ordem define Var 01, Var 02... Elas são lançadas a cada dia, semana ou mês.'
+        self.fields['campos'].help_text = 'Uma variável por linha (ex.: Lentes perdidas). A ordem define Var 01, Var 02... Elas são lançadas a cada dia, semana ou mês. Para uma variável só de tabela (ex.: Motivo), escreva "Motivo | tabela".'
         self.fields['campos'].widget.attrs['placeholder'] = 'Lentes perdidas\nLentes produzidas'
         self.fields['formula'].label = 'Memória de cálculo'
         self.fields['formula'].help_text = 'Use as variáveis pelo nome ou por Var 01, Var 02... Ex.: (Var 01 / Var 02) * 100. Digite para buscar as variáveis.'

@@ -11,15 +11,26 @@ _OPS = {
 }
 
 
-def lista_campos(ind):
-    """Nomes dos campos do indicador (um por linha no cadastro), sem repetições."""
+def _linhas_campos(ind):
+    """(nome, é_de_tabela) por linha do cadastro. "Nome | tabela" marca uma variável de tabela (ex.: Motivo)."""
     vistos, saida = set(), []
     for linha in (ind.campos or '').splitlines():
-        nome = linha.strip()
+        nome, _, marca = linha.partition('|')
+        nome = nome.strip()
         if nome and nome.lower() not in vistos:
             vistos.add(nome.lower())
-            saida.append(nome)
+            saida.append((nome, marca.strip().lower() in ('tabela', 'texto')))
     return saida
+
+
+def lista_campos(ind):
+    """Variáveis numéricas do indicador (Var 01, Var 02...): lançadas por período e usadas na memória de cálculo."""
+    return [n for n, tabela in _linhas_campos(ind) if not tabela]
+
+
+def lista_campos_tabela(ind):
+    """Variáveis de tabela (ex.: Motivo): alimentam só as tabelas Top motivos, fora de cálculo e lançamento de valores."""
+    return [n for n, tabela in _linhas_campos(ind) if tabela]
 
 
 _ALIAS = re.compile(r'\bvar\s*0*(\d+)\b', re.IGNORECASE)
