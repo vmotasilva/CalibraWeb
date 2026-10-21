@@ -519,7 +519,8 @@ def colagem_modelo_form_view(request, pk=None):
             return redirect('kpi:colagem_modelos')
     return render(request, 'kpi/colagem_modelo_form.html', {
         'modelo': modelo, 'nome': nome, 'linhas': linhas_txt, 'erros': erros,
-        'indicadores': Indicador.objects.filter(ativo=True).prefetch_related('setores')})
+        'ind_dados': {i.nome: {'variaveis': calculo.lista_campos(i), 'setores': [x.nome for x in i.setores.all()]}
+                      for i in Indicador.objects.filter(ativo=True).prefetch_related('setores')}})
 
 
 @login_required

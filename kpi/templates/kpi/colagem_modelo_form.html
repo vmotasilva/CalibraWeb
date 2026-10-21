@@ -2,59 +2,149 @@
 {% block title %}KPI - Modelo de colagem - Calibra QMS{% endblock %}
 
 {% block content %}
-<div class="container py-3" style="max-width: 900px;">
+<div class="container py-3" style="max-width: 1100px;">
     <h4 class="mb-3"><i class="bi bi-diagram-3 me-2"></i>{% if modelo %}Editar{% else %}Novo{% endif %} modelo de colagem</h4>
     {% if erros %}<div class="alert alert-danger"><ul class="mb-0 small">{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
-    <form method="post" class="card card-body">
+    <form method="post" class="card card-body" id="modForm">
         {% csrf_token %}
         <div class="mb-3">
             <label class="form-label" for="modNome">Nome do modelo</label>
             <input class="form-control" name="nome" id="modNome" maxlength="100" value="{{ nome }}" required>
         </div>
-        <div class="row g-3">
-            <div class="col-lg-7">
-                <label class="form-label" for="modLinhas">Posições (uma por linha, na ordem em que os números são colados)</label>
-                <textarea class="form-control font-monospace" name="linhas" id="modLinhas" rows="16" required placeholder="Lentes produzidas | Quebras | Lentes produzidas&#10;Lentes perdidas | Quebras | Lentes perdidas&#10;Pedidos do dia">{{ linhas }}</textarea>
-                <details class="mt-2">
-                    <summary class="small text-primary" style="cursor: pointer;">Gerar as posições a partir da tabela de origem</summary>
-                    <div class="mt-2">
-                        <textarea class="form-control form-control-sm font-monospace" id="modOrigem" rows="5" placeholder="Cole aqui as linhas da tabela de origem (descrição e valor). Uso só a primeira coluna como rótulo."></textarea>
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="modGerar">Gerar posições</button>
-                    </div>
-                </details>
-                <div class="form-text">
-                    Formato: <code>Rótulo | Indicador | Variável | Setor</code>. Só o rótulo = a posição é lida mas não alimenta nada.
-                    Variável vazia ou <code>Valor</code> = o número é o valor do indicador. Setor é opcional.
-                </div>
+        <textarea name="linhas" id="modLinhas" class="d-none">{{ linhas }}</textarea>
+
+        <div class="d-flex justify-content-between align-items-end mb-2">
+            <div>
+                <div class="fw-semibold">Posições, na ordem em que os números são colados</div>
+                <small class="text-muted">Escolha para cada posição o indicador e a variável que ela alimenta. Sem indicador, a posição é lida mas não alimenta nada.</small>
             </div>
-            <div class="col-lg-5">
-                <div class="small fw-semibold mb-1">Indicadores e variáveis disponíveis</div>
-                <div class="border rounded p-2 small" style="max-height: 360px; overflow: auto;">
-                    {% for i in indicadores %}
-                    <div class="mb-2">
-                        <strong>{{ i.nome }}</strong>
-                        <div class="text-muted">Variáveis: {% for c in i.campos.splitlines %}{{ c }}{% if not forloop.last %}; {% endif %}{% empty %}—{% endfor %}</div>
-                        {% if i.setores.all %}<div class="text-muted">Setores: {% for s in i.setores.all %}{{ s.nome }}{% if not forloop.last %}; {% endif %}{% endfor %}</div>{% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+            <span class="badge text-bg-secondary" id="modContagem"></span>
         </div>
+
+        <div class="table-responsive border rounded" style="max-height: 520px; overflow: auto;">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="table-light" style="position: sticky; top: 0; z-index: 1;">
+                    <tr>
+                        <th style="width: 3rem;">#</th>
+                        <th>Rótulo (como aparece na origem)</th>
+                        <th style="width: 20%;">Indicador</th>
+                        <th style="width: 20%;">Variável</th>
+                        <th style="width: 14%;">Setor</th>
+                        <th style="width: 6.5rem;"></th>
+                    </tr>
+                </thead>
+                <tbody id="modGrade"></tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-start mt-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="modAdd"><i class="bi bi-plus-lg me-1"></i>Adicionar posição</button>
+            <details class="text-end" style="max-width: 60%;">
+                <summary class="small text-primary" style="cursor: pointer;">Gerar as posições a partir da tabela de origem</summary>
+                <div class="mt-2 text-start">
+                    <textarea class="form-control form-control-sm font-monospace" id="modOrigem" rows="4" placeholder="Cole aqui as linhas da tabela de origem (descrição e valor). Uso só a primeira coluna como rótulo."></textarea>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="modGerar">Gerar posições</button>
+                </div>
+            </details>
+        </div>
+
         <div class="d-flex justify-content-between mt-4">
             <a href="{% url 'kpi:colagem_modelos' %}" class="btn btn-outline-secondary">Cancelar</a>
             <button class="btn btn-primary" type="submit">Salvar modelo</button>
         </div>
     </form>
 </div>
+{{ ind_dados|json_script:"kpi-ind-dados" }}
 <script>
-document.getElementById('modGerar').addEventListener('click', function () {
-    var saida = document.getElementById('modOrigem').value.split('\n').map(function (l) {
-        return l.split('\t')[0].trim();
-    }).filter(Boolean);
-    if (!saida.length) return;
-    var alvo = document.getElementById('modLinhas');
-    if (alvo.value.trim() && !confirm('Substituir as posições atuais pelas ' + saida.length + ' geradas?')) return;
-    alvo.value = saida.join('\n');
-});
+(function () {
+    var DADOS = JSON.parse(document.getElementById('kpi-ind-dados').textContent);
+    var grade = document.getElementById('modGrade'), area = document.getElementById('modLinhas');
+    var VALOR = 'Valor';
+
+    function opcoes(select, itens, atual, vazio) {
+        select.innerHTML = '';
+        if (vazio !== undefined) { var o = document.createElement('option'); o.value = ''; o.textContent = vazio; select.appendChild(o); }
+        itens.forEach(function (it) {
+            var o = document.createElement('option');
+            o.value = it.valor; o.textContent = it.rotulo; select.appendChild(o);
+        });
+        var existe = Array.prototype.some.call(select.options, function (o) { return o.value === atual; });
+        select.value = existe ? atual : (vazio !== undefined ? '' : (select.options[0] || {}).value);
+    }
+
+    function sel(classe) { var s = document.createElement('select'); s.className = 'form-select form-select-sm ' + classe; return s; }
+
+    function atualizarDependentes(tr, variavel, setor) {
+        var ind = DADOS[tr.querySelector('.m-ind').value], vs = tr.querySelector('.m-var'), ss = tr.querySelector('.m-setor');
+        vs.disabled = ss.disabled = !ind;
+        if (!ind) { vs.innerHTML = ss.innerHTML = ''; return; }
+        opcoes(vs, [{valor: VALOR, rotulo: 'Valor do indicador'}].concat(ind.variaveis.map(function (v) { return {valor: v, rotulo: v}; })), variavel || VALOR);
+        opcoes(ss, ind.setores.map(function (v) { return {valor: v, rotulo: v}; }), setor || '', 'Geral');
+    }
+
+    function botao(icone, titulo, aoClicar, classe) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'btn btn-sm btn-link p-0 me-1 ' + (classe || 'text-secondary'); b.title = titulo;
+        b.innerHTML = '<i class="bi ' + icone + '"></i>'; b.addEventListener('click', aoClicar);
+        return b;
+    }
+
+    function numerar() {
+        Array.prototype.forEach.call(grade.rows, function (tr, i) { tr.cells[0].textContent = i + 1; });
+        document.getElementById('modContagem').textContent = grade.rows.length + ' posição(ões)';
+    }
+
+    function linha(dados) {
+        dados = dados || {};
+        var tr = grade.insertRow();
+        tr.insertCell().className = 'text-muted';
+        var c = tr.insertCell(), inp = document.createElement('input');
+        inp.className = 'form-control form-control-sm m-rotulo'; inp.value = dados.rotulo || '';
+        c.appendChild(inp);
+        var ci = tr.insertCell(), si = sel('m-ind');
+        opcoes(si, Object.keys(DADOS).map(function (n) { return {valor: n, rotulo: n}; }), dados.ind || '', '— não alimenta —');
+        si.addEventListener('change', function () { atualizarDependentes(tr); });
+        ci.appendChild(si);
+        tr.insertCell().appendChild(sel('m-var'));
+        tr.insertCell().appendChild(sel('m-setor'));
+        atualizarDependentes(tr, dados.variavel, dados.setor);
+        var acoes = tr.insertCell(); acoes.className = 'text-end text-nowrap';
+        acoes.appendChild(botao('bi-arrow-up', 'Subir', function () { if (tr.previousElementSibling) { grade.insertBefore(tr, tr.previousElementSibling); numerar(); } }));
+        acoes.appendChild(botao('bi-arrow-down', 'Descer', function () { if (tr.nextElementSibling) { grade.insertBefore(tr.nextElementSibling, tr); numerar(); } }));
+        acoes.appendChild(botao('bi-trash', 'Remover', function () { tr.remove(); numerar(); }, 'text-danger'));
+        return tr;
+    }
+
+    function carregar(texto) {
+        grade.innerHTML = '';
+        texto.split('\n').forEach(function (l) {
+            if (!l.trim()) return;
+            var p = l.split('|').map(function (x) { return x.trim(); });
+            var ind = DADOS[p[1]] ? p[1] : '';
+            linha({rotulo: p[0], ind: ind, variavel: p[2], setor: p[3]});
+        });
+        numerar();
+    }
+
+    function serializar() {
+        var out = [];
+        Array.prototype.forEach.call(grade.rows, function (tr) {
+            var rotulo = tr.querySelector('.m-rotulo').value.trim().replace(/\|/g, '/') || ('Posição ' + (out.length + 1));
+            var ind = tr.querySelector('.m-ind').value;
+            if (!ind) { out.push(rotulo); return; }
+            out.push([rotulo, ind, tr.querySelector('.m-var').value, tr.querySelector('.m-setor').value].join(' | ').replace(/( \| )+$/, function (m) { return m; }));
+        });
+        area.value = out.join('\n');
+    }
+
+    document.getElementById('modAdd').addEventListener('click', function () { linha(); numerar(); grade.lastElementChild.querySelector('.m-rotulo').focus(); });
+    document.getElementById('modForm').addEventListener('submit', serializar);
+    document.getElementById('modGerar').addEventListener('click', function () {
+        var rotulos = document.getElementById('modOrigem').value.split('\n').map(function (l) { return l.split('\t')[0].trim(); }).filter(Boolean);
+        if (!rotulos.length) return;
+        if (grade.rows.length && !confirm('Substituir as posições atuais pelas ' + rotulos.length + ' geradas?')) return;
+        carregar(rotulos.join('\n'));
+    });
+    carregar(area.value);
+})();
 </script>
 {% endblock %}
