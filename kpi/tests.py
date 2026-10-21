@@ -157,6 +157,20 @@ class KpiTests(TestCase):
             self.client.post(reverse('kpi:medicao_excluir', args=[m.pk]))
         self.assertFalse(Medicao.objects.filter(pk=mes.pk).exists())
 
+    def test_consolidacao_sobrescreve_legado_sem_observacao_e_ignora_periodo_incompleto(self):
+        ind = Indicador.objects.create(nome='Q3', meta=5, sentido='menor', exibir_semanal=True, exibir_diario=True,
+                                       campos='P\nQ', formula='[P] / [Q] * 100')
+        url = reverse('kpi:medicao_salvar', args=[ind.pk])
+        # semana 12/10 já tem valor importado antigo (sem observação) e um dia antigo sem variáveis
+        Medicao.objects.create(indicador=ind, granularidade='semanal', periodo=date(2026, 10, 12), valor=9)
+        Medicao.objects.create(indicador=ind, granularidade='diaria', periodo=date(2026, 10, 13), valor=3)
+        self.client.post(url, {'granularidade': 'diaria', 'periodo': '2026-10-14', 'valor': '', 'campo_0': '1', 'campo_1': '100', 'observacao': ''})
+        self.assertEqual(str(Medicao.objects.get(indicador=ind, granularidade='semanal').valor), '9.00')  # incompleto: intacto
+        # semana seguinte só com dias com variáveis: o valor antigo sem observação é substituído
+        Medicao.objects.create(indicador=ind, granularidade='semanal', periodo=date(2026, 10, 19), valor=9)
+        self.client.post(url, {'granularidade': 'diaria', 'periodo': '2026-10-20', 'valor': '', 'campo_0': '2', 'campo_1': '200', 'observacao': ''})
+        self.assertEqual(str(Medicao.objects.get(indicador=ind, granularidade='semanal', periodo=date(2026, 10, 19)).valor), '1.00')
+
     def test_variavel_de_tabela_fica_fora_do_calculo(self):
         from kpi import calculo
         ind = Indicador.objects.create(nome='Q2', meta=5, campos='Motivo | tabela\nPerdidas\nProduzidas')
@@ -168,9 +182,9 @@ class KpiTests(TestCase):
         from kpi.models import ModeloColagem
         ind = Indicador.objects.create(nome='Quebras', meta=5, sentido='menor', exibir_semanal=True, exibir_diario=True,
                                        campos='Perdidas\nProduzidas', formula='[Perdidas] / [Produzidas] * 100')
-        ModeloColagem.objects.create(nome='Fechamento', linhas='Produzidas | Quebras | Produzidas\nPedidos do dia\nPerdidas | Quebras | Perdidas')
+        modelo = ModeloColagem.objects.create(nome='Fechamento', linhas='Produzidas | Quebras | Produzidas\nPedidos do dia\nPerdidas | Quebras | Perdidas')
         url = reverse('kpi:colagem')
-        base = {'modelo': ModeloColagem.objects.get().pk, 'granularidade': 'diaria', 'data': '2026-10-14', 'texto': '1123\n2139\n29'}
+        base = {'modelo': modelo.pk, 'granularidade': 'diaria', 'data': '2026-10-14', 'texto': '1123\n2139\n29'}
         r = self.client.post(url, base)  # conferir: não grava
         self.assertEqual(len(r.context['itens']), 1)
         self.assertEqual(str(r.context['itens'][0]['valor']), '2.58')
