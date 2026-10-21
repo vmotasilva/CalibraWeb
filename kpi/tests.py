@@ -216,6 +216,30 @@ class KpiTests(TestCase):
         self.assertEqual(linhas[1]['destino'], '+ Quebras · Lentes Perdidas · HMC')
         self.assertEqual(linhas[2]['destinos'], [])
 
+    def test_migracao_service_rate_define_variaveis_e_acrescenta_vinculos(self):
+        import importlib
+        from django.apps import apps
+        from kpi import colagem
+        from kpi.models import ModeloColagem
+        mig = importlib.import_module('kpi.migrations.0014_service_rate_variaveis_e_vinculos')
+        Indicador.objects.create(nome='Late Orders', meta=1, sentido='menor', exibir_diario=True,
+                                 campos='Lentes enviadas', formula='')
+        sr = Indicador.objects.create(nome='Service Rate', meta=95, exibir_diario=True)
+        ModeloColagem.objects.filter(nome='KPI Diário').update(linhas='\n'.join([
+            'TOTAL LENTES - ENVIADAS NO PRAZO',
+            'TOTAL LENTES - ENVIADAS | Late Orders | Lentes enviadas',  # já com vínculo no formato simples
+            'OUTRA',
+        ]))
+        mig.forwards(apps, None)
+        mig.forwards(apps, None)  # idempotente
+        sr.refresh_from_db()
+        self.assertEqual(sr.formula, '[Lentes enviadas no prazo] / [Lentes enviadas] * 100')
+        linhas, erros = colagem.interpretar_modelo(ModeloColagem.objects.get(nome='KPI Diário').linhas)
+        self.assertFalse(erros)
+        self.assertEqual(linhas[0]['destino'], '+ Service Rate · Lentes enviadas no prazo')
+        self.assertEqual(linhas[1]['destino'], '+ Late Orders · Lentes enviadas; + Service Rate · Lentes enviadas')
+        self.assertEqual(linhas[2]['destinos'], [])
+
     def test_variavel_de_tabela_fica_fora_do_calculo(self):
         from kpi import calculo
         ind = Indicador.objects.create(nome='Q2', meta=5, campos='Motivo | tabela\nPerdidas\nProduzidas')
