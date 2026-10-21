@@ -238,6 +238,14 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
         counts["trein_demanda"] = 0
         counts["trein_planejamentos"] = 0
 
+    # KPI: causas e análises dos períodos fora da meta em que o usuário é o responsável
+    try:
+        from kpi.pendencias import pendentes_do_usuario
+
+        counts["kpi_analises"] = pendentes_do_usuario(user)
+    except Exception:
+        counts["kpi_analises"] = 0
+
     counts["total"] = sum(v for k, v in counts.items() if k != "total")
 
     cache.set(cache_key, counts, timeout=60)
@@ -363,6 +371,17 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
                 count=int(counts.get("trein_planejamentos", 0) or 0),
                 url=with_qs(_safe_reverse("procedures:planejamentos_list"), planejamentos_qs),
                 section="Treinamentos",
+            )
+        )
+
+    if can_show("kpi", "kpi:painel") and int(counts.get("kpi_analises", 0) or 0) > 0:
+        items.append(
+            CobrancaItem(
+                key="kpi_analises",
+                label="KPI (causas e análises pendentes dos indicadores fora da meta)",
+                count=int(counts.get("kpi_analises", 0) or 0),
+                url=_safe_reverse("kpi:painel"),
+                section="KPI",
             )
         )
 

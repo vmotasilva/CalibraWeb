@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from kpi import calculo, consolidacao
+from kpi import calculo, consolidacao, pendencias
 from kpi.forms import IndicadorForm, MedicaoForm
 from kpi.models import Indicador, Medicao, Motivo
 from shared.permissions import has_view_access
@@ -225,6 +225,7 @@ def painel_view(request):
             'campos': calculo.lista_campos(ind), 'formula': ind.formula,
             'motivos': [g for g in ('diaria', 'semanal', 'mensal') if ind.permite_motivos(g)],
             'unidade': ind.unidade, 'setor': setor_id or '', 'setor_nome': setor.nome if setor else '',
+            'resp_analise': _nome_usuario(pendencias.responsavel_do_escopo(ind, setor)),
         }
         charts[str(ind.pk)] = {g: _serie(ind, g, meds, meta) for g in ind.graficos()}
         analises_js[str(ind.pk)] = {}
@@ -550,6 +551,10 @@ def colagem_modelo_excluir_view(request, pk):
 
 
 # ---------------------------------------------------------------- causas e análises (períodos fora da meta)
+def _nome_usuario(u):
+    return (u.get_full_name() or u.get_username()) if u else ''
+
+
 def _janela(gran, periodo):
     if gran == 'semanal':
         return periodo, periodo + datetime.timedelta(days=6)

@@ -37,6 +37,10 @@ class Indicador(models.Model):
         'Fórmula do valor', max_length=200, blank=True,
         help_text='Opcional. Calcula o valor a partir dos campos. Ex.: [Lentes perdidas] / [Lentes produzidas] * 100')
     responsavel = models.CharField('Responsável', max_length=120, blank=True)
+    responsavel_analise = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+        verbose_name='Responsável pela causa e análise',
+        help_text='Recebe a cobrança das causas e análises dos períodos fora da meta (geral e setores sem responsável próprio).')
     ordem = models.PositiveIntegerField('Ordem de exibição', default=0, help_text='Define a ordem das abas no painel (menor primeiro).')
     ativo = models.BooleanField('Ativo', default=True)
     criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
@@ -78,6 +82,10 @@ class SetorIndicador(models.Model):
     nome = models.CharField('Setor', max_length=100)
     meta = models.DecimalField('Meta do setor', max_digits=14, decimal_places=2, null=True, blank=True,
                                help_text='Se vazia, vale a meta geral do indicador.')
+    responsavel_analise = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+        verbose_name='Responsável pela causa e análise do setor',
+        help_text='Se vazio, vale o responsável geral do indicador.')
     ordem = models.PositiveIntegerField(default=0)
 
     class Meta:

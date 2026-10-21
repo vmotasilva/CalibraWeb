@@ -394,6 +394,53 @@ class KpiTests(TestCase):
         self.assertIn('- 14/10: A B | C', sem)
         self.assertIsNotNone(fora.pk)
 
+    def test_responsavel_pela_analise_geral_e_por_setor_com_cobranca(self):
+        from django.core.cache import cache
+        from kpi.models import AnaliseCausa, SetorIndicador
+        from kpi.pendencias import pendentes_do_usuario, responsavel_do_escopo
+        from shared.notifications import get_user_cobrancas_counts, get_user_cobrancas_items
+        geral = User.objects.create_user('resp_geral', password='x', first_name='Geral')
+        do_setor = User.objects.create_user('resp_setor', password='x')
+        ind = Indicador.objects.create(nome='Qr', meta=2, sentido='menor', exibir_diario=True)
+        r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), {
+            'nome': 'Qr', 'meta': '2', 'sentido': 'menor', 'periodicidade': 'mensal', 'ativo': 'on', 'exibir_diario': 'on',
+            'responsavel_analise': geral.pk, 'setores_texto': 'HMC | 3 | resp_setor\nAR | | \nMontagem | 1,5'})
+        self.assertEqual(r.status_code, 302, getattr(r, 'context', None) and r.context['form'].errors)
+        ind.refresh_from_db()
+        hmc, ar = ind.setores.get(nome='HMC'), ind.setores.get(nome='AR')
+        self.assertEqual(responsavel_do_escopo(ind, None), geral)
+        self.assertEqual(responsavel_do_escopo(ind, hmc), do_setor)
+        self.assertEqual(responsavel_do_escopo(ind, ar), geral)  # setor sem responsável usa o geral
+        # o formulário volta com o login do responsável do setor e valida logins inexistentes
+        r = self.client.get(reverse('kpi:indicador_editar', args=[ind.pk]))
+        self.assertIn('HMC | 3,00 | resp_setor', r.context['form'].fields['setores_texto'].initial)
+        r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), {
+            'nome': 'Qr', 'meta': '2', 'sentido': 'menor', 'periodicidade': 'mensal', 'ativo': 'on', 'exibir_diario': 'on',
+            'setores_texto': 'HMC | 3 | ninguem'})
+        self.assertEqual(r.status_code, 200)
+        # pendências: geral (meta 2) e HMC (meta 3) em dias fora da meta, sem análise
+        Medicao.objects.create(indicador=ind, granularidade='diaria', periodo=date(2026, 10, 13), valor=5)
+        Medicao.objects.create(indicador=ind, granularidade='diaria', periodo=date(2026, 10, 14), valor=1)
+        Medicao.objects.create(indicador=ind, setor=hmc, granularidade='diaria', periodo=date(2026, 10, 13), valor=4)
+        Medicao.objects.create(indicador=ind, setor=hmc, granularidade='diaria', periodo=date(2026, 10, 14), valor=5)
+        Medicao.objects.create(indicador=ind, setor=ar, granularidade='diaria', periodo=date(2026, 10, 13), valor=9)
+        self.assertEqual(pendentes_do_usuario(geral), 2)  # geral (1) + AR herdado do geral (1)
+        self.assertEqual(pendentes_do_usuario(do_setor), 2)  # HMC (2)
+        AnaliseCausa.objects.create(indicador=ind, setor=hmc, granularidade='diaria', periodo=date(2026, 10, 13), dispensada=True, motivo_dispensa='x')
+        AnaliseCausa.objects.create(indicador=ind, setor=None, granularidade='diaria', periodo=date(2026, 10, 13), causa='ok')
+        self.assertEqual(pendentes_do_usuario(do_setor), 1)
+        self.assertEqual(pendentes_do_usuario(geral), 1)
+        self.assertEqual(pendentes_do_usuario(self.user), 0)
+        # entra na cobrança (sino) de quem é responsável
+        cache.clear()
+        self.assertEqual(get_user_cobrancas_counts(do_setor)['kpi_analises'], 1)
+        cache.clear()
+        self.assertFalse(any(i.key == 'kpi_analises' for i in get_user_cobrancas_items(geral)))  # sem acesso ao KPI não vê
+        geral.is_staff = True
+        geral.save()
+        cache.clear()
+        self.assertTrue(any(i.key == 'kpi_analises' for i in get_user_cobrancas_items(geral)))
+
     def test_consolidacao_usa_media_quando_dias_sem_variaveis_sem_trocar_valor_existente(self):
         from kpi.consolidacao import OBS_MEDIA
         ind = Indicador.objects.create(nome='Qm', meta=2, sentido='menor', exibir_semanal=True, exibir_diario=True,

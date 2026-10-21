@@ -1056,7 +1056,7 @@
             gran = disp[0] || 'mensal';
             var aba = document.querySelector('#kpiTabs [data-ind="' + pk + '"]');
             el('anNome').textContent = aba ? aba.textContent.trim() : '';
-            el('anSetor').textContent = (CAMPOS[pk] || {}).setor_nome ? '· ' + CAMPOS[pk].setor_nome : '';
+            el('anSetor').textContent = ((CAMPOS[pk] || {}).setor_nome ? '· ' + CAMPOS[pk].setor_nome : '') + ((CAMPOS[pk] || {}).resp_analise ? ' · Responsável: ' + CAMPOS[pk].resp_analise : '');
             el('anTodos').checked = false; el('anDisp').checked = false; sel = {};
             mostrar(false); abas(); lista();
             modal('kpiAnaliseModal').show();
