@@ -1,0 +1,28 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI - Modelos de colagem - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 820px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>Modelos de colagem</h4>
+        <div class="d-flex gap-2">
+            <a href="{% url 'kpi:colagem_modelo_novo' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo modelo</a>
+            <a href="{% url 'kpi:colagem' %}" class="btn btn-outline-secondary">Voltar à colagem</a>
+        </div>
+    </div>
+    <p class="text-muted small">Um modelo define, na ordem, o que cada número colado representa e qual indicador/variável ele alimenta.</p>
+    <div class="list-group">
+        {% for m in modelos %}
+        <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div><strong>{{ m.nome }}</strong> <span class="text-muted small">· {{ m.linhas.splitlines|length }} linha(s)</span></div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'kpi:colagem_modelo_editar' m.pk %}"><i class="bi bi-pencil"></i></a>
+                <form method="post" action="{% url 'kpi:colagem_modelo_excluir' m.pk %}" onsubmit="return confirm('Excluir este modelo?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
+            </div>
+        </div>
+        {% empty %}
+        <div class="list-group-item text-muted text-center py-4">Nenhum modelo cadastrado.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

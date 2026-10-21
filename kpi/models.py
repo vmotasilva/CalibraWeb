@@ -134,3 +134,20 @@ class Motivo(models.Model):
 
     def __str__(self):
         return f'{self.indicador} - {self.descricao} ({self.quantidade})'
+
+
+class ModeloColagem(models.Model):
+    """Modelo de colagem: lista ordenada que relaciona cada posição de uma lista de números a um indicador/variável."""
+    nome = models.CharField('Nome do modelo', max_length=100, unique=True)
+    linhas = models.TextField(
+        'Posições', help_text='Uma linha por número colado, na ordem: Rótulo | Indicador | Variável | Setor (opcional).')
+    criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = 'Modelo de colagem'
+        verbose_name_plural = 'Modelos de colagem'
+
+    def __str__(self):
+        return self.nome

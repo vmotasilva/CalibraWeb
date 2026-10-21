@@ -532,6 +532,7 @@ class NavigationPermission(models.Model):
             ("nav_kpi_lancamento_excluir", "NAV: KPI / Excluir Lançamento"),
             ("nav_kpi_bloco_importacao", "NAV: KPI / Bloco Importação de Planilhas"),
             ("nav_kpi_importar", "NAV: KPI / Importar Valores e Tabelas"),
+            ("nav_kpi_colagem", "NAV: KPI / Registro por Colagem"),
             ("nav_kpi_bloco_indicadores", "NAV: KPI / Bloco Cadastro de Indicadores"),
             ("nav_kpi_indicadores", "NAV: KPI / Listar e Detalhar Indicadores"),
             ("nav_kpi_indicador_editar", "NAV: KPI / Criar e Editar Indicador"),

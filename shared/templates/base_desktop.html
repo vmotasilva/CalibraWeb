@@ -418,8 +418,9 @@ CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
 {% if nav_grp_kpi %}
 {% can_nav_view user 'kpi:painel' 'kpi' as nav_kpi_painel %}
 {% can_nav_view user 'kpi:importar' 'kpi' as nav_kpi_importar %}
+{% can_nav_view user 'kpi:colagem' 'kpi' as nav_kpi_colagem %}
 {% can_nav_view user 'kpi:indicadores' 'kpi' as nav_kpi_indic %}
-{% if nav_kpi_painel or nav_kpi_importar or nav_kpi_indic %}
+{% if nav_kpi_painel or nav_kpi_importar or nav_kpi_colagem or nav_kpi_indic %}
 <li>
 <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOKPI" style="cursor: pointer;">
 KPI <i class="bi bi-chevron-down transition-transform rotate-180"></i>
@@ -427,6 +428,7 @@ KPI <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 <ul class="list-unstyled collapse show" id="collapseGESTAOKPI">
 {% if nav_kpi_painel %}<li><a class="dropdown-item" href="{% url 'kpi:painel' %}"><i class="bi bi-speedometer2"></i> Painel de Indicadores</a></li>{% endif %}
 {% if nav_kpi_importar %}<li><a class="dropdown-item" href="{% url 'kpi:importar' %}"><i class="bi bi-upload"></i> Importar Planilhas</a></li>{% endif %}
+{% if nav_kpi_colagem %}<li><a class="dropdown-item" href="{% url 'kpi:colagem' %}"><i class="bi bi-clipboard-data"></i> Registro por Colagem</a></li>{% endif %}
 {% if nav_kpi_indic %}<li><a class="dropdown-item" href="{% url 'kpi:indicadores' %}"><i class="bi bi-bullseye"></i> Cadastro de Indicadores</a></li>{% endif %}
 </ul>
 </li>

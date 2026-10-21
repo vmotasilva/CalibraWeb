@@ -454,3 +454,78 @@ def modelo_importacao_view(request, tipo, gran):
     sufixo = '_' + re.sub(r'[^a-z0-9]+', '_', ind.nome.lower()).strip('_') if ind else ''
     resp['Content-Disposition'] = f'attachment; filename="modelo_kpi_{tipo}_{importacao.NOMES[gran].lower()}{sufixo}.xlsx"'
     return resp
+
+
+@login_required
+def colagem_view(request):
+    """Registro por colagem: escolhe o modelo, o período e cola os números; confere antes de gravar."""
+    from kpi import colagem
+    from kpi.models import ModeloColagem
+    modelos = list(ModeloColagem.objects.all())
+    ctx = {'modelos': modelos, 'gran': request.POST.get('granularidade', 'diaria'),
+           'data': request.POST.get('data') or timezone.localdate().isoformat(),
+           'modelo_id': request.POST.get('modelo', ''), 'texto': request.POST.get('texto', '')}
+    if request.method == 'POST':
+        modelo = next((m for m in modelos if str(m.pk) == ctx['modelo_id']), None)
+        try:
+            data = datetime.date.fromisoformat(ctx['data'])
+        except ValueError:
+            data = None
+        if ctx['gran'] not in JANELAS or modelo is None or data is None:
+            messages.error(request, 'Escolha o modelo, o período e a data.')
+        else:
+            linhas, erros = colagem.interpretar_modelo(modelo.linhas)
+            valores, erros_v = colagem.interpretar_valores(ctx['texto'])
+            erros += erros_v
+            if not erros_v and len(valores) != len(linhas):
+                erros.append(f'O modelo "{modelo.nome}" tem {len(linhas)} posições e a colagem tem {len(valores)} números.')
+            if erros:
+                ctx['erros'] = erros
+            else:
+                gravar = request.POST.get('confirmar') == '1'
+                res = colagem.aplicar(linhas, valores, ctx['gran'], data, request.user, gravar)
+                ctx.update(res, linhas=[dict(l, valor=v) for l, v in zip(linhas, valores)], gravado=gravar)
+                if gravar:
+                    messages.success(request, f'{res["salvos"]} indicador(es) atualizado(s) em {_rotulo(ctx["gran"], res["periodo"])}.')
+    return render(request, 'kpi/colagem.html', ctx)
+
+
+@login_required
+def colagem_modelos_view(request):
+    from kpi.models import ModeloColagem
+    return render(request, 'kpi/colagem_modelos.html', {'modelos': ModeloColagem.objects.all()})
+
+
+@login_required
+def colagem_modelo_form_view(request, pk=None):
+    from kpi import colagem
+    from kpi.models import ModeloColagem
+    modelo = get_object_or_404(ModeloColagem, pk=pk) if pk else None
+    erros = []
+    nome = request.POST.get('nome', modelo.nome if modelo else '')
+    linhas_txt = request.POST.get('linhas', modelo.linhas if modelo else '')
+    if request.method == 'POST':
+        nome = nome.strip()
+        _, erros = colagem.interpretar_modelo(linhas_txt)
+        if not nome:
+            erros.insert(0, 'Informe o nome do modelo.')
+        elif ModeloColagem.objects.filter(nome__iexact=nome).exclude(pk=pk).exists():
+            erros.insert(0, 'Já existe um modelo com esse nome.')
+        if not erros:
+            modelo = modelo or ModeloColagem(criado_por=request.user)
+            modelo.nome, modelo.linhas = nome[:100], linhas_txt.strip()
+            modelo.save()
+            messages.success(request, 'Modelo salvo.')
+            return redirect('kpi:colagem_modelos')
+    return render(request, 'kpi/colagem_modelo_form.html', {
+        'modelo': modelo, 'nome': nome, 'linhas': linhas_txt, 'erros': erros,
+        'indicadores': Indicador.objects.filter(ativo=True).prefetch_related('setores')})
+
+
+@login_required
+@require_POST
+def colagem_modelo_excluir_view(request, pk):
+    from kpi.models import ModeloColagem
+    get_object_or_404(ModeloColagem, pk=pk).delete()
+    messages.success(request, 'Modelo excluído.')
+    return redirect('kpi:colagem_modelos')

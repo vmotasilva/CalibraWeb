@@ -164,6 +164,29 @@ class KpiTests(TestCase):
         self.assertEqual(calculo.lista_campos_tabela(ind), ['Motivo'])
         self.assertEqual(calculo.resolver_aliases('Var 01 / Var 02', calculo.lista_campos(ind)), '[Perdidas] / [Produzidas]')
 
+    def test_registro_por_colagem_distribui_numeros_pelas_variaveis(self):
+        from kpi.models import ModeloColagem
+        ind = Indicador.objects.create(nome='Quebras', meta=5, sentido='menor', exibir_semanal=True, exibir_diario=True,
+                                       campos='Perdidas\nProduzidas', formula='[Perdidas] / [Produzidas] * 100')
+        ModeloColagem.objects.create(nome='Fechamento', linhas='Produzidas | Quebras | Produzidas\nPedidos do dia\nPerdidas | Quebras | Perdidas')
+        url = reverse('kpi:colagem')
+        base = {'modelo': ModeloColagem.objects.get().pk, 'granularidade': 'diaria', 'data': '2026-10-14', 'texto': '1123\n2139\n29'}
+        r = self.client.post(url, base)  # conferir: não grava
+        self.assertEqual(len(r.context['itens']), 1)
+        self.assertEqual(str(r.context['itens'][0]['valor']), '2.58')
+        self.assertFalse(Medicao.objects.filter(indicador=ind).exists())
+        self.client.post(url, dict(base, confirmar='1'))
+        dia = Medicao.objects.get(indicador=ind, granularidade='diaria')
+        self.assertEqual(dia.dados, {'Produzidas': '1123', 'Perdidas': '29'})
+        self.assertEqual(Medicao.objects.filter(indicador=ind, granularidade='semanal').count(), 1)  # consolidação
+        # quantidade errada de números é recusada
+        r = self.client.post(url, dict(base, texto='1\n2'))
+        self.assertTrue(any('3 posições' in e for e in r.context['erros']))
+        # modelo com variável inexistente é recusado ao salvar
+        r = self.client.post(reverse('kpi:colagem_modelo_novo'), {'nome': 'Ruim', 'linhas': 'X | Quebras | Inexistente'})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(ModeloColagem.objects.filter(nome='Ruim').exists())
+
     def test_modelos_e_importacao(self):
         import io
         from openpyxl import Workbook, load_workbook

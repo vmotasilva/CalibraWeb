@@ -1,0 +1,60 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI - Modelo de colagem - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 900px;">
+    <h4 class="mb-3"><i class="bi bi-diagram-3 me-2"></i>{% if modelo %}Editar{% else %}Novo{% endif %} modelo de colagem</h4>
+    {% if erros %}<div class="alert alert-danger"><ul class="mb-0 small">{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+    <form method="post" class="card card-body">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label class="form-label" for="modNome">Nome do modelo</label>
+            <input class="form-control" name="nome" id="modNome" maxlength="100" value="{{ nome }}" required>
+        </div>
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <label class="form-label" for="modLinhas">Posições (uma por linha, na ordem em que os números são colados)</label>
+                <textarea class="form-control font-monospace" name="linhas" id="modLinhas" rows="16" required placeholder="Lentes produzidas | Quebras | Lentes produzidas&#10;Lentes perdidas | Quebras | Lentes perdidas&#10;Pedidos do dia">{{ linhas }}</textarea>
+                <details class="mt-2">
+                    <summary class="small text-primary" style="cursor: pointer;">Gerar as posições a partir da tabela de origem</summary>
+                    <div class="mt-2">
+                        <textarea class="form-control form-control-sm font-monospace" id="modOrigem" rows="5" placeholder="Cole aqui as linhas da tabela de origem (descrição e valor). Uso só a primeira coluna como rótulo."></textarea>
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="modGerar">Gerar posições</button>
+                    </div>
+                </details>
+                <div class="form-text">
+                    Formato: <code>Rótulo | Indicador | Variável | Setor</code>. Só o rótulo = a posição é lida mas não alimenta nada.
+                    Variável vazia ou <code>Valor</code> = o número é o valor do indicador. Setor é opcional.
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="small fw-semibold mb-1">Indicadores e variáveis disponíveis</div>
+                <div class="border rounded p-2 small" style="max-height: 360px; overflow: auto;">
+                    {% for i in indicadores %}
+                    <div class="mb-2">
+                        <strong>{{ i.nome }}</strong>
+                        <div class="text-muted">Variáveis: {% for c in i.campos.splitlines %}{{ c }}{% if not forloop.last %}; {% endif %}{% empty %}—{% endfor %}</div>
+                        {% if i.setores.all %}<div class="text-muted">Setores: {% for s in i.setores.all %}{{ s.nome }}{% if not forloop.last %}; {% endif %}{% endfor %}</div>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{% url 'kpi:colagem_modelos' %}" class="btn btn-outline-secondary">Cancelar</a>
+            <button class="btn btn-primary" type="submit">Salvar modelo</button>
+        </div>
+    </form>
+</div>
+<script>
+document.getElementById('modGerar').addEventListener('click', function () {
+    var saida = document.getElementById('modOrigem').value.split('\n').map(function (l) {
+        return l.split('\t')[0].trim();
+    }).filter(Boolean);
+    if (!saida.length) return;
+    var alvo = document.getElementById('modLinhas');
+    if (alvo.value.trim() && !confirm('Substituir as posições atuais pelas ' + saida.length + ' geradas?')) return;
+    alvo.value = saida.join('\n');
+});
+</script>
+{% endblock %}

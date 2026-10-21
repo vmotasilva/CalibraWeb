@@ -282,6 +282,12 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_kpi_bloco_importacao",
                 "funcoes": [
                     {"nome": "Importar Valores e Tabelas", "view_name": ["kpi:importar", "kpi:modelo_importacao"], "perm": "core.nav_kpi_importar"},
+                    {
+                        "nome": "Registro por Colagem",
+                        "view_name": ["kpi:colagem", "kpi:colagem_modelos", "kpi:colagem_modelo_novo", "kpi:colagem_modelo_editar", "kpi:colagem_modelo_excluir"],
+                        "perm": "core.nav_kpi_colagem",
+                        "descricao": "Cola uma lista de números e distribui nas variáveis dos indicadores conforme o modelo; também cria e edita os modelos de colagem.",
+                    },
                 ],
             },
             {

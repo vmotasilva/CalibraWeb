@@ -1,0 +1,91 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI - Registro por colagem - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 960px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Registro por colagem</h4>
+        <div class="d-flex gap-2">
+            <a href="{% url 'kpi:colagem_modelos' %}" class="btn btn-outline-primary"><i class="bi bi-diagram-3 me-1"></i>Modelos de colagem</a>
+            <a href="{% url 'kpi:painel' %}" class="btn btn-outline-secondary">Painel</a>
+        </div>
+    </div>
+
+    {% if erros %}
+    <div class="alert alert-danger"><ul class="mb-0 small">{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>
+    {% endif %}
+
+    <form method="post" class="card card-body mb-3">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-5">
+                <label class="form-label" for="colModelo">Modelo (posições e variáveis)</label>
+                <select class="form-select" name="modelo" id="colModelo" required>
+                    <option value="">Selecione…</option>
+                    {% for m in modelos %}<option value="{{ m.pk }}" {% if m.pk|stringformat:'s' == modelo_id %}selected{% endif %}>{{ m.nome }}</option>{% endfor %}
+                </select>
+                {% if not modelos %}<div class="form-text">Nenhum modelo ainda. <a href="{% url 'kpi:colagem_modelo_novo' %}">Criar o primeiro</a>.</div>{% endif %}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label" for="colGran">Período</label>
+                <select class="form-select" name="granularidade" id="colGran">
+                    <option value="diaria" {% if gran == 'diaria' %}selected{% endif %}>Dia</option>
+                    <option value="semanal" {% if gran == 'semanal' %}selected{% endif %}>Semana</option>
+                    <option value="mensal" {% if gran == 'mensal' %}selected{% endif %}>Mês</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="colData">Data de referência</label>
+                <input type="date" class="form-control" name="data" id="colData" value="{{ data }}" required>
+            </div>
+            <div class="col-12">
+                <label class="form-label" for="colTexto">Cole os números (um por linha, na ordem do modelo)</label>
+                <textarea class="form-control font-monospace" name="texto" id="colTexto" rows="10" placeholder="1123&#10;2139&#10;1130&#10;…">{{ texto }}</textarea>
+            </div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-3">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-search me-1"></i>Conferir</button>
+            {% if itens and not gravado %}<button type="submit" name="confirmar" value="1" class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i>Gravar nos indicadores</button>{% endif %}
+        </div>
+    </form>
+
+    {% if linhas %}
+    {% for a in avisos %}<div class="alert alert-warning py-2 small mb-2">{{ a }}</div>{% endfor %}
+
+    {% if itens %}
+    <div class="card mb-3"><div class="card-body">
+        <h6 class="mb-2">{% if gravado %}Gravado{% else %}O que será gravado{% endif %} — {{ periodo|date:"d/m/Y" }}</h6>
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Indicador</th><th>Variáveis</th><th class="text-end">Valor</th><th></th></tr></thead>
+            <tbody>
+            {% for it in itens %}
+                <tr>
+                    <td>{{ it.ind.nome }}{% if it.setor %} <span class="text-muted">· {{ it.setor.nome }}</span>{% endif %}</td>
+                    <td class="small text-muted">{% for k, v in it.dados.items %}{{ k }}: {{ v|floatformat:"-2" }}{% if not forloop.last %}; {% endif %}{% endfor %}</td>
+                    <td class="text-end fw-bold">{{ it.valor|floatformat:"-2" }} {{ it.ind.unidade }}</td>
+                    <td class="small text-muted">{% if it.existe %}atualiza{% else %}novo{% endif %}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+    {% endif %}
+
+    <div class="card"><div class="card-body">
+        <h6 class="mb-2">Leitura da colagem</h6>
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th style="width:3rem">#</th><th>Posição</th><th class="text-end">Valor colado</th><th>Vai para</th></tr></thead>
+            <tbody>
+            {% for l in linhas %}
+                <tr>
+                    <td>{{ l.pos }}</td><td>{{ l.rotulo }}</td>
+                    <td class="text-end">{{ l.valor|floatformat:"-2" }}</td>
+                    <td class="small {% if l.destino %}{% else %}text-muted fst-italic{% endif %}">{{ l.destino|default:"não alimenta indicador" }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+    {% endif %}
+</div>
+{% endblock %}
