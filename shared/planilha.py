@@ -207,6 +207,9 @@ class Row(dict):
     def __getitem__(self, chave):
         return dict.__getitem__(self, chave)
 
+    def to_dict(self):
+        return dict(self)
+
 
 # ----------------------------------------------------------------------------- DataFrame
 class DataFrame:
@@ -309,6 +312,11 @@ class DataFrame:
 
     def copy(self):
         return DataFrame(self)
+
+    def to_dict(self, orient='dict'):
+        if orient != 'records':
+            raise NotImplementedError("só orient='records' é suportado")
+        return [dict(zip(self._cols, r)) for r in self._linhas]
 
     # -- conteúdo
     def iterrows(self):

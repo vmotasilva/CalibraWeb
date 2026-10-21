@@ -116,6 +116,11 @@ class PlanilhaTests(SimpleTestCase):
         d = planilha.DataFrame({'k': ['a', None, 'a'], 'v': [1, 2, 3]})
         self.assertEqual([(k, len(g)) for k, g in d.groupby('k')], [('a', 2)])
 
+    def test_to_dict_da_linha(self):
+        df = planilha.DataFrame({'a': [1], 'b': ['x']})
+        self.assertEqual(next(df.iterrows())[1].to_dict(), {'a': 1, 'b': 'x'})
+        self.assertEqual(df.to_dict(orient='records'), [{'a': 1, 'b': 'x'}])
+
     def test_to_datetime(self):
         self.assertEqual(planilha.to_datetime('21/10/2026', format='%d/%m/%Y').date(), datetime.date(2026, 10, 21))
         self.assertEqual(planilha.to_datetime('13/10/2026', dayfirst=True).date(), datetime.date(2026, 10, 13))
