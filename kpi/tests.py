@@ -305,6 +305,46 @@ class KpiTests(TestCase):
         self.assertFalse(Medicao.objects.none().exists() or ind.analises.filter(granularidade='diaria').exists())
         self.assertEqual(self.client.post(salvar, {'gran': 'x', 'data': '2026-10-13'}).status_code, 400)
 
+    def test_dispensa_de_analise_exige_motivo_e_bloqueia_registro(self):
+        ind = Indicador.objects.create(nome='Qd', meta=2, sentido='menor', exibir_diario=True)
+        Medicao.objects.create(indicador=ind, granularidade='diaria', periodo=date(2026, 10, 13), valor=5)
+        dispensar = reverse('kpi:analise_dispensar', args=[ind.pk])
+        salvar = reverse('kpi:analise_salvar', args=[ind.pk])
+        dados = reverse('kpi:analise_dados', args=[ind.pk])
+        base = {'gran': 'diaria', 'data': '2026-10-13'}
+        self.assertEqual(self.client.post(dispensar, base).status_code, 400)  # sem motivo
+        self.assertTrue(self.client.post(dispensar, dict(base, motivo='Feriado')).json()['ok'])
+        r = self.client.get(reverse('kpi:painel') + '?ind=%d' % ind.pk)
+        marca = r.context['analises_js'][str(ind.pk)]['diaria']['2026-10-13']
+        self.assertTrue(marca['d'])
+        self.assertEqual(marca['m'], 'Feriado')
+        j = self.client.get(dados, base).json()
+        self.assertTrue(j['dispensada'])
+        self.assertIsNone(j['existente'])
+        self.assertEqual(self.client.post(salvar, dict(base, causa='x')).status_code, 400)  # dispensado não recebe análise
+        self.assertTrue(self.client.post(dispensar, dict(base, acao='reativar')).json()['reativada'])
+        self.assertTrue(self.client.post(salvar, dict(base, causa='x')).json()['ok'])
+        # com análise registrada não dá para dispensar sem remover antes
+        self.assertEqual(self.client.post(dispensar, dict(base, motivo='Feriado')).status_code, 400)
+
+    def test_consolidacao_usa_media_quando_dias_sem_variaveis_sem_trocar_valor_existente(self):
+        from kpi.consolidacao import OBS_MEDIA
+        ind = Indicador.objects.create(nome='Qm', meta=2, sentido='menor', exibir_semanal=True, exibir_diario=True,
+                                       campos='P\nQ', formula='[P] / [Q] * 100')
+        # semana 12/10 já tem valor importado; semana 19/10 não tem nada. Dias lançados só com o valor.
+        Medicao.objects.create(indicador=ind, granularidade='semanal', periodo=date(2026, 10, 12), valor=9)
+        url = reverse('kpi:medicao_salvar', args=[ind.pk])
+        for dia, v in (('2026-10-13', '2'), ('2026-10-20', '4'), ('2026-10-21', '6')):
+            self.client.post(url, {'granularidade': 'diaria', 'periodo': dia, 'valor': v, 'observacao': ''})
+        self.assertEqual(str(Medicao.objects.get(indicador=ind, granularidade='semanal', periodo=date(2026, 10, 12)).valor), '9.00')
+        nova = Medicao.objects.get(indicador=ind, granularidade='semanal', periodo=date(2026, 10, 19))
+        self.assertEqual((str(nova.valor), nova.observacao), ('5.00', OBS_MEDIA))
+        mes = Medicao.objects.get(indicador=ind, granularidade='mensal', periodo=date(2026, 10, 31))
+        self.assertEqual(str(mes.valor), '4.00')  # média dos 3 dias: o mês aparece no gráfico
+        # nova média substitui a que o próprio sistema criou
+        self.client.post(url, {'granularidade': 'diaria', 'periodo': '2026-10-22', 'valor': '8', 'observacao': ''})
+        self.assertEqual(str(Medicao.objects.get(pk=mes.pk).valor), '5.00')
+
     def test_variavel_de_tabela_fica_fora_do_calculo(self):
         from kpi import calculo
         ind = Indicador.objects.create(nome='Q2', meta=5, campos='Motivo | tabela\nPerdidas\nProduzidas')

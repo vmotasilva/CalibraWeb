@@ -161,6 +161,8 @@ class AnaliseCausa(models.Model):
     periodo = models.DateField('Período (data de referência)')
     causa = models.TextField('Causa', blank=True)
     analise = models.TextField('Análise e ações', blank=True)
+    dispensada = models.BooleanField('Dispensada de análise', default=False)
+    motivo_dispensa = models.CharField('Motivo da dispensa', max_length=200, blank=True)
     registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     atualizado_em = models.DateTimeField(auto_now=True)
 

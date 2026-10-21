@@ -20,7 +20,7 @@
         <div class="d-flex gap-2">
             {% if abas %}<button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#kpiResumoModal" title="Resumo dos indicadores" aria-label="Resumo dos indicadores"><i class="bi bi-bar-chart"></i></button>{% endif %}
             {% if abas and pode_editar_dados %}<a href="{% url 'kpi:colagem' %}" class="btn btn-outline-secondary" title="Registro por colagem" aria-label="Registro por colagem"><i class="bi bi-clipboard-data"></i></a>{% endif %}
-            {% if abas %}<button type="button" class="btn btn-outline-secondary position-relative" id="kpiAnaliseBtn" title="Causas e análises" aria-label="Causas e análises"><i class="bi bi-clipboard2-pulse"></i><span id="kpiAnaliseBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: .65rem;"></span></button>{% endif %}
+            {% if abas %}<button type="button" class="btn btn-outline-secondary position-relative" id="kpiAnaliseBtn" title="Causas e análises dos períodos fora da meta"><i class="bi bi-clipboard2-pulse me-1"></i>Causas e Análises<span id="kpiAnaliseBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: .65rem;"></span></button>{% endif %}
             {% if abas %}<button type="button" class="btn btn-outline-secondary" id="kpiDadosBtn" title="Dados registrados" aria-label="Dados registrados"><i class="bi bi-table"></i></button>{% endif %}
             {% if abas %}<a href="#" id="kpiEditarBtn" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Editar indicador</a>{% endif %}
             <a href="{% url 'kpi:importar' %}" class="btn btn-outline-primary"><i class="bi bi-upload me-1"></i>Importar</a>
@@ -263,7 +263,10 @@
                     <ul class="nav nav-tabs mb-2" id="anAbas"></ul>
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                         <small class="text-muted" id="anInfo"></small>
-                        <div class="form-check"><input class="form-check-input" type="checkbox" id="anTodos"><label class="form-check-label small" for="anTodos">Mostrar também os períodos dentro da meta</label></div>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check"><input class="form-check-input" type="checkbox" id="anTodos"><label class="form-check-label small" for="anTodos">Mostrar períodos dentro da meta</label></div>
+                            <div class="form-check"><input class="form-check-input" type="checkbox" id="anDisp"><label class="form-check-label small" for="anDisp">Mostrar dispensados</label></div>
+                        </div>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-sm table-hover align-middle mb-0">
@@ -724,8 +727,8 @@
         var btn = el('kpiAnaliseBtn');
         if (!btn) return;
         var ANALISES = JSON.parse(document.getElementById('kpi-analises').textContent);
-        var PODE_ANALISAR = {{ pode_analisar|yesno:"true,false" }};
-        var URL_DADOS = "{% url 'kpi:analise_dados' 0 %}", URL_SALVAR = "{% url 'kpi:analise_salvar' 0 %}";
+        var PODE_ANALISAR = {{ pode_analisar|yesno:"true,false" }}, PODE_DISPENSAR = {{ pode_dispensar|yesno:"true,false" }};
+        var URL_DADOS = "{% url 'kpi:analise_dados' 0 %}", URL_SALVAR = "{% url 'kpi:analise_salvar' 0 %}", URL_DISPENSAR = "{% url 'kpi:analise_dispensar' 0 %}";
         var NOMES = {mensal: 'Mês a mês', semanal: 'Semana a semana', diaria: 'Dia a dia'};
         var pk = null, gran = null, atual = null;
 
@@ -754,7 +757,7 @@
         function pendentes(g, ind) {
             var d = (CHARTS[ind || pk] || {})[g], feitas = ((ANALISES[ind || pk] || {})[g]) || {}, n = 0;
             if (!d) return 0;
-            d.entradas.forEach(function (e) { if (fora(d, Number(e.valor)) && !feitas[e.data]) n++; });
+            d.entradas.forEach(function (e) { if (fora(d, Number(e.valor)) && !feitas[e.data]) n++; });  // dispensados contam como tratados
             return n;
         }
 
@@ -769,32 +772,64 @@
         }
 
         function lista() {
-            var d = CHARTS[pk][gran], feitas = (ANALISES[pk] || {})[gran] || {}, corpo = el('anCorpo'), todos = el('anTodos').checked;
+            var d = CHARTS[pk][gran], feitas = (ANALISES[pk] || {})[gran] || {}, corpo = el('anCorpo');
+            var todos = el('anTodos').checked, comDisp = el('anDisp').checked;
             corpo.innerHTML = '';
             var linhas = 0;
             for (var i = d.entradas.length - 1; i >= 0; i--) {
-                var e = d.entradas[i], v = Number(e.valor), f = fora(d, v), a = feitas[e.data];
-                if (!f && !todos && !a) continue;
+                var e = d.entradas[i], v = Number(e.valor), f = fora(d, v), a = feitas[e.data], disp = !!(a && a.d);
+                if (disp && !comDisp) continue;  // dispensados não aparecem nem são cobrados
+                if (!disp && !f && !todos && !a) continue;
                 linhas++;
                 var tr = corpo.insertRow();
                 td(tr, d.labels[i], 'fw-semibold text-nowrap');
                 td(tr, fmt(v), 'text-end fw-bold ' + (f ? 'text-danger' : 'text-success'));
                 td(tr, fmt(d.meta), 'text-end text-muted');
                 var s = td(tr, '', '');
-                s.innerHTML = a ? '<span class="badge text-bg-success">Analisado</span>' : (f ? '<span class="badge text-bg-warning">Sem análise</span>' : '<span class="badge text-bg-light border text-muted">Na meta</span>');
-                td(tr, a ? a.c : '', 'small text-muted');
-                var ac = tr.insertCell(); ac.className = 'text-end';
-                var b = document.createElement('button');
-                b.type = 'button'; b.className = 'btn btn-sm ' + (a ? 'btn-outline-secondary' : 'btn-outline-primary');
-                b.innerHTML = a ? '<i class="bi bi-pencil me-1"></i>Editar' : '<i class="bi bi-plus-lg me-1"></i>' + (PODE_ANALISAR ? 'Analisar' : 'Ver');
-                (function (iso, rot) { b.addEventListener('click', function () { editar(iso, rot); }); })(e.data, d.labels[i]);
-                ac.appendChild(b);
+                s.innerHTML = disp ? '<span class="badge text-bg-secondary">Dispensado</span>' : (a ? '<span class="badge text-bg-success">Analisado</span>' : (f ? '<span class="badge text-bg-warning">Sem análise</span>' : '<span class="badge text-bg-light border text-muted">Na meta</span>'));
+                td(tr, disp ? 'Dispensa: ' + a.m : (a ? a.c : ''), 'small text-muted');
+                var ac = tr.insertCell(); ac.className = 'text-end text-nowrap';
+                (function (iso, rot) {
+                    function botao(html, classe, aoClicar) {
+                        var b = document.createElement('button');
+                        b.type = 'button'; b.className = 'btn btn-sm ms-1 ' + classe; b.innerHTML = html; b.addEventListener('click', aoClicar);
+                        ac.appendChild(b);
+                    }
+                    if (disp) {
+                        if (PODE_DISPENSAR) botao('<i class="bi bi-arrow-counterclockwise me-1"></i>Reativar', 'btn-outline-secondary', function () { dispensar(iso, rot, true); });
+                        return;
+                    }
+                    botao(a ? '<i class="bi bi-pencil me-1"></i>Editar' : '<i class="bi bi-plus-lg me-1"></i>' + (PODE_ANALISAR ? 'Analisar' : 'Ver'),
+                          a ? 'btn-outline-secondary' : 'btn-outline-primary', function () { editar(iso, rot); });
+                    if (PODE_DISPENSAR && !a) botao('<i class="bi bi-slash-circle me-1"></i>Dispensar', 'btn-outline-danger', function () { dispensar(iso, rot, false); });
+                })(e.data, d.labels[i]);
             }
             if (!linhas) {
                 var r = corpo.insertRow(), c = r.insertCell();
-                c.colSpan = 6; c.className = 'text-center text-muted py-3'; c.textContent = 'Nenhum período fora da meta neste gráfico.';
+                c.colSpan = 6; c.className = 'text-center text-muted py-3'; c.textContent = 'Nenhum período pendente neste gráfico.';
             }
             el('anInfo').textContent = linhas ? 'Períodos fora da meta do mais recente ao mais antigo.' : '';
+        }
+
+        function dispensar(iso, rotulo, reativar) {
+            var motivo = '';
+            if (!reativar) {
+                motivo = prompt('Dispensar a análise de ' + rotulo + '?\nInforme o motivo da dispensa (obrigatório):', '');
+                if (motivo === null) return;
+                if (!motivo.trim()) { alert('Informe o motivo da dispensa.'); return; }
+            } else if (!confirm('Reativar a cobrança de causa e análise de ' + rotulo + '?')) { return; }
+            var corpo = new URLSearchParams();
+            corpo.set('gran', gran); corpo.set('data', iso); corpo.set('setor', setor()); corpo.set('acao', reativar ? 'reativar' : 'dispensar'); corpo.set('motivo', motivo.trim());
+            fetch(url(URL_DISPENSAR, pk), {method: 'POST', credentials: 'same-origin', headers: {'X-CSRFToken': csrf(), 'Content-Type': 'application/x-www-form-urlencoded'}, body: corpo.toString()})
+                .then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); })
+                .then(function (res) {
+                    if (!res[0]) { alert(res[1].erro || 'Não foi possível concluir.'); return; }
+                    ANALISES[pk] = ANALISES[pk] || {}; ANALISES[pk][gran] = ANALISES[pk][gran] || {};
+                    if (reativar) { delete ANALISES[pk][gran][iso]; }
+                    else { ANALISES[pk][gran][iso] = {c: '', a: false, d: true, m: res[1].motivo}; }
+                    abas(); lista(); atualizarSelo();
+                })
+                .catch(function () { alert('Não foi possível concluir.'); });
         }
 
         function mostrar(editor) {
@@ -812,6 +847,7 @@
                 .then(function (r) { return r.json(); })
                 .then(function (j) {
                     if (j.erro) { el('anErro').textContent = j.erro; return; }
+                    if (j.dispensada) { el('anErro').textContent = 'Período dispensado de análise: ' + j.motivo_dispensa; }
                     atual = {iso: j.data, rascunho: j.rascunho || '', existente: j.existente};
                     var un = j.unidade ? ' ' + j.unidade : '';
                     el('anResumo').innerHTML = (j.valor === null ? 'Sem valor registrado' : 'Valor <span class="' + (j.atingiu ? 'text-success' : 'text-danger') + '">' + fmt(j.valor) + un + '</span>') + ' · meta ' + fmt(j.meta) + un;
@@ -851,6 +887,7 @@
         el('anRemover').addEventListener('click', function () { if (confirm('Remover a causa e a análise deste período?')) salvar('', ''); });
         el('anVoltar').addEventListener('click', function () { mostrar(false); });
         el('anTodos').addEventListener('change', lista);
+        el('anDisp').addEventListener('change', lista);
         el('anRascunho').addEventListener('click', function () {
             if (!atual || !atual.rascunho) { el('anAjudaRascunho').textContent = 'Não há registros do período para trazer.'; return; }
             var c = el('anCausa');
@@ -869,7 +906,7 @@
             var aba = document.querySelector('#kpiTabs [data-ind="' + pk + '"]');
             el('anNome').textContent = aba ? aba.textContent.trim() : '';
             el('anSetor').textContent = (CAMPOS[pk] || {}).setor_nome ? '· ' + CAMPOS[pk].setor_nome : '';
-            el('anTodos').checked = false;
+            el('anTodos').checked = false; el('anDisp').checked = false;
             mostrar(false); abas(); lista();
             modal('kpiAnaliseModal').show();
         });

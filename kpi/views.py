@@ -231,7 +231,7 @@ def painel_view(request):
         for a in ind.analises.all():
             if a.setor_id == setor_id:
                 analises_js[str(ind.pk)].setdefault(a.granularidade, {})[a.periodo.isoformat()] = {
-                    'c': a.causa[:140], 'a': bool(a.analise.strip())}
+                    'c': a.causa[:140], 'a': bool(a.analise.strip()), 'd': a.dispensada, 'm': a.motivo_dispensa}
         motivos_js[str(ind.pk)] = [
             {'g': m.granularidade, 'd': m.data.isoformat(), 'desc': m.descricao, 'qtd': str(m.quantidade)}
             for m in ind.motivos.all() if m.setor_id == setor_id
@@ -258,6 +258,7 @@ def painel_view(request):
         'pode_editar_dados': has_view_access(request.user, 'kpi:medicao_salvar'),
         'pode_excluir_dados': has_view_access(request.user, 'kpi:medicao_excluir'),
         'pode_analisar': has_view_access(request.user, 'kpi:analise_salvar'),
+        'pode_dispensar': has_view_access(request.user, 'kpi:analise_dispensar'),
     })
 
 
@@ -624,7 +625,8 @@ def analise_dados_view(request, pk):
         'rotulo': _rotulo(gran, periodo), 'data': periodo.isoformat(), 'meta': float(meta), 'unidade': ind.unidade,
         'valor': float(med.valor) if med else None,
         'atingiu': ind.atingiu(med.valor, meta) if med else None,
-        'existente': {'causa': atual.causa, 'analise': atual.analise} if atual else None,
+        'existente': {'causa': atual.causa, 'analise': atual.analise} if atual and not atual.dispensada else None,
+        'dispensada': bool(atual and atual.dispensada), 'motivo_dispensa': atual.motivo_dispensa if atual else '',
         'rascunho': _rascunho_analise(ind, setor_id, gran, periodo, meta),
     })
 
@@ -640,8 +642,35 @@ def analise_salvar_view(request, pk):
         return JsonResponse({'erro': erro}, status=400)
     causa, analise = request.POST.get('causa', '').strip(), request.POST.get('analise', '').strip()
     filtro = dict(indicador=ind, setor=setor, granularidade=gran, periodo=periodo)
+    if AnaliseCausa.objects.filter(**filtro, dispensada=True).exists():
+        return JsonResponse({'erro': 'Este período está dispensado de análise. Reative-o para registrar causa e análise.'}, status=400)
     if not causa and not analise:
         AnaliseCausa.objects.filter(**filtro).delete()
         return JsonResponse({'ok': True, 'removida': True})
     AnaliseCausa.objects.update_or_create(**filtro, defaults={'causa': causa, 'analise': analise, 'registrado_por': request.user})
     return JsonResponse({'ok': True, 'data': periodo.isoformat(), 'causa': causa[:140], 'tem_analise': bool(analise)})
+
+
+@login_required
+@require_POST
+def analise_dispensar_view(request, pk):
+    """Dispensa um período fora da meta de causa e análise (ou reativa um dispensado). Exige autorização especial."""
+    from django.http import JsonResponse
+    from kpi.models import AnaliseCausa
+    ind = get_object_or_404(Indicador, pk=pk)
+    gran, periodo, setor, erro = _parametros_analise(request, ind, request.POST)
+    if erro:
+        return JsonResponse({'erro': erro}, status=400)
+    filtro = dict(indicador=ind, setor=setor, granularidade=gran, periodo=periodo)
+    if request.POST.get('acao') == 'reativar':
+        AnaliseCausa.objects.filter(**filtro, dispensada=True).delete()
+        return JsonResponse({'ok': True, 'reativada': True, 'data': periodo.isoformat()})
+    motivo = request.POST.get('motivo', '').strip()[:200]
+    if not motivo:
+        return JsonResponse({'erro': 'Informe o motivo da dispensa.'}, status=400)
+    existente = AnaliseCausa.objects.filter(**filtro).first()
+    if existente and not existente.dispensada:
+        return JsonResponse({'erro': 'Este período já tem causa/análise registrada: remova o registro antes de dispensar.'}, status=400)
+    AnaliseCausa.objects.update_or_create(**filtro, defaults={
+        'dispensada': True, 'motivo_dispensa': motivo, 'causa': '', 'analise': '', 'registrado_por': request.user})
+    return JsonResponse({'ok': True, 'data': periodo.isoformat(), 'motivo': motivo})

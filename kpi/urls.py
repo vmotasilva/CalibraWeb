@@ -24,4 +24,5 @@ urlpatterns = [
     path('indicadores/<int:pk>/motivo/', views.motivo_salvar_view, name='motivo_salvar'),
     path('indicadores/<int:pk>/analise/', views.analise_dados_view, name='analise_dados'),
     path('indicadores/<int:pk>/analise/salvar/', views.analise_salvar_view, name='analise_salvar'),
+    path('indicadores/<int:pk>/analise/dispensar/', views.analise_dispensar_view, name='analise_dispensar'),
 ]

@@ -277,6 +277,12 @@ NAV_STRUCTURE = [
                         "perm": "core.nav_kpi_analise",
                         "descricao": "Registra a causa e a análise dos períodos fora da meta (dia, semana e mês) e remove os registros existentes.",
                     },
+                    {
+                        "nome": "Dispensar Períodos da Análise",
+                        "view_name": "kpi:analise_dispensar",
+                        "perm": "core.nav_kpi_analise_dispensar",
+                        "descricao": "Autorização especial: marca períodos fora da meta como dispensados de causa e análise (deixam de ser cobrados e de aparecer como pendentes) e reativa os dispensados.",
+                    },
                     {"nome": "Lançar Valores e Motivos", "view_name": ["kpi:medicao_salvar", "kpi:motivo_salvar"], "perm": "core.nav_kpi_lancar"},
                     {"nome": "Excluir Lançamento", "view_name": "kpi:medicao_excluir", "perm": "core.nav_kpi_lancamento_excluir"},
                 ],
