@@ -31,6 +31,12 @@ class IndicadorForm(forms.ModelForm):
                 for s in self.instance.setores.all())
         for name, f in self.fields.items():
             f.widget.attrs['class'] = 'form-check-input' if name == 'ativo' or name.startswith(('exibir_', 'motivos_')) else 'form-control'
+        self.fields['campos'].label = 'Variáveis do indicador'
+        self.fields['campos'].help_text = 'Uma variável por linha (ex.: Lentes perdidas). A ordem define Var 01, Var 02... Elas são lançadas a cada dia, semana ou mês.'
+        self.fields['campos'].widget.attrs['placeholder'] = 'Lentes perdidas\nLentes produzidas'
+        self.fields['formula'].label = 'Memória de cálculo'
+        self.fields['formula'].help_text = 'Use as variáveis pelo nome ou por Var 01, Var 02... Ex.: (Var 01 / Var 02) * 100. Digite para buscar as variáveis.'
+        self.fields['formula'].widget.attrs['autocomplete'] = 'off'
         self.fields['ordem'].required = False
         self.fields['sentido'].widget.attrs['class'] = 'form-select'
         self.fields['periodicidade'].widget.attrs['class'] = 'form-select'
@@ -39,9 +45,17 @@ class IndicadorForm(forms.ModelForm):
         dados = super().clean()
         class _I:
             campos = dados.get('campos', '')
-        erro = calculo.validar_formula(dados.get('formula', ''), calculo.lista_campos(_I))
+        campos = calculo.lista_campos(_I)
+        try:
+            formula = calculo.resolver_aliases(dados.get('formula', ''), campos)
+        except ValueError as e:
+            self.add_error('formula', str(e))
+            return dados
+        erro = calculo.validar_formula(formula, campos)
         if erro:
             self.add_error('formula', erro)
+        else:
+            dados['formula'] = formula  # grava com os nomes das variáveis (ex.: [Perdidas] / [Produzidas] * 100)
         return dados
 
     def clean_setores_texto(self):

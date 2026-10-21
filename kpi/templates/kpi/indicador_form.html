@@ -33,7 +33,12 @@
                 </div>
             </div>
             <div class="col-md-6">{{ form.campos.label_tag }}{{ form.campos }}<small class="text-muted">{{ form.campos.help_text }}</small></div>
-            <div class="col-md-6">{{ form.formula.label_tag }}{{ form.formula }}{{ form.formula.errors }}<small class="text-muted">{{ form.formula.help_text }}</small></div>
+            <div class="col-md-6 position-relative">
+                {{ form.formula.label_tag }}{{ form.formula }}{{ form.formula.errors }}
+                <div id="kpiSugestoes" class="list-group position-absolute shadow-sm d-none" style="z-index: 20; max-height: 220px; overflow: auto;"></div>
+                <small class="text-muted d-block">{{ form.formula.help_text }}</small>
+                <div id="kpiVarChips" class="d-flex flex-wrap gap-1 mt-2"></div>
+            </div>
             <div class="col-12">{{ form.setores_texto.label_tag }}{{ form.setores_texto }}{{ form.setores_texto.errors }}<small class="text-muted">{{ form.setores_texto.help_text }}</small></div>
             <div class="col-md-4">{{ form.responsavel.label_tag }}{{ form.responsavel }}</div>
             <div class="col-md-2">{{ form.ordem.label_tag }}{{ form.ordem }}</div>
@@ -51,4 +56,76 @@
     </form>
     {% endif %}
 </div>
+<script>
+(function () {
+    var campos = document.getElementById('id_campos'), formula = document.getElementById('id_formula');
+    var chips = document.getElementById('kpiVarChips'), box = document.getElementById('kpiSugestoes');
+    if (!campos || !formula) return;
+
+    function variaveis() {
+        var vistos = {}, lista = [];
+        campos.value.split('\n').forEach(function (l) {
+            var nome = l.trim();
+            if (nome && !vistos[nome.toLowerCase()]) { vistos[nome.toLowerCase()] = 1; lista.push(nome); }
+        });
+        return lista.map(function (nome, i) { return {nome: nome, rotulo: 'Var ' + String(i + 1).padStart(2, '0')}; });
+    }
+
+    function inserir(texto, ini, fim) {
+        var v = formula.value;
+        formula.value = v.slice(0, ini) + texto + v.slice(fim);
+        var pos = ini + texto.length;
+        formula.focus();
+        formula.setSelectionRange(pos, pos);
+        box.classList.add('d-none');
+    }
+
+    function botao(texto, titulo, aoClicar, classe) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = classe; b.textContent = texto; b.title = titulo || '';
+        b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+        b.addEventListener('click', aoClicar);
+        return b;
+    }
+
+    function desenharChips() {
+        chips.innerHTML = '';
+        variaveis().forEach(function (v) {
+            chips.appendChild(botao(v.rotulo + ' · ' + v.nome, 'Inserir [' + v.nome + '] na fórmula', function () {
+                inserir('[' + v.nome + ']', formula.selectionStart, formula.selectionEnd);
+            }, 'btn btn-sm btn-outline-primary'));
+        });
+        ['+', '-', '*', '/', '(', ')', '100'].forEach(function (op) {
+            chips.appendChild(botao(op, '', function () {
+                inserir(op === '100' ? ' 100' : ' ' + op + ' ', formula.selectionStart, formula.selectionEnd);
+            }, 'btn btn-sm btn-outline-secondary'));
+        });
+    }
+
+    function sugerir() {
+        var pos = formula.selectionStart, antes = formula.value.slice(0, pos);
+        var m = /(\[?)([^\[\]+\-*\/()]*)$/.exec(antes);
+        var termo = (m ? m[2] : '').trim().toLowerCase(), ini = pos - (m ? m[0].length : 0);
+        box.innerHTML = '';
+        if (!termo) { box.classList.add('d-none'); return; }
+        var achadas = variaveis().filter(function (v) {
+            return v.nome.toLowerCase().indexOf(termo) !== -1 || v.rotulo.toLowerCase().indexOf(termo) === 0;
+        });
+        if (!achadas.length) { box.classList.add('d-none'); return; }
+        var apos = formula.value.slice(pos), fecha = apos.charAt(0) === ']' ? 1 : 0;
+        achadas.forEach(function (v) {
+            box.appendChild(botao(v.rotulo + ' · ' + v.nome, '', function () {
+                inserir('[' + v.nome + ']', ini, pos + fecha);
+            }, 'list-group-item list-group-item-action py-1 small'));
+        });
+        box.classList.remove('d-none');
+    }
+
+    campos.addEventListener('input', desenharChips);
+    formula.addEventListener('input', sugerir);
+    formula.addEventListener('click', sugerir);
+    formula.addEventListener('blur', function () { setTimeout(function () { box.classList.add('d-none'); }, 150); });
+    desenharChips();
+})();
+</script>
 {% endblock %}

@@ -117,6 +117,46 @@ class KpiTests(TestCase):
         enviar([['SR', '16/10/2026', 'Quebra', 1]])
         self.assertEqual(list(Motivo.objects.filter(granularidade='mensal').values_list('descricao', flat=True)), ['Manual'])
 
+    def test_memoria_de_calculo_com_var_e_consolidacao_automatica(self):
+        from kpi import calculo
+        ind = Indicador.objects.create(nome='Quebras', meta=5, sentido='menor', exibir_semanal=True, exibir_diario=True,
+                                       campos='Lentes perdidas\nLentes produzidas', formula='')
+        # "Var 01 / Var 02" vira [Lentes perdidas] / [Lentes produzidas]
+        self.assertEqual(calculo.resolver_aliases('(Var 01 / var2) * 100', calculo.lista_campos(ind)),
+                         '([Lentes perdidas] / [Lentes produzidas]) * 100')
+        with self.assertRaises(ValueError):
+            calculo.resolver_aliases('Var 03 / 2', calculo.lista_campos(ind))
+        r = self.client.post(reverse('kpi:indicador_editar', args=[ind.pk]), {
+            'nome': 'Quebras', 'meta': '5', 'sentido': 'menor', 'periodicidade': 'mensal', 'ativo': 'on',
+            'exibir_mensal': 'on', 'exibir_semanal': 'on', 'exibir_diario': 'on',
+            'campos': 'Lentes perdidas\nLentes produzidas', 'formula': '(Var 01 / Var 02) * 100'})
+        self.assertEqual(r.status_code, 302)
+        ind.refresh_from_db()
+        self.assertEqual(ind.formula, '([Lentes perdidas] / [Lentes produzidas]) * 100')
+
+        def lancar(dia, perd, prod):
+            self.client.post(reverse('kpi:medicao_salvar', args=[ind.pk]), {
+                'granularidade': 'diaria', 'periodo': dia, 'valor': '', 'campo_0': perd, 'campo_1': prod, 'observacao': ''})
+        lancar('2026-10-13', '2', '100')
+        lancar('2026-10-14', '4', '300')
+        dia = Medicao.objects.get(indicador=ind, granularidade='diaria', periodo=date(2026, 10, 14))
+        self.assertEqual(str(dia.valor), '1.33')
+        sem = Medicao.objects.get(indicador=ind, granularidade='semanal', periodo=date(2026, 10, 12))
+        mes = Medicao.objects.get(indicador=ind, granularidade='mensal', periodo=date(2026, 10, 31))
+        self.assertEqual(str(sem.valor), '1.50')  # (2+4)/(100+300)*100, não a média dos dias
+        self.assertEqual(str(mes.valor), '1.50')
+        # editar um dia recalcula; lançamento manual da semana não é sobrescrito
+        lancar('2026-10-14', '8', '300')
+        self.assertEqual(str(Medicao.objects.get(pk=sem.pk).valor), '2.50')
+        Medicao.objects.filter(pk=sem.pk).update(observacao='manual')
+        lancar('2026-10-15', '1', '100')
+        self.assertEqual(Medicao.objects.get(pk=sem.pk).observacao, 'manual')
+        self.assertEqual(str(Medicao.objects.get(pk=mes.pk).valor), '2.20')
+        # excluir todos os dias remove o mês consolidado
+        for m in Medicao.objects.filter(indicador=ind, granularidade='diaria'):
+            self.client.post(reverse('kpi:medicao_excluir', args=[m.pk]))
+        self.assertFalse(Medicao.objects.filter(pk=mes.pk).exists())
+
     def test_modelos_e_importacao(self):
         import io
         from openpyxl import Workbook, load_workbook

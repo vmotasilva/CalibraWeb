@@ -10,7 +10,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from kpi import calculo
+from kpi import calculo, consolidacao
 from kpi.models import Indicador, Medicao, Motivo
 from kpi.views import _normalizar, _rotulo
 
@@ -170,7 +170,7 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                       f'Parece ser de {outro.upper()}: use a importação correspondente.')]}
     indicadores = {i.nome.strip().lower(): i for i in Indicador.objects.prefetch_related('setores')}
     erros, valores, motivos_n = [], 0, 0
-    alt_motivos = set()  # (indicador, setor_id, data) diários alterados
+    alt_valores, alt_motivos = set(), set()  # (indicador, setor_id, data) diários alterados
 
     def achar_setor(aba, n, ind, nome_setor):
         """Retorna (setor, valido); vazio = acompanhamento geral."""
@@ -243,6 +243,7 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                     defaults={'valor': valor, 'observacao': str(obs or '')[:255],
                               'dados': {k: str(v) for k, v in dados.items()}, 'registrado_por': usuario})
                 valores += 1
+                alt_valores.add((ind, setor.pk if setor else None, periodo))
         if tipo == 'motivos':
             grupos = {}
             cab_m = [str(c or '').strip().lower() for c in next(wb[ABA_MOTIVOS].iter_rows(min_row=1, max_row=1, values_only=True), [])]
@@ -276,4 +277,9 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                     alt_motivos.add((itens[0][0], setor_pk, periodo))
         if gran == 'diaria':
             consolidar_motivos_diarios(alt_motivos, usuario)
+            por_ind = defaultdict(list)
+            for ind, setor_pk, periodo in alt_valores:
+                por_ind[(ind, setor_pk)].append(periodo)
+            for (ind, setor_pk), datas in por_ind.items():
+                consolidacao.consolidar_valores(ind, setor_pk, datas, usuario)
     return {'valores': valores, 'motivos': motivos_n, 'erros': erros, 'tipo': tipo, 'rotulo': CABECALHO_PERIODO[gran]}

@@ -22,6 +22,22 @@ def lista_campos(ind):
     return saida
 
 
+_ALIAS = re.compile(r'\bvar\s*0*(\d+)\b', re.IGNORECASE)
+
+
+def resolver_aliases(formula, campos):
+    """Troca "Var 01", "Var 2"... (posição na lista de variáveis) por [Nome da variável].
+    Trechos já entre colchetes ficam como estão. Levanta ValueError se a variável não existe."""
+    def troca(m):
+        n = int(m.group(1))
+        if not 1 <= n <= len(campos):
+            raise ValueError(f'Var {n:02d} não existe: o indicador tem {len(campos)} variável(is).')
+        return f'[{campos[n - 1]}]'
+
+    partes = re.split(r'(\[[^\[\]]*\])', formula or '')
+    return ''.join(p if p.startswith('[') else _ALIAS.sub(troca, p) for p in partes)
+
+
 def referencias(formula):
     return [r.strip() for r in _REF.findall(formula or '')]
 
