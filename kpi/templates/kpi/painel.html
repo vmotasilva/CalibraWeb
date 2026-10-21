@@ -20,7 +20,7 @@
         <div class="d-flex gap-2">
             {% if abas %}<button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#kpiResumoModal" title="Resumo dos indicadores" aria-label="Resumo dos indicadores"><i class="bi bi-bar-chart"></i></button>{% endif %}
             {% if abas and pode_editar_dados %}<a href="{% url 'kpi:colagem' %}" class="btn btn-outline-secondary" title="Registro por colagem" aria-label="Registro por colagem"><i class="bi bi-clipboard-data"></i></a>{% endif %}
-            {% if abas %}<button type="button" class="btn btn-outline-secondary" id="kpiAnaliseBtn" title="Causas e análises" aria-label="Causas e análises"><i class="bi bi-clipboard2-pulse"></i></button>{% endif %}
+            {% if abas %}<button type="button" class="btn btn-outline-secondary position-relative" id="kpiAnaliseBtn" title="Causas e análises" aria-label="Causas e análises"><i class="bi bi-clipboard2-pulse"></i><span id="kpiAnaliseBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: .65rem;"></span></button>{% endif %}
             {% if abas %}<button type="button" class="btn btn-outline-secondary" id="kpiDadosBtn" title="Dados registrados" aria-label="Dados registrados"><i class="bi bi-table"></i></button>{% endif %}
             {% if abas %}<a href="#" id="kpiEditarBtn" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Editar indicador</a>{% endif %}
             <a href="{% url 'kpi:importar' %}" class="btn btn-outline-primary"><i class="bi bi-upload me-1"></i>Importar</a>
@@ -751,10 +751,21 @@
             });
         }
 
-        function pendentes(g) {
-            var d = CHARTS[pk][g], feitas = (ANALISES[pk] || {})[g] || {}, n = 0;
+        function pendentes(g, ind) {
+            var d = (CHARTS[ind || pk] || {})[g], feitas = ((ANALISES[ind || pk] || {})[g]) || {}, n = 0;
+            if (!d) return 0;
             d.entradas.forEach(function (e) { if (fora(d, Number(e.valor)) && !feitas[e.data]) n++; });
             return n;
+        }
+
+        // número de períodos fora da meta ainda sem causa/análise no indicador da aba ativa (selo no ícone)
+        function atualizarSelo() {
+            var ind = indAtivo(), badge = el('kpiAnaliseBadge');
+            if (!ind || !badge) return;
+            var total = ['mensal', 'semanal', 'diaria'].reduce(function (soma, g) { return soma + pendentes(g, ind); }, 0);
+            badge.textContent = total > 99 ? '99+' : String(total);
+            badge.classList.toggle('d-none', total === 0);
+            badge.title = total + ' período(s) fora da meta sem causa e análise';
         }
 
         function lista() {
@@ -831,7 +842,7 @@
                     ANALISES[pk] = ANALISES[pk] || {}; ANALISES[pk][gran] = ANALISES[pk][gran] || {};
                     if (res[1].removida) { delete ANALISES[pk][gran][atual.iso]; }
                     else { ANALISES[pk][gran][atual.iso] = {c: res[1].causa, a: res[1].tem_analise}; }
-                    mostrar(false); abas(); lista();
+                    mostrar(false); abas(); lista(); atualizarSelo();
                 })
                 .catch(function () { el('anErro').textContent = 'Não foi possível salvar.'; });
         }
@@ -846,6 +857,9 @@
             if (c.value.trim() && c.value.trim() !== atual.rascunho.trim() && !confirm('Substituir o texto da causa pelos registros do período?')) return;
             c.value = atual.rascunho;
         });
+
+        atualizarSelo();
+        document.querySelectorAll('#kpiTabs [data-ind]').forEach(function (b) { b.addEventListener('shown.bs.tab', atualizarSelo); });
 
         btn.addEventListener('click', function () {
             pk = indAtivo();
