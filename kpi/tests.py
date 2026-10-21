@@ -195,6 +195,27 @@ class KpiTests(TestCase):
         q = Medicao.objects.get(indicador=qb, granularidade='diaria')
         self.assertEqual(q.dados, {'Produzidas': '1000', 'Perdidas': '-10'})  # -20 + (5 × 2)
 
+    def test_migracao_vincula_kpi_diario_sem_tocar_no_que_ja_foi_vinculado(self):
+        import importlib
+        from django.apps import apps
+        from kpi import colagem
+        from kpi.models import ModeloColagem, SetorIndicador
+        mig = importlib.import_module('kpi.migrations.0013_vincular_kpi_diario')
+        qb = Indicador.objects.create(nome='Quebras', meta=5, sentido='menor', campos='Motivo | tabela\nLentes Perdidas\nLentes Produzidas',
+                                      formula='[Lentes Perdidas] / [Lentes Produzidas] * 100', exibir_diario=True)
+        SetorIndicador.objects.create(indicador=qb, nome='HMC')
+        ModeloColagem.objects.filter(nome='KPI Diário').update(linhas='\n'.join([
+            'HC - LENTES BOAS',  # sem vínculo: recebe
+            'HC - LENTES QUEBRADAS | Quebras | Lentes Perdidas | HMC',  # já vinculado à mão: intacto
+            'SURFACAGEM - LENTES BOAS',  # setor Surfaçagem não existe: segue sem vínculo
+        ]))
+        mig.forwards(apps, None)
+        linhas, erros = colagem.interpretar_modelo(ModeloColagem.objects.get(nome='KPI Diário').linhas)
+        self.assertFalse(erros)
+        self.assertEqual(linhas[0]['destino'], '+ Quebras · Lentes Produzidas · HMC')
+        self.assertEqual(linhas[1]['destino'], '+ Quebras · Lentes Perdidas · HMC')
+        self.assertEqual(linhas[2]['destinos'], [])
+
     def test_variavel_de_tabela_fica_fora_do_calculo(self):
         from kpi import calculo
         ind = Indicador.objects.create(nome='Q2', meta=5, campos='Motivo | tabela\nPerdidas\nProduzidas')
