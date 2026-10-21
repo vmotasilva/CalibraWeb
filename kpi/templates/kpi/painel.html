@@ -19,6 +19,7 @@
         </div>
         <div class="d-flex gap-2">
             {% if abas %}<button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#kpiResumoModal" title="Resumo dos indicadores" aria-label="Resumo dos indicadores"><i class="bi bi-bar-chart"></i></button>{% endif %}
+            {% if abas %}<button type="button" class="btn btn-outline-secondary" id="kpiDadosBtn" title="Dados registrados" aria-label="Dados registrados"><i class="bi bi-table"></i></button>{% endif %}
             {% if abas %}<a href="#" id="kpiEditarBtn" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Editar indicador</a>{% endif %}
             <a href="{% url 'kpi:importar' %}" class="btn btn-outline-primary"><i class="bi bi-upload me-1"></i>Importar</a>
             <a href="{% url 'kpi:indicadores' %}" class="btn btn-outline-primary"><i class="bi bi-list-ul me-1"></i>Indicadores</a>
@@ -220,6 +221,31 @@
         {% endfor %}
     </div>
     {% endif %}
+</div>
+
+<!-- Pop-up: dados registrados do indicador -->
+<div class="modal fade" id="kpiDadosModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-table me-2"></i>Dados registrados — <span id="kpiDadosNome"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-2" id="kpiDadosAbas"></ul>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted" id="kpiDadosInfo"></small>
+                    {% if pode_editar_dados %}<button type="button" class="btn btn-primary btn-sm" id="kpiDadosNovo"><i class="bi bi-plus-lg me-1"></i>Novo lançamento</button>{% endif %}
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead id="kpiDadosCab"></thead>
+                        <tbody id="kpiDadosCorpo"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Pop-up: resumo dos indicadores -->
@@ -541,6 +567,104 @@
     el('kpiMotGran').addEventListener('change', carregarMotivos);
     el('kpiMotData').addEventListener('change', carregarMotivos);
     el('kpiMotMais').addEventListener('click', function () { linhaMotivo().children[0].focus(); });
+
+    (function () {
+        var btn = el('kpiDadosBtn');
+        if (!btn) return;
+        var NOMES = {mensal: 'Mês a mês', semanal: 'Semana a semana', diaria: 'Dia a dia'};
+        var PODE_EDITAR = {{ pode_editar_dados|yesno:"true,false" }}, PODE_EXCLUIR = {{ pode_excluir_dados|yesno:"true,false" }};
+        var URL_EXCLUIR = "{% url 'kpi:medicao_excluir' 0 %}";
+        var pk = null, gran = null;
+
+        function indAtivo() { var a = document.querySelector('#kpiTabs .nav-link.active'); return a ? a.dataset.ind : null; }
+        function fmt(v) { return Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 2}); }
+        function celula(tr, texto, classe) { var td = document.createElement('td'); td.textContent = texto; if (classe) td.className = classe; tr.appendChild(td); return td; }
+        function icone(classe, titulo, cor, aoClicar) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.className = 'btn btn-sm btn-link p-0 me-2 ' + cor; b.title = titulo;
+            b.innerHTML = '<i class="bi ' + classe + '"></i>'; b.addEventListener('click', aoClicar);
+            return b;
+        }
+
+        function abrirMedicao(iso) {
+            try { sessionStorage.setItem('kpiDadosReabrir', '1'); } catch (e) {}
+            var m = el('kpiDadosModal');
+            m.addEventListener('hidden.bs.modal', function () { window.kpiAbrirMedicao(pk, gran, iso); }, {once: true});
+            modal('kpiDadosModal').hide();
+        }
+
+        function excluir(e) {
+            if (!confirm('Excluir o lançamento de ' + e.rotulo + '?')) return;
+            try { sessionStorage.setItem('kpiDadosReabrir', '1'); } catch (x) {}
+            var f = document.createElement('form');
+            f.method = 'post'; f.action = URL_EXCLUIR.replace('/0/', '/' + e.id + '/');
+            var t = document.createElement('input');
+            t.type = 'hidden'; t.name = 'csrfmiddlewaretoken'; t.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            f.appendChild(t); document.body.appendChild(f); f.submit();
+        }
+
+        function desenhar() {
+            var d = (CHARTS[pk] || {})[gran] || {labels: [], entradas: []}, vars = (CAMPOS[pk] || {campos: []}).campos;
+            var cab = el('kpiDadosCab'), corpo = el('kpiDadosCorpo');
+            cab.innerHTML = ''; corpo.innerHTML = '';
+            var tr = document.createElement('tr');
+            ['Período'].concat(vars, ['Valor', 'Observação', '']).forEach(function (h, i) {
+                var th = document.createElement('th'); th.textContent = h;
+                if (h === 'Valor' || (i > 0 && i <= vars.length)) th.className = 'text-end';
+                tr.appendChild(th);
+            });
+            cab.appendChild(tr);
+            var n = d.entradas.length;
+            el('kpiDadosInfo').textContent = n ? n + ' lançamento(s) mais recentes, do mais novo ao mais antigo.' : '';
+            if (!n) {
+                var vazio = document.createElement('tr'), td = document.createElement('td');
+                td.colSpan = vars.length + 4; td.className = 'text-center text-muted py-3'; td.textContent = 'Nenhum dado registrado.';
+                vazio.appendChild(td); corpo.appendChild(vazio);
+                return;
+            }
+            for (var i = n - 1; i >= 0; i--) {
+                var e = d.entradas[i], linha = document.createElement('tr');
+                e.rotulo = d.labels[i];
+                celula(linha, e.rotulo, 'text-nowrap fw-semibold');
+                vars.forEach(function (nome) { celula(linha, e.dados && e.dados[nome] !== undefined ? fmt(e.dados[nome]) : '—', 'text-end text-muted'); });
+                celula(linha, fmt(e.valor), 'text-end fw-bold');
+                celula(linha, e.obs || '', 'small text-muted');
+                var acoes = document.createElement('td'); acoes.className = 'text-end text-nowrap';
+                if (PODE_EDITAR) acoes.appendChild(icone('bi-pencil', 'Ajustar', 'text-primary', abrirMedicao.bind(null, e.data)));
+                if (PODE_EXCLUIR) acoes.appendChild(icone('bi-trash', 'Excluir', 'text-danger', excluir.bind(null, e)));
+                linha.appendChild(acoes); corpo.appendChild(linha);
+            }
+        }
+
+        function abas() {
+            var ul = el('kpiDadosAbas'); ul.innerHTML = '';
+            ['mensal', 'semanal', 'diaria'].filter(function (g) { return (CHARTS[pk] || {})[g]; }).forEach(function (g) {
+                var li = document.createElement('li'); li.className = 'nav-item';
+                var b = document.createElement('button');
+                b.type = 'button'; b.className = 'nav-link' + (g === gran ? ' active' : ''); b.textContent = NOMES[g];
+                b.addEventListener('click', function () { gran = g; abas(); desenhar(); });
+                li.appendChild(b); ul.appendChild(li);
+            });
+        }
+
+        function abrir() {
+            pk = indAtivo();
+            if (!pk) return;
+            var disp = ['mensal', 'semanal', 'diaria'].filter(function (g) { return (CHARTS[pk] || {})[g]; });
+            gran = disp[0] || 'mensal';
+            var aba = document.querySelector('#kpiTabs [data-ind="' + pk + '"]');
+            el('kpiDadosNome').textContent = aba ? aba.textContent.trim() : '';
+            abas(); desenhar();
+            modal('kpiDadosModal').show();
+        }
+
+        btn.addEventListener('click', abrir);
+        var novo = el('kpiDadosNovo');
+        if (novo) novo.addEventListener('click', function () { abrirMedicao(''); });
+        try {
+            if (sessionStorage.getItem('kpiDadosReabrir') === '1') { sessionStorage.removeItem('kpiDadosReabrir'); abrir(); }
+        } catch (e) {}
+    })();
 
     (function () {
         var btn = el('kpiEditarBtn');

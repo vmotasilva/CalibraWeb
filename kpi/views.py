@@ -17,6 +17,7 @@ from django.views.decorators.http import require_POST
 from kpi import calculo, consolidacao
 from kpi.forms import IndicadorForm, MedicaoForm
 from kpi.models import Indicador, Medicao, Motivo
+from shared.permissions import has_view_access
 
 JANELAS = {'mensal': 12, 'semanal': 6, 'diaria': 15}  # barras exibidas por vez
 LIMITES = {'mensal': 12, 'semanal': 52, 'diaria': 120}  # histórico enviado ao navegador (navegável pelas setas)
@@ -249,6 +250,8 @@ def painel_view(request):
     return render(request, 'kpi/painel.html', {
         'abas': abas, 'charts': charts, 'campos_js': campos_js, 'motivos_js': motivos_js, 'ativo_pk': ativo_pk, 'filtro': filtro, 'periodos_motivos': PERIODOS_MOTIVOS,
         'total': total, 'ok': ok, 'fora': fora, 'sem_dado': total - ok - fora,
+        'pode_editar_dados': has_view_access(request.user, 'kpi:medicao_salvar'),
+        'pode_excluir_dados': has_view_access(request.user, 'kpi:medicao_excluir'),
     })
 
 
