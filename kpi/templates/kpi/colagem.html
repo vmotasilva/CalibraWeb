@@ -90,7 +90,7 @@
             {% for l in linhas %}
                 <tr>
                     <td>{{ l.pos }}</td><td>{{ l.rotulo }}</td>
-                    <td class="text-end">{% if l.valor is None %}<span class="text-muted fst-italic">vazio</span>{% else %}{{ l.valor|floatformat:"-2" }}{% endif %}</td>
+                    <td class="text-end">{% if l.valor is None %}<span class="text-muted fst-italic">vazio = 0</span>{% else %}{{ l.valor|floatformat:"-2" }}{% endif %}</td>
                     <td class="small {% if l.destino %}{% else %}text-muted fst-italic{% endif %}">{{ l.destino|default:"não alimenta indicador" }}</td>
                 </tr>
             {% endfor %}
