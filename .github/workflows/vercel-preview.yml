@@ -4,15 +4,22 @@ env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
+# Preview apenas em PR (nao a cada push de branch) e sem rodar para mudancas
+# que nao afetam a funcao, para nao acumular deployments no Vercel.
 on:
-  push:
-    branches-ignore:
-      - main
-      - master
   pull_request:
     branches:
       - main
       - master
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'htmlcov/**'
+      - '.github/workflows/cobertura-por-app.yml'
+
+concurrency:
+  group: vercel-preview-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   Deploy-Preview:

@@ -1,0 +1,60 @@
+# Arquivos que nao sao necessarios em runtime na funcao serverless.
+# Mantem FOR.*.xlsx (modelos lidos via glob em procedures/services) e changelog.
+
+# Relatorios, docs e material de apoio
+htmlcov/
+docs/
+PDFs/
+Python Files/
+.pytest_cache/
+.github/
+.git/
+*.pdf
+Checklist_Auditoria_*.xlsx
+colaboradores_*.xlsx
+
+# Bancos e dumps locais
+db.sqlite3
+*.sql
+test_output.txt
+clean_iso_text.txt
+cleaned_norma.txt
+replacement.txt
+debug_extracted.json
+Iniciar.bot
+
+# Scripts avulsos de manutencao e testes
+add_model.py
+append_*.py
+atualizar_cpf_colaboradores.py
+check51.py
+check_db.py
+debug_grid.py
+fix*.py
+gerar_sql_neon.py
+prev_views.py
+refactor_*.py
+replace_script.py
+scratch.py
+temp.js
+temp_views.py
+script0.js
+update_*.py
+update_templates.ps1
+board_3.html
+vercel_board_3.html
+**/tests/
+**/test_*.py
+**/tests.py
+conftest.py
+pytest.ini
+requirements-test.txt
+
+# Docker / infra nao usados na Vercel
+Dockerfile*
+.dockerignore
+entrypoint*.sh
+start*.sh
+run_*.sh
+render.yaml
+.env*
