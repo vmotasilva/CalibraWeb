@@ -477,10 +477,21 @@ def colagem_view(request):
             linhas, erros = colagem.interpretar_modelo(modelo.linhas)
             valores, erros_v = colagem.interpretar_valores(ctx['texto'])
             erros += erros_v
-            if not erros_v and len(valores) != len(linhas):
-                erros.append(f'O modelo "{modelo.nome}" tem {len(linhas)} posições e a colagem tem {len(valores)} números.')
+            extra = len(valores) - len(linhas)
+            if not erros_v and extra < 0:
+                erros.append(f'O modelo "{modelo.nome}" tem {len(linhas)} posições e a colagem tem {len(valores)} linhas.')
+            ctx['excesso_ok'] = request.POST.get('excesso_ok') == '1'
+            if not erros and extra > 0:
+                if ctx['excesso_ok']:
+                    valores = valores[:len(linhas)]  # o usuário aceitou ignorar as linhas a mais
+                else:
+                    sobra = valores[len(linhas):]
+                    ctx['excesso'] = {'n': extra, 'vazias': all(v is None for v in sobra), 'modelo': modelo.nome, 'posicoes': len(linhas)}
+                    erros = None
             if erros:
                 ctx['erros'] = erros
+            elif erros is None:
+                pass  # aguardando a decisão do usuário sobre as linhas a mais
             else:
                 gravar = request.POST.get('confirmar') == '1'
                 res = colagem.aplicar(linhas, valores, ctx['gran'], data, request.user, gravar)

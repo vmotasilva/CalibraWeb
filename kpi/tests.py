@@ -240,6 +240,36 @@ class KpiTests(TestCase):
         self.assertEqual(linhas[1]['destino'], '+ Late Orders · Lentes enviadas; + Service Rate · Lentes enviadas')
         self.assertEqual(linhas[2]['destinos'], [])
 
+    def test_colagem_linhas_em_branco_ocupam_a_posicao(self):
+        from kpi.models import ModeloColagem
+        ind = Indicador.objects.create(nome='Qz', meta=5, sentido='menor', exibir_diario=True,
+                                       campos='P\nQ', formula='[P] / [Q] * 100')
+        modelo = ModeloColagem.objects.create(nome='Brancos', linhas='\n'.join([
+            'A', 'B || Qz | P | | + | 1', 'C', 'D || Qz | Q | | + | 1', 'E']))
+        url = reverse('kpi:colagem')
+        base = {'modelo': modelo.pk, 'granularidade': 'diaria', 'data': '2026-10-14', 'confirmar': '1'}
+        # 5 posições: a 3ª e a 5ª vieram em branco e continuam ocupando o lugar delas
+        r = self.client.post(url, dict(base, texto='10\n5\n\n200\n '))
+        self.assertFalse(r.context.get('erros'))
+        m = Medicao.objects.get(indicador=ind, granularidade='diaria')
+        self.assertEqual(m.dados, {'P': '5', 'Q': '200'})  # B e D, sem deslocar as posições
+        self.assertEqual(str(m.valor), '2.50')
+        Medicao.objects.all().delete()
+        # linhas a mais no fim: avisa e só segue se o usuário confirmar
+        r = self.client.post(url, dict(base, texto='10\n5\n\n200\n \n '))
+        self.assertEqual(r.context['excesso']['n'], 1)
+        self.assertTrue(r.context['excesso']['vazias'])
+        self.assertFalse(Medicao.objects.exists())
+        r = self.client.post(url, dict(base, texto='10\n5\n\n200\n \n ', excesso_ok='1'))
+        self.assertFalse(r.context.get('excesso'))
+        self.assertEqual(str(Medicao.objects.get(indicador=ind, granularidade='diaria').valor), '2.50')
+        # sobra com números também avisa (variáveis que o modelo não conhece)
+        r = self.client.post(url, dict(base, texto='10\n5\n\n200\n\n77'))
+        self.assertFalse(r.context['excesso']['vazias'])
+        # faltando linhas continua sendo erro
+        r = self.client.post(url, dict(base, texto='10\n5'))
+        self.assertTrue(r.context['erros'])
+
     def test_variavel_de_tabela_fica_fora_do_calculo(self):
         from kpi import calculo
         ind = Indicador.objects.create(nome='Q2', meta=5, campos='Motivo | tabela\nPerdidas\nProduzidas')

@@ -104,13 +104,15 @@ def interpretar_modelo(texto):
 
 
 def interpretar_valores(texto):
-    """Um número por linha (aceita "rótulo<TAB>número" e vírgula decimal). Retorna (valores, erros)."""
+    """Um número por linha (aceita "rótulo<TAB>número" e vírgula decimal). Linha vazia é uma posição sem valor (None).
+    Retorna (valores, erros)."""
     valores, erros = [], []
     for n, bruto in enumerate((texto or '').splitlines(), start=1):
         t = bruto.strip()
-        if not t:
+        token = re.split(r'[\t;]+|\s{2,}', t)[-1].strip().replace('%', '').replace(' ', '') if t else ''
+        if not token:
+            valores.append(None)
             continue
-        token = re.split(r'[\t;]+|\s{2,}', t)[-1].strip().replace('%', '').replace(' ', '')
         if ',' in token:
             token = token.replace('.', '').replace(',', '.')
         try:
@@ -136,6 +138,8 @@ def aplicar(linhas, valores, gran, data, usuario, gravar):
     # (indicador, setor) -> {variável ('' = valor do indicador): [(op, valor × fator)]}
     grupos = OrderedDict()
     for linha, valor in zip(linhas, valores):
+        if valor is None:
+            continue  # posição colada em branco: não alimenta nada
         for d in linha['destinos']:
             grupos.setdefault((d['ind'], d['setor']), OrderedDict()).setdefault(d['variavel'], []).append((d['op'], valor * d['fator']))
     itens, avisos, salvos = [], [], 0

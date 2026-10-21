@@ -15,8 +15,19 @@
     <div class="alert alert-danger"><ul class="mb-0 small">{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>
     {% endif %}
 
-    <form method="post" class="card card-body mb-3">
+    {% if excesso %}
+    <div class="alert alert-warning">
+        <div class="fw-semibold mb-1"><i class="bi bi-exclamation-triangle me-1"></i>A colagem tem {{ excesso.n }} linha(s) a mais que o modelo.</div>
+        O modelo "{{ excesso.modelo }}" tem {{ excesso.posicoes }} posições.
+        {% if excesso.vazias %}As linhas a mais estão em branco (provavelmente espaço sobrando no final).{% else %}As linhas a mais têm números: podem ser variáveis que o modelo ainda não conhece.{% endif %}
+        Se continuar, elas serão ignoradas.
+        <div class="mt-2"><button type="submit" form="colForm" name="excesso_ok" value="1" class="btn btn-sm btn-warning">Continuar mesmo assim</button></div>
+    </div>
+    {% endif %}
+
+    <form method="post" class="card card-body mb-3" id="colForm">
         {% csrf_token %}
+        {% if excesso_ok %}<input type="hidden" name="excesso_ok" value="1">{% endif %}
         <div class="row g-3">
             <div class="col-md-5">
                 <label class="form-label" for="colModelo">Modelo (posições e variáveis)</label>
@@ -79,7 +90,7 @@
             {% for l in linhas %}
                 <tr>
                     <td>{{ l.pos }}</td><td>{{ l.rotulo }}</td>
-                    <td class="text-end">{{ l.valor|floatformat:"-2" }}</td>
+                    <td class="text-end">{% if l.valor is None %}<span class="text-muted fst-italic">vazio</span>{% else %}{{ l.valor|floatformat:"-2" }}{% endif %}</td>
                     <td class="small {% if l.destino %}{% else %}text-muted fst-italic{% endif %}">{{ l.destino|default:"não alimenta indicador" }}</td>
                 </tr>
             {% endfor %}
