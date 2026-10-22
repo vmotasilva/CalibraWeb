@@ -972,7 +972,7 @@ class LimitesTests(PcpBase):
         self.assertEqual(Resposta.objects.filter(campo=self.c_meio, conforme=False).count(), 9)  # 61..69
 
 
-class ValoresTests(PcpBase):
+class ValoresBase(PcpBase):
     HOJE = date(2026, 12, 31)
 
     def setUp(self):
@@ -1004,6 +1004,8 @@ class ValoresTests(PcpBase):
         OpcaoLista.objects.create(lista=real, valor='Não realizado', conforme=False, ordem=1)
         return self.lista, real  # self.lista = 'Ok / Nok' (Ok, Nok)
 
+
+class ValoresTests(ValoresBase):
     def test_sugestoes_com_base_nas_opcoes(self):
         from pcp.equivalencias import sugerir_opcao
         ok_nok, real = self.listas()
@@ -1100,3 +1102,66 @@ class ValoresTests(PcpBase):
         pagina = r0['versao'].paginas.get(nome='Fitadeira')
         html = self.client.get(reverse('pcp:preencher_pagina', args=[pagina.pk]) + f'?data=2026-01-05&turno={Turno.objects.get(sigla="T1").pk}').content.decode()
         self.assertIn('<option value="Não realizado" selected>', html)  # valor de outra lista continua visível
+
+class MarcarTextoTests(ValoresBase):
+    """Ação "marcar o item como texto livre" na mesma linha do vínculo de valores."""
+
+    def preparar(self):
+        self.listas()
+        r0 = self.estrutura()
+        self.registros(arquivo=self.planilha({(4, 8): 'Lofoam', (4, 9): 'Lofoam'}))   # 2 de 3 lançamentos do item A-1
+        return r0
+
+    def test_linha_mostra_itens_afetados_e_pre_seleciona_texto(self):
+        r0 = self.preparar()
+        r = self.client.get(reverse('pcp:valores', args=[r0['formulario'].pk]))
+        linha = {l['valor']: l for l in r.context['linhas']}['Lofoam']
+        self.assertEqual([(x['n'], x['total'], x['pct']) for x in linha['itens']], [(2, 3, 67)])
+        self.assertTrue(linha['texto_sugerido'])
+        self.assertContains(r, 'como texto livre')
+        self.assertContains(r, 'parece texto livre')
+
+    def test_valor_com_opcao_parecida_nao_pre_seleciona_texto(self):
+        self.listas()
+        r0 = self.estrutura()
+        self.registros(arquivo=self.planilha({(4, 8): 'falat'}))
+        linha = {l['valor']: l for l in self.client.get(reverse('pcp:valores', args=[r0['formulario'].pk])).context['linhas']}['falat']
+        self.assertEqual(linha['sugestao'].valor, 'Não realizado')
+        self.assertFalse(linha['texto_sugerido'])
+        self.assertTrue(linha['itens'])  # a ação continua disponível
+
+    def test_aplicar_marca_item_como_texto_e_limpa_conformidade(self):
+        r0 = self.preparar()
+        campo = Campo.objects.get(item='A-1')
+        self.assertEqual(campo.tipo, 'lista')
+        linha = {l['valor']: l for l in self.client.get(reverse('pcp:valores', args=[r0['formulario'].pk])).context['linhas']}['Lofoam']
+        r = self.client.post(reverse('pcp:vincular_valores'), {
+            'total': 1, 'lista_0': campo.lista_id, 'valor_0': 'Lofoam', 'acao_0': 'texto', 'itens_0': linha['itens_ids'],
+            'formulario': r0['formulario'].pk, 'next': 'valores'})
+        self.assertRedirects(r, reverse('pcp:valores', args=[r0['formulario'].pk]))
+        campo.refresh_from_db()
+        self.assertEqual((campo.tipo, campo.lista_id), ('texto', None))
+        self.assertFalse(Resposta.objects.filter(campo=campo).exclude(conforme=None).exists())   # conformidade antiga limpa
+        self.assertEqual(Resposta.objects.filter(campo=campo, valor='Lofoam').count(), 2)          # valores preservados
+        self.assertEqual(ValorEquivalente.objects.count(), 0)
+
+    def test_ids_de_itens_de_outra_lista_ou_tipo_sao_ignorados(self):
+        r0 = self.preparar()
+        campo = Campo.objects.get(item='A-1')
+        outro_tipo = Campo.objects.get(item='B-12')       # numérico
+        outra_lista = ListaOpcoes.objects.create(nome='Outra')
+        self.client.post(reverse('pcp:vincular_valores'), {
+            'total': 1, 'lista_0': outra_lista.pk, 'valor_0': 'Lofoam', 'acao_0': 'texto', 'itens_0': f'{campo.pk},{outro_tipo.pk}'})
+        campo.refresh_from_db()
+        outro_tipo.refresh_from_db()
+        self.assertEqual(campo.tipo, 'lista')            # lista diferente da informada: não altera
+        self.assertEqual(outro_tipo.tipo, 'numero')
+
+    def test_relatorio_da_simulacao_traz_itens_afetados(self):
+        self.listas()
+        self.estrutura()
+        r = self.registros(arquivo=self.planilha({(4, 8): 'Lofoam', (4, 9): 'Lofoam'}), simular=True)
+        linha = {l['valor']: l for l in r['nao_reconhecidos']}['Lofoam']
+        self.assertEqual([(x['n'], x['total']) for x in linha['itens']], [(2, 3)])
+        self.assertTrue(linha['texto_sugerido'])
+

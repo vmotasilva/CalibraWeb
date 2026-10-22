@@ -117,11 +117,11 @@ def vincular_valores(request):
         acao = request.POST.get(f'acao_{i}', '')
         lista_id = request.POST.get(f'lista_{i}', '')
         if acao and lista_id.isdigit():
-            escolhas.append((int(lista_id), request.POST.get(f'valor_{i}', ''), acao))
+            escolhas.append((int(lista_id), request.POST.get(f'valor_{i}', ''), acao, request.POST.get(f'itens_{i}', '')))
     r = equiv.aplicar_vinculos(escolhas)
     if escolhas:
-        messages.success(request, f'{r["vinculados"]} valor(es) vinculado(s), {r["criadas"]} opção(ões) criada(s); {r["lancamentos"]} lançamento(s) atualizado(s). '
-                                  'Os vínculos valem nas próximas importações de registros.')
+        partes = [f'{r["vinculados"]} valor(es) vinculado(s)', f'{r["criadas"]} opção(ões) criada(s)', f'{r["textos"]} item(ns) marcado(s) como texto']
+        messages.success(request, ', '.join(partes) + f'; {r["lancamentos"]} lançamento(s) atualizado(s). Os vínculos valem nas próximas importações de registros.')
     else:
         messages.info(request, 'Nenhuma alteração: todas as linhas ficaram em "Manter como está".')
     if request.POST.get('next') == 'importar_registros':

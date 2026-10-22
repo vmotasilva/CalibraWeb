@@ -7,16 +7,21 @@
         <tr>
             <td><code>{{ l.valor }}</code>
                 <input type="hidden" name="lista_{{ forloop.counter0 }}" value="{{ l.lista.pk }}">
-                <input type="hidden" name="valor_{{ forloop.counter0 }}" value="{{ l.valor }}"></td>
+                <input type="hidden" name="valor_{{ forloop.counter0 }}" value="{{ l.valor }}">
+                <input type="hidden" name="itens_{{ forloop.counter0 }}" value="{{ l.itens_ids }}"></td>
             <td class="small">{{ l.lista.nome }}</td>
-            <td class="text-end">{{ l.n }}</td>
+            <td class="text-end">{{ l.n }}
+                {% if l.itens %}<div class="small text-muted text-start" style="min-width:11rem">
+                    {% for x in l.itens|slice:":3" %}{{ x.rotulo }}: {{ x.n }} de {{ x.total }} ({{ x.pct }}%)<br>{% endfor %}
+                    {% if l.itens|length > 3 %}e mais {{ l.itens|length|add:"-3" }} item(ns){% endif %}</div>{% endif %}</td>
             <td class="small">
                 {% if l.sugestao %}{{ l.sugestao.valor }} <span class="badge {% if l.confianca == 'alta' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ l.confianca }}</span>{% if l.de_outra_lista %}<div class="text-muted">da lista "{{ l.sugestao.lista.nome }}"</div>{% endif %}
-                {% else %}<span class="text-muted">sem sugestão</span>{% endif %}
+                {% else %}<span class="text-muted">sem opção parecida</span>{% if l.texto_sugerido %}<div class="text-muted">parece texto livre</div>{% endif %}{% endif %}
             </td>
             <td>
                 <select name="acao_{{ forloop.counter0 }}" class="form-select form-select-sm">
                     <option value="">Manter como está</option>
+                    {% if l.itens %}<option value="texto" {% if l.texto_sugerido %}selected{% endif %}>Marcar {% if l.itens|length == 1 %}o item{% else %}os {{ l.itens|length }} itens{% endif %} como texto livre</option>{% endif %}
                     <optgroup label="Vincular à opção">
                         {% for o in l.opcoes %}<option value="op:{{ o.pk }}" {% if l.sugestao and l.sugestao.pk == o.pk %}selected{% endif %}>{{ o.valor }}{% if not o.conforme %} (desvio){% endif %}</option>{% endfor %}
                     </optgroup>

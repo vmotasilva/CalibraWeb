@@ -191,7 +191,8 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
         resumo['verificacoes_novas'] = len(a_criar)
         existentes = set(Resposta.objects.filter(verificacao__pagina_id__in=paginas_ids, verificacao__data__year=ano)
                          .values_list('verificacao_id', 'campo_id'))
-        nao_reconhecidos = Counter()
+        nao_reconhecidos, detalhe = Counter(), defaultdict(dict)
+        totais_item = Counter(l[3].pk for l in lancamentos)
         novas = []
         for pagina, data, turno, campo, valor in lancamentos:
             v = verificacoes[(pagina.pk, data, turno.pk)]
@@ -210,11 +211,12 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
                     valor, conforme = 'Não realizado', False
                 if conforme is None:
                     nao_reconhecidos[(campo.lista_id, valor)] += 1
+                    detalhe[(campo.lista_id, valor)][campo.pk] = detalhe[(campo.lista_id, valor)].get(campo.pk, 0) + 1
             else:
                 conforme = campo.avaliar(valor)
             resumo['fora_do_limite'] += int(conforme is False)
             novas.append(Resposta(verificacao=v, campo=campo, valor=valor, conforme=conforme))
-        resumo['nao_reconhecidos'], resumo['numericos_em_listas'] = equivalencias.montar_linhas(nao_reconhecidos)
+        resumo['nao_reconhecidos'], resumo['numericos_em_listas'] = equivalencias.montar_linhas(nao_reconhecidos, detalhe, totais_item)
         Resposta.objects.bulk_create(novas, batch_size=2000)
         resumo['respostas_novas'] = len(novas)
         if rastreio_desde_primeiro and resumo['primeira_data']:

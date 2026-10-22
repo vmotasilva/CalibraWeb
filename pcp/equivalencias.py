@@ -10,7 +10,8 @@ from collections import Counter
 from django.db.models import Count
 
 from pcp.importacao import RE_NUM, _chave
-from pcp.models import ListaOpcoes, OpcaoLista, Resposta, ValorEquivalente
+from pcp.tipos import aplicar_ajuste
+from pcp.models import Campo, ListaOpcoes, OpcaoLista, Resposta, ValorEquivalente
 
 # grupos de sinônimos -> chave da opção para a qual apontam (compara com a chave normalizada das opções da lista)
 SINONIMOS = {
@@ -62,10 +63,16 @@ def sugerir_opcao(valor, opcoes, outras_opcoes=()):
     return (opcao, confianca, True) if opcao else (None, '', False)
 
 
-def montar_linhas(contagem, limite=200):
+def montar_linhas(contagem, detalhe=None, totais=None, limite=200):
     """Linhas para a tabela de vínculos a partir de {(lista_id, valor): quantidade}.
+
+    `detalhe` = {(lista_id, valor): {campo_id: quantidade}} e `totais` = {campo_id: total de lançamentos do item} permitem mostrar
+    quais itens o valor afeta e a que parte do item ele corresponde (base da ação "marcar como texto livre").
     Valores numéricos ficam de fora (o caminho deles é Ajustar tipos); devolve (linhas, quantidade_de_lançamentos_numéricos)."""
     listas = {l.pk: l for l in ListaOpcoes.objects.prefetch_related('opcoes')}
+    detalhe, totais = detalhe or {}, totais or {}
+    ids = {cid for d in detalhe.values() for cid in d}
+    campos = {c.pk: c for c in Campo.objects.filter(pk__in=ids).select_related('pagina')}
     linhas, numericos = [], 0
     for (lista_id, valor), n in Counter(contagem).most_common():
         if RE_NUM.match(valor):
@@ -77,32 +84,53 @@ def montar_linhas(contagem, limite=200):
         opcoes = list(lista.opcoes.all())
         outras = [(l, list(l.opcoes.all())) for l in listas.values() if l.pk != lista.pk and l.ativo]
         opcao, confianca, de_outra = sugerir_opcao(valor, opcoes, [o for _, ops in outras for o in ops])
-        linhas.append({'lista': lista, 'valor': valor, 'n': n, 'opcoes': opcoes, 'outras': outras, 'sugestao': opcao,
-                       'de_outra_lista': de_outra, 'confianca': CONFIANCA_ROTULO.get(confianca, '')})
+        itens = []
+        for cid, qtd in sorted(detalhe.get((lista_id, valor), {}).items(), key=lambda x: -x[1]):
+            c = campos.get(cid)
+            if c is None or c.tipo != Campo.LISTA:
+                continue
+            total = totais.get(cid) or qtd
+            itens.append({'pk': cid, 'rotulo': f'{c.pagina.nome} · {c.item or c.descricao[:30]}', 'n': qtd, 'total': total,
+                          'pct': round(100 * qtd / total)})
+        linhas.append({
+            'lista': lista, 'valor': valor, 'n': n, 'opcoes': opcoes, 'outras': outras, 'sugestao': opcao,
+            'de_outra_lista': de_outra, 'confianca': CONFIANCA_ROTULO.get(confianca, ''),
+            'itens': itens, 'itens_ids': ','.join(str(x['pk']) for x in itens),
+            # sem opção parecida e o valor domina o item: provavelmente o item é de texto livre
+            'texto_sugerido': bool(itens) and opcao is None and all(x['pct'] >= 50 for x in itens)})
     return linhas[:limite], numericos
 
 
 def valores_do_formulario(formulario):
     """Valores já lançados em itens de lista do formulário que não coincidem com nenhuma opção da lista do item."""
     pares = (Resposta.objects.filter(campo__pagina__versao__formulario=formulario, campo__tipo='lista', campo__lista__isnull=False)
-             .exclude(valor='').values('campo__lista_id', 'valor').annotate(n=Count('id')))
+             .exclude(valor='').values('campo__lista_id', 'valor', 'campo_id').annotate(n=Count('id')))
     opcoes_exatas = {l.pk: {o.valor for o in l.opcoes.all()} for l in ListaOpcoes.objects.prefetch_related('opcoes')}
-    contagem = {}
+    contagem, detalhe, totais = Counter(), {}, Counter()
     for p in pares:
+        totais[p['campo_id']] += p['n']
         if p['valor'] not in opcoes_exatas.get(p['campo__lista_id'], set()):
-            contagem[(p['campo__lista_id'], p['valor'])] = p['n']
-    return montar_linhas(contagem)
+            chave = (p['campo__lista_id'], p['valor'])
+            contagem[chave] += p['n']
+            detalhe.setdefault(chave, {})[p['campo_id']] = p['n']
+    return montar_linhas(contagem, detalhe, totais)
 
 
 def aplicar_vinculos(linhas):
-    """linhas: [(lista_id, valor, acao)] com acao 'op:<id>' (vincular), 'novo:ok' ou 'novo:desvio' (criar opção).
-    Devolve {'vinculados', 'criadas', 'lancamentos'}."""
-    resumo = {'vinculados': 0, 'criadas': 0, 'lancamentos': 0}
-    for lista_id, valor, acao in linhas:
+    """linhas: [(lista_id, valor, acao, ids_dos_itens)] com acao 'op:<id>' (vincular), 'novo:ok' ou 'novo:desvio' (criar opção)
+    ou 'texto' (marcar os itens indicados como texto livre). Devolve {'vinculados', 'criadas', 'textos', 'lancamentos'}."""
+    resumo = {'vinculados': 0, 'criadas': 0, 'textos': 0, 'lancamentos': 0}
+    for lista_id, valor, acao, itens_ids in linhas:
         lista = ListaOpcoes.objects.filter(pk=lista_id).first()
         if not lista or not valor:
             continue
         lancamentos = Resposta.objects.filter(campo__lista=lista, valor=valor)
+        if acao == 'texto':
+            ids = [int(x) for x in itens_ids.split(',') if x.strip().isdigit()]
+            for campo in Campo.objects.filter(pk__in=ids, tipo=Campo.LISTA, lista=lista).select_related('pagina__versao__formulario'):
+                aplicar_ajuste(campo.pagina.versao.formulario, campo, Campo.TEXTO)
+                resumo['textos'] += 1
+            continue
         if acao.startswith('op:') and acao[3:].isdigit():
             opcao = OpcaoLista.objects.filter(pk=int(acao[3:])).first()  # pode ser de outra lista (ex.: Realizado num item Ok/Nok)
             if not opcao:
