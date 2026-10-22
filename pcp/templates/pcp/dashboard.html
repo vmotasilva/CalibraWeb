@@ -57,6 +57,61 @@
     </div>
     {% endif %}
 
+    {% if d.devidos %}
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <h5 class="mb-0">Menor cumprimento</h5>
+        <form method="get" class="d-flex flex-wrap gap-2 ms-auto">
+            <input type="hidden" name="dias" value="{{ dias }}"><input type="hidden" name="ate" value="{{ fim|date:'Y-m-d' }}">
+            {% if formulario_id %}<input type="hidden" name="formulario" value="{{ formulario_id }}">{% endif %}
+            <select name="ordem" class="form-select form-select-sm w-auto" onchange="this.form.submit()" title="Critério de ordenação">
+                <option value="pct" {% if ordem == 'pct' %}selected{% endif %}>Ordenar por menor %</option>
+                <option value="atrasos" {% if ordem == 'atrasos' %}selected{% endif %}>Ordenar por mais atrasos</option>
+            </select>
+            <select name="top" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                {% for t in tops %}<option value="{{ t }}" {% if t == top %}selected{% endif %}>Top {{ t }}</option>{% endfor %}
+            </select>
+        </form>
+    </div>
+    <div class="row g-3 mb-3">
+        <div class="col-xl-5"><div class="card h-100">
+            <div class="card-header">Páginas <span class="small text-muted">(mínimo de {{ min_pagina }} prazos no período)</span></div>
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                <thead><tr><th>#</th><th>Página</th><th class="text-center">Cumpr.</th><th class="text-end">Atrasos</th></tr></thead>
+                <tbody>
+                {% for p in rank_paginas %}
+                    <tr>
+                        <td class="text-muted">{{ forloop.counter }}</td>
+                        <td><a href="{% url 'pcp:atrasos_pagina' p.pagina_id %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}" class="text-decoration-none">{{ p.nome }}</a>
+                            <div class="small text-muted">{{ p.codigo }}</div></td>
+                        <td class="text-center"><span class="badge {% if p.pct >= 95 %}bg-success{% elif p.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ p.pct }}%</span>
+                            <div class="small text-muted">{{ p.feitos }}/{{ p.devidos }}</div></td>
+                        <td class="text-end {% if p.atrasados %}text-danger fw-semibold{% endif %}">{{ p.atrasados }}</td>
+                    </tr>
+                {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">Nenhuma página com prazos suficientes no período.</td></tr>{% endfor %}
+                </tbody></table></div>
+        </div></div>
+        <div class="col-xl-7"><div class="card h-100">
+            <div class="card-header">Itens <span class="small text-muted">(mínimo de {{ min_item }} prazos no período)</span></div>
+            <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+                <thead><tr><th>#</th><th>Item</th><th>Página</th><th>Frequência</th><th class="text-center">Cumpr.</th><th class="text-end">Atrasos</th></tr></thead>
+                <tbody>
+                {% for i in rank_itens %}
+                    <tr>
+                        <td class="text-muted">{{ forloop.counter }}</td>
+                        <td>{% if i.etapa %}<div class="small text-muted">{{ i.etapa|truncatechars:45 }}</div>{% endif %}
+                            <span class="fw-semibold {% if i.critico %}text-danger{% endif %}">{{ i.item|default:"—" }}</span> {{ i.descricao|truncatechars:60 }}</td>
+                        <td class="small"><a href="{% url 'pcp:atrasos_pagina' i.pagina_id %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}" class="text-decoration-none">{{ i.pagina }}</a></td>
+                        <td class="small text-nowrap">{{ i.frequencia }}</td>
+                        <td class="text-center"><span class="badge {% if i.pct >= 95 %}bg-success{% elif i.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ i.pct }}%</span>
+                            <div class="small text-muted">{{ i.feitos }}/{{ i.devidos }}</div></td>
+                        <td class="text-end {% if i.atrasados %}text-danger fw-semibold{% endif %}">{{ i.atrasados }}</td>
+                    </tr>
+                {% empty %}<tr><td colspan="6" class="text-center text-muted py-3">Nenhum item com prazos suficientes no período.</td></tr>{% endfor %}
+                </tbody></table></div>
+        </div></div>
+    </div>
+    {% endif %}
+
     <div class="small text-muted mb-2">
         Cada célula mostra o <strong>% de cumprimento</strong> e <strong>feitas/devidas</strong> da frequência naquela página: uma verificação devida conta uma vez por prazo
         (a cada turno, dia, semana, mês…) e só entra depois que o prazo encerra. <span class="badge bg-success">≥ 95%</span> <span class="badge bg-warning text-dark">80–94%</span> <span class="badge bg-danger">&lt; 80%</span>

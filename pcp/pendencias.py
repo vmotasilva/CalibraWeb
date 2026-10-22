@@ -274,6 +274,7 @@ def dashboard(ini, fim, turnos, formulario_id=None, hoje=None):
     if formulario_id:
         versoes = [v for v in versoes if v.formulario_id == int(formulario_id)]
     freq_info, serie, por_freq_total = {}, defaultdict(lambda: [0, 0]), defaultdict(lambda: [0, 0])
+    itens_acc, itens_info = defaultdict(lambda: [0, 0]), {}
     brutos = []
     for versao in versoes:
         rastreio = inicio_rastreio(versao.formulario)
@@ -289,6 +290,13 @@ def dashboard(ini, fim, turnos, formulario_id=None, hoje=None):
                 por_freq_total[f.pk][1] += int(feito)
                 serie[b][0] += 1
                 serie[b][1] += int(feito)
+                itens_acc[campo.pk][0] += 1
+                itens_acc[campo.pk][1] += int(feito)
+                if campo.pk not in itens_info:
+                    itens_info[campo.pk] = {
+                        'campo_id': campo.pk, 'pagina_id': pagina.pk, 'pagina': pagina.nome, 'codigo': versao.formulario.codigo,
+                        'item': campo.item, 'descricao': campo.descricao[:90], 'etapa': campo.etapa[:60], 'frequencia': f.nome,
+                        'critico': campo.critico}
             grupos.setdefault(pagina.grupo or 'Sem grupo', []).append((pagina, dict(por_freq)))
         brutos.append((versao, versao.formulario.ordenar_grupos(grupos)))
 
@@ -326,10 +334,29 @@ def dashboard(ini, fim, turnos, formulario_id=None, hoje=None):
                 for d, v in sorted(agregada.items())]
     por_frequencia = [{'nome': c['nome'], 'devidos': por_freq_total[c['pk']][0], 'feitos': por_freq_total[c['pk']][1],
                        'pct': _pct(por_freq_total[c['pk']][1], por_freq_total[c['pk']][0])} for c in colunas]
+    itens = [dict(itens_info[pk], devidos=v[0], feitos=v[1], atrasados=v[0] - v[1], pct=_pct(v[1], v[0])) for pk, v in itens_acc.items()]
     paradas = 0
     if versoes and ini <= fim:
         paradas = (Verificacao.objects.filter(pagina__versao__formulario_id__in=[v.formulario_id for v in versoes], data__range=(ini, fim))
                    .exclude(status='').values('pagina__versao__formulario_id', 'pagina__nome', 'data', 'turno_id').distinct().count())
-    return {'ini': ini, 'fim': fim, 'colunas': colunas, 'blocos': blocos, 'evolucao': evolucao, 'por_frequencia': por_frequencia,
+    return {'ini': ini, 'fim': fim, 'colunas': colunas, 'blocos': blocos, 'evolucao': evolucao, 'por_frequencia': por_frequencia, 'itens': itens,
             'agrupamento': 'semana' if semanal else 'dia',
             'devidos': t_dev, 'feitos': t_feit, 'atrasados': t_dev - t_feit, 'pct': _pct(t_feit, t_dev), 'paradas': paradas}
+
+
+MIN_PRAZOS_PAGINA = 5
+MIN_PRAZOS_ITEM = 3
+TOPS = [10, 20, 50]
+
+
+def ranking(d, ordem='pct', top=10):
+    """(páginas, itens) com pior cumprimento do dashboard `d`. ordem 'pct' = menor % primeiro (empate: mais atrasos);
+    'atrasos' = mais atrasos primeiro. Páginas/itens com poucos prazos no período ficam de fora."""
+    paginas = [dict(l, codigo=b['codigo'], formulario_id=b['formulario_id']) for b in d['blocos'] for g in b['grupos']
+               for l in g['linhas'] if l['devidos'] >= MIN_PRAZOS_PAGINA]
+    itens = [i for i in d['itens'] if i['devidos'] >= MIN_PRAZOS_ITEM]
+    if ordem == 'atrasos':
+        chave_ = lambda x: (-x['atrasados'], x['pct'], x['nome'] if 'nome' in x else x['descricao'])  # noqa: E731
+    else:
+        chave_ = lambda x: (x['pct'], -x['atrasados'], x['nome'] if 'nome' in x else x['descricao'])  # noqa: E731
+    return sorted(paginas, key=chave_)[:top], sorted(itens, key=chave_)[:top]

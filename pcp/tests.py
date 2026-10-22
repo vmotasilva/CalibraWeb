@@ -1553,7 +1553,7 @@ class StatusNaImportacaoTests(ValoresBase):
         self.assertContains(r, 'em manutenção')
 
 
-class DashboardTests(PendenciasBase):
+class DashboardBase(PendenciasBase):
     HOJE = date(2026, 10, 22)
     INI, FIM = date(2026, 10, 12), date(2026, 10, 21)   # 10 dias, de segunda a quarta da semana seguinte
 
@@ -1575,6 +1575,8 @@ class DashboardTests(PendenciasBase):
     def dash(self, **kw):
         return pend.dashboard(self.INI, self.FIM, self.turnos, hoje=self.HOJE, **kw)
 
+
+class DashboardTests(DashboardBase):
     def test_cumprimento_por_pagina_e_frequencia(self):
         d = self.dash()
         self.assertEqual([c['nome'] for c in d['colunas']], ['Turno', 'Diária', 'Semanal'])   # mensal sem prazo encerrado no período: não aparece
@@ -1637,3 +1639,55 @@ class DashboardTests(PendenciasBase):
         self.assertContains(r, reverse('pcp:atrasos_pagina', args=[self.pag.pk]))
         self.assertContains(r, 'Turno')       # colunas por frequência
         self.assertContains(r, 'Em atraso')
+
+
+class RankingDashboardTests(DashboardBase):
+    def setUp(self):
+        super().setUp()
+        # item por turno com 12 de 20 prazos cumpridos (60%, 8 atrasos): fica entre os dois itens do dashboard em %, mas com mais atrasos que o diário
+        self.c_extra = Campo.objects.create(pagina=self.pag, item='E-9', descricao='Extra por turno', tipo='texto', frequencia=self.f_turno)
+        for dia in range(12, 18):
+            for turno in self.turnos:
+                self.lancar(date(2026, 10, dia), turno, self.c_extra, 'x')
+
+    def rank(self, ordem='pct', top=10):
+        return pend.ranking(self.dash(), ordem, top)
+
+    def test_itens_ordenados_por_menor_cumprimento(self):
+        _, itens = self.rank('pct')
+        # c_lista 5/20 = 25%, c_num 4/10 = 40%, c_extra 12/20 = 60%; o semanal (1 prazo) não tem prazos suficientes
+        self.assertEqual([(i['item'], i['pct']) for i in itens], [('B-1', 25), (self.c_num.item, 40), ('E-9', 60)])
+        self.assertEqual(itens[0]['atrasados'], 15)
+        self.assertEqual((itens[0]['pagina'], itens[0]['codigo'], itens[0]['frequencia']), ('Fitadeira', 'FOR.080', 'Turno'))
+
+    def test_ordenar_por_mais_atrasos(self):
+        _, por_pct = self.rank('pct')
+        _, por_atrasos = self.rank('atrasos')
+        self.assertEqual([i['item'] for i in por_atrasos], ['B-1', 'E-9', self.c_num.item])   # 15, 8 e 6 atrasos
+        self.assertNotEqual([i['item'] for i in por_pct], [i['item'] for i in por_atrasos])
+
+    def test_paginas_com_minimo_de_prazos_e_top(self):
+        paginas, _ = self.rank()
+        self.assertEqual([(p['nome'], p['codigo']) for p in paginas], [('Fitadeira', 'FOR.080')])
+        outra = Pagina.objects.create(versao=self.v15, nome='Pouco uso', grupo='Fita')
+        Campo.objects.create(pagina=outra, item='X', descricao='x', tipo='texto', frequencia=self.f_sem)   # 1 prazo semanal: abaixo do mínimo
+        self.assertEqual([p['nome'] for p in self.rank()[0]], ['Fitadeira'])
+        _, itens = self.rank(top=2)
+        self.assertEqual(len(itens), 2)
+
+    def test_pagina_pior_primeiro(self):
+        pior = Pagina.objects.create(versao=self.v15, nome='Pior', grupo='Fita')
+        Campo.objects.create(pagina=pior, item='P-1', descricao='Nunca preenchido', tipo='texto', frequencia=self.f_dia)   # 10 prazos, 0 feitos
+        paginas, itens = self.rank()
+        self.assertEqual([(p['nome'], p['pct']) for p in paginas][0], ('Pior', 0))
+        self.assertEqual(itens[0]['item'], 'P-1')
+
+    def test_tela_mostra_o_ranking_e_aceita_parametros(self):
+        url = reverse('pcp:dashboard')
+        r = self.client.get(url + f'?dias=30&ate={self.FIM}&ordem=atrasos&top=20')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual((r.context['ordem'], r.context['top']), ('atrasos', 20))
+        self.assertContains(r, 'Menor cumprimento')
+        self.assertContains(r, 'Extra por turno')
+        r = self.client.get(url + '?ordem=lixo&top=abc')
+        self.assertEqual((r.context['ordem'], r.context['top']), ('pct', 10))

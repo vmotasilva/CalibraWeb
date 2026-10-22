@@ -889,8 +889,12 @@ def dashboard(request):
         dados = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), formulario_id, hoje)
         cache.set(chave_cache, dados, timeout=120)  # resultado simples (sem objetos de modelo); recarrega a cada 2 minutos
     grafico = {'evolucao': dados['evolucao'], 'frequencias': dados['por_frequencia'], 'agrupamento': dados['agrupamento']}
+    ordem = request.GET.get('ordem') if request.GET.get('ordem') in ('pct', 'atrasos') else 'pct'
+    top = int(request.GET['top']) if request.GET.get('top') in {str(t) for t in pend.TOPS} else 10
+    rank_paginas, rank_itens = pend.ranking(dados, ordem, top)
     return render(request, 'pcp/dashboard.html', {
-        'd': dados, 'grafico': grafico, 'dias': dias, 'periodos': PERIODOS_DASHBOARD, 'hoje': hoje, 'fim': fim,
+        'd': dados, 'grafico': grafico, 'rank_paginas': rank_paginas, 'rank_itens': rank_itens, 'ordem': ordem, 'top': top, 'tops': pend.TOPS,
+        'min_pagina': pend.MIN_PRAZOS_PAGINA, 'min_item': pend.MIN_PRAZOS_ITEM, 'dias': dias, 'periodos': PERIODOS_DASHBOARD, 'hoje': hoje, 'fim': fim,
         'formularios': Formulario.objects.filter(ativo=True), 'formulario_id': int(formulario_id) if formulario_id else None})
 
 
