@@ -10,14 +10,64 @@
         .kpi-col-motivos { max-width: 520px; }
     }
     .kpi-top td, .kpi-top th { white-space: nowrap; }
+    .kpi-chart-box { height: 280px; }
+    @media (max-width: 767.98px) {
+        .kpi-titulo { font-size: 1.15rem; }
+        .kpi-chart-box { height: 230px; }
+        /* Top motivos: um card por motivo (posição, motivo, quantidade e barra de %) */
+        .kpi-top thead { display: none; }
+        .kpi-top, .kpi-top tbody { display: block; width: 100%; }
+        .kpi-top tr {
+            display: grid;
+            grid-template-columns: 1.7rem 1fr auto;
+            gap: .3rem .5rem;
+            align-items: center;
+            margin-bottom: .45rem;
+            padding: .5rem .6rem;
+            border: 1px solid var(--bs-border-color);
+            border-radius: .5rem;
+            background: var(--bs-body-bg);
+        }
+        .kpi-top > tbody > tr > td { display: block; padding: 0 !important; border: 0; background: transparent !important; box-shadow: none !important; white-space: normal !important; width: auto !important; }
+        .kpi-top td.kpi-rank { grid-column: 1; grid-row: 1; width: 1.5rem !important; height: 1.5rem; line-height: 1.5rem; text-align: center; font-size: .75rem; font-weight: 700; border-radius: 50%; background: var(--bs-primary-bg-subtle) !important; color: var(--bs-primary-text-emphasis); }
+        .kpi-top td.kpi-motivo { grid-column: 2; grid-row: 1; font-weight: 600; line-height: 1.2; }
+        .kpi-top td.kpi-qtd { grid-column: 3; grid-row: 1; font-size: 1.05rem; }
+        .kpi-top td.kpi-pct { grid-column: 2 / -1; grid-row: 2; }
+        .kpi-top td.kpi-pct .progress { width: auto !important; flex: 1 1 auto !important; }
+        .kpi-top td[colspan] { grid-column: 1 / -1; }
+        #kpiTabs .nav-link { padding: .45rem .7rem; font-size: .9rem; }
+        .kpi-card-titulo { font-size: .95rem; }
+    }
 </style>
-<div class="container-fluid py-3">
+<div class="container-fluid px-2 px-md-3 py-3">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-        <div>
-            <h4 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>KPI — Painel de Indicadores</h4>
-            <small class="text-muted">Um indicador por aba: evolução mensal, semanal, diária e principais motivos.</small>
+        <div class="flex-grow-1">
+            <h4 class="mb-0 kpi-titulo"><i class="bi bi-speedometer2 me-2"></i>KPI — Painel de Indicadores</h4>
+            <small class="text-muted d-none d-md-inline">Um indicador por aba: evolução mensal, semanal, diária e principais motivos.</small>
         </div>
-        <div class="d-flex gap-2">
+        {# Mobile: ações em um menu suspenso. Os itens acionam os botões originais (abaixo), que mantêm os ids usados pelo script. #}
+        <div class="d-flex gap-2 d-md-none w-100">
+            {% if abas %}
+            <div class="dropdown flex-grow-1">
+                <button class="btn btn-outline-secondary w-100 position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" id="kpiMenuMobile">
+                    <i class="bi bi-three-dots-vertical me-1"></i>Ações
+                    <span class="kpi-badge-mobile position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: .65rem;"></span>
+                </button>
+                <ul class="dropdown-menu w-100 shadow">
+                    <li><button type="button" class="dropdown-item" onclick="document.querySelector('[data-bs-target=&quot;#kpiResumoModal&quot;]').click()"><i class="bi bi-bar-chart me-2"></i>Resumo dos indicadores</button></li>
+                    {% if pode_editar_dados %}<li><a class="dropdown-item" href="{% url 'kpi:colagem' %}"><i class="bi bi-clipboard-data me-2"></i>Registro por colagem</a></li>{% endif %}
+                    <li><button type="button" class="dropdown-item d-flex justify-content-between align-items-center" onclick="document.getElementById('kpiAnaliseBtn').click()"><span><i class="bi bi-clipboard2-pulse me-2"></i>Causas e Análises</span><span class="kpi-badge-mobile badge rounded-pill bg-danger d-none"></span></button></li>
+                    <li><button type="button" class="dropdown-item" onclick="document.getElementById('kpiDadosBtn').click()"><i class="bi bi-table me-2"></i>Dados registrados</button></li>
+                    <li><button type="button" class="dropdown-item" onclick="document.getElementById('kpiEditarBtn').click()"><i class="bi bi-pencil me-2"></i>Editar indicador</button></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'kpi:importar' %}"><i class="bi bi-upload me-2"></i>Importar</a></li>
+                    <li><a class="dropdown-item" href="{% url 'kpi:indicadores' %}"><i class="bi bi-list-ul me-2"></i>Indicadores</a></li>
+                </ul>
+            </div>
+            {% endif %}
+            <a href="{% url 'kpi:indicador_novo' %}" class="btn btn-primary {% if not abas %}flex-grow-1{% endif %}"><i class="bi bi-plus-lg me-1"></i>Novo<span class="d-none d-sm-inline"> indicador</span></a>
+        </div>
+        <div class="d-none d-md-flex gap-2">
             {% if abas %}<button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#kpiResumoModal" title="Resumo dos indicadores" aria-label="Resumo dos indicadores"><i class="bi bi-bar-chart"></i></button>{% endif %}
             {% if abas and pode_editar_dados %}<a href="{% url 'kpi:colagem' %}" class="btn btn-outline-secondary" title="Registro por colagem" aria-label="Registro por colagem"><i class="bi bi-clipboard-data"></i></a>{% endif %}
             {% if abas %}<button type="button" class="btn btn-outline-secondary position-relative" id="kpiAnaliseBtn" title="Causas e análises dos períodos fora da meta"><i class="bi bi-clipboard2-pulse me-1"></i>Causas e Análises<span id="kpiAnaliseBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" style="font-size: .65rem;"></span></button>{% endif %}
@@ -77,43 +127,43 @@
                 {% endif %}
                 {% if a.ind.exibir_mensal %}
                 <div class="col-12 {% if ng > 1 %}col-lg-6{% endif %}">
-                    <div class="card h-100"><div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0"><i class="bi bi-calendar3 me-1"></i>Mês a mês <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
+                    <div class="card h-100"><div class="card-body p-2 p-md-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2 gap-1">
+                            <h6 class="mb-0 kpi-card-titulo"><i class="bi bi-calendar3 me-1"></i>Mês a mês <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
                             <button type="button" class="btn btn-primary btn-sm" title="Adicionar ou editar" onclick="kpiAbrirMedicao({{ pk }}, 'mensal')"><i class="bi bi-plus-lg"></i></button>
                         </div>
-                        <div style="height: 280px;"><canvas id="kpi-chart-{{ pk }}-mensal"></canvas></div>
+                        <div class="kpi-chart-box"><canvas id="kpi-chart-{{ pk }}-mensal"></canvas></div>
                     </div></div>
                 </div>
                 {% endif %}
 
                 {% if a.ind.exibir_semanal %}
                 <div class="col-12 {% if ng > 1 %}col-lg-6{% endif %}">
-                    <div class="card h-100"><div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0"><i class="bi bi-calendar-week me-1"></i>Semana a semana <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
+                    <div class="card h-100"><div class="card-body p-2 p-md-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2 gap-1">
+                            <h6 class="mb-0 kpi-card-titulo"><i class="bi bi-calendar-week me-1"></i>Semana a semana <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
                             <div class="d-flex align-items-center gap-1">
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-prev-{{ pk }}-semanal" title="Período anterior" disabled><i class="bi bi-chevron-left"></i></button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-next-{{ pk }}-semanal" title="Próximo período" disabled><i class="bi bi-chevron-right"></i></button>
                                 <button type="button" class="btn btn-primary btn-sm ms-1" title="Adicionar ou editar" onclick="kpiAbrirMedicao({{ pk }}, 'semanal')"><i class="bi bi-plus-lg"></i></button>
                             </div>
                         </div>
-                        <div style="height: 280px;"><canvas id="kpi-chart-{{ pk }}-semanal"></canvas></div>
+                        <div class="kpi-chart-box"><canvas id="kpi-chart-{{ pk }}-semanal"></canvas></div>
                     </div></div>
                 </div>
                 {% endif %}
                 {% if a.ind.exibir_diario %}
                 <div class="col-12 {% if ng == 2 %}col-lg-6{% endif %}">
-                    <div class="card h-100"><div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0"><i class="bi bi-calendar-day me-1"></i>Dia a dia <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
+                    <div class="card h-100"><div class="card-body p-2 p-md-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2 gap-1">
+                            <h6 class="mb-0 kpi-card-titulo"><i class="bi bi-calendar-day me-1"></i>Dia a dia <small class="text-muted fw-normal ms-1">(Meta {% if a.ind.sentido == 'maior' %}≥{% else %}≤{% endif %} {{ a.meta|floatformat:"-2" }}{{ a.ind.unidade }})</small></h6>
                             <div class="d-flex align-items-center gap-1">
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-prev-{{ pk }}-diaria" title="Período anterior" disabled><i class="bi bi-chevron-left"></i></button>
                                 <button type="button" class="btn btn-outline-secondary btn-sm" id="kpi-next-{{ pk }}-diaria" title="Próximo período" disabled><i class="bi bi-chevron-right"></i></button>
                                 <button type="button" class="btn btn-primary btn-sm ms-1" title="Adicionar ou editar" onclick="kpiAbrirMedicao({{ pk }}, 'diaria')"><i class="bi bi-plus-lg"></i></button>
                             </div>
                         </div>
-                        <div style="height: 280px;"><canvas id="kpi-chart-{{ pk }}-diaria"></canvas></div>
+                        <div class="kpi-chart-box"><canvas id="kpi-chart-{{ pk }}-diaria"></canvas></div>
                     </div></div>
                 </div>
                 {% endif %}
@@ -128,7 +178,7 @@
 
                 {% if a.motivos_tabs %}
                 <div class="col-12 {% if ng %}kpi-col-motivos{% endif %}">
-                    <div class="card h-100 border-primary shadow"><div class="card-body">
+                    <div class="card h-100 border-primary shadow"><div class="card-body p-2 p-md-3">
                         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                             <h6 class="mb-0"><i class="bi bi-list-ol me-1"></i>Top principais motivos</h6>
                             <div class="d-flex gap-2">
@@ -177,10 +227,10 @@
                                     <tbody>
                                     {% for t in mt.top %}
                                         <tr>
-                                            <td>{{ forloop.counter }}</td>
-                                            <td class="text-nowrap">{{ t.descricao }}</td>
-                                            <td class="text-end fw-semibold">{{ t.total|floatformat:"-2" }}</td>
-                                            <td>
+                                            <td class="kpi-rank">{{ forloop.counter }}</td>
+                                            <td class="text-nowrap kpi-motivo">{{ t.descricao }}</td>
+                                            <td class="text-end fw-semibold kpi-qtd">{{ t.total|floatformat:"-2" }}</td>
+                                            <td class="kpi-pct">
                                                 <div class="d-flex align-items-center gap-2" title="{{ t.pct|floatformat:1 }}%">
                                                     <div class="progress flex-shrink-0" style="height: 8px; width: 56px;">
                                                         <div class="progress-bar" style="width: {{ t.pct|stringformat:'.1f' }}%"></div>
@@ -1185,7 +1235,9 @@
         var canvas = el('kpi-chart-' + chave), d = (CHARTS[pk] || {})[gran];
         if (!canvas || !d) return;
         if (instancias[chave]) { instancias[chave].resize(); return; }
+        var mobile = window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches;
         var jan = d.janela || d.labels.length, fim = d.labels.length;
+        if (mobile && gran === 'diaria') { jan = 5; }  // mobile: gráfico diário mostra 5 dias por vez
         var prev = el('kpi-prev-' + chave), next = el('kpi-next-' + chave);
         function fatia() {
             var ini = Math.max(0, fim - jan), v = d.valores.slice(ini, fim);
@@ -1200,7 +1252,7 @@
                 datasets: [
                     {type: 'bar', label: 'Valor', data: f.valores, backgroundColor: f.cores, borderRadius: 3, order: 2,
                      datalabels: {display: true, anchor: 'end', align: 'end', clamp: true, color: '#212529',
-                                  font: {weight: 'bold', size: 11}, formatter: rotulo}},
+                                  font: {weight: 'bold', size: mobile ? 10 : 11}, formatter: rotulo}},
                     {type: 'line', label: 'Meta', data: f.labels.map(function () { return d.meta; }),
                      borderColor: '#343a40', borderDash: [8, 5], pointRadius: 0, borderWidth: 3, order: 1,
                      datalabels: {display: false}}
@@ -1214,7 +1266,7 @@
                     var e = els.length && els[0].datasetIndex === 0 && d.entradas[fatia().ini + els[0].index];
                     if (e) { window.kpiAbrirMedicao(pk, gran, e.data); }
                 },
-                scales: {y: {ticks: {maxTicksLimit: 6}}, x: {ticks: {maxRotation: 0, autoSkip: true}}}
+                scales: {y: {ticks: {maxTicksLimit: 6, font: {size: mobile ? 10 : 12}}}, x: {ticks: {maxRotation: 0, autoSkip: true, font: {size: mobile ? 10 : 12}}}}
             }
         });
         function mover(passo) {
@@ -1238,6 +1290,19 @@
             canvas.parentNode.insertAdjacentHTML('beforeend', '<div class="text-center text-muted small">Sem informações. Use o botão + para adicionar.</div>');
         }
     }
+
+    (function () {
+        var orig = el('kpiAnaliseBadge');
+        if (!orig) return;
+        function espelhar() {
+            document.querySelectorAll('.kpi-badge-mobile').forEach(function (b) {
+                b.textContent = orig.textContent;
+                b.classList.toggle('d-none', orig.classList.contains('d-none') || !orig.textContent.trim());
+            });
+        }
+        new MutationObserver(espelhar).observe(orig, {childList: true, characterData: true, subtree: true, attributes: true});
+        espelhar();
+    })();
 
     function montarAba(pk) { ['mensal', 'semanal', 'diaria'].forEach(function (g) { montar(pk, g); }); }
 
