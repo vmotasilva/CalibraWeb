@@ -13,6 +13,7 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'pcp:formulario_detalhe' versao.formulario_id %}" class="btn btn-outline-secondary">Voltar</a>
+            <a href="{% url 'pcp:versao_grupos' versao.pk %}" class="btn btn-outline-secondary"><i class="bi bi-diagram-3 me-1"></i>Organizar grupos</a>
             {% if versao.editavel %}
                 <a href="{% url 'pcp:pagina_nova' versao.pk %}" class="btn btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Nova página</a>
                 <form method="post" action="{% url 'pcp:versao_publicar' versao.pk %}" onsubmit="return confirm('Publicar a revisão {{ versao.revisao }}? Ela passa a valer e a revisão vigente atual vira obsoleta.');">{% csrf_token %}

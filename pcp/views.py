@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from pcp.forms import (CampoForm, ImportarPlanilhaForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
+from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
 from pcp import pendencias as pend
 from pcp.importacao import importar_planilha
@@ -163,15 +163,38 @@ def pagina_detalhe(request, pk):
 @login_required
 def pagina_editar(request, pk):
     pagina = get_object_or_404(Pagina.objects.select_related('versao'), pk=pk)
-    if _bloqueia_edicao(request, pagina.versao):
-        return redirect('pcp:pagina_detalhe', pk)
-    form = PaginaForm(request.POST or None, instance=pagina)
+    travada = not pagina.versao.editavel
+    form_class = PaginaOrganizacaoForm if travada else PaginaForm
+    form = form_class(request.POST or None, instance=pagina)
     if request.method == 'POST' and form.is_valid():
         form.save()
         messages.success(request, 'Página atualizada.')
         return redirect('pcp:pagina_detalhe', pk)
     return render(request, 'pcp/form_generico.html', {
-        'form': form, 'titulo': f'Editar página {pagina.nome}', 'voltar': 'pcp:pagina_detalhe', 'voltar_pk': pk})
+        'form': form, 'titulo': f'Editar página {pagina.nome}', 'voltar': 'pcp:pagina_detalhe', 'voltar_pk': pk,
+        'ajuda': 'Esta revisão está travada: só grupo, ordem e máquina podem ser ajustados. '
+                 'Nome e campos mudam numa nova revisão.' if travada else ''})
+
+
+@login_required
+def versao_grupos(request, pk):
+    """Organiza o grupo (e a ordem) de todas as páginas da revisão de uma vez; vale também para revisão travada."""
+    versao = get_object_or_404(FormularioVersao.objects.select_related('formulario'), pk=pk)
+    paginas = list(versao.paginas.annotate(n_campos=Count('campos')).order_by('grupo', 'ordem', 'nome'))
+    if request.method == 'POST':
+        alteradas = 0
+        for p in paginas:
+            grupo = ' '.join((request.POST.get(f'grupo_{p.pk}') or '').split())[:80]
+            if grupo != p.grupo:
+                p.grupo = grupo
+                p.save(update_fields=['grupo'])
+                alteradas += 1
+        messages.success(request, f'{alteradas} página{"s" if alteradas != 1 else ""} atualizada{"s" if alteradas != 1 else ""}.')
+        return redirect('pcp:versao_detalhe', pk)
+    grupos_existentes = sorted({p.grupo for p in paginas if p.grupo})
+    return render(request, 'pcp/versao_grupos.html', {
+        'versao': versao, 'paginas': paginas, 'grupos_existentes': grupos_existentes,
+        'sem_grupo': sum(1 for p in paginas if not p.grupo)})
 
 
 @login_required

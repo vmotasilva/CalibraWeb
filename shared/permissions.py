@@ -360,11 +360,11 @@ NAV_STRUCTURE = [
                         "nome": "Criar e Editar Formulários, Páginas e Campos",
                         "view_name": [
                             "pcp:formulario_novo", "pcp:formulario_editar", "pcp:versao_nova",
-                            "pcp:pagina_nova", "pcp:pagina_editar", "pcp:pagina_excluir",
+                            "pcp:pagina_nova", "pcp:pagina_editar", "pcp:pagina_excluir", "pcp:versao_grupos",
                             "pcp:campo_novo", "pcp:campo_editar", "pcp:campo_excluir",
                         ],
                         "perm": "core.nav_pcp_formulario_editar",
-                        "descricao": "Monta a estrutura do formulário. Só revisões em rascunho são editáveis; mudanças na vigente nascem como nova revisão.",
+                        "descricao": "Monta a estrutura do formulário. Só revisões em rascunho são editáveis (na vigente, só grupo, ordem e máquina das páginas); mudanças na estrutura nascem como nova revisão.",
                     },
                     {
                         "nome": "Importar Planilha de Formulário",

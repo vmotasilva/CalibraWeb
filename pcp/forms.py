@@ -95,6 +95,13 @@ class PaginaForm(_BootstrapMixin, forms.ModelForm):
         fields = ['nome', 'codigo_sistema', 'grupo', 'maquina', 'ordem', 'ativo']
 
 
+class PaginaOrganizacaoForm(_BootstrapMixin, forms.ModelForm):
+    """Só o que é organização (grupo, ordem, máquina): pode ser ajustado mesmo em revisão vigente/obsoleta."""
+    class Meta:
+        model = Pagina
+        fields = ['grupo', 'ordem', 'maquina']
+
+
 class CampoForm(_BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Campo

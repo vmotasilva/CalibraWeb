@@ -438,3 +438,27 @@ class AtrasosTests(PendenciasBase):
         nova.refresh_from_db()
         self.assertEqual((nova.status, nova.vigencia), ('vigente', date(2026, 9, 15)))
         self.assertEqual(pend.inicio_rastreio(self.form), date(2026, 9, 15))
+
+
+class GruposTests(PcpBase):
+    def setUp(self):
+        super().setUp()
+        self.outra = Pagina.objects.create(versao=self.v15, nome='Outra')
+        self.v15.publicar()
+
+    def test_organizar_grupos_em_revisao_vigente(self):
+        self.assertEqual(self.client.get(reverse('pcp:versao_grupos', args=[self.v15.pk])).status_code, 200)
+        r = self.client.post(reverse('pcp:versao_grupos', args=[self.v15.pk]), {
+            f'grupo_{self.pag.pk}': '  Corte  ', f'grupo_{self.outra.pk}': ''})
+        self.assertEqual(r.status_code, 302)
+        self.pag.refresh_from_db()
+        self.assertEqual(self.pag.grupo, 'Corte')
+        self.assertEqual(Pagina.objects.get(pk=self.outra.pk).grupo, '')  # em branco = sem grupo
+
+    def test_editar_pagina_travada_so_muda_grupo_ordem_maquina(self):
+        r = self.client.post(reverse('pcp:pagina_editar', args=[self.pag.pk]), {
+            'grupo': 'Polimento', 'ordem': 3, 'nome': 'Nome trocado', 'codigo_sistema': 'x'})
+        self.assertEqual(r.status_code, 302)
+        self.pag.refresh_from_db()
+        self.assertEqual((self.pag.grupo, self.pag.ordem, self.pag.nome), ('Polimento', 3, 'Fitadeira'))
+        self.assertEqual(self.client.get(reverse('pcp:pagina_editar', args=[self.pag.pk])).status_code, 200)

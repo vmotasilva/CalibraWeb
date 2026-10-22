@@ -11,8 +11,8 @@
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'pcp:versao_detalhe' versao.pk %}" class="btn btn-outline-secondary">Voltar</a>
             {% if versao.status == 'vigente' %}<a href="{% url 'pcp:preencher_pagina' pagina.pk %}" class="btn btn-outline-success"><i class="bi bi-pencil-square me-1"></i>Preencher</a>{% endif %}
+            <a href="{% url 'pcp:pagina_editar' pagina.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>{% if versao.editavel %}Editar página{% else %}Editar grupo/ordem{% endif %}</a>
             {% if versao.editavel %}
-                <a href="{% url 'pcp:pagina_editar' pagina.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Editar página</a>
                 <a href="{% url 'pcp:campo_novo' pagina.pk %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo campo</a>
                 <form method="post" action="{% url 'pcp:pagina_excluir' pagina.pk %}" onsubmit="return confirm('Excluir esta página e seus campos?');">{% csrf_token %}
                     <button class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
