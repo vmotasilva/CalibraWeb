@@ -14,8 +14,27 @@
     @media (max-width: 767.98px) {
         .kpi-titulo { font-size: 1.15rem; }
         .kpi-chart-box { height: 230px; }
-        .kpi-top td, .kpi-top th { white-space: normal; }
-        .kpi-top td.text-nowrap { white-space: normal !important; }
+        /* Top motivos: um card por motivo (posição, motivo, quantidade e barra de %) */
+        .kpi-top thead { display: none; }
+        .kpi-top, .kpi-top tbody { display: block; width: 100%; }
+        .kpi-top tr {
+            display: grid;
+            grid-template-columns: 1.7rem 1fr auto;
+            gap: .3rem .5rem;
+            align-items: center;
+            margin-bottom: .45rem;
+            padding: .5rem .6rem;
+            border: 1px solid var(--bs-border-color);
+            border-radius: .5rem;
+            background: var(--bs-body-bg);
+        }
+        .kpi-top > tbody > tr > td { display: block; padding: 0 !important; border: 0; background: transparent !important; box-shadow: none !important; white-space: normal !important; width: auto !important; }
+        .kpi-top td.kpi-rank { grid-column: 1; grid-row: 1; width: 1.5rem !important; height: 1.5rem; line-height: 1.5rem; text-align: center; font-size: .75rem; font-weight: 700; border-radius: 50%; background: var(--bs-primary-bg-subtle) !important; color: var(--bs-primary-text-emphasis); }
+        .kpi-top td.kpi-motivo { grid-column: 2; grid-row: 1; font-weight: 600; line-height: 1.2; }
+        .kpi-top td.kpi-qtd { grid-column: 3; grid-row: 1; font-size: 1.05rem; }
+        .kpi-top td.kpi-pct { grid-column: 2 / -1; grid-row: 2; }
+        .kpi-top td.kpi-pct .progress { width: auto !important; flex: 1 1 auto !important; }
+        .kpi-top td[colspan] { grid-column: 1 / -1; }
         #kpiTabs .nav-link { padding: .45rem .7rem; font-size: .9rem; }
         .kpi-card-titulo { font-size: .95rem; }
     }
@@ -208,10 +227,10 @@
                                     <tbody>
                                     {% for t in mt.top %}
                                         <tr>
-                                            <td>{{ forloop.counter }}</td>
-                                            <td class="text-nowrap">{{ t.descricao }}</td>
-                                            <td class="text-end fw-semibold">{{ t.total|floatformat:"-2" }}</td>
-                                            <td>
+                                            <td class="kpi-rank">{{ forloop.counter }}</td>
+                                            <td class="text-nowrap kpi-motivo">{{ t.descricao }}</td>
+                                            <td class="text-end fw-semibold kpi-qtd">{{ t.total|floatformat:"-2" }}</td>
+                                            <td class="kpi-pct">
                                                 <div class="d-flex align-items-center gap-2" title="{{ t.pct|floatformat:1 }}%">
                                                     <div class="progress flex-shrink-0" style="height: 8px; width: 56px;">
                                                         <div class="progress-bar" style="width: {{ t.pct|stringformat:'.1f' }}%"></div>
