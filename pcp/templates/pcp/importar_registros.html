@@ -33,6 +33,11 @@
                     </div>
                 {% endif %}
                 {% if not resumo.simulado and resumo.versao %}<div class="small mb-2"><a href="{% url 'pcp:ajustar_tipos' resumo.versao.formulario_id %}"><i class="bi bi-magic"></i> Ajustar tipos dos itens pelos registros importados</a></div>{% endif %}
+                {% if resumo.status_marcados %}<div class="alert alert-secondary py-2 small">
+                    Turnos com ao menos um item lançado como manutenção ou parada {% if resumo.simulado %}seriam{% else %}foram{% endif %} marcados e os itens deles dispensados:
+                    {% if resumo.status_marcados.manutencao %}<strong>{{ resumo.status_marcados.manutencao }}</strong> em manutenção{% endif %}
+                    {% if resumo.status_marcados.manutencao and resumo.status_marcados.parada %} · {% endif %}
+                    {% if resumo.status_marcados.parada %}<strong>{{ resumo.status_marcados.parada }}</strong> com a máquina parada{% endif %}.</div>{% endif %}
                 {% if resumo.futuros %}<div class="alert alert-secondary py-2">{{ resumo.futuros }} lançamento(s) com data futura foram ignorados.</div>{% endif %}
                 {% if resumo.nao_reconhecidos %}
                     <div class="alert alert-warning py-2 small mb-2">

@@ -1,11 +1,13 @@
 import datetime
 from decimal import Decimal, InvalidOperation
 import re
+import unicodedata
 from collections import Counter
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.http import HttpResponse
 from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -15,6 +17,7 @@ from django.views.decorators.http import require_POST
 
 from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
+from pcp import exportacao
 from pcp import pendencias as pend
 from pcp import equivalencias as equiv
 from pcp import tipos as tipos_mod
@@ -893,6 +896,94 @@ def atrasos_pagina(request, pk):
         'turno_padrao': turnos_ativos[0] if turnos_ativos else None})
 
 
+def _periodo_mes(request):
+    """(ano, mês) do parâmetro mes=AAAA-MM; padrão: o mês atual."""
+    try:
+        ano, mes = (int(x) for x in (request.GET.get('mes') or '').split('-'))
+        if not (1 <= mes <= 12 and 2000 <= ano <= 2100):
+            raise ValueError
+    except ValueError:
+        hoje = timezone.localdate()
+        ano, mes = hoje.year, hoje.month
+    return ano, mes
+
+
+def _xlsx(wb, nome):
+    nome = ''.join(c for c in unicodedata.normalize('NFKD', nome) if not unicodedata.combining(c))
+    nome = re.sub(r'[^A-Za-z0-9._-]+', '_', nome).strip('_') or 'pcp'
+    resposta = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resposta['Content-Disposition'] = f'attachment; filename="{nome}.xlsx"'
+    wb.save(resposta)
+    return resposta
+
+
+@login_required
+def exportar_pagina(request, pk):
+    """Planilha do mês de uma página; turnos em manutenção/parada saem com todos os itens preenchidos com a situação."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario'), pk=pk)
+    ano, mes = _periodo_mes(request)
+    wb = exportacao.montar_planilha(pagina.versao.formulario, pagina.versao, [pagina], ano, mes)
+    return _xlsx(wb, f'{pagina.versao.formulario.codigo}_{pagina.nome}_{ano}-{mes:02d}')
+
+
+@login_required
+def exportar_formulario(request, pk):
+    """Planilha do mês com uma aba por página ativa do formulário (revisão vigente, ou a mais recente)."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    versao = formulario.versao_vigente or formulario.versoes.first()
+    if versao is None:
+        messages.warning(request, 'O formulário ainda não tem revisão para exportar.')
+        return redirect('pcp:formulario_detalhe', pk)
+    ano, mes = _periodo_mes(request)
+    wb = exportacao.montar_planilha(formulario, versao, versao.paginas.filter(ativo=True), ano, mes)
+    return _xlsx(wb, f'{formulario.codigo}_{versao.revisao}_{ano}-{mes:02d}')
+
+
+@login_required
+@require_POST
+def preencher_status(request, pk):
+    """Marca a máquina (página) como em manutenção, parada ou em operação num turno, no dia todo ou num período.
+    Em manutenção/parada os itens deixam de ser obrigatórios (sem pendência nem atraso)."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao'), pk=pk)
+    data = _parse_data(request.POST.get('data'))
+    turno = get_object_or_404(Turno, pk=request.POST.get('turno'))
+    retorno = f'{reverse("pcp:preencher_pagina", args=[pk])}?data={data.isoformat()}&turno={turno.pk}'
+    if pagina.versao.status != FormularioVersao.VIGENTE:
+        messages.error(request, 'Só é possível alterar a situação da máquina na revisão vigente.')
+        return redirect(retorno)
+    status = request.POST.get('status', '')
+    if status not in dict(Verificacao.STATUS_MAQUINA):
+        messages.error(request, 'Escolha a situação da máquina.')
+        return redirect(retorno)
+    ate = _parse_data(request.POST.get('ate')) if request.POST.get('ate') else data
+    if ate < data:
+        ate = data
+    ate = min(ate, data + datetime.timedelta(days=92))
+    turnos = list(Turno.objects.filter(ativo=True)) if request.POST.get('escopo') == 'dia' else [turno]
+    motivo = (request.POST.get('motivo') or '').strip()[:200]
+    dias = [data + datetime.timedelta(days=n) for n in range((ate - data).days + 1)]
+    marcados = 0
+    with transaction.atomic():
+        for dia in dias:
+            for t in turnos:
+                if status:
+                    v, _ = Verificacao.objects.get_or_create(pagina=pagina, data=dia, turno=t, defaults={'responsavel': request.user})
+                    Verificacao.objects.filter(pk=v.pk).update(status=status, motivo=motivo)
+                    marcados += 1
+                else:  # volta a operar: limpa a situação e remove verificações que só existiam por causa dela
+                    for v in Verificacao.objects.filter(pagina=pagina, data=dia, turno=t).exclude(status=''):
+                        v.status, v.motivo = '', ''
+                        v.save(update_fields=['status', 'motivo'])
+                        if not v.respostas.exists() and not v.ocorrencias.exists():
+                            v.delete()
+                        marcados += 1
+    rotulo = dict(Verificacao.STATUS_MAQUINA)[status] if status else 'em operação'
+    periodo = f'{data:%d/%m/%Y}' + (f' a {ate:%d/%m/%Y}' if ate != data else '')
+    messages.success(request, f'Máquina "{pagina.nome}" marcada como {rotulo} em {marcados} turno(s) ({periodo}).'
+                              + (' Os itens desses turnos não são mais obrigatórios.' if status else ''))
+    return redirect(retorno)
+
+
 @login_required
 def preencher_pagina(request, pk):
     pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario', 'maquina'), pk=pk)
@@ -916,6 +1007,9 @@ def preencher_pagina(request, pk):
         'linhas': linhas, 'verificacao': verificacao, 'ocorrencias': ocorrencias_dia,
         'travada': pagina.versao.status != FormularioVersao.VIGENTE,
         'n_devidos': sum(1 for l in linhas if l['devido']), 'n_pendentes': sum(1 for l in linhas if l['pendente']),
+        'status': verificacao.status if verificacao else '', 'status_motivo': verificacao.motivo if verificacao else '',
+        'status_rotulo': dict(Verificacao.STATUS_MAQUINA).get(verificacao.status, '') if verificacao else '',
+        'status_opcoes': Verificacao.STATUS_MAQUINA, 'mes_atual': timezone.localdate().strftime('%Y-%m'),
         'tipos_ocorrencia': Ocorrencia.TIPOS,
     })
 

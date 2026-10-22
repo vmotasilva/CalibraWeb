@@ -348,9 +348,15 @@ class AjusteVinculo(models.Model):
 
 class Verificacao(models.Model):
     """Preenchimento de uma página numa data e turno."""
+    NORMAL, MANUTENCAO, PARADA = '', 'manutencao', 'parada'
+    STATUS_MAQUINA = [(NORMAL, 'Em operação'), (MANUTENCAO, 'Em Manutenção'), (PARADA, 'Parada')]
+
     pagina = models.ForeignKey(Pagina, on_delete=models.PROTECT, related_name='verificacoes')
     data = models.DateField()
     turno = models.ForeignKey(Turno, on_delete=models.PROTECT, related_name='verificacoes')
+    status = models.CharField('Situação da máquina', max_length=12, choices=STATUS_MAQUINA, blank=True, default=NORMAL,
+                              help_text='Em manutenção ou parada, os itens do turno deixam de ser obrigatórios.')
+    motivo = models.CharField(max_length=200, blank=True)
     responsavel = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     atualizado_em = models.DateTimeField(auto_now=True)
 

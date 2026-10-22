@@ -44,6 +44,8 @@ class Command(BaseCommand):
             w(self.style.WARNING(f"  {r['linhas_sem_item']} linhas da planilha sem item correspondente na revisão (estrutura diferente?)"))
         for pagina, item, n in r['tipos_ajustados']:
             w(f"  tipo ajustado para número: {pagina} / {item} ({n} lançamentos)")
+        for estado, n in r['status_marcados'].items():
+            w(f"  {n} turno(s) marcados como {'em manutenção' if estado == 'manutencao' else 'parada'} (itens dispensados)")
         if r['futuros']:
             w(self.style.WARNING(f"  {r['futuros']} lançamentos com data futura foram ignorados."))
         for l in r['nao_reconhecidos'][:20]:

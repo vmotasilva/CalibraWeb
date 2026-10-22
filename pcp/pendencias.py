@@ -15,7 +15,7 @@ import calendar
 import datetime
 from collections import defaultdict
 
-from pcp.models import FormularioVersao, Resposta
+from pcp.models import FormularioVersao, Resposta, Turno, Verificacao
 
 
 def janela(periodicidade, data):
@@ -43,6 +43,25 @@ def chave(item, etapa, descricao):
     return (item or '', etapa or '', descricao or '')
 
 
+def slots_parados(pagina, ini, fim):
+    """{(data, turno_id): status} dos turnos em que a máquina (página) foi marcada como em manutenção ou parada.
+    Vale para as páginas de mesmo nome em qualquer revisão do formulário."""
+    qs = (Verificacao.objects.filter(pagina__versao__formulario_id=pagina.versao.formulario_id, pagina__nome=pagina.nome,
+                                     data__range=(ini, fim))
+          .exclude(status='').values_list('data', 'turno_id', 'status'))
+    return {(d, t): s for d, t, s in qs}
+
+
+def _janela_dispensada(parados, turnos, ini, fim):
+    """True se a máquina esteve em manutenção/parada em TODOS os turnos de todos os dias da janela [ini, fim]."""
+    dia = ini
+    while dia <= fim:
+        if any((dia, t.pk) not in parados for t in turnos):
+            return False
+        dia += datetime.timedelta(days=1)
+    return bool(turnos)
+
+
 def avaliar_pagina(pagina, data, turnos):
     """{turno_id: {campo_id: feito(bool)}} só com os campos devidos naquele turno."""
     campos = [c for c in pagina.campos.all() if c.ativo and c.frequencia_id and c.frequencia.periodicidade != 'evento']
@@ -53,6 +72,9 @@ def avaliar_pagina(pagina, data, turnos):
         return resultado
     inicio = min(janelas[c.pk][0] for c in campos)
     fim = max(janelas[c.pk][1] for c in campos)
+    parados = slots_parados(pagina, inicio, data)
+    ativos = list(Turno.objects.filter(ativo=True)) if parados else []
+    dispensa_janela = {}
     feitos = defaultdict(set)  # chave -> {(data, turno_id)}
     qs = (Resposta.objects
           .filter(verificacao__pagina__versao__formulario_id=pagina.versao.formulario_id,
@@ -64,10 +86,18 @@ def avaliar_pagina(pagina, data, turnos):
     for turno in turnos:
         for c in campos:
             registros = feitos[chave(c.item, c.etapa, c.descricao)]
+            ini, fim_c = janelas[c.pk]
             if c.frequencia.periodicidade == 'turno':
+                if (data, turno.pk) in parados:
+                    continue  # máquina em manutenção/parada neste turno: item dispensado (não é devido)
                 feito = (data, turno.pk) in registros
             else:
-                ini, fim_c = janelas[c.pk]
+                if parados:
+                    janela_ = (ini, min(fim_c, data))
+                    if janela_ not in dispensa_janela:
+                        dispensa_janela[janela_] = _janela_dispensada(parados, ativos, *janela_)
+                    if dispensa_janela[janela_]:
+                        continue  # parada/manutenção em todos os turnos da janela até a data: dispensado
                 feito = any(ini <= d <= fim_c for d, _ in registros)
             resultado[turno.pk][c.pk] = feito
     return resultado
@@ -86,11 +116,14 @@ def painel(data, turnos, formulario_id=None):
         b_devidos = b_feitos = 0
         for pagina in paginas:
             por_turno = avaliar_pagina(pagina, data, turnos)
+            parados = slots_parados(pagina, data, data)
             celulas = []
             for t in turnos:
                 devidos = len(por_turno[t.pk])
                 feitos = sum(por_turno[t.pk].values())
-                celulas.append({'turno': t, 'devidos': devidos, 'feitos': feitos, 'pendentes': devidos - feitos})
+                status = parados.get((data, t.pk), '')
+                celulas.append({'turno': t, 'devidos': devidos, 'feitos': feitos, 'pendentes': devidos - feitos, 'status': status,
+                                'status_rotulo': dict(Verificacao.STATUS_MAQUINA).get(status, '')})
             b_devidos += sum(c['devidos'] for c in celulas)
             b_feitos += sum(c['feitos'] for c in celulas)
             grupos.setdefault(pagina.grupo or 'Sem grupo', []).append({'pagina': pagina, 'celulas': celulas})
@@ -141,6 +174,22 @@ def atrasos_pagina(pagina, ini, fim, turnos, hoje=None, rastreio=None):
             todas.append((c, a, b, t))
     if not todas:
         return [], 0
+    parados = slots_parados(pagina, min(a for _, a, _, _ in todas), max(b for _, _, b, _ in todas))
+    if parados:  # máquina em manutenção/parada: o prazo não é devido
+        dispensa = {}
+        validas = []
+        for c, a, b, t in todas:
+            if t is not None:
+                dispensado = (a, t.pk) in parados
+            else:
+                if (a, b) not in dispensa:
+                    dispensa[(a, b)] = _janela_dispensada(parados, turnos, a, b)
+                dispensado = dispensa[(a, b)]
+            if not dispensado:
+                validas.append((c, a, b, t))
+        todas = validas
+        if not todas:
+            return [], 0
     feitos = defaultdict(set)
     qs = (Resposta.objects
           .filter(verificacao__pagina__versao__formulario_id=pagina.versao.formulario_id,

@@ -1387,3 +1387,167 @@ class HistoricoVinculosTests(ValoresBase):
         arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', self.planilha({(4, 8): 'Lofoam'}).read())
         r = self.client.post(reverse('pcp:importar_registros'), {'arquivo': arq, 'ano': 2026, 'simular': 'on'})
         self.assertContains(r, 'name="formulario"')
+
+
+class StatusMaquinaTests(PendenciasBase):
+    D = date(2026, 10, 22)  # quinta-feira
+
+    def marcar(self, status, turno=None, data='2026-10-22', **extra):
+        dados = {'data': data, 'turno': (turno or self.t1).pk, 'status': status, 'escopo': 'turno', **extra}
+        return self.client.post(reverse('pcp:preencher_status', args=[self.pag.pk]), dados)
+
+    def devidos(self, turno, data=None):
+        return set(pend.avaliar_pagina(self.pag, data or self.D, self.turnos)[turno.pk])
+
+    def test_turno_marcado_dispensa_os_itens_por_turno_so_nele(self):
+        self.assertIn(self.c_lista.pk, self.devidos(self.t1))
+        self.marcar('manutencao', motivo='troca de ferramenta')
+        v = Verificacao.objects.get(pagina=self.pag, data=self.D, turno=self.t1)
+        self.assertEqual((v.status, v.motivo), ('manutencao', 'troca de ferramenta'))
+        self.assertNotIn(self.c_lista.pk, self.devidos(self.t1))     # item por turno dispensado em T1
+        self.assertIn(self.c_lista.pk, self.devidos(self.t2))        # T2 continua exigindo
+        self.assertIn(self.c_num.pk, self.devidos(self.t1))          # diário: o dia não está todo parado
+
+    def test_dia_inteiro_dispensa_itens_diarios(self):
+        self.marcar('parada', escopo='dia')
+        self.assertEqual(Verificacao.objects.filter(pagina=self.pag, data=self.D, status='parada').count(), 2)
+        for t in self.turnos:
+            self.assertNotIn(self.c_num.pk, self.devidos(t))         # diário dispensado
+            self.assertIn(self.c_sem.pk, self.devidos(t))            # semanal: só um dia parado, ainda é devido
+
+    def test_periodo_dispensa_semanal_quando_toda_a_janela_esta_parada(self):
+        self.marcar('manutencao', escopo='dia', data='2026-10-19', ate='2026-10-25')   # semana inteira (seg-dom)
+        self.assertEqual(Verificacao.objects.filter(pagina=self.pag, status='manutencao').count(), 14)
+        self.assertNotIn(self.c_sem.pk, self.devidos(self.t1))      # semanal dispensado
+        self.assertIn(self.c_mes.pk, self.devidos(self.t1))         # mensal: o resto do mês ainda conta
+        # na quarta-feira da mesma semana, a janela até aquele dia também está toda marcada
+        self.assertNotIn(self.c_sem.pk, self.devidos(self.t1, date(2026, 10, 21)))
+
+    def test_voltar_a_operar_limpa_e_remove_verificacao_vazia(self):
+        self.marcar('manutencao')
+        self.marcar('')
+        self.assertFalse(Verificacao.objects.filter(pagina=self.pag, data=self.D, turno=self.t1).exists())   # só existia pela situação
+        self.assertIn(self.c_lista.pk, self.devidos(self.t1))
+        self.marcar('parada')
+        Resposta.objects.create(verificacao=Verificacao.objects.get(pagina=self.pag, data=self.D, turno=self.t1), campo=self.c_lista, valor='Ok')
+        self.marcar('')
+        v = Verificacao.objects.get(pagina=self.pag, data=self.D, turno=self.t1)   # tinha lançamento: é mantida, sem situação
+        self.assertEqual(v.status, '')
+
+    def test_so_na_revisao_vigente_e_status_valido(self):
+        self.marcar('invalido')
+        self.assertFalse(Verificacao.objects.exists())
+        rascunho = self.v15.clonar('R16')
+        pag16 = rascunho.paginas.get()
+        self.client.post(reverse('pcp:preencher_status', args=[pag16.pk]), {'data': '2026-10-22', 'turno': self.t1.pk, 'status': 'parada', 'escopo': 'turno'})
+        self.assertFalse(Verificacao.objects.exists())
+
+    def test_vale_entre_revisoes_pelo_nome_da_pagina(self):
+        self.marcar('manutencao')
+        nova = self.v15.clonar('R16')
+        nova.publicar()
+        pag16 = nova.paginas.get()
+        resultado = pend.avaliar_pagina(pag16, self.D, self.turnos)
+        self.assertNotIn(pag16.campos.get(item='B-1').pk, resultado[self.t1.pk])
+
+    def test_painel_atrasos_e_sino_respeitam_a_dispensa(self):
+        from pcp import cobranca
+        antes = pend.painel(self.D, self.turnos)['devidos']
+        self.marcar('manutencao', escopo='dia')
+        depois = pend.painel(self.D, self.turnos)
+        self.assertLess(depois['devidos'], antes)
+        celula = depois['blocos'][0]['grupos']['Fita'][0]['celulas'][0]
+        self.assertEqual((celula['status'], celula['status_rotulo']), ('manutencao', 'Em Manutenção'))
+        self.assertContains(self.client.get(reverse('pcp:pendencias') + '?data=2026-10-22'), 'Manut.')
+        # atrasos: dia 21/10 todo parado não gera atraso (itens por turno e diário)
+        self.v15.vigencia = date(2026, 10, 1)
+        self.v15.save()
+        self.marcar('parada', escopo='dia', data='2026-10-21')
+        lista, devidos = pend.atrasos_pagina(self.pag, date(2026, 10, 21), date(2026, 10, 21), self.turnos, self.D)
+        self.assertEqual((lista, devidos), ([], 0))
+
+    def test_exportacao_preenche_todos_os_itens_do_turno_com_a_situacao(self):
+        import openpyxl as xl
+        self.marcar('manutencao')
+        ver = Verificacao.objects.create(pagina=self.pag, data=self.D, turno=self.t2)
+        Resposta.objects.create(verificacao=ver, campo=self.c_lista, valor='Nok', conforme=False)
+        r = self.client.get(reverse('pcp:exportar_pagina', args=[self.pag.pk]) + '?mes=2026-10')
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('attachment', r['Content-Disposition'])
+        wb = xl.load_workbook(io.BytesIO(r.content))
+        self.assertEqual(wb.sheetnames[0], 'Fitadeira')
+        self.assertIn('Situação da máquina', wb.sheetnames)
+        self.assertIn('Ocorrências', wb.sheetnames)
+        ws = wb['Fitadeira']
+        col = next(c for c in range(1, ws.max_column + 1) if ws.cell(row=4, column=c).value == '22/10')
+        assert ws.cell(row=5, column=col).value == 'T1' and ws.cell(row=5, column=col + 1).value == 'T2'
+        linhas = [r_ for r_ in range(6, ws.max_row + 1) if ws.cell(row=r_, column=1).value]
+        self.assertGreaterEqual(len(linhas), 4)
+        for l in linhas:   # TODOS os itens de T1 saem preenchidos com a situação
+            self.assertEqual(ws.cell(row=l, column=col).value, 'Em Manutenção')
+        self.assertEqual(ws.cell(row=6, column=col + 1).value, 'Nok')       # T2: o que foi lançado
+        situacoes = [[c.value for c in row] for row in wb['Situação da máquina'].iter_rows(min_row=2)]
+        self.assertEqual([s[3] for s in situacoes], ['Em Manutenção'])
+        # exportação do formulário inteiro
+        r = self.client.get(reverse('pcp:exportar_formulario', args=[self.form.pk]) + '?mes=2026-10')
+        self.assertEqual(xl.load_workbook(io.BytesIO(r.content)).sheetnames[0], 'Fitadeira')
+        self.assertEqual(self.client.get(reverse('pcp:exportar_pagina', args=[self.pag.pk]) + '?mes=lixo').status_code, 200)
+
+    def test_tela_de_preenchimento_mostra_a_situacao(self):
+        self.marcar('parada')
+        url = reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}'
+        r = self.client.get(url)
+        self.assertContains(r, 'Parada')
+        self.assertContains(r, 'não são obrigatórios')
+        # só este turno está parado: o item por turno é dispensado, mas diário, semanal e mensal seguem devidos
+        self.assertEqual((r.context['status'], r.context['n_devidos']), ('parada', 3))
+        self.assertFalse([l for l in r.context['linhas'] if l['campo'].pk == self.c_lista.pk and l['devido']])
+        self.assertContains(r, 'Exportar planilha')
+
+
+class StatusNaImportacaoTests(ValoresBase):
+    def preparar(self, **celulas):
+        self.estrutura()
+        return self.registros(arquivo=self.planilha(celulas))
+
+    def status(self, dia, turno):
+        return Verificacao.objects.get(pagina__nome='Fitadeira', data=dia, turno__sigla=turno).status
+
+    def test_item_em_manutencao_ou_parada_marca_o_turno(self):
+        self.estrutura()
+        r = self.registros(arquivo=self.planilha({(4, 9): 'Em Manut.', (4, 11): 'Máq. Parada'}))   # A-1: D5/T2 e D6/T1
+        self.assertEqual(self.status(date(2026, 1, 5), 'T2'), 'manutencao')
+        self.assertEqual(self.status(date(2026, 1, 6), 'T1'), 'parada')
+        self.assertEqual(self.status(date(2026, 1, 5), 'T1'), '')              # turno sem marcação continua em operação
+        self.assertEqual(r['status_marcados'], {'manutencao': 1, 'parada': 1})
+        v = Verificacao.objects.get(pagina__nome='Fitadeira', data=date(2026, 1, 5), turno__sigla='T2')
+        self.assertEqual(v.motivo, 'Importado da planilha')
+        # os valores lançados continuam gravados, e o item do turno deixa de ser devido
+        self.assertTrue(Resposta.objects.filter(verificacao=v, campo__item='B-12').exists())
+        pagina = v.pagina
+        t2 = Turno.objects.get(sigla='T2')
+        devidos = pend.avaliar_pagina(pagina, date(2026, 1, 5), [t2])[t2.pk]
+        self.assertFalse([pk for pk in devidos if Campo.objects.get(pk=pk).frequencia and Campo.objects.get(pk=pk).frequencia.periodicidade == 'turno'])
+
+    def test_um_unico_item_basta_e_a_maioria_decide(self):
+        self.estrutura()
+        # mesmo turno (D5/T1): um item 'Manut.' e outro 'Parada' -> empate vira parada
+        self.registros(arquivo=self.planilha({(4, 8): 'Manut.', (5, 8): 'Parada'}))
+        self.assertEqual(self.status(date(2026, 1, 5), 'T1'), 'parada')
+
+    def test_nao_sobrescreve_situacao_marcada_manualmente_e_simulacao_nao_grava(self):
+        self.estrutura()
+        r = self.registros(arquivo=self.planilha({(4, 9): 'Em Manut.'}), simular=True)
+        self.assertEqual(r['status_marcados'], {'manutencao': 1})
+        self.assertFalse(Verificacao.objects.exists())
+        pagina = Pagina.objects.get(nome='Fitadeira')
+        Verificacao.objects.create(pagina=pagina, data=date(2026, 1, 5), turno=Turno.objects.get(sigla='T2'), status='parada', motivo='manual')
+        self.registros(arquivo=self.planilha({(4, 9): 'Em Manut.'}))
+        v = Verificacao.objects.get(pagina=pagina, data=date(2026, 1, 5), turno__sigla='T2')
+        self.assertEqual((v.status, v.motivo), ('parada', 'manual'))
+
+    def test_relatorio_da_tela_informa_os_turnos_marcados(self):
+        self.estrutura()
+        arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', self.planilha({(4, 9): 'Em Manut.'}).read())
+        r = self.client.post(reverse('pcp:importar_registros'), {'arquivo': arq, 'ano': 2026, 'simular': 'on'})
+        self.assertContains(r, 'em manutenção')

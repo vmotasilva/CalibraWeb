@@ -331,7 +331,7 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {
                         "nome": "Preencher Verificações",
-                        "view_name": ["pcp:preencher", "pcp:preencher_pagina", "pcp:preencher_salvar"],
+                        "view_name": ["pcp:preencher", "pcp:preencher_pagina", "pcp:preencher_salvar", "pcp:preencher_status"],
                         "perm": "core.nav_pcp_preencher",
                         "descricao": "Lança os resultados das verificações por página, data e turno, e registra observações e ocorrências.",
                     },
@@ -340,6 +340,12 @@ NAV_STRUCTURE = [
                         "view_name": ["pcp:pendencias", "pcp:atrasos", "pcp:atrasos_pagina"],
                         "perm": "core.nav_pcp_pendencias",
                         "descricao": "Mostra, por página e turno, as verificações devidas conforme a frequência e quais estão pendentes, e os atrasos do período (prazos encerrados sem resposta).",
+                    },
+                    {
+                        "nome": "Exportar Planilha de Registros",
+                        "view_name": ["pcp:exportar_pagina", "pcp:exportar_formulario"],
+                        "perm": "core.nav_pcp_exportar",
+                        "descricao": "Gera a planilha do mês (itens x dia/turno). Turnos com a máquina em manutenção ou parada saem com todos os itens preenchidos com a situação.",
                     },
                     {"nome": "Ver Ocorrências", "view_name": "pcp:ocorrencias", "perm": "core.nav_pcp_ocorrencias"},
                     {"nome": "Registrar Tratativa de Ocorrência", "view_name": "pcp:ocorrencia_tratar", "perm": "core.nav_pcp_ocorrencia_tratar"},

@@ -107,9 +107,10 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
 
     resumo = {'versao': versao, 'ano': ano, 'abas': [], 'sem_pagina': [], 'ocultas': [], 'ignoradas': [], 'linhas_sem_item': 0,
               'verificacoes_novas': 0, 'respostas_novas': 0, 'respostas_existentes': 0, 'fora_do_limite': 0, 'primeira_data': None,
-              'vigencia_ajustada': None, 'futuros': 0, 'nao_reconhecidos': [], 'numericos_em_listas': 0, 'tipos_ajustados': []}
+              'vigencia_ajustada': None, 'futuros': 0, 'nao_reconhecidos': [], 'numericos_em_listas': 0, 'status_marcados': {}, 'tipos_ajustados': []}
     wb = openpyxl.load_workbook(arquivo, read_only=True, data_only=True)
     lancamentos = []  # (pagina, data, turno, campo, valor)
+    status_por_slot = defaultdict(Counter)  # (pagina, data, turno) -> {'manutencao': n, 'parada': n}
     ignorar = {_chave(x) for x in IGNORAR_VALOR}
     try:
         for aba in wb.sheetnames:
@@ -153,6 +154,11 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
                     if data > hoje:
                         resumo['futuros'] += 1
                         continue
+                    k = _chave(valor)
+                    if 'manut' in k:  # um item lançado como manutenção/parada marca o turno inteiro
+                        status_por_slot[(pagina.pk, data, turno.pk)]['manutencao'] += 1
+                    elif 'parad' in k:
+                        status_por_slot[(pagina.pk, data, turno.pk)]['parada'] += 1
                     lancamentos.append((pagina, data, turno, campo, _normalizar(campo, valor, opcoes)[:255]))
                     n_aba += 1
             resumo['abas'].append((aba, pagina.nome, n_aba, len(colunas)))
@@ -189,6 +195,17 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
             verificacoes = {(v.pagina_id, v.data, v.turno_id): v
                             for v in Verificacao.objects.filter(pagina_id__in=paginas_ids, data__year=ano)}
         resumo['verificacoes_novas'] = len(a_criar)
+        # turnos com ao menos um item em manutenção/parada: a máquina fica marcada (maioria; empate: parada) e os itens dispensados
+        por_estado = defaultdict(list)
+        for chave_slot, contagem in status_por_slot.items():
+            v = verificacoes.get(chave_slot)
+            if v is not None and not v.status:  # não sobrescreve uma situação marcada manualmente
+                estado = max(contagem, key=lambda e: (contagem[e], e == 'parada'))
+                por_estado[estado].append(v.pk)
+        for estado, ids in por_estado.items():
+            for k in range(0, len(ids), 500):
+                Verificacao.objects.filter(pk__in=ids[k:k + 500]).update(status=estado, motivo='Importado da planilha')
+        resumo['status_marcados'] = {e: len(ids) for e, ids in por_estado.items()}
         existentes = set(Resposta.objects.filter(verificacao__pagina_id__in=paginas_ids, verificacao__data__year=ano)
                          .values_list('verificacao_id', 'campo_id'))
         nao_reconhecidos, detalhe = Counter(), defaultdict(dict)

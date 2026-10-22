@@ -8,7 +8,13 @@
             <h4 class="mb-0">{{ pagina.nome }}</h4>
             <div class="text-muted">{{ versao }}{% if pagina.maquina %} · Máquina {{ pagina.maquina.display_name }}{% endif %}</div>
         </div>
-        <a href="{% url 'pcp:preencher' %}" class="btn btn-outline-secondary">Voltar</a>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <form method="get" action="{% url 'pcp:exportar_pagina' pagina.pk %}" class="d-flex gap-1">
+                <input type="month" name="mes" value="{{ data|date:'Y-m' }}" class="form-control form-control-sm" title="Mês da planilha">
+                <button class="btn btn-sm btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>Exportar planilha</button>
+            </form>
+            <a href="{% url 'pcp:preencher' %}" class="btn btn-outline-secondary">Voltar</a>
+        </div>
     </div>
 
     <form method="get" class="card card-body mb-3">
@@ -23,6 +29,44 @@
         </div>
     </form>
 
+    <div class="card card-body mb-3 {% if status %}border-warning{% endif %}">
+        <div class="row g-3 align-items-start">
+            <div class="col-lg-4">
+                <div class="fw-semibold mb-1"><i class="bi bi-tools me-1"></i>Situação da máquina</div>
+                {% if status %}
+                    <span class="badge {% if status == 'manutencao' %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6">{{ status_rotulo }}</span>
+                    {% if status_motivo %}<div class="small text-muted mt-1">{{ status_motivo }}</div>{% endif %}
+                    <div class="small mt-2 text-muted">Neste turno os itens <strong>não são obrigatórios</strong>: não geram pendência nem atraso, e na planilha exportada todos saem como "{{ status_rotulo }}".</div>
+                {% else %}
+                    <span class="badge bg-success fs-6">Em operação</span>
+                    <div class="small mt-2 text-muted">Marque manutenção ou parada para dispensar o preenchimento dos itens.</div>
+                {% endif %}
+            </div>
+            {% if not travada and turno %}
+            <form method="post" action="{% url 'pcp:preencher_status' pagina.pk %}" class="col-lg-8">
+                {% csrf_token %}
+                <input type="hidden" name="data" value="{{ data|date:'Y-m-d' }}">
+                <input type="hidden" name="turno" value="{{ turno.pk }}">
+                <div class="row g-2 align-items-end">
+                    <div class="col-auto"><label class="form-label mb-0 small">Situação</label>
+                        <select name="status" class="form-select form-select-sm">
+                            {% for v, n in status_opcoes %}<option value="{{ v }}" {% if v == status %}selected{% endif %}>{{ n }}</option>{% endfor %}
+                        </select></div>
+                    <div class="col-auto"><label class="form-label mb-0 small">Aplicar a</label>
+                        <select name="escopo" class="form-select form-select-sm">
+                            <option value="turno">Somente este turno ({{ turno.sigla }})</option>
+                            <option value="dia">Todos os turnos do dia</option>
+                        </select></div>
+                    <div class="col-auto"><label class="form-label mb-0 small">Até (opcional)</label>
+                        <input type="date" name="ate" min="{{ data|date:'Y-m-d' }}" class="form-control form-control-sm" title="Para um período: a mesma situação de {{ data|date:'d/m' }} até esta data"></div>
+                    <div class="col"><label class="form-label mb-0 small">Motivo (opcional)</label>
+                        <input type="text" name="motivo" maxlength="200" value="{{ status_motivo }}" class="form-control form-control-sm" placeholder="Ex.: troca de ferramenta"></div>
+                    <div class="col-auto"><button class="btn btn-sm btn-primary">Aplicar</button></div>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
     {% if turno and n_devidos %}
         <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
             <span><strong>{{ n_devidos|add:0 }}</strong> verificações devidas neste turno ·
