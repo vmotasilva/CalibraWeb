@@ -317,6 +317,35 @@ class AjusteCampo(models.Model):
         return self.desfeito_em is not None
 
 
+class AjusteVinculo(models.Model):
+    """Histórico dos vínculos de valores a opções (ou criação de opção), com o estado anterior dos lançamentos alterados, para desfazer."""
+    VINCULO, OPCAO = 'vinculo', 'opcao'
+    ACOES = [(VINCULO, 'Valor vinculado a uma opção'), (OPCAO, 'Valor criado como opção')]
+
+    formulario = models.ForeignKey('Formulario', null=True, blank=True, on_delete=models.SET_NULL, related_name='ajustes_vinculo')
+    lista = models.ForeignKey(ListaOpcoes, on_delete=models.CASCADE, related_name='ajustes_vinculo')
+    valor = models.CharField(max_length=255, help_text='Texto original lançado.')
+    acao = models.CharField(max_length=10, choices=ACOES)
+    opcao = models.ForeignKey(OpcaoLista, null=True, on_delete=models.SET_NULL, related_name='+')
+    opcao_criada = models.BooleanField(default=False, help_text='A ação criou a opção (e ela pode ser removida ao desfazer).')
+    alias_anterior = models.ForeignKey(OpcaoLista, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',
+                                       help_text='Opção a que o valor estava vinculado antes (se havia).')
+    respostas = models.JSONField(help_text="Lançamentos alterados por conformidade anterior: {'null': faixas, 'true': faixas, 'false': faixas}.")
+    total = models.PositiveIntegerField(default=0)
+    lote = models.CharField(max_length=32, db_index=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    desfeito_em = models.DateTimeField(null=True, blank=True)
+    desfeito_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        ordering = ('-criado_em', '-id')
+
+    @property
+    def desfeito(self):
+        return self.desfeito_em is not None
+
+
 class Verificacao(models.Model):
     """Preenchimento de uma página numa data e turno."""
     pagina = models.ForeignKey(Pagina, on_delete=models.PROTECT, related_name='verificacoes')

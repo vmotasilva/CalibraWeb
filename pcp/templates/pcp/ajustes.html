@@ -16,10 +16,10 @@
         </div>
     </div>
     <div class="small text-muted mb-3">
-        Cada ajuste de <strong>tipo</strong>, de <strong>texto livre</strong> e de <strong>limites</strong> fica registrado com o estado do item antes e depois.
-        <strong>Desfazer</strong> devolve o item ao estado anterior e recalcula a conformidade dos lançamentos. Só é possível desfazer enquanto o item estiver como o ajuste o deixou:
-        se ele mudou depois (outro ajuste ou edição), desfaça primeiro o mais recente. Os valores lançados nunca são apagados.
-        Vínculos de valores a opções não entram aqui (eles corrigem o texto do lançamento).
+        Cada ajuste de <strong>tipo</strong>, de <strong>texto livre</strong>, de <strong>limites</strong> e cada <strong>vínculo de valor a uma opção</strong> fica registrado com o estado de antes e depois.
+        <strong>Desfazer</strong> devolve o item (ou o texto original dos lançamentos) ao estado anterior e recalcula a conformidade. Só é desfeito o que continua como o ajuste deixou:
+        se mudou depois (outro ajuste ou edição), desfaça primeiro o mais recente; em vínculos, lançamentos editados depois são mantidos. Ao desfazer um vínculo, o vínculo anterior do valor
+        é restaurado e uma opção criada pela ação é removida se ninguém mais a usa. Os lançamentos nunca são apagados.
     </div>
 
     <form method="get" class="d-flex align-items-center gap-2 mb-3">
@@ -43,11 +43,11 @@
                     <tbody>
                     {% for l in linhas %}{% with a=l.obj %}
                         <tr class="{% if a.desfeito %}text-muted{% endif %}">
-                            <td><input type="checkbox" class="form-check-input marcar" name="ajustes" value="{{ a.pk }}" {% if a.desfeito %}disabled{% endif %}></td>
-                            <td class="text-nowrap small">{{ a.criado_em|date:"d/m/Y H:i" }}</td>
+                            <td><input type="checkbox" class="form-check-input marcar" name="ajustes" value="{{ l.chave }}" {% if a.desfeito %}disabled{% endif %}></td>
+                            <td class="text-nowrap small">{{ l.quando|date:"d/m/Y H:i" }}</td>
                             <td class="small">{{ a.criado_por|default:"—" }}</td>
-                            <td><span class="badge {% if a.origem == 'texto' %}bg-warning text-dark{% elif a.origem == 'limites' %}bg-info text-dark{% else %}bg-primary{% endif %}">{{ a.get_origem_display }}</span></td>
-                            <td>{{ a.campo.pagina.nome }} · <span class="fw-semibold">{{ a.campo.item|default:a.campo.descricao|truncatechars:40 }}</span></td>
+                            <td><span class="badge {% if l.tipo == 'texto' %}bg-warning text-dark{% elif l.tipo == 'limites' %}bg-info text-dark{% elif l.tipo == 'vinculo' %}bg-success{% else %}bg-primary{% endif %}">{{ l.rotulo }}</span></td>
+                            <td>{{ l.item }}</td>
                             <td class="small">{{ l.antes }}</td>
                             <td class="small">{{ l.depois }}</td>
                             <td class="small">{% if a.desfeito %}<span class="badge bg-secondary">Desfeito</span> {{ a.desfeito_em|date:"d/m/Y H:i" }}{% else %}<span class="badge bg-success">Ativo</span>{% endif %}</td>

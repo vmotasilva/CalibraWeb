@@ -21,7 +21,7 @@ from pcp import tipos as tipos_mod
 from pcp.tipos import aplicar_ajuste
 from pcp.importacao import importar_planilha
 from pcp.importacao_registros import importar_registros
-from pcp.models import (SEM_GRUPO, AjusteCampo, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
+from pcp.models import (SEM_GRUPO, AjusteCampo, AjusteVinculo, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
 
@@ -109,33 +109,57 @@ def _descricao_estado(estado, listas):
 
 @login_required
 def ajustes(request, pk):
-    """Histórico dos ajustes de tipo, texto livre e limites dos itens, com a opção de desfazer."""
+    """Histórico dos ajustes de tipo, texto livre, limites e vínculos de valores, com a opção de desfazer."""
     formulario = get_object_or_404(Formulario, pk=pk)
     if request.method == 'POST':
+        escolhidos = []
+        for valor in request.POST.getlist('ajustes'):
+            tipo, _, numero = valor.partition(':') if ':' in valor else ('c', '', valor)  # número puro = ajuste de item
+            if numero.isdigit():
+                escolhidos.append((tipo, int(numero)))
+        itens = [a for a in AjusteCampo.objects.filter(formulario=formulario, pk__in=[n for t, n in escolhidos if t == 'c']).select_related('campo')]
+        itens += [a for a in AjusteVinculo.objects.filter(formulario=formulario, pk__in=[n for t, n in escolhidos if t == 'v']).select_related('opcao', 'lista')]
+        itens.sort(key=lambda a: (a.criado_em, a.pk), reverse=True)  # o mais recente primeiro
         resultados = Counter()
-        for ajuste in (AjusteCampo.objects.filter(formulario=formulario, pk__in=[int(x) for x in request.POST.getlist('ajustes') if x.isdigit()])
-                       .select_related('campo').order_by('-criado_em', '-id')):  # o mais recente primeiro
-            resultados[tipos_mod.desfazer(ajuste, request.user)] += 1
+        for a in itens:
+            resultados[(equiv.desfazer_vinculo if isinstance(a, AjusteVinculo) else tipos_mod.desfazer)(a, request.user)] += 1
         if resultados['ok']:
-            messages.success(request, f'{resultados["ok"]} ajuste(s) desfeito(s): os itens voltaram ao estado anterior e a conformidade foi recalculada.')
+            messages.success(request, f'{resultados["ok"]} ajuste(s) desfeito(s): itens e lançamentos voltaram ao estado anterior e a conformidade foi recalculada.')
+        if resultados['parcial']:
+            messages.warning(request, f'{resultados["parcial"]} vínculo(s) desfeito(s) parcialmente: alguns lançamentos foram editados depois e foram mantidos como estão.')
         if resultados['alterado']:
-            messages.warning(request, f'{resultados["alterado"]} ajuste(s) não foram desfeitos porque o item mudou depois deles '
-                                      '(desfaça primeiro o ajuste mais recente ou edite o item).')
+            messages.warning(request, f'{resultados["alterado"]} ajuste(s) não foram desfeitos porque o item ou os lançamentos mudaram depois '
+                                      '(desfaça primeiro o ajuste mais recente ou edite manualmente).')
         if resultados['ja']:
             messages.info(request, f'{resultados["ja"]} ajuste(s) já estavam desfeitos.')
         if not resultados:
             messages.info(request, 'Nenhum ajuste selecionado.')
         return redirect('pcp:ajustes', pk)
+
     origem = request.GET.get('origem', '')
-    qs = AjusteCampo.objects.filter(formulario=formulario).select_related('campo__pagina', 'criado_por', 'desfeito_por')
-    if origem in dict(AjusteCampo.ORIGENS):
-        qs = qs.filter(origem=origem)
     listas = {l.pk: l.nome for l in ListaOpcoes.objects.all()}
     linhas = []
-    for a in qs[:300]:
-        linhas.append({'obj': a, 'antes': _descricao_estado(a.antes, listas), 'depois': _descricao_estado(a.depois, listas)})
+    if origem in ('', 'tipo', 'texto', 'limites'):
+        qs = AjusteCampo.objects.filter(formulario=formulario).select_related('campo__pagina', 'criado_por', 'desfeito_por')
+        if origem:
+            qs = qs.filter(origem=origem)
+        for a in qs[:300]:
+            linhas.append({
+                'chave': f'c:{a.pk}', 'obj': a, 'quando': a.criado_em, 'tipo': a.origem, 'rotulo': a.get_origem_display(),
+                'item': f'{a.campo.pagina.nome} · {a.campo.item or a.campo.descricao[:40]}',
+                'antes': _descricao_estado(a.antes, listas), 'depois': _descricao_estado(a.depois, listas)})
+    if origem in ('', 'vinculo'):
+        for a in AjusteVinculo.objects.filter(formulario=formulario).select_related('opcao', 'lista', 'criado_por', 'desfeito_por')[:300]:
+            destino = a.opcao.valor if a.opcao else '(opção removida)'
+            linhas.append({
+                'chave': f'v:{a.pk}', 'obj': a, 'quando': a.criado_em, 'tipo': 'vinculo', 'rotulo': a.get_acao_display(),
+                'item': f'Lista "{a.lista.nome}" · {a.total} lançamento(s)',
+                'antes': f'«{a.valor}»', 'depois': destino if a.acao == AjusteVinculo.VINCULO else f'«{a.valor}» como opção ({"conforme" if a.opcao and a.opcao.conforme else "desvio"})'})
+    linhas.sort(key=lambda l: l['quando'], reverse=True)
+    linhas = linhas[:300]
     return render(request, 'pcp/ajustes.html', {
-        'formulario': formulario, 'linhas': linhas, 'origem': origem, 'origens': AjusteCampo.ORIGENS,
+        'formulario': formulario, 'linhas': linhas, 'origem': origem,
+        'origens': list(AjusteCampo.ORIGENS) + [('vinculo', 'Valores vinculados a opções')],
         'pendentes': sum(1 for l in linhas if not l['obj'].desfeito)})
 
 
@@ -161,7 +185,8 @@ def vincular_valores(request):
         lista_id = request.POST.get(f'lista_{i}', '')
         if acao and lista_id.isdigit():
             escolhas.append((int(lista_id), request.POST.get(f'valor_{i}', ''), acao, request.POST.get(f'itens_{i}', '')))
-    r = equiv.aplicar_vinculos(escolhas, usuario=request.user, lote=tipos_mod.novo_lote())
+    formulario = Formulario.objects.filter(pk=request.POST['formulario']).first() if request.POST.get('formulario', '').isdigit() else None
+    r = equiv.aplicar_vinculos(escolhas, usuario=request.user, lote=tipos_mod.novo_lote(), formulario=formulario)
     if escolhas:
         partes = [f'{r["vinculados"]} valor(es) vinculado(s)', f'{r["criadas"]} opção(ões) criada(s)', f'{r["textos"]} item(ns) marcado(s) como texto']
         messages.success(request, ', '.join(partes) + f'; {r["lancamentos"]} lançamento(s) atualizado(s). Os vínculos valem nas próximas importações de registros.')

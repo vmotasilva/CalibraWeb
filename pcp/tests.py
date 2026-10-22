@@ -16,7 +16,7 @@ from django.utils import timezone
 from pcp import cobranca, pendencias as pend
 from pcp.importacao_registros import importar_registros
 from pcp.importacao import frequencia_canonica, importar_planilha, parse_arquivo, parse_faixa, parse_mais_menos
-from pcp.models import (AjusteCampo, ValorEquivalente, Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
+from pcp.models import (AjusteCampo, AjusteVinculo, ValorEquivalente, Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
 
@@ -1265,3 +1265,125 @@ class DesfazerAjustesTests(PcpBase):
         self.assertContains(r, 'Lista: Ok/Nok')   # estado anterior legível
         self.assertEqual(len(self.client.get(url + '?origem=texto').context['linhas']), 1)
         self.assertEqual(len(self.client.get(url).context['linhas']), 2)
+
+
+class HistoricoVinculosTests(ValoresBase):
+    def preparar(self, valor='falat', celulas=((4, 8), (4, 9))):
+        _, real = self.listas()
+        r0 = self.estrutura()
+        self.registros(arquivo=self.planilha({c: valor for c in celulas}))
+        self.item = Campo.objects.get(item='A-1')
+        self.real = real
+        self.form_id = r0['formulario'].pk
+        return r0
+
+    def vincular(self, valor, acao, formulario=True):
+        dados = {'total': 1, 'lista_0': self.item.lista_id, 'valor_0': valor, 'acao_0': acao}
+        if formulario:
+            dados['formulario'] = self.form_id
+        return self.client.post(reverse('pcp:vincular_valores'), dados)
+
+    def desfazer(self, *ajustes):
+        return self.client.post(reverse('pcp:ajustes', args=[self.form_id]), {'ajustes': [f'v:{a.pk}' for a in ajustes]})
+
+    def test_comprimir_faixas(self):
+        from pcp.equivalencias import comprimir
+        self.assertEqual(comprimir([7, 1, 2, 3, 8, 20]), [[1, 3], [7, 8], [20, 20]])
+        self.assertEqual(comprimir([]), [])
+
+    def test_vinculo_e_registrado_e_desfeito(self):
+        self.preparar()
+        nao = self.real.opcoes.get(valor='Não realizado')
+        self.vincular('falat', f'op:{nao.pk}')
+        aj = AjusteVinculo.objects.get()
+        self.assertEqual((aj.acao, aj.valor, aj.total, aj.opcao_id, aj.alias_anterior_id), ('vinculo', 'falat', 2, nao.pk, None))
+        self.assertIsNotNone(aj.criado_por)
+        self.assertEqual(Resposta.objects.filter(valor='Não realizado', conforme=False).count(), 2)
+        self.desfazer(aj)
+        self.assertEqual(Resposta.objects.filter(valor='falat', conforme__isnull=True).count(), 2)  # texto e conformidade originais
+        self.assertEqual(ValorEquivalente.objects.count(), 0)                                        # vínculo removido
+        aj.refresh_from_db()
+        self.assertTrue(aj.desfeito)
+        # sem o vínculo, 'falat' volta a ser não reconhecido numa nova importação
+        Resposta.objects.all().delete()
+        Verificacao.objects.all().delete()
+        r = self.registros(arquivo=self.planilha({(4, 8): 'falat'}), simular=True)
+        self.assertIn('falat', [l['valor'] for l in r['nao_reconhecidos']])
+
+    def test_desfazer_restaura_o_vinculo_anterior(self):
+        self.preparar()
+        ok = self.real.opcoes.get(valor='Realizado')
+        nao = self.real.opcoes.get(valor='Não realizado')
+        self.vincular('falat', f'op:{ok.pk}')
+        primeiro = AjusteVinculo.objects.get()
+        self.vincular('falat', f'op:{nao.pk}')   # religa o valor: os lançamentos já foram corrigidos pelo primeiro vínculo
+        segundo = AjusteVinculo.objects.exclude(pk=primeiro.pk).get()
+        self.assertEqual((segundo.total, segundo.alias_anterior_id), (0, ok.pk))
+        self.assertEqual(ValorEquivalente.objects.get().opcao_id, nao.pk)
+        self.desfazer(segundo)
+        self.assertEqual(ValorEquivalente.objects.get().opcao_id, ok.pk)   # voltou ao vínculo anterior
+
+    def test_criar_opcao_e_desfazer_remove_a_opcao(self):
+        self.preparar(valor='ND')
+        self.vincular('ND', 'novo:desvio')
+        aj = AjusteVinculo.objects.get()
+        self.assertEqual((aj.acao, aj.opcao_criada), ('opcao', True))
+        self.assertTrue(self.item.lista.opcoes.filter(valor='ND').exists())
+        self.assertEqual(Resposta.objects.filter(valor='ND', conforme=False).count(), 2)
+        self.desfazer(aj)
+        self.assertFalse(self.item.lista.opcoes.filter(valor='ND').exists())     # opção criada pela ação foi removida
+        self.assertEqual(Resposta.objects.filter(valor='ND', conforme__isnull=True).count(), 2)
+
+    def test_opcao_criada_e_mantida_se_outros_lancamentos_a_usam(self):
+        self.preparar(valor='ND')
+        self.vincular('ND', 'novo:ok')
+        aj = AjusteVinculo.objects.get()
+        ver = Verificacao.objects.create(pagina=self.item.pagina, data=date(2026, 5, 1), turno=Turno.objects.get(sigla='T1'))
+        Resposta.objects.create(verificacao=ver, campo=self.item, valor='ND', conforme=True)   # lançamento novo, feito depois
+        self.desfazer(aj)
+        self.assertTrue(self.item.lista.opcoes.filter(valor='ND').exists())    # ainda em uso: mantida
+        self.assertEqual(Resposta.objects.filter(valor='ND', verificacao=ver).count(), 1)
+
+    def test_desfazer_parcial_mantem_lancamentos_editados_depois(self):
+        self.preparar()
+        nao = self.real.opcoes.get(valor='Não realizado')
+        self.vincular('falat', f'op:{nao.pk}')
+        aj = AjusteVinculo.objects.get()
+        editado = Resposta.objects.filter(valor='Não realizado').first()
+        Resposta.objects.filter(pk=editado.pk).update(valor='Realizado', conforme=True)   # alguém corrigiu à mão
+        self.desfazer(aj)
+        self.assertEqual(Resposta.objects.filter(valor='falat').count(), 1)               # só o que continuava como o vínculo deixou
+        self.assertEqual(Resposta.objects.get(pk=editado.pk).valor, 'Realizado')
+        aj.refresh_from_db()
+        self.assertTrue(aj.desfeito)
+
+    def test_nao_desfaz_se_a_opcao_foi_removida(self):
+        self.preparar()
+        nao = self.real.opcoes.get(valor='Não realizado')
+        self.vincular('falat', f'op:{nao.pk}')
+        aj = AjusteVinculo.objects.get()
+        nao.delete()  # a opção sumiu (os vínculos que apontam para ela também)
+        aj.refresh_from_db()
+        self.desfazer(aj)
+        aj.refresh_from_db()
+        self.assertFalse(aj.desfeito)
+
+    def test_tela_lista_vinculos_e_filtra(self):
+        self.preparar()
+        nao = self.real.opcoes.get(valor='Não realizado')
+        self.vincular('falat', f'op:{nao.pk}')
+        self.vincular('falat', f'op:{nao.pk}', formulario=False)  # sem formulário: não aparece no histórico dele
+        url = reverse('pcp:ajustes', args=[self.form_id])
+        r = self.client.get(url)
+        self.assertEqual([l['tipo'] for l in r.context['linhas']], ['vinculo'])
+        self.assertContains(r, '«falat»')
+        self.assertContains(r, 'Valores vinculados a opções')
+        self.assertEqual(len(self.client.get(url + '?origem=vinculo').context['linhas']), 1)
+        self.assertEqual(len(self.client.get(url + '?origem=tipo').context['linhas']), 0)
+
+    def test_relatorio_da_importacao_informa_o_formulario(self):
+        self.listas()
+        self.estrutura()
+        arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', self.planilha({(4, 8): 'Lofoam'}).read())
+        r = self.client.post(reverse('pcp:importar_registros'), {'arquivo': arq, 'ano': 2026, 'simular': 'on'})
+        self.assertContains(r, 'name="formulario"')
