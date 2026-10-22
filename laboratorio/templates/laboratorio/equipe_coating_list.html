@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
 
-{% block title %}Equipe Coating | CalibraWeb{% endblock %}
+{% block title %}Equipe HMC | CalibraWeb{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="mb-1"><i class="bi bi-people text-primary"></i> Equipe Coating</h2>
-            <p class="text-muted mb-0">Gerencie os colaboradores autorizados a operar a Preparação e Montagem.</p>
+            <h2 class="mb-1"><i class="bi bi-people text-primary"></i> Equipe HMC</h2>
+            <p class="text-muted mb-0">Gerencie os colaboradores autorizados a operar a Preparação e Montagem, a Inspeção do Controle Final e o lançamento do HC.</p>
         </div>
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAddMembro">
             <i class="bi bi-plus-circle me-1"></i> Adicionar Colaborador
@@ -22,34 +22,31 @@
                     <thead class="table-light">
                         <tr>
                             <th class="ps-3">Colaborador</th>
-                            <th class="text-center">Preparação</th>
-                            <th class="text-center">Montagem</th>
+                            <th class="text-center">Preparação<br><span class="fw-normal text-muted small">Coating</span></th>
+                            <th class="text-center">Montagem<br><span class="fw-normal text-muted small">Coating e Retrabalho CF (AR)</span></th>
+                            <th class="text-center">Inspeção<br><span class="fw-normal text-muted small">Controle Final</span></th>
+                            <th class="text-center">HC<br><span class="fw-normal text-muted small">Rendimento</span></th>
+                            <th>Apelidos</th>
                             <th class="text-end pe-3">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for membro in equipe %}
+                        {% for m in equipe %}
                         <tr>
-                            <td class="fw-bold ps-3">{{ membro.colaborador.nome_completo }}</td>
-                            <td class="text-center">
-                                {% if membro.pode_preparar %}
-                                <span class="badge bg-success">Sim</span>
-                                {% else %}
-                                <span class="badge bg-secondary">Não</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if membro.pode_montar %}
-                                <span class="badge bg-success">Sim</span>
-                                {% else %}
-                                <span class="badge bg-secondary">Não</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-end pe-3">
-                                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalEditar('{{ membro.id }}', '{{ membro.colaborador.nome_completo }}', '{{ membro.pode_preparar|yesno:'true,false' }}', '{{ membro.pode_montar|yesno:'true,false' }}')">
+                            <td class="fw-bold ps-3">{{ m.colaborador.nome_completo }}{% if not m.colaborador.is_active %} <span class="badge bg-warning text-dark fw-normal">inativo no RH</span>{% endif %}</td>
+                            <td class="text-center">{% if m.preparar %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</td>
+                            <td class="text-center">{% if m.montar %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</td>
+                            <td class="text-center">{% if m.cf %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</td>
+                            <td class="text-center">{% if m.hc %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</td>
+                            <td class="small text-muted">{{ m.apelidos }}</td>
+                            <td class="text-end pe-3 text-nowrap">
+                                <button type="button" class="btn btn-sm btn-outline-primary me-1 btn-editar-membro"
+                                        data-id="{{ m.colaborador.pk }}" data-nome="{{ m.colaborador.nome_completo }}"
+                                        data-preparar="{{ m.preparar|yesno:'1,0' }}" data-montar="{{ m.montar|yesno:'1,0' }}"
+                                        data-cf="{{ m.cf|yesno:'1,0' }}" data-hc="{{ m.hc|yesno:'1,0' }}" data-apelidos="{{ m.apelidos }}">
                                     <i class="bi bi-pencil"></i> Editar
                                 </button>
-                                <form method="post" action="{% url 'laboratorio:equipe_coating_delete' membro.id %}" onsubmit="return confirm('Remover {{ membro.colaborador.nome_completo }} da Equipe de Coating?');" style="display: inline-block;">
+                                <form method="post" action="{% url 'laboratorio:equipe_coating_delete' m.colaborador.pk %}" onsubmit="return confirm('Remover {{ m.colaborador.nome_completo|escapejs }} da Equipe HMC (todas as listas)?');" style="display: inline-block;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i> Remover</button>
                                 </form>
@@ -57,9 +54,9 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-5">
+                            <td colspan="7" class="text-center text-muted py-5">
                                 <i class="bi bi-people-fill fs-1 d-block mb-3"></i>
-                                Nenhum colaborador adicionado à equipe ainda.
+                                Nenhum colaborador adicionado à equipe ainda. Enquanto uma coluna não tiver ninguém marcado, os formulários dela listam todos os colaboradores ativos do RH.
                             </td>
                         </tr>
                         {% endfor %}
@@ -67,6 +64,7 @@
                 </table>
             </div>
         </div>
+        <div class="card-footer bg-white small text-muted">Enquanto nenhuma pessoa estiver marcada em uma coluna, o campo correspondente lista todos os colaboradores ativos do RH.</div>
     </div>
 </div>
 
@@ -81,12 +79,18 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    {% for field in form %}
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">{{ field.label }}</label>
-                        {{ field }}
+                    <label class="form-label fw-bold">Colaborador</label>
+                    <div class="position-relative mb-3" id="buscaColab" data-url="{% url 'laboratorio:cf_colaboradores_busca' %}">
+                        <input type="hidden" name="colaborador" id="buscaColabId" required>
+                        <input type="search" id="buscaColabInput" class="form-control" placeholder="Digite o nome ou a matrícula..." autocomplete="off">
+                        <div id="buscaColabLista" class="list-group position-absolute w-100 shadow-sm d-none" style="z-index:1060;max-height:240px;overflow-y:auto"></div>
                     </div>
-                    {% endfor %}
+                    <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" role="switch" name="preparar" id="addPreparar" checked><label class="form-check-label" for="addPreparar">Preparação (Coating)</label></div>
+                    <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" role="switch" name="montar" id="addMontar" checked><label class="form-check-label" for="addMontar">Montagem (Coating e Retrabalho CF · AR)</label></div>
+                    <div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" role="switch" name="cf" id="addCf" checked><label class="form-check-label" for="addCf">Inspeção do lote (Controle Final)</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" name="hc" id="addHc" checked><label class="form-check-label" for="addHc">Colaborador do HC (Rendimento)</label></div>
+                    <label class="form-label fw-bold" for="addApelidos">Apelidos <span class="fw-normal text-muted small">(lançamentos antigos, separados por vírgula)</span></label>
+                    <input class="form-control" name="apelidos" id="addApelidos" placeholder="Gecildo, Gisele">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -96,6 +100,7 @@
         </div>
     </div>
 </div>
+
 <!-- Modal Editar -->
 <div class="modal fade" id="modalEditMembro" tabindex="-1">
     <div class="modal-dialog">
@@ -103,19 +108,17 @@
             <form method="post" id="formEditMembro">
                 {% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title">Editar Permissões</h5>
+                    <h5 class="modal-title">Editar Colaborador</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <p class="fw-bold mb-3" id="editMembroNome"></p>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" role="switch" id="editPodePreparar" name="pode_preparar">
-                        <label class="form-check-label" for="editPodePreparar">Autorizado para Preparação</label>
-                    </div>
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" role="switch" id="editPodeMontar" name="pode_montar">
-                        <label class="form-check-label" for="editPodeMontar">Autorizado para Montagem</label>
-                    </div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" id="editPreparar" name="preparar"><label class="form-check-label" for="editPreparar">Autorizado para Preparação (Coating)</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" id="editMontar" name="montar"><label class="form-check-label" for="editMontar">Autorizado para Montagem (Coating e Retrabalho CF · AR)</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" id="editCf" name="cf"><label class="form-check-label" for="editCf">Inspeção do lote (Controle Final)</label></div>
+                    <div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" role="switch" id="editHc" name="hc"><label class="form-check-label" for="editHc">Colaborador do HC (Rendimento)</label></div>
+                    <label class="form-label fw-bold" for="editApelidos">Apelidos <span class="fw-normal text-muted small">(lançamentos antigos, separados por vírgula)</span></label>
+                    <input class="form-control" name="apelidos" id="editApelidos">
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -127,14 +130,49 @@
 </div>
 
 <script>
-    function abrirModalEditar(id, nome, preparar, montar) {
-        document.getElementById('editMembroNome').innerText = nome;
-        document.getElementById('editPodePreparar').checked = (preparar === 'true');
-        document.getElementById('editPodeMontar').checked = (montar === 'true');
-        
-        document.getElementById('formEditMembro').action = `/laboratorio/coating/equipe/${id}/editar/`;
-        
-        new bootstrap.Modal(document.getElementById('modalEditMembro')).show();
+(function () {
+    document.querySelectorAll('.btn-editar-membro').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var d = b.dataset;
+            document.getElementById('editMembroNome').textContent = d.nome;
+            document.getElementById('editPreparar').checked = d.preparar === '1';
+            document.getElementById('editMontar').checked = d.montar === '1';
+            document.getElementById('editCf').checked = d.cf === '1';
+            document.getElementById('editHc').checked = d.hc === '1';
+            document.getElementById('editApelidos').value = d.apelidos || '';
+            document.getElementById('formEditMembro').action = '/laboratorio/coating/equipe/' + d.id + '/editar/';
+            new bootstrap.Modal(document.getElementById('modalEditMembro')).show();
+        });
+    });
+
+    // busca (Ajax) de colaboradores do RH que ainda não estão na equipe
+    var box = document.getElementById('buscaColab'), input = document.getElementById('buscaColabInput'),
+        hid = document.getElementById('buscaColabId'), lista = document.getElementById('buscaColabLista'), timer, seq = 0;
+    function fechar() { lista.classList.add('d-none'); }
+    function buscar() {
+        var n = ++seq;
+        fetch(box.dataset.url + '?q=' + encodeURIComponent(input.value.trim()), {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (n !== seq) return;
+                lista.innerHTML = '';
+                if (!d.results.length) lista.innerHTML = '<div class="list-group-item small text-muted">Nenhum colaborador encontrado.</div>';
+                d.results.forEach(function (c) {
+                    var b = document.createElement('button');
+                    b.type = 'button'; b.className = 'list-group-item list-group-item-action small';
+                    b.textContent = c.nome_completo + (c.matricula ? ' (' + c.matricula + ')' : '');
+                    b.addEventListener('mousedown', function (e) { e.preventDefault(); hid.value = c.id; input.value = c.nome_completo; fechar(); });
+                    lista.appendChild(b);
+                });
+                lista.classList.remove('d-none');
+            });
     }
+    input.addEventListener('input', function () { hid.value = ''; clearTimeout(timer); timer = setTimeout(buscar, 250); });
+    input.addEventListener('focus', buscar);
+    input.addEventListener('blur', fechar);
+    input.form.addEventListener('submit', function (e) {
+        if (!hid.value) { e.preventDefault(); input.focus(); input.setCustomValidity('Selecione um colaborador da lista.'); input.reportValidity(); input.setCustomValidity(''); }
+    });
+})();
 </script>
 {% endblock %}

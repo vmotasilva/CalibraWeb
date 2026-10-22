@@ -1467,7 +1467,7 @@ NAV_STRUCTURE = [
                 "nome": "Coating: Equipe",
                 "perm": "core.nav_laboratorio_coating_equipe_bloco",
                 "funcoes": [
-                    {"nome": "Equipe Coating", "view_name": "laboratorio:equipe_coating_list", "perm": "core.nav_laboratorio_coating_equipe"},
+                    {"nome": "Equipe HMC (Preparação, Montagem, Controle Final e HC)", "view_name": ["laboratorio:equipe_coating_list", "laboratorio:cf_colaboradores_busca"], "perm": "core.nav_laboratorio_coating_equipe"},
                     {"nome": "Editar Membro da Equipe", "view_name": "laboratorio:equipe_coating_update", "perm": "core.nav_laboratorio_coating_equipe_update"},
                     {"nome": "Excluir Membro da Equipe", "view_name": "laboratorio:equipe_coating_delete", "perm": "core.nav_laboratorio_coating_equipe_delete"},
                 ],

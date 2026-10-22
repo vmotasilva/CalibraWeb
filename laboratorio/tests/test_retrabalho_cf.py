@@ -214,7 +214,7 @@ class ConfiguracaoTests(CFBase):
     def test_paginas_abrem(self):
         for nome in ("cf_config_campos", "cf_config_cadastros", "cf_config_integracoes", "cf_registros", "cf_registro_create", "cf_importar"):
             self.assertEqual(self.client.get(reverse(f"laboratorio:{nome}")).status_code, 200, nome)
-        for aba in ("MOTIVO", "REPROVACAO", "EQUIPE"):
+        for aba in ("MOTIVO", "REPROVACAO"):  # a aba EQUIPE agora redireciona para a Equipe HMC
             self.assertEqual(self.client.get(reverse("laboratorio:cf_config_cadastros"), {"aba": aba}).status_code, 200)
 
 
@@ -432,3 +432,47 @@ class HoraRegistroCFTests(CFBase):
         res = imp.importar(linhas, mapa)
         self.assertEqual(res["horas_preenchidas"], 1)
         self.assertEqual(RetrabalhoCFRegistro.objects.get().hora, time(9, 41))
+
+
+class EquipeHMCUnificadaTests(CFBase):
+    def test_tela_unica_com_colunas_dos_quatro_modulos(self):
+        from laboratorio.models import EquipeHC
+        EquipeHC.objects.create(colaborador=self.montador, ativo=True)
+        r = self.client.get(reverse("laboratorio:equipe_coating_list"))
+        self.assertEqual(r.status_code, 200)
+        linhas = {l["colaborador"].pk: l for l in r.context["equipe"]}
+        self.assertEqual(set(linhas), {self.gisele.pk, self.gecildo.pk, self.montador.pk})
+        self.assertTrue(linhas[self.gisele.pk]["cf"] and not linhas[self.gisele.pk]["montar"] and not linhas[self.gisele.pk]["hc"])
+        m = linhas[self.montador.pk]
+        self.assertTrue(m["montar"] and m["hc"] and not m["cf"])
+        # as abas "equipe" antigas levam à tela única
+        for nome in ("cf_config_cadastros", "hc_config_cadastros"):
+            resp = self.client.get(reverse(f"laboratorio:{nome}") + "?aba=EQUIPE")
+            self.assertRedirects(resp, reverse("laboratorio:equipe_coating_list"), fetch_redirect_response=False)
+
+    def test_adicionar_editar_e_remover_gravam_nos_tres_cadastros(self):
+        from laboratorio.models import EquipeHC
+        novo = _colab("9", "NOVO COLAB")
+        r = self.client.post(reverse("laboratorio:equipe_coating_list"), {
+            "colaborador": novo.pk, "preparar": "on", "cf": "on", "apelidos": "Novinho"})
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(EquipeCoating.objects.get(colaborador=novo).pode_preparar)
+        self.assertFalse(EquipeCoating.objects.get(colaborador=novo).pode_montar)
+        self.assertEqual(EquipeCF.objects.get(colaborador=novo).apelidos, "Novinho")
+        self.assertFalse(EquipeHC.objects.filter(colaborador=novo).exists())  # coluna desmarcada de quem nunca esteve nela
+        # editar: troca as colunas; desmarcar mantém o cadastro como inativo
+        self.client.post(reverse("laboratorio:equipe_coating_update", args=[novo.pk]), {"montar": "on", "hc": "on", "apelidos": "N2"})
+        eq = EquipeCoating.objects.get(colaborador=novo)
+        self.assertEqual((eq.pode_preparar, eq.pode_montar), (False, True))
+        self.assertFalse(EquipeCF.objects.get(colaborador=novo).ativo)
+        self.assertTrue(EquipeHC.objects.get(colaborador=novo).ativo)
+        self.assertEqual(EquipeCF.objects.get(colaborador=novo).apelidos, "N2")
+        # a busca Ajax já não oferece quem está na equipe; remover limpa tudo
+        busca = self.client.get(reverse("laboratorio:cf_colaboradores_busca"), {"q": "NOVO"}).json()["results"]
+        self.assertEqual(busca, [])
+        self.client.post(reverse("laboratorio:equipe_coating_delete", args=[novo.pk]))
+        self.assertFalse(EquipeCoating.objects.filter(colaborador=novo).exists())
+        self.assertFalse(EquipeCF.objects.filter(colaborador=novo).exists())
+        self.assertFalse(EquipeHC.objects.filter(colaborador=novo).exists())
+        busca = self.client.get(reverse("laboratorio:cf_colaboradores_busca"), {"q": "NOVO"}).json()["results"]
+        self.assertEqual(len(busca), 1)

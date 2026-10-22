@@ -217,7 +217,7 @@ class CamposConfiguraveisTests(RendimentoHCBase):
     def test_paginas_de_configuracao_abrem(self):
         for nome in ("hc_config_campos", "hc_config_cadastros", "hc_config_integracoes", "hc_registros", "hc_registro_create"):
             self.assertEqual(self.client.get(reverse(f"laboratorio:{nome}")).status_code, 200, nome)
-        for aba in ("GARRA", "MATERIAL", "MOTIVO", "EQUIPE"):
+        for aba in ("GARRA", "MATERIAL", "MOTIVO"):  # a aba EQUIPE agora redireciona para a Equipe HMC
             self.assertEqual(self.client.get(reverse("laboratorio:hc_config_cadastros"), {"aba": aba}).status_code, 200)
 
 

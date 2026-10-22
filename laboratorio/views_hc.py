@@ -336,8 +336,10 @@ def hc_config_meta(request):
 def hc_config_cadastros(request):
     hc.garantir_padroes()
     aba = request.GET.get("aba", HCCadastro.TIPO_GARRA)
+    if aba == "EQUIPE":
+        return redirect("laboratorio:equipe_coating_list")  # a equipe agora é uma só para todo o HMC
     tipos = dict(HCCadastro.TIPO_CHOICES)
-    if aba != "EQUIPE" and aba not in tipos:
+    if aba not in tipos:
         aba = HCCadastro.TIPO_GARRA
     ctx = {"aba": aba, "tipos": HCCadastro.TIPO_CHOICES, "passos": HCCadastro.PASSO_CHOICES}
     if aba == "EQUIPE":

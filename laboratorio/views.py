@@ -15,6 +15,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.http import JsonResponse
+from rh.models import Colaborador
 import json
 from collections import defaultdict
 
@@ -1881,44 +1882,46 @@ def api_analisar_horarios_coating(request):
 
 @login_required
 def equipe_coating_list(request):
-    equipe = EquipeCoating.objects.all().order_by('colaborador__nome_completo')
-    
-    if request.method == "POST":
-        form = EquipeCoatingForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, "Colaborador adicionado à Equipe de Coating.")
-            return redirect("laboratorio:equipe_coating_list")
-    else:
-        form = EquipeCoatingForm()
-        
-    return render(request, "laboratorio/equipe_coating_list.html", {
-        "equipe": equipe,
-        "form": form
-    })
+    """Equipe HMC: Preparação e Montagem (Coating), Inspeção do Controle Final e HC numa só tela."""
+    from . import equipe_hmc
+
+    if request.method == "POST":  # adicionar colaborador
+        colab = Colaborador.objects.filter(pk=request.POST.get("colaborador") or 0).first()
+        if colab is None:
+            messages.error(request, "Selecione um colaborador da lista.")
+        else:
+            marcou = lambda k: request.POST.get(k) == "on"
+            equipe_hmc.salvar(colab, marcou("preparar"), marcou("montar"), marcou("cf"), marcou("hc"),
+                              (request.POST.get("apelidos") or "").strip())
+            messages.success(request, f"{colab.nome_completo} adicionado à Equipe HMC.")
+        return redirect("laboratorio:equipe_coating_list")
+
+    return render(request, "laboratorio/equipe_coating_list.html", {"equipe": equipe_hmc.matriz()})
+
 
 @login_required
 @require_POST
 def equipe_coating_delete(request, pk):
-    membro = get_object_or_404(EquipeCoating, pk=pk)
-    membro.delete()
-    messages.success(request, f"{membro.colaborador.nome_completo} removido da Equipe de Coating.")
+    """Remove o colaborador (pk do RH) de todas as listas da Equipe HMC."""
+    from . import equipe_hmc
+
+    colab = get_object_or_404(Colaborador, pk=pk)
+    equipe_hmc.remover(colab)
+    messages.success(request, f"{colab.nome_completo} removido da Equipe HMC.")
     return redirect("laboratorio:equipe_coating_list")
+
 
 @login_required
 @require_POST
 def equipe_coating_update(request, pk):
-    membro = get_object_or_404(EquipeCoating, pk=pk)
-    
-    # Checkbox sends "on" if checked, otherwise it's not in POST
-    pode_preparar = request.POST.get('pode_preparar') == 'on'
-    pode_montar = request.POST.get('pode_montar') == 'on'
-    
-    membro.pode_preparar = pode_preparar
-    membro.pode_montar = pode_montar
-    membro.save()
-    
-    messages.success(request, f"Permissões de {membro.colaborador.nome_completo} atualizadas com sucesso.")
+    """Atualiza as colunas do colaborador (pk do RH) na Equipe HMC."""
+    from . import equipe_hmc
+
+    colab = get_object_or_404(Colaborador, pk=pk)
+    marcou = lambda k: request.POST.get(k) == "on"
+    equipe_hmc.salvar(colab, marcou("preparar"), marcou("montar"), marcou("cf"), marcou("hc"),
+                      (request.POST.get("apelidos") or "").strip() if "apelidos" in request.POST else None)
+    messages.success(request, f"{colab.nome_completo} atualizado na Equipe HMC.")
     return redirect("laboratorio:equipe_coating_list")
 
 @login_required

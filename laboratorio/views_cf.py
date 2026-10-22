@@ -285,7 +285,9 @@ def cf_config_meta(request):
 def cf_config_cadastros(request):
     cf.garantir_padroes()
     aba = request.GET.get("aba", "MOTIVO")
-    if aba not in ("MOTIVO", "REPROVACAO", "EQUIPE"):
+    if aba == "EQUIPE":
+        return redirect("laboratorio:equipe_coating_list")  # a equipe agora é uma só para todo o HMC
+    if aba not in ("MOTIVO", "REPROVACAO"):
         aba = "MOTIVO"
     ctx = {"aba": aba, "origens": CFCadastro.ORIGEM_CHOICES}
     if aba == "EQUIPE":
@@ -353,7 +355,8 @@ def cf_cadastro_delete(request, pk):
 def cf_colaboradores_busca(request):
     """Busca (Ajax) de colaboradores ativos do RH que ainda não estão na Equipe Controle Final."""
     q = (request.GET.get("q") or "").strip()
-    qs = Colaborador.objects.filter(is_active=True).exclude(pk__in=[l["colaborador"].pk for l in _matriz_equipe()])
+    from . import equipe_hmc
+    qs = Colaborador.objects.filter(is_active=True).exclude(pk__in=[l["colaborador"].pk for l in equipe_hmc.matriz()])
     if q:
         qs = qs.filter(Q(nome_completo__icontains=q) | Q(matricula__icontains=q))
     return JsonResponse({"results": list(qs.order_by("nome_completo").values("id", "nome_completo", "matricula")[:20])})
