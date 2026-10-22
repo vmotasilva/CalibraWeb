@@ -572,3 +572,34 @@ class AbasOcultasTests(PcpBase):
         form.atribuir_grupo(['Fitadeira'], 'Meu grupo')           # ajuste manual
         r2 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R04 - x.xlsx', setor=self.setor)
         self.assertEqual(r2['versao'].paginas.get(nome='Fitadeira').grupo, 'Meu grupo')  # o ajuste manual prevalece
+
+
+class ExcluirFormularioTests(PcpBase):
+    def url(self):
+        return reverse('pcp:formulario_excluir', args=[self.form.pk])
+
+    def test_exclui_formulario_sem_historico_e_permite_reimportar(self):
+        r = self.client.get(self.url())
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'FOR.080')
+        self.client.post(self.url())
+        self.assertFalse(Formulario.objects.filter(pk=self.form.pk).exists())
+        self.assertFalse(Pagina.objects.exists() or Campo.objects.exists())
+        self.assertTrue(Turno.objects.exists() and ListaOpcoes.objects.exists())  # cadastros base preservados
+        r = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.080.R15 - x.xlsx', setor=self.setor)  # código livre de novo
+        self.assertEqual(str(r['versao']), 'FOR.080.R15')
+
+    def test_com_historico_exige_confirmacao_digitada(self):
+        self.v15.publicar()
+        ver = Verificacao.objects.create(pagina=self.pag, data=date(2026, 10, 22), turno=self.t1)
+        Resposta.objects.create(verificacao=ver, campo=self.c_lista, valor='Ok')
+        Ocorrencia.objects.create(verificacao=ver, tipo='tratativa', descricao='x')
+        r = self.client.post(self.url())  # sem confirmar
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(Formulario.objects.filter(pk=self.form.pk).exists())
+        self.client.post(self.url(), {'apagar_historico': 'on', 'codigo': 'errado'})
+        self.assertTrue(Formulario.objects.filter(pk=self.form.pk).exists())
+        r = self.client.post(self.url(), {'apagar_historico': 'on', 'codigo': 'for.080'})  # ignora maiúsculas
+        self.assertRedirects(r, reverse('pcp:formularios'))
+        self.assertFalse(Formulario.objects.filter(pk=self.form.pk).exists())
+        self.assertEqual((Verificacao.objects.count(), Resposta.objects.count(), Ocorrencia.objects.count()), (0, 0, 0))

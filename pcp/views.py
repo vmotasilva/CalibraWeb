@@ -51,6 +51,36 @@ def formulario_novo(request):
 
 
 @login_required
+def formulario_excluir(request, pk):
+    """Exclui o formulário com todas as revisões, páginas e campos (para importar de novo).
+
+    Sem verificações lançadas basta confirmar. Com lançamentos, é preciso marcar a exclusão do histórico e digitar o código."""
+    formulario = get_object_or_404(Formulario.objects.select_related('setor'), pk=pk)
+    resumo = {
+        'revisoes': formulario.versoes.count(),
+        'paginas': Pagina.objects.filter(versao__formulario=formulario).count(),
+        'campos': Campo.objects.filter(pagina__versao__formulario=formulario).count(),
+        'verificacoes': Verificacao.objects.filter(pagina__versao__formulario=formulario).count(),
+        'ocorrencias': Ocorrencia.objects.filter(verificacao__pagina__versao__formulario=formulario).count(),
+    }
+    erro = ''
+    if request.method == 'POST':
+        if resumo['verificacoes']:
+            if not request.POST.get('apagar_historico'):
+                erro = 'Marque a opção de excluir também o histórico de verificações.'
+            elif (request.POST.get('codigo') or '').strip().upper() != formulario.codigo.upper():
+                erro = f'Digite o código {formulario.codigo} para confirmar.'
+        if not erro:
+            codigo = formulario.codigo
+            with transaction.atomic():
+                Verificacao.objects.filter(pagina__versao__formulario=formulario).delete()  # respostas e ocorrências vão junto
+                formulario.delete()
+            messages.success(request, f'Formulário {codigo} excluído. Já é possível importá-lo novamente.')
+            return redirect('pcp:formularios')
+    return render(request, 'pcp/formulario_excluir.html', {'formulario': formulario, 'resumo': resumo, 'erro': erro})
+
+
+@login_required
 def formulario_editar(request, pk):
     formulario = get_object_or_404(Formulario, pk=pk)
     form = FormularioForm(request.POST or None, instance=formulario)

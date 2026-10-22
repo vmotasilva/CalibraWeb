@@ -375,6 +375,12 @@ NAV_STRUCTURE = [
                         "descricao": "Cria uma nova revisão (rascunho) a partir de uma planilha .xlsx no padrão dos formulários de PCP.",
                     },
                     {
+                        "nome": "Excluir Formulário",
+                        "view_name": "pcp:formulario_excluir",
+                        "perm": "core.nav_pcp_formulario_excluir",
+                        "descricao": "Apaga o formulário com todas as revisões, páginas e campos (por exemplo, para importar de novo). Com verificações lançadas, exige confirmação digitada e apaga também o histórico.",
+                    },
+                    {
                         "nome": "Publicar e Excluir Revisões",
                         "view_name": ["pcp:versao_publicar", "pcp:versao_excluir"],
                         "perm": "core.nav_pcp_versao_publicar",

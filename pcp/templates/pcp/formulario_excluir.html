@@ -1,0 +1,41 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Excluir {{ formulario.codigo }} - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 760px;">
+    <h4 class="mb-3 text-danger"><i class="bi bi-exclamation-octagon me-2"></i>Excluir formulário {{ formulario.codigo }}</h4>
+    <div class="card card-body">
+        <p class="mb-2"><strong>{{ formulario.codigo }} - {{ formulario.titulo }}</strong> ({{ formulario.setor }})</p>
+        <p>Serão apagados definitivamente:</p>
+        <ul>
+            <li>{{ resumo.revisoes }} revisão(ões) e {{ resumo.paginas }} página(s) com {{ resumo.campos }} campo(s);</li>
+            <li class="{% if resumo.verificacoes %}text-danger fw-semibold{% endif %}">{{ resumo.verificacoes }} verificação(ões) lançada(s) e {{ resumo.ocorrencias }} ocorrência(s);</li>
+            <li>os grupos do formulário.</li>
+        </ul>
+        <p class="small text-muted">Turnos, frequências e listas de opções não são afetados. Depois de excluir, o código fica livre e a planilha pode ser importada novamente.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            {% if erro %}<div class="alert alert-danger py-2">{{ erro }}</div>{% endif %}
+            {% if resumo.verificacoes %}
+                <div class="alert alert-warning py-2">
+                    Este formulário já tem <strong>histórico de preenchimento</strong>. Excluir apaga também esse histórico, sem possibilidade de recuperar.
+                    Se só quer tirar blocos de uso, prefira <em>desativar</em> as páginas em <em>Grupos e blocos</em>.
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="apagar_historico" id="apagar_historico">
+                    <label class="form-check-label" for="apagar_historico">Excluir também as {{ resumo.verificacoes }} verificações lançadas</label>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="codigo">Para confirmar, digite o código <code>{{ formulario.codigo }}</code></label>
+                    <input type="text" name="codigo" id="codigo" class="form-control" autocomplete="off">
+                </div>
+            {% endif %}
+            <div class="d-flex gap-2">
+                <button class="btn btn-danger"><i class="bi bi-trash me-1"></i>Excluir formulário</button>
+                <a href="{% url 'pcp:formulario_detalhe' formulario.pk %}" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

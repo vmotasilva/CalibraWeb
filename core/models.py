@@ -549,6 +549,7 @@ class NavigationPermission(models.Model):
             ("nav_pcp_bloco_formularios", "NAV: PCP / Bloco Formulários e Revisões"),
             ("nav_pcp_formularios", "NAV: PCP / Ver Formulários, Revisões e Páginas"),
             ("nav_pcp_formulario_editar", "NAV: PCP / Criar e Editar Formulários, Páginas e Campos"),
+            ("nav_pcp_formulario_excluir", "NAV: PCP / Excluir Formulário (com todas as revisões)"),
             ("nav_pcp_importar", "NAV: PCP / Importar Planilha de Formulário"),
             ("nav_pcp_versao_publicar", "NAV: PCP / Publicar e Excluir Revisões"),
             ("nav_pcp_bloco_cadastros", "NAV: PCP / Bloco Cadastros Base"),
