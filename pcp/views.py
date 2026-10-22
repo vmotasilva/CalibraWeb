@@ -1,4 +1,5 @@
 import datetime
+from collections import Counter
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -7,14 +8,15 @@ from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
 from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
 from pcp import pendencias as pend
 from pcp.importacao import importar_planilha
-from pcp.models import (Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, Ocorrencia, Pagina,
-                        Resposta, Turno, Verificacao)
+from pcp.models import (SEM_GRUPO, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
+                        Pagina, Resposta, Turno, Verificacao)
 
 
 # --------------------------------------------------------------------------------------
@@ -101,7 +103,7 @@ def versao_detalhe(request, pk):
     grupos = {}
     for p in paginas:
         grupos.setdefault(p.grupo or 'Sem grupo', []).append(p)
-    return render(request, 'pcp/versao_detalhe.html', {'versao': versao, 'grupos': grupos, 'total_paginas': len(paginas)})
+    return render(request, 'pcp/versao_detalhe.html', {'versao': versao, 'grupos': versao.formulario.ordenar_grupos(grupos), 'total_paginas': len(paginas)})
 
 
 @login_required
@@ -168,6 +170,8 @@ def pagina_editar(request, pk):
     form = form_class(request.POST or None, instance=pagina)
     if request.method == 'POST' and form.is_valid():
         form.save()
+        if 'grupo' in form.changed_data:
+            pagina.versao.formulario.atribuir_grupo([pagina.nome], pagina.grupo)  # vale para as páginas de mesmo nome nas outras revisões
         messages.success(request, 'Página atualizada.')
         return redirect('pcp:pagina_detalhe', pk)
     return render(request, 'pcp/form_generico.html', {
@@ -176,41 +180,189 @@ def pagina_editar(request, pk):
                  'Nome e campos mudam numa nova revisão.' if travada else ''})
 
 
+def _nome_grupo(texto):
+    return ' '.join((texto or '').split())[:80]
+
+
+def _volta_grupos(formulario_id, filtro=''):
+    url = reverse('pcp:grupos', args=[formulario_id])
+    return redirect(f'{url}?{urlencode({"grupo": filtro})}' if filtro else url)
+
+
 @login_required
 def versao_grupos(request, pk):
-    """Organiza o grupo (e a ordem) de todas as páginas da revisão de uma vez; vale também para revisão travada."""
-    versao = get_object_or_404(FormularioVersao.objects.select_related('formulario'), pk=pk)
-    paginas = list(versao.paginas.annotate(n_campos=Count('campos')).order_by('grupo', 'ordem', 'nome'))
-    if request.method == 'POST':
-        alteradas = 0
-        for p in paginas:
-            grupo = ' '.join((request.POST.get(f'grupo_{p.pk}') or '').split())[:80]
-            if grupo != p.grupo:
-                p.grupo = grupo
-                p.save(update_fields=['grupo'])
-                alteradas += 1
-        messages.success(request, f'{alteradas} página{"s" if alteradas != 1 else ""} atualizada{"s" if alteradas != 1 else ""}.')
-        return redirect('pcp:versao_detalhe', pk)
-    grupos_existentes = sorted({p.grupo for p in paginas if p.grupo})
-    return render(request, 'pcp/versao_grupos.html', {
-        'versao': versao, 'paginas': paginas, 'grupos_existentes': grupos_existentes,
-        'sem_grupo': sum(1 for p in paginas if not p.grupo)})
+    """Atalho antigo: os grupos agora são gerenciados por formulário."""
+    versao = get_object_or_404(FormularioVersao, pk=pk)
+    return redirect('pcp:grupos', versao.formulario_id)
+
+
+@login_required
+def grupos(request, pk):
+    """Gerencia os grupos do formulário e associa páginas a eles (individualmente ou em massa)."""
+    formulario = get_object_or_404(Formulario.objects.select_related('setor'), pk=pk)
+    versao = formulario.versao_vigente or formulario.versoes.first()
+    paginas = list(versao.paginas.annotate(n_campos=Count('campos'))) if versao else []
+    for nome in sorted({p.grupo for p in paginas if p.grupo}):  # grupos que só existiam no texto da página
+        formulario.garantir_grupo(nome)
+    contagem = Counter(p.grupo for p in paginas)
+    lista_grupos = [{'obj': g, 'n': contagem.get(g.nome, 0)} for g in formulario.grupos.all()]
+    ordem = {g['obj'].nome: i for i, g in enumerate(lista_grupos)}
+    filtro = request.GET.get('grupo', '')
+    if filtro == '__sem__':
+        visiveis = [p for p in paginas if not p.grupo]
+    elif filtro:
+        visiveis = [p for p in paginas if p.grupo == filtro]
+    else:
+        visiveis = list(paginas)
+    visiveis.sort(key=lambda p: (ordem.get(p.grupo, 10 ** 6) if p.grupo else 10 ** 7, p.ordem, p.nome))
+    return render(request, 'pcp/grupos.html', {
+        'formulario': formulario, 'versao': versao, 'grupos': lista_grupos, 'paginas': visiveis, 'filtro': filtro,
+        'total': len(paginas), 'sem_grupo': contagem.get('', 0), 'inativas': sum(1 for p in paginas if not p.ativo)})
+
+
+@login_required
+@require_POST
+def grupo_criar(request, pk):
+    formulario = get_object_or_404(Formulario, pk=pk)
+    nome = _nome_grupo(request.POST.get('nome'))
+    if not nome or nome.lower() == SEM_GRUPO.lower():
+        messages.error(request, 'Informe um nome válido para o grupo.')
+    elif formulario.grupos.filter(nome__iexact=nome).exists():
+        messages.warning(request, f'O grupo "{nome}" já existe.')
+    else:
+        formulario.garantir_grupo(nome)
+        messages.success(request, f'Grupo "{nome}" criado.')
+    return _volta_grupos(pk, request.POST.get('filtro', ''))
+
+
+@login_required
+@require_POST
+def grupo_renomear(request, pk):
+    grupo = get_object_or_404(GrupoPagina.objects.select_related('formulario'), pk=pk)
+    formulario = grupo.formulario
+    novo = _nome_grupo(request.POST.get('nome'))
+    if not novo or novo.lower() == SEM_GRUPO.lower():
+        messages.error(request, 'Informe um nome válido para o grupo.')
+        return _volta_grupos(formulario.pk)
+    if novo != grupo.nome:
+        existente = formulario.grupos.filter(nome__iexact=novo).exclude(pk=grupo.pk).first()
+        with transaction.atomic():
+            destino = existente.nome if existente else novo
+            Pagina.objects.filter(versao__formulario=formulario, grupo=grupo.nome).update(grupo=destino)
+            if existente:
+                grupo.delete()  # fusão: as páginas já foram para o grupo existente
+            else:
+                grupo.nome = novo
+                grupo.save(update_fields=['nome'])
+        messages.success(request, f'Grupo renomeado para "{destino}"' + (' (unido ao grupo existente).' if existente else '.'))
+    return _volta_grupos(formulario.pk, novo if request.POST.get('filtro') else '')
+
+
+@login_required
+@require_POST
+def grupo_excluir(request, pk):
+    grupo = get_object_or_404(GrupoPagina.objects.select_related('formulario'), pk=pk)
+    formulario = grupo.formulario
+    with transaction.atomic():
+        n = Pagina.objects.filter(versao__formulario=formulario, grupo=grupo.nome, versao__status__in=['vigente', 'rascunho']).count()
+        Pagina.objects.filter(versao__formulario=formulario, grupo=grupo.nome).update(grupo='')
+        grupo.delete()
+    messages.success(request, f'Grupo "{grupo.nome}" excluído.' + (f' {n} página(s) ficaram sem grupo.' if n else ''))
+    return _volta_grupos(formulario.pk)
+
+
+@login_required
+@require_POST
+def grupo_mover(request, pk):
+    """Sobe ou desce o grupo na ordem de exibição."""
+    grupo = get_object_or_404(GrupoPagina.objects.select_related('formulario'), pk=pk)
+    itens = list(grupo.formulario.grupos.all())
+    for i, g in enumerate(itens):  # normaliza a ordem (0..n) antes de trocar
+        if g.ordem != i:
+            g.ordem = i
+            g.save(update_fields=['ordem'])
+    i = next(k for k, g in enumerate(itens) if g.pk == grupo.pk)
+    j = i - 1 if request.POST.get('dir') == 'up' else i + 1
+    if 0 <= j < len(itens):
+        itens[i].ordem, itens[j].ordem = itens[j].ordem, itens[i].ordem
+        itens[i].save(update_fields=['ordem'])
+        itens[j].save(update_fields=['ordem'])
+    return _volta_grupos(grupo.formulario_id, request.POST.get('filtro', ''))
+
+
+@login_required
+@require_POST
+def paginas_acao(request, pk):
+    """Ação em massa sobre as páginas selecionadas: mover/remover de grupo, desativar, reativar ou excluir."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    filtro = request.POST.get('filtro', '')
+    paginas = list(Pagina.objects.filter(pk__in=request.POST.getlist('paginas'), versao__formulario=formulario))
+    acao = request.POST.get('acao')
+    if not paginas:
+        messages.warning(request, 'Selecione ao menos uma página.')
+        return _volta_grupos(pk, filtro)
+    nomes = sorted({p.nome for p in paginas})
+    if acao in ('mover', 'remover'):
+        destino = ''
+        if acao == 'mover':
+            destino = request.POST.get('destino', '')
+            if destino == '__novo__':
+                destino = _nome_grupo(request.POST.get('novo_nome'))
+                if not destino or destino.lower() == SEM_GRUPO.lower():
+                    messages.error(request, 'Informe o nome do novo grupo.')
+                    return _volta_grupos(pk, filtro)
+            elif not formulario.grupos.filter(nome=destino).exists():
+                messages.error(request, 'Escolha o grupo de destino.')
+                return _volta_grupos(pk, filtro)
+        formulario.atribuir_grupo(nomes, destino)
+        messages.success(request, f'{len(nomes)} página(s) ' + (f'movida(s) para "{destino}".' if destino else 'removida(s) do grupo.'))
+    elif acao in ('desativar', 'ativar'):
+        formulario.paginas_equivalentes(nomes).update(ativo=(acao == 'ativar'))
+        messages.success(request, f'{len(nomes)} página(s) ' + ('reativada(s).' if acao == 'ativar' else 'desativada(s): saem do preenchimento, das pendências e dos atrasos; o histórico é mantido.'))
+    elif acao == 'excluir':
+        excluidas, bloqueadas = set(), set()
+        for p in formulario.paginas_equivalentes(nomes):
+            try:
+                p.delete()
+                excluidas.add(p.nome)
+            except ProtectedError:
+                bloqueadas.add(p.nome)
+        if excluidas - bloqueadas:
+            messages.success(request, f'{len(excluidas - bloqueadas)} página(s) excluída(s).')
+        if bloqueadas:
+            messages.warning(request, f'{len(bloqueadas)} página(s) não foram excluídas por já terem verificações lançadas ({", ".join(sorted(bloqueadas))}). '
+                                      'Desative-as para tirá-las do preenchimento sem perder o histórico.')
+    else:
+        messages.error(request, 'Escolha uma ação.')
+    return _volta_grupos(pk, filtro)
 
 
 @login_required
 @require_POST
 def pagina_excluir(request, pk):
+    """Exclui o bloco (página) em qualquer revisão, desde que sem verificações lançadas; senão, orienta a desativar."""
     pagina = get_object_or_404(Pagina.objects.select_related('versao'), pk=pk)
-    versao_id = pagina.versao_id
-    if _bloqueia_edicao(request, pagina.versao):
-        return redirect('pcp:pagina_detalhe', pk)
+    versao_id, nome = pagina.versao_id, pagina.nome
     try:
         pagina.delete()
     except ProtectedError:
-        messages.error(request, 'Esta página já tem verificações lançadas e não pode ser excluída.')
+        messages.error(request, f'A página "{nome}" já tem verificações lançadas e não pode ser excluída (o histórico seria perdido). '
+                                'Desative-a para tirá-la do preenchimento, das pendências e dos atrasos.')
         return redirect('pcp:pagina_detalhe', pk)
-    messages.success(request, 'Página excluída.')
+    messages.success(request, f'Página "{nome}" excluída.')
     return redirect('pcp:versao_detalhe', versao_id)
+
+
+@login_required
+@require_POST
+def pagina_alternar(request, pk):
+    """Ativa/desativa o bloco. Desativado: não aparece no preenchimento nem entra em pendências e atrasos; o histórico fica."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario'), pk=pk)
+    novo = not pagina.ativo
+    pagina.versao.formulario.paginas_equivalentes([pagina.nome]).update(ativo=novo)
+    pagina.ativo = novo
+    messages.success(request, f'Página "{pagina.nome}" {"reativada" if novo else "desativada"}.')
+    return redirect('pcp:pagina_detalhe', pk)
 
 
 @login_required
@@ -247,17 +399,28 @@ def campo_editar(request, pk):
 @login_required
 @require_POST
 def campo_excluir(request, pk):
-    campo = get_object_or_404(Campo.objects.select_related('pagina__versao'), pk=pk)
+    """Exclui o item em qualquer revisão, desde que sem respostas lançadas; senão, orienta a desativar."""
+    campo = get_object_or_404(Campo, pk=pk)
     pagina_id = campo.pagina_id
-    if _bloqueia_edicao(request, campo.pagina.versao):
-        return redirect('pcp:pagina_detalhe', pagina_id)
     try:
         campo.delete()
     except ProtectedError:
-        messages.error(request, 'Este campo já tem respostas lançadas e não pode ser excluído.')
+        messages.error(request, 'Este item já tem respostas lançadas e não pode ser excluído. Desative-o para deixar de exigir o preenchimento.')
         return redirect('pcp:pagina_detalhe', pagina_id)
-    messages.success(request, 'Campo excluído.')
+    messages.success(request, 'Item excluído.')
     return redirect('pcp:pagina_detalhe', pagina_id)
+
+
+@login_required
+@require_POST
+def campo_alternar(request, pk):
+    """Ativa/desativa o item: desativado deixa de ser exigido (e de gerar pendência) sem perder as respostas."""
+    campo = get_object_or_404(Campo.objects.select_related('pagina__versao__formulario'), pk=pk)
+    novo = not campo.ativo
+    paginas = campo.pagina.versao.formulario.paginas_equivalentes([campo.pagina.nome])
+    Campo.objects.filter(pagina__in=paginas, item=campo.item, etapa=campo.etapa, descricao=campo.descricao).update(ativo=novo)
+    messages.success(request, f'Item {"reativado" if novo else "desativado"}.')
+    return redirect('pcp:pagina_detalhe', campo.pagina_id)
 
 
 @login_required
@@ -406,7 +569,7 @@ def preencher(request):
         for p in v.paginas.all():
             if p.ativo:
                 grupos.setdefault(p.grupo or 'Sem grupo', []).append(p)
-        blocos.append({'versao': v, 'grupos': grupos})
+        blocos.append({'versao': v, 'grupos': v.formulario.ordenar_grupos(grupos)})
     return render(request, 'pcp/preencher.html', {'blocos': blocos, 'hoje': timezone.localdate()})
 
 

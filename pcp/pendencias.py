@@ -94,7 +94,7 @@ def painel(data, turnos, formulario_id=None):
             b_devidos += sum(c['devidos'] for c in celulas)
             b_feitos += sum(c['feitos'] for c in celulas)
             grupos.setdefault(pagina.grupo or 'Sem grupo', []).append({'pagina': pagina, 'celulas': celulas})
-        blocos.append({'versao': versao, 'grupos': grupos, 'devidos': b_devidos, 'feitos': b_feitos,
+        blocos.append({'versao': versao, 'grupos': versao.formulario.ordenar_grupos(grupos), 'devidos': b_devidos, 'feitos': b_feitos,
                        'percentual': round(100 * b_feitos / b_devidos) if b_devidos else None})
         total_devidos += b_devidos
         total_feitos += b_feitos
@@ -190,7 +190,7 @@ def painel_atrasos(ini, fim, turnos, formulario_id=None, hoje=None):
                 'percentual': round(100 * (devidos - len(atrasos)) / devidos) if devidos else None})
         for linhas in grupos.values():
             linhas.sort(key=lambda l: -l['atrasados'])
-        blocos.append({'versao': versao, 'grupos': grupos, 'devidos': b_devidos, 'atrasados': b_atrasos, 'rastreio': rastreio,
+        blocos.append({'versao': versao, 'grupos': versao.formulario.ordenar_grupos(grupos), 'devidos': b_devidos, 'atrasados': b_atrasos, 'rastreio': rastreio,
                        'percentual': round(100 * (b_devidos - b_atrasos) / b_devidos) if b_devidos else None})
         t_devidos += b_devidos
         t_atrasos += b_atrasos

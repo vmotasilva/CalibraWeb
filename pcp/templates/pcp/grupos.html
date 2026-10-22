@@ -1,0 +1,148 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Grupos e blocos - {{ formulario.codigo }} - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0">Grupos e blocos - {{ formulario.codigo }}</h4>
+            <div class="text-muted">{{ formulario.titulo }}{% if versao %} · páginas da revisão <strong>{{ versao.revisao }}</strong> ({{ versao.get_status_display|lower }}){% endif %}</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'pcp:formulario_detalhe' formulario.pk %}" class="btn btn-outline-secondary">Voltar</a>
+            {% if versao %}<a href="{% url 'pcp:versao_detalhe' versao.pk %}" class="btn btn-outline-secondary">Ver revisão</a>{% endif %}
+        </div>
+    </div>
+    <div class="small text-muted mb-3">
+        Um <strong>grupo</strong> só organiza as páginas nas telas e vale para todas as revisões do formulário (a página é reconhecida pelo nome).
+        Um <strong>bloco</strong> é uma página/equipamento: se não tiver utilidade ou obrigatoriedade de preenchimento, <strong>exclua</strong> (sem verificações lançadas)
+        ou <strong>desative</strong> (com histórico: sai do preenchimento, das pendências e dos atrasos, mas os registros são mantidos).
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-4">
+            <div class="card mb-3">
+                <div class="card-header">Grupos</div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'pcp:grupos' formulario.pk %}" class="list-group-item list-group-item-action d-flex justify-content-between {% if not filtro %}active{% endif %}">
+                        Todas as páginas <span class="badge bg-secondary">{{ total }}</span></a>
+                    <a href="{% url 'pcp:grupos' formulario.pk %}?grupo=__sem__" class="list-group-item list-group-item-action d-flex justify-content-between {% if filtro == '__sem__' %}active{% endif %}">
+                        Sem grupo <span class="badge {% if sem_grupo %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ sem_grupo }}</span></a>
+                    {% for g in grupos %}
+                        <div class="list-group-item {% if filtro == g.obj.nome %}border-primary border-2{% endif %}">
+                            <div class="d-flex justify-content-between align-items-center gap-1">
+                                <a href="{% url 'pcp:grupos' formulario.pk %}?grupo={{ g.obj.nome|urlencode }}" class="text-decoration-none flex-grow-1 {% if filtro == g.obj.nome %}fw-bold{% endif %}">{{ g.obj.nome }}</a>
+                                <span class="badge bg-secondary">{{ g.n }}</span>
+                                <form method="post" action="{% url 'pcp:grupo_mover' g.obj.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="dir" value="up"><input type="hidden" name="filtro" value="{{ filtro }}">
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subir" {% if forloop.first %}disabled{% endif %}><i class="bi bi-arrow-up"></i></button></form>
+                                <form method="post" action="{% url 'pcp:grupo_mover' g.obj.pk %}" class="d-inline">{% csrf_token %}<input type="hidden" name="dir" value="down"><input type="hidden" name="filtro" value="{{ filtro }}">
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="Descer" {% if forloop.last %}disabled{% endif %}><i class="bi bi-arrow-down"></i></button></form>
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" type="button" data-bs-toggle="collapse" data-bs-target="#ren{{ g.obj.pk }}" title="Renomear"><i class="bi bi-pencil"></i></button>
+                                <form method="post" action="{% url 'pcp:grupo_excluir' g.obj.pk %}" class="d-inline" onsubmit="return confirm('Excluir o grupo &quot;{{ g.obj.nome|escapejs }}&quot;? As páginas dele ficam sem grupo (não são apagadas).');">{% csrf_token %}
+                                    <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Excluir grupo"><i class="bi bi-trash"></i></button></form>
+                            </div>
+                            <div class="collapse mt-2" id="ren{{ g.obj.pk }}">
+                                <form method="post" action="{% url 'pcp:grupo_renomear' g.obj.pk %}" class="d-flex gap-1">{% csrf_token %}
+                                    <input type="text" name="nome" value="{{ g.obj.nome }}" maxlength="80" class="form-control form-control-sm" required>
+                                    <button class="btn btn-sm btn-primary">Salvar</button>
+                                </form>
+                                <div class="form-text">Se o nome já existir, os dois grupos são unidos.</div>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="list-group-item text-muted small">Nenhum grupo criado.</div>
+                    {% endfor %}
+                </div>
+                <div class="card-body border-top">
+                    <form method="post" action="{% url 'pcp:grupo_criar' formulario.pk %}" class="d-flex gap-1">{% csrf_token %}
+                        <input type="hidden" name="filtro" value="{{ filtro }}">
+                        <input type="text" name="nome" maxlength="80" class="form-control form-control-sm" placeholder="Novo grupo" required>
+                        <button class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Criar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <form method="post" action="{% url 'pcp:paginas_acao' formulario.pk %}" id="form-paginas" class="card">
+                {% csrf_token %}
+                <input type="hidden" name="filtro" value="{{ filtro }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Páginas{% if filtro == '__sem__' %} sem grupo{% elif filtro %} do grupo <strong>{{ filtro }}</strong>{% endif %}
+                        <span class="text-muted">({{ paginas|length }}{% if inativas %} · {{ inativas }} inativa{{ inativas|pluralize }} no formulário{% endif %})</span></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead><tr><th style="width:2rem"><input type="checkbox" class="form-check-input" id="marcar-todas" title="Marcar todas"></th><th>Página</th><th>Grupo</th><th class="text-center">Campos</th><th>Situação</th></tr></thead>
+                        <tbody>
+                        {% for p in paginas %}
+                            <tr class="{% if not p.ativo %}text-muted{% endif %}">
+                                <td><input type="checkbox" class="form-check-input marcar" name="paginas" value="{{ p.pk }}"></td>
+                                <td><a href="{% url 'pcp:pagina_detalhe' p.pk %}" class="text-decoration-none">{{ p.nome }}</a></td>
+                                <td>{% if p.grupo %}{{ p.grupo }}{% else %}<span class="badge bg-warning text-dark">Sem grupo</span>{% endif %}</td>
+                                <td class="text-center">{{ p.n_campos }}</td>
+                                <td>{% if p.ativo %}<span class="badge bg-success">Ativa</span>{% else %}<span class="badge bg-secondary">Inativa</span>{% endif %}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted py-4">Nenhuma página neste filtro.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-auto fw-semibold"><span id="qtd-marcadas">0</span> selecionada(s)</div>
+                        <div class="col-auto">
+                            <select name="acao" id="acao" class="form-select form-select-sm" required>
+                                <option value="">Ação…</option>
+                                <option value="mover">Mover para o grupo…</option>
+                                <option value="remover">Remover do grupo</option>
+                                <option value="desativar">Desativar (não será mais preenchida)</option>
+                                <option value="ativar">Reativar</option>
+                                <option value="excluir">Excluir (sem verificações lançadas)</option>
+                            </select>
+                        </div>
+                        <div class="col-auto" id="bloco-destino" style="display:none">
+                            <select name="destino" id="destino" class="form-select form-select-sm">
+                                <option value="">Escolha o grupo…</option>
+                                {% for g in grupos %}<option value="{{ g.obj.nome }}">{{ g.obj.nome }}</option>{% endfor %}
+                                <option value="__novo__">+ Novo grupo…</option>
+                            </select>
+                        </div>
+                        <div class="col-auto" id="bloco-novo" style="display:none">
+                            <input type="text" name="novo_nome" maxlength="80" class="form-control form-control-sm" placeholder="Nome do novo grupo">
+                        </div>
+                        <div class="col-auto"><button class="btn btn-sm btn-primary">Aplicar</button></div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+(function () {
+    var form = document.getElementById('form-paginas');
+    if (!form) return;
+    var todas = document.getElementById('marcar-todas'), qtd = document.getElementById('qtd-marcadas');
+    var acao = document.getElementById('acao'), destino = document.getElementById('destino');
+    var blocoDestino = document.getElementById('bloco-destino'), blocoNovo = document.getElementById('bloco-novo');
+    function marcadas() { return form.querySelectorAll('input.marcar:checked').length; }
+    function atualiza() {
+        qtd.textContent = marcadas();
+        blocoDestino.style.display = acao.value === 'mover' ? '' : 'none';
+        blocoNovo.style.display = (acao.value === 'mover' && destino.value === '__novo__') ? '' : 'none';
+    }
+    todas.addEventListener('change', function () {
+        form.querySelectorAll('input.marcar').forEach(function (c) { c.checked = todas.checked; });
+        atualiza();
+    });
+    form.addEventListener('change', atualiza);
+    form.addEventListener('submit', function (ev) {
+        if (!marcadas()) { ev.preventDefault(); alert('Selecione ao menos uma página.'); return; }
+        if (acao.value === 'excluir' && !confirm('Excluir as ' + marcadas() + ' página(s) selecionadas e seus campos? Páginas com verificações lançadas não são excluídas.')) ev.preventDefault();
+        if (acao.value === 'desativar' && !confirm('Desativar as ' + marcadas() + ' página(s)? Elas saem do preenchimento, das pendências e dos atrasos.')) ev.preventDefault();
+    });
+    atualiza();
+})();
+</script>
+{% endblock %}

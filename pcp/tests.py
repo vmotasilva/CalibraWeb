@@ -443,22 +443,132 @@ class AtrasosTests(PendenciasBase):
 class GruposTests(PcpBase):
     def setUp(self):
         super().setUp()
+        self.pag.grupo = ''
+        self.pag.save()
+        self.outra = Pagina.objects.create(versao=self.v15, nome='Outra', grupo='Corte')
+        self.v15.publicar()
+
+    def url(self, nome, *args):
+        return reverse(f'pcp:{nome}', args=args)
+
+    def test_tela_sincroniza_grupos_existentes_e_filtra(self):
+        r = self.client.get(self.url('grupos', self.form.pk))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(list(self.form.grupos.values_list('nome', flat=True)), ['Corte'])  # criado a partir do texto da página
+        self.assertContains(self.client.get(self.url('grupos', self.form.pk) + '?grupo=__sem__'), 'Fitadeira')
+        self.assertNotContains(self.client.get(self.url('grupos', self.form.pk) + '?grupo=Corte'), 'Fitadeira')
+
+    def test_criar_renomear_unir_e_excluir_grupo(self):
+        self.client.post(self.url('grupo_criar', self.form.pk), {'nome': '  Polimento  '})
+        self.assertTrue(self.form.grupos.filter(nome='Polimento').exists())
+        corte = self.form.garantir_grupo('Corte')
+        self.client.post(self.url('grupo_renomear', corte.pk), {'nome': 'Corte e Gravação'})
+        self.assertEqual(Pagina.objects.get(pk=self.outra.pk).grupo, 'Corte e Gravação')
+        pol = self.form.grupos.get(nome='Polimento')
+        self.client.post(self.url('grupo_renomear', pol.pk), {'nome': 'Corte e Gravação'})  # nome existente: une
+        self.assertEqual(self.form.grupos.count(), 1)
+        g = self.form.grupos.get()
+        self.client.post(self.url('grupo_excluir', g.pk))
+        self.assertEqual(self.form.grupos.count(), 0)
+        self.assertEqual(Pagina.objects.get(pk=self.outra.pk).grupo, '')  # página não é apagada
+
+    def test_ordenar_grupos(self):
+        self.form.garantir_grupo('A')
+        b = self.form.garantir_grupo('B')
+        self.client.post(self.url('grupo_mover', b.pk), {'dir': 'up'})
+        ordem = list(self.form.ordenar_grupos({'A': 1, 'B': 2, 'Sem grupo': 3, 'Z': 4}))
+        self.assertEqual(ordem, ['B', 'A', 'Z', 'Sem grupo'])
+
+    def test_mover_e_remover_em_massa_vale_para_outras_revisoes(self):
+        nova = self.v15.clonar('R16')
+        self.client.post(self.url('paginas_acao', self.form.pk), {
+            'paginas': [self.pag.pk, self.outra.pk], 'acao': 'mover', 'destino': '__novo__', 'novo_nome': 'Blocagem'})
+        self.assertEqual(set(Pagina.objects.values_list('grupo', flat=True)), {'Blocagem'})  # inclui o rascunho R16
+        self.assertTrue(nova.paginas.filter(grupo='Blocagem').exists())
+        self.client.post(self.url('paginas_acao', self.form.pk), {'paginas': [self.outra.pk], 'acao': 'remover'})
+        self.assertEqual(Pagina.objects.get(pk=self.outra.pk).grupo, '')
+        self.client.post(self.url('paginas_acao', self.form.pk), {'paginas': [self.pag.pk], 'acao': 'mover', 'destino': 'inexistente'})
+        self.assertEqual(Pagina.objects.get(pk=self.pag.pk).grupo, 'Blocagem')  # destino inválido não altera
+
+    def test_editar_pagina_travada_muda_grupo_e_propaga(self):
+        r = self.client.post(self.url('pagina_editar', self.pag.pk), {'grupo': 'Polimento', 'ordem': 3, 'nome': 'Nome trocado'})
+        self.assertEqual(r.status_code, 302)
+        self.pag.refresh_from_db()
+        self.assertEqual((self.pag.grupo, self.pag.nome), ('Polimento', 'Fitadeira'))
+        self.assertTrue(self.form.grupos.filter(nome='Polimento').exists())
+
+    def test_atalho_antigo_redireciona(self):
+        r = self.client.get(self.url('versao_grupos', self.v15.pk))
+        self.assertRedirects(r, self.url('grupos', self.form.pk))
+
+
+class BlocosTests(PcpBase):
+    """Excluir/desativar blocos e itens sem utilidade, inclusive na revisão vigente."""
+
+    def setUp(self):
+        super().setUp()
         self.outra = Pagina.objects.create(versao=self.v15, nome='Outra')
         self.v15.publicar()
 
-    def test_organizar_grupos_em_revisao_vigente(self):
-        self.assertEqual(self.client.get(reverse('pcp:versao_grupos', args=[self.v15.pk])).status_code, 200)
-        r = self.client.post(reverse('pcp:versao_grupos', args=[self.v15.pk]), {
-            f'grupo_{self.pag.pk}': '  Corte  ', f'grupo_{self.outra.pk}': ''})
+    def test_exclui_bloco_sem_historico_na_revisao_vigente(self):
+        r = self.client.post(reverse('pcp:pagina_excluir', args=[self.outra.pk]))
         self.assertEqual(r.status_code, 302)
-        self.pag.refresh_from_db()
-        self.assertEqual(self.pag.grupo, 'Corte')
-        self.assertEqual(Pagina.objects.get(pk=self.outra.pk).grupo, '')  # em branco = sem grupo
+        self.assertFalse(Pagina.objects.filter(pk=self.outra.pk).exists())
 
-    def test_editar_pagina_travada_so_muda_grupo_ordem_maquina(self):
-        r = self.client.post(reverse('pcp:pagina_editar', args=[self.pag.pk]), {
-            'grupo': 'Polimento', 'ordem': 3, 'nome': 'Nome trocado', 'codigo_sistema': 'x'})
-        self.assertEqual(r.status_code, 302)
+    def test_bloco_com_historico_nao_exclui_mas_desativa(self):
+        Verificacao.objects.create(pagina=self.pag, data=date(2026, 10, 22), turno=self.t1)
+        self.client.post(reverse('pcp:pagina_excluir', args=[self.pag.pk]))
+        self.assertTrue(Pagina.objects.filter(pk=self.pag.pk).exists())
+        self.client.post(reverse('pcp:pagina_alternar', args=[self.pag.pk]))
         self.pag.refresh_from_db()
-        self.assertEqual((self.pag.grupo, self.pag.ordem, self.pag.nome), ('Polimento', 3, 'Fitadeira'))
-        self.assertEqual(self.client.get(reverse('pcp:pagina_editar', args=[self.pag.pk])).status_code, 200)
+        self.assertFalse(self.pag.ativo)
+        self.assertNotContains(self.client.get(reverse('pcp:preencher')), reverse('pcp:preencher_pagina', args=[self.pag.pk]))  # some do preenchimento
+        self.client.post(reverse('pcp:pagina_alternar', args=[self.pag.pk]))
+        self.pag.refresh_from_db()
+        self.assertTrue(self.pag.ativo)
+
+    def test_desativar_propaga_para_rascunho_com_mesmo_nome(self):
+        rascunho = self.v15.clonar('R16')
+        self.client.post(reverse('pcp:pagina_alternar', args=[self.pag.pk]))
+        self.assertFalse(rascunho.paginas.get(nome='Fitadeira').ativo)
+
+    def test_acao_em_massa_excluir_e_desativar(self):
+        Verificacao.objects.create(pagina=self.pag, data=date(2026, 10, 22), turno=self.t1)
+        self.client.post(reverse('pcp:paginas_acao', args=[self.form.pk]), {'paginas': [self.pag.pk, self.outra.pk], 'acao': 'excluir'})
+        self.assertTrue(Pagina.objects.filter(pk=self.pag.pk).exists())      # tem histórico: preservada
+        self.assertFalse(Pagina.objects.filter(pk=self.outra.pk).exists())   # sem histórico: excluída
+        self.client.post(reverse('pcp:paginas_acao', args=[self.form.pk]), {'paginas': [self.pag.pk], 'acao': 'desativar'})
+        self.pag.refresh_from_db()
+        self.assertFalse(self.pag.ativo)
+
+    def test_campo_na_revisao_vigente(self):
+        self.client.post(reverse('pcp:campo_alternar', args=[self.c_num.pk]))
+        self.c_num.refresh_from_db()
+        self.assertFalse(self.c_num.ativo)
+        self.client.post(reverse('pcp:campo_excluir', args=[self.c_lista.pk]))
+        self.assertFalse(Campo.objects.filter(pk=self.c_lista.pk).exists())
+        ver = Verificacao.objects.create(pagina=self.pag, data=date(2026, 10, 22), turno=self.t1)
+        Resposta.objects.create(verificacao=ver, campo=self.c_num, valor='1')
+        self.client.post(reverse('pcp:campo_excluir', args=[self.c_num.pk]))
+        self.assertTrue(Campo.objects.filter(pk=self.c_num.pk).exists())  # com resposta: protegido
+
+
+class AbasOcultasTests(PcpBase):
+    def test_importacao_ignora_abas_ocultas(self):
+        wb = openpyxl.load_workbook(_planilha_modelo())
+        wb['Parâmetro de Receita-ABC'].sheet_state = 'hidden'
+        saida = io.BytesIO()
+        wb.save(saida)
+        saida.seek(0)
+        r = importar_planilha(saida, nome_arquivo='FOR.999.R03 - x.xlsx', setor=self.setor)
+        self.assertEqual([p[0] for p in r['paginas']], ['Fitadeira'])
+        self.assertEqual(r['ocultas'], ['Parâmetro de Receita-ABC'])
+        self.assertEqual(r['total_campos'], 3)
+
+    def test_importacao_registra_grupos_e_herda_ajustes(self):
+        r1 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R03 - x.xlsx', setor=self.setor, publicar=True)
+        form = r1['formulario']
+        self.assertTrue(form.grupos.filter(nome='Fita').exists())  # grupo vindo do Índice foi cadastrado
+        form.atribuir_grupo(['Fitadeira'], 'Meu grupo')           # ajuste manual
+        r2 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R04 - x.xlsx', setor=self.setor)
+        self.assertEqual(r2['versao'].paginas.get(nome='Fitadeira').grupo, 'Meu grupo')  # o ajuste manual prevalece

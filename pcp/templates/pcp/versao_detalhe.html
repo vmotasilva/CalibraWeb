@@ -13,7 +13,7 @@
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'pcp:formulario_detalhe' versao.formulario_id %}" class="btn btn-outline-secondary">Voltar</a>
-            <a href="{% url 'pcp:versao_grupos' versao.pk %}" class="btn btn-outline-secondary"><i class="bi bi-diagram-3 me-1"></i>Organizar grupos</a>
+            <a href="{% url 'pcp:grupos' versao.formulario_id %}" class="btn btn-outline-secondary"><i class="bi bi-diagram-3 me-1"></i>Gerenciar grupos e blocos</a>
             {% if versao.editavel %}
                 <a href="{% url 'pcp:pagina_nova' versao.pk %}" class="btn btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Nova página</a>
                 <form method="post" action="{% url 'pcp:versao_publicar' versao.pk %}" onsubmit="return confirm('Publicar a revisão {{ versao.revisao }}? Ela passa a valer e a revisão vigente atual vira obsoleta.');">{% csrf_token %}
@@ -41,7 +41,7 @@
                 <div class="col-sm-6 col-lg-4 col-xl-3">
                     <a href="{% url 'pcp:pagina_detalhe' p.pk %}" class="card h-100 text-decoration-none {% if not p.ativo %}opacity-50{% endif %}">
                         <div class="card-body py-2">
-                            <div class="fw-semibold">{{ p.nome }}</div>
+                            <div class="fw-semibold">{{ p.nome }}{% if not p.ativo %} <span class="badge bg-secondary">Inativa</span>{% endif %}</div>
                             <div class="small text-muted">{{ p.n_campos }} campo{{ p.n_campos|pluralize }}{% if p.codigo_sistema %} · {{ p.codigo_sistema }}{% endif %}{% if p.maquina %} · {{ p.maquina.codigo }}{% endif %}</div>
                         </div>
                     </a>

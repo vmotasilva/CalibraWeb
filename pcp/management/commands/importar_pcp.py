@@ -27,5 +27,7 @@ class Command(BaseCommand):
             f"{r['total_campos']} campos, {r['frequencias_criadas']} frequências novas."))
         for nome, grupo, layout, n in r['paginas']:
             self.stdout.write(f'  [{grupo or "-"}] {nome} ({layout}): {n}')
+        if r['ocultas']:
+            self.stdout.write(f"  abas ocultas desconsideradas: {', '.join(r['ocultas'])}")
         for aba, motivo in r['ignoradas']:
             self.stdout.write(self.style.WARNING(f'  ignorada: {aba} - {motivo}'))

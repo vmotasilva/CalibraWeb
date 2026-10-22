@@ -14,10 +14,14 @@
             <a href="{% url 'pcp:pagina_editar' pagina.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>{% if versao.editavel %}Editar página{% else %}Editar grupo/ordem{% endif %}</a>
             {% if versao.editavel %}
                 <a href="{% url 'pcp:campo_novo' pagina.pk %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo campo</a>
-                <form method="post" action="{% url 'pcp:pagina_excluir' pagina.pk %}" onsubmit="return confirm('Excluir esta página e seus campos?');">{% csrf_token %}
-                    <button class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
-                </form>
             {% endif %}
+            <form method="post" action="{% url 'pcp:pagina_alternar' pagina.pk %}">{% csrf_token %}
+                <button class="btn btn-outline-warning" title="Desativada, a página sai do preenchimento, das pendências e dos atrasos; o histórico é mantido.">
+                    {% if pagina.ativo %}<i class="bi bi-eye-slash me-1"></i>Desativar{% else %}<i class="bi bi-eye me-1"></i>Reativar{% endif %}</button>
+            </form>
+            <form method="post" action="{% url 'pcp:pagina_excluir' pagina.pk %}" onsubmit="return confirm('Excluir esta página e seus campos? Só é possível se ela não tiver verificações lançadas.');">{% csrf_token %}
+                <button class="btn btn-outline-danger" title="Excluir página"><i class="bi bi-trash"></i></button>
+            </form>
         </div>
     </div>
     {% if not versao.editavel %}<div class="alert alert-info py-2">Revisão {{ versao.get_status_display|lower }}: somente leitura.</div>{% endif %}
@@ -36,12 +40,13 @@
                     <td class="small">{{ c.plano_reacao|default:"—" }}</td>
                     <td class="small">{{ c.responsavel|default:"—" }}</td>
                     <td class="text-end text-nowrap">
-                        {% if versao.editavel %}
-                        <a href="{% url 'pcp:campo_editar' c.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
-                        <form method="post" action="{% url 'pcp:campo_excluir' c.pk %}" class="d-inline" onsubmit="return confirm('Excluir este campo?');">{% csrf_token %}
+                        {% if versao.editavel %}<a href="{% url 'pcp:campo_editar' c.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>{% endif %}
+                        <form method="post" action="{% url 'pcp:campo_alternar' c.pk %}" class="d-inline">{% csrf_token %}
+                            <button class="btn btn-sm btn-outline-warning" title="{% if c.ativo %}Desativar item (deixa de ser exigido){% else %}Reativar item{% endif %}"><i class="bi {% if c.ativo %}bi-eye-slash{% else %}bi-eye{% endif %}"></i></button>
+                        </form>
+                        <form method="post" action="{% url 'pcp:campo_excluir' c.pk %}" class="d-inline" onsubmit="return confirm('Excluir este item? Só é possível se não tiver respostas lançadas.');">{% csrf_token %}
                             <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
                         </form>
-                        {% endif %}
                     </td>
                 </tr>
             {% empty %}

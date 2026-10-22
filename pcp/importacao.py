@@ -322,9 +322,12 @@ def importar_planilha(arquivo, nome_arquivo=None, setor=None, codigo=None, revis
     wb = openpyxl.load_workbook(arquivo, read_only=True, data_only=True)
     try:
         mapa_indice = _grupos_do_indice(wb)
-        abas, ignoradas = [], []
+        abas, ignoradas, ocultas = [], [], []
         for ordem, aba in enumerate(wb.sheetnames, 1):
             if _chave(aba) in ABAS_IGNORADAS:
+                continue
+            if wb[aba].sheet_state != 'visible':  # aba oculta (hidden/veryHidden) não é importada
+                ocultas.append(aba)
                 continue
             if 'porhora' in _chave(aba):
                 ignoradas.append((aba, 'registro horário (fora do escopo desta importação)'))
@@ -359,6 +362,11 @@ def importar_planilha(arquivo, nome_arquivo=None, setor=None, codigo=None, revis
             motivo=f'Importada da planilha {nome_arquivo}'[:500])
 
         cad = _Cadastros()
+        # grupos ajustados à mão nas revisões anteriores valem para a mesma página na nova revisão
+        herdados = {}
+        for nome_p, grupo_p in (Pagina.objects.filter(versao__formulario=formulario).exclude(grupo='')
+                                .order_by('versao__criado_em').values_list('nome', 'grupo')):
+            herdados[nome_p] = grupo_p
         total_campos = 0
         paginas_resumo = []
         for ordem, aba, layout, campos in abas:
@@ -371,6 +379,9 @@ def importar_planilha(arquivo, nome_arquivo=None, setor=None, codigo=None, revis
                 grupo, nome_pagina = _grupo_da_aba(titulo_aba, mapa_indice), titulo_aba
                 if not grupo and layout == 'etapa':
                     grupo = 'Controle de processo'
+            grupo = herdados.get(nome_pagina[:120]) or grupo
+            if grupo:
+                formulario.garantir_grupo(grupo[:80])
             pagina = Pagina.objects.create(versao=versao, nome=nome_pagina[:120], codigo_sistema=aba.strip()[:60],
                                            grupo=grupo[:80], ordem=ordem)
             objetos = []
@@ -390,7 +401,7 @@ def importar_planilha(arquivo, nome_arquivo=None, setor=None, codigo=None, revis
 
     return {
         'formulario': formulario, 'versao': versao, 'formulario_criado': criado, 'paginas': paginas_resumo,
-        'total_campos': total_campos, 'ignoradas': ignoradas, 'frequencias_criadas': cad.criadas_freq,
+        'total_campos': total_campos, 'ignoradas': ignoradas, 'ocultas': ocultas, 'frequencias_criadas': cad.criadas_freq,
     }
 
 

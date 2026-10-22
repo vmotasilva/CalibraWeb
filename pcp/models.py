@@ -84,6 +84,25 @@ class OpcaoLista(models.Model):
         return self.valor
 
 
+SEM_GRUPO = 'Sem grupo'
+
+
+class GrupoPagina(models.Model):
+    """Grupo de páginas de um formulário (ex.: Blocagem, Corte). Vale para todas as revisões; a página liga-se pelo nome."""
+    formulario = models.ForeignKey('Formulario', on_delete=models.CASCADE, related_name='grupos')
+    nome = models.CharField(max_length=80)
+    ordem = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ('ordem', 'nome')
+        unique_together = ('formulario', 'nome')
+        verbose_name = 'grupo de páginas'
+        verbose_name_plural = 'grupos de páginas'
+
+    def __str__(self):
+        return self.nome
+
+
 class Formulario(models.Model):
     """Formulário de PCP de um setor (ex.: FOR.080 Surfaçagem). A estrutura fica nas revisões."""
     setor = models.ForeignKey(Setor, on_delete=models.PROTECT, related_name='formularios_pcp')
@@ -100,6 +119,31 @@ class Formulario(models.Model):
     @property
     def versao_vigente(self):
         return self.versoes.filter(status=FormularioVersao.VIGENTE).order_by('-criado_em').first()
+
+    def garantir_grupo(self, nome):
+        """Cadastra o grupo (no fim da ordem) se ainda não existir e devolve o registro."""
+        grupo = self.grupos.filter(nome=nome).first()
+        if grupo is None:
+            ultimo = self.grupos.order_by('-ordem').values_list('ordem', flat=True).first()
+            grupo = GrupoPagina.objects.create(formulario=self, nome=nome, ordem=(ultimo + 1) if ultimo is not None else 0)
+        return grupo
+
+    def atribuir_grupo(self, nomes_paginas, grupo):
+        """Move as páginas de mesmo nome, em todas as revisões, para o grupo ('' = remover do grupo)."""
+        if grupo:
+            self.garantir_grupo(grupo)
+        return Pagina.objects.filter(versao__formulario=self, nome__in=list(nomes_paginas)).update(grupo=grupo)
+
+    def paginas_equivalentes(self, nomes):
+        """Páginas de mesmo nome nas revisões vigente e em rascunho (as obsoletas ficam como histórico)."""
+        return Pagina.objects.filter(versao__formulario=self, versao__status__in=[FormularioVersao.VIGENTE, FormularioVersao.RASCUNHO],
+                                     nome__in=list(nomes))
+
+    def ordenar_grupos(self, grupos):
+        """Reordena um dict {nome_do_grupo: valor} pela ordem cadastrada; 'Sem grupo' sempre por último."""
+        ordem = {g.nome: g.ordem for g in self.grupos.all()}
+        chaves = sorted(grupos, key=lambda n: (n == SEM_GRUPO, ordem.get(n, 10 ** 6), n.lower()))
+        return {k: grupos[k] for k in chaves}
 
 
 class FormularioVersao(models.Model):
