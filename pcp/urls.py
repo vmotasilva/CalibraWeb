@@ -11,6 +11,7 @@ urlpatterns = [
     path('formularios/novo/', views.formulario_novo, name='formulario_novo'),
     path('formularios/<int:pk>/', views.formulario_detalhe, name='formulario_detalhe'),
     path('formularios/<int:pk>/excluir/', views.formulario_excluir, name='formulario_excluir'),
+    path('formularios/<int:pk>/ajustar-tipos/', views.ajustar_tipos, name='ajustar_tipos'),
     path('formularios/<int:pk>/editar/', views.formulario_editar, name='formulario_editar'),
     path('formularios/<int:pk>/nova-revisao/', views.versao_nova, name='versao_nova'),
     path('versoes/<int:pk>/', views.versao_detalhe, name='versao_detalhe'),

@@ -32,6 +32,7 @@
                         {% if resumo.tipos_ajustados|length > 12 %}…{% endif %}
                     </div>
                 {% endif %}
+                {% if not resumo.simulado and resumo.versao %}<div class="small mb-2"><a href="{% url 'pcp:ajustar_tipos' resumo.versao.formulario_id %}"><i class="bi bi-magic"></i> Ajustar tipos dos itens pelos registros importados</a></div>{% endif %}
                 {% if resumo.futuros %}<div class="alert alert-secondary py-2">{{ resumo.futuros }} lançamento(s) com data futura foram ignorados.</div>{% endif %}
                 {% if resumo.nao_reconhecidos %}
                     <div class="alert alert-warning py-2 small">

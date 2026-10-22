@@ -1,0 +1,64 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Ajustar tipos pelos registros - {{ formulario.codigo }} - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0">Ajustar tipos pelos registros - {{ formulario.codigo }}</h4>
+            <div class="text-muted">{{ formulario.titulo }}{% if versao %} · revisão <strong>{{ versao.revisao }}</strong> ({{ versao.get_status_display|lower }}){% endif %}</div>
+        </div>
+        <a href="{% url 'pcp:formulario_detalhe' formulario.pk %}" class="btn btn-outline-secondary">Voltar</a>
+    </div>
+    <div class="small text-muted mb-3">
+        O tipo de cada item (lista, número ou texto) foi <strong>deduzido</strong> da especificação ao importar a estrutura. Aqui ele é comparado com o que foi realmente lançado:
+        item de lista em que quase tudo é número passa a <strong>número</strong>; item de lista em que quase nada bate com as opções passa a <strong>texto</strong>.
+        Só itens com {{ minimo }} ou mais lançamentos são avaliados. Ao aplicar, a conformidade antiga desses lançamentos (calculada pela lista) é limpa, e o ajuste vale também para
+        as revisões vigente e em rascunho e é herdado pelas próximas importações de estrutura.
+    </div>
+
+    {% if propostas %}
+    <form method="post" id="form-ajuste">
+        {% csrf_token %}
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead><tr>
+                        <th style="width:2rem"><input type="checkbox" class="form-check-input" id="marcar-todos" checked></th>
+                        <th>Página</th><th>Item</th><th>Hoje</th><th>Passa a ser</th><th class="text-end">Lançamentos</th><th class="text-end">% números</th><th>Exemplos lançados</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for p in propostas %}
+                        <tr>
+                            <td><input type="checkbox" class="form-check-input marcar" name="campos" value="{{ p.campo.pk }}|{{ p.novo_tipo }}" checked></td>
+                            <td>{{ p.pagina.nome }}</td>
+                            <td>{% if p.campo.etapa %}<div class="small text-muted">{{ p.campo.etapa|truncatechars:60 }}</div>{% endif %}<span class="fw-semibold">{{ p.campo.item }}</span> {{ p.campo.descricao|truncatechars:70 }}</td>
+                            <td class="small">{{ p.campo.get_tipo_display }}{% if p.campo.lista %}: {{ p.campo.lista }}{% endif %}</td>
+                            <td><span class="badge bg-primary">{{ p.novo_tipo_nome }}</span></td>
+                            <td class="text-end">{{ p.total }}</td>
+                            <td class="text-end">{{ p.pct_numerico }}%</td>
+                            <td class="small">{% for e in p.exemplos %}<code>{{ e }}</code> {% endfor %}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer d-flex align-items-center gap-3">
+                <button class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Aplicar nos selecionados (<span id="qtd">{{ propostas|length }}</span>)</button>
+                <span class="small text-muted">{{ propostas|length }} item(ns) com ajuste sugerido.</span>
+            </div>
+        </div>
+    </form>
+    <script>
+    (function () {
+        var form = document.getElementById('form-ajuste'), todos = document.getElementById('marcar-todos'), qtd = document.getElementById('qtd');
+        function conta() { qtd.textContent = form.querySelectorAll('input.marcar:checked').length; }
+        todos.addEventListener('change', function () { form.querySelectorAll('input.marcar').forEach(function (c) { c.checked = todos.checked; }); conta(); });
+        form.addEventListener('change', conta);
+    })();
+    </script>
+    {% else %}
+        <div class="alert alert-success">Nenhum ajuste sugerido: os tipos dos itens estão coerentes com os lançamentos{% if not versao %} (o formulário ainda não tem revisão){% endif %}.</div>
+    {% endif %}
+</div>
+{% endblock %}

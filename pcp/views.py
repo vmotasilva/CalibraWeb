@@ -15,6 +15,8 @@ from django.views.decorators.http import require_POST
 from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
 from pcp import pendencias as pend
+from pcp import tipos as tipos_mod
+from pcp.tipos import aplicar_ajuste
 from pcp.importacao import importar_planilha
 from pcp.importacao_registros import importar_registros
 from pcp.models import (SEM_GRUPO, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
@@ -80,6 +82,28 @@ def formulario_excluir(request, pk):
             messages.success(request, f'Formulário {codigo} excluído. Já é possível importá-lo novamente.')
             return redirect('pcp:formularios')
     return render(request, 'pcp/formulario_excluir.html', {'formulario': formulario, 'resumo': resumo, 'erro': erro})
+
+
+@login_required
+def ajustar_tipos(request, pk):
+    """Prévia e aplicação do ajuste do tipo dos itens pelos lançamentos já feitos."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    versao = formulario.versao_vigente or formulario.versoes.first()
+    if request.method == 'POST' and versao:
+        aplicados = 0
+        for item in request.POST.getlist('campos'):
+            campo_id, _, novo_tipo = item.partition('|')
+            if novo_tipo not in (Campo.NUMERO, Campo.TEXTO) or not campo_id.isdigit():
+                continue
+            campo = Campo.objects.filter(pk=campo_id, pagina__versao__formulario=formulario, tipo=Campo.LISTA).select_related('pagina').first()
+            if campo:
+                aplicar_ajuste(formulario, campo, novo_tipo)
+                aplicados += 1
+        messages.success(request, f'Tipo ajustado em {aplicados} item(ns).' if aplicados else 'Nenhum item selecionado.')
+        return redirect('pcp:ajustar_tipos', pk)
+    propostas = tipos_mod.propor_ajustes(versao) if versao else []
+    return render(request, 'pcp/ajustar_tipos.html', {'formulario': formulario, 'versao': versao, 'propostas': propostas,
+                                                      'minimo': tipos_mod.MIN_LANCAMENTOS})
 
 
 @login_required

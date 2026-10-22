@@ -377,6 +377,13 @@ def importar_planilha(arquivo, nome_arquivo=None, setor=None, codigo=None, revis
         for nome_p, grupo_p in (Pagina.objects.filter(versao__formulario=formulario).exclude(grupo='')
                                 .order_by('versao__criado_em').values_list('nome', 'grupo')):
             herdados[nome_p] = grupo_p
+        # ajustes feitos à mão em revisões anteriores (tipo e limites do item, itens e páginas desativados, ordem) valem na nova revisão
+        herd_campos, herd_paginas = {}, {}
+        for c in (Campo.objects.filter(pagina__versao__formulario=formulario).exclude(pagina__versao=versao)
+                  .select_related('pagina').order_by('pagina__versao__criado_em', 'pk')):
+            herd_campos[(c.pagina.nome, c.item, c.etapa, c.descricao)] = c
+        for p in Pagina.objects.filter(versao__formulario=formulario).exclude(versao=versao).order_by('versao__criado_em', 'pk'):
+            herd_paginas[p.nome] = p
         total_campos = 0
         paginas_resumo = []
         for ordem, aba, layout, campos in abas:
@@ -392,13 +399,19 @@ def importar_planilha(arquivo, nome_arquivo=None, setor=None, codigo=None, revis
             grupo = herdados.get(nome_pagina[:120]) or grupo
             if grupo:
                 formulario.garantir_grupo(grupo[:80])
+            anterior = herd_paginas.get(nome_pagina[:120])
             pagina = Pagina.objects.create(versao=versao, nome=nome_pagina[:120], codigo_sistema=aba.strip()[:60],
-                                           grupo=grupo[:80], ordem=ordem)
+                                           grupo=grupo[:80], ordem=anterior.ordem if anterior else ordem,
+                                           ativo=anterior.ativo if anterior else True)
             objetos = []
             for n, c in enumerate(campos, 1):
                 tipo, lista = _tipo_e_limites(c, cad)
                 freq, freq_detalhe = cad.frequencia(c['frequencia'])
-                objetos.append(Campo(
+                h = herd_campos.get((pagina.nome, c['item'][:20], c['etapa'][:250], c['descricao'][:300]))
+                critico, ativo = (h.critico, h.ativo) if h else (False, True)
+                if h and h.especificacao == c['especificacao']:  # especificação igual: vale o tipo/limites já corrigidos
+                    tipo, lista, c['minimo'], c['maximo'], c['unidade'] = h.tipo, h.lista, h.minimo, h.maximo, h.unidade
+                objetos.append(Campo(critico=critico, ativo=ativo,
                     pagina=pagina, item=c['item'][:20], etapa=c['etapa'][:250], descricao=c['descricao'][:300],
                     especificacao=c['especificacao'], metodo=c['metodo'][:300], plano_reacao=c['plano_reacao'],
                     responsavel=c['responsavel'][:60], frequencia=freq, frequencia_detalhe=freq_detalhe, tipo=tipo, lista=lista,

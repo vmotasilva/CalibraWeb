@@ -11,6 +11,7 @@
         <div class="d-flex gap-2">
             <a href="{% url 'pcp:formularios' %}" class="btn btn-outline-secondary">Voltar</a>
             <a href="{% url 'pcp:formulario_editar' formulario.pk %}" class="btn btn-outline-secondary"><i class="bi bi-pencil me-1"></i>Editar</a>
+            <a href="{% url 'pcp:ajustar_tipos' formulario.pk %}" class="btn btn-outline-secondary" title="Compara o tipo de cada item com o que foi lançado"><i class="bi bi-magic me-1"></i>Ajustar tipos</a>
             <a href="{% url 'pcp:grupos' formulario.pk %}" class="btn btn-outline-secondary"><i class="bi bi-diagram-3 me-1"></i>Grupos e blocos</a>
             <a href="{% url 'pcp:formulario_excluir' formulario.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Excluir formulário</a>
             <a href="{% url 'pcp:versao_nova' formulario.pk %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nova revisão</a>

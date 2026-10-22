@@ -362,7 +362,7 @@ NAV_STRUCTURE = [
                             "pcp:formulario_novo", "pcp:formulario_editar", "pcp:versao_nova",
                             "pcp:pagina_nova", "pcp:pagina_editar", "pcp:pagina_excluir", "pcp:pagina_alternar",
                             "pcp:versao_grupos", "pcp:grupos", "pcp:grupo_criar", "pcp:grupo_renomear", "pcp:grupo_excluir",
-                            "pcp:grupo_mover", "pcp:paginas_acao", "pcp:pagina_mover", "pcp:grupo_ordenar", "pcp:campo_alternar",
+                            "pcp:grupo_mover", "pcp:paginas_acao", "pcp:ajustar_tipos", "pcp:pagina_mover", "pcp:grupo_ordenar", "pcp:campo_alternar",
                             "pcp:campo_novo", "pcp:campo_editar", "pcp:campo_excluir",
                         ],
                         "perm": "core.nav_pcp_formulario_editar",

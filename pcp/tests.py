@@ -812,3 +812,70 @@ class RegistrosTests(PcpBase):
         r = self.estrutura()
         self.assertEqual((Verificacao.objects.count(), Resposta.objects.count()), (0, 0))  # estrutura não traz lançamentos
         self.assertGreater(r['total_campos'], 0)
+
+
+class AjustarTiposTests(PcpBase):
+    def setUp(self):
+        super().setUp()
+        self.v15.publicar()
+        self.c_ok = Campo.objects.create(pagina=self.pag, item='O-1', descricao='Coerente', tipo='lista', lista=self.lista)
+        self.c_medida = Campo.objects.create(pagina=self.pag, item='M-1', descricao='Medida', tipo='lista', lista=self.lista)
+        self.c_texto = Campo.objects.create(pagina=self.pag, item='T-1', descricao='Livre', tipo='lista', lista=self.lista)
+        for dia in range(1, 7):
+            ver = Verificacao.objects.create(pagina=self.pag, data=date(2026, 3, dia), turno=self.t1)
+            Resposta.objects.create(verificacao=ver, campo=self.c_ok, valor='Ok', conforme=True)
+            Resposta.objects.create(verificacao=ver, campo=self.c_medida, valor=str(40 + dia), conforme=None)
+            Resposta.objects.create(verificacao=ver, campo=self.c_texto, valor='Lofoam', conforme=None)
+
+    def test_propostas(self):
+        from pcp.tipos import propor_ajustes
+        p = {x['campo'].item: x for x in propor_ajustes(self.v15)}
+        self.assertEqual(set(p), {'M-1', 'T-1'})  # 'Ok' é coerente com a lista; B-1 e B-5 não têm lançamentos
+        self.assertEqual(p['M-1']['novo_tipo'], 'numero')
+        self.assertEqual(p['T-1']['novo_tipo'], 'texto')
+        self.assertEqual(p['M-1']['pct_numerico'], 100)
+        self.assertIn('Lofoam', p['T-1']['exemplos'])
+
+    def test_poucos_lancamentos_nao_geram_proposta(self):
+        from pcp.tipos import propor_ajustes
+        Resposta.objects.filter(campo=self.c_medida).exclude(verificacao__data__lte=date(2026, 3, 3)).delete()  # sobram 3
+        self.assertNotIn('M-1', {x['campo'].item for x in propor_ajustes(self.v15)})
+
+    def test_tela_e_aplicacao_propagam_e_limpam_conformidade(self):
+        rascunho = self.v15.clonar('R16')
+        Resposta.objects.filter(campo=self.c_medida).update(conforme=False)  # conformidade antiga, calculada pela lista
+        url = reverse('pcp:ajustar_tipos', args=[self.form.pk])
+        r = self.client.get(url)
+        self.assertContains(r, 'Medida')
+        self.assertContains(r, 'Livre')
+        self.client.post(url, {'campos': [f'{self.c_medida.pk}|numero', f'{self.c_ok.pk}|texto', f'{self.c_texto.pk}|invalido']})
+        self.c_medida.refresh_from_db()
+        self.assertEqual((self.c_medida.tipo, self.c_medida.lista_id), ('numero', None))
+        self.assertFalse(Resposta.objects.filter(campo=self.c_medida, conforme=False).exists())
+        self.assertEqual(Campo.objects.get(pagina__versao=rascunho, item='M-1').tipo, 'numero')  # equivalente no rascunho
+        self.c_ok.refresh_from_db()
+        self.assertEqual(self.c_ok.tipo, 'texto')  # o POST manda: só itens de lista são alterados, tipo inválido é ignorado
+        self.c_texto.refresh_from_db()
+        self.assertEqual(self.c_texto.tipo, 'lista')
+
+    def test_importar_estrutura_herda_ajustes_e_desativados(self):
+        r1 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.998.R01 - x.xlsx', setor=self.setor, publicar=True)
+        fita = r1['versao'].paginas.get(nome='Fitadeira')
+        temp = fita.campos.get(item='B-12')           # número com faixa 10-27
+        limpeza = fita.campos.get(item='A-1')
+        Campo.objects.filter(pk=limpeza.pk).update(tipo='texto', lista=None, ativo=False, critico=True)
+        Pagina.objects.filter(pk=fita.pk).update(ativo=False, ordem=7)
+        r2 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.998.R02 - x.xlsx', setor=self.setor)
+        fita2 = r2['versao'].paginas.get(nome='Fitadeira')
+        self.assertEqual((fita2.ativo, fita2.ordem), (False, 7))
+        l2 = fita2.campos.get(item='A-1')
+        self.assertEqual((l2.tipo, l2.ativo, l2.critico), ('texto', False, True))
+        t2 = fita2.campos.get(item='B-12')
+        self.assertEqual((t2.tipo, t2.minimo, t2.maximo), ('numero', temp.minimo, temp.maximo))
+
+    def test_especificacao_alterada_nao_herda_tipo(self):
+        r1 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.998.R01 - x.xlsx', setor=self.setor, publicar=True)
+        Campo.objects.filter(pagina__versao=r1['versao'], item='B-12').update(tipo='texto', minimo=None, maximo=None)
+        Campo.objects.filter(pagina__versao=r1['versao'], item='B-12').update(especificacao='10 - 28 ° C')  # a nova planilha traz 10 - 27
+        r2 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.998.R02 - x.xlsx', setor=self.setor)
+        self.assertEqual(r2['versao'].paginas.get(nome='Fitadeira').campos.get(item='B-12').tipo, 'numero')  # reavaliado pela nova especificação
