@@ -458,7 +458,10 @@
                     <span>Motivo</span><span style="width: 9.5rem;">Quantidade</span>
                 </div>
                 <div id="kpiMotLinhas"></div>
-                <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="kpiMotMais"><i class="bi bi-plus-lg me-1"></i>Adicionar motivo</button>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="kpiMotMais"><i class="bi bi-plus-lg me-1"></i>Adicionar motivo</button>
+                    <div class="text-end pe-1"><span class="text-muted small me-2">Subtotal</span><strong class="fs-5" id="kpiMotSubtotal">0</strong></div>
+                </div>
                 <div class="small fw-semibold mt-3" id="kpiMotEstado"></div>
             </div>
             <div class="modal-footer">
@@ -603,10 +606,35 @@
             '<input type="number" class="form-control" name="quantidade" step="0.01" min="0" style="max-width: 9.5rem;" placeholder="Qtd">' +
             '<button type="button" class="btn btn-outline-danger" title="Remover"><i class="bi bi-x-lg"></i></button>';
         div.children[0].value = desc || '';
+        div.children[0].addEventListener('input', atualizarSubtotal);
         div.children[1].value = qtd || '1';
-        div.children[2].addEventListener('click', function () { div.remove(); });
+        div.children[2].addEventListener('click', function () { div.remove(); atualizarSubtotal(); });
+        div.children[1].addEventListener('change', ordenarMotivos);  // ao confirmar a quantidade, os maiores sobem
+        div.children[1].addEventListener('input', atualizarSubtotal);
         el('kpiMotLinhas').appendChild(div);
         return div;
+    }
+
+    // Mantém as linhas em ordem decrescente de quantidade (empate: ordem atual); linhas ainda sem motivo ficam no fim.
+    function ordenarMotivos() {
+        var caixa = el('kpiMotLinhas'), foco = document.activeElement;
+        var linhas = Array.prototype.slice.call(caixa.children).map(function (div, i) {
+            var vazia = !div.children[0].value.trim();
+            return {div: div, i: i, vazia: vazia, qtd: parseFloat(String(div.children[1].value).replace(',', '.')) || 0};
+        });
+        linhas.sort(function (a, b) { return (a.vazia - b.vazia) || (b.qtd - a.qtd) || (a.i - b.i); });
+        linhas.forEach(function (l) { caixa.appendChild(l.div); });
+        if (foco && caixa.contains(foco) && document.activeElement !== foco) foco.focus();
+        atualizarSubtotal();
+    }
+
+    // Soma das quantidades das linhas que já têm motivo.
+    function atualizarSubtotal() {
+        var total = 0;
+        Array.prototype.forEach.call(el('kpiMotLinhas').children, function (div) {
+            if (div.children[0].value.trim()) total += parseFloat(String(div.children[1].value).replace(',', '.')) || 0;
+        });
+        el('kpiMotSubtotal').textContent = total.toLocaleString('pt-BR', {maximumFractionDigits: 2});
     }
 
     function carregarMotivos() {
@@ -621,6 +649,7 @@
         }
         existentes.forEach(function (m) { linhaMotivo(m.desc, m.qtd); });
         if (!existentes.length) linhaMotivo();
+        ordenarMotivos();
         el('kpiMotEstado').textContent = !iso ? '' : existentes.length
             ? 'Editando ' + existentes.length + ' motivo(s) já registrado(s) neste ' + TITULOS[gran] + '. Remova uma linha para excluí-la.'
             : 'Novo registro para este ' + TITULOS[gran] + '. Use "Adicionar motivo" para incluir quantos precisar.';
