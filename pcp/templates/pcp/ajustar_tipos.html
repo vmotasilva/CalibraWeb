@@ -8,7 +8,10 @@
             <h4 class="mb-0">Ajustar tipos pelos registros - {{ formulario.codigo }}</h4>
             <div class="text-muted">{{ formulario.titulo }}{% if versao %} · revisão <strong>{{ versao.revisao }}</strong> ({{ versao.get_status_display|lower }}){% endif %}</div>
         </div>
-        <a href="{% url 'pcp:formulario_detalhe' formulario.pk %}" class="btn btn-outline-secondary">Voltar</a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'pcp:sugerir_limites' formulario.pk %}" class="btn btn-outline-primary"><i class="bi bi-rulers me-1"></i>Sugerir limites dos itens numéricos</a>
+            <a href="{% url 'pcp:formulario_detalhe' formulario.pk %}" class="btn btn-outline-secondary">Voltar</a>
+        </div>
     </div>
     <div class="small text-muted mb-3">
         O tipo de cada item (lista, número ou texto) foi <strong>deduzido</strong> da especificação ao importar a estrutura. Aqui ele é comparado com o que foi realmente lançado:

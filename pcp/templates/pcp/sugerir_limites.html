@@ -1,0 +1,82 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Sugerir limites - {{ formulario.codigo }} - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0">Sugerir limites - {{ formulario.codigo }}</h4>
+            <div class="text-muted">{{ formulario.titulo }}{% if versao %} · revisão <strong>{{ versao.revisao }}</strong> ({{ versao.get_status_display|lower }}){% endif %}</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'pcp:ajustar_tipos' formulario.pk %}" class="btn btn-outline-secondary">Ajustar tipos</a>
+            <a href="{% url 'pcp:formulario_detalhe' formulario.pk %}" class="btn btn-outline-secondary">Voltar</a>
+        </div>
+    </div>
+    <div class="small text-muted mb-3">
+        Sugestões de <strong>mínimo e máximo</strong> para itens numéricos que ainda não têm limites e possuem {{ minimo }} ou mais lançamentos.
+        A fonte preferida é a <strong>especificação</strong> do item (ex.: "10 - 27 °C", "-0,8 &lt; P &lt; -0,6", "≤ 3", "45 ± 2"); onde ela não traz limites, a sugestão vem do
+        <strong>histórico</strong>: a faixa que cobre {{ cobertura }}% do que foi lançado. O histórico mostra o que aconteceu, não o que é aceitável: revise e <strong>edite os valores</strong> antes de aplicar.
+        Itens cuja faixa deixa de fora muitos lançamentos (coluna "Dentro") vêm desmarcados.
+        Ao aplicar, a conformidade dos lançamentos já feitos é recalculada.
+    </div>
+
+    <form method="get" class="d-flex align-items-center gap-2 mb-3">
+        <label class="form-label mb-0" for="cobertura">Cobertura do histórico</label>
+        <select name="cobertura" id="cobertura" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+            {% for c in coberturas %}<option value="{{ c }}" {% if c == cobertura %}selected{% endif %}>{{ c }}% dos lançamentos</option>{% endfor %}
+        </select>
+    </form>
+
+    {% if propostas %}
+    <form method="post" id="form-limites">
+        {% csrf_token %}
+        <div class="card">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead><tr>
+                        <th style="width:2rem"><input type="checkbox" class="form-check-input" id="marcar-todos"></th>
+                        <th>Página</th><th>Item</th><th>Especificação</th><th>Fonte</th>
+                        <th style="width:7.5rem">Mínimo</th><th style="width:7.5rem">Máximo</th>
+                        <th class="text-end">Observado</th><th class="text-end">Mediana</th><th class="text-end">Dentro</th><th class="text-end">Lanç.</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for p in propostas %}
+                        <tr>
+                            <td><input type="checkbox" class="form-check-input marcar" name="campos" value="{{ p.campo.pk }}" {% if p.pct_dentro >= 70 %}checked{% endif %}></td>
+                            <td>{{ p.pagina.nome }}</td>
+                            <td>{% if p.campo.etapa %}<div class="small text-muted">{{ p.campo.etapa|truncatechars:50 }}</div>{% endif %}<span class="fw-semibold">{{ p.campo.item }}</span> {{ p.campo.descricao|truncatechars:60 }}</td>
+                            <td class="small">{{ p.campo.especificacao|default:"—"|truncatechars:60 }}</td>
+                            <td><span class="badge {% if p.fonte == 'especificação' %}bg-success{% elif p.fonte == 'histórico' %}bg-secondary{% else %}bg-info text-dark{% endif %}">{{ p.fonte }}</span></td>
+                            <td><input type="text" inputmode="decimal" name="min_{{ p.campo.pk }}" value="{{ p.minimo|default_if_none:''|stringformat:'s' }}" class="form-control form-control-sm"></td>
+                            <td><input type="text" inputmode="decimal" name="max_{{ p.campo.pk }}" value="{{ p.maximo|default_if_none:''|stringformat:'s' }}" class="form-control form-control-sm">
+                                <input type="hidden" name="un_{{ p.campo.pk }}" value="{{ p.unidade }}"></td>
+                            <td class="text-end small text-nowrap">{{ p.obs_min|stringformat:'s' }} – {{ p.obs_max|stringformat:'s' }}</td>
+                            <td class="text-end small">{{ p.mediana|stringformat:'s' }}</td>
+                            <td class="text-end"><span class="badge {% if p.pct_dentro >= 95 %}bg-success{% elif p.pct_dentro >= 70 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ p.pct_dentro }}%</span></td>
+                            <td class="text-end">{{ p.total }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="card-footer d-flex align-items-center gap-3">
+                <button class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Aplicar nos selecionados (<span id="qtd">0</span>)</button>
+                <span class="small text-muted">{{ propostas|length }} item(ns) com sugestão. Deixe um dos campos em branco para limite só de um lado (ex.: apenas máximo).</span>
+            </div>
+        </div>
+    </form>
+    <script>
+    (function () {
+        var form = document.getElementById('form-limites'), todos = document.getElementById('marcar-todos'), qtd = document.getElementById('qtd');
+        function conta() { qtd.textContent = form.querySelectorAll('input.marcar:checked').length; }
+        todos.addEventListener('change', function () { form.querySelectorAll('input.marcar').forEach(function (c) { c.checked = todos.checked; }); conta(); });
+        form.addEventListener('change', conta);
+        conta();
+    })();
+    </script>
+    {% else %}
+        <div class="alert alert-success">Nenhuma sugestão: todos os itens numéricos com lançamentos suficientes já têm limites, ou não variam o bastante para sugerir uma faixa.</div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal, InvalidOperation
 import re
 from collections import Counter
 
@@ -82,6 +83,51 @@ def formulario_excluir(request, pk):
             messages.success(request, f'Formulário {codigo} excluído. Já é possível importá-lo novamente.')
             return redirect('pcp:formularios')
     return render(request, 'pcp/formulario_excluir.html', {'formulario': formulario, 'resumo': resumo, 'erro': erro})
+
+
+def _decimal_ou_none(texto):
+    texto = (texto or '').strip().replace(',', '.')
+    if not texto:
+        return None
+    try:
+        return Decimal(texto)
+    except InvalidOperation:
+        raise ValueError(texto)
+
+
+@login_required
+def sugerir_limites(request, pk):
+    """Sugere mínimo e máximo dos itens numéricos (da especificação ou do histórico); aplica o que for marcado, com valores editáveis."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    versao = formulario.versao_vigente or formulario.versoes.first()
+    if request.method == 'POST' and versao:
+        aplicados, fora, invalidos = 0, 0, 0
+        for campo_id in request.POST.getlist('campos'):
+            campo = Campo.objects.filter(pk=campo_id, pagina__versao__formulario=formulario, tipo=Campo.NUMERO).select_related('pagina').first()
+            if not campo:
+                continue
+            try:
+                minimo, maximo = _decimal_ou_none(request.POST.get(f'min_{campo_id}')), _decimal_ou_none(request.POST.get(f'max_{campo_id}'))
+            except ValueError:
+                invalidos += 1
+                continue
+            if (minimo is None and maximo is None) or (minimo is not None and maximo is not None and minimo > maximo):
+                invalidos += 1
+                continue
+            fora += tipos_mod.aplicar_limites(formulario, campo, minimo, maximo, request.POST.get(f'un_{campo_id}', ''))
+            aplicados += 1
+        if aplicados:
+            messages.success(request, f'Limites aplicados em {aplicados} item(ns); a conformidade dos lançamentos foi recalculada ({fora} fora do limite).')
+        if invalidos:
+            messages.warning(request, f'{invalidos} item(ns) não foram alterados por limites inválidos (vazios ou mínimo maior que o máximo).')
+        if not aplicados and not invalidos:
+            messages.info(request, 'Nenhum item selecionado.')
+        return redirect('pcp:sugerir_limites', pk)
+    cobertura = int(request.GET['cobertura']) if request.GET.get('cobertura') in {str(c) for c in tipos_mod.COBERTURAS} else 99
+    propostas = tipos_mod.propor_limites(versao, cobertura) if versao else []
+    return render(request, 'pcp/sugerir_limites.html', {
+        'formulario': formulario, 'versao': versao, 'propostas': propostas, 'cobertura': cobertura,
+        'coberturas': tipos_mod.COBERTURAS, 'minimo': tipos_mod.MIN_LANCAMENTOS_LIMITES})
 
 
 @login_required

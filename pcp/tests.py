@@ -879,3 +879,94 @@ class AjustarTiposTests(PcpBase):
         Campo.objects.filter(pagina__versao=r1['versao'], item='B-12').update(especificacao='10 - 28 ° C')  # a nova planilha traz 10 - 27
         r2 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.998.R02 - x.xlsx', setor=self.setor)
         self.assertEqual(r2['versao'].paginas.get(nome='Fitadeira').campos.get(item='B-12').tipo, 'numero')  # reavaliado pela nova especificação
+
+
+class LimitesTests(PcpBase):
+    def setUp(self):
+        super().setUp()
+        self.c_num.delete()
+        self.v15.publicar()
+        mk = lambda item, spec, valores, **kw: self.campo_com(item, spec, valores, **kw)
+        # valores 1..100 em "histórico": faixa de 99% corta as pontas (1 e 100)
+        self.c_hist = mk('H-1', 'Conforme padrão', list(range(1, 101)))
+        self.c_spec = mk('S-1', '10 - 27 ° C', [20 + (i % 5) for i in range(30)])
+        self.c_meio = mk('M-1', 'até 75 °C', [50 + i for i in range(20)])           # só o máximo vem da especificação
+        self.c_const = mk('K-1', 'Conforme padrão', [5] * 20)                        # sem variação
+        self.c_poucos = mk('P-1', 'Conforme padrão', [1, 2, 3])                      # poucos lançamentos
+        self.c_com = mk('L-1', 'Conforme padrão', list(range(20)), minimo=Decimal('0'), maximo=Decimal('100'))  # já tem limites
+
+    def campo_com(self, item, spec, valores, **kw):
+        campo = Campo.objects.create(pagina=self.pag, item=item, descricao=item, especificacao=spec, tipo='numero', **kw)
+        for i, v in enumerate(valores):
+            dia = date(2026, 1, 1) + datetime.timedelta(days=i // 3)
+            ver, _ = Verificacao.objects.get_or_create(pagina=self.pag, data=dia, turno=[self.t1][0] if i % 3 == 0 else self._turno(i % 3))
+            Resposta.objects.get_or_create(verificacao=ver, campo=campo, defaults={'valor': str(v), 'conforme': None})
+        return campo
+
+    def _turno(self, k):
+        return Turno.objects.get_or_create(sigla=f'X{k}', defaults={'nome': f'X{k}', 'ordem': 10 + k})[0]
+
+    def propostas(self, cobertura=99):
+        from pcp.tipos import propor_limites
+        return {p['campo'].item: p for p in propor_limites(self.v15, cobertura)}
+
+    def test_leitor_de_especificacao(self):
+        from pcp.tipos import limites_da_especificacao as L
+        d = Decimal
+        self.assertEqual(L('10 - 27 ° C'), (d('10'), d('27'), '° C'))
+        self.assertEqual(L('45°C ± 2°C'), (d('43'), d('47'), '°C'))
+        self.assertEqual(L('-0,8 <Pres. <-0,6 Bar'), (d('-0.8'), d('-0.6'), 'Bar'))
+        self.assertEqual(L('580 L/h ± 20 L/h (cascata do Cuba)')[:2], (d('560'), d('600')))
+        self.assertEqual(L('Para PRA: 1,67 - 1,73 mm'), (d('1.67'), d('1.73'), 'mm'))
+        self.assertEqual(L('até 75° C')[:2], (None, d('75')))
+        self.assertEqual(L('≥ 3 bar')[:2], (d('3'), None))
+        self.assertEqual(L('[1,5 m/s, 3,5 m/s]')[:2], (d('1.5'), d('3.5')))
+        for texto in ('Sem poeira', 'Conforme POP', '', None):
+            self.assertIsNone(L(texto))
+
+    def test_propostas_por_fonte(self):
+        p = self.propostas()
+        self.assertEqual(set(p), {'H-1', 'S-1', 'M-1'})  # K-1 constante, P-1 poucos e L-1 com limites ficam de fora
+        self.assertEqual((p['H-1']['fonte'], p['H-1']['minimo'], p['H-1']['maximo']), ('histórico', 1, 100))  # 99% de 100 lançamentos: 0,5 por ponta, nada é cortado
+        self.assertEqual((p['S-1']['fonte'], p['S-1']['minimo'], p['S-1']['maximo'], p['S-1']['pct_dentro']), ('especificação', 10, 27, 100))
+        self.assertEqual((p['M-1']['fonte'], p['M-1']['minimo'], p['M-1']['maximo']), ('especificação + histórico', 50, 75))
+        self.assertEqual(p['H-1']['mediana'], 51)
+
+    def test_cobertura_muda_a_faixa_do_historico(self):
+        self.assertEqual((self.propostas(100)['H-1']['minimo'], self.propostas(100)['H-1']['maximo']), (1, 100))
+        self.assertEqual((self.propostas(98)['H-1']['minimo'], self.propostas(98)['H-1']['maximo']), (2, 99))
+        self.assertEqual((self.propostas(95)['H-1']['minimo'], self.propostas(95)['H-1']['maximo']), (3, 98))
+
+    def test_percentual_dentro_sinaliza_especificacao_incoerente(self):
+        Campo.objects.filter(pk=self.c_spec.pk).update(especificacao='100 - 200')
+        self.assertEqual(self.propostas()['S-1']['pct_dentro'], 0)
+        r = self.client.get(reverse('pcp:sugerir_limites', args=[self.form.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'bg-danger')
+
+    def test_aplicar_com_valores_editados_recalcula_conformidade_e_propaga(self):
+        rascunho = self.v15.clonar('R16')
+        url = reverse('pcp:sugerir_limites', args=[self.form.pk])
+        r = self.client.post(url, {'campos': [self.c_hist.pk, self.c_spec.pk, self.c_const.pk],
+                                   f'min_{self.c_hist.pk}': '10', f'max_{self.c_hist.pk}': '90,5',   # editado, com vírgula
+                                   f'min_{self.c_spec.pk}': '10', f'max_{self.c_spec.pk}': '27', f'un_{self.c_spec.pk}': '°C',
+                                   f'min_{self.c_const.pk}': '9', f'max_{self.c_const.pk}': '1'})   # inválido: mínimo > máximo
+        self.assertEqual(r.status_code, 302)
+        self.c_hist.refresh_from_db()
+        self.assertEqual((self.c_hist.minimo, self.c_hist.maximo), (Decimal('10'), Decimal('90.5')))
+        self.assertEqual(self.c_spec.__class__.objects.get(pk=self.c_spec.pk).unidade, '°C')
+        fora = Resposta.objects.filter(campo=self.c_hist, conforme=False).count()
+        self.assertEqual(fora, 9 + 10)  # valores 1..9 e 91..100
+        self.assertEqual(Resposta.objects.filter(campo=self.c_hist, conforme=True).count(), 81)
+        self.c_const.refresh_from_db()
+        self.assertIsNone(self.c_const.minimo)  # limites inválidos não aplicados
+        eq = Campo.objects.get(pagina__versao=rascunho, item='H-1')
+        self.assertEqual((eq.minimo, eq.maximo), (Decimal('10'), Decimal('90.5')))
+        self.assertNotIn('H-1', self.propostas())  # já tem limites: sai das sugestões
+
+    def test_limite_de_um_lado_so(self):
+        self.client.post(reverse('pcp:sugerir_limites', args=[self.form.pk]), {
+            'campos': [self.c_meio.pk], f'min_{self.c_meio.pk}': '', f'max_{self.c_meio.pk}': '60'})
+        self.c_meio.refresh_from_db()
+        self.assertEqual((self.c_meio.minimo, self.c_meio.maximo), (None, Decimal('60')))
+        self.assertEqual(Resposta.objects.filter(campo=self.c_meio, conforme=False).count(), 9)  # 61..69
