@@ -416,19 +416,36 @@ KPI <i class="bi bi-chevron-down transition-transform rotate-180"></i>
 </li>
 {% endif %}
 {% endif %}
+{% can_nav_group user 'Processos' as nav_grp_proc %}
+{% if nav_grp_proc %}
 <li>
 <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOPROCMobile" style="cursor: pointer;">
 PROCESSOS <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
 <ul class="list-unstyled collapse" id="collapseGESTAOPROCMobile">
+{% can_nav_group user 'Processos > PCP' as nav_grp_pcp %}
+{% if nav_grp_pcp %}
+{% can_nav_view user 'pcp:preencher' 'pcp' as nav_pcp_preencher %}
+{% can_nav_view user 'pcp:ocorrencias' 'pcp' as nav_pcp_ocorr %}
+{% can_nav_view user 'pcp:formularios' 'pcp' as nav_pcp_form %}
+{% can_nav_view user 'pcp:turnos' 'pcp' as nav_pcp_turnos %}
+{% can_nav_view user 'pcp:frequencias' 'pcp' as nav_pcp_freq %}
+{% can_nav_view user 'pcp:listas' 'pcp' as nav_pcp_listas %}
 <li>
 <h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOPCPMobile" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
 PCP <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
 <ul class="list-unstyled collapse ps-2" id="collapseGESTAOPCPMobile">
-<li><span class="dropdown-item-text text-muted small fst-italic">Em breve</span></li>
+{% if nav_pcp_preencher %}<li><a class="dropdown-item" href="{% url 'pcp:preencher' %}"><i class="bi bi-pencil-square"></i> Preencher Verificações</a></li>{% endif %}
+{% if nav_pcp_ocorr %}<li><a class="dropdown-item" href="{% url 'pcp:ocorrencias' %}"><i class="bi bi-exclamation-triangle"></i> Ocorrências</a></li>{% endif %}
+{% if nav_pcp_form %}<li><a class="dropdown-item" href="{% url 'pcp:formularios' %}"><i class="bi bi-file-earmark-ruled"></i> Formulários e Revisões</a></li>{% endif %}
+{% if nav_pcp_turnos %}<li><a class="dropdown-item" href="{% url 'pcp:turnos' %}"><i class="bi bi-clock"></i> Turnos</a></li>{% endif %}
+{% if nav_pcp_freq %}<li><a class="dropdown-item" href="{% url 'pcp:frequencias' %}"><i class="bi bi-arrow-repeat"></i> Frequências</a></li>{% endif %}
+{% if nav_pcp_listas %}<li><a class="dropdown-item" href="{% url 'pcp:listas' %}"><i class="bi bi-list-ul"></i> Listas de Opções</a></li>{% endif %}
 </ul>
 </li>
+{% endif %}
+{% endif %}
 </ul>
 </li>
 {% can_nav_group user 'Qualidade' as nav_grp_qual %}

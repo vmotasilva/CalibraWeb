@@ -1,0 +1,29 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}PCP - Preencher - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Preencher verificações</h4>
+    {% include "pcp/_nav.html" with secao="preencher" %}
+    {% for b in blocos %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>{{ b.versao.formulario.codigo }} - {{ b.versao.formulario.titulo }}</strong>
+                <span class="badge bg-success">{{ b.versao.revisao }}</span>
+            </div>
+            <div class="card-body">
+                {% for grupo, paginas in b.grupos.items %}
+                    <h6 class="text-muted text-uppercase small">{{ grupo }}</h6>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% for p in paginas %}<a href="{% url 'pcp:preencher_pagina' p.pk %}" class="btn btn-outline-primary btn-sm">{{ p.nome }}</a>{% endfor %}
+                    </div>
+                {% empty %}
+                    <span class="text-muted">Sem páginas ativas.</span>
+                {% endfor %}
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center text-muted py-5">Nenhum formulário com revisão vigente. Publique uma revisão em <em>Formulários</em>.</div>
+    {% endfor %}
+</div>
+{% endblock %}

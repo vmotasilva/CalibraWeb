@@ -1,0 +1,50 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}{{ versao }} - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0">{{ versao.formulario.codigo }} · {{ versao.revisao }}
+                {% if versao.status == 'vigente' %}<span class="badge bg-success fs-6">Vigente</span>{% elif versao.status == 'rascunho' %}<span class="badge bg-warning text-dark fs-6">Rascunho</span>{% else %}<span class="badge bg-secondary fs-6">Obsoleta</span>{% endif %}
+            </h4>
+            <div class="text-muted">{{ versao.formulario.titulo }} · {{ versao.formulario.setor }}{% if versao.vigencia %} · vigente desde {{ versao.vigencia|date:"d/m/Y" }}{% endif %}</div>
+            {% if versao.motivo %}<div class="small mt-1"><strong>O que mudou:</strong> {{ versao.motivo }}</div>{% endif %}
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'pcp:formulario_detalhe' versao.formulario_id %}" class="btn btn-outline-secondary">Voltar</a>
+            {% if versao.editavel %}
+                <a href="{% url 'pcp:pagina_nova' versao.pk %}" class="btn btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Nova página</a>
+                <form method="post" action="{% url 'pcp:versao_publicar' versao.pk %}" onsubmit="return confirm('Publicar a revisão {{ versao.revisao }}? Ela passa a valer e a revisão vigente atual vira obsoleta.');">{% csrf_token %}
+                    <button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Publicar</button>
+                </form>
+                <form method="post" action="{% url 'pcp:versao_excluir' versao.pk %}" onsubmit="return confirm('Excluir este rascunho e todas as suas páginas?');">{% csrf_token %}
+                    <button class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+            {% else %}
+                <a href="{% url 'pcp:versao_nova' versao.formulario_id %}" class="btn btn-primary"><i class="bi bi-files me-1"></i>Criar nova revisão a partir da mais recente</a>
+            {% endif %}
+        </div>
+    </div>
+    {% if not versao.editavel %}
+        <div class="alert alert-info py-2">Esta revisão está travada para preservar o histórico das verificações. Para alterar, crie uma nova revisão.</div>
+    {% endif %}
+    {% for grupo, paginas in grupos.items %}
+        <h6 class="text-muted text-uppercase mt-3">{{ grupo }}</h6>
+        <div class="row g-2">
+            {% for p in paginas %}
+                <div class="col-sm-6 col-lg-4 col-xl-3">
+                    <a href="{% url 'pcp:pagina_detalhe' p.pk %}" class="card h-100 text-decoration-none {% if not p.ativo %}opacity-50{% endif %}">
+                        <div class="card-body py-2">
+                            <div class="fw-semibold">{{ p.nome }}</div>
+                            <div class="small text-muted">{{ p.n_campos }} campo{{ p.n_campos|pluralize }}{% if p.codigo_sistema %} · {{ p.codigo_sistema }}{% endif %}{% if p.maquina %} · {{ p.maquina.codigo }}{% endif %}</div>
+                        </div>
+                    </a>
+                </div>
+            {% endfor %}
+        </div>
+    {% empty %}
+        <div class="text-center text-muted py-5">Nenhuma página ainda. Cada página representa um equipamento/processo com a sua lista de verificações.</div>
+    {% endfor %}
+</div>
+{% endblock %}

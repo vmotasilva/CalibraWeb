@@ -253,6 +253,7 @@ urlpatterns = [
 
     # 11. KPI (indicadores)
     path("kpi/", include("kpi.urls")),
+    path("pcp/", include("pcp.urls")),
 ]
 
 # Configuração para servir arquivos de mídia/estáticos em modo Debug

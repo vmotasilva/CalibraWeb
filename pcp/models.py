@@ -56,6 +56,9 @@ class ListaOpcoes(models.Model):
     def __str__(self):
         return self.nome
 
+    def opcoes_resumo(self):
+        return ' · '.join(o.valor if o.conforme else f'{o.valor} (desvio)' for o in self.opcoes.all())
+
 
 class OpcaoLista(models.Model):
     lista = models.ForeignKey(ListaOpcoes, on_delete=models.CASCADE, related_name='opcoes')

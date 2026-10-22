@@ -1,0 +1,90 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}{{ pagina.nome }} - Preencher PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0">{{ pagina.nome }}</h4>
+            <div class="text-muted">{{ versao }}{% if pagina.maquina %} · Máquina {{ pagina.maquina.display_name }}{% endif %}</div>
+        </div>
+        <a href="{% url 'pcp:preencher' %}" class="btn btn-outline-secondary">Voltar</a>
+    </div>
+
+    <form method="get" class="card card-body mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto"><label class="form-label mb-0">Data</label><input type="date" name="data" value="{{ data|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()"></div>
+            <div class="col-auto"><label class="form-label mb-0">Turno</label>
+                <select name="turno" class="form-select" onchange="this.form.submit()">
+                    {% for t in turnos %}<option value="{{ t.pk }}" {% if turno and t.pk == turno.pk %}selected{% endif %}>{{ t }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-auto text-muted small pb-2">{% if verificacao %}Já lançado · última atualização {{ verificacao.atualizado_em|date:"d/m/Y H:i" }}{% else %}Ainda sem lançamento neste turno.{% endif %}</div>
+        </div>
+    </form>
+
+    {% if travada %}<div class="alert alert-warning py-2">Esta página pertence a uma revisão {{ versao.get_status_display|lower }}; só é possível lançar na revisão vigente.</div>{% endif %}
+    {% if not turno %}<div class="alert alert-warning py-2">Cadastre ao menos um turno ativo em <em>Turnos</em>.</div>{% endif %}
+
+    <form method="post" action="{% url 'pcp:preencher_salvar' pagina.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="data" value="{{ data|date:'Y-m-d' }}">
+        <input type="hidden" name="turno" value="{{ turno.pk }}">
+        <div class="card mb-3"><div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>Item</th><th>O que verificar</th><th>Especificação</th><th>Frequência</th><th style="min-width:14rem">Resultado</th><th>Plano de reação</th></tr></thead>
+                <tbody>
+                {% for l in linhas %}{% with c=l.campo r=l.resposta %}
+                    <tr class="{% if r.conforme == False %}table-danger{% endif %}">
+                        <td class="text-nowrap fw-semibold {% if c.critico %}text-danger{% endif %}">{{ c.item|default:"—" }}</td>
+                        <td>{{ c.descricao }}{% if c.metodo %}<div class="small text-muted">{{ c.metodo }}</div>{% endif %}</td>
+                        <td class="small">{{ c.especificacao|default:"—" }}</td>
+                        <td class="small">{{ c.frequencia|default:"—" }}</td>
+                        <td>
+                            {% if c.tipo == 'lista' %}
+                                <select name="c_{{ c.pk }}" class="form-select form-select-sm" {% if travada %}disabled{% endif %}>
+                                    <option value=""></option>
+                                    {% for o in c.lista.opcoes.all %}<option value="{{ o.valor }}" {% if r.valor == o.valor %}selected{% endif %}>{{ o.valor }}</option>{% endfor %}
+                                </select>
+                            {% elif c.tipo == 'numero' %}
+                                <div class="input-group input-group-sm">
+                                    <input type="text" inputmode="decimal" name="c_{{ c.pk }}" value="{{ r.valor }}" class="form-control" {% if travada %}disabled{% endif %}>
+                                    {% if c.unidade %}<span class="input-group-text">{{ c.unidade }}</span>{% endif %}
+                                </div>
+                                {% if c.minimo is not None or c.maximo is not None %}<div class="form-text mt-0">{{ c.minimo|default_if_none:"" }} – {{ c.maximo|default_if_none:"" }}</div>{% endif %}
+                            {% else %}
+                                <input type="text" name="c_{{ c.pk }}" value="{{ r.valor }}" class="form-control form-control-sm" {% if travada %}disabled{% endif %}>
+                            {% endif %}
+                        </td>
+                        <td class="small">{{ c.plano_reacao|default:"—" }}</td>
+                    </tr>
+                {% endwith %}{% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">Esta página não tem campos ativos.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+
+        <div class="card mb-3">
+            <div class="card-header">Ocorrências</div>
+            <div class="card-body">
+                {% for o in ocorrencias %}
+                    <div class="border rounded p-2 mb-2 small">
+                        <span class="badge {% if o.tipo == 'tratativa' %}bg-danger{% else %}bg-secondary{% endif %}">{{ o.get_tipo_display }}</span>
+                        {% if o.tipo == 'tratativa' %}<span class="badge {% if o.status == 'tratada' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ o.status }}</span>{% endif %}
+                        {% if o.campo %}<strong>{{ o.campo.item }}</strong>{% endif %} {{ o.descricao }}
+                    </div>
+                {% endfor %}
+                {% if not travada %}
+                <div class="row g-2">
+                    <div class="col-md-3"><select name="oc_tipo" class="form-select form-select-sm">{% for v, n in tipos_ocorrencia %}<option value="{{ v }}">{{ n }}</option>{% endfor %}</select></div>
+                    <div class="col-md-3"><select name="oc_campo" class="form-select form-select-sm"><option value="">Geral (sem item)</option>{% for l in linhas %}<option value="{{ l.campo.pk }}">{{ l.campo.item }} {{ l.campo.descricao|truncatechars:40 }}</option>{% endfor %}</select></div>
+                    <div class="col-md-6"><input type="text" name="oc_descricao" class="form-control form-control-sm" placeholder="Descreva a ocorrência (opcional)"></div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% if not travada and turno %}<button class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Salvar verificação</button>{% endif %}
+    </form>
+</div>
+{% endblock %}

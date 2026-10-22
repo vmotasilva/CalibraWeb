@@ -1,0 +1,50 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}PCP - Ocorrências - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Ocorrências</h4>
+    {% include "pcp/_nav.html" with secao="ocorrencias" %}
+    <form method="get" class="d-flex flex-wrap gap-2 mb-3">
+        <select name="status" class="form-select w-auto" onchange="this.form.submit()">
+            <option value="abertas" {% if status == 'abertas' %}selected{% endif %}>Tratativas em aberto</option>
+            <option value="tratadas" {% if status == 'tratadas' %}selected{% endif %}>Tratativas concluídas</option>
+            <option value="observacoes" {% if status == 'observacoes' %}selected{% endif %}>Observações</option>
+            <option value="todas" {% if status == 'todas' %}selected{% endif %}>Todas</option>
+        </select>
+        <input type="search" name="q" value="{{ q }}" class="form-control w-auto" placeholder="Buscar">
+        <button class="btn btn-outline-secondary">Filtrar</button>
+    </form>
+    <div class="card"><div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead><tr><th>Data / turno</th><th>Página</th><th>Item</th><th>Tipo</th><th>Descrição</th><th style="min-width:18rem">Tratativa</th></tr></thead>
+            <tbody>
+            {% for o in ocorrencias %}
+                <tr>
+                    <td class="text-nowrap">{{ o.verificacao.data|date:"d/m/Y" }} · {{ o.verificacao.turno.sigla }}</td>
+                    <td>{{ o.verificacao.pagina.nome }}<div class="small text-muted">{{ o.verificacao.pagina.versao }}</div></td>
+                    <td>{{ o.campo.item|default:"—" }}</td>
+                    <td>{% if o.tipo == 'tratativa' %}<span class="badge bg-danger">Tratativa</span>{% else %}<span class="badge bg-secondary">Observação</span>{% endif %}</td>
+                    <td>{{ o.descricao }}<div class="small text-muted">{{ o.criado_por|default:"" }} · {{ o.criado_em|date:"d/m/Y H:i" }}</div></td>
+                    <td>
+                        {% if o.tipo == 'tratativa' %}
+                            {% if o.status == 'tratada' %}
+                                <div class="small">{{ o.tratativa }}</div>
+                                <div class="small text-muted">{{ o.tratada_por }} · {{ o.tratada_em|date:"d/m/Y H:i" }}</div>
+                            {% else %}
+                                <form method="post" action="{% url 'pcp:ocorrencia_tratar' o.pk %}" class="d-flex gap-1">{% csrf_token %}
+                                    <input type="text" name="tratativa" class="form-control form-control-sm" placeholder="Descreva a tratativa" required>
+                                    <button class="btn btn-sm btn-success">Concluir</button>
+                                </form>
+                            {% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma ocorrência.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+</div>
+{% endblock %}

@@ -316,6 +316,72 @@ NAV_STRUCTURE = [
         ],
     },
     {
+        "key": "pcp",
+        "nome": "PCP",
+        "cor": "primary",
+        "icone": "bi bi-clipboard2-check",
+        # Módulo exibido só dentro de Gestão > Processos > PCP: a flag do módulo é a própria chave do grupo.
+        "module_perm": "core.nav_gestao_pcp",
+        "blocos": [
+            {
+                "key": "preenchimento",
+                "grupo": "Processos > PCP",
+                "nome": "Preenchimento e Ocorrências",
+                "perm": "core.nav_pcp_bloco_preenchimento",
+                "funcoes": [
+                    {
+                        "nome": "Preencher Verificações",
+                        "view_name": ["pcp:preencher", "pcp:preencher_pagina", "pcp:preencher_salvar"],
+                        "perm": "core.nav_pcp_preencher",
+                        "descricao": "Lança os resultados das verificações por página, data e turno, e registra observações e ocorrências.",
+                    },
+                    {"nome": "Ver Ocorrências", "view_name": "pcp:ocorrencias", "perm": "core.nav_pcp_ocorrencias"},
+                    {"nome": "Registrar Tratativa de Ocorrência", "view_name": "pcp:ocorrencia_tratar", "perm": "core.nav_pcp_ocorrencia_tratar"},
+                ],
+            },
+            {
+                "key": "formularios",
+                "grupo": "Processos > PCP",
+                "nome": "Formulários e Revisões",
+                "perm": "core.nav_pcp_bloco_formularios",
+                "funcoes": [
+                    {
+                        "nome": "Ver Formulários, Revisões e Páginas",
+                        "view_name": ["pcp:formularios", "pcp:formulario_detalhe", "pcp:versao_detalhe", "pcp:pagina_detalhe"],
+                        "perm": "core.nav_pcp_formularios",
+                    },
+                    {
+                        "nome": "Criar e Editar Formulários, Páginas e Campos",
+                        "view_name": [
+                            "pcp:formulario_novo", "pcp:formulario_editar", "pcp:versao_nova",
+                            "pcp:pagina_nova", "pcp:pagina_editar", "pcp:pagina_excluir",
+                            "pcp:campo_novo", "pcp:campo_editar", "pcp:campo_excluir",
+                        ],
+                        "perm": "core.nav_pcp_formulario_editar",
+                        "descricao": "Monta a estrutura do formulário. Só revisões em rascunho são editáveis; mudanças na vigente nascem como nova revisão.",
+                    },
+                    {
+                        "nome": "Publicar e Excluir Revisões",
+                        "view_name": ["pcp:versao_publicar", "pcp:versao_excluir"],
+                        "perm": "core.nav_pcp_versao_publicar",
+                        "descricao": "Torna uma revisão em rascunho vigente (a anterior fica obsoleta) ou exclui um rascunho.",
+                    },
+                ],
+            },
+            {
+                "key": "cadastros",
+                "grupo": "Processos > PCP",
+                "nome": "Cadastros Base",
+                "perm": "core.nav_pcp_bloco_cadastros",
+                "funcoes": [
+                    {"nome": "Turnos", "view_name": ["pcp:turnos", "pcp:turno_novo", "pcp:turno_editar", "pcp:turno_excluir"], "perm": "core.nav_pcp_turnos"},
+                    {"nome": "Frequências", "view_name": ["pcp:frequencias", "pcp:frequencia_nova", "pcp:frequencia_editar", "pcp:frequencia_excluir"], "perm": "core.nav_pcp_frequencias"},
+                    {"nome": "Listas de Opções", "view_name": ["pcp:listas", "pcp:lista_nova", "pcp:lista_editar", "pcp:lista_excluir"], "perm": "core.nav_pcp_listas"},
+                ],
+            },
+        ],
+    },
+    {
         "key": "metrologia",
         "nome": "Metrologia",
 
@@ -1692,6 +1758,8 @@ NAV_GROUP_PERMS = {
     "Ferramentas Auxiliares": "core.nav_gestao_ferramentas",
     "Ferramentas Auxiliares > Tempos e Movimentos (TMS)": "core.nav_gestao_tms",
     "KPI": "core.nav_gestao_kpi",
+    "Processos": "core.nav_gestao_processos",
+    "Processos > PCP": "core.nav_gestao_pcp",
     "Qualidade": "core.nav_gestao_qualidade",
     "Qualidade > Homologações": "core.nav_gestao_homologacoes",
     "ISO 13485": "core.nav_auditoria_iso_grupo",
@@ -1707,7 +1775,7 @@ NAV_GROUP_PERMS = {
 # Seções do módulo de exibição "Gestão" e módulos inteiros exibidos dentro dele.
 GESTAO_SECOES = ("Ferramentas Auxiliares", "KPI", "Processos", "Qualidade")
 # Módulos cujos blocos (campo "grupo") aparecem dentro de uma seção de Gestão.
-GESTAO_MODULOS_COM_SECAO = ("laboratorio", "kpi")
+GESTAO_MODULOS_COM_SECAO = ("laboratorio", "kpi", "pcp")
 GESTAO_MODULES = {"boards": "Ferramentas Auxiliares", "diagramas": "Ferramentas Auxiliares"}
 
 
