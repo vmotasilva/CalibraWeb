@@ -8,9 +8,9 @@
         Lê a <strong>estrutura</strong> do formulário (uma página por aba, com item, especificação, método, frequência e plano de reação) e cria uma
         <strong>nova revisão em rascunho</strong>, pronta para conferir e publicar. Os lançamentos antigos das colunas de data/turno não são importados.
         Código e revisão são lidos do nome do arquivo (ex.: <code>FOR.080.R15 - Formulário Surfaçagem ….xlsx</code>). Abas de registro horário ("Por Hora") são ignoradas.
-        Arquivos grandes (como o do HMC) podem levar alguns segundos.
+        Planilhas grandes (acima de 3 MB, como a do HMC) são reduzidas automaticamente no seu navegador antes do envio: só as colunas usadas são enviadas.
     </div>
-    <form method="post" enctype="multipart/form-data" class="card card-body">
+    <form method="post" enctype="multipart/form-data" class="card card-body" id="form-importar">
         {% csrf_token %}
         {{ form.non_field_errors }}
         <div class="row g-3">
@@ -28,9 +28,71 @@
             {% endfor %}
         </div>
         <div class="d-flex gap-2 mt-3">
-            <button class="btn btn-primary" onclick="this.disabled=true; this.form.submit();"><i class="bi bi-upload me-1"></i>Importar</button>
+            <button class="btn btn-primary" id="btn-importar"><i class="bi bi-upload me-1"></i>Importar</button>
             <a href="{% url 'pcp:formularios' %}" class="btn btn-outline-secondary">Cancelar</a>
         </div>
+        <div id="status-importar" class="small mt-2 text-muted" role="status"></div>
     </form>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function () {
+    // Servidor aceita no máximo ~4,5 MB por envio. As abas das planilhas trazem ~1.100 colunas formatadas e vazias;
+    // o importador lê só até a coluna N (MAX_COL em pcp/importacao.py), então o restante é removido aqui.
+    var MAX_COL = 14, LIMITE_DIRETO = 3 * 1024 * 1024, LIMITE_ENVIO = 4 * 1024 * 1024;
+    var CEL = /<c r="([A-Z]+)\d+"[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g;
+    var form = document.getElementById('form-importar');
+    var input = document.getElementById('id_arquivo');
+    var btn = document.getElementById('btn-importar');
+    var status = document.getElementById('status-importar');
+    if (!form || !input) return;
+
+    function colIdx(letras) {
+        var n = 0;
+        for (var i = 0; i < letras.length; i++) n = n * 26 + letras.charCodeAt(i) - 64;
+        return n;
+    }
+    function erro(msg) {
+        status.className = 'small mt-2 text-danger';
+        status.textContent = msg;
+        btn.disabled = false;
+    }
+
+    form.addEventListener('submit', async function (ev) {
+        var f = input.files && input.files[0];
+        if (form.dataset.pronto === '1') { btn.disabled = true; return; }
+        if (!f) return;
+        if (f.size <= LIMITE_DIRETO || typeof JSZip === 'undefined') { btn.disabled = true; return; }
+        ev.preventDefault();
+        btn.disabled = true;
+        status.className = 'small mt-2 text-muted';
+        try {
+            status.textContent = 'Lendo a planilha...';
+            var zip = await JSZip.loadAsync(f);
+            var abas = Object.keys(zip.files).filter(function (n) { return /^xl\/worksheets\/[^\/]+\.xml$/.test(n); });
+            for (var i = 0; i < abas.length; i++) {
+                status.textContent = 'Reduzindo a planilha (' + (i + 1) + ' de ' + abas.length + ')...';
+                var xml = await zip.file(abas[i]).async('string');
+                xml = xml.replace(CEL, function (m, letras) { return colIdx(letras) <= MAX_COL ? m : ''; });
+                zip.file(abas[i], xml);
+                await new Promise(function (r) { setTimeout(r, 0); });  // deixa o navegador atualizar a tela
+            }
+            status.textContent = 'Compactando...';
+            var blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            if (blob.size > LIMITE_ENVIO) {
+                return erro('Mesmo reduzida, a planilha tem ' + (blob.size / 1048576).toFixed(1) + ' MB e passa do limite de envio. Use o comando importar_pcp no servidor.');
+            }
+            var dt = new DataTransfer();
+            dt.items.add(new File([blob], f.name, { type: f.type }));
+            input.files = dt.files;
+            status.textContent = 'Enviando (' + (blob.size / 1048576).toFixed(1) + ' MB) e importando...';
+            form.dataset.pronto = '1';
+            form.submit();
+        } catch (e) {
+            erro('Não foi possível reduzir a planilha no navegador (' + e + '). Tente novamente ou use um arquivo menor.');
+        }
+    });
+})();
+</script>
 {% endblock %}
