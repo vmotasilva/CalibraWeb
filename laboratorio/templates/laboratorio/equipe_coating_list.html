@@ -4,20 +4,59 @@
 {% block title %}Equipe HMC | CalibraWeb{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<style>
+    @media (max-width: 767.98px) {
+        .equipe-titulo { font-size: 1.35rem; }
+        .equipe-perm { font-size: .75rem; }
+    }
+</style>
+<div class="container-fluid px-2 px-md-3 py-3 py-md-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 mb-md-4">
         <div>
-            <h2 class="mb-1"><i class="bi bi-people text-primary"></i> Equipe HMC</h2>
-            <p class="text-muted mb-0">Gerencie os colaboradores autorizados a operar a Preparação e Montagem, a Inspeção do Controle Final e o lançamento do HC.</p>
+            <h2 class="mb-1 equipe-titulo"><i class="bi bi-people text-primary"></i> Equipe HMC</h2>
+            <p class="text-muted mb-0 small d-none d-md-block">Gerencie os colaboradores autorizados a operar a Preparação e Montagem, a Inspeção do Controle Final e o lançamento do HC.</p>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAddMembro">
+        <button class="btn btn-primary flex-grow-1 flex-md-grow-0" data-bs-toggle="modal" data-bs-target="#modalAddMembro">
             <i class="bi bi-plus-circle me-1"></i> Adicionar Colaborador
         </button>
     </div>
 
     <div class="card shadow-sm border-0">
         <div class="card-body p-0">
-            <div class="table-responsive">
+            <div class="d-md-none p-2">
+                {% for m in equipe %}
+                <div class="border rounded-3 bg-body px-2 py-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="fw-bold lh-sm">{{ m.colaborador.nome_completo }}{% if not m.colaborador.is_active %} <span class="badge bg-warning text-dark fw-normal">inativo no RH</span>{% endif %}</div>
+                        <div class="d-flex gap-1 flex-shrink-0">
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-editar-membro" aria-label="Editar"
+                                    data-id="{{ m.colaborador.pk }}" data-nome="{{ m.colaborador.nome_completo }}"
+                                    data-preparar="{{ m.preparar|yesno:'1,0' }}" data-montar="{{ m.montar|yesno:'1,0' }}"
+                                    data-cf="{{ m.cf|yesno:'1,0' }}" data-hc="{{ m.hc|yesno:'1,0' }}" data-apelidos="{{ m.apelidos }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form method="post" action="{% url 'laboratorio:equipe_coating_delete' m.colaborador.pk %}" onsubmit="return confirm('Remover {{ m.colaborador.nome_completo|escapejs }} da Equipe HMC (todas as listas)?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="Remover"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                    <div class="row row-cols-2 g-1 mt-1">
+                        <div class="col"><div class="equipe-perm rounded-2 px-2 py-1 h-100 text-nowrap {% if m.preparar %}bg-success-subtle text-success-emphasis{% else %}bg-body-tertiary text-body-secondary{% endif %}"><i class="bi {% if m.preparar %}bi-check-circle-fill{% else %}bi-x-circle{% endif %} me-1"></i>Preparação</div></div>
+                        <div class="col"><div class="equipe-perm rounded-2 px-2 py-1 h-100 text-nowrap {% if m.montar %}bg-success-subtle text-success-emphasis{% else %}bg-body-tertiary text-body-secondary{% endif %}"><i class="bi {% if m.montar %}bi-check-circle-fill{% else %}bi-x-circle{% endif %} me-1"></i>Montagem</div></div>
+                        <div class="col"><div class="equipe-perm rounded-2 px-2 py-1 h-100 text-nowrap {% if m.cf %}bg-success-subtle text-success-emphasis{% else %}bg-body-tertiary text-body-secondary{% endif %}"><i class="bi {% if m.cf %}bi-check-circle-fill{% else %}bi-x-circle{% endif %} me-1"></i>Inspeção CF</div></div>
+                        <div class="col"><div class="equipe-perm rounded-2 px-2 py-1 h-100 text-nowrap {% if m.hc %}bg-success-subtle text-success-emphasis{% else %}bg-body-tertiary text-body-secondary{% endif %}"><i class="bi {% if m.hc %}bi-check-circle-fill{% else %}bi-x-circle{% endif %} me-1"></i>HC</div></div>
+                    </div>
+                    {% if m.apelidos %}<div class="small text-muted mt-1">Apelidos: {{ m.apelidos }}</div>{% endif %}
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-4 small">
+                    <i class="bi bi-people-fill fs-1 d-block mb-2"></i>
+                    Nenhum colaborador adicionado à equipe ainda. Enquanto uma coluna não tiver ninguém marcado, os formulários dela listam todos os colaboradores ativos do RH.
+                </div>
+                {% endfor %}
+            </div>
+            <div class="table-responsive d-none d-md-block">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
