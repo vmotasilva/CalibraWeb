@@ -1,0 +1,40 @@
+from django.urls import path
+
+from . import views
+
+app_name = 'pcp'
+
+urlpatterns = [
+    path('', views.formularios, name='formularios'),
+    path('formularios/novo/', views.formulario_novo, name='formulario_novo'),
+    path('formularios/<int:pk>/', views.formulario_detalhe, name='formulario_detalhe'),
+    path('formularios/<int:pk>/editar/', views.formulario_editar, name='formulario_editar'),
+    path('formularios/<int:pk>/nova-revisao/', views.versao_nova, name='versao_nova'),
+    path('versoes/<int:pk>/', views.versao_detalhe, name='versao_detalhe'),
+    path('versoes/<int:pk>/publicar/', views.versao_publicar, name='versao_publicar'),
+    path('versoes/<int:pk>/excluir/', views.versao_excluir, name='versao_excluir'),
+    path('versoes/<int:pk>/paginas/nova/', views.pagina_nova, name='pagina_nova'),
+    path('paginas/<int:pk>/', views.pagina_detalhe, name='pagina_detalhe'),
+    path('paginas/<int:pk>/editar/', views.pagina_editar, name='pagina_editar'),
+    path('paginas/<int:pk>/excluir/', views.pagina_excluir, name='pagina_excluir'),
+    path('paginas/<int:pk>/campos/novo/', views.campo_novo, name='campo_novo'),
+    path('campos/<int:pk>/editar/', views.campo_editar, name='campo_editar'),
+    path('campos/<int:pk>/excluir/', views.campo_excluir, name='campo_excluir'),
+    path('turnos/', views.turnos, name='turnos'),
+    path('turnos/novo/', views.turno_form, name='turno_novo'),
+    path('turnos/<int:pk>/editar/', views.turno_form, name='turno_editar'),
+    path('turnos/<int:pk>/excluir/', views.turno_excluir, name='turno_excluir'),
+    path('frequencias/', views.frequencias, name='frequencias'),
+    path('frequencias/nova/', views.frequencia_form, name='frequencia_nova'),
+    path('frequencias/<int:pk>/editar/', views.frequencia_form, name='frequencia_editar'),
+    path('frequencias/<int:pk>/excluir/', views.frequencia_excluir, name='frequencia_excluir'),
+    path('listas/', views.listas, name='listas'),
+    path('listas/nova/', views.lista_form, name='lista_nova'),
+    path('listas/<int:pk>/editar/', views.lista_form, name='lista_editar'),
+    path('listas/<int:pk>/excluir/', views.lista_excluir, name='lista_excluir'),
+    path('preencher/', views.preencher, name='preencher'),
+    path('preencher/<int:pk>/', views.preencher_pagina, name='preencher_pagina'),
+    path('preencher/<int:pk>/salvar/', views.preencher_salvar, name='preencher_salvar'),
+    path('ocorrencias/', views.ocorrencias, name='ocorrencias'),
+    path('ocorrencias/<int:pk>/tratar/', views.ocorrencia_tratar, name='ocorrencia_tratar'),
+]

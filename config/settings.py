@@ -126,6 +126,7 @@ INSTALLED_APPS = [
     "maquinas",
     "boards.apps.BoardsConfig",
     "kpi.apps.KpiConfig",
+    "pcp.apps.PcpConfig",
     # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)
     "qms",
     "training",  # Adicionado para compatibilidade com dashboard de gráficos

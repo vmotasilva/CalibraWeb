@@ -309,6 +309,12 @@
                         </div>
                     </div>
                     <div class="form-text mb-2" id="anAjudaRascunho"></div>
+                    <div id="anAgruparBar" class="alert alert-primary py-2 d-none align-items-center flex-wrap gap-2 mb-2">
+                        <strong id="anAgruparN"></strong>
+                        <button type="button" class="btn btn-sm btn-primary" id="anAgrupar"><i class="bi bi-intersect me-1"></i>Agrupar selecionados</button>
+                        <button type="button" class="btn btn-sm btn-link ms-auto" id="anAgruparLimpar">Limpar seleção</button>
+                        <span class="small text-muted w-100">Os cards selecionados viram um só: causas, análises e ações são reunidas e as ocorrências do laboratório somadas. Use quando a tratativa é a mesma.</span>
+                    </div>
                     <div id="anCards"></div>
                     <div class="d-flex justify-content-between">
                         <button type="button" class="btn btn-outline-danger" id="anRemover"><i class="bi bi-trash me-1"></i>Remover registro</button>
@@ -948,7 +954,8 @@
                 if (!conhecidas[id]) lista += '<input type="hidden" class="an-oc-extra" value="' + esc(id) + '">';
             });
             card.innerHTML =
-                '<div class="d-flex justify-content-between align-items-center mb-2"><span><strong class="an-card-n"></strong>' +
+                '<div class="d-flex justify-content-between align-items-center mb-2"><span>' +
+                (ro ? '' : '<input type="checkbox" class="form-check-input me-2 an-card-sel" title="Selecionar para agrupar">') + '<strong class="an-card-n"></strong>' +
                 (dados.origem ? ' <span class="badge text-bg-light border text-muted fw-normal ms-1">Sugestão · ' + esc(dados.origem) + '</span>' : '') + '</span>' +
                 (ro ? '' : '<button type="button" class="btn btn-sm btn-link text-danger p-0 an-card-rem" title="Remover card"><i class="bi bi-trash"></i> Remover card</button>') + '</div>' +
                 '<div class="row g-2">' +
@@ -970,25 +977,69 @@
             card.addEventListener('change', resumo);
             resumo();
             var rem = card.querySelector('.an-card-rem');
-            if (rem) rem.addEventListener('click', function () { card.remove(); renumerarCards(); });
+            if (rem) rem.addEventListener('click', function () { card.remove(); renumerarCards(); atualizarBarraAgrupar(); });
+            var selc = card.querySelector('.an-card-sel');
+            if (selc) selc.addEventListener('change', function () { card.classList.toggle('border-primary', selc.checked); atualizarBarraAgrupar(); });
             el('anCards').appendChild(card);
             renumerarCards();
             return card;
         }
 
-        function coletarCards() {
-            return Array.prototype.map.call(el('anCards').children, function (card) {
+        function atualizarBarraAgrupar() {
+            var n = document.querySelectorAll('#anCards .an-card-sel:checked').length, barra = el('anAgruparBar');
+            barra.classList.toggle('d-none', n < 2);
+            barra.classList.toggle('d-flex', n >= 2);
+            el('anAgruparN').textContent = n + ' cards selecionados';
+        }
+
+        function unicos(lista) {
+            var vistos = {}, saida = [];
+            lista.forEach(function (v) {
+                var chave = v.trim().toLowerCase();
+                if (chave && !vistos[chave]) { vistos[chave] = 1; saida.push(v.trim()); }
+            });
+            return saida;
+        }
+
+        function agruparSelecionados() {
+            var cards = Array.prototype.filter.call(el('anCards').children, function (c) {
+                var cb = c.querySelector('.an-card-sel');
+                return cb && cb.checked;
+            });
+            if (cards.length < 2) return;
+            var dados = coletarCardsDe(cards);
+            var junto = {
+                causa: unicos(dados.map(function (d) { return d.causa; })).join('\n'),
+                analise: unicos(dados.map(function (d) { return d.analise; })).join('\n'),
+                acao: unicos(dados.map(function (d) { return d.acao; })).join('\n'),
+                ocorrencias: dados.reduce(function (a, d) { return a.concat(d.ocorrencias.filter(function (id) { return a.indexOf(id) === -1; })); }, []),
+                origem: 'agrupado de ' + cards.length + ' cards'
+            };
+            var novo = novoCard(junto);                  // entra no fim; é reposicionado onde estava o primeiro selecionado
+            el('anCards').insertBefore(novo, cards[0]);
+            cards.forEach(function (c) { c.remove(); });
+            renumerarCards();
+            atualizarBarraAgrupar();
+            el('anAjudaRascunho').textContent = cards.length + ' cards agrupados em um. Escreva a análise e a ação comuns e salve.';
+            novo.querySelector('.an-a').focus();
+        }
+
+        function coletarCardsDe(cards) {
+            return Array.prototype.map.call(cards, function (card) {
                 var ocs = Array.prototype.map.call(card.querySelectorAll('.an-oc:checked'), function (c) { return Number(c.value); })
                     .concat(Array.prototype.map.call(card.querySelectorAll('.an-oc-extra'), function (c) { return Number(c.value); }));
                 return {causa: card.querySelector('.an-c').value, analise: card.querySelector('.an-a').value, acao: card.querySelector('.an-x').value, ocorrencias: ocs};
             });
         }
 
+        function coletarCards() { return coletarCardsDe(el('anCards').children); }
+
         function editar(iso, rotulo) {
             el('anErro').textContent = '';
             el('anTitulo').textContent = NOMES[gran] + ' · ' + rotulo;
             el('anResumo').textContent = 'Carregando…';
             el('anCards').innerHTML = ''; el('anAjudaRascunho').textContent = '';
+            atualizarBarraAgrupar();
             mostrar(true);
             fetch(url(URL_DADOS, pk) + '?gran=' + gran + '&data=' + iso + '&setor=' + setor(), {credentials: 'same-origin'})
                 .then(function (r) { return r.json(); })
@@ -1034,6 +1085,11 @@
 
         el('anSalvar').addEventListener('click', function () { salvar(coletarCards()); });
         el('anRemover').addEventListener('click', function () { if (confirm('Remover todos os cards deste período?')) salvar([]); });
+        el('anAgrupar').addEventListener('click', agruparSelecionados);
+        el('anAgruparLimpar').addEventListener('click', function () {
+            document.querySelectorAll('#anCards .an-card-sel').forEach(function (c) { c.checked = false; c.closest('.an-card').classList.remove('border-primary'); });
+            atualizarBarraAgrupar();
+        });
         el('anAddCard').addEventListener('click', function () { var c = novoCard(); c.querySelector('.an-c').focus(); });
 
         el('anVoltar').addEventListener('click', function () { mostrar(false); });
