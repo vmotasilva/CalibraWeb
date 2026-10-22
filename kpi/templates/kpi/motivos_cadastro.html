@@ -1,0 +1,69 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Motivos de Perdas - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+    <div class="mb-3">
+        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-semibold">Gestão · Processos · Motivos de Perdas</span>
+        <h2 class="h3 fw-bold mt-2 mb-0">Cadastro de motivos</h2>
+        <p class="text-muted small mb-0">Bases de cadastro usadas para padronizar os motivos de perdas e os motivos de retorno.</p>
+    </div>
+
+    <ul class="nav nav-tabs mb-3">
+        {% if ver_perda %}<li class="nav-item"><a class="nav-link {% if tipo == 'perda' %}active fw-semibold{% endif %}" href="{% url 'kpi:motivos_perdas' %}"><i class="bi bi-x-octagon me-1"></i>Motivos de perdas</a></li>{% endif %}
+        {% if ver_retorno %}<li class="nav-item"><a class="nav-link {% if tipo == 'retorno' %}active fw-semibold{% endif %}" href="{% url 'kpi:motivos_retorno' %}"><i class="bi bi-arrow-return-left me-1"></i>Motivos de retorno</a></li>{% endif %}
+    </ul>
+
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 small">
+                        <thead class="table-light"><tr>
+                            <th style="width: 90px;">Ordem</th><th>Motivo</th><th>Descrição</th><th class="text-center">Ativo</th>{% if pode_editar or pode_excluir %}<th class="text-end">Ações</th>{% endif %}
+                        </tr></thead>
+                        <tbody>
+                        {% for i in itens %}
+                            <tr {% if not i.ativo %}class="text-muted"{% endif %}>
+                                {% if pode_editar %}
+                                <td><input form="mc{{ i.pk }}" type="number" min="0" name="ordem" value="{{ i.ordem }}" class="form-control form-control-sm"></td>
+                                <td><input form="mc{{ i.pk }}" name="nome" value="{{ i.nome }}" class="form-control form-control-sm" maxlength="150" required></td>
+                                <td><input form="mc{{ i.pk }}" name="descricao" value="{{ i.descricao }}" class="form-control form-control-sm" maxlength="255"></td>
+                                <td class="text-center"><input form="mc{{ i.pk }}" type="checkbox" name="ativo" class="form-check-input" {% if i.ativo %}checked{% endif %}></td>
+                                {% else %}
+                                <td>{{ i.ordem }}</td><td class="fw-semibold">{{ i.nome }}</td><td>{{ i.descricao }}</td>
+                                <td class="text-center">{% if i.ativo %}<span class="badge bg-success">Sim</span>{% else %}<span class="badge bg-secondary">Não</span>{% endif %}</td>
+                                {% endif %}
+                                {% if pode_editar or pode_excluir %}
+                                <td class="text-end text-nowrap">
+                                    {% if pode_editar %}<form id="mc{{ i.pk }}" method="post" action="{% url 'kpi:motivo_cadastro_salvar' %}" class="d-inline">{% csrf_token %}<input type="hidden" name="id" value="{{ i.pk }}"><button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button></form>{% endif %}
+                                    {% if pode_excluir %}<form method="post" action="{% url 'kpi:motivo_cadastro_excluir' i.pk %}" class="d-inline" onsubmit="return confirm('Excluir este motivo?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button></form>{% endif %}
+                                </td>
+                                {% endif %}
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted py-4">Nenhum {{ nome_tipo|lower }} cadastrado.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer bg-white small text-muted">Os motivos inativos continuam no cadastro, mas não devem ser oferecidos em novos lançamentos. Mantêm-se na ordem informada.</div>
+            </div>
+        </div>
+        {% if pode_editar %}
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm"><div class="card-body">
+                <h6 class="fw-bold">Novo {{ nome_tipo|lower }}</h6>
+                <form method="post" action="{% url 'kpi:motivo_cadastro_salvar' %}">{% csrf_token %}
+                    <input type="hidden" name="tipo" value="{{ tipo }}">
+                    <input name="nome" class="form-control mb-2" maxlength="150" placeholder="Motivo" required>
+                    <input name="descricao" class="form-control mb-2" maxlength="255" placeholder="Descrição (opcional)">
+                    <button class="btn btn-primary w-100"><i class="bi bi-plus-circle me-1"></i>Adicionar</button>
+                </form>
+                <p class="form-text mt-3 mb-0">A ordem de um novo motivo vai para o fim da lista; ajuste os números na tabela para reorganizar.</p>
+            </div></div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

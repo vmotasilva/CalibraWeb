@@ -728,3 +728,54 @@ class KpiTests(TestCase):
         d = aba('&p_mensal=acum&mot=mes&mes=2026-09')
         self.assertEqual([t['descricao'] for t in d['mensal']['top']], ['C'])
         self.assertIn('09/2026', d['mensal']['nav']['rotulo'])
+
+
+class MotivosCadastroTests(TestCase):
+    """Base de motivos de perdas e de retorno (Gestão > Processos > Motivos de Perdas)."""
+
+    def setUp(self):
+        self.user = User.objects.create_superuser('adm_motivos', 'm@x.com', 'x')
+        self.client.force_login(self.user)
+
+    def test_cadastro_de_motivos_de_perdas_e_de_retorno(self):
+        from kpi.models import MotivoCadastro
+        salvar = reverse('kpi:motivo_cadastro_salvar')
+        self.assertEqual(self.client.get(reverse('kpi:motivos_perdas')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('kpi:motivos_retorno')).status_code, 200)
+        # novo motivo vai para o fim da ordem do próprio tipo; os dois cadastros são independentes
+        self.client.post(salvar, {'tipo': 'perda', 'nome': 'Quebra no manuseio', 'descricao': 'Na bancada'})
+        self.client.post(salvar, {'tipo': 'perda', 'nome': 'Risco de garra'})
+        self.client.post(salvar, {'tipo': 'retorno', 'nome': 'Quebra no manuseio'})  # mesmo nome em outro tipo é permitido
+        self.assertEqual([m.ordem for m in MotivoCadastro.objects.filter(tipo='perda')], [1, 2])
+        self.assertEqual(MotivoCadastro.objects.filter(tipo='retorno').count(), 1)
+        # duplicado (sem diferenciar maiúsculas) e vazio são recusados
+        self.client.post(salvar, {'tipo': 'perda', 'nome': 'QUEBRA NO MANUSEIO'})
+        self.client.post(salvar, {'tipo': 'perda', 'nome': '  '})
+        self.client.post(salvar, {'tipo': 'x', 'nome': 'Qualquer'})
+        self.assertEqual(MotivoCadastro.objects.filter(tipo='perda').count(), 2)
+        self.assertFalse(MotivoCadastro.objects.filter(nome='Qualquer').exists())
+        # editar: nome, ordem e situação
+        item = MotivoCadastro.objects.get(tipo='perda', nome='Risco de garra')
+        self.client.post(salvar, {'id': item.pk, 'nome': 'Risco na garra', 'ordem': '0', 'descricao': 'HC'})  # sem "ativo" = inativo
+        item.refresh_from_db()
+        self.assertEqual((item.nome, item.ordem, item.ativo, item.descricao), ('Risco na garra', 0, False, 'HC'))
+        r = self.client.get(reverse('kpi:motivos_perdas'))
+        self.assertEqual([i.nome for i in r.context['itens']], ['Risco na garra', 'Quebra no manuseio'])
+        # excluir leva de volta à lista do mesmo tipo
+        resp = self.client.post(reverse('kpi:motivo_cadastro_excluir', args=[item.pk]))
+        self.assertRedirects(resp, reverse('kpi:motivos_perdas'), fetch_redirect_response=False)
+        self.assertFalse(MotivoCadastro.objects.filter(pk=item.pk).exists())
+
+    def test_motivos_no_painel_de_permissoes_e_sem_acesso_sem_permissao(self):
+        from django.contrib.auth.models import User, Permission
+        from shared.permissions import NAV_GROUP_PERMS, has_view_access
+        self.assertIn('Processos > Motivos de Perdas', NAV_GROUP_PERMS)
+        comum = User.objects.create_user('comum_perdas', password='x')
+        for nome in ('kpi:motivos_perdas', 'kpi:motivos_retorno', 'kpi:motivo_cadastro_salvar', 'kpi:motivo_cadastro_excluir'):
+            self.assertFalse(has_view_access(comum, nome), nome)
+        for cod in ('nav_mod_gestao', 'nav_gestao_processos', 'nav_gestao_motivos_perdas', 'nav_perdas_ver_perda', 'nav_perdas_ver_retorno'):
+            comum.user_permissions.add(Permission.objects.get(codename=cod))
+        comum = User.objects.get(pk=comum.pk)
+        self.assertTrue(has_view_access(comum, 'kpi:motivos_perdas'))
+        self.assertTrue(has_view_access(comum, 'kpi:motivos_retorno'))
+        self.assertFalse(has_view_access(comum, 'kpi:motivo_cadastro_salvar'))

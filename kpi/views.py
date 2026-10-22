@@ -853,3 +853,78 @@ def analise_dispensar_massa_view(request, pk):
             'dispensada': True, 'motivo_dispensa': motivo, 'causa': '', 'analise': '', 'registrado_por': request.user})
         aplicados[p.isoformat()] = {'c': '', 'a': False, 'd': True, 'm': motivo}
     return JsonResponse({'ok': True, 'aplicados': aplicados, 'ignorados': ignorados})
+
+
+# ---------------------------------------------------------------- base de motivos de perdas e de retorno
+def _tipo_motivo(valor, padrao='perda'):
+    from kpi.models import MotivoCadastro
+    return valor if valor in dict(MotivoCadastro.TIPOS) else padrao
+
+
+def _lista_motivos(request, tipo):
+    from kpi.models import MotivoCadastro
+    return render(request, 'kpi/motivos_cadastro.html', {
+        'tipo': tipo, 'tipos': MotivoCadastro.TIPOS,
+        'nome_tipo': dict(MotivoCadastro.TIPOS)[tipo],
+        'itens': MotivoCadastro.objects.filter(tipo=tipo),
+        'pode_editar': has_view_access(request.user, 'kpi:motivo_cadastro_salvar'),
+        'pode_excluir': has_view_access(request.user, 'kpi:motivo_cadastro_excluir'),
+        'ver_perda': has_view_access(request.user, 'kpi:motivos_perdas'),
+        'ver_retorno': has_view_access(request.user, 'kpi:motivos_retorno'),
+    })
+
+
+@login_required
+def motivos_perdas_view(request):
+    return _lista_motivos(request, 'perda')
+
+
+@login_required
+def motivos_retorno_view(request):
+    return _lista_motivos(request, 'retorno')
+
+
+@login_required
+@require_POST
+def motivo_cadastro_salvar_view(request):
+    """Cria ou atualiza um motivo da base (id vazio = novo)."""
+    from kpi.models import MotivoCadastro
+    pk = request.POST.get('id', '').strip()
+    item = get_object_or_404(MotivoCadastro, pk=pk) if pk.isdigit() else None
+    tipo = item.tipo if item else _tipo_motivo(request.POST.get('tipo'), '')
+    destino = 'kpi:motivos_retorno' if tipo == 'retorno' else 'kpi:motivos_perdas'
+    if not tipo:
+        messages.error(request, 'Tipo de motivo inválido.')
+        return redirect('kpi:motivos_perdas')
+    nome = request.POST.get('nome', '').strip()[:150]
+    if not nome:
+        messages.error(request, 'Informe o motivo.')
+        return redirect(destino)
+    if MotivoCadastro.objects.filter(tipo=tipo, nome__iexact=nome).exclude(pk=item.pk if item else None).exists():
+        messages.error(request, f'Já existe "{nome}" neste cadastro.')
+        return redirect(destino)
+    item = item or MotivoCadastro(tipo=tipo)
+    item.nome = nome
+    item.descricao = request.POST.get('descricao', '').strip()[:255]
+    ordem = request.POST.get('ordem', '').strip()
+    if ordem.isdigit():
+        item.ordem = int(ordem)
+    elif not item.pk:
+        ultimo = MotivoCadastro.objects.filter(tipo=tipo).order_by('-ordem').first()
+        item.ordem = (ultimo.ordem + 1) if ultimo else 1
+    item.ativo = (request.POST.get('ativo') == 'on') if pk else True
+    item.save()
+    messages.success(request, f'"{item.nome}" salvo.')
+    return redirect(destino)
+
+
+@login_required
+@require_POST
+def motivo_cadastro_excluir_view(request, pk):
+    from kpi.models import MotivoCadastro
+    item = get_object_or_404(MotivoCadastro, pk=pk)
+    destino = 'kpi:motivos_retorno' if item.tipo == 'retorno' else 'kpi:motivos_perdas'
+    nome = item.nome
+    item.delete()
+    messages.success(request, f'"{nome}" excluído.')
+    return redirect(destino)

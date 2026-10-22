@@ -460,6 +460,20 @@ PCP <i class="bi bi-chevron-down transition-transform"></i>
 </ul>
 </li>
 {% endif %}
+{% can_nav_group user 'Processos > Motivos de Perdas' as nav_grp_perdas %}
+{% if nav_grp_perdas %}
+{% can_nav_view user 'kpi:motivos_perdas' 'perdas' as nav_perdas_perda %}
+{% can_nav_view user 'kpi:motivos_retorno' 'perdas' as nav_perdas_retorno %}
+<li>
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAOPERDAS" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
+MOTIVOS DE PERDAS <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAOPERDAS">
+{% if nav_perdas_perda %}<li><a class="dropdown-item" href="{% url 'kpi:motivos_perdas' %}"><i class="bi bi-x-octagon"></i> Cadastro de Motivos de Perdas</a></li>{% endif %}
+{% if nav_perdas_retorno %}<li><a class="dropdown-item" href="{% url 'kpi:motivos_retorno' %}"><i class="bi bi-arrow-return-left"></i> Cadastro de Motivos de Retorno</a></li>{% endif %}
+</ul>
+</li>
+{% endif %}
 {% endif %}
 </ul>
 </li>

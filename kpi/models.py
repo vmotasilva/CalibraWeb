@@ -198,3 +198,24 @@ class AnaliseItem(models.Model):
         ordering = ['ordem', 'id']
         verbose_name = 'Item de causa e análise'
         verbose_name_plural = 'Itens de causa e análise'
+
+
+class MotivoCadastro(models.Model):
+    """Base de cadastro de motivos (de perda ou de retorno), em Gestão > Processos > Motivos de Perdas."""
+    TIPO_PERDA, TIPO_RETORNO = 'perda', 'retorno'
+    TIPOS = [(TIPO_PERDA, 'Motivo de perda'), (TIPO_RETORNO, 'Motivo de retorno')]
+
+    tipo = models.CharField('Tipo', max_length=8, choices=TIPOS)
+    nome = models.CharField('Motivo', max_length=150)
+    descricao = models.CharField('Descrição', max_length=255, blank=True)
+    ordem = models.PositiveIntegerField('Ordem', default=0)
+    ativo = models.BooleanField('Ativo', default=True)
+
+    class Meta:
+        ordering = ['tipo', 'ordem', 'nome']
+        unique_together = [('tipo', 'nome')]
+        verbose_name = 'Motivo cadastrado'
+        verbose_name_plural = 'Motivos cadastrados'
+
+    def __str__(self):
+        return f'{self.get_tipo_display()}: {self.nome}'

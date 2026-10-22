@@ -382,6 +382,33 @@ NAV_STRUCTURE = [
         ],
     },
     {
+        "key": "perdas",
+        "nome": "Motivos de Perdas",
+        "cor": "danger",
+        "icone": "bi bi-x-octagon",
+        # Módulo exibido só dentro de Gestão > Processos > Motivos de Perdas: a flag do módulo é a própria chave do grupo.
+        "module_perm": "core.nav_gestao_motivos_perdas",
+        "blocos": [
+            {
+                "key": "cadastros",
+                "grupo": "Processos > Motivos de Perdas",
+                "nome": "Cadastro de Motivos",
+                "perm": "core.nav_perdas_bloco_cadastros",
+                "funcoes": [
+                    {"nome": "Ver Motivos de Perdas", "view_name": "kpi:motivos_perdas", "perm": "core.nav_perdas_ver_perda"},
+                    {"nome": "Ver Motivos de Retorno", "view_name": "kpi:motivos_retorno", "perm": "core.nav_perdas_ver_retorno"},
+                    {
+                        "nome": "Cadastrar e Editar Motivos",
+                        "view_name": "kpi:motivo_cadastro_salvar",
+                        "perm": "core.nav_perdas_editar",
+                        "descricao": "Cria e altera motivos de perdas e de retorno (nome, descrição, ordem e situação).",
+                    },
+                    {"nome": "Excluir Motivos", "view_name": "kpi:motivo_cadastro_excluir", "perm": "core.nav_perdas_excluir"},
+                ],
+            },
+        ],
+    },
+    {
         "key": "metrologia",
         "nome": "Metrologia",
 
@@ -1760,6 +1787,7 @@ NAV_GROUP_PERMS = {
     "KPI": "core.nav_gestao_kpi",
     "Processos": "core.nav_gestao_processos",
     "Processos > PCP": "core.nav_gestao_pcp",
+    "Processos > Motivos de Perdas": "core.nav_gestao_motivos_perdas",
     "Qualidade": "core.nav_gestao_qualidade",
     "Qualidade > Homologações": "core.nav_gestao_homologacoes",
     "ISO 13485": "core.nav_auditoria_iso_grupo",
@@ -1775,7 +1803,7 @@ NAV_GROUP_PERMS = {
 # Seções do módulo de exibição "Gestão" e módulos inteiros exibidos dentro dele.
 GESTAO_SECOES = ("Ferramentas Auxiliares", "KPI", "Processos", "Qualidade")
 # Módulos cujos blocos (campo "grupo") aparecem dentro de uma seção de Gestão.
-GESTAO_MODULOS_COM_SECAO = ("laboratorio", "kpi", "pcp")
+GESTAO_MODULOS_COM_SECAO = ("laboratorio", "kpi", "pcp", "perdas")
 GESTAO_MODULES = {"boards": "Ferramentas Auxiliares", "diagramas": "Ferramentas Auxiliares"}
 
 
