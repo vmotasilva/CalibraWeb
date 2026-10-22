@@ -364,7 +364,7 @@ class PermissoesCFTests(CFBase):
 
     def test_menu_mostra_itens_do_cf(self):
         resp = self.client.get(reverse("laboratorio:cf_dashboard"))
-        self.assertContains(resp, reverse("laboratorio:cf_config_campos"))
+        self.assertContains(resp, "Campos do Formulário (HC e CF)")  # item unificado: leva à tela do HC ou do CF conforme o acesso
         self.assertContains(resp, reverse("laboratorio:cf_registro_create"))
 
 
@@ -476,3 +476,25 @@ class EquipeHMCUnificadaTests(CFBase):
         self.assertFalse(EquipeHC.objects.filter(colaborador=novo).exists())
         busca = self.client.get(reverse("laboratorio:cf_colaboradores_busca"), {"q": "NOVO"}).json()["results"]
         self.assertEqual(len(busca), 1)
+
+
+class ConfiguracaoUnificadaHMCTests(CFBase):
+    def test_telas_de_configuracao_trazem_o_seletor_entre_hc_e_cf(self):
+        for secao in ("campos", "cadastros", "integracoes"):
+            for modulo in ("hc", "cf"):
+                r = self.client.get(reverse(f"laboratorio:{modulo}_config_{secao}"))
+                self.assertEqual(r.status_code, 200, (modulo, secao))
+                html = r.content.decode()
+                # o seletor leva à mesma seção do outro formulário e a Equipe HMC unificada
+                self.assertIn(reverse(f"laboratorio:hc_config_{secao}"), html)
+                self.assertIn(reverse(f"laboratorio:cf_config_{secao}"), html)
+                self.assertIn(reverse("laboratorio:equipe_coating_list"), html)
+                self.assertIn("Rendimento HC", html)
+                self.assertIn("Retrabalho CF", html)
+
+    def test_menu_tem_um_item_por_secao(self):
+        html = self.client.get(reverse("laboratorio:equipe_coating_list")).content.decode()
+        for rotulo in ("Campos do Formulário (HC e CF)", "Cadastros Base (HC e CF)", "Integrações (HC e CF)"):
+            self.assertEqual(html.count(rotulo), 1, rotulo)
+        self.assertNotIn("HC · Campos do Formulário", html)
+        self.assertNotIn("Controle Final · Cadastros Base", html)

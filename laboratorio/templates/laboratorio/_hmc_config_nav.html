@@ -1,0 +1,38 @@
+{% comment %}Navegação unificada das configurações do HMC (Rendimento HC e Retrabalho CF).
+Uso: {% include 'laboratorio/_hmc_config_nav.html' with modulo='hc' ativa='campos' %} (modulo: hc | cf; ativa: campos | cadastros | integracoes){% endcomment %}
+{% load nav_access %}
+{% can_nav_view user 'laboratorio:hc_config_campos' 'laboratorio' as ok_hc_campos %}
+{% can_nav_view user 'laboratorio:hc_config_cadastros' 'laboratorio' as ok_hc_cadastros %}
+{% can_nav_view user 'laboratorio:hc_config_integracoes' 'laboratorio' as ok_hc_integracoes %}
+{% can_nav_view user 'laboratorio:cf_config_campos' 'laboratorio' as ok_cf_campos %}
+{% can_nav_view user 'laboratorio:cf_config_cadastros' 'laboratorio' as ok_cf_cadastros %}
+{% can_nav_view user 'laboratorio:cf_config_integracoes' 'laboratorio' as ok_cf_integracoes %}
+<div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+    <div class="btn-group" role="group" aria-label="Formulário configurado">
+        {% if ativa == 'campos' %}
+            {% if ok_hc_campos %}<a class="btn {% if modulo == 'hc' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'laboratorio:hc_config_campos' %}"><i class="bi bi-droplet-half me-1"></i>Rendimento HC</a>{% endif %}
+            {% if ok_cf_campos %}<a class="btn {% if modulo == 'cf' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'laboratorio:cf_config_campos' %}"><i class="bi bi-clipboard-check me-1"></i>Retrabalho CF</a>{% endif %}
+        {% elif ativa == 'cadastros' %}
+            {% if ok_hc_cadastros %}<a class="btn {% if modulo == 'hc' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'laboratorio:hc_config_cadastros' %}"><i class="bi bi-droplet-half me-1"></i>Rendimento HC</a>{% endif %}
+            {% if ok_cf_cadastros %}<a class="btn {% if modulo == 'cf' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'laboratorio:cf_config_cadastros' %}"><i class="bi bi-clipboard-check me-1"></i>Retrabalho CF</a>{% endif %}
+        {% else %}
+            {% if ok_hc_integracoes %}<a class="btn {% if modulo == 'hc' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'laboratorio:hc_config_integracoes' %}"><i class="bi bi-droplet-half me-1"></i>Rendimento HC</a>{% endif %}
+            {% if ok_cf_integracoes %}<a class="btn {% if modulo == 'cf' %}btn-primary{% else %}btn-outline-primary{% endif %}" href="{% url 'laboratorio:cf_config_integracoes' %}"><i class="bi bi-clipboard-check me-1"></i>Retrabalho CF</a>{% endif %}
+        {% endif %}
+    </div>
+    <ul class="nav nav-pills gap-1 mb-0">
+        {% if modulo == 'hc' %}
+        <li class="nav-item"><a class="nav-link {% if ativa == 'campos' %}active{% endif %}" href="{% url 'laboratorio:hc_config_campos' %}"><i class="bi bi-ui-checks-grid me-1"></i>Campos do formulário</a></li>
+        <li class="nav-item"><a class="nav-link {% if ativa == 'cadastros' %}active{% endif %}" href="{% url 'laboratorio:hc_config_cadastros' %}"><i class="bi bi-list-ul me-1"></i>Cadastros base</a></li>
+        <li class="nav-item"><a class="nav-link {% if ativa == 'integracoes' %}active{% endif %}" href="{% url 'laboratorio:hc_config_integracoes' %}"><i class="bi bi-arrow-repeat me-1"></i>Integrações</a></li>
+        {% else %}
+        <li class="nav-item"><a class="nav-link {% if ativa == 'campos' %}active{% endif %}" href="{% url 'laboratorio:cf_config_campos' %}"><i class="bi bi-ui-checks-grid me-1"></i>Campos do formulário</a></li>
+        <li class="nav-item"><a class="nav-link {% if ativa == 'cadastros' %}active{% endif %}" href="{% url 'laboratorio:cf_config_cadastros' %}"><i class="bi bi-list-ul me-1"></i>Cadastros base</a></li>
+        <li class="nav-item"><a class="nav-link {% if ativa == 'integracoes' %}active{% endif %}" href="{% url 'laboratorio:cf_config_integracoes' %}"><i class="bi bi-arrow-repeat me-1"></i>Integrações</a></li>
+        {% endif %}
+    </ul>
+    <div class="ms-auto d-flex gap-2">
+        <a class="btn btn-outline-secondary" href="{% url 'laboratorio:equipe_coating_list' %}"><i class="bi bi-people me-1"></i>Equipe HMC</a>
+        <a class="btn btn-outline-secondary" href="{% if modulo == 'hc' %}{% url 'laboratorio:hc_dashboard' %}{% else %}{% url 'laboratorio:cf_dashboard' %}{% endif %}"><i class="bi bi-bar-chart-line me-1"></i>Dashboard</a>
+    </div>
+</div>
