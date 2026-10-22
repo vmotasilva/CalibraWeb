@@ -33,6 +33,7 @@ urlpatterns = [
     path('listas/nova/', views.lista_form, name='lista_nova'),
     path('listas/<int:pk>/editar/', views.lista_form, name='lista_editar'),
     path('listas/<int:pk>/excluir/', views.lista_excluir, name='lista_excluir'),
+    path('pendencias/', views.pendencias, name='pendencias'),
     path('preencher/', views.preencher, name='preencher'),
     path('preencher/<int:pk>/', views.preencher_pagina, name='preencher_pagina'),
     path('preencher/<int:pk>/salvar/', views.preencher_salvar, name='preencher_salvar'),

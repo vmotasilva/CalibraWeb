@@ -1,0 +1,77 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}PCP - Pendências - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Pendências por data e turno</h4>
+    {% include "pcp/_nav.html" with secao="pendencias" %}
+
+    <form method="get" class="card card-body mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto"><label class="form-label mb-0">Data</label><input type="date" name="data" value="{{ data|date:'Y-m-d' }}" max="{{ hoje|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()"></div>
+            <div class="col-auto"><label class="form-label mb-0">Formulário</label>
+                <select name="formulario" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    {% for f in formularios %}<option value="{{ f.pk }}" {% if f.pk == formulario_id %}selected{% endif %}>{{ f.codigo }} - {{ f.titulo|truncatechars:40 }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <a class="btn btn-outline-secondary" href="?data={{ hoje|date:'Y-m-d' }}{% if formulario_id %}&formulario={{ formulario_id }}{% endif %}">Hoje</a>
+            </div>
+            <div class="col text-end">
+                {% if painel.devidos %}
+                    <span class="fs-5 fw-semibold">{{ painel.percentual }}%</span> preenchido
+                    <span class="text-muted">· {{ painel.feitos }} de {{ painel.devidos }} verificações devidas ·</span>
+                    <span class="{% if painel.pendentes %}text-danger fw-semibold{% else %}text-success{% endif %}">{{ painel.pendentes }} pendente{{ painel.pendentes|pluralize }}</span>
+                {% else %}<span class="text-muted">Nenhuma verificação devida nesta data.</span>{% endif %}
+            </div>
+        </div>
+    </form>
+
+    <div class="small text-muted mb-2">
+        Cada célula mostra <strong>feitas / devidas</strong> no turno. A devida depende da frequência do item (a cada turno, diária, semanal, mensal…);
+        itens "sob demanda / por evento" não entram. Clique na célula para preencher aquela página, data e turno.
+    </div>
+
+    {% for b in painel.blocos %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>{{ b.versao.formulario.codigo }} - {{ b.versao.formulario.titulo }}</strong>
+                <span>
+                    {% if b.percentual is not None %}<span class="badge {% if b.percentual == 100 %}bg-success{% elif b.percentual >= 70 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ b.percentual }}%</span>{% endif %}
+                    <span class="badge bg-secondary">{{ b.versao.revisao }}</span>
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Página</th>{% for t in turnos %}<th class="text-center" style="width:7rem">{{ t.sigla }}</th>{% endfor %}</tr></thead>
+                    <tbody>
+                    {% for grupo, linhas in b.grupos.items %}
+                        <tr class="table-light"><td colspan="{{ turnos|length|add:1 }}" class="small text-uppercase text-muted">{{ grupo }}</td></tr>
+                        {% for l in linhas %}
+                            <tr>
+                                <td>{{ l.pagina.nome }}</td>
+                                {% for c in l.celulas %}
+                                    <td class="text-center">
+                                        {% if c.devidos %}
+                                            <a href="{% url 'pcp:preencher_pagina' l.pagina.pk %}?data={{ data|date:'Y-m-d' }}&turno={{ c.turno.pk }}"
+                                               class="badge text-decoration-none {% if c.pendentes == 0 %}bg-success{% elif c.feitos == 0 %}bg-danger{% else %}bg-warning text-dark{% endif %}"
+                                               title="{{ c.pendentes }} pendente{{ c.pendentes|pluralize }}">{{ c.feitos }}/{{ c.devidos }}</a>
+                                        {% else %}<span class="text-muted">—</span>{% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    {% empty %}
+                        <tr><td colspan="{{ turnos|length|add:1 }}" class="text-center text-muted py-3">Sem páginas ativas.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center text-muted py-5">Nenhum formulário com revisão vigente.</div>
+    {% endfor %}
+    {% if not turnos %}<div class="alert alert-warning">Cadastre ao menos um turno ativo em <em>Turnos</em>.</div>{% endif %}
+</div>
+{% endblock %}

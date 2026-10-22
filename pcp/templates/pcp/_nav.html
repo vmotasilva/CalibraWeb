@@ -1,5 +1,6 @@
 {% load nav_access %}
 {% can_nav_view user 'pcp:preencher' 'pcp' as n_preencher %}
+{% can_nav_view user 'pcp:pendencias' 'pcp' as n_pend %}
 {% can_nav_view user 'pcp:ocorrencias' 'pcp' as n_ocorr %}
 {% can_nav_view user 'pcp:formularios' 'pcp' as n_form %}
 {% can_nav_view user 'pcp:turnos' 'pcp' as n_turnos %}
@@ -7,6 +8,7 @@
 {% can_nav_view user 'pcp:listas' 'pcp' as n_listas %}
 <ul class="nav nav-pills mb-3 flex-wrap gap-1">
     {% if n_preencher %}<li class="nav-item"><a class="nav-link {% if secao == 'preencher' %}active{% endif %}" href="{% url 'pcp:preencher' %}"><i class="bi bi-pencil-square me-1"></i>Preencher</a></li>{% endif %}
+    {% if n_pend %}<li class="nav-item"><a class="nav-link {% if secao == 'pendencias' %}active{% endif %}" href="{% url 'pcp:pendencias' %}"><i class="bi bi-hourglass-split me-1"></i>Pendências</a></li>{% endif %}
     {% if n_ocorr %}<li class="nav-item"><a class="nav-link {% if secao == 'ocorrencias' %}active{% endif %}" href="{% url 'pcp:ocorrencias' %}"><i class="bi bi-exclamation-triangle me-1"></i>Ocorrências</a></li>{% endif %}
     {% if n_form %}<li class="nav-item"><a class="nav-link {% if secao == 'formularios' %}active{% endif %}" href="{% url 'pcp:formularios' %}"><i class="bi bi-file-earmark-ruled me-1"></i>Formulários</a></li>{% endif %}
     {% if n_turnos %}<li class="nav-item"><a class="nav-link {% if secao == 'turnos' %}active{% endif %}" href="{% url 'pcp:turnos' %}"><i class="bi bi-clock me-1"></i>Turnos</a></li>{% endif %}

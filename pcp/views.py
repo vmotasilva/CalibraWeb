@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST
 
 from pcp.forms import (CampoForm, ImportarPlanilhaForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
+from pcp import pendencias as pend
 from pcp.importacao import importar_planilha
 from pcp.models import (Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, Ocorrencia, Pagina,
                         Resposta, Turno, Verificacao)
@@ -384,6 +385,20 @@ def preencher(request):
 
 
 @login_required
+def pendencias(request):
+    """Painel de pendências: por data, quais verificações devidas ainda não foram feitas em cada página e turno."""
+    data = _parse_data(request.GET.get('data'))
+    turnos_ativos = list(Turno.objects.filter(ativo=True))
+    formulario_id = request.GET.get('formulario') or None
+    if formulario_id and not str(formulario_id).isdigit():
+        formulario_id = None
+    painel = pend.painel(data, turnos_ativos, formulario_id)
+    return render(request, 'pcp/pendencias.html', {
+        'data': data, 'turnos': turnos_ativos, 'painel': painel, 'formularios': Formulario.objects.filter(ativo=True),
+        'formulario_id': int(formulario_id) if formulario_id else None, 'hoje': timezone.localdate()})
+
+
+@login_required
 def preencher_pagina(request, pk):
     pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario', 'maquina'), pk=pk)
     data = _parse_data(request.GET.get('data'))
@@ -391,14 +406,19 @@ def preencher_pagina(request, pk):
     turno = next((t for t in turnos_ativos if str(t.pk) == request.GET.get('turno')), turnos_ativos[0] if turnos_ativos else None)
     verificacao = Verificacao.objects.filter(pagina=pagina, data=data, turno=turno).first() if turno else None
     respostas = {r.campo_id: r for r in verificacao.respostas.all()} if verificacao else {}
+    devidos = pend.avaliar_pagina(pagina, data, [turno])[turno.pk] if turno else {}
     linhas = []
     for campo in pagina.campos.filter(ativo=True).select_related('frequencia', 'lista').prefetch_related('lista__opcoes'):
-        linhas.append({'campo': campo, 'resposta': respostas.get(campo.pk)})
+        resposta = respostas.get(campo.pk)
+        devido = campo.pk in devidos
+        linhas.append({'campo': campo, 'resposta': resposta, 'devido': devido,
+                       'pendente': devido and not devidos[campo.pk] and not (resposta and resposta.valor)})
     ocorrencias_dia = verificacao.ocorrencias.select_related('campo') if verificacao else []
     return render(request, 'pcp/preencher_pagina.html', {
         'pagina': pagina, 'versao': pagina.versao, 'data': data, 'turno': turno, 'turnos': turnos_ativos,
         'linhas': linhas, 'verificacao': verificacao, 'ocorrencias': ocorrencias_dia,
         'travada': pagina.versao.status != FormularioVersao.VIGENTE,
+        'n_devidos': sum(1 for l in linhas if l['devido']), 'n_pendentes': sum(1 for l in linhas if l['pendente']),
         'tipos_ocorrencia': Ocorrencia.TIPOS,
     })
 

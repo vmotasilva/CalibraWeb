@@ -426,6 +426,7 @@ PROCESSOS <i class="bi bi-chevron-down transition-transform"></i>
 {% can_nav_group user 'Processos > PCP' as nav_grp_pcp %}
 {% if nav_grp_pcp %}
 {% can_nav_view user 'pcp:preencher' 'pcp' as nav_pcp_preencher %}
+{% can_nav_view user 'pcp:pendencias' 'pcp' as nav_pcp_pend %}
 {% can_nav_view user 'pcp:ocorrencias' 'pcp' as nav_pcp_ocorr %}
 {% can_nav_view user 'pcp:formularios' 'pcp' as nav_pcp_form %}
 {% can_nav_view user 'pcp:turnos' 'pcp' as nav_pcp_turnos %}
@@ -437,6 +438,7 @@ PCP <i class="bi bi-chevron-down transition-transform"></i>
 </h6>
 <ul class="list-unstyled collapse ps-2" id="collapseGESTAOPCPMobile">
 {% if nav_pcp_preencher %}<li><a class="dropdown-item" href="{% url 'pcp:preencher' %}"><i class="bi bi-pencil-square"></i> Preencher Verificações</a></li>{% endif %}
+{% if nav_pcp_pend %}<li><a class="dropdown-item" href="{% url 'pcp:pendencias' %}"><i class="bi bi-hourglass-split"></i> Pendências</a></li>{% endif %}
 {% if nav_pcp_ocorr %}<li><a class="dropdown-item" href="{% url 'pcp:ocorrencias' %}"><i class="bi bi-exclamation-triangle"></i> Ocorrências</a></li>{% endif %}
 {% if nav_pcp_form %}<li><a class="dropdown-item" href="{% url 'pcp:formularios' %}"><i class="bi bi-file-earmark-ruled"></i> Formulários e Revisões</a></li>{% endif %}
 {% if nav_pcp_turnos %}<li><a class="dropdown-item" href="{% url 'pcp:turnos' %}"><i class="bi bi-clock"></i> Turnos</a></li>{% endif %}

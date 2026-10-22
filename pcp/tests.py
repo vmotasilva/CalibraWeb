@@ -9,6 +9,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from organization.models import Setor
+from pcp import pendencias as pend
 from pcp.importacao import frequencia_canonica, importar_planilha, parse_arquivo, parse_faixa, parse_mais_menos
 from pcp.models import (Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
@@ -224,3 +225,87 @@ class ImportacaoTests(PcpBase):
         r = self.client.post(reverse('pcp:importar'), {'arquivo': ruim, 'setor': self.setor.pk})
         self.assertEqual(r.status_code, 200)
         self.assertFalse(FormularioVersao.objects.filter(revisao='R01', formulario__codigo='FOR.998').exists())
+
+
+class PendenciasTests(PcpBase):
+    def setUp(self):
+        super().setUp()
+        self.t2 = Turno.objects.create(nome='Turno 2', sigla='T2', ordem=2)
+        mk = lambda nome, per: Frequencia.objects.create(nome=nome, periodicidade=per)
+        self.f_turno, self.f_dia, self.f_sem, self.f_mes, self.f_ev = (
+            self.freq, mk('Diária', 'diaria'), mk('Semanal', 'semanal'), mk('Mensal', 'mensal'), mk('Por evento', 'evento'))
+        self.c_lista.frequencia = self.f_turno
+        self.c_lista.save()
+        self.c_num.frequencia = self.f_dia
+        self.c_num.save()
+        self.c_sem = Campo.objects.create(pagina=self.pag, item='S-1', descricao='Semanal', tipo='texto', frequencia=self.f_sem)
+        self.c_mes = Campo.objects.create(pagina=self.pag, item='M-1', descricao='Mensal', tipo='texto', frequencia=self.f_mes)
+        self.c_ev = Campo.objects.create(pagina=self.pag, item='E-1', descricao='Evento', tipo='texto', frequencia=self.f_ev)
+        self.c_sem0 = Campo.objects.create(pagina=self.pag, item='X-1', descricao='Sem frequencia', tipo='texto')
+        self.v15.publicar()
+        self.turnos = [self.t1, self.t2]
+
+    def responder(self, dia, turno, campo, valor='Ok', pagina=None):
+        ver, _ = Verificacao.objects.get_or_create(pagina=pagina or self.pag, data=dia, turno=turno)
+        Resposta.objects.create(verificacao=ver, campo=campo, valor=valor)
+
+    def test_janelas(self):
+        d = date(2026, 10, 22)  # quinta-feira
+        self.assertEqual(pend.janela('semanal', d), (date(2026, 10, 19), date(2026, 10, 25)))
+        self.assertEqual(pend.janela('mensal', d), (date(2026, 10, 1), date(2026, 10, 31)))
+        self.assertEqual(pend.janela('trimestral', d), (date(2026, 10, 1), date(2026, 12, 31)))
+        self.assertEqual(pend.janela('semestral', d), (date(2026, 7, 1), date(2026, 12, 31)))
+        self.assertEqual(pend.janela('anual', d), (date(2026, 1, 1), date(2026, 12, 31)))
+        self.assertEqual(pend.janela('quinzenal', d), (date(2026, 10, 9), d))
+        self.assertIsNone(pend.janela('evento', d))
+
+    def test_devidos_e_pendentes(self):
+        d = date(2026, 10, 22)
+        r = pend.avaliar_pagina(self.pag, d, self.turnos)
+        # evento e sem frequência não entram; os 4 demais estão pendentes nos dois turnos
+        self.assertEqual(set(r[self.t1.pk]), {self.c_lista.pk, self.c_num.pk, self.c_sem.pk, self.c_mes.pk})
+        self.assertFalse(any(r[self.t1.pk].values()))
+
+    def test_cada_periodicidade_cumpre_na_sua_janela(self):
+        d = date(2026, 10, 22)
+        self.responder(d, self.t1, self.c_lista)           # turno: só T1
+        self.responder(d, self.t2, self.c_num, '-0,7')     # diária: vale para os dois turnos
+        self.responder(date(2026, 10, 19), self.t1, self.c_sem, 'x')  # semanal: segunda da mesma semana
+        self.responder(date(2026, 9, 30), self.t1, self.c_mes, 'x')   # mensal: mês anterior NÃO vale
+        r = pend.avaliar_pagina(self.pag, d, self.turnos)
+        self.assertTrue(r[self.t1.pk][self.c_lista.pk])
+        self.assertFalse(r[self.t2.pk][self.c_lista.pk])
+        self.assertTrue(r[self.t1.pk][self.c_num.pk] and r[self.t2.pk][self.c_num.pk])
+        self.assertTrue(r[self.t1.pk][self.c_sem.pk])
+        self.assertFalse(r[self.t1.pk][self.c_mes.pk])
+        self.assertFalse(pend.avaliar_pagina(self.pag, date(2026, 10, 26), self.turnos)[self.t1.pk][self.c_sem.pk])  # semana seguinte
+
+    def test_resposta_em_branco_nao_conta(self):
+        d = date(2026, 10, 22)
+        self.responder(d, self.t1, self.c_lista, valor='')
+        self.assertFalse(pend.avaliar_pagina(self.pag, d, self.turnos)[self.t1.pk][self.c_lista.pk])
+
+    def test_historico_vale_entre_revisoes(self):
+        d = date(2026, 10, 22)
+        self.responder(date(2026, 10, 5), self.t1, self.c_mes, 'feito')
+        nova = self.v15.clonar('R16')
+        nova.publicar()
+        pag16 = nova.paginas.get()
+        self.assertNotEqual(pag16.pk, self.pag.pk)
+        r = pend.avaliar_pagina(pag16, d, self.turnos)
+        c_mes16 = pag16.campos.get(item='M-1')
+        self.assertTrue(r[self.t1.pk][c_mes16.pk])  # mensal já cumprida na revisão anterior
+
+    def test_painel_e_tela(self):
+        d = date(2026, 10, 22)
+        self.responder(d, self.t1, self.c_lista)
+        p = pend.painel(d, self.turnos)
+        self.assertEqual((p['devidos'], p['feitos'], p['pendentes']), (8, 1, 7))
+        self.assertEqual(p['percentual'], 12)
+        r = self.client.get(reverse('pcp:pendencias') + '?data=2026-10-22')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, '1/4')  # T1: 1 feita de 4 devidas
+        r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
+        self.assertEqual(r.context['n_devidos'], 4)
+        self.assertEqual(r.context['n_pendentes'], 3)
+        self.assertContains(r, 'Mostrar só pendentes')

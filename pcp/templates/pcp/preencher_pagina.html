@@ -23,6 +23,13 @@
         </div>
     </form>
 
+    {% if turno and n_devidos %}
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+            <span><strong>{{ n_devidos|add:0 }}</strong> verificações devidas neste turno ·
+                <span class="{% if n_pendentes %}text-danger fw-semibold{% else %}text-success{% endif %}">{{ n_pendentes }} pendente{{ n_pendentes|pluralize }}</span></span>
+            {% if n_pendentes %}<div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="so_pendentes"><label class="form-check-label" for="so_pendentes">Mostrar só pendentes</label></div>{% endif %}
+        </div>
+    {% endif %}
     {% if travada %}<div class="alert alert-warning py-2">Esta página pertence a uma revisão {{ versao.get_status_display|lower }}; só é possível lançar na revisão vigente.</div>{% endif %}
     {% if not turno %}<div class="alert alert-warning py-2">Cadastre ao menos um turno ativo em <em>Turnos</em>.</div>{% endif %}
 
@@ -35,11 +42,11 @@
                 <thead><tr><th>Item</th><th>O que verificar</th><th>Especificação</th><th>Frequência</th><th style="min-width:14rem">Resultado</th><th>Plano de reação</th></tr></thead>
                 <tbody>
                 {% for l in linhas %}{% with c=l.campo r=l.resposta %}
-                    <tr class="{% if r.conforme == False %}table-danger{% endif %}">
+                    <tr class="{% if r.conforme == False %}table-danger{% elif l.pendente %}table-warning{% endif %}" data-pendente="{% if l.pendente %}1{% else %}0{% endif %}">
                         <td class="text-nowrap fw-semibold {% if c.critico %}text-danger{% endif %}">{{ c.item|default:"—" }}</td>
                         <td>{% if c.etapa %}<div class="small text-muted">{{ c.etapa }}</div>{% endif %}{{ c.descricao }}{% if c.metodo %}<div class="small text-muted">{{ c.metodo }}</div>{% endif %}</td>
                         <td class="small">{{ c.especificacao|default:"—" }}</td>
-                        <td class="small">{{ c.frequencia|default:"—" }}{% if c.frequencia_detalhe %}<div class="text-muted">{{ c.frequencia_detalhe|truncatechars:80 }}</div>{% endif %}</td>
+                        <td class="small">{{ c.frequencia|default:"—" }}{% if l.pendente %} <span class="badge bg-warning text-dark">Pendente</span>{% elif l.devido %} <span class="badge bg-success">Em dia</span>{% endif %}{% if c.frequencia_detalhe %}<div class="text-muted">{{ c.frequencia_detalhe|truncatechars:80 }}</div>{% endif %}</td>
                         <td>
                             {% if c.tipo == 'lista' %}
                                 <select name="c_{{ c.pk }}" class="form-select form-select-sm" {% if travada %}disabled{% endif %}>
@@ -87,4 +94,15 @@
         {% if not travada and turno %}<button class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Salvar verificação</button>{% endif %}
     </form>
 </div>
+<script>
+(function () {
+    var cb = document.getElementById('so_pendentes');
+    if (!cb) return;
+    cb.addEventListener('change', function () {
+        document.querySelectorAll('tr[data-pendente]').forEach(function (tr) {
+            tr.style.display = (cb.checked && tr.dataset.pendente !== '1') ? 'none' : '';
+        });
+    });
+})();
+</script>
 {% endblock %}
