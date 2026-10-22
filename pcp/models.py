@@ -139,6 +139,13 @@ class Formulario(models.Model):
         return Pagina.objects.filter(versao__formulario=self, versao__status__in=[FormularioVersao.VIGENTE, FormularioVersao.RASCUNHO],
                                      nome__in=list(nomes))
 
+    def definir_ordem_paginas(self, versao, nomes):
+        """Grava a ordem de exibição (posição na lista) nas páginas de mesmo nome, nas revisões vigente e em rascunho
+        e na revisão informada, para a ordem escolhida valer em todas as telas e nas próximas revisões."""
+        for posicao, nome in enumerate(nomes):
+            Pagina.objects.filter(versao=versao, nome=nome).update(ordem=posicao)
+            self.paginas_equivalentes([nome]).update(ordem=posicao)
+
     def ordenar_grupos(self, grupos):
         """Reordena um dict {nome_do_grupo: valor} pela ordem cadastrada; 'Sem grupo' sempre por último."""
         ordem = {g.nome: g.ordem for g in self.grupos.all()}

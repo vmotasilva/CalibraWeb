@@ -603,3 +603,68 @@ class ExcluirFormularioTests(PcpBase):
         self.assertRedirects(r, reverse('pcp:formularios'))
         self.assertFalse(Formulario.objects.filter(pk=self.form.pk).exists())
         self.assertEqual((Verificacao.objects.count(), Resposta.objects.count(), Ocorrencia.objects.count()), (0, 0, 0))
+
+
+class OrdemPaginasTests(PcpBase):
+    def setUp(self):
+        super().setUp()
+        self.pag.delete()
+        self.nomes = ['DLP (10)', 'DLP (2)', 'DLP (1)']
+        # ordem igual (0) em todas: a ordenação precisa funcionar mesmo com valores repetidos
+        self.pags = [Pagina.objects.create(versao=self.v15, nome=n, grupo='Polimento', ordem=0) for n in self.nomes]
+        self.v15.publicar()
+
+    def nomes_na_ordem(self, versao=None):
+        return [p.nome for p in (versao or self.v15).paginas.all()]
+
+    def posicoes(self, html, nomes):
+        return [html.index(n) for n in nomes]
+
+    def test_ordenar_az_natural(self):
+        self.client.post(reverse('pcp:grupo_ordenar', args=[self.form.pk]), {'filtro': 'Polimento'})
+        self.assertEqual(self.nomes_na_ordem(), ['DLP (1)', 'DLP (2)', 'DLP (10)'])  # 10 depois de 2
+
+    def test_subir_e_descer_dentro_do_grupo(self):
+        self.client.post(reverse('pcp:grupo_ordenar', args=[self.form.pk]), {'filtro': 'Polimento'})
+        p10 = Pagina.objects.get(nome='DLP (10)')
+        self.client.post(reverse('pcp:pagina_mover', args=[p10.pk]), {'dir': 'up'})
+        self.assertEqual(self.nomes_na_ordem(), ['DLP (1)', 'DLP (10)', 'DLP (2)'])
+        p1 = Pagina.objects.get(nome='DLP (1)')
+        self.client.post(reverse('pcp:pagina_mover', args=[p1.pk]), {'dir': 'up'})  # já é a primeira: não muda
+        self.assertEqual(self.nomes_na_ordem(), ['DLP (1)', 'DLP (10)', 'DLP (2)'])
+        self.client.post(reverse('pcp:pagina_mover', args=[p1.pk]), {'dir': 'down'})
+        self.assertEqual(self.nomes_na_ordem(), ['DLP (10)', 'DLP (1)', 'DLP (2)'])
+
+    def test_ordem_vale_para_rascunho_com_mesmo_nome(self):
+        rascunho = self.v15.clonar('R16')
+        self.client.post(reverse('pcp:grupo_ordenar', args=[self.form.pk]), {'filtro': 'Polimento'})
+        self.assertEqual(self.nomes_na_ordem(rascunho), ['DLP (1)', 'DLP (2)', 'DLP (10)'])
+
+    def test_ordem_aparece_nas_telas(self):
+        self.client.post(reverse('pcp:grupo_ordenar', args=[self.form.pk]), {'filtro': 'Polimento'})
+        p10 = Pagina.objects.get(nome='DLP (10)')
+        self.client.post(reverse('pcp:pagina_mover', args=[p10.pk]), {'dir': 'up'})  # 1, 10, 2
+        esperado = ['DLP (1)', 'DLP (10)', 'DLP (2)']
+        for url in (reverse('pcp:preencher'), reverse('pcp:versao_detalhe', args=[self.v15.pk]),
+                    reverse('pcp:grupos', args=[self.form.pk]) + '?grupo=Polimento'):
+            html = self.client.get(url).content.decode()
+            pos = self.posicoes(html, esperado)
+            self.assertEqual(pos, sorted(pos), url)
+        # pendências e atrasos precisam de itens devidos para listar a página; cria uma frequência por turno
+        f = Frequencia.objects.create(nome='Turno X', periodicidade='turno')
+        for p in Pagina.objects.all():
+            Campo.objects.create(pagina=p, item='1', descricao='x', tipo='texto', frequencia=f)
+        self.v15.vigencia = date(2026, 10, 1)
+        self.v15.save()
+        html = self.client.get(reverse('pcp:pendencias') + '?data=2026-10-22').content.decode()
+        pos = self.posicoes(html, esperado)
+        self.assertEqual(pos, sorted(pos))
+        html = self.client.get(reverse('pcp:atrasos') + '?dias=7').content.decode()
+        pos = self.posicoes(html, esperado)
+        self.assertEqual(pos, sorted(pos))
+
+    def test_setas_desabilitadas_nas_pontas(self):
+        self.client.post(reverse('pcp:grupo_ordenar', args=[self.form.pk]), {'filtro': 'Polimento'})
+        r = self.client.get(reverse('pcp:grupos', args=[self.form.pk]) + '?grupo=Polimento')
+        paginas = r.context['paginas']
+        self.assertEqual([(p.pode_subir, p.pode_descer) for p in paginas], [(False, True), (True, True), (True, False)])

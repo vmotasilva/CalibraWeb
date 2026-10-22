@@ -1,4 +1,5 @@
 import datetime
+import re
 from collections import Counter
 
 from django.contrib import messages
@@ -129,7 +130,7 @@ def versao_nova(request, pk):
 @login_required
 def versao_detalhe(request, pk):
     versao = get_object_or_404(FormularioVersao.objects.select_related('formulario__setor'), pk=pk)
-    paginas = versao.paginas.annotate(n_campos=Count('campos')).select_related('maquina')
+    paginas = versao.paginas.annotate(n_campos=Count('campos')).select_related('maquina').order_by('grupo', 'ordem', 'nome')
     grupos = {}
     for p in paginas:
         grupos.setdefault(p.grupo or 'Sem grupo', []).append(p)
@@ -226,6 +227,44 @@ def versao_grupos(request, pk):
     return redirect('pcp:grupos', versao.formulario_id)
 
 
+def _chave_natural(texto):
+    """'DLP (10)' depois de 'DLP (2)': números comparados como números."""
+    return [int(t) if t.isdigit() else t for t in re.split(r'(\d+)', (texto or '').lower())]
+
+
+def _paginas_do_grupo(versao, grupo):
+    return sorted(versao.paginas.filter(grupo=grupo), key=lambda p: (p.ordem, _chave_natural(p.nome)))
+
+
+@login_required
+@require_POST
+def pagina_mover(request, pk):
+    """Sobe ou desce a página dentro do grupo dela (a ordem vale para as páginas de mesmo nome nas outras revisões)."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario'), pk=pk)
+    irmas = _paginas_do_grupo(pagina.versao, pagina.grupo)
+    i = next(k for k, p in enumerate(irmas) if p.pk == pagina.pk)
+    j = i - 1 if request.POST.get('dir') == 'up' else i + 1
+    if 0 <= j < len(irmas):
+        irmas[i], irmas[j] = irmas[j], irmas[i]
+    pagina.versao.formulario.definir_ordem_paginas(pagina.versao, [p.nome for p in irmas])
+    return _volta_grupos(pagina.versao.formulario_id, request.POST.get('filtro', ''))
+
+
+@login_required
+@require_POST
+def grupo_ordenar(request, pk):
+    """Ordena as páginas de um grupo (ou as sem grupo) em ordem alfabética natural."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    versao = formulario.versao_vigente or formulario.versoes.first()
+    filtro = request.POST.get('filtro', '')
+    if versao:
+        grupo = '' if filtro == '__sem__' else filtro
+        paginas = sorted(versao.paginas.filter(grupo=grupo), key=lambda p: _chave_natural(p.nome))
+        formulario.definir_ordem_paginas(versao, [p.nome for p in paginas])
+        messages.success(request, f'{len(paginas)} página(s) ordenada(s) de A a Z.')
+    return _volta_grupos(pk, filtro)
+
+
 @login_required
 def grupos(request, pk):
     """Gerencia os grupos do formulário e associa páginas a eles (individualmente ou em massa)."""
@@ -244,7 +283,10 @@ def grupos(request, pk):
         visiveis = [p for p in paginas if p.grupo == filtro]
     else:
         visiveis = list(paginas)
-    visiveis.sort(key=lambda p: (ordem.get(p.grupo, 10 ** 6) if p.grupo else 10 ** 7, p.ordem, p.nome))
+    visiveis.sort(key=lambda p: (ordem.get(p.grupo, 10 ** 6) if p.grupo else 10 ** 7, p.ordem, _chave_natural(p.nome)))
+    for i, p in enumerate(visiveis):
+        p.pode_subir = i > 0 and visiveis[i - 1].grupo == p.grupo
+        p.pode_descer = i < len(visiveis) - 1 and visiveis[i + 1].grupo == p.grupo
     return render(request, 'pcp/grupos.html', {
         'formulario': formulario, 'versao': versao, 'grupos': lista_grupos, 'paginas': visiveis, 'filtro': filtro,
         'total': len(paginas), 'sem_grupo': contagem.get('', 0), 'inativas': sum(1 for p in paginas if not p.ativo)})

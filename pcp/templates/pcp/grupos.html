@@ -14,6 +14,7 @@
         </div>
     </div>
     <div class="small text-muted mb-3">
+        A <strong>ordem</strong> das páginas (setas ↑ ↓, dentro de cada grupo) e a dos grupos definem a ordem de exibição em Preencher, Pendências, Atrasos e na revisão, e valem para todas as revisões do formulário.
         Um <strong>grupo</strong> só organiza as páginas nas telas e vale para todas as revisões do formulário (a página é reconhecida pelo nome).
         Um <strong>bloco</strong> é uma página/equipamento: se não tiver utilidade ou obrigatoriedade de preenchimento, <strong>exclua</strong> (sem verificações lançadas)
         ou <strong>desative</strong> (com histórico: sai do preenchimento, das pendências e dos atrasos, mas os registros são mantidos).
@@ -70,21 +71,26 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span>Páginas{% if filtro == '__sem__' %} sem grupo{% elif filtro %} do grupo <strong>{{ filtro }}</strong>{% endif %}
                         <span class="text-muted">({{ paginas|length }}{% if inativas %} · {{ inativas }} inativa{{ inativas|pluralize }} no formulário{% endif %})</span></span>
+                    {% if filtro %}<button type="submit" class="btn btn-sm btn-outline-secondary" data-mover="1" formnovalidate formmethod="post" formaction="{% url 'pcp:grupo_ordenar' formulario.pk %}" title="Ordena as páginas deste grupo em ordem alfabética (números como números)"><i class="bi bi-sort-alpha-down me-1"></i>Ordenar A–Z</button>{% endif %}
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover align-middle mb-0">
-                        <thead><tr><th style="width:2rem"><input type="checkbox" class="form-check-input" id="marcar-todas" title="Marcar todas"></th><th>Página</th><th>Grupo</th><th class="text-center">Campos</th><th>Situação</th></tr></thead>
+                        <thead><tr><th style="width:2rem"><input type="checkbox" class="form-check-input" id="marcar-todas" title="Marcar todas"></th><th style="width:5.5rem">Ordem</th><th>Página</th><th>Grupo</th><th class="text-center">Campos</th><th>Situação</th></tr></thead>
                         <tbody>
                         {% for p in paginas %}
                             <tr class="{% if not p.ativo %}text-muted{% endif %}">
                                 <td><input type="checkbox" class="form-check-input marcar" name="paginas" value="{{ p.pk }}"></td>
+                                <td class="text-nowrap">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-1" data-mover="1" formnovalidate formmethod="post" formaction="{% url 'pcp:pagina_mover' p.pk %}" name="dir" value="up" title="Subir" {% if not p.pode_subir %}disabled{% endif %}><i class="bi bi-arrow-up"></i></button>
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary py-0 px-1" data-mover="1" formnovalidate formmethod="post" formaction="{% url 'pcp:pagina_mover' p.pk %}" name="dir" value="down" title="Descer" {% if not p.pode_descer %}disabled{% endif %}><i class="bi bi-arrow-down"></i></button>
+                                </td>
                                 <td><a href="{% url 'pcp:pagina_detalhe' p.pk %}" class="text-decoration-none">{{ p.nome }}</a></td>
                                 <td>{% if p.grupo %}{{ p.grupo }}{% else %}<span class="badge bg-warning text-dark">Sem grupo</span>{% endif %}</td>
                                 <td class="text-center">{{ p.n_campos }}</td>
                                 <td>{% if p.ativo %}<span class="badge bg-success">Ativa</span>{% else %}<span class="badge bg-secondary">Inativa</span>{% endif %}</td>
                             </tr>
                         {% empty %}
-                            <tr><td colspan="5" class="text-center text-muted py-4">Nenhuma página neste filtro.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">Nenhuma página neste filtro.</td></tr>
                         {% endfor %}
                         </tbody>
                     </table>
@@ -138,6 +144,7 @@
     });
     form.addEventListener('change', atualiza);
     form.addEventListener('submit', function (ev) {
+        if (ev.submitter && ev.submitter.dataset.mover) return;  // setas de ordem e "Ordenar A-Z" não dependem da seleção
         if (!marcadas()) { ev.preventDefault(); alert('Selecione ao menos uma página.'); return; }
         if (acao.value === 'excluir' && !confirm('Excluir as ' + marcadas() + ' página(s) selecionadas e seus campos? Páginas com verificações lançadas não são excluídas.')) ev.preventDefault();
         if (acao.value === 'desativar' && !confirm('Desativar as ' + marcadas() + ' página(s)? Elas saem do preenchimento, das pendências e dos atrasos.')) ev.preventDefault();

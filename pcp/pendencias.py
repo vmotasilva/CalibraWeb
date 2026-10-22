@@ -188,8 +188,6 @@ def painel_atrasos(ini, fim, turnos, formulario_id=None, hoje=None):
                 'pagina': pagina, 'por_data': por_data, 'celulas': [(d, por_data.get(d)) for d in datas],
                 'devidos': devidos, 'atrasados': len(atrasos),
                 'percentual': round(100 * (devidos - len(atrasos)) / devidos) if devidos else None})
-        for linhas in grupos.values():
-            linhas.sort(key=lambda l: -l['atrasados'])
         blocos.append({'versao': versao, 'grupos': versao.formulario.ordenar_grupos(grupos), 'devidos': b_devidos, 'atrasados': b_atrasos, 'rastreio': rastreio,
                        'percentual': round(100 * (b_devidos - b_atrasos) / b_devidos) if b_devidos else None})
         t_devidos += b_devidos
