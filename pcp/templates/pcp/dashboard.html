@@ -1,0 +1,145 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}PCP - Dashboard - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Dashboard de acompanhamento</h4>
+    {% include "pcp/_nav.html" with secao="dashboard" %}
+
+    <form method="get" class="card card-body mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto"><label class="form-label mb-0">Período</label>
+                <select name="dias" class="form-select" onchange="this.form.submit()">
+                    {% for p in periodos %}<option value="{{ p }}" {% if p == dias %}selected{% endif %}>Últimos {{ p }} dias</option>{% endfor %}
+                </select></div>
+            <div class="col-auto"><label class="form-label mb-0">Até</label>
+                <input type="date" name="ate" value="{{ fim|date:'Y-m-d' }}" max="{{ hoje|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()"></div>
+            <div class="col-auto"><label class="form-label mb-0">Formulário</label>
+                <select name="formulario" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    {% for f in formularios %}<option value="{{ f.pk }}" {% if f.pk == formulario_id %}selected{% endif %}>{{ f.codigo }} - {{ f.titulo|truncatechars:40 }}</option>{% endfor %}
+                </select></div>
+            <div class="col-auto"><a class="btn btn-outline-secondary" href="?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}{% if formulario_id %}&formulario={{ formulario_id }}{% endif %}&atualizar=1" title="Recalcula agora (os dados ficam em cache por 2 minutos)"><i class="bi bi-arrow-clockwise"></i> Atualizar</a></div>
+            <div class="col text-end small text-muted">{{ d.ini|date:"d/m/Y" }} a {{ d.fim|date:"d/m/Y" }} · hoje não entra (veja <a href="{% url 'pcp:pendencias' %}">Pendências</a>)</div>
+        </div>
+    </form>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Cumprimento no período</div>
+            <div class="display-6 fw-semibold {% if d.pct is None %}text-muted{% elif d.pct >= 95 %}text-success{% elif d.pct >= 80 %}text-warning{% else %}text-danger{% endif %}">{% if d.pct is None %}—{% else %}{{ d.pct }}%{% endif %}</div>
+        </div></div></div>
+        <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Verificações com prazo encerrado</div>
+            <div class="display-6 fw-semibold">{{ d.devidos }}</div>
+        </div></div></div>
+        <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Em atraso (sem lançamento)</div>
+            <div class="display-6 fw-semibold {% if d.atrasados %}text-danger{% else %}text-success{% endif %}">{{ d.atrasados }}</div>
+        </div></div></div>
+        <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+            <div class="text-muted small">Turnos com máquina em manutenção/parada</div>
+            <div class="display-6 fw-semibold">{{ d.paradas }}</div>
+            <div class="small text-muted">itens desses turnos não entram no cálculo</div>
+        </div></div></div>
+    </div>
+
+    {% if d.devidos %}
+    <div class="row g-3 mb-3">
+        <div class="col-lg-7"><div class="card h-100"><div class="card-body">
+            <div class="fw-semibold mb-2">Cumprimento ao longo do período <span class="small text-muted fw-normal">(por {{ d.agrupamento }})</span></div>
+            <div style="position:relative; height:260px"><canvas id="grafico-evolucao" role="img" aria-label="Cumprimento por {{ d.agrupamento }} no período"></canvas></div>
+        </div></div></div>
+        <div class="col-lg-5"><div class="card h-100"><div class="card-body">
+            <div class="fw-semibold mb-2">Cumprimento por frequência</div>
+            <div style="position:relative; height:260px"><canvas id="grafico-frequencias" role="img" aria-label="Cumprimento por frequência"></canvas></div>
+        </div></div></div>
+    </div>
+    {% endif %}
+
+    <div class="small text-muted mb-2">
+        Cada célula mostra o <strong>% de cumprimento</strong> e <strong>feitas/devidas</strong> da frequência naquela página: uma verificação devida conta uma vez por prazo
+        (a cada turno, dia, semana, mês…) e só entra depois que o prazo encerra. <span class="badge bg-success">≥ 95%</span> <span class="badge bg-warning text-dark">80–94%</span> <span class="badge bg-danger">&lt; 80%</span>
+        Clique no nome da página para ver os itens em atraso.
+    </div>
+
+    {% for b in d.blocos %}
+        <div class="card mb-3">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-1">
+                <strong>{{ b.codigo }} - {{ b.titulo }}</strong>
+                <span>
+                    {% if b.pct is not None %}<span class="badge fs-6 {% if b.pct >= 95 %}bg-success{% elif b.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ b.pct }}%</span>
+                    <span class="small text-muted">{{ b.feitos }}/{{ b.devidos }}</span>{% endif %}
+                    <span class="badge bg-secondary">{{ b.revisao }}</span>
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 text-center">
+                    <thead><tr>
+                        <th class="text-start">Página</th>
+                        {% for c in d.colunas %}<th class="small fw-normal">{{ c.nome }}</th>{% endfor %}
+                        <th>Total</th><th>Em atraso</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for g in b.grupos %}
+                        <tr class="table-light"><td colspan="{{ d.colunas|length|add:3 }}" class="text-start small text-uppercase text-muted">{{ g.nome }}</td></tr>
+                        {% for l in g.linhas %}
+                            <tr>
+                                <td class="text-start text-nowrap"><a href="{% url 'pcp:atrasos_pagina' l.pagina_id %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}" class="text-decoration-none">{{ l.nome }}</a></td>
+                                {% for c in l.celulas %}
+                                    <td>{% if c %}
+                                        <span class="badge {% if c.pct >= 95 %}bg-success{% elif c.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ c.pct }}%</span>
+                                        <div class="small text-muted">{{ c.feitos }}/{{ c.devidos }}</div>
+                                    {% else %}<span class="text-muted">·</span>{% endif %}</td>
+                                {% endfor %}
+                                <td>{% if l.pct is not None %}<span class="fw-semibold">{{ l.pct }}%</span>{% else %}—{% endif %}</td>
+                                <td class="{% if l.atrasados %}text-danger fw-semibold{% endif %}">{{ l.atrasados }}</td>
+                            </tr>
+                        {% endfor %}
+                    {% empty %}
+                        <tr><td colspan="{{ d.colunas|length|add:3 }}" class="text-muted py-3">Sem páginas ativas.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center text-muted py-5">Nenhum formulário com revisão vigente.</div>
+    {% endfor %}
+    {% if not d.devidos and d.blocos %}<div class="alert alert-info">Nenhuma verificação com prazo encerrado no período. Se o formulário foi publicado há pouco, os prazos só contam a partir da data de vigência.</div>{% endif %}
+</div>
+
+{{ grafico|json_script:"dados-dashboard" }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function () {
+    if (typeof Chart === 'undefined') return;
+    var dados = JSON.parse(document.getElementById('dados-dashboard').textContent);
+    var cor = function (p) { return p === null ? '#9aa0a6' : (p >= 95 ? '#198754' : (p >= 80 ? '#e0a800' : '#dc3545')); };
+    var evo = document.getElementById('grafico-evolucao');
+    if (evo && dados.evolucao.length) {
+        new Chart(evo, {
+            type: 'line',
+            data: { labels: dados.evolucao.map(function (e) { return e.rotulo; }),
+                    datasets: [{ label: 'Cumprimento (%)', data: dados.evolucao.map(function (e) { return e.pct; }),
+                                 borderColor: '#14284b', backgroundColor: 'rgba(20,40,75,.12)', fill: true, tension: .25, pointRadius: 3, spanGaps: true }] },
+            options: { maintainAspectRatio: false, scales: { y: { min: 0, max: 100, ticks: { callback: function (v) { return v + '%'; } } } },
+                       plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: function (c) {
+                           var e = dados.evolucao[c.dataIndex]; return e.feitos + ' de ' + e.devidos + ' verificações'; } } } } }
+        });
+    }
+    var fr = document.getElementById('grafico-frequencias');
+    if (fr && dados.frequencias.length) {
+        new Chart(fr, {
+            type: 'bar',
+            data: { labels: dados.frequencias.map(function (f) { return f.nome; }),
+                    datasets: [{ label: 'Cumprimento (%)', data: dados.frequencias.map(function (f) { return f.pct; }),
+                                 backgroundColor: dados.frequencias.map(function (f) { return cor(f.pct); }) }] },
+            options: { indexAxis: 'y', maintainAspectRatio: false, scales: { x: { min: 0, max: 100, ticks: { callback: function (v) { return v + '%'; } } } },
+                       plugins: { legend: { display: false }, tooltip: { callbacks: { afterLabel: function (c) {
+                           var f = dados.frequencias[c.dataIndex]; return f.feitos + ' de ' + f.devidos + ' verificações'; } } } } }
+        });
+    }
+})();
+</script>
+{% endblock %}

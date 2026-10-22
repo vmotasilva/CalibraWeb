@@ -52,6 +52,7 @@ urlpatterns = [
     path('listas/<int:pk>/editar/', views.lista_form, name='lista_editar'),
     path('listas/<int:pk>/excluir/', views.lista_excluir, name='lista_excluir'),
     path('pendencias/', views.pendencias, name='pendencias'),
+    path('dashboard/', views.dashboard, name='dashboard'),
     path('atrasos/', views.atrasos, name='atrasos'),
     path('atrasos/<int:pk>/', views.atrasos_pagina, name='atrasos_pagina'),
     path('preencher/', views.preencher, name='preencher'),

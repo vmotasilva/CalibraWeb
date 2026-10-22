@@ -6,6 +6,7 @@ from collections import Counter
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.db import transaction
 from django.http import HttpResponse
 from django.db.models import Count, ProtectedError, Q
@@ -868,6 +869,29 @@ def _periodo_atrasos(request):
     fim = min(_parse_data(request.GET.get('ate')) if request.GET.get('ate') else ontem, ontem)
     dias = int(request.GET['dias']) if request.GET.get('dias') in {str(d) for d in PERIODOS_ATRASO} else 7
     return fim - datetime.timedelta(days=dias - 1), fim, dias, hoje
+
+
+PERIODOS_DASHBOARD = [7, 14, 30, 60, 90]
+
+
+@login_required
+def dashboard(request):
+    """Acompanhamento do cumprimento por página e frequência no período encerrado (até ontem)."""
+    hoje = timezone.localdate()
+    ontem = hoje - datetime.timedelta(days=1)
+    fim = min(_parse_data(request.GET.get('ate')) if request.GET.get('ate') else ontem, ontem)
+    dias = int(request.GET['dias']) if request.GET.get('dias') in {str(d) for d in PERIODOS_DASHBOARD} else 30
+    ini = fim - datetime.timedelta(days=dias - 1)
+    formulario_id = request.GET.get('formulario') if str(request.GET.get('formulario', '')).isdigit() else None
+    chave_cache = f'pcp:dashboard:v1:{ini}:{fim}:{formulario_id or 0}'
+    dados = None if request.GET.get('atualizar') else cache.get(chave_cache)
+    if dados is None:
+        dados = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), formulario_id, hoje)
+        cache.set(chave_cache, dados, timeout=120)  # resultado simples (sem objetos de modelo); recarrega a cada 2 minutos
+    grafico = {'evolucao': dados['evolucao'], 'frequencias': dados['por_frequencia'], 'agrupamento': dados['agrupamento']}
+    return render(request, 'pcp/dashboard.html', {
+        'd': dados, 'grafico': grafico, 'dias': dias, 'periodos': PERIODOS_DASHBOARD, 'hoje': hoje, 'fim': fim,
+        'formularios': Formulario.objects.filter(ativo=True), 'formulario_id': int(formulario_id) if formulario_id else None})
 
 
 @login_required

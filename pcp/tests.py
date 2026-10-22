@@ -1502,7 +1502,7 @@ class StatusMaquinaTests(PendenciasBase):
         # só este turno está parado: o item por turno é dispensado, mas diário, semanal e mensal seguem devidos
         self.assertEqual((r.context['status'], r.context['n_devidos']), ('parada', 3))
         self.assertFalse([l for l in r.context['linhas'] if l['campo'].pk == self.c_lista.pk and l['devido']])
-        self.assertContains(r, 'Exportar planilha')
+        self.assertContains(r, reverse('pcp:exportar_pagina', args=[self.pag.pk]))   # formulário de exportação do mês
 
 
 class StatusNaImportacaoTests(ValoresBase):
@@ -1551,3 +1551,89 @@ class StatusNaImportacaoTests(ValoresBase):
         arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', self.planilha({(4, 9): 'Em Manut.'}).read())
         r = self.client.post(reverse('pcp:importar_registros'), {'arquivo': arq, 'ano': 2026, 'simular': 'on'})
         self.assertContains(r, 'em manutenção')
+
+
+class DashboardTests(PendenciasBase):
+    HOJE = date(2026, 10, 22)
+    INI, FIM = date(2026, 10, 12), date(2026, 10, 21)   # 10 dias, de segunda a quarta da semana seguinte
+
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.v15.vigencia = date(2026, 10, 1)
+        self.v15.save()
+        for dia in range(12, 17):                                 # T1 lançado nos dias 12 a 16 (5 de 20 prazos por turno)
+            self.lancar(date(2026, 10, dia), self.t1, self.c_lista, 'Ok')
+        for dia in (13, 14, 15, 19):                              # diário lançado em 4 dos 10 dias
+            self.lancar(date(2026, 10, dia), self.t1, self.c_num, '-0,7')
+        self.lancar(date(2026, 10, 14), self.t1, self.c_sem, 'x')  # semanal da semana 12-18
+
+    def lancar(self, dia, turno, campo, valor):
+        ver, _ = Verificacao.objects.get_or_create(pagina=self.pag, data=dia, turno=turno)
+        Resposta.objects.create(verificacao=ver, campo=campo, valor=valor)
+
+    def dash(self, **kw):
+        return pend.dashboard(self.INI, self.FIM, self.turnos, hoje=self.HOJE, **kw)
+
+    def test_cumprimento_por_pagina_e_frequencia(self):
+        d = self.dash()
+        self.assertEqual([c['nome'] for c in d['colunas']], ['Turno', 'Diária', 'Semanal'])   # mensal sem prazo encerrado no período: não aparece
+        self.assertEqual((d['devidos'], d['feitos'], d['atrasados'], d['pct']), (31, 10, 21, 32))
+        linha = d['blocos'][0]['grupos'][0]['linhas'][0]
+        self.assertEqual(linha['nome'], 'Fitadeira')
+        self.assertEqual(linha['celulas'], [{'devidos': 20, 'feitos': 5, 'pct': 25}, {'devidos': 10, 'feitos': 4, 'pct': 40},
+                                            {'devidos': 1, 'feitos': 1, 'pct': 100}])
+        self.assertEqual([(f['nome'], f['devidos'], f['feitos']) for f in d['por_frequencia']],
+                         [('Turno', 20, 5), ('Diária', 10, 4), ('Semanal', 1, 1)])
+        self.assertEqual((d['blocos'][0]['codigo'], d['blocos'][0]['pct']), ('FOR.080', 32))
+
+    def test_evolucao_por_dia_e_por_semana(self):
+        d = self.dash()
+        self.assertEqual(d['agrupamento'], 'dia')
+        self.assertEqual(len(d['evolucao']), 10)
+        self.assertEqual(sum(e['devidos'] for e in d['evolucao']), 31)
+        longo = pend.dashboard(date(2026, 8, 1), self.FIM, self.turnos, hoje=self.HOJE)
+        self.assertEqual(longo['agrupamento'], 'semana')
+        self.assertTrue(all(e['rotulo'].startswith('sem.') for e in longo['evolucao']))
+
+    def test_maquina_parada_tira_os_itens_do_calculo(self):
+        antes = self.dash()
+        Verificacao.objects.filter(pagina=self.pag, data=date(2026, 10, 12), turno=self.t1).update(status='parada')
+        depois = self.dash()
+        self.assertEqual(depois['devidos'], antes['devidos'] - 1)   # só o item por turno de T1 em 12/10 (o diário ainda é devido: T2 opera)
+        self.assertEqual(depois['paradas'], 1)
+        self.assertEqual(antes['paradas'], 0)
+
+    def test_rastreio_e_hoje_nao_entram(self):
+        self.v15.vigencia = date(2026, 10, 20)
+        self.v15.save()
+        d = self.dash()
+        self.assertEqual(d['colunas'][0]['nome'], 'Turno')
+        self.assertLess(d['devidos'], 31)               # antes da vigência nada é cobrado
+        hoje_dentro = pend.dashboard(self.INI, date(2026, 10, 30), self.turnos, hoje=self.HOJE)
+        self.assertEqual(hoje_dentro['fim'], date(2026, 10, 21))   # o dia corrente fica de fora
+
+    def test_filtro_por_formulario_e_sem_dados(self):
+        outro = Formulario.objects.create(setor=self.setor, codigo='FOR.777', titulo='Outro')
+        self.assertEqual(len(self.dash()['blocos']), 1)           # formulário sem revisão vigente não aparece
+        self.assertEqual(self.dash(formulario_id=self.form.pk)['devidos'], 31)
+        self.assertEqual(self.dash(formulario_id=outro.pk)['blocos'], [])
+
+    def test_tela_cache_e_atualizar(self):
+        url = reverse('pcp:dashboard')
+        r = self.client.get(url + '?dias=30')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'dados-dashboard')
+        self.assertContains(r, 'Cumprimento por frequência')
+        self.assertEqual(self.client.get(url + '?dias=abc&formulario=x&ate=lixo').status_code, 200)
+        self.assertEqual(self.client.get(url + '?atualizar=1').status_code, 200)
+        self.assertIn('d', r.context)
+
+    def test_tela_com_dados_mostra_a_pagina_com_link_para_atrasos(self):
+        r = self.client.get(reverse('pcp:dashboard') + f'?dias=30&ate={self.FIM}')   # a tela calcula com o relógio real
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context['d']['fim'], self.FIM)
+        self.assertContains(r, 'Fitadeira')
+        self.assertContains(r, reverse('pcp:atrasos_pagina', args=[self.pag.pk]))
+        self.assertContains(r, 'Turno')       # colunas por frequência
+        self.assertContains(r, 'Em atraso')

@@ -336,8 +336,8 @@ NAV_STRUCTURE = [
                         "descricao": "Lança os resultados das verificações por página, data e turno, e registra observações e ocorrências.",
                     },
                     {
-                        "nome": "Ver Pendências e Atrasos",
-                        "view_name": ["pcp:pendencias", "pcp:atrasos", "pcp:atrasos_pagina"],
+                        "nome": "Ver Pendências, Atrasos e Dashboard",
+                        "view_name": ["pcp:pendencias", "pcp:atrasos", "pcp:atrasos_pagina", "pcp:dashboard"],
                         "perm": "core.nav_pcp_pendencias",
                         "descricao": "Mostra, por página e turno, as verificações devidas conforme a frequência e quais estão pendentes, e os atrasos do período (prazos encerrados sem resposta).",
                     },

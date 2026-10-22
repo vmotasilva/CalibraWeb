@@ -159,21 +159,22 @@ def _janelas_do_campo(campo, ini, fim, turnos):
     return [(a, b, None) for a, b in janelas]
 
 
-def atrasos_pagina(pagina, ini, fim, turnos, hoje=None, rastreio=None):
-    """Lista de atrasos da página no período: dicts {campo, inicio, fim, turno}. Só janelas já encerradas (antes de hoje)."""
+def avaliar_janelas(pagina, ini, fim, turnos, hoje=None, rastreio=None):
+    """[(campo, inicio, fim, turno|None, feito)] das janelas de prazo da página já encerradas (antes de hoje) no período.
+    Janelas dispensadas (máquina em manutenção/parada) ficam de fora; `feito` indica se houve lançamento dentro do prazo."""
     hoje = hoje or datetime.date.today()
     fim = min(fim, hoje - datetime.timedelta(days=1))
     if rastreio:
         ini = max(ini, rastreio)
     campos = [c for c in pagina.campos.all() if c.ativo and c.frequencia_id and c.frequencia.periodicidade != 'evento']
     if not campos or ini > fim:
-        return [], 0
+        return []
     todas = []
     for c in campos:
         for a, b, t in _janelas_do_campo(c, ini, fim, turnos):
             todas.append((c, a, b, t))
     if not todas:
-        return [], 0
+        return []
     parados = slots_parados(pagina, min(a for _, a, _, _ in todas), max(b for _, _, b, _ in todas))
     if parados:  # máquina em manutenção/parada: o prazo não é devido
         dispensa = {}
@@ -189,7 +190,7 @@ def atrasos_pagina(pagina, ini, fim, turnos, hoje=None, rastreio=None):
                 validas.append((c, a, b, t))
         todas = validas
         if not todas:
-            return [], 0
+            return []
     feitos = defaultdict(set)
     qs = (Resposta.objects
           .filter(verificacao__pagina__versao__formulario_id=pagina.versao.formulario_id,
@@ -199,16 +200,22 @@ def atrasos_pagina(pagina, ini, fim, turnos, hoje=None, rastreio=None):
           .values_list('campo__item', 'campo__etapa', 'campo__descricao', 'verificacao__data', 'verificacao__turno_id'))
     for item, etapa, desc, d, t in qs:
         feitos[chave(item, etapa, desc)].add((d, t))
-    atrasos = []
+    avaliadas = []
     for c, a, b, t in todas:
         registros = feitos[chave(c.item, c.etapa, c.descricao)]
         if t is not None:
             feito = (a, t.pk) in registros
         else:
             feito = any(a <= d <= b for d, _ in registros)
-        if not feito:
-            atrasos.append({'campo': c, 'inicio': a, 'fim': b, 'turno': t})
-    return atrasos, len(todas)
+        avaliadas.append((c, a, b, t, feito))
+    return avaliadas
+
+
+def atrasos_pagina(pagina, ini, fim, turnos, hoje=None, rastreio=None):
+    """Lista de atrasos da página no período: dicts {campo, inicio, fim, turno}. Só janelas já encerradas (antes de hoje)."""
+    avaliadas = avaliar_janelas(pagina, ini, fim, turnos, hoje, rastreio)
+    atrasos = [{'campo': c, 'inicio': a, 'fim': b, 'turno': t} for c, a, b, t, feito in avaliadas if not feito]
+    return atrasos, len(avaliadas)
 
 
 def painel_atrasos(ini, fim, turnos, formulario_id=None, hoje=None):
@@ -243,3 +250,86 @@ def painel_atrasos(ini, fim, turnos, formulario_id=None, hoje=None):
         t_atrasos += b_atrasos
     return {'datas': datas, 'blocos': blocos, 'devidos': t_devidos, 'atrasados': t_atrasos,
             'percentual': round(100 * (t_devidos - t_atrasos) / t_devidos) if t_devidos else None}
+
+
+# --------------------------------------------------------------------------------------
+# Dashboard: cumprimento por página e frequência
+# --------------------------------------------------------------------------------------
+ORDEM_PERIODICIDADE = ['turno', 'diaria', 'semanal', 'quinzenal', 'mensal', 'trimestral', 'semestral', 'anual']
+
+
+def _pct(feitos, devidos):
+    return round(100 * feitos / devidos) if devidos else None
+
+
+def dashboard(ini, fim, turnos, formulario_id=None, hoje=None):
+    """Cumprimento das verificações com prazo encerrado no período, por página e por frequência (dados simples, prontos para cache).
+
+    Cada verificação devida conta uma vez por prazo (turno, dia, semana, mês...); janelas em que a máquina esteve em manutenção/parada
+    não entram. `colunas` lista as frequências existentes; cada linha de página traz `celulas` alinhadas a elas."""
+    hoje = hoje or datetime.date.today()
+    fim = min(fim, hoje - datetime.timedelta(days=1))
+    versoes = list(FormularioVersao.objects.filter(status=FormularioVersao.VIGENTE, formulario__ativo=True)
+                   .select_related('formulario__setor').order_by('formulario__codigo'))
+    if formulario_id:
+        versoes = [v for v in versoes if v.formulario_id == int(formulario_id)]
+    freq_info, serie, por_freq_total = {}, defaultdict(lambda: [0, 0]), defaultdict(lambda: [0, 0])
+    brutos = []
+    for versao in versoes:
+        rastreio = inicio_rastreio(versao.formulario)
+        grupos = {}
+        for pagina in versao.paginas.filter(ativo=True).prefetch_related('campos__frequencia'):
+            por_freq = defaultdict(lambda: [0, 0])
+            for campo, a, b, t, feito in avaliar_janelas(pagina, ini, fim, turnos, hoje, rastreio):
+                f = campo.frequencia
+                freq_info[f.pk] = {'pk': f.pk, 'nome': f.nome, 'periodicidade': f.periodicidade, 'ordem': f.ordem}
+                por_freq[f.pk][0] += 1
+                por_freq[f.pk][1] += int(feito)
+                por_freq_total[f.pk][0] += 1
+                por_freq_total[f.pk][1] += int(feito)
+                serie[b][0] += 1
+                serie[b][1] += int(feito)
+            grupos.setdefault(pagina.grupo or 'Sem grupo', []).append((pagina, dict(por_freq)))
+        brutos.append((versao, versao.formulario.ordenar_grupos(grupos)))
+
+    colunas = sorted(freq_info.values(), key=lambda f: (ORDEM_PERIODICIDADE.index(f['periodicidade']) if f['periodicidade'] in ORDEM_PERIODICIDADE else 99,
+                                                        f['ordem'], f['nome']))
+    blocos, t_dev, t_feit = [], 0, 0
+    for versao, grupos in brutos:
+        b_dev = b_feit = 0
+        lista_grupos = []
+        for nome_grupo, paginas in grupos.items():
+            linhas = []
+            for pagina, por_freq in paginas:
+                dev = sum(v[0] for v in por_freq.values())
+                feit = sum(v[1] for v in por_freq.values())
+                b_dev += dev
+                b_feit += feit
+                celulas = [({'devidos': por_freq[c['pk']][0], 'feitos': por_freq[c['pk']][1], 'pct': _pct(por_freq[c['pk']][1], por_freq[c['pk']][0])}
+                            if c['pk'] in por_freq else None) for c in colunas]
+                linhas.append({'pagina_id': pagina.pk, 'nome': pagina.nome, 'devidos': dev, 'feitos': feit, 'atrasados': dev - feit,
+                               'pct': _pct(feit, dev), 'celulas': celulas})
+            lista_grupos.append({'nome': nome_grupo, 'linhas': linhas})
+        blocos.append({'formulario_id': versao.formulario_id, 'codigo': versao.formulario.codigo, 'titulo': versao.formulario.titulo,
+                       'revisao': versao.revisao, 'grupos': lista_grupos, 'devidos': b_dev, 'feitos': b_feit, 'pct': _pct(b_feit, b_dev)})
+        t_dev += b_dev
+        t_feit += b_feit
+
+    # evolução: por dia (até 31 dias) ou por semana
+    semanal = (fim - ini).days + 1 > 31
+    agregada = defaultdict(lambda: [0, 0])
+    for dia, (dev, feit) in serie.items():
+        chave_ = dia - datetime.timedelta(days=dia.weekday()) if semanal else dia
+        agregada[chave_][0] += dev
+        agregada[chave_][1] += feit
+    evolucao = [{'rotulo': (f'sem. {d:%d/%m}' if semanal else f'{d:%d/%m}'), 'devidos': v[0], 'feitos': v[1], 'pct': _pct(v[1], v[0])}
+                for d, v in sorted(agregada.items())]
+    por_frequencia = [{'nome': c['nome'], 'devidos': por_freq_total[c['pk']][0], 'feitos': por_freq_total[c['pk']][1],
+                       'pct': _pct(por_freq_total[c['pk']][1], por_freq_total[c['pk']][0])} for c in colunas]
+    paradas = 0
+    if versoes and ini <= fim:
+        paradas = (Verificacao.objects.filter(pagina__versao__formulario_id__in=[v.formulario_id for v in versoes], data__range=(ini, fim))
+                   .exclude(status='').values('pagina__versao__formulario_id', 'pagina__nome', 'data', 'turno_id').distinct().count())
+    return {'ini': ini, 'fim': fim, 'colunas': colunas, 'blocos': blocos, 'evolucao': evolucao, 'por_frequencia': por_frequencia,
+            'agrupamento': 'semana' if semanal else 'dia',
+            'devidos': t_dev, 'feitos': t_feit, 'atrasados': t_dev - t_feit, 'pct': _pct(t_feit, t_dev), 'paradas': paradas}
