@@ -20,7 +20,15 @@ class _BootstrapMixin:
 class TurnoForm(_BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Turno
-        fields = ['nome', 'sigla', 'ordem', 'ativo']
+        fields = ['nome', 'sigla', 'inicio', 'fim', 'ordem', 'ativo']
+        widgets = {'inicio': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M'),
+                   'fim': forms.TimeInput(attrs={'type': 'time'}, format='%H:%M')}
+
+    def clean(self):
+        dados = super().clean()
+        if bool(dados.get('inicio')) != bool(dados.get('fim')):
+            self.add_error('fim', 'Informe início e fim do turno, ou deixe os dois em branco.')
+        return dados
 
 
 class FrequenciaForm(_BootstrapMixin, forms.ModelForm):

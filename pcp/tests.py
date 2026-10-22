@@ -1,5 +1,6 @@
+import datetime
 import io
-from datetime import date
+from datetime import date, time
 from decimal import Decimal
 
 import openpyxl
@@ -9,7 +10,10 @@ from django.test import TestCase
 from django.urls import reverse
 
 from organization.models import Setor
-from pcp import pendencias as pend
+from django.core.cache import cache
+from django.utils import timezone
+
+from pcp import cobranca, pendencias as pend
 from pcp.importacao import frequencia_canonica, importar_planilha, parse_arquivo, parse_faixa, parse_mais_menos
 from pcp.models import (Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
@@ -309,3 +313,54 @@ class PendenciasTests(PcpBase):
         self.assertEqual(r.context['n_devidos'], 4)
         self.assertEqual(r.context['n_pendentes'], 3)
         self.assertContains(r, 'Mostrar só pendentes')
+
+
+class CobrancaTests(PendenciasTests):
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.t3 = Turno.objects.create(nome='Turno 3', sigla='T3', ordem=3)
+        for t, ini, fim in ((self.t1, time(6), time(14)), (self.t2, time(14), time(22)), (self.t3, time(22), time(6))):
+            t.inicio, t.fim = ini, fim
+            t.save()
+
+    def agora(self, h, m=0, dia=22):
+        return timezone.make_aware(datetime.datetime(2026, 10, dia, h, m))
+
+    def test_turnos_iniciados(self):
+        siglas = lambda h: sorted((d.day, t.sigla) for d, t in cobranca.turnos_iniciados(self.agora(h)))
+        self.assertEqual(siglas(10), [(22, 'T1')])
+        self.assertEqual(siglas(15), [(22, 'T1'), (22, 'T2')])
+        self.assertEqual(siglas(23), [(22, 'T1'), (22, 'T2'), (22, 'T3')])
+        self.assertEqual(siglas(2), [(21, 'T3')])  # madrugada: T3 que começou ontem
+
+    def test_sem_horario_conta_como_iniciado(self):
+        Turno.objects.update(inicio=None, fim=None)
+        self.assertEqual(len(cobranca.turnos_iniciados(self.agora(3))), 3)
+
+    def test_pendentes_nao_duplica_itens_nao_por_turno(self):
+        # T1 já iniciado: por turno (1) + diária (1) + semanal (1) + mensal (1)
+        self.assertEqual(cobranca.pendentes_em_andamento(self.agora(10)), 4)
+        # T1 e T2: o item por turno conta 2x; os demais continuam 1x
+        self.assertEqual(cobranca.pendentes_em_andamento(self.agora(15)), 5)
+        self.responder(date(2026, 10, 22), self.t1, self.c_lista)
+        self.assertEqual(cobranca.pendentes_em_andamento(self.agora(15)), 4)
+
+    def test_sino_mostra_itens_para_quem_tem_acesso(self):
+        from shared.notifications import get_user_cobrancas_items, get_user_cobrancas_counts
+        ver = Verificacao.objects.create(pagina=self.pag, data=date(2026, 10, 22), turno=self.t1)
+        Ocorrencia.objects.create(verificacao=ver, tipo='tratativa', descricao='x')
+        Ocorrencia.objects.create(verificacao=ver, tipo='observacao', descricao='y')
+        cache.clear()
+        counts = get_user_cobrancas_counts(self.user)
+        self.assertEqual(counts['pcp_tratativas'], 1)
+        self.assertGreater(counts['pcp_pendencias'], 0)
+        chaves = {i.key: i for i in get_user_cobrancas_items(self.user)}
+        self.assertEqual(chaves['pcp_tratativas'].count, 1)
+        self.assertEqual(chaves['pcp_pendencias'].section, 'PCP')
+
+    def test_turno_exige_inicio_e_fim_juntos(self):
+        r = self.client.post(reverse('pcp:turno_novo'), {'nome': 'X', 'sigla': 'X', 'inicio': '06:00', 'ordem': 9, 'ativo': 'on'})
+        self.assertEqual(r.status_code, 200)
+        r = self.client.post(reverse('pcp:turno_novo'), {'nome': 'X', 'sigla': 'X', 'inicio': '06:00', 'fim': '14:00', 'ordem': 9, 'ativo': 'on'})
+        self.assertEqual(r.status_code, 302)

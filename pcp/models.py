@@ -10,6 +10,8 @@ from organization.models import Setor
 class Turno(models.Model):
     nome = models.CharField(max_length=60, unique=True)
     sigla = models.CharField(max_length=10, unique=True, help_text='Ex.: T1')
+    inicio = models.TimeField(null=True, blank=True, help_text='Horário de início. Com início e fim, a cobrança no sino só considera os turnos já iniciados.')
+    fim = models.TimeField(null=True, blank=True, help_text='Horário de término. Se for menor que o início, o turno atravessa a meia-noite.')
     ordem = models.PositiveSmallIntegerField(default=0)
     ativo = models.BooleanField(default=True)
 
@@ -18,6 +20,9 @@ class Turno(models.Model):
 
     def __str__(self):
         return f'{self.sigla} - {self.nome}'
+
+    def horario(self):
+        return f'{self.inicio:%H:%M} – {self.fim:%H:%M}' if self.inicio and self.fim else '—'
 
 
 class Frequencia(models.Model):

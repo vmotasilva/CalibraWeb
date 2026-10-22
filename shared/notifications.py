@@ -77,7 +77,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     if not getattr(user, "is_authenticated", False):
         return {"total": 0}
 
-    cache_key = f"nav_cobrancas_counts:v6:user:{getattr(user, 'pk', 'anon')}"
+    cache_key = f"nav_cobrancas_counts:v7:user:{getattr(user, 'pk', 'anon')}"
     cached = cache.get(cache_key)
     if isinstance(cached, dict):
         return cached
@@ -246,6 +246,19 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
     except Exception:
         counts["kpi_analises"] = 0
 
+    # PCP: verificações pendentes nos turnos em andamento e tratativas de ocorrência em aberto
+    counts["pcp_pendencias"] = 0
+    counts["pcp_tratativas"] = 0
+    try:
+        from pcp.cobranca import contagens as pcp_contagens
+
+        if has_module_access(user, "pcp") and has_view_access(user, "pcp:pendencias"):
+            counts["pcp_pendencias"] = pcp_contagens()["pendencias"]
+        if has_module_access(user, "pcp") and has_view_access(user, "pcp:ocorrencias"):
+            counts["pcp_tratativas"] = pcp_contagens()["tratativas"]
+    except Exception:
+        pass
+
     counts["total"] = sum(v for k, v in counts.items() if k != "total")
 
     cache.set(cache_key, counts, timeout=60)
@@ -382,6 +395,28 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
                 count=int(counts.get("kpi_analises", 0) or 0),
                 url=_safe_reverse("kpi:painel"),
                 section="KPI",
+            )
+        )
+
+    if can_show("pcp", "pcp:pendencias") and int(counts.get("pcp_pendencias", 0) or 0) > 0:
+        items.append(
+            CobrancaItem(
+                key="pcp_pendencias",
+                label="PCP (verificações pendentes nos turnos em andamento)",
+                count=int(counts.get("pcp_pendencias", 0) or 0),
+                url=_safe_reverse("pcp:pendencias"),
+                section="PCP",
+            )
+        )
+
+    if can_show("pcp", "pcp:ocorrencias") and int(counts.get("pcp_tratativas", 0) or 0) > 0:
+        items.append(
+            CobrancaItem(
+                key="pcp_tratativas",
+                label="PCP (ocorrências que requerem tratativa em aberto)",
+                count=int(counts.get("pcp_tratativas", 0) or 0),
+                url=_safe_reverse("pcp:ocorrencias"),
+                section="PCP",
             )
         )
 

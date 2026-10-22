@@ -298,7 +298,7 @@ def _cadastro_excluir(request, pk, model, lista_url, titulo):
 
 @login_required
 def turnos(request):
-    return _cadastro_lista(request, 'Turnos', Turno.objects.all(), [('sigla', 'Sigla'), ('nome', 'Nome'), ('ordem', 'Ordem')], 'pcp:turno_novo', 'pcp:turno_editar', 'pcp:turno_excluir')
+    return _cadastro_lista(request, 'Turnos', Turno.objects.all(), [('sigla', 'Sigla'), ('nome', 'Nome'), ('horario', 'Horário'), ('ordem', 'Ordem')], 'pcp:turno_novo', 'pcp:turno_editar', 'pcp:turno_excluir')
 
 
 @login_required
