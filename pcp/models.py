@@ -28,10 +28,13 @@ class Frequencia(models.Model):
         ('semanal', 'Semanal'),
         ('quinzenal', 'Quinzenal'),
         ('mensal', 'Mensal'),
+        ('trimestral', 'Trimestral'),
+        ('semestral', 'Semestral'),
+        ('anual', 'Anual'),
         ('evento', 'Sob demanda / por evento'),
     ]
     nome = models.CharField(max_length=120, unique=True)
-    periodicidade = models.CharField(max_length=10, choices=PERIODICIDADES, default='evento')
+    periodicidade = models.CharField(max_length=12, choices=PERIODICIDADES, default='evento')
     ordem = models.PositiveSmallIntegerField(default=0)
     ativo = models.BooleanField(default=True)
 
@@ -173,12 +176,16 @@ class Campo(models.Model):
 
     pagina = models.ForeignKey(Pagina, on_delete=models.CASCADE, related_name='campos')
     item = models.CharField(max_length=20, blank=True, help_text='Código do item no formulário (ex.: B-12).')
+    etapa = models.CharField('Etapa / contexto', max_length=250, blank=True,
+                             help_text='Etapa do processo, receita ou máquina a que o item pertence (agrupa itens na tela).')
     descricao = models.CharField('O que verificar', max_length=300)
     especificacao = models.TextField('Especificação / tolerância', blank=True)
     metodo = models.CharField('Método de verificação', max_length=300, blank=True)
     plano_reacao = models.TextField('Plano de reação', blank=True)
     responsavel = models.CharField('Responsável', max_length=60, blank=True)
     frequencia = models.ForeignKey(Frequencia, null=True, blank=True, on_delete=models.SET_NULL, related_name='campos')
+    frequencia_detalhe = models.CharField('Detalhe da frequência', max_length=400, blank=True,
+                                          help_text='Texto original da frequência quando ela é mais específica que o cadastro (ex.: "A cada troca de lâmina").')
     tipo = models.CharField(max_length=10, choices=TIPOS, default=LISTA)
     lista = models.ForeignKey(ListaOpcoes, null=True, blank=True, on_delete=models.PROTECT, related_name='campos')
     minimo = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)

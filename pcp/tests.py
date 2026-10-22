@@ -1,11 +1,15 @@
+import io
 from datetime import date
 from decimal import Decimal
 
+import openpyxl
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
 from organization.models import Setor
+from pcp.importacao import frequencia_canonica, importar_planilha, parse_arquivo, parse_faixa, parse_mais_menos
 from pcp.models import (Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
@@ -135,3 +139,88 @@ class FluxoTests(PcpBase):
         ]
         for u in urls:
             self.assertEqual(self.client.get(u).status_code, 200, u)
+
+
+def _planilha_modelo():
+    """Planilha mínima no padrão do FOR.080 (cabeçalho + T1/T2/T3 + itens) com Índice e uma aba ignorada."""
+    wb = openpyxl.Workbook()
+    wb.active.title = 'Dados'
+    ind = wb.create_sheet('Índice')
+    ind.append([None, ' ', None, 'Índice Geral - Teste', None, None, None, None, None, 'FOR.999.R03'])
+    ind.append([None, 'Fita', None, 'Corte', None, 'Polimento', None, 'Gravação'])
+    ind.append([None, 'Fitadeira', None, 'VFT Orbit 1.0 (1)'])
+    aba = wb.create_sheet('Fitadeira')
+    aba.append(['Voltar ao índice', None, None, 'Fitadeira'])
+    aba.append(['Resp', 'item', 'O que verificar', 'Especificações/Tolerancias', 'Método de Verificação', 'Frequencia de Verificação', 'Plano de Reação', '2026-01-01'])
+    aba.append([None, None, None, None, None, None, None, 'T1', 'T2', 'T3'])
+    aba.append(['Oper.', 'A-1', 'Limpeza dos blocos', 'Sem poeira', 'Visual', 'Pelo menos diariamente', 'Pistola de ar'])
+    aba.append([None, 'B-12', 'Temperatura da fita', '10 - 27 ° C', 'Termômetro', 'Turno', 'Sala climatizada'])
+    aba.append([None, 'B-13', 'Temperatura do banho', '45°C ± 2°C', 'Painel', 'A cada troca de banho', 'Ajustar'])
+    receita = wb.create_sheet('Parâmetro de Receita-ABC')
+    receita.append(['Voltar', 'Parâmetro de Receita-ABC'])
+    receita.append([None, 'Resp.', 'Frequência', 'Receita', 'Razão', 'Especificação', 'Tolerância (min - max)'])
+    receita.append([None, None, 'Mensal', 'Receita X', 'Z0/Z2', 0.05, '0,043 - 0,058'])
+    receita.append([None, None, 'Mensal', None, 'Z1/Z2', 0.111, '0,094 - 0,128'])
+    wb.create_sheet('D1 (Por Hora)').append(['Data'])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+class ImportacaoTests(PcpBase):
+    def test_parsers(self):
+        self.assertEqual(parse_arquivo('FOR.080.R15 - Formulário Surfaçagem - PCP Latam.xlsx'), ('FOR.080', 'R15', 'Formulário Surfaçagem - PCP Latam'))
+        self.assertEqual(parse_faixa('10 - 27 ° C'), (Decimal('10'), Decimal('27'), '° C'))
+        self.assertIsNone(parse_faixa('Sem poeira'))
+        self.assertEqual(parse_mais_menos('45°C ± 2°C'), (Decimal('43'), Decimal('47'), '°C'))
+        self.assertEqual(frequencia_canonica('Pelo menos diariamente')[0], 'Diária')
+        self.assertEqual(frequencia_canonica('A cada troca de lâmina')[0], 'Sob demanda / por evento')
+
+    def test_importa_estrutura(self):
+        r = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R03 - Formulário Teste.xlsx', setor=self.setor)
+        v = r['versao']
+        self.assertEqual((str(v), v.status), ('FOR.999.R03', 'rascunho'))
+        self.assertEqual(r['total_campos'], 5)
+        self.assertEqual([i[0] for i in r['ignoradas']], ['D1 (Por Hora)'])
+        fita = v.paginas.get(nome='Fitadeira')
+        self.assertEqual(fita.grupo, 'Fita')  # vindo do Índice
+        limpeza, temp, banho = fita.campos.all()
+        self.assertEqual((limpeza.tipo, limpeza.lista.nome, limpeza.responsavel), ('lista', 'Realizado / Não realizado', 'Oper.'))
+        self.assertEqual(limpeza.frequencia.nome, 'Diária')
+        self.assertEqual((temp.tipo, temp.minimo, temp.maximo), ('numero', Decimal('10'), Decimal('27')))
+        self.assertEqual((banho.minimo, banho.maximo, banho.frequencia.nome), (Decimal('43'), Decimal('47'), 'Sob demanda / por evento'))
+        self.assertEqual(banho.frequencia_detalhe, 'A cada troca de banho')
+        rec = v.paginas.get(nome='ABC - Receita')
+        self.assertEqual(rec.grupo, 'Parâmetro de Receita')
+        z1 = rec.campos.get(descricao='Z1/Z2')
+        self.assertEqual((z1.etapa, z1.minimo, z1.maximo), ('Receita X', Decimal('0.094'), Decimal('0.128')))
+
+    def test_revisao_repetida_exige_substituir(self):
+        importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R03 - x.xlsx', setor=self.setor)
+        with self.assertRaises(ValueError):
+            importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R03 - x.xlsx', setor=self.setor)
+        r = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R03 - x.xlsx', setor=self.setor, substituir=True)
+        self.assertEqual(FormularioVersao.objects.filter(revisao='R03').count(), 1)
+        self.assertEqual(r['total_campos'], 5)
+
+    def test_nao_substitui_revisao_publicada(self):
+        importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R03 - x.xlsx', setor=self.setor, publicar=True)
+        with self.assertRaises(ValueError):
+            importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R03 - x.xlsx', setor=self.setor, substituir=True)
+
+    def test_nome_sem_padrao_exige_codigo(self):
+        with self.assertRaises(ValueError):
+            importar_planilha(_planilha_modelo(), nome_arquivo='planilha.xlsx', setor=self.setor)
+
+    def test_tela_de_importacao(self):
+        self.assertEqual(self.client.get(reverse('pcp:importar')).status_code, 200)
+        arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', _planilha_modelo().read())
+        r = self.client.post(reverse('pcp:importar'), {'arquivo': arq, 'setor': self.setor.pk})
+        v = FormularioVersao.objects.get(revisao='R03')
+        self.assertRedirects(r, reverse('pcp:versao_detalhe', args=[v.pk]))
+        self.assertEqual(v.status, 'rascunho')
+        ruim = SimpleUploadedFile('FOR.998.R01 - X.xlsx', b'nao e um xlsx')
+        r = self.client.post(reverse('pcp:importar'), {'arquivo': ruim, 'setor': self.setor.pk})
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(FormularioVersao.objects.filter(revisao='R01', formulario__codigo='FOR.998').exists())

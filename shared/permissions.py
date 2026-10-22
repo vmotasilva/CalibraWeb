@@ -361,6 +361,12 @@ NAV_STRUCTURE = [
                         "descricao": "Monta a estrutura do formulário. Só revisões em rascunho são editáveis; mudanças na vigente nascem como nova revisão.",
                     },
                     {
+                        "nome": "Importar Planilha de Formulário",
+                        "view_name": "pcp:importar",
+                        "perm": "core.nav_pcp_importar",
+                        "descricao": "Cria uma nova revisão (rascunho) a partir de uma planilha .xlsx no padrão dos formulários de PCP.",
+                    },
+                    {
                         "nome": "Publicar e Excluir Revisões",
                         "view_name": ["pcp:versao_publicar", "pcp:versao_excluir"],
                         "perm": "core.nav_pcp_versao_publicar",

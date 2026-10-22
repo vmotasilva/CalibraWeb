@@ -9,8 +9,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from pcp.forms import (CampoForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
+from pcp.forms import (CampoForm, ImportarPlanilhaForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
+from pcp.importacao import importar_planilha
 from pcp.models import (Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, Ocorrencia, Pagina,
                         Resposta, Turno, Verificacao)
 
@@ -230,6 +231,29 @@ def campo_excluir(request, pk):
         return redirect('pcp:pagina_detalhe', pagina_id)
     messages.success(request, 'Campo excluído.')
     return redirect('pcp:pagina_detalhe', pagina_id)
+
+
+@login_required
+def importar(request):
+    """Importa a estrutura de um formulário a partir da planilha como nova revisão (rascunho por padrão)."""
+    form = ImportarPlanilhaForm(request.POST or None, request.FILES or None)
+    if request.method == 'POST' and form.is_valid():
+        d = form.cleaned_data
+        try:
+            r = importar_planilha(
+                d['arquivo'], nome_arquivo=d['arquivo'].name, setor=d['setor'], codigo=d['codigo'], revisao=d['revisao'],
+                titulo=d['titulo'], usuario=request.user, publicar=d['publicar'], substituir=d['substituir'])
+        except ValueError as e:
+            form.add_error(None, str(e))
+        except Exception:  # planilha corrompida ou fora do padrão
+            form.add_error('arquivo', 'Não foi possível ler a planilha. Confira se é um .xlsx válido no padrão dos formulários de PCP.')
+        else:
+            messages.success(request, f'Revisão {r["versao"]} importada como {r["versao"].get_status_display().lower()}: '
+                                      f'{len(r["paginas"])} páginas e {r["total_campos"]} campos.')
+            if r['ignoradas']:
+                messages.warning(request, 'Abas não importadas: ' + '; '.join(f'{a} ({m})' for a, m in r['ignoradas']))
+            return redirect('pcp:versao_detalhe', r['versao'].pk)
+    return render(request, 'pcp/importar.html', {'form': form})
 
 
 # --------------------------------------------------------------------------------------

@@ -28,10 +28,10 @@
             {% for c in campos %}
                 <tr class="{% if not c.ativo %}text-muted{% endif %}">
                     <td class="text-nowrap fw-semibold {% if c.critico %}text-danger{% endif %}">{{ c.item|default:"—" }}{% if c.critico %} <i class="bi bi-exclamation-octagon" title="Crítico (nível 3)"></i>{% endif %}</td>
-                    <td>{{ c.descricao }}</td>
+                    <td>{% if c.etapa %}<div class="small text-muted">{{ c.etapa }}</div>{% endif %}{{ c.descricao }}</td>
                     <td class="small">{{ c.especificacao|default:"—" }}</td>
                     <td class="small">{{ c.metodo|default:"—" }}</td>
-                    <td class="small">{{ c.frequencia|default:"—" }}</td>
+                    <td class="small">{{ c.frequencia|default:"—" }}{% if c.frequencia_detalhe %}<div class="text-muted">{{ c.frequencia_detalhe|truncatechars:80 }}</div>{% endif %}</td>
                     <td class="small text-nowrap">{{ c.get_tipo_display }}{% if c.lista %}: {{ c.lista }}{% endif %}{% if c.minimo is not None or c.maximo is not None %} [{{ c.minimo|default_if_none:"" }} – {{ c.maximo|default_if_none:"" }}]{% endif %}{% if c.unidade %} {{ c.unidade }}{% endif %}</td>
                     <td class="small">{{ c.plano_reacao|default:"—" }}</td>
                     <td class="small">{{ c.responsavel|default:"—" }}</td>

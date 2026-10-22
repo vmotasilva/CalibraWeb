@@ -1,5 +1,6 @@
 from django import forms
 
+from organization.models import Setor
 from pcp.models import Campo, Formulario, Frequencia, ListaOpcoes, OpcaoLista, Pagina, Turno
 
 
@@ -89,7 +90,7 @@ class PaginaForm(_BootstrapMixin, forms.ModelForm):
 class CampoForm(_BootstrapMixin, forms.ModelForm):
     class Meta:
         model = Campo
-        fields = ['item', 'descricao', 'especificacao', 'metodo', 'plano_reacao', 'responsavel', 'frequencia',
+        fields = ['item', 'etapa', 'descricao', 'especificacao', 'metodo', 'plano_reacao', 'responsavel', 'frequencia', 'frequencia_detalhe',
                   'tipo', 'lista', 'minimo', 'maximo', 'unidade', 'critico', 'ordem', 'ativo']
         widgets = {'especificacao': forms.Textarea(attrs={'rows': 2}), 'plano_reacao': forms.Textarea(attrs={'rows': 2})}
 
@@ -101,3 +102,22 @@ class CampoForm(_BootstrapMixin, forms.ModelForm):
         if mn is not None and mx is not None and mn > mx:
             self.add_error('maximo', 'O máximo deve ser maior ou igual ao mínimo.')
         return dados
+
+
+class ImportarPlanilhaForm(_BootstrapMixin, forms.Form):
+    arquivo = forms.FileField(label='Planilha (.xlsx)', widget=forms.ClearableFileInput(attrs={'accept': '.xlsx'}))
+    setor = forms.ModelChoiceField(label='Setor', queryset=Setor.objects.all())
+    codigo = forms.CharField(label='Código do formulário', required=False, max_length=30,
+                             help_text='Deixe em branco para ler do nome do arquivo (ex.: FOR.080.R15 - ... -> FOR.080).')
+    revisao = forms.CharField(label='Revisão', required=False, max_length=10,
+                              help_text='Deixe em branco para ler do nome do arquivo (ex.: R15).')
+    titulo = forms.CharField(label='Título', required=False, max_length=150)
+    substituir = forms.BooleanField(label='Substituir a revisão se ela já existir em rascunho', required=False)
+    publicar = forms.BooleanField(label='Publicar como vigente ao importar', required=False,
+                                  help_text='Por padrão entra como rascunho para você revisar antes de publicar.')
+
+    def clean_arquivo(self):
+        arq = self.cleaned_data['arquivo']
+        if not arq.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError('Envie um arquivo .xlsx.')
+        return arq

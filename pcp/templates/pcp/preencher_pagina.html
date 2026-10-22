@@ -37,9 +37,9 @@
                 {% for l in linhas %}{% with c=l.campo r=l.resposta %}
                     <tr class="{% if r.conforme == False %}table-danger{% endif %}">
                         <td class="text-nowrap fw-semibold {% if c.critico %}text-danger{% endif %}">{{ c.item|default:"—" }}</td>
-                        <td>{{ c.descricao }}{% if c.metodo %}<div class="small text-muted">{{ c.metodo }}</div>{% endif %}</td>
+                        <td>{% if c.etapa %}<div class="small text-muted">{{ c.etapa }}</div>{% endif %}{{ c.descricao }}{% if c.metodo %}<div class="small text-muted">{{ c.metodo }}</div>{% endif %}</td>
                         <td class="small">{{ c.especificacao|default:"—" }}</td>
-                        <td class="small">{{ c.frequencia|default:"—" }}</td>
+                        <td class="small">{{ c.frequencia|default:"—" }}{% if c.frequencia_detalhe %}<div class="text-muted">{{ c.frequencia_detalhe|truncatechars:80 }}</div>{% endif %}</td>
                         <td>
                             {% if c.tipo == 'lista' %}
                                 <select name="c_{{ c.pk }}" class="form-select form-select-sm" {% if travada %}disabled{% endif %}>

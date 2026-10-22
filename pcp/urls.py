@@ -6,6 +6,7 @@ app_name = 'pcp'
 
 urlpatterns = [
     path('', views.formularios, name='formularios'),
+    path('formularios/importar/', views.importar, name='importar'),
     path('formularios/novo/', views.formulario_novo, name='formulario_novo'),
     path('formularios/<int:pk>/', views.formulario_detalhe, name='formulario_detalhe'),
     path('formularios/<int:pk>/editar/', views.formulario_editar, name='formulario_editar'),
