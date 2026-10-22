@@ -336,10 +336,10 @@ NAV_STRUCTURE = [
                         "descricao": "Lança os resultados das verificações por página, data e turno, e registra observações e ocorrências.",
                     },
                     {
-                        "nome": "Ver Pendências por Data e Turno",
-                        "view_name": "pcp:pendencias",
+                        "nome": "Ver Pendências e Atrasos",
+                        "view_name": ["pcp:pendencias", "pcp:atrasos", "pcp:atrasos_pagina"],
                         "perm": "core.nav_pcp_pendencias",
-                        "descricao": "Mostra, por página e turno, as verificações devidas conforme a frequência e quais ainda estão pendentes.",
+                        "descricao": "Mostra, por página e turno, as verificações devidas conforme a frequência e quais estão pendentes, e os atrasos do período (prazos encerrados sem resposta).",
                     },
                     {"nome": "Ver Ocorrências", "view_name": "pcp:ocorrencias", "perm": "core.nav_pcp_ocorrencias"},
                     {"nome": "Registrar Tratativa de Ocorrência", "view_name": "pcp:ocorrencia_tratar", "perm": "core.nav_pcp_ocorrencia_tratar"},

@@ -1,0 +1,84 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}PCP - Atrasos - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Atrasos do período</h4>
+    {% include "pcp/_nav.html" with secao="pendencias" %}
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><a class="nav-link" href="{% url 'pcp:pendencias' %}">Por data e turno</a></li>
+        <li class="nav-item"><a class="nav-link active" href="{% url 'pcp:atrasos' %}">Atrasos do período</a></li>
+    </ul>
+
+    <form method="get" class="card card-body mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col-auto"><label class="form-label mb-0">Período</label>
+                <select name="dias" class="form-select" onchange="this.form.submit()">
+                    {% for d in periodos %}<option value="{{ d }}" {% if d == dias %}selected{% endif %}>Últimos {{ d }} dias</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-auto"><label class="form-label mb-0">Até</label><input type="date" name="ate" value="{{ fim|date:'Y-m-d' }}" max="{{ hoje|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()"></div>
+            <div class="col-auto"><label class="form-label mb-0">Formulário</label>
+                <select name="formulario" class="form-select" onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    {% for f in formularios %}<option value="{{ f.pk }}" {% if f.pk == formulario_id %}selected{% endif %}>{{ f.codigo }} - {{ f.titulo|truncatechars:40 }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col text-end">
+                {% if painel.devidos %}
+                    <span class="fs-5 fw-semibold">{{ painel.percentual }}%</span> de cumprimento
+                    <span class="text-muted">· {{ painel.devidos }} verificações com prazo encerrado ·</span>
+                    <span class="{% if painel.atrasados %}text-danger fw-semibold{% else %}text-success{% endif %}">{{ painel.atrasados }} em atraso</span>
+                {% else %}<span class="text-muted">Nenhuma verificação com prazo encerrado no período.</span>{% endif %}
+            </div>
+        </div>
+    </form>
+
+    <div class="small text-muted mb-2">
+        Período de {{ ini|date:"d/m/Y" }} a {{ fim|date:"d/m/Y" }} (hoje não entra: o dia corrente está em <em>Por data e turno</em>).
+        Cada verificação devida conta <strong>uma vez por prazo</strong> (turno, dia, semana, quinzena, mês…) e aparece na data em que o prazo terminou.
+        O rastreio começa na data de vigência do formulário. Clique no número para abrir o preenchimento daquela data, ou no nome da página para ver os itens.
+    </div>
+
+    {% for b in painel.blocos %}
+        <div class="card mb-3">
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-1">
+                <strong>{{ b.versao.formulario.codigo }} - {{ b.versao.formulario.titulo }}</strong>
+                <span>
+                    {% if b.percentual is not None %}<span class="badge {% if b.percentual == 100 %}bg-success{% elif b.percentual >= 90 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ b.percentual }}%</span>{% endif %}
+                    <span class="badge bg-secondary">{{ b.versao.revisao }}</span>
+                    {% if b.rastreio %}<span class="small text-muted ms-1">rastreio desde {{ b.rastreio|date:"d/m/Y" }}</span>{% else %}<span class="small text-warning ms-1">sem data de vigência: nada é cobrado</span>{% endif %}
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0 text-center">
+                    <thead><tr>
+                        <th class="text-start">Página</th>
+                        {% for d in painel.datas %}<th class="small fw-normal text-nowrap">{{ d|date:"d/m" }}</th>{% endfor %}
+                        <th>Atrasos</th><th>Cumpr.</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for grupo, linhas in b.grupos.items %}
+                        <tr class="table-light"><td colspan="{{ painel.datas|length|add:3 }}" class="text-start small text-uppercase text-muted">{{ grupo }}</td></tr>
+                        {% for l in linhas %}
+                            <tr>
+                                <td class="text-start text-nowrap"><a href="{% url 'pcp:atrasos_pagina' l.pagina.pk %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}" class="text-decoration-none">{{ l.pagina.nome }}</a></td>
+                                {% for d, c in l.celulas %}
+                                    <td>{% if c %}<a class="badge bg-danger text-decoration-none" href="{% url 'pcp:preencher_pagina' l.pagina.pk %}?data={{ d|date:'Y-m-d' }}{% if c.turno %}&turno={{ c.turno.pk }}{% endif %}">{{ c.n }}</a>{% else %}<span class="text-muted">·</span>{% endif %}</td>
+                                {% endfor %}
+                                <td class="fw-semibold {% if l.atrasados %}text-danger{% endif %}">{{ l.atrasados }}</td>
+                                <td>{% if l.percentual is not None %}{{ l.percentual }}%{% else %}—{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    {% empty %}
+                        <tr><td colspan="{{ painel.datas|length|add:3 }}" class="text-muted py-3">Sem páginas ativas.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center text-muted py-5">Nenhum formulário com revisão vigente.</div>
+    {% endfor %}
+</div>
+{% endblock %}

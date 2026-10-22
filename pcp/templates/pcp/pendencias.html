@@ -5,6 +5,10 @@
 <div class="container-fluid py-3">
     <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Pendências por data e turno</h4>
     {% include "pcp/_nav.html" with secao="pendencias" %}
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><a class="nav-link active" href="{% url 'pcp:pendencias' %}">Por data e turno</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'pcp:atrasos' %}">Atrasos do período</a></li>
+    </ul>
 
     <form method="get" class="card card-body mb-3">
         <div class="row g-2 align-items-end">

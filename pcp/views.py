@@ -113,6 +113,9 @@ def versao_publicar(request, pk):
     if not versao.paginas.exists():
         messages.error(request, 'Cadastre ao menos uma página antes de publicar.')
         return redirect('pcp:versao_detalhe', pk)
+    vigencia = request.POST.get('vigencia')
+    if vigencia:
+        versao.vigencia = _parse_data(vigencia)
     versao.publicar()
     messages.success(request, f'Revisão {versao} publicada e vigente. A anterior foi marcada como obsoleta.')
     return redirect('pcp:formulario_detalhe', versao.formulario_id)
@@ -396,6 +399,43 @@ def pendencias(request):
     return render(request, 'pcp/pendencias.html', {
         'data': data, 'turnos': turnos_ativos, 'painel': painel, 'formularios': Formulario.objects.filter(ativo=True),
         'formulario_id': int(formulario_id) if formulario_id else None, 'hoje': timezone.localdate()})
+
+
+PERIODOS_ATRASO = [7, 14, 30, 60]
+
+
+def _periodo_atrasos(request):
+    hoje = timezone.localdate()
+    ontem = hoje - datetime.timedelta(days=1)
+    fim = min(_parse_data(request.GET.get('ate')) if request.GET.get('ate') else ontem, ontem)
+    dias = int(request.GET['dias']) if request.GET.get('dias') in {str(d) for d in PERIODOS_ATRASO} else 7
+    return fim - datetime.timedelta(days=dias - 1), fim, dias, hoje
+
+
+@login_required
+def atrasos(request):
+    """Atrasos do período encerrado: verificações devidas cujo prazo passou sem resposta, por página e data."""
+    ini, fim, dias, hoje = _periodo_atrasos(request)
+    turnos_ativos = list(Turno.objects.filter(ativo=True))
+    formulario_id = request.GET.get('formulario') if str(request.GET.get('formulario', '')).isdigit() else None
+    painel = pend.painel_atrasos(ini, fim, turnos_ativos, formulario_id, hoje)
+    return render(request, 'pcp/atrasos.html', {
+        'ini': ini, 'fim': fim, 'dias': dias, 'periodos': PERIODOS_ATRASO, 'painel': painel, 'hoje': hoje,
+        'formularios': Formulario.objects.filter(ativo=True),
+        'formulario_id': int(formulario_id) if formulario_id else None})
+
+
+@login_required
+def atrasos_pagina(request, pk):
+    """Detalhe dos itens em atraso de uma página no período."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario'), pk=pk)
+    ini, fim, dias, hoje = _periodo_atrasos(request)
+    turnos_ativos = list(Turno.objects.filter(ativo=True))
+    lista, devidos = pend.atrasos_pagina(pagina, ini, fim, turnos_ativos, hoje, pend.inicio_rastreio(pagina.versao.formulario))
+    lista.sort(key=lambda a: (a['fim'], a['turno'].ordem if a['turno'] else 0, a['campo'].ordem), reverse=True)
+    return render(request, 'pcp/atrasos_pagina.html', {
+        'pagina': pagina, 'versao': pagina.versao, 'atrasos': lista, 'devidos': devidos, 'ini': ini, 'fim': fim, 'dias': dias,
+        'turno_padrao': turnos_ativos[0] if turnos_ativos else None})
 
 
 @login_required

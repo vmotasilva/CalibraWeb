@@ -16,7 +16,11 @@
             {% if versao.editavel %}
                 <a href="{% url 'pcp:pagina_nova' versao.pk %}" class="btn btn-outline-primary"><i class="bi bi-plus-lg me-1"></i>Nova página</a>
                 <form method="post" action="{% url 'pcp:versao_publicar' versao.pk %}" onsubmit="return confirm('Publicar a revisão {{ versao.revisao }}? Ela passa a valer e a revisão vigente atual vira obsoleta.');">{% csrf_token %}
-                    <button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Publicar</button>
+                    <div class="input-group">
+                        <span class="input-group-text">Vigência</span>
+                        <input type="date" name="vigencia" class="form-control" title="Data em que a revisão passa a valer (em branco = hoje). Os atrasos só são cobrados a partir da primeira vigência do formulário.">
+                        <button class="btn btn-success"><i class="bi bi-check2-circle me-1"></i>Publicar</button>
+                    </div>
                 </form>
                 <form method="post" action="{% url 'pcp:versao_excluir' versao.pk %}" onsubmit="return confirm('Excluir este rascunho e todas as suas páginas?');">{% csrf_token %}
                     <button class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>

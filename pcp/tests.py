@@ -231,7 +231,7 @@ class ImportacaoTests(PcpBase):
         self.assertFalse(FormularioVersao.objects.filter(revisao='R01', formulario__codigo='FOR.998').exists())
 
 
-class PendenciasTests(PcpBase):
+class PendenciasBase(PcpBase):
     def setUp(self):
         super().setUp()
         self.t2 = Turno.objects.create(nome='Turno 2', sigla='T2', ordem=2)
@@ -253,6 +253,8 @@ class PendenciasTests(PcpBase):
         ver, _ = Verificacao.objects.get_or_create(pagina=pagina or self.pag, data=dia, turno=turno)
         Resposta.objects.create(verificacao=ver, campo=campo, valor=valor)
 
+
+class PendenciasTests(PendenciasBase):
     def test_janelas(self):
         d = date(2026, 10, 22)  # quinta-feira
         self.assertEqual(pend.janela('semanal', d), (date(2026, 10, 19), date(2026, 10, 25)))
@@ -260,7 +262,8 @@ class PendenciasTests(PcpBase):
         self.assertEqual(pend.janela('trimestral', d), (date(2026, 10, 1), date(2026, 12, 31)))
         self.assertEqual(pend.janela('semestral', d), (date(2026, 7, 1), date(2026, 12, 31)))
         self.assertEqual(pend.janela('anual', d), (date(2026, 1, 1), date(2026, 12, 31)))
-        self.assertEqual(pend.janela('quinzenal', d), (date(2026, 10, 9), d))
+        self.assertEqual(pend.janela('quinzenal', d), (date(2026, 10, 16), date(2026, 10, 31)))
+        self.assertEqual(pend.janela('quinzenal', date(2026, 10, 15)), (date(2026, 10, 1), date(2026, 10, 15)))
         self.assertIsNone(pend.janela('evento', d))
 
     def test_devidos_e_pendentes(self):
@@ -315,7 +318,7 @@ class PendenciasTests(PcpBase):
         self.assertContains(r, 'Mostrar só pendentes')
 
 
-class CobrancaTests(PendenciasTests):
+class CobrancaTests(PendenciasBase):
     def setUp(self):
         super().setUp()
         cache.clear()
@@ -364,3 +367,74 @@ class CobrancaTests(PendenciasTests):
         self.assertEqual(r.status_code, 200)
         r = self.client.post(reverse('pcp:turno_novo'), {'nome': 'X', 'sigla': 'X', 'inicio': '06:00', 'fim': '14:00', 'ordem': 9, 'ativo': 'on'})
         self.assertEqual(r.status_code, 302)
+
+
+class AtrasosTests(PendenciasBase):
+    HOJE = date(2026, 10, 22)
+
+    def setUp(self):
+        super().setUp()
+        self.v15.vigencia = date(2026, 10, 1)
+        self.v15.save()
+
+    def atrasos(self, campo, ini, fim, **kw):
+        lista, devidos = pend.atrasos_pagina(self.pag, ini, fim, self.turnos, self.HOJE, kw.get('rastreio'))
+        return [a for a in lista if a['campo'].pk == campo.pk], devidos
+
+    def test_turno_e_diaria(self):
+        self.responder(date(2026, 10, 20), self.t1, self.c_lista)
+        self.responder(date(2026, 10, 20), self.t2, self.c_num, '-0,7')
+        ini, fim = date(2026, 10, 19), date(2026, 10, 21)
+        por_turno, devidos = self.atrasos(self.c_lista, ini, fim)
+        self.assertEqual(sorted((a['fim'].day, a['turno'].sigla) for a in por_turno),
+                         [(19, 'T1'), (19, 'T2'), (20, 'T2'), (21, 'T1'), (21, 'T2')])
+        diaria, _ = self.atrasos(self.c_num, ini, fim)
+        self.assertEqual(sorted(a['fim'].day for a in diaria), [19, 21])  # 20 foi feito (qualquer turno)
+        self.assertEqual(devidos, 9)  # 6 por turno + 3 diárias; semanal/mensal ainda não encerraram
+
+    def test_hoje_nao_entra_e_janelas_abertas_nao_atrasam(self):
+        lista, devidos = pend.atrasos_pagina(self.pag, date(2026, 10, 20), date(2026, 10, 25), self.turnos, self.HOJE)
+        self.assertTrue(all(a['fim'] <= date(2026, 10, 21) for a in lista))
+        self.assertFalse([a for a in lista if a['campo'].pk in (self.c_sem.pk, self.c_mes.pk)])
+
+    def test_semana_encerrada_conta_uma_vez(self):
+        lista, _ = self.atrasos(self.c_sem, date(2026, 10, 12), date(2026, 10, 21))
+        self.assertEqual([(a['inicio'], a['fim']) for a in lista], [(date(2026, 10, 12), date(2026, 10, 18))])
+        self.responder(date(2026, 10, 15), self.t1, self.c_sem, 'x')  # feito no meio da semana: cumpre a janela inteira
+        self.assertEqual(self.atrasos(self.c_sem, date(2026, 10, 12), date(2026, 10, 21))[0], [])
+
+    def test_mes_encerrado(self):
+        lista, _ = self.atrasos(self.c_mes, date(2026, 9, 25), date(2026, 10, 5))
+        self.assertEqual([(a['inicio'], a['fim']) for a in lista], [(date(2026, 9, 1), date(2026, 9, 30))])
+
+    def test_rastreio_corta_o_inicio(self):
+        lista, _ = self.atrasos(self.c_lista, date(2026, 10, 19), date(2026, 10, 21), rastreio=date(2026, 10, 21))
+        self.assertEqual(sorted(a['turno'].sigla for a in lista), ['T1', 'T2'])
+        self.assertEqual({a['fim'].day for a in lista}, {21})
+        self.assertEqual(pend.inicio_rastreio(self.form), date(2026, 10, 1))
+
+    def test_painel_atrasos(self):
+        self.responder(date(2026, 10, 20), self.t1, self.c_lista)
+        p = pend.painel_atrasos(date(2026, 10, 19), date(2026, 10, 25), self.turnos, hoje=self.HOJE)
+        self.assertEqual([str(d) for d in p['datas']], ['2026-10-19', '2026-10-20', '2026-10-21'])
+        linha = p['blocos'][0]['grupos']['Sem grupo' if not self.pag.grupo else self.pag.grupo][0]
+        self.assertEqual(linha['devidos'], 9)
+        self.assertEqual(linha['atrasados'], 8)  # 9 devidos - 1 feito (c_lista T1 dia 20)
+        self.assertEqual(p['percentual'], 11)
+        d19, cel = linha['celulas'][0]
+        self.assertEqual((d19, cel['n']), (date(2026, 10, 19), 3))  # lista T1, lista T2, diária
+
+    def test_telas(self):
+        r = self.client.get(reverse('pcp:atrasos') + '?dias=14')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Atrasos do período')
+        r = self.client.get(reverse('pcp:atrasos_pagina', args=[self.pag.pk]) + '?dias=7')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.client.get(reverse('pcp:atrasos') + '?dias=abc&formulario=x&ate=lixo').status_code, 200)
+
+    def test_publicar_com_vigencia(self):
+        nova = self.v15.clonar('R16')
+        self.client.post(reverse('pcp:versao_publicar', args=[nova.pk]), {'vigencia': '2026-09-15'})
+        nova.refresh_from_db()
+        self.assertEqual((nova.status, nova.vigencia), ('vigente', date(2026, 9, 15)))
+        self.assertEqual(pend.inicio_rastreio(self.form), date(2026, 9, 15))

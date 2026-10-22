@@ -1,0 +1,34 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Atrasos - {{ pagina.nome }} - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0">Atrasos - {{ pagina.nome }}</h4>
+            <div class="text-muted">{{ versao }} · {{ ini|date:"d/m/Y" }} a {{ fim|date:"d/m/Y" }} ·
+                <span class="{% if atrasos %}text-danger fw-semibold{% else %}text-success{% endif %}">{{ atrasos|length }} em atraso</span> de {{ devidos }} com prazo encerrado</div>
+        </div>
+        <a href="{% url 'pcp:atrasos' %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}&formulario={{ versao.formulario_id }}" class="btn btn-outline-secondary">Voltar</a>
+    </div>
+    <div class="card"><div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead><tr><th>Prazo</th><th>Turno</th><th>Item</th><th>O que verificar</th><th>Frequência</th><th></th></tr></thead>
+            <tbody>
+            {% for a in atrasos %}
+                <tr>
+                    <td class="text-nowrap">{% if a.inicio == a.fim %}{{ a.fim|date:"d/m/Y" }}{% else %}{{ a.inicio|date:"d/m" }} a {{ a.fim|date:"d/m/Y" }}{% endif %}</td>
+                    <td>{{ a.turno.sigla|default:"—" }}</td>
+                    <td class="fw-semibold {% if a.campo.critico %}text-danger{% endif %}">{{ a.campo.item|default:"—" }}</td>
+                    <td>{% if a.campo.etapa %}<div class="small text-muted">{{ a.campo.etapa }}</div>{% endif %}{{ a.campo.descricao }}</td>
+                    <td class="small">{{ a.campo.frequencia }}</td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'pcp:preencher_pagina' pagina.pk %}?data={{ a.fim|date:'Y-m-d' }}&turno={% if a.turno %}{{ a.turno.pk }}{% else %}{{ turno_padrao.pk }}{% endif %}">Preencher</a></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atraso no período.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+</div>
+{% endblock %}

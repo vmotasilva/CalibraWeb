@@ -543,7 +543,7 @@ class NavigationPermission(models.Model):
             ("nav_gestao_pcp", "NAV: Gestão / Seção Processos > PCP"),
             ("nav_pcp_bloco_preenchimento", "NAV: PCP / Bloco Preenchimento e Ocorrências"),
             ("nav_pcp_preencher", "NAV: PCP / Preencher Verificações"),
-            ("nav_pcp_pendencias", "NAV: PCP / Ver Pendências por Data e Turno"),
+            ("nav_pcp_pendencias", "NAV: PCP / Ver Pendências e Atrasos"),
             ("nav_pcp_ocorrencias", "NAV: PCP / Ver Ocorrências"),
             ("nav_pcp_ocorrencia_tratar", "NAV: PCP / Registrar Tratativa de Ocorrência"),
             ("nav_pcp_bloco_formularios", "NAV: PCP / Bloco Formulários e Revisões"),
