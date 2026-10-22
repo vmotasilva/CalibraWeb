@@ -21,7 +21,7 @@ from pcp import tipos as tipos_mod
 from pcp.tipos import aplicar_ajuste
 from pcp.importacao import importar_planilha
 from pcp.importacao_registros import importar_registros
-from pcp.models import (SEM_GRUPO, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
+from pcp.models import (SEM_GRUPO, AjusteCampo, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
 
@@ -96,6 +96,49 @@ def _decimal_ou_none(texto):
         raise ValueError(texto)
 
 
+def _descricao_estado(estado, listas):
+    """Texto curto do estado de um item: 'Lista: Ok / Nok', 'Número 10 – 27 °C', 'Texto'."""
+    tipo = dict(Campo.TIPOS).get(estado['tipo'], estado['tipo'])
+    if estado['tipo'] == Campo.LISTA:
+        return f'Lista: {listas.get(estado["lista"], "—")}'
+    if estado['tipo'] == Campo.NUMERO:
+        faixa = f'{estado["minimo"] or "—"} – {estado["maximo"] or "—"}' if (estado['minimo'] or estado['maximo']) else 'sem limites'
+        return f'{tipo}: {faixa} {estado["unidade"]}'.strip()
+    return tipo
+
+
+@login_required
+def ajustes(request, pk):
+    """Histórico dos ajustes de tipo, texto livre e limites dos itens, com a opção de desfazer."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    if request.method == 'POST':
+        resultados = Counter()
+        for ajuste in (AjusteCampo.objects.filter(formulario=formulario, pk__in=[int(x) for x in request.POST.getlist('ajustes') if x.isdigit()])
+                       .select_related('campo').order_by('-criado_em', '-id')):  # o mais recente primeiro
+            resultados[tipos_mod.desfazer(ajuste, request.user)] += 1
+        if resultados['ok']:
+            messages.success(request, f'{resultados["ok"]} ajuste(s) desfeito(s): os itens voltaram ao estado anterior e a conformidade foi recalculada.')
+        if resultados['alterado']:
+            messages.warning(request, f'{resultados["alterado"]} ajuste(s) não foram desfeitos porque o item mudou depois deles '
+                                      '(desfaça primeiro o ajuste mais recente ou edite o item).')
+        if resultados['ja']:
+            messages.info(request, f'{resultados["ja"]} ajuste(s) já estavam desfeitos.')
+        if not resultados:
+            messages.info(request, 'Nenhum ajuste selecionado.')
+        return redirect('pcp:ajustes', pk)
+    origem = request.GET.get('origem', '')
+    qs = AjusteCampo.objects.filter(formulario=formulario).select_related('campo__pagina', 'criado_por', 'desfeito_por')
+    if origem in dict(AjusteCampo.ORIGENS):
+        qs = qs.filter(origem=origem)
+    listas = {l.pk: l.nome for l in ListaOpcoes.objects.all()}
+    linhas = []
+    for a in qs[:300]:
+        linhas.append({'obj': a, 'antes': _descricao_estado(a.antes, listas), 'depois': _descricao_estado(a.depois, listas)})
+    return render(request, 'pcp/ajustes.html', {
+        'formulario': formulario, 'linhas': linhas, 'origem': origem, 'origens': AjusteCampo.ORIGENS,
+        'pendentes': sum(1 for l in linhas if not l['obj'].desfeito)})
+
+
 @login_required
 def valores(request, pk):
     """Valores já lançados que não correspondem às opções cadastradas, com sugestão de vínculo."""
@@ -118,7 +161,7 @@ def vincular_valores(request):
         lista_id = request.POST.get(f'lista_{i}', '')
         if acao and lista_id.isdigit():
             escolhas.append((int(lista_id), request.POST.get(f'valor_{i}', ''), acao, request.POST.get(f'itens_{i}', '')))
-    r = equiv.aplicar_vinculos(escolhas)
+    r = equiv.aplicar_vinculos(escolhas, usuario=request.user, lote=tipos_mod.novo_lote())
     if escolhas:
         partes = [f'{r["vinculados"]} valor(es) vinculado(s)', f'{r["criadas"]} opção(ões) criada(s)', f'{r["textos"]} item(ns) marcado(s) como texto']
         messages.success(request, ', '.join(partes) + f'; {r["lancamentos"]} lançamento(s) atualizado(s). Os vínculos valem nas próximas importações de registros.')
@@ -136,7 +179,7 @@ def sugerir_limites(request, pk):
     formulario = get_object_or_404(Formulario, pk=pk)
     versao = formulario.versao_vigente or formulario.versoes.first()
     if request.method == 'POST' and versao:
-        aplicados, fora, invalidos = 0, 0, 0
+        aplicados, fora, invalidos, lote = 0, 0, 0, tipos_mod.novo_lote()
         for campo_id in request.POST.getlist('campos'):
             campo = Campo.objects.filter(pk=campo_id, pagina__versao__formulario=formulario, tipo=Campo.NUMERO).select_related('pagina').first()
             if not campo:
@@ -149,7 +192,8 @@ def sugerir_limites(request, pk):
             if (minimo is None and maximo is None) or (minimo is not None and maximo is not None and minimo > maximo):
                 invalidos += 1
                 continue
-            fora += tipos_mod.aplicar_limites(formulario, campo, minimo, maximo, request.POST.get(f'un_{campo_id}', ''))
+            fora += tipos_mod.aplicar_limites(formulario, campo, minimo, maximo, request.POST.get(f'un_{campo_id}', ''),
+                                              usuario=request.user, lote=lote)
             aplicados += 1
         if aplicados:
             messages.success(request, f'Limites aplicados em {aplicados} item(ns); a conformidade dos lançamentos foi recalculada ({fora} fora do limite).')
@@ -171,14 +215,14 @@ def ajustar_tipos(request, pk):
     formulario = get_object_or_404(Formulario, pk=pk)
     versao = formulario.versao_vigente or formulario.versoes.first()
     if request.method == 'POST' and versao:
-        aplicados = 0
+        aplicados, lote = 0, tipos_mod.novo_lote()
         for item in request.POST.getlist('campos'):
             campo_id, _, novo_tipo = item.partition('|')
             if novo_tipo not in (Campo.NUMERO, Campo.TEXTO) or not campo_id.isdigit():
                 continue
             campo = Campo.objects.filter(pk=campo_id, pagina__versao__formulario=formulario, tipo=Campo.LISTA).select_related('pagina').first()
             if campo:
-                aplicar_ajuste(formulario, campo, novo_tipo)
+                aplicar_ajuste(formulario, campo, novo_tipo, usuario=request.user, lote=lote)
                 aplicados += 1
         messages.success(request, f'Tipo ajustado em {aplicados} item(ns).' if aplicados else 'Nenhum item selecionado.')
         return redirect('pcp:ajustar_tipos', pk)

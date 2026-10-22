@@ -6,12 +6,14 @@ preenchem. Esta rotina compara os dois e propõe a correção:
 - item de lista em que quase tudo o que foi lançado é número  -> número;
 - item de lista em que quase nada bate com as opções (nem com o vocabulário das listas) e não é número -> texto.
 """
+import uuid
 from collections import Counter, defaultdict
 
 from django.db.models import Count
+from django.utils import timezone
 
 from pcp.importacao import RE_NUM, _chave
-from pcp.models import Campo, ListaOpcoes, Resposta
+from pcp.models import AjusteCampo, Campo, ListaOpcoes, Resposta, ValorEquivalente
 
 MIN_LANCAMENTOS = 5
 LIMIAR = 0.8
@@ -49,14 +51,16 @@ def propor_ajustes(versao):
     return propostas
 
 
-def aplicar_ajuste(formulario, campo, novo_tipo):
+def aplicar_ajuste(formulario, campo, novo_tipo, usuario=None, lote=None, origem='tipo'):
     """Muda o tipo do item (e dos itens equivalentes nas revisões vigente e em rascunho) e zera a conformidade antiga,
     que tinha sido calculada pela lista. Devolve a quantidade de itens alterados."""
     paginas = formulario.paginas_equivalentes([campo.pagina.nome])
     alvo = Campo.objects.filter(pagina__in=paginas, item=campo.item, etapa=campo.etapa, descricao=campo.descricao)
     ids = list(alvo.values_list('pk', flat=True)) or [campo.pk]
+    antes = {c.pk: snapshot(c) for c in Campo.objects.filter(pk__in=ids)}
     Campo.objects.filter(pk__in=ids).update(tipo=novo_tipo, lista=None)
     Resposta.objects.filter(campo_id__in=ids).update(conforme=None)
+    _registrar(formulario, ids, antes, origem, lote, usuario)
     return len(ids)
 
 
@@ -168,17 +172,87 @@ def propor_limites(versao, cobertura=99):
     return propostas
 
 
-def aplicar_limites(formulario, campo, minimo, maximo, unidade=''):
+def aplicar_limites(formulario, campo, minimo, maximo, unidade='', usuario=None, lote=None):
     """Grava os limites no item e nos equivalentes (revisões vigente/rascunho) e recalcula a conformidade dos lançamentos."""
     paginas = formulario.paginas_equivalentes([campo.pagina.nome])
     alvo = Campo.objects.filter(pagina__in=paginas, item=campo.item, etapa=campo.etapa, descricao=campo.descricao)
     ids = list(alvo.values_list('pk', flat=True)) or [campo.pk]
+    antes = {c.pk: snapshot(c) for c in Campo.objects.filter(pk__in=ids)}
     dados = {'minimo': minimo, 'maximo': maximo}
     if unidade and not campo.unidade:
         dados['unidade'] = unidade[:20]
     Campo.objects.filter(pk__in=ids).update(**dados)
     for k, v in dados.items():
         setattr(campo, k, v)
+    _registrar(formulario, ids, antes, 'limites', lote, usuario)
     for valor in set(Resposta.objects.filter(campo_id__in=ids).values_list('valor', flat=True)):
         Resposta.objects.filter(campo_id__in=ids, valor=valor).update(conforme=campo.avaliar(valor))
     return Resposta.objects.filter(campo_id__in=ids, conforme=False).count()
+
+
+# --------------------------------------------------------------------------------------
+# Histórico e desfazer
+# --------------------------------------------------------------------------------------
+
+def _num(x):
+    """Decimal em texto canônico ('10.0000' e '10' -> '10'), para comparar estados."""
+    return None if x is None else format(Decimal(x).normalize(), 'f')
+
+
+def snapshot(campo):
+    """Estado do item que os ajustes podem alterar."""
+    return {'tipo': campo.tipo, 'lista': campo.lista_id, 'minimo': _num(campo.minimo), 'maximo': _num(campo.maximo), 'unidade': campo.unidade or ''}
+
+
+def novo_lote():
+    return uuid.uuid4().hex[:16]
+
+
+def _registrar(formulario, ids, antes, origem, lote, usuario):
+    for campo in Campo.objects.filter(pk__in=ids):
+        depois = snapshot(campo)
+        if depois != antes.get(campo.pk):
+            AjusteCampo.objects.create(formulario=formulario, campo=campo, origem=origem, lote=lote or novo_lote(),
+                                       antes=antes[campo.pk], depois=depois, criado_por=usuario)
+
+
+def recalcular_conformidade(campo):
+    """Recalcula a conformidade dos lançamentos do item pelo tipo atual (lista: própria lista, vínculos e vocabulário das listas)."""
+    valores = set(Resposta.objects.filter(campo=campo).values_list('valor', flat=True))
+    if campo.tipo == Campo.LISTA and campo.lista_id:
+        propria = {o.valor: o.conforme for o in campo.lista.opcoes.all()}
+        vinculos = {v.chave: v.opcao.conforme for v in ValorEquivalente.objects.filter(lista_id=campo.lista_id).select_related('opcao')}
+        vocabulario = {}
+        for l in ListaOpcoes.objects.prefetch_related('opcoes'):
+            for o in l.opcoes.all():
+                vocabulario.setdefault(_chave(o.valor), o.conforme)
+
+        def conforme(valor):
+            if valor in propria:
+                return propria[valor]
+            k = _chave(valor)
+            return vinculos.get(k, vocabulario.get(k))
+    elif campo.tipo == Campo.NUMERO:
+        conforme = campo.avaliar
+    else:
+        def conforme(valor):
+            return None
+    for valor in valores:
+        Resposta.objects.filter(campo=campo, valor=valor).update(conforme=conforme(valor))
+
+
+def desfazer(ajuste, usuario=None):
+    """Volta o item ao estado anterior ao ajuste. Retorna 'ok', 'ja' (já desfeito) ou 'alterado' (o item mudou depois do ajuste)."""
+    if ajuste.desfeito:
+        return 'ja'
+    campo = Campo.objects.get(pk=ajuste.campo_id)
+    if snapshot(campo) != ajuste.depois:
+        return 'alterado'
+    a = ajuste.antes
+    Campo.objects.filter(pk=campo.pk).update(
+        tipo=a['tipo'], lista_id=a['lista'], minimo=a['minimo'], maximo=a['maximo'], unidade=a['unidade'])
+    campo.refresh_from_db()
+    recalcular_conformidade(campo)
+    ajuste.desfeito_em, ajuste.desfeito_por = timezone.now(), usuario
+    ajuste.save(update_fields=['desfeito_em', 'desfeito_por'])
+    return 'ok'

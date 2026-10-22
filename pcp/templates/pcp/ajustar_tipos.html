@@ -10,6 +10,7 @@
         </div>
         <div class="d-flex gap-2">
             <a href="{% url 'pcp:sugerir_limites' formulario.pk %}" class="btn btn-outline-primary"><i class="bi bi-rulers me-1"></i>Sugerir limites dos itens numéricos</a>
+            <a href="{% url 'pcp:ajustes' formulario.pk %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Histórico e desfazer</a>
             <a href="{% url 'pcp:formulario_detalhe' formulario.pk %}" class="btn btn-outline-secondary">Voltar</a>
         </div>
     </div>

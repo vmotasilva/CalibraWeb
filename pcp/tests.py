@@ -16,7 +16,7 @@ from django.utils import timezone
 from pcp import cobranca, pendencias as pend
 from pcp.importacao_registros import importar_registros
 from pcp.importacao import frequencia_canonica, importar_planilha, parse_arquivo, parse_faixa, parse_mais_menos
-from pcp.models import (ValorEquivalente, Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
+from pcp.models import (AjusteCampo, ValorEquivalente, Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
 
@@ -1165,3 +1165,103 @@ class MarcarTextoTests(ValoresBase):
         self.assertEqual([(x['n'], x['total']) for x in linha['itens']], [(2, 3)])
         self.assertTrue(linha['texto_sugerido'])
 
+
+class DesfazerAjustesTests(PcpBase):
+    def setUp(self):
+        super().setUp()
+        self.c_num.delete()
+        self.v15.publicar()
+        self.c_med = Campo.objects.create(pagina=self.pag, item='M-1', descricao='Medida', tipo='lista', lista=self.lista)
+        self.c_lof = Campo.objects.create(pagina=self.pag, item='T-1', descricao='Livre', tipo='lista', lista=self.lista)
+        for dia in range(1, 8):
+            ver = Verificacao.objects.create(pagina=self.pag, data=date(2026, 3, dia), turno=self.t1)
+            Resposta.objects.create(verificacao=ver, campo=self.c_med, valor=str(10 + dia), conforme=None)
+            Resposta.objects.create(verificacao=ver, campo=self.c_lof, valor='Lofoam', conforme=None)
+            Resposta.objects.create(verificacao=ver, campo=self.c_lista, valor='Ok', conforme=True)
+
+    def tipo(self, campo, novo):
+        return self.client.post(reverse('pcp:ajustar_tipos', args=[self.form.pk]), {'campos': [f'{campo.pk}|{novo}']})
+
+    def desfazer(self, *ajustes):
+        return self.client.post(reverse('pcp:ajustes', args=[self.form.pk]), {'ajustes': [a.pk for a in ajustes]})
+
+    def test_ajuste_de_tipo_e_registrado_e_desfeito(self):
+        self.tipo(self.c_med, 'numero')
+        aj = AjusteCampo.objects.get()
+        self.assertEqual((aj.origem, aj.antes['tipo'], aj.antes['lista'], aj.depois['tipo']), ('tipo', 'lista', self.lista.pk, 'numero'))
+        self.assertIsNotNone(aj.criado_por)
+        self.desfazer(aj)
+        self.c_med.refresh_from_db()
+        self.assertEqual((self.c_med.tipo, self.c_med.lista_id), ('lista', self.lista.pk))
+        aj.refresh_from_db()
+        self.assertTrue(aj.desfeito)
+        self.assertEqual(Resposta.objects.filter(campo=self.c_med).count(), 7)  # lançamentos preservados
+
+    def test_desfazer_recalcula_a_conformidade_pelo_tipo_restaurado(self):
+        Resposta.objects.filter(campo=self.c_lista).update(conforme=True)
+        # marca B-1 (lista Ok/Nok com 'Ok') como texto: conformidade limpa; desfazer devolve True
+        self.client.post(reverse('pcp:vincular_valores'), {'total': 1, 'lista_0': self.lista.pk, 'valor_0': 'Ok', 'acao_0': 'texto', 'itens_0': str(self.c_lista.pk)})
+        self.assertFalse(Resposta.objects.filter(campo=self.c_lista, conforme=True).exists())
+        aj = AjusteCampo.objects.get(campo=self.c_lista)
+        self.assertEqual(aj.origem, 'texto')
+        self.desfazer(aj)
+        self.assertEqual(Resposta.objects.filter(campo=self.c_lista, conforme=True).count(), 7)
+
+    def test_limites_desfazem_para_sem_limites(self):
+        self.tipo(self.c_med, 'numero')
+        self.client.post(reverse('pcp:sugerir_limites', args=[self.form.pk]), {
+            'campos': [self.c_med.pk], f'min_{self.c_med.pk}': '12', f'max_{self.c_med.pk}': '15', f'un_{self.c_med.pk}': 'mm'})
+        self.assertTrue(Resposta.objects.filter(campo=self.c_med, conforme=False).exists())
+        lim = AjusteCampo.objects.get(origem='limites')
+        self.assertEqual((lim.antes['minimo'], lim.depois['minimo'], lim.depois['unidade']), (None, '12', 'mm'))
+        self.desfazer(lim)
+        self.c_med.refresh_from_db()
+        self.assertEqual((self.c_med.tipo, self.c_med.minimo, self.c_med.maximo, self.c_med.unidade), ('numero', None, None, ''))
+        self.assertFalse(Resposta.objects.filter(campo=self.c_med, conforme=False).exists())
+
+    def test_nao_desfaz_se_o_item_mudou_depois(self):
+        self.tipo(self.c_med, 'numero')
+        aj = AjusteCampo.objects.get()
+        Campo.objects.filter(pk=self.c_med.pk).update(tipo='texto')  # edição posterior
+        self.desfazer(aj)
+        self.c_med.refresh_from_db()
+        self.assertEqual(self.c_med.tipo, 'texto')  # intocado
+        aj.refresh_from_db()
+        self.assertFalse(aj.desfeito)
+
+    def test_desfaz_em_ordem_inversa_quando_selecionados_juntos(self):
+        self.tipo(self.c_med, 'numero')
+        self.client.post(reverse('pcp:sugerir_limites', args=[self.form.pk]), {
+            'campos': [self.c_med.pk], f'min_{self.c_med.pk}': '12', f'max_{self.c_med.pk}': '15'})
+        todos = list(AjusteCampo.objects.all())
+        self.desfazer(*todos)  # o limite (mais recente) é desfeito antes do tipo
+        self.c_med.refresh_from_db()
+        self.assertEqual((self.c_med.tipo, self.c_med.lista_id, self.c_med.minimo), ('lista', self.lista.pk, None))
+        self.assertTrue(all(a.desfeito for a in AjusteCampo.objects.all()))
+
+    def test_desfazer_duas_vezes_e_ajuste_de_outro_formulario(self):
+        self.tipo(self.c_med, 'numero')
+        aj = AjusteCampo.objects.get()
+        self.desfazer(aj)
+        self.desfazer(aj)  # já desfeito: sem efeito
+        self.assertEqual(AjusteCampo.objects.count(), 1)
+        outro = Formulario.objects.create(setor=self.setor, codigo='FOR.777', titulo='Outro')
+        r = self.client.post(reverse('pcp:ajustes', args=[outro.pk]), {'ajustes': [aj.pk]})  # id de outro formulário: ignorado
+        self.assertEqual(r.status_code, 302)
+
+    def test_propaga_ao_rascunho_e_desfaz_nos_dois(self):
+        rascunho = self.v15.clonar('R16')
+        self.tipo(self.c_med, 'numero')
+        self.assertEqual(AjusteCampo.objects.count(), 2)  # vigente e rascunho
+        self.desfazer(*AjusteCampo.objects.all())
+        self.assertEqual(Campo.objects.get(pagina__versao=rascunho, item='M-1').tipo, 'lista')
+
+    def test_tela_lista_e_filtra(self):
+        self.tipo(self.c_med, 'numero')
+        self.client.post(reverse('pcp:vincular_valores'), {'total': 1, 'lista_0': self.lista.pk, 'valor_0': 'Lofoam', 'acao_0': 'texto', 'itens_0': str(self.c_lof.pk)})
+        url = reverse('pcp:ajustes', args=[self.form.pk])
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Lista: Ok/Nok')   # estado anterior legível
+        self.assertEqual(len(self.client.get(url + '?origem=texto').context['linhas']), 1)
+        self.assertEqual(len(self.client.get(url).context['linhas']), 2)

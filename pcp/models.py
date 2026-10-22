@@ -294,6 +294,29 @@ class Campo(models.Model):
         return None
 
 
+class AjusteCampo(models.Model):
+    """Histórico dos ajustes automáticos/assistidos em itens (tipo, texto livre, limites), com o estado de antes e depois, para desfazer."""
+    ORIGENS = [('tipo', 'Tipo ajustado pelos registros'), ('texto', 'Marcado como texto livre'), ('limites', 'Limites mínimo e máximo')]
+
+    formulario = models.ForeignKey('Formulario', on_delete=models.CASCADE, related_name='ajustes')
+    campo = models.ForeignKey(Campo, on_delete=models.CASCADE, related_name='ajustes')
+    origem = models.CharField(max_length=10, choices=ORIGENS)
+    lote = models.CharField(max_length=32, db_index=True, help_text='Identifica os itens alterados na mesma ação.')
+    antes = models.JSONField()
+    depois = models.JSONField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    desfeito_em = models.DateTimeField(null=True, blank=True)
+    desfeito_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        ordering = ('-criado_em', '-id')
+
+    @property
+    def desfeito(self):
+        return self.desfeito_em is not None
+
+
 class Verificacao(models.Model):
     """Preenchimento de uma página numa data e turno."""
     pagina = models.ForeignKey(Pagina, on_delete=models.PROTECT, related_name='verificacoes')

@@ -11,6 +11,7 @@ urlpatterns = [
     path('formularios/novo/', views.formulario_novo, name='formulario_novo'),
     path('formularios/<int:pk>/', views.formulario_detalhe, name='formulario_detalhe'),
     path('formularios/<int:pk>/excluir/', views.formulario_excluir, name='formulario_excluir'),
+    path('formularios/<int:pk>/ajustes/', views.ajustes, name='ajustes'),
     path('formularios/<int:pk>/valores/', views.valores, name='valores'),
     path('valores/vincular/', views.vincular_valores, name='vincular_valores'),
     path('formularios/<int:pk>/sugerir-limites/', views.sugerir_limites, name='sugerir_limites'),

@@ -116,7 +116,7 @@ def valores_do_formulario(formulario):
     return montar_linhas(contagem, detalhe, totais)
 
 
-def aplicar_vinculos(linhas):
+def aplicar_vinculos(linhas, usuario=None, lote=None):
     """linhas: [(lista_id, valor, acao, ids_dos_itens)] com acao 'op:<id>' (vincular), 'novo:ok' ou 'novo:desvio' (criar opção)
     ou 'texto' (marcar os itens indicados como texto livre). Devolve {'vinculados', 'criadas', 'textos', 'lancamentos'}."""
     resumo = {'vinculados': 0, 'criadas': 0, 'textos': 0, 'lancamentos': 0}
@@ -128,7 +128,7 @@ def aplicar_vinculos(linhas):
         if acao == 'texto':
             ids = [int(x) for x in itens_ids.split(',') if x.strip().isdigit()]
             for campo in Campo.objects.filter(pk__in=ids, tipo=Campo.LISTA, lista=lista).select_related('pagina__versao__formulario'):
-                aplicar_ajuste(campo.pagina.versao.formulario, campo, Campo.TEXTO)
+                aplicar_ajuste(campo.pagina.versao.formulario, campo, Campo.TEXTO, usuario=usuario, lote=lote, origem='texto')
                 resumo['textos'] += 1
             continue
         if acao.startswith('op:') and acao[3:].isdigit():
