@@ -1,0 +1,127 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Importar registros - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 860px;">
+    <h4 class="mb-3"><i class="bi bi-file-earmark-spreadsheet me-2"></i>Importar registros já feitos</h4>
+    <div class="alert alert-info py-2 small">
+        Importa os <strong>lançamentos</strong> das planilhas (colunas de data e turno; abas mensais entram no dia 1º do mês, no primeiro turno) para as páginas
+        <strong>já existentes</strong> na revisão escolhida. Isto é separado da importação da estrutura: importe a estrutura antes, em
+        <a href="{% url 'pcp:importar' %}">Importar estrutura</a>. O formulário e a revisão são lidos do nome do arquivo (ex.: <code>FOR.080.R15 - ….xlsx</code>).
+        Respostas que já existem <strong>não são sobrescritas</strong>, então reimportar é seguro. Use <em>Simular</em> para conferir antes de gravar.
+        Planilhas acima de 3 MB têm as células vazias removidas no navegador antes do envio.
+    </div>
+
+    {% if resumo %}
+        <div class="card mb-3 {% if resumo.simulado %}border-warning{% else %}border-success{% endif %}">
+            <div class="card-header {% if resumo.simulado %}bg-warning text-dark{% else %}bg-success text-white{% endif %}">
+                {% if resumo.simulado %}Simulação — nada foi gravado{% else %}Registros importados{% endif %} em {{ resumo.versao }}
+                {% if resumo.primeira_data %}({{ resumo.primeira_data|date:"d/m/Y" }} a {{ resumo.ultima_data|date:"d/m/Y" }}){% endif %}
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col"><div class="fs-4 fw-semibold">{{ resumo.verificacoes_novas }}</div><div class="small text-muted">verificações</div></div>
+                    <div class="col"><div class="fs-4 fw-semibold">{{ resumo.respostas_novas }}</div><div class="small text-muted">respostas novas</div></div>
+                    <div class="col"><div class="fs-4 fw-semibold">{{ resumo.respostas_existentes }}</div><div class="small text-muted">já existiam</div></div>
+                    <div class="col"><div class="fs-4 fw-semibold {% if resumo.fora_do_limite %}text-danger{% endif %}">{{ resumo.fora_do_limite }}</div><div class="small text-muted">fora do limite</div></div>
+                </div>
+                {% if resumo.tipos_ajustados %}
+                    <div class="alert alert-info py-2 small">
+                        {{ resumo.tipos_ajustados|length }} item(ns) {% if resumo.simulado %}passariam a ser{% else %}passaram a ser{% endif %} numéricos (os lançamentos são números):
+                        {% for pagina, item, n in resumo.tipos_ajustados|slice:":12" %}<span class="badge bg-light text-dark border">{{ pagina }} · {{ item }}</span> {% endfor %}
+                        {% if resumo.tipos_ajustados|length > 12 %}…{% endif %}
+                    </div>
+                {% endif %}
+                {% if resumo.futuros %}<div class="alert alert-secondary py-2">{{ resumo.futuros }} lançamento(s) com data futura foram ignorados.</div>{% endif %}
+                {% if resumo.nao_reconhecidos %}
+                    <div class="alert alert-warning py-2 small">
+                        Valores que não correspondem às opções da lista do item (gravados sem avaliar conformidade). Se forem opções legítimas, inclua-as em <em>Listas de opções</em>:
+                        <ul class="mb-0">{% for lista, valor, n in resumo.nao_reconhecidos %}<li><strong>{{ valor }}</strong> em "{{ lista }}" ({{ n }}x)</li>{% endfor %}</ul>
+                    </div>
+                {% endif %}
+                {% if resumo.vigencia_ajustada %}<div class="alert alert-info py-2">Vigência recuada para {{ resumo.vigencia_ajustada|date:"d/m/Y" }}: os atrasos passam a contar desde essa data.</div>{% endif %}
+                {% if resumo.linhas_sem_item %}<div class="alert alert-warning py-2">{{ resumo.linhas_sem_item }} linha(s) da planilha não têm item correspondente na revisão (a estrutura mudou desde a importação?).</div>{% endif %}
+                {% if resumo.sem_pagina %}<div class="alert alert-warning py-2">Abas sem página na revisão {{ resumo.versao }} (importe a estrutura): {{ resumo.sem_pagina|join:", " }}.</div>{% endif %}
+                {% if resumo.ignoradas %}<div class="small text-muted mb-2">Ignoradas: {% for a, m in resumo.ignoradas %}{{ a }} ({{ m }}){% if not forloop.last %}; {% endif %}{% endfor %}.</div>{% endif %}
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Aba</th><th>Página</th><th class="text-end">Lançamentos</th></tr></thead>
+                    <tbody>{% for aba, pagina, n, colunas in resumo.abas %}<tr><td>{{ aba }}</td><td>{{ pagina }}</td><td class="text-end">{{ n }}</td></tr>{% endfor %}</tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="card card-body" id="form-importar">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="row g-3">
+            {% for f in form %}
+                <div class="{% if f.field.widget.input_type == 'checkbox' %}col-12{% else %}col-md-6{% endif %}{% if f.name == 'arquivo' %} col-md-12{% endif %}">
+                    {% if f.field.widget.input_type == 'checkbox' %}
+                        <div class="form-check">{{ f }} <label class="form-check-label" for="{{ f.id_for_label }}">{{ f.label }}</label></div>
+                    {% else %}
+                        <label class="form-label" for="{{ f.id_for_label }}">{{ f.label }}</label>
+                        {{ f }}
+                    {% endif %}
+                    {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}
+                    {% for e in f.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary" id="btn-importar"><i class="bi bi-upload me-1"></i>Importar registros</button>
+            <a href="{% url 'pcp:formularios' %}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+        <div id="status-importar" class="small mt-2 text-muted" role="status"></div>
+    </form>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function () {
+    // Limite de ~4,5 MB por envio no servidor. Aqui só as células vazias (formatadas, sem valor) são removidas:
+    // todas as colunas com dados são mantidas.
+    var LIMITE_DIRETO = 3 * 1024 * 1024, LIMITE_ENVIO = 4 * 1024 * 1024;
+    var VAZIA = /<c r="[A-Z]+\d+"[^>]*\/>/g;
+    var form = document.getElementById('form-importar');
+    var input = document.getElementById('id_arquivo');
+    var btn = document.getElementById('btn-importar');
+    var status = document.getElementById('status-importar');
+    if (!form || !input) return;
+    function erro(msg) { status.className = 'small mt-2 text-danger'; status.textContent = msg; btn.disabled = false; }
+    form.addEventListener('submit', async function (ev) {
+        var f = input.files && input.files[0];
+        if (form.dataset.pronto === '1') { btn.disabled = true; return; }
+        if (!f) return;
+        if (f.size <= LIMITE_DIRETO || typeof JSZip === 'undefined') { btn.disabled = true; return; }
+        ev.preventDefault();
+        btn.disabled = true;
+        status.className = 'small mt-2 text-muted';
+        try {
+            status.textContent = 'Lendo a planilha...';
+            var zip = await JSZip.loadAsync(f);
+            var abas = Object.keys(zip.files).filter(function (n) { return /^xl\/worksheets\/[^\/]+\.xml$/.test(n); });
+            for (var i = 0; i < abas.length; i++) {
+                status.textContent = 'Reduzindo a planilha (' + (i + 1) + ' de ' + abas.length + ')...';
+                var xml = await zip.file(abas[i]).async('string');
+                zip.file(abas[i], xml.replace(VAZIA, ''));
+                await new Promise(function (r) { setTimeout(r, 0); });
+            }
+            status.textContent = 'Compactando...';
+            var blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+            if (blob.size > LIMITE_ENVIO) {
+                return erro('Mesmo reduzida, a planilha tem ' + (blob.size / 1048576).toFixed(1) + ' MB e passa do limite de envio. Use o comando importar_pcp_registros no seu computador.');
+            }
+            var dt = new DataTransfer();
+            dt.items.add(new File([blob], f.name, { type: f.type }));
+            input.files = dt.files;
+            status.textContent = 'Enviando (' + (blob.size / 1048576).toFixed(1) + ' MB) e importando...';
+            form.dataset.pronto = '1';
+            form.submit();
+        } catch (e) {
+            erro('Não foi possível reduzir a planilha no navegador (' + e + ').');
+        }
+    });
+})();
+</script>
+{% endblock %}

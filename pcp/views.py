@@ -12,10 +12,11 @@ from django.utils import timezone
 from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
-from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
+from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
 from pcp import pendencias as pend
 from pcp.importacao import importar_planilha
+from pcp.importacao_registros import importar_registros
 from pcp.models import (SEM_GRUPO, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
@@ -518,6 +519,28 @@ def importar(request):
     return render(request, 'pcp/importar.html', {'form': form})
 
 
+@login_required
+def importar_registros_view(request):
+    """Importa os registros (lançamentos) das planilhas: separado da importação da estrutura."""
+    form = ImportarRegistrosForm(request.POST or None, request.FILES or None)
+    resumo = None
+    if request.method == 'POST' and form.is_valid():
+        d = form.cleaned_data
+        try:
+            resumo = importar_registros(
+                d['arquivo'], nome_arquivo=d['arquivo'].name, ano=d['ano'], formulario=d['formulario'], revisao=d['revisao'],
+                simular=d['simular'], rastreio_desde_primeiro=d['rastreio'], ajustar_tipos=d['ajustar_tipos'])
+        except ValueError as e:
+            form.add_error(None, str(e))
+        except Exception:  # planilha corrompida ou fora do padrão
+            form.add_error('arquivo', 'Não foi possível ler a planilha. Confira se é um .xlsx válido no padrão dos formulários de PCP.')
+        else:
+            if not resumo['simulado']:
+                messages.success(request, f'{resumo["respostas_novas"]} respostas importadas em {resumo["versao"]}.')
+                form = ImportarRegistrosForm()
+    return render(request, 'pcp/importar_registros.html', {'form': form, 'resumo': resumo})
+
+
 # --------------------------------------------------------------------------------------
 # Cadastros base: turnos, frequências e listas de opções
 # --------------------------------------------------------------------------------------
@@ -709,7 +732,9 @@ def preencher_pagina(request, pk):
     for campo in pagina.campos.filter(ativo=True).select_related('frequencia', 'lista').prefetch_related('lista__opcoes'):
         resposta = respostas.get(campo.pk)
         devido = campo.pk in devidos
-        linhas.append({'campo': campo, 'resposta': resposta, 'devido': devido,
+        opcoes_campo = [o.valor for o in campo.lista.opcoes.all()] if campo.tipo == 'lista' and campo.lista_id else []
+        extra = resposta.valor if (resposta and resposta.valor and campo.tipo == 'lista' and resposta.valor not in opcoes_campo) else ''
+        linhas.append({'campo': campo, 'resposta': resposta, 'valor_extra': extra, 'devido': devido,
                        'pendente': devido and not devidos[campo.pk] and not (resposta and resposta.valor)})
     ocorrencias_dia = verificacao.ocorrencias.select_related('campo') if verificacao else []
     return render(request, 'pcp/preencher_pagina.html', {

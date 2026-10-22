@@ -1,12 +1,12 @@
 {% extends base_template|default:"base.html" %}
-{% block title %}Importar planilha - PCP - Calibra QMS{% endblock %}
+{% block title %}Importar estrutura - PCP - Calibra QMS{% endblock %}
 
 {% block content %}
 <div class="container py-3" style="max-width: 820px;">
-    <h4 class="mb-3"><i class="bi bi-file-earmark-excel me-2"></i>Importar planilha de formulário</h4>
+    <h4 class="mb-3"><i class="bi bi-file-earmark-excel me-2"></i>Importar estrutura do formulário</h4>
     <div class="alert alert-info py-2 small">
         Lê a <strong>estrutura</strong> do formulário (uma página por aba, com item, especificação, método, frequência e plano de reação) e cria uma
-        <strong>nova revisão em rascunho</strong>, pronta para conferir e publicar. Os lançamentos antigos das colunas de data/turno não são importados.
+        <strong>nova revisão em rascunho</strong>, pronta para conferir e publicar. Os lançamentos das colunas de data/turno <strong>não</strong> são importados aqui: use <a href="{% url 'pcp:importar_registros' %}">Importar registros</a>.
         Código e revisão são lidos do nome do arquivo (ex.: <code>FOR.080.R15 - Formulário Surfaçagem ….xlsx</code>). Abas ocultas e abas de registro horário ("Por Hora") são ignoradas.
         Planilhas grandes (acima de 3 MB, como a do HMC) são reduzidas automaticamente no seu navegador antes do envio: só as colunas usadas são enviadas.
     </div>

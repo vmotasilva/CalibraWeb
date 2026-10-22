@@ -136,3 +136,27 @@ class ImportarPlanilhaForm(_BootstrapMixin, forms.Form):
         if not arq.name.lower().endswith('.xlsx'):
             raise forms.ValidationError('Envie um arquivo .xlsx.')
         return arq
+
+
+class ImportarRegistrosForm(_BootstrapMixin, forms.Form):
+    arquivo = forms.FileField(label='Planilha com os registros (.xlsx)', widget=forms.ClearableFileInput(attrs={'accept': '.xlsx'}))
+    formulario = forms.ModelChoiceField(
+        label='Formulário', required=False, queryset=Formulario.objects.all(),
+        help_text='Em branco: lido do nome do arquivo (ex.: FOR.080.R15 -> FOR.080).')
+    revisao = forms.CharField(label='Revisão', required=False, max_length=10,
+                              help_text='Em branco: a do nome do arquivo ou, se não existir, a vigente.')
+    ano = forms.IntegerField(label='Ano dos registros', initial=2026, min_value=2000, max_value=2100)
+    simular = forms.BooleanField(label='Apenas simular (não grava nada)', required=False, initial=True,
+                                 help_text='Recomendado na primeira vez: mostra o que seria importado.')
+    ajustar_tipos = forms.BooleanField(
+        label='Ajustar o tipo dos itens pelos registros', required=False, initial=True,
+        help_text='Itens de lista em que quase tudo o que foi lançado é número passam a ser numéricos. Veja o resultado na simulação.')
+    rastreio = forms.BooleanField(label='Atrasos contam desde o primeiro registro importado', required=False,
+                                  help_text='Recua a vigência do formulário até o primeiro registro, para o histórico entrar nos atrasos. '
+                                            'Sem isso, o histórico fica só para consulta.')
+
+    def clean_arquivo(self):
+        arq = self.cleaned_data['arquivo']
+        if not arq.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError('Envie um arquivo .xlsx.')
+        return arq

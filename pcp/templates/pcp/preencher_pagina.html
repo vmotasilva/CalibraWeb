@@ -52,6 +52,7 @@
                                 <select name="c_{{ c.pk }}" class="form-select form-select-sm" {% if travada %}disabled{% endif %}>
                                     <option value=""></option>
                                     {% for o in c.lista.opcoes.all %}<option value="{{ o.valor }}" {% if r.valor == o.valor %}selected{% endif %}>{{ o.valor }}</option>{% endfor %}
+                                    {% if l.valor_extra %}<option value="{{ l.valor_extra }}" selected>{{ l.valor_extra }}</option>{% endif %}
                                 </select>
                             {% elif c.tipo == 'numero' %}
                                 <div class="input-group input-group-sm">

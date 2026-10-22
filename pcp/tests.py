@@ -14,6 +14,7 @@ from django.core.cache import cache
 from django.utils import timezone
 
 from pcp import cobranca, pendencias as pend
+from pcp.importacao_registros import importar_registros
 from pcp.importacao import frequencia_canonica, importar_planilha, parse_arquivo, parse_faixa, parse_mais_menos
 from pcp.models import (Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
@@ -668,3 +669,146 @@ class OrdemPaginasTests(PcpBase):
         r = self.client.get(reverse('pcp:grupos', args=[self.form.pk]) + '?grupo=Polimento')
         paginas = r.context['paginas']
         self.assertEqual([(p.pode_subir, p.pode_descer) for p in paginas], [(False, True), (True, True), (True, False)])
+
+
+def _planilha_registros(extra_numerico=False):
+    """Formulário no padrão do FOR.080 com colunas de data x turno (2026 e uma de 2025) e uma aba mensal."""
+    import datetime as dt
+    wb = openpyxl.Workbook()
+    wb.active.title = 'Dados'
+    aba = wb.create_sheet('Fitadeira')
+    aba.append(['Voltar ao índice', None, None, 'Fitadeira'])
+    aba.append(['Resp', 'item', 'O que verificar', 'Especificações', 'Método', 'Frequencia', 'Plano de reação',
+                dt.datetime(2026, 1, 5), None, None, dt.datetime(2026, 1, 6), None, None, dt.datetime(2025, 1, 7)])
+    aba.append([None] * 7 + ['T1', 'T2', 'T3', 'T1', 'T2', 'T3', 'T1'])
+    aba.append(['Oper.', 'A-1', 'Limpeza dos blocos', 'Sem poeira', 'Visual', 'Diário', 'Ar', 'ok', 'Realizado', None, 'Nok', None, None, 'ok'])
+    aba.append([None, 'B-12', 'Temperatura da fita', '10 - 27 ° C', 'Termômetro', 'Turno', 'x', 21.5, 30, None, 22])
+    if extra_numerico:
+        aba.append([None, 'C-1', 'Medida qualquer', 'Conforme padrão', 'Régua', 'Turno', 'x', 1, 2, 3, 4, 5, 6])
+    receita = wb.create_sheet('Parâmetro de Receita-ABC')
+    receita.append(['Voltar', 'Parâmetro de Receita-ABC'])
+    receita.append([None, 'Resp.', 'Frequência', 'Receita', 'Razão', 'Especificação', 'Tolerância (min - max)', 'Janeiro', 'Fevereiro'])
+    receita.append([None, None, 'Mensal', 'Receita X', 'Z0/Z2', 0.05, '0,043 - 0,058', 0.05, 0.07])
+    receita.append([None, None, 'Mensal', None, 'Z1/Z2', 0.111, '0,094 - 0,128'])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
+class RegistrosTests(PcpBase):
+    HOJE = date(2026, 12, 31)
+
+    def setUp(self):
+        super().setUp()
+        Turno.objects.create(nome='Turno 2', sigla='T2', ordem=2)
+        Turno.objects.create(nome='Turno 3', sigla='T3', ordem=3)
+        self.pag.delete()  # a estrutura vem da própria planilha
+        self.form.delete()
+
+    def estrutura(self, **kw):
+        return importar_planilha(_planilha_registros(kw.pop('extra_numerico', False)),
+                                 nome_arquivo='FOR.999.R03 - Teste.xlsx', setor=self.setor, publicar=True)
+
+    def registros(self, **kw):
+        extra = kw.pop('extra_numerico', False)
+        return importar_registros(_planilha_registros(extra), nome_arquivo='FOR.999.R03 - Teste.xlsx', hoje=kw.pop('hoje', self.HOJE), **kw)
+
+    def test_importa_lancamentos_por_data_e_turno(self):
+        self.estrutura()
+        r = self.registros()
+        self.assertEqual((r['verificacoes_novas'], r['respostas_novas']), (5, 8))
+        self.assertEqual((r['primeira_data'], r['ultima_data']), (date(2026, 1, 1), date(2026, 2, 1)))  # 2025 ignorado
+        self.assertEqual(r['fora_do_limite'], 3)  # Nok, 30 (faixa 10-27) e 0,07 (faixa 0,043-0,058)
+        fit = Pagina.objects.get(nome='Fitadeira')
+        v = Verificacao.objects.get(pagina=fit, data=date(2026, 1, 5), turno__sigla='T2')
+        self.assertEqual(sorted(v.respostas.values_list('campo__item', 'valor', 'conforme')), [('A-1', 'Realizado', True), ('B-12', '30', False)])
+        self.assertFalse(Verificacao.objects.filter(data__year=2025).exists())
+        mensal = Verificacao.objects.get(pagina__nome='ABC - Receita', data=date(2026, 2, 1))
+        self.assertEqual(mensal.turno.sigla, 'T1')
+
+    def test_vocabulario_ok_realizado_e_conformidade(self):
+        self.estrutura()
+        self.registros()
+        r = Resposta.objects.get(campo__item='A-1', verificacao__data=date(2026, 1, 5), verificacao__turno__sigla='T1')
+        self.assertEqual((r.valor, r.conforme), ('Ok', True))  # 'ok' normalizado
+        nok = Resposta.objects.get(campo__item='A-1', verificacao__data=date(2026, 1, 6))
+        self.assertEqual((nok.valor, nok.conforme), ('Nok', False))
+
+    def test_reimportar_nao_duplica_nem_sobrescreve(self):
+        self.estrutura()
+        fit = Pagina.objects.get(nome='Fitadeira')
+        campo = fit.campos.get(item='B-12')
+        ver = Verificacao.objects.create(pagina=fit, data=date(2026, 1, 5), turno=Turno.objects.get(sigla='T1'))
+        Resposta.objects.create(verificacao=ver, campo=campo, valor='99', conforme=False)  # lançado direto no sistema
+        r1 = self.registros()
+        self.assertEqual(r1['respostas_existentes'], 1)
+        self.assertEqual(Resposta.objects.get(verificacao=ver, campo=campo).valor, '99')  # preservado
+        total = Resposta.objects.count()
+        r2 = self.registros()
+        self.assertEqual((r2['respostas_novas'], Resposta.objects.count()), (0, total))
+
+    def test_simular_nao_grava(self):
+        self.estrutura()
+        r = self.registros(simular=True)
+        self.assertEqual(r['respostas_novas'], 8)
+        self.assertEqual((Verificacao.objects.count(), Resposta.objects.count()), (0, 0))
+
+    def test_ignora_datas_futuras(self):
+        self.estrutura()
+        r = self.registros(hoje=date(2026, 1, 5))
+        self.assertEqual(r['futuros'], 3)  # dia 06/01 (2 valores) e fevereiro da aba mensal
+        self.assertEqual(r['ultima_data'], date(2026, 1, 5))
+
+    def test_exige_estrutura_importada(self):
+        with self.assertRaises(ValueError):
+            self.registros()  # formulário FOR.999 ainda não existe
+
+    def test_ajustar_tipos_pelos_registros(self):
+        self.estrutura(extra_numerico=True)
+        campo = Campo.objects.get(item='C-1')
+        self.assertEqual(campo.tipo, 'lista')
+        r = self.registros(extra_numerico=True)
+        campo.refresh_from_db()
+        self.assertEqual(campo.tipo, 'lista')  # sem a opção, nada muda
+        self.assertEqual(r['tipos_ajustados'], [])
+        r = self.registros(extra_numerico=True, ajustar_tipos=True, simular=True)
+        self.assertEqual([t[1] for t in r['tipos_ajustados']], ['C-1'])
+        campo.refresh_from_db()
+        self.assertEqual(campo.tipo, 'lista')  # simulação não altera
+        Resposta.objects.filter(campo=campo).delete()
+        self.registros(extra_numerico=True, ajustar_tipos=True)
+        campo.refresh_from_db()
+        self.assertEqual((campo.tipo, campo.lista_id), ('numero', None))
+
+    def test_rastreio_desde_primeiro_registro(self):
+        r = self.estrutura()
+        self.assertEqual(r['versao'].vigencia, timezone.localdate())
+        self.registros(rastreio_desde_primeiro=True)
+        r['versao'].refresh_from_db()
+        self.assertEqual(r['versao'].vigencia, date(2026, 1, 1))
+
+    def test_tela_e_comando(self):
+        from django.core.management import call_command
+        self.estrutura()
+        self.assertEqual(self.client.get(reverse('pcp:importar_registros')).status_code, 200)
+        arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', _planilha_registros().read())
+        r = self.client.post(reverse('pcp:importar_registros'), {'arquivo': arq, 'ano': 2026, 'simular': 'on', 'ajustar_tipos': 'on'})
+        self.assertContains(r, 'Simulação')
+        self.assertEqual(Resposta.objects.count(), 0)
+        arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', _planilha_registros().read())
+        self.client.post(reverse('pcp:importar_registros'), {'arquivo': arq, 'ano': 2026})
+        self.assertEqual(Resposta.objects.count(), 8)
+        import os
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            caminho = os.path.join(d, 'FOR.999.R03 - Teste.xlsx')
+            open(caminho, 'wb').write(_planilha_registros().read())
+            out = io.StringIO()
+            call_command('importar_pcp_registros', caminho, '--simular', stdout=out)
+            self.assertIn('SIMULAÇÃO', out.getvalue())
+
+    def test_estrutura_e_registros_sao_importacoes_separadas(self):
+        r = self.estrutura()
+        self.assertEqual((Verificacao.objects.count(), Resposta.objects.count()), (0, 0))  # estrutura não traz lançamentos
+        self.assertGreater(r['total_campos'], 0)

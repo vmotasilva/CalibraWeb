@@ -192,7 +192,7 @@ def _linhas_campos(linhas, i_cab, layout, m):
 
     ultimo = {'etapa': ''}
     saida = []
-    for linha in linhas[i_cab + 1:]:
+    for indice, linha in enumerate(linhas[i_cab + 1:], start=i_cab + 1):
         if any(_chave(c) in ('t1', 't2', 't3') for c in linha):
             continue  # segunda linha do cabeçalho (T1/T2/T3)
         c = dict(item='', etapa='', descricao='', especificacao='', metodo='', plano_reacao='', responsavel=v(linha, 'resp'),
@@ -243,6 +243,7 @@ def _linhas_campos(linhas, i_cab, layout, m):
                      minimo=_dec(v(linha, 'minimo')), maximo=_dec(v(linha, 'maximo')))
         if not c['descricao']:
             continue
+        c['_indice'] = indice
         saida.append(c)
     return saida
 
@@ -288,6 +289,15 @@ def _grupos_do_indice(wb):
             if j < len(linha) and _txt(linha[j]):
                 mapa[_chave(linha[j])] = g
     return mapa
+
+
+def nome_da_pagina(aba):
+    """Nome da página criada para a aba (as abas 'Parâmetro de X-Y' do HMC viram 'Y - X')."""
+    titulo = ' '.join(aba.split())
+    m = re.match(r'^(Par[aâ]metro de \w+)\s*-\s*(.+)$', titulo, re.I)
+    if m:
+        return f"{m.group(2)} - {m.group(1).split(' de ', 1)[-1]}"[:120]
+    return titulo[:120]
 
 
 def _grupo_da_aba(titulo, mapa_indice):

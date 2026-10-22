@@ -369,10 +369,16 @@ NAV_STRUCTURE = [
                         "descricao": "Monta a estrutura do formulário. Só revisões em rascunho são editáveis (na vigente: grupos, ordem e máquina, e desativar/excluir blocos e itens sem histórico); mudanças na estrutura nascem como nova revisão.",
                     },
                     {
-                        "nome": "Importar Planilha de Formulário",
+                        "nome": "Importar Estrutura (planilha de formulário)",
                         "view_name": "pcp:importar",
                         "perm": "core.nav_pcp_importar",
-                        "descricao": "Cria uma nova revisão (rascunho) a partir de uma planilha .xlsx no padrão dos formulários de PCP.",
+                        "descricao": "Cria uma nova revisão (rascunho) a partir da estrutura de uma planilha .xlsx no padrão dos formulários de PCP. Não importa lançamentos.",
+                    },
+                    {
+                        "nome": "Importar Registros já Feitos (planilha)",
+                        "view_name": "pcp:importar_registros",
+                        "perm": "core.nav_pcp_importar_registros",
+                        "descricao": "Importa os lançamentos por data e turno de uma planilha para páginas já existentes. Separado da importação da estrutura; não sobrescreve respostas existentes.",
                     },
                     {
                         "nome": "Excluir Formulário",
