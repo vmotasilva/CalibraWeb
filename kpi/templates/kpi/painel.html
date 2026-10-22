@@ -299,6 +299,7 @@
                     <div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
                         <h5 class="mb-0" id="anTitulo"></h5>
                         <span id="anResumo" class="fw-semibold"></span>
+                        <button type="button" class="btn btn-sm btn-link p-0 d-none" id="anDiasFora" tabindex="0" title="Dias fora da meta"><i class="bi bi-info-circle fs-5"></i></button>
                     </div>
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                         <div class="fw-semibold">Causas, análises e ações <small class="text-muted fw-normal">— um card para cada conjunto</small></div>
@@ -947,7 +948,8 @@
                 if (!conhecidas[id]) lista += '<input type="hidden" class="an-oc-extra" value="' + esc(id) + '">';
             });
             card.innerHTML =
-                '<div class="d-flex justify-content-between align-items-center mb-2"><strong class="an-card-n"></strong>' +
+                '<div class="d-flex justify-content-between align-items-center mb-2"><span><strong class="an-card-n"></strong>' +
+                (dados.origem ? ' <span class="badge text-bg-light border text-muted fw-normal ms-1">Sugestão · ' + esc(dados.origem) + '</span>' : '') + '</span>' +
                 (ro ? '' : '<button type="button" class="btn btn-sm btn-link text-danger p-0 an-card-rem" title="Remover card"><i class="bi bi-trash"></i> Remover card</button>') + '</div>' +
                 '<div class="row g-2">' +
                 '<div class="col-lg-4"><label class="form-label small mb-1">Causa</label><textarea class="form-control an-c" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
@@ -993,15 +995,16 @@
                 .then(function (j) {
                     if (j.erro) { el('anErro').textContent = j.erro; return; }
                     if (j.dispensada) { el('anErro').textContent = 'Período dispensado de análise: ' + j.motivo_dispensa; }
-                    atual = {iso: j.data, rascunho: j.rascunho || '', ocorrencias: j.ocorrencias || [], itens: j.itens || []};
+                    atual = {iso: j.data, sugeridos: j.cards_sugeridos || [], ocorrencias: j.ocorrencias || [], itens: j.itens || []};
+                    informarDiasFora(j.dias_fora || []);
                     var un = j.unidade ? ' ' + j.unidade : '';
                     el('anResumo').innerHTML = (j.valor === null ? 'Sem valor registrado' : 'Valor <span class="' + (j.atingiu ? 'text-success' : 'text-danger') + '">' + fmt(j.valor) + un + '</span>') + ' · meta ' + fmt(j.meta) + un;
                     if (atual.itens.length) {
                         atual.itens.forEach(novoCard);
-                        el('anAjudaRascunho').textContent = j.rascunho ? 'Há registros do período para compor uma causa: use "Trazer registros do período".' : '';
-                    } else if (j.rascunho) {
-                        novoCard({causa: j.rascunho});
-                        el('anAjudaRascunho').textContent = 'A causa do primeiro card foi montada a partir dos registros dos dias e dos motivos do período. Ajuste antes de salvar.';
+                        el('anAjudaRascunho').textContent = atual.sugeridos.length ? 'Há ' + atual.sugeridos.length + ' sugestão(ões) dos registros do período: use "Trazer registros do período".' : '';
+                    } else if (atual.sugeridos.length) {
+                        atual.sugeridos.forEach(novoCard);
+                        el('anAjudaRascunho').textContent = atual.sugeridos.length + ' card(s) sugerido(s) a partir dos principais motivos e dos registros dos dias do período. Ajuste, apague o que não se aplica e salve.';
                     } else {
                         novoCard();
                         el('anAjudaRascunho').textContent = 'Não há registros anteriores neste período.';
@@ -1037,14 +1040,29 @@
         el('anTodos').addEventListener('change', lista);
         el('anDisp').addEventListener('change', lista);
         el('anRascunho').addEventListener('click', function () {
-            if (!atual || !atual.rascunho) { el('anAjudaRascunho').textContent = 'Não há registros do período para trazer.'; return; }
-            var cards = el('anCards').children, vazio = null;
-            Array.prototype.forEach.call(cards, function (c) {
-                if (!vazio && !c.querySelector('.an-c').value.trim() && !c.querySelector('.an-a').value.trim() && !c.querySelector('.an-x').value.trim()) vazio = c;
+            if (!atual || !atual.sugeridos.length) { el('anAjudaRascunho').textContent = 'Não há registros do período para trazer.'; return; }
+            var existentes = coletarCards().map(function (c) { return (c.causa + '|' + c.analise + '|' + c.acao).trim(); });
+            var novos = atual.sugeridos.filter(function (c) { return existentes.indexOf((c.causa + '|' + c.analise + '|' + c.acao).trim()) === -1; });
+            // remove o card em branco que sobrou antes de acrescentar as sugestões
+            Array.prototype.slice.call(el('anCards').children).forEach(function (card) {
+                if (!card.querySelector('.an-c').value.trim() && !card.querySelector('.an-a').value.trim() && !card.querySelector('.an-x').value.trim() && !card.querySelectorAll('.an-oc:checked').length) card.remove();
             });
-            (vazio || novoCard()).querySelector('.an-c').value = atual.rascunho;
-            el('anAjudaRascunho').textContent = 'Registros do período trazidos para um card. Ajuste antes de salvar.';
+            novos.forEach(novoCard);
+            renumerarCards();
+            el('anAjudaRascunho').textContent = novos.length ? novos.length + ' card(s) trazido(s) dos registros do período. Ajuste antes de salvar.' : 'Todos os registros do período já estão nos cards.';
         });
+
+        function informarDiasFora(dias) {
+            var b = el('anDiasFora');
+            var antigo = bootstrap.Popover.getInstance(b);
+            if (antigo) antigo.dispose();
+            if (!dias.length) { b.classList.add('d-none'); return; }
+            b.classList.remove('d-none');
+            new bootstrap.Popover(b, {
+                trigger: 'focus', placement: 'bottom', title: 'Dias fora da meta',
+                content: dias.map(function (d) { return d.dia + ' (' + d.valor + ')'; }).join(', ') + '.'
+            });
+        }
 
         atualizarSelo();
         document.querySelectorAll('#kpiTabs [data-ind]').forEach(function (b) { b.addEventListener('shown.bs.tab', atualizarSelo); });

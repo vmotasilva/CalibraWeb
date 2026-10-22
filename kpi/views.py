@@ -567,42 +567,55 @@ def _num(v):
     return f'{Decimal(v):.2f}'.rstrip('0').rstrip('.').replace('.', ',')
 
 
-def _texto_itens(registro):
-    """Texto corrido dos cards (causa, análise e ação) de um registro."""
-    partes = []
-    for it in registro.itens.all():
-        texto = ' '.join(x.strip() for x in (it.causa, it.analise, it.acao) if x.strip())
-        if texto:
-            partes.append(texto)
-    return ' | '.join(partes)
+def _dias_fora_da_meta(ind, setor_id, gran, periodo, meta):
+    """Dias fora da meta de uma semana ou mês (informação de apoio, não vira card)."""
+    if gran == 'diaria':
+        return []
+    ini, fim = _janela(gran, periodo)
+    dias = Medicao.objects.filter(indicador=ind, setor_id=setor_id, granularidade='diaria',
+                                  periodo__range=(ini, fim)).order_by('periodo')
+    return [{'dia': f'{m.periodo:%d/%m}', 'valor': _num(m.valor)} for m in dias if ind.atingiu(m.valor, meta) is False]
 
 
-def _rascunho_analise(ind, setor_id, gran, periodo, meta):
-    """Texto-base da justificativa: reúne o que foi apontado nos registros dos dias (e semanas) do período."""
+def _cards_sugeridos(ind, setor_id, gran, periodo):
+    """Cards-base para a análise do período:
+    - um card por principal motivo registrado no período (até 5);
+    - os cards já registrados nos dias da semana (ou nas semanas do mês; dias só quando a semana dele não tem análise).
+    Cada card traz `origem` (de onde veio a sugestão) para o usuário conferir."""
     from kpi.models import AnaliseCausa
     ini, fim = _janela(gran, periodo)
-    linhas = []
-    if gran != 'diaria':
-        dias = Medicao.objects.filter(indicador=ind, setor_id=setor_id, granularidade='diaria',
-                                      periodo__range=(ini, fim)).order_by('periodo')
-        fora = [m for m in dias if not ind.atingiu(m.valor, meta)]
-        if fora:
-            linhas.append('Dias fora da meta: ' + ', '.join(f'{m.periodo:%d/%m} ({_num(m.valor)})' for m in fora) + '.')
-        grans = ['diaria'] + (['semanal'] if gran == 'mensal' else [])
-        for a in AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade__in=grans,
-                                             periodo__range=(ini, fim)).prefetch_related('itens').order_by('periodo'):
-            texto = _texto_itens(a)
-            if texto:
-                rotulo = f'{a.periodo:%d/%m}' if a.granularidade == 'diaria' else f'semana de {a.periodo:%d/%m}'
-                linhas.append(f'- {rotulo}: {texto}')
+    cards = []
+
+    def de_registro(a, origem):
+        for it in a.itens.all():
+            if it.causa.strip() or it.analise.strip() or it.acao.strip():
+                cards.append({'causa': it.causa, 'analise': it.analise, 'acao': it.acao,
+                              'ocorrencias': list(it.ocorrencias.values_list('pk', flat=True)), 'origem': origem})
+
+    if gran == 'semanal':
+        for a in AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade='diaria', dispensada=False,
+                                             periodo__range=(ini, fim)).prefetch_related('itens__ocorrencias').order_by('periodo'):
+            de_registro(a, f'Dia {a.periodo:%d/%m}')
+    elif gran == 'mensal':
+        semanas = list(AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade='semanal', dispensada=False,
+                                                   periodo__range=(ini - datetime.timedelta(days=6), fim))
+                       .prefetch_related('itens__ocorrencias').order_by('periodo'))
+        cobertas = set()
+        for a in semanas:
+            if any(i.causa.strip() or i.analise.strip() or i.acao.strip() for i in a.itens.all()):
+                cobertas.add(a.periodo)
+            de_registro(a, f'Semana de {a.periodo:%d/%m}')
+        for a in AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade='diaria', dispensada=False,
+                                             periodo__range=(ini, fim)).prefetch_related('itens__ocorrencias').order_by('periodo'):
+            if a.periodo - datetime.timedelta(days=a.periodo.weekday()) not in cobertas:
+                de_registro(a, f'Dia {a.periodo:%d/%m}')
     soma = {}
     for desc, q in Motivo.objects.filter(indicador=ind, setor_id=setor_id, data__range=(ini, fim),
                                          consolidado=False).values_list('descricao', 'quantidade'):
         soma[desc.strip()] = soma.get(desc.strip(), Decimal(0)) + q
-    if soma:
-        top = sorted(soma.items(), key=lambda x: x[1], reverse=True)[:5]
-        linhas.append('Principais motivos registrados: ' + '; '.join(f'{d} ({_num(q)})' for d, q in top) + '.')
-    return '\n'.join(linhas)
+    motivos = [{'causa': f'{d} ({_num(q)})', 'analise': '', 'acao': '', 'ocorrencias': [], 'origem': 'Motivo registrado'}
+               for d, q in sorted(soma.items(), key=lambda x: x[1], reverse=True)[:5]]
+    return motivos + cards
 
 
 def _ocorrencias_periodo(gran, periodo):
@@ -676,7 +689,8 @@ def analise_dados_view(request, pk):
         'atingiu': ind.atingiu(med.valor, meta) if med else None,
         'itens': _itens_json(atual) if atual and not atual.dispensada else [],
         'dispensada': bool(atual and atual.dispensada), 'motivo_dispensa': atual.motivo_dispensa if atual else '',
-        'rascunho': _rascunho_analise(ind, setor_id, gran, periodo, meta),
+        'cards_sugeridos': _cards_sugeridos(ind, setor_id, gran, periodo),
+        'dias_fora': _dias_fora_da_meta(ind, setor_id, gran, periodo, meta),
         'ocorrencias': _ocorrencias_periodo(gran, periodo),
     })
 

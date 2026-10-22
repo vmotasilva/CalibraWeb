@@ -283,26 +283,28 @@ class KpiTests(TestCase):
         dados = reverse('kpi:analise_dados', args=[ind.pk])
         r = self.client.post(salvar, {'gran': 'diaria', 'data': '2026-10-13', 'causa': 'Troca de turno', 'analise': 'Treinar'})
         self.assertTrue(r.json()['ok'])
-        # a semana junta os dias fora da meta, as causas já registradas nos dias e os motivos (sem duplicar os consolidados)
+        # a semana sugere um card por principal motivo e os cards dos dias; os dias fora da meta são só informação
         j = self.client.get(dados, {'gran': 'semanal', 'data': '2026-10-15'}).json()
         self.assertEqual(j['data'], '2026-10-12')  # normalizada para a segunda-feira
         self.assertEqual(j['itens'], [])
-        self.assertIn('13/10 (3)', j['rascunho'])
-        self.assertIn('15/10 (4)', j['rascunho'])
-        self.assertNotIn('14/10 (1)', j['rascunho'])
-        self.assertIn('- 13/10: Troca de turno Treinar', j['rascunho'])
-        self.assertIn('Risco de garra (5)', j['rascunho'])
-        self.assertNotIn('Duplicado', j['rascunho'])
-        # o mês também recolhe as análises das semanas
+        self.assertEqual(j['dias_fora'], [{'dia': '13/10', 'valor': '3'}, {'dia': '15/10', 'valor': '4'}])  # 14/10 (1) está na meta
+        sug = j['cards_sugeridos']
+        self.assertEqual([c['origem'] for c in sug], ['Motivo registrado', 'Dia 13/10'])
+        self.assertEqual(sug[0]['causa'], 'Risco de garra (5)')  # soma dos dias, sem o consolidado duplicado
+        self.assertEqual((sug[1]['causa'], sug[1]['analise']), ('Troca de turno', 'Treinar'))
+        self.assertNotIn('Duplicado', ''.join(c['causa'] for c in sug))
+        # o mês sugere os cards das semanas e só os dias cuja semana não tem análise
         self.client.post(salvar, {'gran': 'semanal', 'data': '2026-10-12', 'causa': 'Semana ruim'})
-        m = self.client.get(dados, {'gran': 'mensal', 'data': '2026-10-20'}).json()
-        self.assertIn('semana de 12/10: Semana ruim', m['rascunho'])
+        self.client.post(salvar, {'gran': 'diaria', 'data': '2026-10-22', 'causa': 'Dia solto'})
+        m = self.client.get(dados, {'gran': 'mensal', 'data': '2026-10-20'}).json()['cards_sugeridos']
+        self.assertEqual([(c['origem'], c['causa']) for c in m if c['origem'] != 'Motivo registrado'],
+                         [('Semana de 12/10', 'Semana ruim'), ('Dia 22/10', 'Dia solto')])  # o dia 13/10 já está coberto pela semana
         # existente volta preenchido; vazio remove; painel entrega o mapa das análises
         self.assertEqual(self.client.get(dados, {'gran': 'diaria', 'data': '2026-10-13'}).json()['itens'][0]['causa'], 'Troca de turno')
         r = self.client.get(reverse('kpi:painel') + '?ind=%d' % ind.pk)
         self.assertIn('2026-10-13', r.context['analises_js'][str(ind.pk)]['diaria'])
         self.client.post(salvar, {'gran': 'diaria', 'data': '2026-10-13', 'causa': '', 'analise': ''})
-        self.assertFalse(Medicao.objects.none().exists() or ind.analises.filter(granularidade='diaria').exists())
+        self.assertFalse(ind.analises.filter(granularidade='diaria', periodo=date(2026, 10, 13)).exists())
         self.assertEqual(self.client.post(salvar, {'gran': 'x', 'data': '2026-10-13'}).status_code, 400)
 
     def test_dispensa_de_analise_exige_motivo_e_bloqueia_registro(self):
@@ -390,8 +392,8 @@ class KpiTests(TestCase):
         self.assertEqual(self.client.post(salvar, dict(base, itens='{ruim')).status_code, 400)
         # o rascunho de uma semana enxerga os cards dos dias
         self.client.post(salvar, dict(base, itens=json.dumps([{'causa': 'A', 'acao': 'B'}, {'causa': 'C'}])))
-        sem = self.client.get(dados, {'gran': 'semanal', 'data': '2026-10-14'}).json()['rascunho']
-        self.assertIn('- 14/10: A B | C', sem)
+        sem = self.client.get(dados, {'gran': 'semanal', 'data': '2026-10-14'}).json()['cards_sugeridos']
+        self.assertEqual([(c['origem'], c['causa'], c['acao']) for c in sem], [('Dia 14/10', 'A', 'B'), ('Dia 14/10', 'C', '')])
         self.assertIsNotNone(fora.pk)
 
     def test_responsavel_pela_analise_geral_e_por_setor_com_cobranca(self):
