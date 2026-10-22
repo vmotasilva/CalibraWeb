@@ -16,7 +16,7 @@ from django.utils import timezone
 from pcp import cobranca, pendencias as pend
 from pcp.importacao_registros import importar_registros
 from pcp.importacao import frequencia_canonica, importar_planilha, parse_arquivo, parse_faixa, parse_mais_menos
-from pcp.models import (Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
+from pcp.models import (ValorEquivalente, Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
 
@@ -970,3 +970,133 @@ class LimitesTests(PcpBase):
         self.c_meio.refresh_from_db()
         self.assertEqual((self.c_meio.minimo, self.c_meio.maximo), (None, Decimal('60')))
         self.assertEqual(Resposta.objects.filter(campo=self.c_meio, conforme=False).count(), 9)  # 61..69
+
+
+class ValoresTests(PcpBase):
+    HOJE = date(2026, 12, 31)
+
+    def setUp(self):
+        super().setUp()
+        Turno.objects.create(nome='Turno 2', sigla='T2', ordem=2)
+        Turno.objects.create(nome='Turno 3', sigla='T3', ordem=3)
+        self.pag.delete()
+        self.form.delete()
+
+    def planilha(self, substituicoes):
+        wb = openpyxl.load_workbook(_planilha_registros())
+        for (linha, coluna), valor in substituicoes.items():
+            wb['Fitadeira'].cell(row=linha, column=coluna).value = valor
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return buf
+
+    def estrutura(self):
+        return importar_planilha(_planilha_registros(), nome_arquivo='FOR.999.R03 - Teste.xlsx', setor=self.setor, publicar=True)
+
+    def registros(self, **kw):
+        return importar_registros(kw.pop('arquivo', None) or _planilha_registros(), nome_arquivo='FOR.999.R03 - Teste.xlsx',
+                                  hoje=self.HOJE, **kw)
+
+    def listas(self):
+        real = ListaOpcoes.objects.create(nome='Realizado / Não realizado')
+        OpcaoLista.objects.create(lista=real, valor='Realizado', ordem=0)
+        OpcaoLista.objects.create(lista=real, valor='Não realizado', conforme=False, ordem=1)
+        return self.lista, real  # self.lista = 'Ok / Nok' (Ok, Nok)
+
+    def test_sugestoes_com_base_nas_opcoes(self):
+        from pcp.equivalencias import sugerir_opcao
+        ok_nok, real = self.listas()
+        proprias, outras = list(ok_nok.opcoes.all()), list(real.opcoes.all())
+        sug = lambda v: sugerir_opcao(v, proprias, outras)
+        o, conf, outra = sug('OK')
+        self.assertEqual((o.valor, conf, outra), ('Ok', 'alta', False))
+        o, conf, outra = sug('oki')                      # erro de digitação: opção da própria lista
+        self.assertEqual((o.valor, conf, outra), ('Ok', 'media', False))
+        o, conf, outra = sug('falta')                    # sinônimo de uma opção de OUTRA lista
+        self.assertEqual((o.valor, conf, outra), ('Não realizado', 'alta', True))
+        o, conf, outra = sug('realizaddo')
+        self.assertEqual((o.valor, outra), ('Realizado', True))
+        for texto in ('ND', 'Lofoam', '0,8%LH305', ''):  # texto livre: sem sugestão
+            self.assertEqual(sug(texto)[0], None, texto)
+
+    def test_relatorio_da_importacao_traz_sugestao(self):
+        self.listas()
+        self.estrutura()
+        r = self.registros(arquivo=self.planilha({(4, 8): 'falat', (4, 9): 'Lofoam'}), simular=True)
+        linhas = {l['valor']: l for l in r['nao_reconhecidos']}
+        self.assertEqual(linhas['falat']['sugestao'].valor, 'Não realizado')
+        self.assertFalse(linhas['falat']['de_outra_lista'])  # A-1 (limpeza) usa a lista Realizado / Não realizado
+        self.assertIsNone(linhas['Lofoam']['sugestao'])
+
+    def test_vincular_corrige_lancamentos_e_vale_nas_proximas_importacoes(self):
+        _, real = self.listas()
+        self.estrutura()
+        planilha = lambda: self.planilha({(4, 8): 'talvez'})
+        self.registros(arquivo=planilha())
+        self.assertTrue(Resposta.objects.filter(valor='talvez', conforme__isnull=True).exists())
+        opcao = real.opcoes.get(valor='Não realizado')
+        lista_item = Campo.objects.get(item='A-1').lista
+        r = self.client.post(reverse('pcp:vincular_valores'), {
+            'total': 1, 'lista_0': lista_item.pk, 'valor_0': 'talvez', 'acao_0': f'op:{opcao.pk}', 'next': 'importar_registros'})
+        self.assertRedirects(r, reverse('pcp:importar_registros'))
+        resp = Resposta.objects.get(campo__item='A-1', verificacao__data=date(2026, 1, 5), verificacao__turno__sigla='T1')
+        self.assertEqual((resp.valor, resp.conforme), ('Não realizado', False))   # lançamento já gravado foi corrigido
+        eq = ValorEquivalente.objects.get()
+        self.assertEqual((eq.chave, eq.opcao_id), ('talvez', opcao.pk))
+        # apaga e reimporta: o vínculo é aplicado sozinho
+        Resposta.objects.all().delete()
+        Verificacao.objects.all().delete()
+        r = self.registros(arquivo=planilha())
+        resp = Resposta.objects.get(campo__item='A-1', verificacao__data=date(2026, 1, 5), verificacao__turno__sigla='T1')
+        self.assertEqual((resp.valor, resp.conforme), ('Não realizado', False))
+        self.assertFalse([l for l in r['nao_reconhecidos'] if l['valor'] == 'talvez'])
+
+    def test_criar_como_nova_opcao_e_manter(self):
+        self.listas()
+        self.estrutura()
+        self.registros(arquivo=self.planilha({(4, 8): 'ND', (4, 9): 'xyz'}))
+        lista = Campo.objects.get(item='A-1').lista
+        self.client.post(reverse('pcp:vincular_valores'), {
+            'total': 2, 'lista_0': lista.pk, 'valor_0': 'ND', 'acao_0': 'novo:desvio',
+            'lista_1': lista.pk, 'valor_1': 'xyz', 'acao_1': ''})  # manter: nada acontece
+        opcao = lista.opcoes.get(valor='ND')
+        self.assertFalse(opcao.conforme)
+        self.assertEqual(Resposta.objects.get(valor='ND').conforme, False)
+        self.assertIsNone(Resposta.objects.get(valor='xyz').conforme)
+        self.assertFalse(lista.opcoes.filter(valor='xyz').exists())
+        self.assertEqual(ValorEquivalente.objects.count(), 0)
+
+    def test_tela_de_valores_por_formulario(self):
+        self.listas()
+        r0 = self.estrutura()
+        self.registros(arquivo=self.planilha({(4, 8): 'falat', (4, 9): 'Lofoam'}))
+        r = self.client.get(reverse('pcp:valores', args=[r0['formulario'].pk]))
+        self.assertEqual(r.status_code, 200)
+        valores = {l['valor']: l for l in r.context['linhas']}
+        self.assertIn('falat', valores)
+        self.assertEqual(valores['falat']['sugestao'].valor, 'Não realizado')
+        self.assertNotIn('Ok', valores)  # coerente com a lista: não aparece
+        self.assertContains(r, 'Lofoam')
+        # quando tudo está vinculado, a tela mostra que não há pendências
+        for l in r.context['linhas']:
+            Resposta.objects.filter(valor=l['valor']).update(valor='Realizado', conforme=True)
+        self.assertContains(self.client.get(reverse('pcp:valores', args=[r0['formulario'].pk])), 'Nenhum valor não reconhecido')
+
+    def test_numericos_ficam_de_fora_dos_vinculos(self):
+        from pcp.equivalencias import montar_linhas
+        self.listas()
+        linhas, numericos = montar_linhas({(self.lista.pk, '45'): 7, (self.lista.pk, 'falta'): 2})
+        self.assertEqual([l['valor'] for l in linhas], ['falta'])
+        self.assertEqual(numericos, 7)
+
+    def test_vinculo_de_outra_lista_aparece_no_preenchimento(self):
+        _, real = self.listas()
+        r0 = self.estrutura()
+        self.registros(arquivo=self.planilha({(4, 8): 'falat'}))
+        lista = Campo.objects.get(item='A-1').lista
+        opcao = real.opcoes.get(valor='Não realizado')
+        self.client.post(reverse('pcp:vincular_valores'), {'total': 1, 'lista_0': lista.pk, 'valor_0': 'falat', 'acao_0': f'op:{opcao.pk}'})
+        pagina = r0['versao'].paginas.get(nome='Fitadeira')
+        html = self.client.get(reverse('pcp:preencher_pagina', args=[pagina.pk]) + f'?data=2026-01-05&turno={Turno.objects.get(sigla="T1").pk}').content.decode()
+        self.assertIn('<option value="Não realizado" selected>', html)  # valor de outra lista continua visível

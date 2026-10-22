@@ -17,7 +17,9 @@ from django.db import transaction
 
 from pcp.importacao import (ABAS_IGNORADAS, MAX_LINHAS, RE_NUM, _achar_cabecalho, _chave, _linhas_campos, _txt,
                             nome_da_pagina, parse_arquivo)
-from pcp.models import Formulario, FormularioVersao, ListaOpcoes, Pagina, Resposta, Turno, Verificacao
+from pcp import equivalencias
+from pcp.models import (Formulario, FormularioVersao, ListaOpcoes, Pagina, Resposta, Turno, ValorEquivalente,
+                        Verificacao)
 
 MESES = {'janeiro': 1, 'fevereiro': 2, 'marco': 3, 'abril': 4, 'maio': 5, 'junho': 6, 'julho': 7, 'agosto': 8,
          'setembro': 9, 'outubro': 10, 'novembro': 11, 'dezembro': 12}
@@ -96,6 +98,8 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
     listas = list(ListaOpcoes.objects.prefetch_related('opcoes'))
     opcoes_por_lista = {l.pk: [o.valor for o in l.opcoes.all()] for l in listas}
     conforme_por_lista = {l.pk: {o.valor: o.conforme for o in l.opcoes.all()} for l in listas}
+    vinculos = {(v.lista_id, v.chave): (v.opcao.valor, v.opcao.conforme)
+                for v in ValorEquivalente.objects.select_related('opcao')}  # vínculos confirmados pelo usuário
     conforme_global = {}  # vocabulário de todas as listas: 'Realizado' num item Ok/Nok continua valendo como conforme
     for l in listas:
         for o in l.opcoes.all():
@@ -103,7 +107,7 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
 
     resumo = {'versao': versao, 'ano': ano, 'abas': [], 'sem_pagina': [], 'ocultas': [], 'ignoradas': [], 'linhas_sem_item': 0,
               'verificacoes_novas': 0, 'respostas_novas': 0, 'respostas_existentes': 0, 'fora_do_limite': 0, 'primeira_data': None,
-              'vigencia_ajustada': None, 'futuros': 0, 'nao_reconhecidos': [], 'tipos_ajustados': []}
+              'vigencia_ajustada': None, 'futuros': 0, 'nao_reconhecidos': [], 'numericos_em_listas': 0, 'tipos_ajustados': []}
     wb = openpyxl.load_workbook(arquivo, read_only=True, data_only=True)
     lancamentos = []  # (pagina, data, turno, campo, valor)
     ignorar = {_chave(x) for x in IGNORAR_VALOR}
@@ -198,17 +202,19 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
             if campo.tipo == campo.LISTA:
                 conforme = conforme_por_lista.get(campo.lista_id, {}).get(valor)
                 k = _chave(valor)
-                if conforme is None and k in conforme_global:
+                if conforme is None and (campo.lista_id, k) in vinculos:
+                    valor, conforme = vinculos[(campo.lista_id, k)]
+                elif conforme is None and k in conforme_global:
                     valor, conforme = conforme_global[k]
                 elif conforme is None and (k in SINONIMOS_NAO_REALIZADO or k.startswith('naor')):
                     valor, conforme = 'Não realizado', False
                 if conforme is None:
-                    nao_reconhecidos[(campo.lista.nome if campo.lista_id else '-', valor)] += 1
+                    nao_reconhecidos[(campo.lista_id, valor)] += 1
             else:
                 conforme = campo.avaliar(valor)
             resumo['fora_do_limite'] += int(conforme is False)
             novas.append(Resposta(verificacao=v, campo=campo, valor=valor, conforme=conforme))
-        resumo['nao_reconhecidos'] = [(lista, valor, n) for (lista, valor), n in nao_reconhecidos.most_common(15)]
+        resumo['nao_reconhecidos'], resumo['numericos_em_listas'] = equivalencias.montar_linhas(nao_reconhecidos)
         Resposta.objects.bulk_create(novas, batch_size=2000)
         resumo['respostas_novas'] = len(novas)
         if rastreio_desde_primeiro and resumo['primeira_data']:

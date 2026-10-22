@@ -1,0 +1,37 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Valores não reconhecidos - {{ formulario.codigo }} - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0">Valores não reconhecidos - {{ formulario.codigo }}</h4>
+            <div class="text-muted">{{ formulario.titulo }}</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'pcp:ajustar_tipos' formulario.pk %}" class="btn btn-outline-secondary">Ajustar tipos</a>
+            <a href="{% url 'pcp:listas' %}" class="btn btn-outline-secondary">Listas de opções</a>
+            <a href="{% url 'pcp:formulario_detalhe' formulario.pk %}" class="btn btn-outline-secondary">Voltar</a>
+        </div>
+    </div>
+    <div class="small text-muted mb-3">
+        Valores lançados em itens de lista que <strong>não coincidem com nenhuma opção cadastrada</strong> (ex.: "falta", "ND", "Lofoam"). Para cada um há uma
+        <strong>sugestão com base nas opções da própria lista</strong>; escolha <em>vincular à opção</em> (os lançamentos são corrigidos e o vínculo é guardado para as próximas importações),
+        <em>criar como nova opção</em> da lista (conforme ou desvio) ou <em>manter como está</em>.
+        <br>Valores que são <strong>texto livre</strong> (nomes de produto, "ND"...) em vários lançamentos indicam um item que deveria ser do tipo <em>texto</em>: veja em <a href="{% url 'pcp:ajustar_tipos' formulario.pk %}">Ajustar tipos</a>.
+        {% if numericos %}<br>Há também {{ numericos }} lançamento(s) numéricos em itens de lista: para esses, use <a href="{% url 'pcp:ajustar_tipos' formulario.pk %}">Ajustar tipos</a>.{% endif %}
+    </div>
+    {% if linhas %}
+    <form method="post" action="{% url 'pcp:vincular_valores' %}" class="card">
+        {% csrf_token %}
+        <input type="hidden" name="formulario" value="{{ formulario.pk }}">
+        <input type="hidden" name="next" value="valores">
+        <div class="table-responsive">{% include "pcp/_vinculos.html" %}</div>
+        <div class="card-footer"><button class="btn btn-primary"><i class="bi bi-link-45deg me-1"></i>Aplicar vínculos</button>
+            <span class="small text-muted ms-2">{{ linhas|length }} valor(es). Linhas em "Manter como está" não são alteradas.</span></div>
+    </form>
+    {% else %}
+        <div class="alert alert-success">Nenhum valor não reconhecido: tudo o que foi lançado em itens de lista corresponde às opções cadastradas.</div>
+    {% endif %}
+</div>
+{% endblock %}

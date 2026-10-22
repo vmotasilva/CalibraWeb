@@ -35,10 +35,20 @@
                 {% if not resumo.simulado and resumo.versao %}<div class="small mb-2"><a href="{% url 'pcp:ajustar_tipos' resumo.versao.formulario_id %}"><i class="bi bi-magic"></i> Ajustar tipos dos itens pelos registros importados</a></div>{% endif %}
                 {% if resumo.futuros %}<div class="alert alert-secondary py-2">{{ resumo.futuros }} lançamento(s) com data futura foram ignorados.</div>{% endif %}
                 {% if resumo.nao_reconhecidos %}
-                    <div class="alert alert-warning py-2 small">
-                        Valores que não correspondem às opções da lista do item (gravados sem avaliar conformidade). Se forem opções legítimas, inclua-as em <em>Listas de opções</em>:
-                        <ul class="mb-0">{% for lista, valor, n in resumo.nao_reconhecidos %}<li><strong>{{ valor }}</strong> em "{{ lista }}" ({{ n }}x)</li>{% endfor %}</ul>
+                    <div class="alert alert-warning py-2 small mb-2">
+                        <strong>{{ resumo.nao_reconhecidos|length }} valor(es) não correspondem às opções da lista do item</strong> (hoje seriam gravados sem avaliar conformidade).
+                        Há uma sugestão com base nas opções da própria lista; vincule agora e repita a {% if resumo.simulado %}simulação{% else %}importação{% endif %}.
+                        Os vínculos ficam guardados para as próximas importações{% if not resumo.simulado %} e já corrigem os lançamentos gravados{% endif %}.
+                        <br>Valores de texto livre (nomes de produto, "ND"...) em muitos lançamentos indicam item que deveria ser do tipo texto: veja <em>Ajustar tipos</em>.
+                        {% if resumo.numericos_em_listas %}<br>Outros {{ resumo.numericos_em_listas }} lançamento(s) são números em itens de lista: use <em>Ajustar tipos</em>.{% endif %}
                     </div>
+                    <form method="post" action="{% url 'pcp:vincular_valores' %}" class="border rounded mb-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="importar_registros">
+                        <div class="table-responsive" style="max-height:26rem; overflow:auto">{% with linhas=resumo.nao_reconhecidos %}{% include "pcp/_vinculos.html" %}{% endwith %}</div>
+                        <div class="p-2 bg-light border-top"><button class="btn btn-sm btn-primary"><i class="bi bi-link-45deg me-1"></i>Salvar vínculos</button>
+                            <span class="small text-muted ms-2">Linhas em "Manter como está" não são alteradas.</span></div>
+                    </form>
                 {% endif %}
                 {% if resumo.vigencia_ajustada %}<div class="alert alert-info py-2">Vigência recuada para {{ resumo.vigencia_ajustada|date:"d/m/Y" }}: os atrasos passam a contar desde essa data.</div>{% endif %}
                 {% if resumo.linhas_sem_item %}<div class="alert alert-warning py-2">{{ resumo.linhas_sem_item }} linha(s) da planilha não têm item correspondente na revisão (a estrutura mudou desde a importação?).</div>{% endif %}

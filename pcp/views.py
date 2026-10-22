@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
 from pcp import pendencias as pend
+from pcp import equivalencias as equiv
 from pcp import tipos as tipos_mod
 from pcp.tipos import aplicar_ajuste
 from pcp.importacao import importar_planilha
@@ -93,6 +94,40 @@ def _decimal_ou_none(texto):
         return Decimal(texto)
     except InvalidOperation:
         raise ValueError(texto)
+
+
+@login_required
+def valores(request, pk):
+    """Valores já lançados que não correspondem às opções cadastradas, com sugestão de vínculo."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    linhas, numericos = equiv.valores_do_formulario(formulario)
+    return render(request, 'pcp/valores.html', {'formulario': formulario, 'linhas': linhas, 'numericos': numericos})
+
+
+@login_required
+@require_POST
+def vincular_valores(request):
+    """Aplica os vínculos escolhidos (tela de valores ou relatório da importação de registros)."""
+    try:
+        total = min(int(request.POST.get('total', 0)), 500)
+    except ValueError:
+        total = 0
+    escolhas = []
+    for i in range(total):
+        acao = request.POST.get(f'acao_{i}', '')
+        lista_id = request.POST.get(f'lista_{i}', '')
+        if acao and lista_id.isdigit():
+            escolhas.append((int(lista_id), request.POST.get(f'valor_{i}', ''), acao))
+    r = equiv.aplicar_vinculos(escolhas)
+    if escolhas:
+        messages.success(request, f'{r["vinculados"]} valor(es) vinculado(s), {r["criadas"]} opção(ões) criada(s); {r["lancamentos"]} lançamento(s) atualizado(s). '
+                                  'Os vínculos valem nas próximas importações de registros.')
+    else:
+        messages.info(request, 'Nenhuma alteração: todas as linhas ficaram em "Manter como está".')
+    if request.POST.get('next') == 'importar_registros':
+        return redirect('pcp:importar_registros')
+    formulario_id = request.POST.get('formulario', '')
+    return redirect('pcp:valores', int(formulario_id)) if formulario_id.isdigit() else redirect('pcp:formularios')
 
 
 @login_required

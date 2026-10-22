@@ -103,6 +103,22 @@ class GrupoPagina(models.Model):
         return self.nome
 
 
+class ValorEquivalente(models.Model):
+    """Vínculo de um texto lançado (ex.: 'falta', 'ND') a uma opção cadastrada da lista; vale nas próximas importações de registros."""
+    lista = models.ForeignKey(ListaOpcoes, on_delete=models.CASCADE, related_name='equivalentes')
+    texto = models.CharField(max_length=120)
+    chave = models.CharField(max_length=120, help_text='Texto normalizado (minúsculas, sem acento, só letras e dígitos).')
+    opcao = models.ForeignKey(OpcaoLista, on_delete=models.CASCADE, related_name='equivalentes')
+
+    class Meta:
+        unique_together = ('lista', 'chave')
+        verbose_name = 'valor equivalente'
+        verbose_name_plural = 'valores equivalentes'
+
+    def __str__(self):
+        return f'{self.texto} -> {self.opcao.valor}'
+
+
 class Formulario(models.Model):
     """Formulário de PCP de um setor (ex.: FOR.080 Surfaçagem). A estrutura fica nas revisões."""
     setor = models.ForeignKey(Setor, on_delete=models.PROTECT, related_name='formularios_pcp')

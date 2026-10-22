@@ -46,8 +46,11 @@ class Command(BaseCommand):
             w(f"  tipo ajustado para número: {pagina} / {item} ({n} lançamentos)")
         if r['futuros']:
             w(self.style.WARNING(f"  {r['futuros']} lançamentos com data futura foram ignorados."))
-        for lista, valor, n in r['nao_reconhecidos']:
-            w(self.style.WARNING(f"  valor não reconhecido na lista '{lista}': {valor!r} ({n}x) - gravado sem conformidade"))
+        for l in r['nao_reconhecidos'][:20]:
+            sug = f" (sugestão: {l['sugestao'].valor}, confiança {l['confianca']})" if l['sugestao'] else ''
+            w(self.style.WARNING(f"  valor não reconhecido na lista '{l['lista'].nome}': {l['valor']!r} ({l['n']}x){sug} - gravado sem conformidade"))
+        if r['nao_reconhecidos']:
+            w("  Vincule esses valores às opções em Formulários > (formulário) > Valores não reconhecidos.")
         periodo = f"{r['primeira_data']:%d/%m/%Y} a {r['ultima_data']:%d/%m/%Y}" if r['primeira_data'] else 'sem dados'
         titulo = 'SIMULAÇÃO (nada foi gravado)' if r['simulado'] else 'Importado'
         w(self.style.SUCCESS(

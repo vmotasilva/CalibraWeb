@@ -1,0 +1,37 @@
+{# Tabela de vínculos de valores não reconhecidos às opções cadastradas. Contexto: linhas. #}
+<input type="hidden" name="total" value="{{ linhas|length }}">
+<table class="table table-sm align-middle mb-0">
+    <thead><tr><th>Valor lançado</th><th>Lista do item</th><th class="text-end">Lançamentos</th><th>Sugestão</th><th style="min-width:15rem">Ação</th></tr></thead>
+    <tbody>
+    {% for l in linhas %}
+        <tr>
+            <td><code>{{ l.valor }}</code>
+                <input type="hidden" name="lista_{{ forloop.counter0 }}" value="{{ l.lista.pk }}">
+                <input type="hidden" name="valor_{{ forloop.counter0 }}" value="{{ l.valor }}"></td>
+            <td class="small">{{ l.lista.nome }}</td>
+            <td class="text-end">{{ l.n }}</td>
+            <td class="small">
+                {% if l.sugestao %}{{ l.sugestao.valor }} <span class="badge {% if l.confianca == 'alta' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ l.confianca }}</span>{% if l.de_outra_lista %}<div class="text-muted">da lista "{{ l.sugestao.lista.nome }}"</div>{% endif %}
+                {% else %}<span class="text-muted">sem sugestão</span>{% endif %}
+            </td>
+            <td>
+                <select name="acao_{{ forloop.counter0 }}" class="form-select form-select-sm">
+                    <option value="">Manter como está</option>
+                    <optgroup label="Vincular à opção">
+                        {% for o in l.opcoes %}<option value="op:{{ o.pk }}" {% if l.sugestao and l.sugestao.pk == o.pk %}selected{% endif %}>{{ o.valor }}{% if not o.conforme %} (desvio){% endif %}</option>{% endfor %}
+                    </optgroup>
+                    {% for outra, ops in l.outras %}
+                    <optgroup label="Opções de «{{ outra.nome }}»">
+                        {% for o in ops %}<option value="op:{{ o.pk }}" {% if l.sugestao and l.sugestao.pk == o.pk %}selected{% endif %}>{{ o.valor }}{% if not o.conforme %} (desvio){% endif %}</option>{% endfor %}
+                    </optgroup>
+                    {% endfor %}
+                    <optgroup label="Criar como nova opção">
+                        <option value="novo:ok">"{{ l.valor|truncatechars:20 }}" — conforme</option>
+                        <option value="novo:desvio">"{{ l.valor|truncatechars:20 }}" — desvio</option>
+                    </optgroup>
+                </select>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
