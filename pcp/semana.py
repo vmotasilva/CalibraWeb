@@ -168,9 +168,12 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
                 linha['janelas'].append(d)
         else:  # sob demanda ou sem frequência: só mostra o que foi lançado
             linha['tipo'] = 'eventos'
+            linha['novos'] = [[] for _ in dias]   # "+": registrar uma ocorrência no dia/turno (só até hoje e onde ainda não há registro)
             for i, dia in enumerate(dias):
                 for turno in turnos:
                     regs = [r for r in regs_item if r['data'] == dia and r['turno_id'] == turno.pk]
+                    if not regs and dia <= hoje:
+                        linha['novos'][i].append({'rotulo': turno.sigla, **destino(campo, dia, turno)})
                     if regs:
                         d = registrar(f'{campo.pk}:{dia:%Y%m%d}:{turno.pk}', campo, 'info', f'{dia:%d/%m/%Y} · turno {turno.sigla}',
                                       f'Dia {dia:%d/%m/%Y}, turno {turno.sigla}', regs, '', destino(campo, dia, turno))

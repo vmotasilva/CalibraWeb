@@ -13,6 +13,9 @@
     .farol-dispensado { background:#6c757d; } .farol-info { background:#0d6efd; }
     .farol-grupo { display:inline-flex; flex-direction:column; align-items:center; margin:0 .12rem; }
     .farol-grupo small { font-size:.62rem; color:#6c757d; line-height:1.1; }
+    .farol-novo { background:#fff; color:#0d6efd; border:1.5px dashed #0d6efd; text-decoration:none; box-shadow:none; }
+    .farol-novo:hover { background:#0d6efd; color:#fff; }
+    .grupo-freq td { background:#e9ecef; border-top:2px solid #adb5bd; }
     .semana-tabela th, .semana-tabela td { vertical-align:middle; }
     .semana-tabela td.dia { text-align:center; min-width:5.4rem; }
     .semana-tabela th.hoje, .semana-tabela td.hoje { background:rgba(13,110,253,.07); }
@@ -91,7 +94,23 @@
                 {% for dia in d.dias %}<th class="text-center {% if dia.hoje %}hoje{% endif %}">{{ dia.rotulo }}<div class="small fw-normal text-muted">{{ dia.curto }}</div></th>{% endfor %}
             </tr></thead>
             <tbody>
-            {% for l in d.linhas %}
+            {% for g in grupos %}
+                <tr class="grupo-freq" data-grupo="{{ g.id }}">
+                    <td colspan="10">
+                        <span class="fw-semibold"><i class="bi bi-collection me-1"></i>{{ g.nome }}</span>
+                        <span class="text-muted small ms-2">{{ g.linhas|length }} ite{{ g.linhas|length|pluralize:"m,ns" }}</span>
+                        <span class="ms-3 small">
+                            {% if g.sob_demanda %}<span class="badge bg-primary">{{ g.registros }} registro{{ g.registros|pluralize }} na semana</span>
+                            {% else %}
+                            <span class="badge bg-success" title="Faróis OK">{{ g.ok }} OK</span>
+                            <span class="badge bg-danger" title="Faróis não OK">{{ g.nok }} não OK</span>
+                            <span class="badge bg-warning text-dark" title="Faróis em aberto">{{ g.aberto }} em aberto</span>
+                            {% if g.dispensado %}<span class="badge bg-secondary" title="Dispensados">{{ g.dispensado }} dispensados</span>{% endif %}
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% for l in g.linhas %}
                 <tr data-freq="{{ l.info.frequencia_id }}" data-nok="{% if l.tem_nok %}1{% else %}0{% endif %}">
                     <td class="text-muted">{{ l.info.num }}</td>
                     <td style="min-width:16rem">{% if l.info.etapa %}<div class="small text-muted">{{ l.info.etapa|truncatechars:60 }}</div>{% endif %}
@@ -112,14 +131,18 @@
                                     <span class="farol-grupo"><button type="button" class="farol-btn farol-{{ p.estado }}" data-key="{{ p.key }}" data-bs-toggle="modal" data-bs-target="#modal-farol"
                                         title="{{ p.rotulo|default:'' }}">{% if p.estado == 'ok' %}✓{% elif p.estado == 'nok' %}✕{% elif p.estado == 'aberto' %}…{% elif p.estado == 'dispensado' %}⚙{% elif p.estado == 'sem' %}–{% elif p.estado == 'info' %}i{% else %}·{% endif %}</button>
                                         {% if p.rotulo %}<small>{{ p.rotulo }}</small>{% endif %}</span>
-                                {% empty %}<span class="text-muted">·</span>{% endfor %}
+                                {% endfor %}
+                                {% if pode_lancar %}{% for n in col.novos %}
+                                    <span class="farol-grupo"><a class="farol-btn farol-novo" href="{{ n.url }}" title="Registrar ocorrência em {{ n.data }} · {{ n.rotulo }}">+</a><small>{{ n.rotulo }}</small></span>
+                                {% endfor %}{% endif %}
+                                {% if not col.pontos and not col.novos or not col.pontos and not pode_lancar %}<span class="text-muted">·</span>{% endif %}
                             </td>
                         {% endfor %}
                     {% endif %}
                 </tr>
-            {% empty %}
-                <tr><td colspan="10" class="text-center text-muted py-4">Esta página não tem itens ativos.</td></tr>
+                {% endfor %}
             {% endfor %}
+            {% if not grupos %}<tr><td colspan="10" class="text-center text-muted py-4">Esta página não tem itens ativos.</td></tr>{% endif %}
             </tbody>
         </table>
     </div></div>
@@ -208,6 +231,11 @@
             var oculta = (f !== '' && tr.dataset.freq !== f) || (so && tr.dataset.nok !== '1');
             tr.style.display = oculta ? 'none' : '';
             if (!oculta) visiveis++;
+        });
+        document.querySelectorAll('.semana-tabela tr.grupo-freq').forEach(function (h) {
+            var n = h.nextElementSibling, algum = false;
+            while (n && !n.classList.contains('grupo-freq')) { if (n.style.display !== 'none') algum = true; n = n.nextElementSibling; }
+            h.style.display = algum ? '' : 'none';
         });
         contador.textContent = (f !== '' || so) ? ('Mostrando ' + visiveis + ' de ' + linhas.length + ' itens') : '';
     }

@@ -2555,3 +2555,30 @@ class SemanaLancarDoPopupTests(SemanaBase):
         import json
         v = self.visao()
         json.dumps({'itens': v['itens'], 'detalhes': v['detalhes']})
+
+
+class SemanaGruposETests(SemanaBase):
+    """Separadores por frequência com sub-total e botão "+" nos itens sob demanda."""
+
+    def get(self):
+        return self.client.get(reverse('pcp:semana'), {'pagina': self.pag.pk, 'semana': '2026-10-21'})
+
+    def test_grupos_por_frequencia_com_subtotal(self):
+        self.lancar(date(2026, 10, 19), self.t1, self.c_lista, 'Ok', True)
+        r = self.get()
+        nomes = [g['nome'] for g in r.context['grupos']]
+        self.assertEqual(nomes[:3], ['Turno', 'Diária', 'Semanal'])
+        g = r.context['grupos'][0]
+        self.assertEqual(g['ok'], 1)
+        self.assertEqual(sum(len(g['linhas']) for g in r.context['grupos']), len(r.context['d']['linhas']))
+        self.assertContains(r, 'class="grupo-freq"')
+
+    def test_botao_mais_nos_itens_sob_demanda(self):
+        self.lancar(date(2026, 10, 20), self.t1, self.c_ev, 'troca')
+        r = self.get()
+        linha = next(l for l in r.context['d']['linhas'] if l['campo'] == self.c_ev.pk)
+        self.assertEqual([n['rotulo'] for n in linha['novos'][1]], ['T2'])           # terça: T1 já tem registro
+        self.assertEqual(linha['novos'][1:2][0][0]['data'], '20/10/2026')
+        self.assertTrue(all(n['url'].endswith(f'#campo-{self.c_ev.pk}') for n in linha['novos'][0]))
+        self.assertContains(r, 'farol-novo')
+        self.assertContains(r, f'#campo-{self.c_ev.pk}')

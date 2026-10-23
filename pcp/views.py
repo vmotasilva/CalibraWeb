@@ -989,13 +989,25 @@ def semana(request):
             linha['info'] = dados['itens'][linha['campo']]
             pontos = [d for dia in linha['dias'] for d in dia] + linha['janelas']
             linha['tem_nok'] = any(d['estado'] == 'nok' for d in pontos)
-            linha['colunas'] = [{'hoje': dia['hoje'], 'pontos': pts} for dia, pts in zip(dados['dias'], linha['dias'])]
+            novos = linha.get('novos') or [[] for _ in dados['dias']]
+            linha['colunas'] = [{'hoje': dia['hoje'], 'pontos': pts, 'novos': nv} for dia, pts, nv in zip(dados['dias'], linha['dias'], novos)]
+            linha['contagem'] = Counter(d['estado'] for d in pontos)
         ordem = {p: i for i, p in enumerate(pend.ORDEM_PERIODICIDADE)}
         frequencias = {}
         for i in dados['itens'].values():
             frequencias[i['frequencia_id']] = (ordem.get(i['periodicidade'], 98 if i['frequencia_id'] else 99), i['frequencia'])
+        ordenadas = sorted(frequencias.items(), key=lambda kv: kv[1])
+        # grupos por frequência (separador com sub-total), na ordem das frequências
+        grupos = []
+        for fid, (_, nome) in ordenadas:
+            linhas_g = [l for l in dados['linhas'] if l['info']['frequencia_id'] == fid]
+            total = Counter()
+            for l in linhas_g:
+                total.update(l['contagem'])
+            grupos.append({'id': fid, 'nome': nome, 'linhas': linhas_g, 'ok': total['ok'], 'nok': total['nok'], 'aberto': total['aberto'],
+                           'dispensado': total['dispensado'], 'registros': total['info'], 'sob_demanda': linhas_g[0]['tipo'] == 'eventos'})
         contexto.update({
-            'd': dados, 'frequencias': [(k, v[1]) for k, v in sorted(frequencias.items(), key=lambda kv: kv[1])],
+            'd': dados, 'grupos': grupos, 'frequencias': [(k, v[1]) for k, v in ordenadas],
             'json_detalhes': {'itens': dados['itens'], 'detalhes': dados['detalhes']},
             'anterior': dados['ini'] - datetime.timedelta(days=7), 'proxima': dados['ini'] + datetime.timedelta(days=7),
             'esta_semana': semana_mod.segunda_feira(hoje), 'e_esta_semana': dados['ini'] == semana_mod.segunda_feira(hoje)})
