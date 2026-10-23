@@ -2361,7 +2361,7 @@ class TemplatesTelasTests(TemplatesBase):
         self.assertContains(r, 'Cadastrar template')
 
 
-class SemanaTests(PendenciasBase):
+class SemanaBase(PendenciasBase):
     HOJE = date(2026, 10, 22)   # quinta-feira
 
     def setUp(self):
@@ -2391,6 +2391,8 @@ class SemanaTests(PendenciasBase):
     def estados_dias(self, v, campo):
         return [[p['estado'] for p in dia] for dia in self.linha(v, campo)['dias']]
 
+
+class SemanaTests(SemanaBase):
     def test_estrutura_da_semana(self):
         v = self.visao()
         self.assertEqual((v['ini'], v['fim']), (date(2026, 10, 19), date(2026, 10, 25)))
@@ -2494,3 +2496,62 @@ class SemanaTests(PendenciasBase):
         self.assertContains(r, f'data-freq="{self.f_turno.pk}"')
         self.assertContains(r, 'data-freq="0"')                               # item sem frequência
         self.assertContains(r, 'Todas (6)')
+
+
+class SemanaLancarDoPopupTests(SemanaBase):
+    """Botão "Lançar/Corrigir" do pop-up: leva à tela de preenchimento na data e no turno do farol, com o item em destaque."""
+
+    def destino(self, v, chave):
+        return v['detalhes'][chave]['lancar']
+
+    def base(self):
+        return reverse('pcp:preencher_pagina', args=[self.pag.pk])
+
+    def test_item_por_turno_vai_para_o_dia_e_turno_do_farol(self):
+        v = self.visao()
+        d = self.destino(v, f'{self.c_lista.pk}:20261020:{self.t2.pk}')
+        self.assertEqual(d['url'], f'{self.base()}?data=2026-10-20&turno={self.t2.pk}#campo-{self.c_lista.pk}')
+        self.assertEqual((d['data'], d['turno']), ('20/10/2026', 'T2'))
+
+    def test_item_diario_vai_para_o_primeiro_turno_do_dia_sem_lancamento(self):
+        self.lancar(date(2026, 10, 20), self.t1, self.c_num, '-0,7', True)
+        d = self.destino(self.visao(), f'{self.c_num.pk}:20261020:0')
+        self.assertEqual(d['turno'], 'T2')                                      # T1 já tem lançamento do item no dia
+        self.assertTrue(d['url'].startswith(f'{self.base()}?data=2026-10-20&turno={self.t2.pk}'))
+        self.assertEqual(self.destino(self.visao(), f'{self.c_num.pk}:20261021:0')['turno'], 'T1')   # dia sem lançamento: primeiro turno
+
+    def test_prazo_periodico_vai_para_hoje_se_em_curso_ou_para_o_ultimo_dia_se_encerrado(self):
+        v = self.visao()
+        self.assertTrue(self.destino(v, f'{self.c_sem.pk}:j:20261019')['url'].startswith(f'{self.base()}?data=2026-10-22'))   # semana em curso: hoje
+        f = Frequencia.objects.create(nome='Quinzenal', periodicidade='quinzenal')
+        c = Campo.objects.create(pagina=self.pag, item='Q-1', descricao='q', tipo='texto', frequencia=f, ordem=7)
+        v = self.visao(date(2026, 10, 14))
+        self.assertTrue(self.destino(v, f'{c.pk}:j:20261001')['url'].startswith(f'{self.base()}?data=2026-10-15'))             # quinzena encerrada: último dia
+
+    def test_farol_futuro_nao_tem_botao_mas_os_demais_tem(self):
+        v = self.visao()
+        self.assertIsNone(v['detalhes'][f'{self.c_lista.pk}:20261023:{self.t1.pk}']['lancar'])       # sexta: ainda não começou
+        self.assertIsNotNone(v['detalhes'][f'{self.c_lista.pk}:20261022:{self.t1.pk}']['lancar'])    # hoje: em aberto
+        self.assertIsNotNone(v['detalhes'][f'{self.c_lista.pk}:20261019:{self.t1.pk}']['lancar'])    # passado sem lançamento: lançar fora do prazo
+        self.lancar(date(2026, 10, 19), self.t1, self.c_lista, 'Ok', True)
+        d = self.visao()['detalhes'][f'{self.c_lista.pk}:20261019:{self.t1.pk}']
+        self.assertTrue(d['lancar'] and d['registros'])                                              # já lançado: o botão vira "Corrigir"
+
+    def test_item_sob_demanda_tambem_leva_ao_lancamento(self):
+        self.lancar(date(2026, 10, 20), self.t1, self.c_ev, 'troca')
+        d = self.destino(self.visao(), f'{self.c_ev.pk}:20261020:{self.t1.pk}')
+        self.assertIn(f'#campo-{self.c_ev.pk}', d['url'])
+
+    def test_tela_tem_o_botao_e_a_preenchimento_tem_ancora_e_destaque(self):
+        r = self.client.get(reverse('pcp:semana'), {'pagina': self.pag.pk, 'semana': '2026-10-21'})
+        self.assertContains(r, 'id="modal-farol-lancar"')
+        self.assertContains(r, 'Corrigir lançamento')                                                # texto alternado no JS conforme haja registros
+        r = self.client.get(f'{self.base()}?data=2026-10-20&turno={self.t1.pk}')
+        self.assertContains(r, f'id="campo-{self.c_lista.pk}"')
+        self.assertContains(r, 'pcp-destaque')                                                       # script de destaque via #campo-ID
+        self.assertEqual(self.client.get(f'{self.base()}?data=2026-10-20&turno={self.t1.pk}#campo-{self.c_lista.pk}').status_code, 200)
+
+    def test_json_do_popup_continua_serializavel_com_o_destino(self):
+        import json
+        v = self.visao()
+        json.dumps({'itens': v['itens'], 'detalhes': v['detalhes']})

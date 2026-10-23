@@ -1,7 +1,9 @@
 {% extends base_template|default:"base.html" %}
+{% load nav_access %}
 {% block title %}PCP - Visão semanal - Calibra QMS{% endblock %}
 
 {% block content %}
+{% can_nav_view user 'pcp:preencher_pagina' 'pcp' as pode_lancar %}
 <style>
     .farol-btn { display:inline-flex; align-items:center; justify-content:center; width:1.55rem; height:1.55rem; border-radius:50%; border:0; padding:0;
                  color:#fff; font-size:.8rem; font-weight:700; line-height:1; cursor:pointer; box-shadow:0 0 0 1px rgba(0,0,0,.12); }
@@ -132,7 +134,10 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body" id="modal-farol-corpo"></div>
-            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button></div>
+            <div class="modal-footer">
+                {% if pode_lancar %}<a id="modal-farol-lancar" href="#" class="btn btn-primary d-none"><i class="bi bi-pencil-square me-1"></i><span></span></a>{% endif %}
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
@@ -158,7 +163,14 @@
         var det = dados.detalhes[chave];
         var corpo = document.getElementById('modal-farol-corpo');
         corpo.replaceChildren();
+        var botao = document.getElementById('modal-farol-lancar');
+        if (botao) botao.classList.add('d-none');
         if (!det) { corpo.appendChild(el('p', 'Sem detalhes para este farol.')); return; }
+        if (botao && det.lancar) {   // lança (ou corrige) direto na tela de preenchimento, na data e no turno do farol, com o item em destaque
+            botao.href = det.lancar.url;
+            botao.querySelector('span').textContent = (det.registros.length ? 'Corrigir lançamento' : 'Lançar agora') + ' · ' + det.lancar.data + (det.lancar.turno ? ' · ' + det.lancar.turno : '');
+            botao.classList.remove('d-none');
+        }
         var item = dados.itens[det.campo];
         document.getElementById('modal-farol-titulo').textContent = (item.item ? item.item + ' · ' : '') + 'Nº ' + item.num + ' · ' + det.titulo;
         var estado = el('div', null, 'mb-3');

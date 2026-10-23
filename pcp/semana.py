@@ -13,6 +13,7 @@ Cada farol traz os dados que o compõem (prazo, lançamentos, situação da máq
 import datetime
 from collections import Counter, defaultdict
 
+from django.urls import reverse
 from django.utils import timezone
 
 from pcp.models import Resposta, Turno, Verificacao
@@ -88,7 +89,15 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
             return 'nok' if _turno_encerrado(turno, agora) else 'aberto'
         return 'nok' if fim_prazo < hoje else 'aberto'
 
-    def registrar(key, campo, estado, titulo, prazo, regs, maquina=''):
+    base_preencher = reverse('pcp:preencher_pagina', args=[pagina.pk])
+
+    def destino(campo, dia, turno):
+        """Link da tela de preenchimento na data e no turno do farol, com o item em destaque."""
+        turno = turno or (turnos[0] if turnos else None)
+        return {'data': f'{dia:%d/%m/%Y}', 'turno': turno.sigla if turno else '',
+                'url': f'{base_preencher}?data={dia:%Y-%m-%d}' + (f'&turno={turno.pk}' if turno else '') + f'#campo-{campo.pk}'}
+
+    def registrar(key, campo, estado, titulo, prazo, regs, maquina='', lancar=None):
         resumo = {
             'ok': 'Lançado e dentro do especificado.', 'nok': ('Lançado fora do especificado (limite ou opção de desvio).' if regs
                                                                 else 'Sem lançamento até o fim do prazo.'),
@@ -96,7 +105,7 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
             'dispensado': 'Item dispensado: a máquina esteve em manutenção ou parada.', 'sem': 'Antes do início do rastreio'
             + (f' ({rastreio:%d/%m/%Y})' if rastreio else '') + ': não é cobrado.', 'info': 'Registro de item sob demanda (sem prazo).'}[estado]
         detalhes[key] = {'campo': campo.pk, 'estado': estado, 'estado_rotulo': ROTULOS_ESTADO[estado], 'titulo': titulo, 'prazo': prazo, 'resumo': resumo,
-                         'maquina': maquina, 'registros': [
+                         'maquina': maquina, 'lancar': (lancar if estado != 'futuro' else None), 'registros': [
                              {'data': f'{r["data"]:%d/%m/%Y}', 'turno': r['turno'], 'valor': r['valor'], 'conforme': r['conforme'], 'quem': r['quem'],
                               'quando': r['quando']} for r in regs]}
         if estado != 'info':
@@ -126,7 +135,7 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
                     else:
                         estado, maquina = (estado_registros(regs) if regs else estado_sem_registro(dia, dia, turno)), ''
                     d = registrar(f'{campo.pk}:{dia:%Y%m%d}:{turno.pk}', campo, estado, f'{dia:%d/%m/%Y} · turno {turno.sigla}',
-                                  f'Dia {dia:%d/%m/%Y}, turno {turno.sigla}', regs, maquina)
+                                  f'Dia {dia:%d/%m/%Y}, turno {turno.sigla}', regs, maquina, destino(campo, dia, turno))
                     d['rotulo'] = turno.sigla
                     linha['dias'][i].append(d)
         elif per == 'diaria':
@@ -139,7 +148,9 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
                     estado, maquina = (estado_registros(regs) if regs else estado_sem_registro(dia, dia)), ''
                     algum = [(dia, t.pk) for t in turnos if (dia, t.pk) in parados]
                     maquina = texto_maquina(algum) if algum else ''
-                linha['dias'][i].append(registrar(f'{campo.pk}:{dia:%Y%m%d}:0', campo, estado, f'{dia:%d/%m/%Y}', f'Dia {dia:%d/%m/%Y} (qualquer turno)', regs, maquina))
+                livre = next((t for t in turnos if not any(r['turno_id'] == t.pk for r in regs)), None)
+                linha['dias'][i].append(registrar(f'{campo.pk}:{dia:%Y%m%d}:0', campo, estado, f'{dia:%d/%m/%Y}', f'Dia {dia:%d/%m/%Y} (qualquer turno)', regs, maquina,
+                                                  destino(campo, dia, livre)))
         elif per in PERIODICAS:
             linha['tipo'] = 'janelas'
             for a, b in janelas_do_campo[campo.pk]:
@@ -151,7 +162,8 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
                     estado, maquina = (estado_registros(regs) if regs else estado_sem_registro(a, b)), ''
                 nome = NOMES_PERIODO[per]
                 d = registrar(f'{campo.pk}:j:{a:%Y%m%d}', campo, estado, f'{nome} {rotulo_janela(per, a)}',
-                              f'{nome} {rotulo_janela(per, a)} (qualquer turno, em qualquer dia do prazo)', regs, maquina)
+                              f'{nome} {rotulo_janela(per, a)} (qualquer turno, em qualquer dia do prazo)', regs, maquina,
+                              destino(campo, hoje if a <= hoje <= b else (b if b < hoje else a), None))
                 d['rotulo'] = rotulo_janela(per, a)
                 linha['janelas'].append(d)
         else:  # sob demanda ou sem frequência: só mostra o que foi lançado
@@ -161,7 +173,7 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
                     regs = [r for r in regs_item if r['data'] == dia and r['turno_id'] == turno.pk]
                     if regs:
                         d = registrar(f'{campo.pk}:{dia:%Y%m%d}:{turno.pk}', campo, 'info', f'{dia:%d/%m/%Y} · turno {turno.sigla}',
-                                      f'Dia {dia:%d/%m/%Y}, turno {turno.sigla}', regs)
+                                      f'Dia {dia:%d/%m/%Y}, turno {turno.sigla}', regs, '', destino(campo, dia, turno))
                         d['rotulo'] = turno.sigla
                         linha['dias'][i].append(d)
         linhas.append(linha)
