@@ -135,7 +135,7 @@
                                         {% if p.rotulo %}<small>{{ p.rotulo }}</small>{% endif %}</span>
                                 {% endfor %}
                                 {% if pode_lancar %}{% for n in col.novos %}
-                                    <span class="farol-grupo"><a class="farol-btn farol-novo" href="{{ n.url }}" title="Registrar ocorrência em {{ n.data }} · {{ n.rotulo }}">+</a><small>{{ n.rotulo }}</small></span>
+                                    <span class="farol-grupo"><button type="button" class="farol-btn farol-novo" data-key="{{ n.key }}" data-bs-toggle="modal" data-bs-target="#modal-farol" title="Registrar ocorrência em {{ n.data }} · {{ n.rotulo }}">+</button><small>{{ n.rotulo }}</small></span>
                                 {% endfor %}{% endif %}
                                 {% if not col.pontos and not col.novos or not col.pontos and not pode_lancar %}<span class="text-muted">·</span>{% endif %}
                             </td>
@@ -179,7 +179,7 @@
                                         <div class="dia-m {% if col.hoje %}hoje{% endif %}">
                                             <div class="dia-m-rot">{{ col.rotulo }} <span class="text-muted">{{ col.curto }}</span></div>
                                             <div>{% for p in col.pontos %}{% include "pcp/_farol_btn.html" %}{% endfor %}
-                                                {% if pode_lancar %}{% for n in col.novos %}<span class="farol-grupo"><a class="farol-btn farol-novo" href="{{ n.url }}" title="Registrar ocorrência em {{ n.data }} · {{ n.rotulo }}">+</a><small>{{ n.rotulo }}</small></span>{% endfor %}{% endif %}</div>
+                                                {% if pode_lancar %}{% for n in col.novos %}<span class="farol-grupo"><button type="button" class="farol-btn farol-novo" data-key="{{ n.key }}" data-bs-toggle="modal" data-bs-target="#modal-farol" title="Registrar ocorrência em {{ n.data }} · {{ n.rotulo }}">+</button><small>{{ n.rotulo }}</small></span>{% endfor %}{% endif %}</div>
                                         </div>
                                         {% endif %}
                                     {% endfor %}
@@ -230,7 +230,7 @@
     var dados = JSON.parse(document.getElementById('dados-semana').textContent);
     var pode_lancar = {% if pode_lancar %}true{% else %}false{% endif %};
     var modal = document.getElementById('modal-farol');
-    var CORES = { ok: 'success', nok: 'danger', aberto: 'warning text-dark', futuro: 'secondary', dispensado: 'secondary', sem: 'secondary', info: 'primary' };
+    var CORES = { ok: 'success', nok: 'danger', aberto: 'warning text-dark', futuro: 'secondary', dispensado: 'secondary', sem: 'secondary', info: 'primary', novo: 'primary' };
 
     function el(tag, texto, classe) { var e = document.createElement(tag); if (texto !== undefined && texto !== null) e.textContent = texto; if (classe) e.className = classe; return e; }
     function linha(rotulo, valor) {

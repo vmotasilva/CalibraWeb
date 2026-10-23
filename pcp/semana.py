@@ -174,7 +174,11 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
                 for turno in turnos:
                     regs = [r for r in regs_item if r['data'] == dia and r['turno_id'] == turno.pk]
                     if not regs and dia <= hoje:
-                        linha['novos'][i].append({'rotulo': turno.sigla, **destino(campo, dia, turno)})
+                        key = f'{campo.pk}:{dia:%Y%m%d}:{turno.pk}'
+                        detalhes[key] = {'campo': campo.pk, 'estado': 'novo', 'estado_rotulo': 'Sem registro', 'titulo': f'{dia:%d/%m/%Y} · turno {turno.sigla}',
+                                         'prazo': f'Dia {dia:%d/%m/%Y}, turno {turno.sigla}', 'maquina': '', 'registros': [], 'lancar': destino(campo, dia, turno),
+                                         'resumo': 'Nenhum registro neste dia e turno. Registre abaixo quando houver ocorrência (item sob demanda).'}
+                        linha['novos'][i].append({'rotulo': turno.sigla, 'key': key, **destino(campo, dia, turno)})
                     if regs:
                         d = registrar(f'{campo.pk}:{dia:%Y%m%d}:{turno.pk}', campo, 'info', f'{dia:%d/%m/%Y} · turno {turno.sigla}',
                                       f'Dia {dia:%d/%m/%Y}, turno {turno.sigla}', regs, '', destino(campo, dia, turno))

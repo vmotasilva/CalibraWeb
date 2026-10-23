@@ -2566,7 +2566,7 @@ class SemanaGruposETests(SemanaBase):
         self.assertEqual([n['rotulo'] for n in linha['novos'][1]], ['T2'])           # terça: T1 já tem registro
         self.assertEqual(linha['novos'][1:2][0][0]['data'], '20/10/2026')
         self.assertTrue(all(n['url'].endswith(f'#campo-{self.c_ev.pk}') for n in linha['novos'][0]))
-        self.assertContains(r, 'farol-novo')
+        self.assertContains(r, "farol-novo")
         self.assertContains(r, f'#campo-{self.c_ev.pk}')
 
 
