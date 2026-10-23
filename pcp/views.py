@@ -1171,6 +1171,10 @@ def _catalogo_tags():
             ('{{VALOR:1:T1}}', 'Valor do dia 1, turno T1 (ou posição: {{VALOR:1:1}}); turno em manutenção/parada traz a situação'),
             ('{{STATUS:1:T1}}', 'Situação da máquina no dia 1, turno T1')]),
         ('Modo lista (uma linha por item, data e turno preenchidos)', [('{{%s}}' % k, v) for k, v in LISTA.items()]),
+        ('Modo calendário (datas nas colunas; uma aba por página; reconhecido sozinho)', [
+            ('{{DATA}}', 'No cabeçalho, acima da linha dos itens, na 1ª coluna do bloco de uma data (a célula pode ser mesclada sobre as colunas dos turnos)'),
+            ('{{TURNO}}', 'Linha abaixo da data, na 1ª coluna do bloco: cada coluna do bloco recebe a sigla de um turno (T1, T2…)'),
+            ('{{VALOR}}', 'Na linha dos itens, na 1ª coluna do bloco: valor lançado de cada turno; turno em manutenção/parada traz a situação; fora do especificado em vermelho')]),
     ]
     return grupos
 
@@ -1251,12 +1255,31 @@ def exportar_template(request, pk):
         messages.error(request, 'Escolha um template ativo deste formulário (e que sirva para esta página).')
         return redirect('pcp:preencher_pagina', pk)
     ano, mes = _periodo_mes(request)
+    conteudo = templates_xlsx.decodificar(tpl.arquivo_base64)
     try:
-        saida = templates_xlsx.gerar(templates_xlsx.decodificar(tpl.arquivo_base64), formulario, pagina.versao, pagina, ano, mes)
+        if templates_xlsx.eh_calendario(conteudo):
+            # modo calendário: período livre (padrão: 1º de janeiro até hoje) e uma aba por página (todas, só o grupo ou só esta)
+            hoje = timezone.localdate()
+            ini = _parse_data(request.GET.get('de')) if request.GET.get('de') else datetime.date(hoje.year, 1, 1)
+            fim = _parse_data(request.GET.get('ate')) if request.GET.get('ate') else hoje
+            escopo = request.GET.get('escopo') if request.GET.get('escopo') in ('pagina', 'grupo', 'todas') else 'todas'
+            paginas = [pagina]
+            if escopo != 'pagina':
+                grupos = {}
+                for p in pagina.versao.paginas.filter(ativo=True).order_by('ordem', 'pk'):
+                    grupos.setdefault(p.grupo or SEM_GRUPO, []).append(p)
+                grupos = formulario.ordenar_grupos(grupos)
+                if escopo == 'grupo':
+                    grupos = {k: v for k, v in grupos.items() if k == (pagina.grupo or SEM_GRUPO)}
+                paginas = [p for ps in grupos.values() for p in ps if tpl.serve_para(p)]
+            saida = templates_xlsx.gerar_calendario(conteudo, formulario, pagina.versao, paginas, ini, fim)
+            nome = unicodedata.normalize('NFKD', f'{formulario.codigo}_{tpl.nome}_{ini:%Y%m%d}-{fim:%Y%m%d}' + ('' if escopo == 'todas' else f'_{pagina.nome}'))
+        else:
+            saida = templates_xlsx.gerar(conteudo, formulario, pagina.versao, pagina, ano, mes)
+            nome = unicodedata.normalize('NFKD', f'{formulario.codigo}_{pagina.nome}_{ano}-{mes:02d}_{tpl.nome}')
     except ValueError as e:
         messages.error(request, str(e))
         return redirect('pcp:preencher_pagina', pk)
-    nome = unicodedata.normalize('NFKD', f'{formulario.codigo}_{pagina.nome}_{ano}-{mes:02d}_{tpl.nome}')
     nome = re.sub(r'[^A-Za-z0-9._-]+', '_', ''.join(c for c in nome if not unicodedata.combining(c))).strip('_')
     resposta = HttpResponse(saida.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     resposta['Content-Disposition'] = f'attachment; filename="{nome}.xlsx"'

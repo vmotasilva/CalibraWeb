@@ -25,6 +25,7 @@ from io import BytesIO
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.cell_range import CellRange
 
 from pcp.exportacao import COR_STATUS, ROTULOS, _valor_celula, lancamentos_da_pagina, periodo_do_mes
 from pcp.models import Turno
@@ -99,7 +100,9 @@ def analisar(conteudo):
     reconhecidas = sorted(t for cat, ts in achadas.items() if cat != 'desconhecida' for t in ts)
     linha = achadas.get('item', set()) | achadas.get('grade', set()) | achadas.get('lista', set())
     modo = ''
-    if achadas.get('lista'):
+    if any(not w.title.startswith('_') and achar_calendario(w) for w in wb.worksheets):
+        modo = 'calendario'
+    elif achadas.get('lista'):
         modo = 'lista'
     elif achadas.get('item') or achadas.get('grade'):
         modo = 'grade'
@@ -108,7 +111,9 @@ def analisar(conteudo):
         raise ValueError('Nenhuma variável {{TAG}} reconhecida no template. Veja o modelo de exemplo para saber como marcar o arquivo.')
     if not linha:
         avisos.append('Nenhuma tag de item na planilha: só o cabeçalho será preenchido (use NUM, ITEM, DESCRICAO… na linha dos itens).')
-    if achadas.get('lista') and achadas.get('grade'):
+    if modo == 'calendario':
+        avisos.append('Modo calendário: o primeiro bloco de colunas é o modelo; cada data do período ganha um bloco igual e o sistema gera uma aba por página.')
+    if achadas.get('lista') and achadas.get('grade') and modo != 'calendario':
         avisos.append('Há tags do modo grade e do modo lista na mesma planilha; cada aba usa o modo da sua linha âncora.')
     return {'tags': reconhecidas, 'desconhecidas': sorted(achadas.get('desconhecida', set())), 'modo': modo, 'abas': len(
         [w for w in wb.worksheets if not w.title.startswith('_')]), 'avisos': avisos}
@@ -206,6 +211,8 @@ def gerar(conteudo_template, formulario, versao, pagina, ano, mes, hoje=None):
     from procedures.services.treinamento_excel_export_service import _substituir_tags_no_arquivo_zip
     hoje = hoje or datetime.date.today()
     ini, fim = periodo_do_mes(ano, mes)
+    if eh_calendario(conteudo_template):
+        return gerar_calendario(conteudo_template, formulario, versao, [pagina], ini, fim, hoje)
     dias = [ini + datetime.timedelta(days=n) for n in range((fim - ini).days + 1)]
     turnos = list(Turno.objects.filter(ativo=True))
     campos = list(pagina.campos.filter(ativo=True).select_related('frequencia').order_by('ordem', 'pk'))
@@ -381,3 +388,240 @@ def gerar_amostra():
     wb.save(buf)
     buf.seek(0)
     return buf
+
+
+# --------------------------------------------------------------------------------------
+# Modo calendário: datas nas colunas (um bloco de colunas por data, uma coluna por turno)
+# --------------------------------------------------------------------------------------
+# Reconhecido sozinho, sem configuração: {{DATA}} (e {{TURNO}}) nas linhas de cabeçalho acima da linha âncora e {{VALOR}} na linha âncora.
+# O primeiro bloco do template é o modelo: cada data do período recebe um bloco igual (mesmo estilo, mesclagens e larguras) e cada turno uma
+# coluna; as tags só precisam estar na primeira coluna do bloco. O sistema gera uma aba por página, com o layout do template.
+
+def _tags_da_linha(linha):
+    achadas = {}
+    for c in linha:
+        if isinstance(c.value, str) and '{{' in c.value:
+            for m in RE_TAG.finditer(c.value):
+                achadas.setdefault(normalizar(m.group(1)), []).append(c.column)
+    return achadas
+
+
+def achar_calendario(ws):
+    """Geometria do modo calendário da aba, ou None: linha âncora (com VALOR/STATUS), linha da DATA, linha do TURNO e coluna do 1º bloco."""
+    linha_data = linha_turno = col_ini = None
+    for linha in ws.iter_rows():
+        tags = _tags_da_linha(linha)
+        tem_valor = bool({'VALOR', 'STATUS'} & set(tags))
+        if 'DATA' in tags and not tem_valor and linha_data is None:
+            linha_data, col_ini = linha[0].row, min(tags['DATA'])
+        elif 'TURNO' in tags and not tem_valor and linha_turno is None and linha_data is not None:
+            linha_turno = linha[0].row
+        elif tem_valor:
+            if linha_data is None:
+                return None
+            return {'ancora': linha[0].row, 'linha_data': linha_data, 'linha_turno': linha_turno, 'col_ini': col_ini}
+    return None
+
+
+def eh_calendario(conteudo):
+    try:
+        wb = openpyxl.load_workbook(BytesIO(conteudo))
+    except Exception:
+        return False
+    return any(not ws.title.startswith('_') and achar_calendario(ws) for ws in wb.worksheets)
+
+
+def _largura_coluna(ws, col):
+    for d in ws.column_dimensions.values():
+        if d.min is not None and d.min <= col <= (d.max or d.min) and d.width:
+            return d.width
+    return None
+
+
+def _tag_item(tag, campo, escalares):
+    cat = classificar(tag)
+    if cat in ('escalar', 'dia'):
+        return escalares[tag]
+    if cat == 'item' and campo is not None:
+        return {
+            'NUM': campo.ordem, 'ITEM': campo.item, 'ETAPA': campo.etapa, 'DESCRICAO': campo.descricao,
+            'ESPECIFICACAO': campo.especificacao, 'METODO': campo.metodo, 'FREQUENCIA': str(campo.frequencia or ''),
+            'PLANO_REACAO': campo.plano_reacao, 'RESPONSAVEL': campo.responsavel, 'UNIDADE': campo.unidade,
+            'MINIMO': float(campo.minimo) if campo.minimo is not None else '',
+            'MAXIMO': float(campo.maximo) if campo.maximo is not None else '',
+            'CRITICO': 'Sim' if campo.critico else '', 'TIPO': campo.get_tipo_display()}[tag]
+    return ''
+
+
+def gerar_calendario(conteudo_template, formulario, versao, paginas, ini, fim, hoje=None):
+    """Planilha com uma aba por página (layout do template em calendário) para o período ini..fim. Devolve BytesIO."""
+    from openpyxl.worksheet.datavalidation import DataValidation
+    from openpyxl.worksheet.hyperlink import Hyperlink
+    from pcp.exportacao import _nome_aba
+    hoje = hoje or datetime.date.today()
+    if fim < ini:
+        raise ValueError('A data final é anterior à inicial.')
+    if not paginas:
+        raise ValueError('Nenhuma página ativa atende a este template.')
+    wb = openpyxl.load_workbook(BytesIO(conteudo_template))
+    mestre = next((ws for ws in wb.worksheets if not ws.title.startswith('_') and achar_calendario(ws)), None)
+    if mestre is None:
+        raise ValueError('O template não está no modo calendário (precisa de {{DATA}} no cabeçalho e {{VALOR}} na linha dos itens).')
+    geo = achar_calendario(mestre)
+    ancora, col_ini = geo['ancora'], geo['col_ini']
+    turnos = list(Turno.objects.filter(ativo=True))
+    celula_data = mestre.cell(row=geo['linha_data'], column=col_ini)
+    mescla_data = next((m for m in mestre.merged_cells.ranges if celula_data.coordinate in m), None)
+    larg = (mescla_data.max_col - mescla_data.min_col + 1) if mescla_data else max(1, len(turnos))
+    dias = [ini + datetime.timedelta(days=n) for n in range((fim - ini).days + 1)]
+    if col_ini + len(dias) * larg - 1 > 16384:
+        raise ValueError(f'Período grande demais para o Excel: no máximo {(16384 - col_ini + 1) // larg} dias com {larg} coluna(s) por dia.')
+    ultima_col = col_ini + len(dias) * larg - 1
+    max_linha = mestre.max_row
+    tem_2o_bloco = mestre.max_column >= col_ini + 2 * larg - 1    # o 2º bloco é o padrão; o 1º é o que fica junto à parte fixa
+    links_mestre = [c for c in mestre._cells.values() if c.hyperlink is not None and c.hyperlink.location and c.column < col_ini]
+    nome_indice = 'Índice'
+    indice = wb.create_sheet(nome_indice, 0)
+    usados = {nome_indice.lower()}
+    abas = []
+
+    for pagina in paginas:
+        campos = list(pagina.campos.filter(ativo=True).select_related('frequencia').order_by('ordem', 'pk'))
+        respostas, parados = lancamentos_da_pagina(formulario, pagina, ini, fim)
+        escalares = _escalares(formulario, versao, pagina, ini, fim, dias[:31], campos, hoje)
+        ws = wb.create_sheet(_nome_aba(pagina.nome, usados))
+        abas.append((pagina, ws.title))
+        extra = max(len(campos), 1) - 1
+        total_linhas = max_linha + extra
+
+        def linha_origem(r):
+            if r <= ancora:
+                return r
+            return r - extra if r > ancora + extra else ancora
+
+        def coluna_origem(c):
+            if c < col_ini:
+                return c
+            bloco, off = divmod(c - col_ini, larg)
+            return col_ini + off + (larg if bloco > 0 and tem_2o_bloco else 0)
+
+        for r in range(1, total_linhas + 1):
+            h = mestre.row_dimensions[linha_origem(r)].height
+            if h is not None:
+                ws.row_dimensions[r].height = h
+        larguras = {}
+        for c in range(1, ultima_col + 1):
+            co = coluna_origem(c)
+            if co not in larguras:
+                larguras[co] = _largura_coluna(mestre, co)
+            if larguras[co]:
+                ws.column_dimensions[get_column_letter(c)].width = larguras[co]
+
+        def so_escalares(texto):
+            return _substituir(texto, lambda tag, _: escalares[tag] if classificar(tag) in ('escalar', 'dia') else '{{' + tag + '}}')
+
+        fonte_nok = {}
+        for r in range(1, total_linhas + 1):
+            ro = linha_origem(r)
+            e_item = ancora <= r <= ancora + extra
+            campo = campos[r - ancora] if e_item and campos else None
+            for c in range(1, ultima_col + 1):
+                origem = mestre.cell(row=ro, column=coluna_origem(c))
+                if not origem.has_style and origem.value is None:
+                    continue
+                cel = ws.cell(row=r, column=c)
+                if origem.has_style:
+                    cel._style = copy(origem._style)
+                texto = origem.value if isinstance(origem.value, str) else None
+                if c < col_ini:                                               # parte fixa: cabeçalho do documento e dados do item
+                    if texto is None or '{{' not in texto:
+                        cel.value = origem.value
+                    elif e_item and ro == ancora:
+                        cel.value = _substituir(texto, lambda tag, inteira, campo=campo: _tag_item(tag, campo, escalares))
+                    else:
+                        cel.value = so_escalares(texto)
+                    continue
+                bloco, off = divmod(c - col_ini, larg)
+                if ro == geo['linha_data']:
+                    if off == 0:
+                        cel.value = dias[bloco]
+                elif geo['linha_turno'] and ro == geo['linha_turno']:
+                    if off < len(turnos):
+                        cel.value = turnos[off].sigla
+                elif ro == ancora:
+                    if campo is not None and off < len(turnos):
+                        dia, turno = dias[bloco], turnos[off]
+                        status = parados.get((dia, turno.pk))
+                        if status:
+                            cel.value = ROTULOS[status]
+                            cel.fill = PatternFill('solid', fgColor=COR_STATUS[status])
+                            cel.alignment = Alignment(horizontal='center', vertical='center', shrink_to_fit=True)
+                        else:
+                            lancado = respostas.get(chave(campo.item, campo.etapa, campo.descricao), {}).get((dia, turno.pk))
+                            if lancado:
+                                cel.value = _valor_celula(campo, lancado[0])
+                                if lancado[1] is False:
+                                    if id(origem.font) not in fonte_nok:
+                                        f = copy(origem.font)
+                                        f.color, f.b = 'C00000', True
+                                        fonte_nok[id(origem.font)] = f
+                                    cel.font = fonte_nok[id(origem.font)]
+                elif texto is not None:
+                    cel.value = texto if '{{' not in texto else so_escalares(texto)
+        # mesclagens: parte fixa (com as linhas abaixo da âncora deslocadas) e as de cada bloco de data, a partir do bloco-modelo
+        for m in mestre.merged_cells.ranges:
+            if m.min_col < col_ini:
+                d = extra if m.min_row > ancora else 0
+                ws.merged_cells.add(CellRange(min_col=m.min_col, min_row=m.min_row + d, max_col=m.max_col, max_row=m.max_row + d))
+        for bloco in range(len(dias)):
+            base = col_ini + (larg if bloco > 0 and tem_2o_bloco else 0)
+            for m in mestre.merged_cells.ranges:
+                if base <= m.min_col < base + larg:
+                    d = extra if m.min_row > ancora else 0
+                    desloc_col = col_ini + bloco * larg - base
+                    # direto na lista de mesclagens: as células já herdaram as bordas do template (merge_cells reformatava cada uma)
+                    ws.merged_cells.add(CellRange(min_col=m.min_col + desloc_col, min_row=m.min_row + d, max_col=m.max_col + desloc_col, max_row=m.max_row + d))
+        # aparência da aba
+        ws.freeze_panes = mestre.freeze_panes
+        ws.sheet_view.showGridLines = mestre.sheet_view.showGridLines
+        ws.sheet_view.zoomScale = mestre.sheet_view.zoomScale
+        ws.page_setup.orientation, ws.page_setup.paperSize, ws.page_setup.scale = (
+            mestre.page_setup.orientation, mestre.page_setup.paperSize, mestre.page_setup.scale)
+        ws.page_margins = copy(mestre.page_margins)
+        for dv in mestre.data_validations.dataValidation:
+            novo = DataValidation(type=dv.type, operator=dv.operator, formula1=dv.formula1, formula2=dv.formula2, allow_blank=dv.allow_blank,
+                                  showErrorMessage=dv.showErrorMessage, showInputMessage=dv.showInputMessage, errorTitle=dv.errorTitle,
+                                  error=dv.error, promptTitle=dv.promptTitle, prompt=dv.prompt)
+            for faixa in dv.sqref.ranges:
+                ult = max(ultima_col if faixa.max_col >= mestre.max_column else faixa.max_col, faixa.min_col)
+                r1 = faixa.min_row + (extra if faixa.min_row > ancora else 0)
+                r2 = faixa.max_row + (extra if faixa.max_row > ancora else 0)
+                novo.add(f'{get_column_letter(faixa.min_col)}{r1}:{get_column_letter(ult)}{r2}')
+            ws.add_data_validation(novo)
+        for origem in links_mestre:
+            ws[origem.coordinate].hyperlink = Hyperlink(ref=origem.coordinate, location=origem.hyperlink.location, display=origem.hyperlink.display)
+
+    # índice: destino do "Voltar ao índice" do template, com um link para cada página
+    cab, branco = PatternFill('solid', fgColor='14284B'), Font(bold=True, color='FFFFFF')
+    indice['A1'] = f'{formulario.codigo} · {versao.revisao} — Índice'
+    indice['A1'].font = Font(bold=True, size=13)
+    indice['A2'] = f'Período: {ini:%d/%m/%Y} a {fim:%d/%m/%Y} · extraído em {hoje:%d/%m/%Y}'
+    indice['A2'].font = Font(italic=True, color='666666')
+    for j, t in enumerate(('Grupo', 'Página'), 1):
+        c = indice.cell(row=4, column=j, value=t)
+        c.font, c.fill = branco, cab
+    for k, (pagina, aba) in enumerate(abas, 5):
+        indice.cell(row=k, column=1, value=pagina.grupo)
+        c = indice.cell(row=k, column=2, value=pagina.nome)
+        c.hyperlink = Hyperlink(ref=c.coordinate, location=f"'{aba}'!A1", display=pagina.nome)
+        c.font = Font(color='0563C1', underline='single')
+    indice.column_dimensions['A'].width = 28
+    indice.column_dimensions['B'].width = 40
+    manter = {a for _, a in abas} | {nome_indice}
+    for ws in [w for w in wb.worksheets if w.title not in manter]:
+        wb.remove(ws)
+    wb.active = 0
+    saida = BytesIO()
+    wb.save(saida)
+    saida.seek(0)
+    return saida

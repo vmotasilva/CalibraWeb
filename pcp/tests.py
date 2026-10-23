@@ -2654,3 +2654,127 @@ class SemanaOcorrenciaNoPopupTests(SemanaBase):
         self.assertEqual(r.context['d']['detalhes'][n['key']]['estado'], 'novo')
         self.assertContains(r, 'id="modal-farol-ocorrencia"')
         self.assertContains(r, f'data-key="{n["key"]}"')
+
+
+def _template_calendario(blocos=5, largura=2):
+    """Template em calendário (como o FOR.080): DATA mesclada sobre as colunas dos turnos, TURNO e VALOR só na 1ª coluna do bloco."""
+    from openpyxl.styles import Border, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.datavalidation import DataValidation
+    from openpyxl.worksheet.hyperlink import Hyperlink
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'TEMPLATE'
+    ws['A2'] = 'Voltar ao índice'
+    ws['A2'].hyperlink = Hyperlink(ref='A2', location="'Índice'!A1")
+    ws['D2'] = '{{PAGINA}}'
+    for j, t in enumerate(['Item', 'O que verificar'], 1):
+        ws.cell(row=4, column=j, value=t)
+    ws['A6'], ws['B6'] = '{{ITEM}}', '{{DESCRICAO}}'
+    azul = PatternFill('solid', fgColor='DDEBF7')
+    lado = Side(style='thin')
+    for b in range(blocos):
+        c0 = 3 + b * largura
+        ws.merge_cells(start_row=4, start_column=c0, end_row=4, end_column=c0 + largura - 1)
+        for j in range(largura):
+            ws.cell(row=4, column=c0 + j).fill = azul
+            ws.cell(row=5, column=c0 + j).fill = azul
+            ws.cell(row=6, column=c0 + j).border = Border(left=lado, right=lado)
+            ws.cell(row=7, column=c0 + j).border = Border(left=lado, right=lado)
+            ws.column_dimensions[get_column_letter(c0 + j)].width = 7
+        ws.cell(row=4, column=c0).number_format = 'dd/mm/yyyy'
+    ws['C4'], ws['C5'], ws['C6'] = '{{DATA}}', '{{TURNO}}', '{{VALOR}}'
+    ws['A8'] = 'Rodapé fixo'
+    ws.freeze_panes = 'C1'
+    ws.add_data_validation(DataValidation(type='list', formula1='"Ok,Nok"', sqref='C6:XFD7'))
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+class TemplateCalendarioTests(TemplatesBase):
+    def setUp(self):
+        super().setUp()
+        self.p2 = Pagina.objects.create(versao=self.v15, nome='Outra', grupo='Fita')
+        Campo.objects.create(pagina=self.p2, item='Z-1', descricao='zz', tipo='texto', ordem=1, frequencia=self.f_turno)
+
+    def gerar_cal(self, ini=date(2026, 10, 1), fim=date(2026, 10, 3), paginas=None, conteudo=None):
+        from pcp import templates_xlsx
+        paginas = [self.p, self.p2] if paginas is None else paginas
+        s = templates_xlsx.gerar_calendario(conteudo or _template_calendario(), self.form, self.v15, paginas, ini, fim, hoje=date(2026, 10, 5))
+        return openpyxl.load_workbook(io.BytesIO(s.getvalue()))
+
+    def test_reconhece_o_modo_calendario_sozinho(self):
+        from pcp import templates_xlsx
+        self.assertEqual(templates_xlsx.analisar(_template_calendario())['modo'], 'calendario')
+        self.assertTrue(templates_xlsx.eh_calendario(_template_calendario()))
+        self.assertFalse(templates_xlsx.eh_calendario(_template_lista()))      # DATA e VALOR na mesma linha continua sendo modo lista
+        self.assertFalse(templates_xlsx.eh_calendario(_template_grade()))
+
+    def test_uma_aba_por_pagina_mais_indice_com_o_layout_do_template(self):
+        wb = self.gerar_cal()
+        self.assertEqual(wb.sheetnames, ['Índice', 'Fitadeira', 'Outra'])
+        ws = wb['Fitadeira']
+        self.assertEqual(ws['D2'].value, 'Fitadeira')
+        self.assertEqual(ws['A2'].hyperlink.location, "'Índice'!A1")                  # "Voltar ao índice"
+        self.assertEqual(wb['Índice']['B5'].hyperlink.location, "'Fitadeira'!A1")
+        self.assertEqual(ws.freeze_panes, 'C1')
+        self.assertEqual([ws.cell(4, c).value.date() for c in (3, 5, 7)], [date(2026, 10, 1), date(2026, 10, 2), date(2026, 10, 3)])
+        self.assertEqual(ws.cell(4, 3).number_format, 'dd/mm/yyyy')                     # formato da data do template preservado
+        self.assertEqual([ws.cell(5, c).value for c in range(3, 9)], ['T1', 'T2'] * 3)
+        self.assertEqual(len([m for m in ws.merged_cells.ranges if m.min_row == 4]), 3)  # um bloco mesclado por data; sem blocos após o período
+        self.assertEqual(ws.max_column, 8)
+        self.assertEqual(ws.cell(5, 3).fill.fgColor.rgb, '00DDEBF7')                     # estilo copiado para todos os blocos
+        self.assertEqual(ws.cell(6, 8).border.right.style, 'thin')
+        self.assertEqual(ws.column_dimensions['H'].width, 7)
+        self.assertIn('H', str(ws.data_validations.dataValidation[0].sqref))
+
+    def test_itens_nas_linhas_valores_por_data_e_turno_e_rodape_deslocado(self):
+        self.lancar(date(2026, 10, 1), self.t1, self.c_lista, 'Ok')
+        self.lancar(date(2026, 10, 2), self.t2, self.c_num, '-0,7')
+        ws = self.gerar_cal(paginas=[self.p])['Fitadeira']
+        campos = list(self.p.campos.filter(ativo=True).order_by('ordem', 'pk'))
+        n = len(campos)
+        self.assertEqual([ws.cell(6 + k, 1).value for k in range(n)], [c.item for c in campos])
+        self.assertEqual(ws.cell(6, 3).value, 'Ok')                                       # item 1, dia 1, T1
+        self.assertEqual(ws.cell(7, 6).value, -0.7)                                       # item 2, dia 2, T2 (número)
+        self.assertEqual(ws.cell(7 + n, 1).value, 'Rodapé fixo')                      # rodapé desloca para depois dos itens
+
+    def test_destaque_fora_do_especificado_e_situacao_da_maquina(self):
+        ver = Verificacao.objects.create(pagina=self.pag, data=date(2026, 10, 1), turno=self.t1)
+        Resposta.objects.create(verificacao=ver, campo=self.c_lista, valor='Nok', conforme=False)
+        self.client.post(reverse('pcp:preencher_status', args=[self.pag.pk]), {'data': '2026-10-02', 'turno': self.t2.pk, 'status': 'parada', 'escopo': 'turno'})
+        ws = self.gerar_cal(paginas=[self.p])['Fitadeira']
+        self.assertEqual((ws.cell(6, 3).value, ws.cell(6, 3).font.b, ws.cell(6, 3).font.color.rgb), ('Nok', True, '00C00000'))
+        self.assertEqual((ws.cell(6, 6).value, ws.cell(6, 6).fill.fgColor.rgb), ('Parada', '00D9D9D9'))
+
+    def test_periodo_grande_demais_e_validacoes(self):
+        from pcp import templates_xlsx
+        with self.assertRaises(ValueError):
+            self.gerar_cal(ini=date(2000, 1, 1), fim=date(2100, 1, 1))
+        with self.assertRaises(ValueError):
+            self.gerar_cal(ini=date(2026, 10, 3), fim=date(2026, 10, 1))
+        with self.assertRaises(ValueError):
+            self.gerar_cal(paginas=[])
+        with self.assertRaises(ValueError):
+            templates_xlsx.gerar_calendario(_template_grade(), self.form, self.v15, [self.p], date(2026, 10, 1), date(2026, 10, 2))
+
+    def test_tela_gera_todas_as_paginas_ou_so_o_grupo_ou_a_pagina(self):
+        from pcp import templates_xlsx
+        tpl = TemplatePagina.objects.create(formulario=self.form, nome='Calendário', arquivo_base64=templates_xlsx.codificar(_template_calendario()),
+                                            analise=templates_xlsx.analisar(_template_calendario()))
+        url = reverse('pcp:exportar_template', args=[self.p.pk])
+
+        def abas(**extra):
+            r = self.client.get(url, {'template': tpl.pk, 'de': '2026-10-01', 'ate': '2026-10-02', **extra})
+            self.assertEqual(r.status_code, 200)
+            return openpyxl.load_workbook(io.BytesIO(r.content)).sheetnames
+        self.assertEqual(abas(), ['Índice', 'Fitadeira', 'Outra'])                         # padrão: todas as páginas
+        self.assertEqual(abas(escopo='pagina'), ['Índice', 'Fitadeira'])
+        self.assertEqual(abas(escopo='grupo'), ['Índice', 'Fitadeira', 'Outra'])
+        self.p2.grupo = 'Outro grupo'
+        self.p2.save()
+        self.assertEqual(abas(escopo='grupo'), ['Índice', 'Fitadeira'])
+        r = self.client.get(reverse('pcp:preencher_pagina', args=[self.p.pk]) + f'?data=2026-10-01&turno={self.t1.pk}')
+        self.assertContains(r, 'data-modo="calendario"')
+        self.assertContains(r, 'Todas as páginas do formulário')

@@ -29,16 +29,45 @@
         <hr class="my-3">
         <div class="fw-semibold small">Gerar no template</div>
         {% if templates_pagina %}
-            <form method="get" action="{% url 'pcp:exportar_template' pagina.pk %}">
-                <div class="small text-muted mb-1">Preenche o template escolhido com o PCP desta página no mês.</div>
-                <select name="template" class="form-select form-select-sm mb-1">
-                    {% for t in templates_pagina %}<option value="{{ t.pk }}">{{ t.nome }}</option>{% endfor %}
+            <form method="get" action="{% url 'pcp:exportar_template' pagina.pk %}" class="form-tpl-pcp">
+                <div class="small text-muted mb-1">Preenche o template escolhido com o PCP.</div>
+                <select name="template" class="form-select form-select-sm mb-1 tpl-sel">
+                    {% for t in templates_pagina %}<option value="{{ t.pk }}" data-modo="{{ t.analise.modo }}">{{ t.nome }}</option>{% endfor %}
                 </select>
-                <div class="d-flex gap-1">
+                <div class="tpl-mes d-flex gap-1">
                     <input type="month" name="mes" value="{% if data %}{{ data|date:'Y-m' }}{% else %}{{ mes_iso }}{% endif %}" class="form-control form-control-sm" title="Mês">
                     <button class="btn btn-sm btn-outline-success text-nowrap">Gerar planilha</button>
                 </div>
+                <div class="tpl-cal d-none">
+                    <div class="d-flex gap-1 mb-1">
+                        <input type="date" name="de" value="{% now 'Y' %}-01-01" class="form-control form-control-sm" title="De (padrão: 1º de janeiro)" disabled>
+                        <input type="date" name="ate" value="{{ hoje_iso }}" class="form-control form-control-sm" title="Até (padrão: hoje)" disabled>
+                    </div>
+                    <select name="escopo" class="form-select form-select-sm mb-1" disabled>
+                        <option value="todas">Todas as páginas do formulário (uma aba por página)</option>
+                        {% if pagina.grupo %}<option value="grupo">Só o grupo {{ pagina.grupo }}</option>{% endif %}
+                        <option value="pagina">Só esta página</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-success text-nowrap w-100">Gerar planilha</button>
+                    <div class="small text-muted mt-1">Todas as datas do período ficam em colunas, no layout do template.</div>
+                </div>
             </form>
+            <script>
+            (function () {
+                document.querySelectorAll('.form-tpl-pcp').forEach(function (f) {
+                    var sel = f.querySelector('.tpl-sel');
+                    function alternar() {
+                        var cal = sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].dataset.modo === 'calendario';
+                        f.querySelector('.tpl-cal').classList.toggle('d-none', !cal);
+                        f.querySelector('.tpl-mes').classList.toggle('d-none', cal);
+                        f.querySelectorAll('.tpl-cal input, .tpl-cal select').forEach(function (e) { e.disabled = !cal; });
+                        f.querySelector('input[name="mes"]').disabled = cal;
+                    }
+                    sel.addEventListener('change', alternar);
+                    alternar();
+                });
+            })();
+            </script>
         {% else %}
             <div class="small text-muted">Nenhum template cadastrado para esta página. <a href="{% url 'pcp:templates_pagina' %}?formulario={{ formulario.pk }}">Cadastrar template</a></div>
         {% endif %}
