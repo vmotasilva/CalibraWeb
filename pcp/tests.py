@@ -1963,3 +1963,63 @@ class NumeracaoTests(PcpBase):
         ws = xl.load_workbook(io.BytesIO(r.content))['Fitadeira']
         self.assertEqual([ws.cell(row=4, column=1).value, ws.cell(row=4, column=2).value], ['Nº', 'Item'])
         self.assertEqual([(ws.cell(row=l, column=1).value, ws.cell(row=l, column=2).value) for l in (6, 7, 8)], [(1, 'B-1'), (2, 'B-5'), (3, 'C-3')])
+
+
+class VigenciaEditavelTests(PendenciasBase):
+    """Antes da vigência 'a cada turno' e diária não são cobrados; ajustar a vigência traz o histórico de volta."""
+    D = date(2026, 10, 22)
+
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        self.v15.vigencia = date(2026, 10, 22)      # publicada em 22/10 (como no ambiente real)
+        self.v15.save()
+
+    def farol(self, data):
+        agora = timezone.make_aware(datetime.datetime(2026, 10, 23, 10, 0))
+        f = pend.farol(data, hoje=date(2026, 10, 23), agora=agora)
+        linha = f['blocos'][0]['grupos'][0]['linhas'][0]
+        return f, {col['nome']: c for col, c in zip(f['colunas'], linha['celulas']) if c}
+
+    def test_antes_da_vigencia_so_aparecem_prazos_que_terminam_depois(self):
+        f, c = self.farol(date(2026, 10, 20))
+        self.assertEqual(sorted(c), ['Mensal', 'Semanal'])          # turno e diária terminam em 20/10, antes da vigência (22/10)
+        self.assertEqual(f['blocos'][0]['rastreio'], date(2026, 10, 22))
+        self.assertEqual(f['blocos'][0]['versao_id'], self.v15.pk)
+
+    def test_ajustar_a_vigencia_traz_os_demais_de_volta(self):
+        url = reverse('pcp:versao_vigencia', args=[self.v15.pk])
+        r = self.client.post(url, {'vigencia': '2026-10-01'})
+        self.assertRedirects(r, reverse('pcp:versao_detalhe', args=[self.v15.pk]))
+        self.v15.refresh_from_db()
+        self.assertEqual(self.v15.vigencia, date(2026, 10, 1))
+        _, c = self.farol(date(2026, 10, 20))
+        self.assertEqual(sorted(c), ['Diária', 'Mensal', 'Semanal', 'Turno'])
+
+    def test_vigencia_invalida_ou_vazia_e_ignorada(self):
+        url = reverse('pcp:versao_vigencia', args=[self.v15.pk])
+        self.client.post(url, {'vigencia': ''})
+        self.client.post(url, {'vigencia': '31/02/2026'})
+        self.v15.refresh_from_db()
+        self.assertEqual(self.v15.vigencia, date(2026, 10, 22))
+        self.assertEqual(self.client.get(url).status_code, 405)
+
+    def test_a_menor_vigencia_entre_as_revisoes_vale(self):
+        nova = self.v15.clonar('R16')
+        self.client.post(reverse('pcp:versao_vigencia', args=[nova.pk]), {'vigencia': '2026-12-01'})   # posterior: não atrasa o rastreio
+        self.assertEqual(pend.inicio_rastreio(self.form), date(2026, 10, 22))
+        self.client.post(reverse('pcp:versao_vigencia', args=[nova.pk]), {'vigencia': '2026-09-01'})
+        self.assertEqual(pend.inicio_rastreio(self.form), date(2026, 9, 1))
+
+    def test_tela_avisa_quando_a_data_e_anterior_ao_rastreio(self):
+        url = reverse('pcp:dashboard') + '?observar=2026-10-20'
+        r = self.client.get(url)
+        self.assertContains(r, 'anterior ao início do rastreio')
+        self.assertContains(r, reverse('pcp:versao_detalhe', args=[self.v15.pk]))
+        self.client.post(reverse('pcp:versao_vigencia', args=[self.v15.pk]), {'vigencia': '2026-10-01'})
+        self.assertNotContains(self.client.get(url), 'anterior ao início do rastreio')    # o cache do dashboard foi invalidado
+
+    def test_tela_da_revisao_mostra_o_campo_de_vigencia(self):
+        r = self.client.get(reverse('pcp:versao_detalhe', args=[self.v15.pk]))
+        self.assertContains(r, 'name="vigencia"')
+        self.assertContains(r, 'value="2026-10-22"')

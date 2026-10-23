@@ -10,6 +10,12 @@
             </h4>
             <div class="text-muted">{{ versao.formulario.titulo }} · {{ versao.formulario.setor }}{% if versao.vigencia %} · vigente desde {{ versao.vigencia|date:"d/m/Y" }}{% endif %}</div>
             {% if versao.motivo %}<div class="small mt-1"><strong>O que mudou:</strong> {{ versao.motivo }}</div>{% endif %}
+            <form method="post" action="{% url 'pcp:versao_vigencia' versao.pk %}" class="d-flex flex-wrap align-items-center gap-2 mt-2">{% csrf_token %}
+                <label class="small mb-0" for="vigencia-edit">Vigência</label>
+                <input type="date" id="vigencia-edit" name="vigencia" value="{{ versao.vigencia|date:'Y-m-d' }}" class="form-control form-control-sm w-auto">
+                <button class="btn btn-sm btn-outline-secondary">Salvar vigência</button>
+                <span class="small text-muted">Início da cobrança de pendências e atrasos: antes dessa data nada é cobrado (vale a menor vigência entre as revisões do formulário).</span>
+            </form>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{% url 'pcp:formulario_detalhe' versao.formulario_id %}" class="btn btn-outline-secondary">Voltar</a>

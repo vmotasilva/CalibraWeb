@@ -85,7 +85,17 @@
         </div>
         {% for b in farol.blocos %}
             <div class="border-top">
-                <div class="px-3 py-2 bg-light fw-semibold">{{ b.codigo }} - {{ b.titulo }} <span class="badge bg-secondary">{{ b.revisao }}</span></div>
+                <div class="px-3 py-2 bg-light fw-semibold d-flex flex-wrap justify-content-between gap-2">
+                    <span>{{ b.codigo }} - {{ b.titulo }} <span class="badge bg-secondary">{{ b.revisao }}</span></span>
+                    <span class="small fw-normal text-muted">Rastreio desde {{ b.rastreio|date:"d/m/Y"|default:"—" }}
+                        <a href="{% url 'pcp:versao_detalhe' b.versao_id %}" class="text-decoration-none">(ajustar vigência)</a></span>
+                </div>
+                {% if b.rastreio and observar < b.rastreio %}
+                <div class="alert alert-warning py-2 small mx-3 mt-2 mb-0">
+                    <strong>{{ observar|date:"d/m/Y" }} é anterior ao início do rastreio ({{ b.rastreio|date:"d/m/Y" }}).</strong>
+                    Itens "a cada turno" e diários cujo prazo terminou antes dessa data <strong>não são cobrados</strong> e por isso não aparecem; semanas, quinzenas e meses que terminam depois dela aparecem.
+                    Para cobrar o histórico, ajuste a vigência da revisão para uma data anterior.
+                </div>{% endif %}
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0 text-center">
                         <thead><tr>
@@ -197,6 +207,7 @@
                     {% if b.pct is not None %}<span class="badge fs-6 {% if b.pct >= 95 %}bg-success{% elif b.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ b.pct }}%</span>
                     <span class="small text-muted">{{ b.feitos }}/{{ b.devidos }}</span>{% endif %}
                     <span class="badge bg-secondary">{{ b.revisao }}</span>
+                    {% if b.rastreio and d.ini < b.rastreio %}<span class="small text-muted ms-1" title="Antes dessa data nada é cobrado">rastreio desde {{ b.rastreio|date:"d/m/Y" }}</span>{% endif %}
                 </span>
             </div>
             <div class="table-responsive">

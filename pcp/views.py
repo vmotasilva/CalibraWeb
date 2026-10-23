@@ -318,6 +318,29 @@ def versao_detalhe(request, pk):
 
 @login_required
 @require_POST
+def versao_vigencia(request, pk):
+    """Ajusta a data de vigência da revisão (início do rastreio de pendências e atrasos). Vale em qualquer status."""
+    versao = get_object_or_404(FormularioVersao.objects.select_related('formulario'), pk=pk)
+    texto = (request.POST.get('vigencia') or '').strip()
+    if not texto:
+        messages.error(request, 'Informe a data de vigência.')
+        return redirect('pcp:versao_detalhe', pk)
+    try:
+        nova = datetime.date.fromisoformat(texto)
+    except ValueError:
+        messages.error(request, 'Data de vigência inválida.')
+        return redirect('pcp:versao_detalhe', pk)
+    versao.vigencia = nova
+    versao.save(update_fields=['vigencia'])
+    invalidar_dashboard()
+    inicio = pend.inicio_rastreio(versao.formulario)
+    messages.success(request, f'Vigência de {versao} ajustada para {nova:%d/%m/%Y}. O rastreio de pendências e atrasos do formulário começa em '
+                              f'{inicio:%d/%m/%Y} (a menor vigência entre as revisões).')
+    return redirect('pcp:versao_detalhe', pk)
+
+
+@login_required
+@require_POST
 def versao_publicar(request, pk):
     versao = get_object_or_404(FormularioVersao, pk=pk)
     if _bloqueia_edicao(request, versao):
@@ -944,7 +967,7 @@ def dashboard(request):
     dias = int(request.GET['dias']) if request.GET.get('dias') in {str(d) for d in PERIODOS_DASHBOARD} else 30
     ini = fim - datetime.timedelta(days=dias - 1)
     formulario_id = request.GET.get('formulario') if str(request.GET.get('formulario', '')).isdigit() else None
-    chave_cache = f'pcp:dashboard:v2:{_geracao_dashboard()}:{ini}:{fim}:{formulario_id or 0}'
+    chave_cache = f'pcp:dashboard:v3:{_geracao_dashboard()}:{ini}:{fim}:{formulario_id or 0}'
     dados = None if request.GET.get('atualizar') else cache.get(chave_cache)
     if dados is None:
         dados = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), formulario_id, hoje)
@@ -952,7 +975,7 @@ def dashboard(request):
     grafico = {'evolucao': dados['evolucao'], 'frequencias': dados['por_frequencia'], 'agrupamento': dados['agrupamento']}
     # farol: situação dos prazos em andamento na data de observação (padrão: hoje); guardado por 1 minuto
     observar = _parse_data(request.GET.get('observar')) if request.GET.get('observar') else hoje
-    chave_farol = f'pcp:farol:v1:{_geracao_dashboard()}:{observar}:{formulario_id or 0}'
+    chave_farol = f'pcp:farol:v2:{_geracao_dashboard()}:{observar}:{formulario_id or 0}'
     farol = None if request.GET.get('atualizar') else cache.get(chave_farol)
     if farol is None:
         farol = pend.farol(observar, formulario_id)

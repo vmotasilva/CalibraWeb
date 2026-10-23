@@ -318,8 +318,9 @@ def dashboard(ini, fim, turnos, formulario_id=None, hoje=None):
                 linhas.append({'pagina_id': pagina.pk, 'nome': pagina.nome, 'devidos': dev, 'feitos': feit, 'atrasados': dev - feit,
                                'pct': _pct(feit, dev), 'celulas': celulas})
             lista_grupos.append({'nome': nome_grupo, 'linhas': linhas})
-        blocos.append({'formulario_id': versao.formulario_id, 'codigo': versao.formulario.codigo, 'titulo': versao.formulario.titulo,
-                       'revisao': versao.revisao, 'grupos': lista_grupos, 'devidos': b_dev, 'feitos': b_feit, 'pct': _pct(b_feit, b_dev)})
+        blocos.append({'formulario_id': versao.formulario_id, 'versao_id': versao.pk, 'codigo': versao.formulario.codigo, 'titulo': versao.formulario.titulo,
+                       'revisao': versao.revisao, 'grupos': lista_grupos, 'devidos': b_dev, 'feitos': b_feit, 'pct': _pct(b_feit, b_dev),
+                       'rastreio': inicio_rastreio(versao.formulario)})
         t_dev += b_dev
         t_feit += b_feit
 
@@ -482,8 +483,8 @@ def farol(data_obs, formulario_id=None, hoje=None, agora=None):
             if linhas:
                 lista_grupos.append({'nome': nome_grupo, 'linhas': linhas})
         if lista_grupos:
-            blocos.append({'formulario_id': versao.formulario_id, 'codigo': versao.formulario.codigo, 'titulo': versao.formulario.titulo,
-                           'revisao': versao.revisao, 'grupos': lista_grupos})
+            blocos.append({'formulario_id': versao.formulario_id, 'versao_id': versao.pk, 'codigo': versao.formulario.codigo, 'titulo': versao.formulario.titulo,
+                           'revisao': versao.revisao, 'grupos': lista_grupos, 'rastreio': inicio_rastreio(versao.formulario)})
     return {'data': data_obs, 'colunas': colunas, 'blocos': blocos, 'contagem': contagem, 'hoje': hoje}
 
 

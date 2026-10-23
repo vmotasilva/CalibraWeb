@@ -553,7 +553,7 @@ class NavigationPermission(models.Model):
             ("nav_pcp_formulario_excluir", "NAV: PCP / Excluir Formulário (com todas as revisões)"),
             ("nav_pcp_importar", "NAV: PCP / Importar Estrutura (planilha de formulário)"),
             ("nav_pcp_importar_registros", "NAV: PCP / Importar Registros já Feitos (planilha)"),
-            ("nav_pcp_versao_publicar", "NAV: PCP / Publicar e Excluir Revisões"),
+            ("nav_pcp_versao_publicar", "NAV: PCP / Publicar, Excluir e Ajustar Vigência de Revisões"),
             ("nav_pcp_bloco_cadastros", "NAV: PCP / Bloco Cadastros Base"),
             ("nav_pcp_turnos", "NAV: PCP / Cadastro de Turnos"),
             ("nav_pcp_frequencias", "NAV: PCP / Cadastro de Frequências"),

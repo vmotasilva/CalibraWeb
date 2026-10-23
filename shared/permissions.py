@@ -393,8 +393,8 @@ NAV_STRUCTURE = [
                         "descricao": "Apaga o formulário com todas as revisões, páginas e campos (por exemplo, para importar de novo). Com verificações lançadas, exige confirmação digitada e apaga também o histórico.",
                     },
                     {
-                        "nome": "Publicar e Excluir Revisões",
-                        "view_name": ["pcp:versao_publicar", "pcp:versao_excluir"],
+                        "nome": "Publicar, Excluir e Ajustar Vigência de Revisões",
+                        "view_name": ["pcp:versao_publicar", "pcp:versao_excluir", "pcp:versao_vigencia"],
                         "perm": "core.nav_pcp_versao_publicar",
                         "descricao": "Torna uma revisão em rascunho vigente (a anterior fica obsoleta) ou exclui um rascunho.",
                     },
