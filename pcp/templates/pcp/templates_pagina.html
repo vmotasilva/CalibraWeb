@@ -1,0 +1,91 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}PCP - Templates de página - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h4 class="mb-0"><i class="bi bi-clipboard2-check me-2"></i>PCP - Templates de página</h4>
+        <a href="{% url 'pcp:template_pagina_amostra' %}" class="btn btn-outline-primary"><i class="bi bi-download me-1"></i>Baixar modelo de exemplo</a>
+    </div>
+    {% include "pcp/_nav.html" with secao="templates" %}
+
+    <div class="alert alert-info small">
+        Um <strong>template de página</strong> é uma planilha (.xlsx) no layout que você quiser, com <strong>variáveis de marcação</strong> entre chaves duplas
+        (por exemplo <code>{% templatetag openvariable %}PAGINA{% templatetag closevariable %}</code>, <code>{% templatetag openvariable %}ITEM{% templatetag closevariable %}</code>, <code>{% templatetag openvariable %}VALOR:1:T1{% templatetag closevariable %}</code>) deixadas nos lugares onde cada informação deve entrar.
+        Na tela de preenchimento, <em>Exportar → Gerar no template</em> preenche o template com o PCP da página no mês escolhido: o cabeçalho é substituído, a
+        <strong>linha âncora</strong> (a primeira linha que tem variáveis de item) é repetida para cada item copiando o estilo, e as variáveis também valem em caixas de texto.
+        Turnos com a máquina em manutenção ou parada saem com a situação em todos os itens. Comece pelo <strong>modelo de exemplo</strong>.
+    </div>
+
+    <div class="row g-3">
+        <div class="col-xl-5">
+            <form method="post" enctype="multipart/form-data" class="card card-body mb-3">
+                <div class="fw-semibold mb-2">Cadastrar template</div>
+                {% csrf_token %}
+                {{ form.non_field_errors }}
+                {% for f in form %}
+                    <div class="mb-2">
+                        <label class="form-label mb-1" for="{{ f.id_for_label }}">{{ f.label }}</label>
+                        {{ f }}
+                        {% if f.name == 'pagina_nome' %}<datalist id="paginas-lista">{% for n in nomes_paginas %}<option value="{{ n }}">{% endfor %}</datalist>{% endif %}
+                        {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}
+                        {% for e in f.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                    </div>
+                {% endfor %}
+                <button class="btn btn-primary"><i class="bi bi-upload me-1"></i>Enviar template</button>
+            </form>
+
+            <div class="card">
+                <div class="card-header">Variáveis aceitas</div>
+                <div class="card-body small">
+                    {% for titulo, tags in catalogo %}
+                        <div class="fw-semibold mt-2">{{ titulo }}</div>
+                        <table class="table table-sm mb-1"><tbody>
+                        {% for tag, desc in tags %}<tr><td class="text-nowrap"><code>{{ tag }}</code></td><td>{{ desc }}</td></tr>{% endfor %}
+                        </tbody></table>
+                    {% endfor %}
+                    <div class="text-muted mt-2">Abas cujo nome começa com "_" são documentação e não vão para a planilha gerada.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-7">
+            <div class="card">
+                <div class="card-header">Templates cadastrados</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Template</th><th>Formulário / página</th><th>Variáveis</th><th>Situação</th><th></th></tr></thead>
+                        <tbody>
+                        {% for t in templates %}
+                            <tr class="{% if not t.ativo %}text-muted{% endif %}">
+                                <td><div class="fw-semibold">{{ t.nome }}</div>
+                                    <div class="small text-muted">{{ t.nome_arquivo_original }}{% if t.descricao %} · {{ t.descricao|truncatechars:60 }}{% endif %}</div></td>
+                                <td class="small">{{ t.formulario.codigo }}<div class="text-muted">{{ t.pagina_nome|default:"qualquer página" }}</div></td>
+                                <td class="small">
+                                    <span class="badge bg-secondary">{{ t.analise.tags|length }} variável(is)</span>
+                                    {% if t.analise.modo %}<span class="badge bg-light text-dark border">modo {{ t.analise.modo }}</span>{% endif %}
+                                    {% if t.analise.desconhecidas %}<div class="text-warning-emphasis" title="{% for d in t.analise.desconhecidas %}{{ d }} {% endfor %}">{{ t.analise.desconhecidas|length }} não reconhecida(s)</div>{% endif %}
+                                </td>
+                                <td>{% if t.ativo %}<span class="badge bg-success">Ativo</span>{% else %}<span class="badge bg-secondary">Inativo</span>{% endif %}</td>
+                                <td class="text-end text-nowrap">
+                                    <a href="{% url 'pcp:template_pagina_baixar' t.pk %}" class="btn btn-sm btn-outline-secondary" title="Baixar o arquivo do template"><i class="bi bi-download"></i></a>
+                                    <form method="post" action="{% url 'pcp:template_pagina_alternar' t.pk %}" class="d-inline">{% csrf_token %}
+                                        <button class="btn btn-sm btn-outline-warning" title="{% if t.ativo %}Desativar{% else %}Ativar{% endif %}"><i class="bi {% if t.ativo %}bi-eye-slash{% else %}bi-eye{% endif %}"></i></button></form>
+                                    <form method="post" action="{% url 'pcp:template_pagina_excluir' t.pk %}" class="d-inline" onsubmit="return confirm('Excluir o template &quot;{{ t.nome|escapejs }}&quot;?');">{% csrf_token %}
+                                        <button class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button></form>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted py-4">Nenhum template cadastrado. Baixe o modelo de exemplo, ajuste ao seu layout e envie.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    (function () { var campo = document.getElementById('id_pagina_nome'); if (campo) campo.setAttribute('list', 'paginas-lista'); })();
+</script>
+{% endblock %}

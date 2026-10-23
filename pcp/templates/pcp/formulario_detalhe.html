@@ -16,6 +16,7 @@
             <a href="{% url 'pcp:sugerir_limites' formulario.pk %}" class="btn btn-outline-secondary" title="Sugere mínimo e máximo dos itens numéricos"><i class="bi bi-rulers me-1"></i>Sugerir limites</a>
             <a href="{% url 'pcp:valores' formulario.pk %}" class="btn btn-outline-secondary" title="Valores lançados que não correspondem às opções cadastradas"><i class="bi bi-link-45deg me-1"></i>Valores não reconhecidos</a>
             <a href="{% url 'pcp:ajustes' formulario.pk %}" class="btn btn-outline-secondary" title="Ajustes de tipo, texto e limites, com opção de desfazer"><i class="bi bi-arrow-counterclockwise me-1"></i>Histórico de ajustes</a>
+            <a href="{% url 'pcp:templates_pagina' %}?formulario={{ formulario.pk }}" class="btn btn-outline-secondary" title="Planilhas com variáveis para extrair o PCP no seu layout"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Templates</a>
             <a href="{% url 'pcp:grupos' formulario.pk %}" class="btn btn-outline-secondary"><i class="bi bi-diagram-3 me-1"></i>Grupos e blocos</a>
             <a href="{% url 'pcp:formulario_excluir' formulario.pk %}" class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Excluir formulário</a>
             <a href="{% url 'pcp:versao_nova' formulario.pk %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nova revisão</a>

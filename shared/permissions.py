@@ -343,7 +343,7 @@ NAV_STRUCTURE = [
                     },
                     {
                         "nome": "Exportar Planilha de Registros",
-                        "view_name": ["pcp:exportar_pagina", "pcp:exportar_formulario", "pcp:exportar_dados_pagina", "pcp:exportar_dados_formulario"],
+                        "view_name": ["pcp:exportar_pagina", "pcp:exportar_formulario", "pcp:exportar_dados_pagina", "pcp:exportar_dados_formulario", "pcp:exportar_template"],
                         "perm": "core.nav_pcp_exportar",
                         "descricao": "Gera a planilha do mês (itens x dia/turno). Turnos com a máquina em manutenção ou parada saem com todos os itens preenchidos com a situação.",
                     },
@@ -385,6 +385,13 @@ NAV_STRUCTURE = [
                         "view_name": "pcp:importar_registros",
                         "perm": "core.nav_pcp_importar_registros",
                         "descricao": "Importa os lançamentos por data e turno de uma planilha para páginas já existentes. Separado da importação da estrutura; não sobrescreve respostas existentes.",
+                    },
+                    {
+                        "nome": "Gerenciar Templates de Página",
+                        "view_name": ["pcp:templates_pagina", "pcp:template_pagina_amostra", "pcp:template_pagina_baixar",
+                                      "pcp:template_pagina_excluir", "pcp:template_pagina_alternar"],
+                        "perm": "core.nav_pcp_templates",
+                        "descricao": "Cadastra planilhas (.xlsx) com variáveis de marcação para extrair o PCP de uma página no layout desejado; baixa o modelo de exemplo.",
                     },
                     {
                         "nome": "Excluir Formulário",

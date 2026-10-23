@@ -16,7 +16,7 @@ from django.utils import timezone
 from pcp import cobranca, pendencias as pend
 from pcp.importacao_registros import importar_registros
 from pcp.importacao import frequencia_canonica, importar_planilha, parse_arquivo, parse_faixa, parse_mais_menos
-from pcp.models import (AjusteCampo, AjusteVinculo, ValorEquivalente, Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
+from pcp.models import (TemplatePagina, AjusteCampo, AjusteVinculo, ValorEquivalente, Campo, Formulario, FormularioVersao, Frequencia, ListaOpcoes, OpcaoLista, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
 
@@ -2109,3 +2109,253 @@ class ExportacaoDadosTests(PendenciasBase):
         r = self.client.get(reverse('pcp:formulario_detalhe', args=[self.form.pk]))
         self.assertContains(r, reverse('pcp:exportar_dados_formulario', args=[self.form.pk]))
         self.assertContains(r, 'Formato DADOS')
+
+
+def _template_grade():
+    """Template no modo grade: cabeçalho, linha âncora com NUM/ITEM/DESCRICAO e VALOR por dia/turno, rodapé e mesclagem abaixo da âncora."""
+    from openpyxl.styles import Font, PatternFill
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'PCP'
+    ws['A1'] = '{{FORMULARIO_CODIGO}} {{ REVISAO }} {{PAGINA}} - {{MES_NOME}}'
+    ws['A2'] = 'Tag desconhecida: {{FOO}}'
+    for j, t in enumerate(['Nº', 'Item', 'Descrição'], 1):
+        ws.cell(row=4, column=j, value=t)
+    ws['D4'], ws['F4'] = '{{DIA:1}}', '{{DIA:2}}'
+    for col, sigla in zip('DEFG', ('T1', 'T2', 'T1', 'T2')):
+        ws[f'{col}5'] = sigla
+    ws['A6'], ws['B6'], ws['C6'] = '{{NUM}}', '{{ITEM}}', '{{DESCRICAO}}'
+    ws['D6'], ws['E6'], ws['F6'], ws['G6'] = '{{VALOR:1:T1}}', '{{VALOR:1:T2}}', '{{VALOR:2:T1}}', '{{VALOR:2:2}}'   # T2 por sigla e por posição
+    ws['A6'].font = Font(bold=True)
+    ws['A6'].fill = PatternFill('solid', fgColor='EEEEEE')
+    ws.row_dimensions[6].height = 30
+    ws['A7'] = 'Total de itens: {{TOTAL_ITENS}}'
+    ws.row_dimensions[7].height = 44
+    ws['A9'] = 'Assinatura'
+    ws.merge_cells('A9:C9')
+    doc = wb.create_sheet('_DOC')
+    doc['A1'] = 'Variável {{PAGINA}} (documentação: não vai para a saída)'
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _template_lista():
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(['Página', 'Nº', 'Item', 'Data', 'Turno', 'Valor', 'Situação'])
+    ws.append(['{{PAGINA}}', '{{NUM}}', '{{ITEM}}', '{{DATA}}', '{{TURNO}}', '{{VALOR}}', '{{STATUS}}'])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+class TemplatesBase(PendenciasBase):
+    def setUp(self):
+        super().setUp()
+        for n, c in enumerate([self.c_lista, self.c_num, self.c_sem, self.c_mes, self.c_ev, self.c_sem0], 1):
+            Campo.objects.filter(pk=c.pk).update(ordem=n)
+        self.p = Pagina.objects.get(pk=self.pag.pk)
+
+    def lancar(self, dia, turno, campo, valor):
+        ver, _ = Verificacao.objects.get_or_create(pagina=self.pag, data=dia, turno=turno)
+        Resposta.objects.create(verificacao=ver, campo=campo, valor=valor, conforme=None)
+
+    def dados(self):
+        self.lancar(date(2026, 10, 1), self.t1, self.c_lista, 'Ok')
+        self.lancar(date(2026, 10, 2), self.t2, self.c_num, '-0,7')
+        self.client.post(reverse('pcp:preencher_status', args=[self.pag.pk]), {'data': '2026-10-01', 'turno': self.t2.pk, 'status': 'manutencao', 'escopo': 'turno'})
+
+    def gerar(self, conteudo, mes=10):
+        from pcp import templates_xlsx
+        saida = templates_xlsx.gerar(conteudo, self.form, self.v15, self.p, 2026, mes, hoje=date(2026, 11, 3))
+        return openpyxl.load_workbook(io.BytesIO(saida.getvalue()))
+
+
+class TemplatesXlsxTests(TemplatesBase):
+    def test_analise_do_template(self):
+        from pcp import templates_xlsx
+        a = templates_xlsx.analisar(_template_grade())
+        self.assertEqual(a['modo'], 'grade')
+        self.assertIn('VALOR:2:2', a['tags'])
+        self.assertIn('REVISAO', a['tags'])          # aceita espaços dentro das chaves
+        self.assertEqual(a['desconhecidas'], ['FOO'])
+        self.assertEqual(a['abas'], 1)                # a aba "_DOC" não conta
+        self.assertEqual(templates_xlsx.analisar(_template_lista())['modo'], 'lista')
+        for ruim in (b'nao e xlsx',):
+            with self.assertRaises(ValueError):
+                templates_xlsx.analisar(ruim)
+        semtags = io.BytesIO()
+        wb = openpyxl.Workbook()
+        wb.active['A1'] = 'sem variáveis'
+        wb.save(semtags)
+        with self.assertRaises(ValueError):
+            templates_xlsx.analisar(semtags.getvalue())
+
+    def test_classificacao_das_tags(self):
+        from pcp.templates_xlsx import classificar
+        self.assertEqual([classificar(t) for t in ('PAGINA', 'DIA:31', 'DIA:32', 'NUM', 'VALOR:5:T3', 'VALOR', 'VALOR:5', 'XYZ', 'STATUS:1:2')],
+                         ['escalar', 'dia', 'desconhecida', 'item', 'grade', 'lista', 'desconhecida', 'desconhecida', 'grade'])
+
+    def test_modo_grade_preenche_cabecalho_repete_a_ancora_e_desloca_o_resto(self):
+        self.dados()
+        wb = self.gerar(_template_grade())
+        self.assertEqual(wb.sheetnames, ['PCP'])      # a aba de documentação "_" não vai para a saída
+        ws = wb['PCP']
+        self.assertEqual(ws['A1'].value, 'FOR.080 R15 Fitadeira - outubro de 2026')
+        self.assertEqual(ws['A2'].value, 'Tag desconhecida: {{FOO}}')          # desconhecida fica visível
+        self.assertEqual((ws['D4'].value, ws['F4'].value), ('01/10', '02/10'))
+        # âncora repetida para os 6 itens (linhas 6 a 11), com Nº, item e descrição
+        self.assertEqual([ws.cell(row=r, column=1).value for r in range(6, 12)], [1, 2, 3, 4, 5, 6])
+        self.assertEqual([ws.cell(row=r, column=2).value for r in range(6, 8)], ['B-1', 'B-5'])
+        self.assertTrue(ws['A8'].font.b and ws['A11'].fill.fgColor.rgb.endswith('EEEEEE'))     # estilo copiado
+        self.assertEqual(ws.row_dimensions[11].height, 30)
+        # valores por dia e turno (T2 por sigla e por posição); manutenção preenche TODOS os itens do turno
+        self.assertEqual(ws['D6'].value, 'Ok')                                  # B-1, 01/10, T1
+        self.assertEqual([ws.cell(row=r, column=5).value for r in range(6, 12)], ['Em Manutenção'] * 6)   # 01/10, T2
+        self.assertTrue(ws['E6'].fill.fgColor.rgb.endswith('FFE0B2'))           # laranja de manutenção
+        self.assertEqual(ws['G7'].value, -0.7)                                  # B-5, 02/10, T2 via {{VALOR:2:2}}: número de verdade
+        self.assertIn(ws['F6'].value, ('', None))                               # 02/10 T1 sem lançamento
+        # o que estava abaixo da âncora foi deslocado em 5 linhas, com alturas e mesclagem
+        self.assertEqual(ws['A12'].value, 'Total de itens: 6')
+        self.assertEqual(ws.row_dimensions[12].height, 44)
+        self.assertEqual(ws['A14'].value, 'Assinatura')
+        self.assertIn('A14:C14', [str(m) for m in ws.merged_cells.ranges])
+
+    def test_dias_que_o_mes_nao_tem_ficam_vazios(self):
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws['A1'], ws['B1'] = '{{DIA:30}}', '{{DIASEMANA:1}}'
+        ws['A2'], ws['B2'] = '{{ITEM}}', '{{VALOR:30:T1}}'
+        buf = io.BytesIO()
+        wb.save(buf)
+        out = self.gerar(buf.getvalue(), mes=2)['Sheet']      # fevereiro de 2026 tem 28 dias
+        self.assertIn(out['A1'].value, ('', None))
+        self.assertEqual(out['B1'].value, 'dom')              # 01/02/2026 é domingo
+        self.assertIn(out['B2'].value, ('', None))
+
+    def test_modo_lista_so_com_slots_preenchidos_em_ordem(self):
+        self.dados()
+        ws = self.gerar(_template_lista()).active
+        linhas = [[c.value for c in row] for row in ws.iter_rows(min_row=2)]
+        self.assertEqual(len(linhas), 1 + 6 + 1)                                # Ok (01/10 T1) + 6 itens em manutenção (01/10 T2) + -0,7 (02/10 T2)
+        self.assertEqual([l[3].day for l in linhas], [1] * 7 + [2])
+        self.assertEqual([l[4] for l in linhas], ['T1'] + ['T2'] * 6 + ['T2'])
+        self.assertEqual([l[1] for l in linhas[1:7]], [1, 2, 3, 4, 5, 6])      # ORD dentro do turno
+        self.assertEqual((linhas[0][5], linhas[0][6] or ''), ('Ok', ''))   # texto vazio é lido de volta como vazio
+        self.assertEqual((linhas[1][5], linhas[1][6]), ('Em Manutenção', 'Em Manutenção'))
+        self.assertEqual(linhas[-1][5], -0.7)
+        self.assertEqual(ws['D2'].number_format, 'dd/mm/yyyy')
+
+    def test_sem_dados_limpa_a_linha_ancora(self):
+        ws = self.gerar(_template_lista()).active
+        self.assertEqual([c.value for c in ws[2]], [None] * 7)
+        self.assertEqual(ws.max_row, 2)
+
+    def test_modelo_de_exemplo_e_um_template_valido_de_ponta_a_ponta(self):
+        from pcp import templates_xlsx
+        amostra = templates_xlsx.gerar_amostra().getvalue()
+        a = templates_xlsx.analisar(amostra)
+        self.assertEqual((a['desconhecidas'], a['abas']), ([], 2))
+        self.assertIn('VALOR:31:T1', a['tags'])
+        self.dados()
+        wb = self.gerar(amostra)
+        self.assertEqual(wb.sheetnames, ['Página', 'Modo lista'])
+        ws = wb['Página']
+        self.assertEqual(ws['A1'].value, 'FOR.080 · R15 — Fitadeira')
+        self.assertEqual(ws['A6'].value, 1)
+        self.assertEqual(ws['F6'].value, 'Ok')            # dia 1, T1 (primeira coluna de valores)
+        self.assertEqual(wb['Modo lista'].max_row, 1 + 8)
+
+
+class TemplatesTelasTests(TemplatesBase):
+    def enviar(self, conteudo=None, nome='FOR.080 PCP.xlsx', **extra):
+        dados = {'formulario': self.form.pk, 'nome': 'Layout mensal', 'pagina_nome': '', 'descricao': 'teste',
+                 'arquivo': SimpleUploadedFile(nome, conteudo if conteudo is not None else _template_grade()), **extra}
+        return self.client.post(reverse('pcp:templates_pagina'), dados)
+
+    def test_cadastro_guarda_o_arquivo_no_banco_e_analisa_as_tags(self):
+        r = self.enviar()
+        self.assertRedirects(r, reverse('pcp:templates_pagina'))
+        t = TemplatePagina.objects.get()
+        self.assertEqual((t.nome, t.formulario_id, t.pagina_nome, t.nome_arquivo_original), ('Layout mensal', self.form.pk, '', 'FOR.080 PCP.xlsx'))
+        self.assertEqual((t.analise['modo'], t.analise['desconhecidas']), ('grade', ['FOO']))
+        self.assertTrue(t.arquivo_base64 and t.criado_por)
+        r = self.client.get(reverse('pcp:templates_pagina'))
+        self.assertContains(r, 'Layout mensal')
+        self.assertContains(r, '{{VALOR:1:T1}}')              # catálogo de variáveis na tela
+        self.assertContains(r, 'não reconhecida')
+        self.assertEqual(self.client.get(reverse('pcp:template_pagina_baixar', args=[t.pk])).content, _template_grade())
+
+    def test_cadastro_recusa_arquivo_invalido_sem_variaveis_ou_grande_demais(self):
+        r = self.enviar(b'isto nao e um xlsx')
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(TemplatePagina.objects.exists())
+        vazio = io.BytesIO()
+        wb = openpyxl.Workbook()
+        wb.active['A1'] = 'sem tags'
+        wb.save(vazio)
+        self.enviar(vazio.getvalue())
+        self.assertFalse(TemplatePagina.objects.exists())
+        self.enviar(nome='planilha.xls')
+        self.assertFalse(TemplatePagina.objects.exists())
+        from pcp.forms import TemplatePaginaForm
+        antigo = TemplatePaginaForm.TAMANHO_MAXIMO
+        TemplatePaginaForm.TAMANHO_MAXIMO = 100
+        try:
+            self.enviar()
+            self.assertFalse(TemplatePagina.objects.exists())
+        finally:
+            TemplatePaginaForm.TAMANHO_MAXIMO = antigo
+
+    def test_modelo_de_exemplo_para_baixar(self):
+        r = self.client.get(reverse('pcp:template_pagina_amostra'))
+        self.assertEqual(r.status_code, 200)
+        wb = openpyxl.load_workbook(io.BytesIO(r.content))
+        self.assertEqual(wb.sheetnames, ['Página', 'Modo lista', '_VARIÁVEIS'])
+
+    def test_ativar_desativar_e_excluir(self):
+        self.enviar()
+        t = TemplatePagina.objects.get()
+        self.client.post(reverse('pcp:template_pagina_alternar', args=[t.pk]))
+        t.refresh_from_db()
+        self.assertFalse(t.ativo)
+        self.client.post(reverse('pcp:template_pagina_excluir', args=[t.pk]))
+        self.assertFalse(TemplatePagina.objects.exists())
+        self.assertEqual(self.client.get(reverse('pcp:template_pagina_excluir', args=[t.pk])).status_code, 405)
+
+    def test_exportar_pagina_no_template(self):
+        self.enviar()
+        t = TemplatePagina.objects.get()
+        self.dados()
+        r = self.client.get(reverse('pcp:exportar_template', args=[self.pag.pk]), {'template': t.pk, 'mes': '2026-10'})
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('attachment', r['Content-Disposition'])
+        self.assertIn('FOR.080_Fitadeira_2026-10', r['Content-Disposition'])
+        ws = openpyxl.load_workbook(io.BytesIO(r.content))['PCP']
+        self.assertEqual(ws['A1'].value, 'FOR.080 R15 Fitadeira - outubro de 2026')
+        self.assertEqual(ws['D6'].value, 'Ok')
+
+    def test_template_que_nao_serve_e_recusado(self):
+        self.enviar(pagina_nome='Outra página')                       # serve só para outra página
+        t = TemplatePagina.objects.get()
+        url = reverse('pcp:exportar_template', args=[self.pag.pk])
+        destino = reverse('pcp:preencher_pagina', args=[self.pag.pk])
+        self.assertRedirects(self.client.get(url, {'template': t.pk}), destino, fetch_redirect_response=False)
+        TemplatePagina.objects.filter(pk=t.pk).update(pagina_nome='Fitadeira', ativo=False)   # inativo
+        self.assertRedirects(self.client.get(url, {'template': t.pk}), destino, fetch_redirect_response=False)
+        outro = Formulario.objects.create(setor=self.setor, codigo='FOR.777', titulo='Outro')
+        de_outro = TemplatePagina.objects.create(formulario=outro, nome='x', arquivo_base64='x')
+        self.assertRedirects(self.client.get(url, {'template': de_outro.pk}), destino, fetch_redirect_response=False)   # de outro formulário
+        self.assertRedirects(self.client.get(url, {'template': 'abc'}), destino, fetch_redirect_response=False)
+
+    def test_menu_exportar_mostra_os_templates_da_pagina(self):
+        self.enviar()
+        TemplatePagina.objects.create(formulario=self.form, nome='Só para outra', pagina_nome='Outra página', arquivo_base64='x')
+        r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
+        self.assertContains(r, 'Gerar no template')
+        self.assertContains(r, 'Layout mensal')
+        self.assertNotContains(r, 'Só para outra')
+        TemplatePagina.objects.all().delete()
+        r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
+        self.assertContains(r, 'Cadastrar template')

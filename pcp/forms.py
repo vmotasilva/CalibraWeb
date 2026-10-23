@@ -161,3 +161,23 @@ class ImportarRegistrosForm(_BootstrapMixin, forms.Form):
         if not arq.name.lower().endswith('.xlsx'):
             raise forms.ValidationError('Envie um arquivo .xlsx.')
         return arq
+
+
+class TemplatePaginaForm(_BootstrapMixin, forms.Form):
+    TAMANHO_MAXIMO = 3 * 1024 * 1024  # o arquivo é guardado em Base64 no banco e o envio na nuvem é limitado
+
+    formulario = forms.ModelChoiceField(label='Formulário', queryset=Formulario.objects.all())
+    nome = forms.CharField(label='Nome do template', max_length=150)
+    pagina_nome = forms.CharField(label='Página (opcional)', required=False, max_length=120,
+                                  help_text='Deixe em branco para valer para qualquer página do formulário; ou escolha a página a que este layout se destina.')
+    descricao = forms.CharField(label='Descrição', required=False, widget=forms.Textarea(attrs={'rows': 2}))
+    arquivo = forms.FileField(label='Planilha do template (.xlsx)', widget=forms.ClearableFileInput(attrs={'accept': '.xlsx'}),
+                              help_text='Planilha com as variáveis de marcação, como {{PAGINA}}, {{ITEM}} e {{VALOR:1:T1}}. Máximo de 3 MB.')
+
+    def clean_arquivo(self):
+        arq = self.cleaned_data['arquivo']
+        if not arq.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError('Envie um arquivo .xlsx.')
+        if arq.size > self.TAMANHO_MAXIMO:
+            raise forms.ValidationError('O arquivo passa de 3 MB. Remova imagens/abas desnecessárias e tente de novo.')
+        return arq

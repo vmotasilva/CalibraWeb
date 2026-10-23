@@ -16,16 +16,17 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.http import require_POST
 
-from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
+from pcp.forms import (TemplatePaginaForm, CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
 from pcp import exportacao
+from pcp import templates_xlsx
 from pcp import pendencias as pend
 from pcp import equivalencias as equiv
 from pcp import tipos as tipos_mod
 from pcp.tipos import aplicar_ajuste
 from pcp.importacao import importar_planilha
 from pcp.importacao_registros import importar_registros
-from pcp.models import (SEM_GRUPO, AjusteCampo, AjusteVinculo, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
+from pcp.models import (TemplatePagina, SEM_GRUPO, AjusteCampo, AjusteVinculo, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
 
@@ -1101,6 +1102,110 @@ def exportar_dados_formulario(request, pk):
                             f'{formulario.codigo}_{versao.revisao}', ('pcp:formulario_detalhe', pk))
 
 
+def _catalogo_tags():
+    """Variáveis aceitas, já com as chaves, para a tela de templates."""
+    from pcp.templates_xlsx import ESCALARES, ITENS, LISTA
+    grupos = [
+        ('Cabeçalho (qualquer célula ou caixa de texto)', [('{{%s}}' % k, v) for k, v in ESCALARES.items()] + [
+            ('{{DIA:1}} … {{DIA:31}}', 'Data do dia n do mês (dd/mm); vazio se o mês não tem o dia'),
+            ('{{DIASEMANA:1}} … {{DIASEMANA:31}}', 'Dia da semana do dia n (seg, ter…)')]),
+        ('Linha âncora (repetida para cada item)', [('{{%s}}' % k, v) for k, v in ITENS.items()]),
+        ('Modo grade (itens nas linhas, dia/turno nas colunas)', [
+            ('{{VALOR:1:T1}}', 'Valor do dia 1, turno T1 (ou posição: {{VALOR:1:1}}); turno em manutenção/parada traz a situação'),
+            ('{{STATUS:1:T1}}', 'Situação da máquina no dia 1, turno T1')]),
+        ('Modo lista (uma linha por item, data e turno preenchidos)', [('{{%s}}' % k, v) for k, v in LISTA.items()]),
+    ]
+    return grupos
+
+
+@login_required
+def templates_pagina(request):
+    """Cadastro de templates de página: envio do .xlsx com variáveis, análise das tags e lista dos templates."""
+    form = TemplatePaginaForm(request.POST or None, request.FILES or None, initial={'formulario': request.GET.get('formulario')})
+    if request.method == 'POST' and form.is_valid():
+        d = form.cleaned_data
+        conteudo = d['arquivo'].read()
+        try:
+            analise = templates_xlsx.analisar(conteudo)
+        except ValueError as e:
+            form.add_error('arquivo', str(e))
+        else:
+            tpl = TemplatePagina.objects.create(
+                formulario=d['formulario'], nome=d['nome'], descricao=d['descricao'], pagina_nome=d['pagina_nome'].strip(),
+                nome_arquivo_original=d['arquivo'].name[:255], arquivo_base64=templates_xlsx.codificar(conteudo), analise=analise,
+                criado_por=request.user)
+            messages.success(request, f'Template "{tpl.nome}" cadastrado: {len(analise["tags"])} variável(is) reconhecida(s), modo {analise["modo"] or "só cabeçalho"}.')
+            if analise['desconhecidas']:
+                messages.warning(request, 'Variáveis não reconhecidas (ficarão como estão na planilha): ' + ', '.join('{{%s}}' % t for t in analise['desconhecidas']))
+            for aviso in analise['avisos']:
+                messages.warning(request, aviso)
+            return redirect('pcp:templates_pagina')
+    templates = TemplatePagina.objects.select_related('formulario').defer('arquivo_base64')
+    nomes_paginas = sorted(set(Pagina.objects.filter(ativo=True).values_list('nome', flat=True)))
+    return render(request, 'pcp/templates_pagina.html', {'form': form, 'templates': templates, 'catalogo': _catalogo_tags(), 'nomes_paginas': nomes_paginas})
+
+
+@login_required
+def template_pagina_baixar(request, pk):
+    """Baixa o arquivo original do template."""
+    tpl = get_object_or_404(TemplatePagina, pk=pk)
+    resposta = HttpResponse(templates_xlsx.decodificar(tpl.arquivo_base64), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    nome = re.sub(r'[^A-Za-z0-9._-]+', '_', tpl.nome_arquivo_original or f'{tpl.nome}.xlsx')
+    resposta['Content-Disposition'] = f'attachment; filename="{nome}"'
+    return resposta
+
+
+@login_required
+def template_pagina_amostra(request):
+    """Baixa um template de exemplo com todas as variáveis (modo grade, modo lista e a documentação)."""
+    resposta = HttpResponse(templates_xlsx.gerar_amostra().getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resposta['Content-Disposition'] = 'attachment; filename="modelo_template_pagina_PCP.xlsx"'
+    return resposta
+
+
+@login_required
+@require_POST
+def template_pagina_excluir(request, pk):
+    tpl = get_object_or_404(TemplatePagina, pk=pk)
+    nome = tpl.nome
+    tpl.delete()
+    messages.success(request, f'Template "{nome}" excluído.')
+    return redirect('pcp:templates_pagina')
+
+
+@login_required
+@require_POST
+def template_pagina_alternar(request, pk):
+    tpl = get_object_or_404(TemplatePagina, pk=pk)
+    tpl.ativo = not tpl.ativo
+    tpl.save(update_fields=['ativo'])
+    messages.success(request, f'Template "{tpl.nome}" {"ativado" if tpl.ativo else "desativado"}.')
+    return redirect('pcp:templates_pagina')
+
+
+@login_required
+def exportar_template(request, pk):
+    """Gera o PCP do mês de uma página no template escolhido (?template=ID&mes=AAAA-MM)."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario', 'maquina'), pk=pk)
+    formulario = pagina.versao.formulario
+    tpl = TemplatePagina.objects.filter(pk=request.GET.get('template') if str(request.GET.get('template', '')).isdigit() else None,
+                                        formulario=formulario).first()
+    if tpl is None or not tpl.serve_para(pagina):
+        messages.error(request, 'Escolha um template ativo deste formulário (e que sirva para esta página).')
+        return redirect('pcp:preencher_pagina', pk)
+    ano, mes = _periodo_mes(request)
+    try:
+        saida = templates_xlsx.gerar(templates_xlsx.decodificar(tpl.arquivo_base64), formulario, pagina.versao, pagina, ano, mes)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return redirect('pcp:preencher_pagina', pk)
+    nome = unicodedata.normalize('NFKD', f'{formulario.codigo}_{pagina.nome}_{ano}-{mes:02d}_{tpl.nome}')
+    nome = re.sub(r'[^A-Za-z0-9._-]+', '_', ''.join(c for c in nome if not unicodedata.combining(c))).strip('_')
+    resposta = HttpResponse(saida.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resposta['Content-Disposition'] = f'attachment; filename="{nome}.xlsx"'
+    return resposta
+
+
 @login_required
 @require_POST
 def preencher_status(request, pk):
@@ -1172,6 +1277,7 @@ def preencher_pagina(request, pk):
         'status': verificacao.status if verificacao else '', 'status_motivo': verificacao.motivo if verificacao else '',
         'status_rotulo': dict(Verificacao.STATUS_MAQUINA).get(verificacao.status, '') if verificacao else '',
         'status_opcoes': Verificacao.STATUS_MAQUINA, 'mes_atual': timezone.localdate().strftime('%Y-%m'),
+        'templates_pagina': [t for t in TemplatePagina.objects.filter(formulario=pagina.versao.formulario, ativo=True).defer('arquivo_base64') if t.serve_para(pagina)],
         'tipos_ocorrencia': Ocorrencia.TIPOS,
     })
 

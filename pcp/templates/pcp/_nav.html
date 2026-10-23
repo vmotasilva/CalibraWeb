@@ -6,12 +6,14 @@
 {% can_nav_view user 'pcp:turnos' 'pcp' as n_turnos %}
 {% can_nav_view user 'pcp:frequencias' 'pcp' as n_freq %}
 {% can_nav_view user 'pcp:listas' 'pcp' as n_listas %}
+{% can_nav_view user 'pcp:templates_pagina' 'pcp' as n_tpl %}
 <ul class="nav nav-pills mb-3 flex-wrap gap-1">
     {% if n_preencher %}<li class="nav-item"><a class="nav-link {% if secao == 'preencher' %}active{% endif %}" href="{% url 'pcp:preencher' %}"><i class="bi bi-pencil-square me-1"></i>Preencher</a></li>{% endif %}
     {% if n_pend %}<li class="nav-item"><a class="nav-link {% if secao == 'dashboard' %}active{% endif %}" href="{% url 'pcp:dashboard' %}"><i class="bi bi-bar-chart-line me-1"></i>Dashboard</a></li>{% endif %}
     {% if n_pend %}<li class="nav-item"><a class="nav-link {% if secao == 'pendencias' %}active{% endif %}" href="{% url 'pcp:pendencias' %}"><i class="bi bi-hourglass-split me-1"></i>Pendências</a></li>{% endif %}
     {% if n_ocorr %}<li class="nav-item"><a class="nav-link {% if secao == 'ocorrencias' %}active{% endif %}" href="{% url 'pcp:ocorrencias' %}"><i class="bi bi-exclamation-triangle me-1"></i>Ocorrências</a></li>{% endif %}
     {% if n_form %}<li class="nav-item"><a class="nav-link {% if secao == 'formularios' %}active{% endif %}" href="{% url 'pcp:formularios' %}"><i class="bi bi-file-earmark-ruled me-1"></i>Formulários</a></li>{% endif %}
+    {% if n_tpl %}<li class="nav-item"><a class="nav-link {% if secao == 'templates' %}active{% endif %}" href="{% url 'pcp:templates_pagina' %}"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Templates</a></li>{% endif %}
     {% if n_turnos %}<li class="nav-item"><a class="nav-link {% if secao == 'turnos' %}active{% endif %}" href="{% url 'pcp:turnos' %}"><i class="bi bi-clock me-1"></i>Turnos</a></li>{% endif %}
     {% if n_freq %}<li class="nav-item"><a class="nav-link {% if secao == 'frequencias' %}active{% endif %}" href="{% url 'pcp:frequencias' %}"><i class="bi bi-arrow-repeat me-1"></i>Frequências</a></li>{% endif %}
     {% if n_listas %}<li class="nav-item"><a class="nav-link {% if secao == 'listas' %}active{% endif %}" href="{% url 'pcp:listas' %}"><i class="bi bi-list-ul me-1"></i>Listas de opções</a></li>{% endif %}

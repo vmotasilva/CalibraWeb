@@ -25,5 +25,23 @@
             <div class="form-check mt-1"><input class="form-check-input" type="checkbox" name="somente_valor" value="1" id="sv-{{ pagina.pk|default:'f' }}">
                 <label class="form-check-label small" for="sv-{{ pagina.pk|default:'f' }}">Só linhas com valor</label></div>
         </form>
+        {% if pagina %}
+        <hr class="my-3">
+        <div class="fw-semibold small">Gerar no template</div>
+        {% if templates_pagina %}
+            <form method="get" action="{% url 'pcp:exportar_template' pagina.pk %}">
+                <div class="small text-muted mb-1">Preenche o template escolhido com o PCP desta página no mês.</div>
+                <select name="template" class="form-select form-select-sm mb-1">
+                    {% for t in templates_pagina %}<option value="{{ t.pk }}">{{ t.nome }}</option>{% endfor %}
+                </select>
+                <div class="d-flex gap-1">
+                    <input type="month" name="mes" value="{% if data %}{{ data|date:'Y-m' }}{% else %}{{ mes_iso }}{% endif %}" class="form-control form-control-sm" title="Mês">
+                    <button class="btn btn-sm btn-outline-success text-nowrap">Gerar planilha</button>
+                </div>
+            </form>
+        {% else %}
+            <div class="small text-muted">Nenhum template cadastrado para esta página. <a href="{% url 'pcp:templates_pagina' %}?formulario={{ formulario.pk }}">Cadastrar template</a></div>
+        {% endif %}
+        {% endif %}
     </div>
 </div>

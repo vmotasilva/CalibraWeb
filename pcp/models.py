@@ -389,6 +389,34 @@ class AjusteVinculo(models.Model):
         return self.desfeito_em is not None
 
 
+class TemplatePagina(models.Model):
+    """Template de página (.xlsx com variáveis {{TAG}}) usado para extrair o PCP preenchido no layout do usuário.
+    O arquivo fica no banco (Base64), como nos templates de Treinamentos, para funcionar em nuvem/serverless."""
+    formulario = models.ForeignKey('Formulario', on_delete=models.CASCADE, related_name='templates')
+    nome = models.CharField(max_length=150)
+    descricao = models.TextField(blank=True)
+    pagina_nome = models.CharField('Página', max_length=120, blank=True,
+                                   help_text='Em branco: o template serve para qualquer página do formulário.')
+    nome_arquivo_original = models.CharField(max_length=255, blank=True)
+    arquivo_base64 = models.TextField(blank=True, default='')
+    analise = models.JSONField(default=dict, blank=True, help_text='Tags reconhecidas/desconhecidas, modo e avisos detectados no upload.')
+    ativo = models.BooleanField(default=True)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('formulario__codigo', 'nome')
+        verbose_name = 'template de página'
+        verbose_name_plural = 'templates de página'
+
+    def __str__(self):
+        return f'{self.formulario.codigo} - {self.nome}'
+
+    def serve_para(self, pagina):
+        return self.ativo and (not self.pagina_nome or self.pagina_nome == pagina.nome)
+
+
 class Verificacao(models.Model):
     """Preenchimento de uma página numa data e turno."""
     NORMAL, MANUTENCAO, PARADA = '', 'manutencao', 'parada'
