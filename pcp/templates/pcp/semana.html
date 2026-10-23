@@ -91,13 +91,13 @@
     <div class="card d-none d-md-block"><div class="table-responsive">
         <table class="table table-sm table-hover mb-0 semana-tabela">
             <thead><tr>
-                <th style="width:3rem">Nº</th><th>Item</th><th>Frequência</th>
+                <th style="width:3rem">Nº</th><th>Item</th>
                 {% for dia in d.dias %}<th class="text-center {% if dia.hoje %}hoje{% endif %}">{{ dia.rotulo }}<div class="small fw-normal text-muted">{{ dia.curto }}</div></th>{% endfor %}
             </tr></thead>
             <tbody>
             {% for g in grupos %}
                 <tr class="grupo-freq" data-grupo="{{ g.id }}">
-                    <td colspan="10">
+                    <td colspan="9">
                         <span class="fw-semibold"><i class="bi bi-collection me-1"></i>{{ g.nome }}</span>
                         <span class="text-muted small ms-2">{{ g.linhas|length }} ite{{ g.linhas|length|pluralize:"m,ns" }}</span>
                         <span class="ms-3 small">
@@ -116,7 +116,6 @@
                     <td class="text-muted">{{ l.info.num }}</td>
                     <td style="min-width:16rem">{% if l.info.etapa %}<div class="small text-muted">{{ l.info.etapa|truncatechars:60 }}</div>{% endif %}
                         <span class="fw-semibold {% if l.info.critico %}text-danger{% endif %}">{{ l.info.item|default:"—" }}</span> {{ l.info.descricao|truncatechars:90 }}</td>
-                    <td class="small text-nowrap">{{ l.info.frequencia }}</td>
                     {% if l.tipo == 'janelas' %}
                         <td colspan="7" class="text-center">
                             {% for p in l.janelas %}
@@ -143,7 +142,7 @@
                 </tr>
                 {% endfor %}
             {% endfor %}
-            {% if not grupos %}<tr><td colspan="10" class="text-center text-muted py-4">Esta página não tem itens ativos.</td></tr>{% endif %}
+            {% if not grupos %}<tr><td colspan="9" class="text-center text-muted py-4">Esta página não tem itens ativos.</td></tr>{% endif %}
             </tbody>
         </table>
     </div></div>
