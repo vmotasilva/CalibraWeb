@@ -1037,6 +1037,10 @@ def dashboard(request):
     if farol is None:
         farol = pend.farol(observar, formulario_id)
         cache.set(chave_farol, farol, timeout=60)
+    for b in farol['blocos']:   # pares (frequência, célula) para os cards do celular
+        for g in b['grupos']:
+            for l in g['linhas']:
+                l['pares'] = [(col, c) for col, c in zip(farol['colunas'], l['celulas']) if c]
     ordem = request.GET.get('ordem') if request.GET.get('ordem') in ('pct', 'atrasos') else 'pct'
     top = int(request.GET['top']) if request.GET.get('top') in {str(t) for t in pend.TOPS} else 10
     rank_paginas, rank_itens = pend.ranking(dados, ordem, top)

@@ -47,7 +47,7 @@
     </div>
 
     {% if d.devidos %}
-    <div class="row g-3 mb-3">
+    <div class="row g-3 mb-3 d-none d-md-flex">
         <div class="col-lg-7"><div class="card h-100"><div class="card-body">
             <div class="fw-semibold mb-2">Cumprimento ao longo do período <span class="small text-muted fw-normal">(por {{ d.agrupamento }})</span></div>
             <div style="position:relative; height:260px"><canvas id="grafico-evolucao" role="img" aria-label="Cumprimento por {{ d.agrupamento }} no período"></canvas></div>
@@ -77,7 +77,7 @@
                 <span class="farol-ponto farol-amarelo"></span> <strong>{{ farol.contagem.amarelo }}</strong> <span class="small text-muted">pendentes com prazo em aberto</span>
                 <span class="farol-ponto farol-vermelho"></span> <strong>{{ farol.contagem.vermelho }}</strong> <span class="small text-muted">com prazo encerrado sem registro</span>
             </div>
-            <div class="small text-muted">
+            <div class="small text-muted d-none d-md-block">
                 Cada ponto é o <strong>prazo que contém {{ observar|date:"d/m/Y" }}</strong> para a frequência: semana (seg–dom), quinzena (1–15 e 16–fim do mês), mês,
                 trimestre (jan–mar, abr–jun, jul–set, out–dez), semestre (jan–jun, jul–dez) ou ano. <strong>Basta um registro em qualquer turno dentro do prazo.</strong>
                 Itens "a cada turno" olham os turnos já iniciados; máquina em manutenção/parada dispensa os itens. Passe o mouse (ou toque) no ponto para ver o detalhe.
@@ -96,7 +96,7 @@
                     Itens "a cada turno" e diários cujo prazo terminou antes dessa data <strong>não são cobrados</strong> e por isso não aparecem; semanas, quinzenas e meses que terminam depois dela aparecem.
                     Para cobrar o histórico, ajuste a vigência da revisão para uma data anterior.
                 </div>{% endif %}
-                <div class="table-responsive">
+                <div class="table-responsive d-none d-md-block">
                     <table class="table table-sm align-middle mb-0 text-center">
                         <thead><tr>
                             <th class="text-start">Página</th>
@@ -120,6 +120,31 @@
                         {% endfor %}
                         </tbody>
                     </table>
+                </div>
+                <div class="d-md-none p-2">
+                    {% for g in b.grupos %}
+                    <div class="card mb-2">
+                        <div class="card-header py-2 small text-uppercase text-muted fw-semibold"><i class="bi bi-collection me-1"></i>{{ g.nome }} <span class="fw-normal">· {{ g.linhas|length }}</span></div>
+                        <div class="card-body p-2">
+                            {% for l in g.linhas %}
+                            <div class="card mb-2">
+                                <div class="card-body p-2">
+                                    <div class="mb-1"><span class="farol-ponto farol-{{ l.cor }} me-1" title="Pior situação da página"></span>
+                                        <a href="{% url 'pcp:preencher_pagina' l.pagina_id %}?data={{ observar|date:'Y-m-d' }}" class="text-decoration-none fw-semibold">{{ l.nome }}</a></div>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        {% for col, c in l.pares %}
+                                        <span class="farol-celula border rounded px-2 py-1 small" title="{{ c.dica }}" tabindex="0">
+                                            <span class="text-muted">{{ col.nome }}</span>
+                                            <span class="farol-ponto farol-{{ c.cor }}"></span>
+                                            <span class="{% if c.cor == 'verde' %}text-success{% elif c.cor == 'amarelo' %}text-warning-emphasis{% else %}text-danger{% endif %}">{{ c.feitos }}/{{ c.devidos }}</span></span>
+                                        {% empty %}<span class="text-muted small">Sem prazos em andamento.</span>{% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         {% empty %}
@@ -250,7 +275,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 (function () {
-    if (typeof Chart === 'undefined') return;
+    if (typeof Chart === 'undefined' || window.matchMedia('(max-width: 767.98px)').matches) return;   // sem gráficos no celular
     var dados = JSON.parse(document.getElementById('dados-dashboard').textContent);
     var cor = function (p) { return p === null ? '#9aa0a6' : (p >= 95 ? '#198754' : (p >= 80 ? '#e0a800' : '#dc3545')); };
     var evo = document.getElementById('grafico-evolucao');

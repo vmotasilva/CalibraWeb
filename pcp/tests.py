@@ -2629,3 +2629,13 @@ class SemanaMobileTests(SemanaBase):
         self.assertContains(r, 'dropdown-toggle w-100')                    # abas do PCP em drop-down
         self.assertEqual(r.content.decode().count('class="card mb-3 grupo-card"'), len(r.context['grupos']))
         self.assertEqual(r.content.decode().count('class="card item-card mb-2"'), len(r.context['d']['linhas']))
+
+
+class DashboardMobileTests(DashboardBase):
+    def test_celular_sem_graficos_nem_texto_explicativo_e_cards_de_pagina(self):
+        r = self.client.get(reverse('pcp:dashboard'))
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode()
+        self.assertIn('row g-3 mb-3 d-none d-md-flex', html) if r.context['d']['devidos'] else None
+        self.assertIn('small text-muted d-none d-md-block', html)          # texto "Cada ponto é o prazo…" escondido no celular
+        self.assertIn('d-md-none p-2', html)                               # cards: grupo > página
