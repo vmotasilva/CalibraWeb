@@ -61,7 +61,7 @@
             <div class="col-auto"><label class="form-label mb-0 small" for="data-semana">Ir para a data</label>
                 <input type="date" id="data-semana" name="semana" value="{{ d.ini|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()"></div>
             {% if not e_esta_semana %}<div class="col-auto"><a class="btn btn-outline-primary" href="?pagina={{ pagina.pk }}">Esta semana</a></div>{% endif %}
-            <div class="col-auto ms-lg-auto d-flex gap-2"><button type="button" class="btn btn-outline-primary" onclick="location.reload()" title="Recarrega os faróis com o que estiver preenchido"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button><a class="btn btn-outline-secondary" target="_blank" rel="noopener" href="{% url 'pcp:preencher_pagina' pagina.pk %}?data={% if d.hoje >= d.ini and d.hoje <= d.fim %}{{ d.hoje|date:'Y-m-d' }}{% else %}{{ d.ini|date:'Y-m-d' }}{% endif %}"><i class="bi bi-pencil-square me-1"></i>Preencher esta página</a></div>
+            <div class="col-auto ms-lg-auto d-flex gap-2"><button type="button" id="btn-atualizar-semana" class="btn btn-outline-primary" title="Recarrega os faróis com o que estiver preenchido (também acontece ao voltar para esta aba)"><i class="bi bi-arrow-clockwise me-1"></i>Atualizar</button><a class="btn btn-outline-secondary" target="_blank" rel="noopener" href="{% url 'pcp:preencher_pagina' pagina.pk %}?data={% if d.hoje >= d.ini and d.hoje <= d.fim %}{{ d.hoje|date:'Y-m-d' }}{% else %}{{ d.ini|date:'Y-m-d' }}{% endif %}"><i class="bi bi-pencil-square me-1"></i>Preencher esta página</a></div>
         </div>
     </form>
 
@@ -427,6 +427,24 @@
     }
     sel.addEventListener('change', aplicar);
     nok.addEventListener('change', aplicar);
+    // ao recarregar (botão Atualizar ou volta para a aba) mantém os filtros escolhidos
+    try {
+        var salvo = JSON.parse(sessionStorage.getItem('pcp-semana-filtros') || 'null');
+        if (salvo) { sel.value = salvo.f; if (sel.value !== salvo.f) sel.value = ''; nok.checked = !!salvo.nok; aplicar(); }
+    } catch (e) {}
+    function recarregar() {
+        try { sessionStorage.setItem('pcp-semana-filtros', JSON.stringify({ f: sel.value, nok: nok.checked })); } catch (e) {}
+        location.reload();
+    }
+    var botaoAtualizar = document.getElementById('btn-atualizar-semana');
+    if (botaoAtualizar) botaoAtualizar.addEventListener('click', recarregar);
+    // atualiza os faróis ao voltar para a aba (ex.: depois de preencher em outra aba), sem interromper um pop-up aberto
+    var saiuEm = null;
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') { saiuEm = Date.now(); return; }
+        if (saiuEm && Date.now() - saiuEm > 3000 && !document.querySelector('.modal.show')) recarregar();
+        saiuEm = null;
+    });
 })();
 </script>
 {% endif %}
