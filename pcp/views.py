@@ -13,7 +13,7 @@ from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.utils.http import urlencode
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.http import require_POST
 
 from pcp.forms import (CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
@@ -553,6 +553,7 @@ def paginas_acao(request, pk):
         messages.warning(request, 'Selecione ao menos uma página.')
         return _volta_grupos(pk, filtro)
     nomes = sorted({p.nome for p in paginas})
+    invalidar_dashboard()  # mover de grupo, desativar ou excluir muda o que o dashboard mostra
     if acao in ('mover', 'remover'):
         destino = ''
         if acao == 'mover':
@@ -606,12 +607,29 @@ def pagina_excluir(request, pk):
 
 @login_required
 @require_POST
+def pagina_desativar(request, pk):
+    """Desativa o bloco (página) sem apagar o histórico e volta para a tela de origem (ex.: ranking do dashboard).
+    Desativada, a página sai do preenchimento, das pendências, dos atrasos, do sino e do dashboard; pode ser reativada em Grupos e blocos."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario'), pk=pk)
+    formulario = pagina.versao.formulario
+    formulario.paginas_equivalentes([pagina.nome]).update(ativo=False)
+    invalidar_dashboard()
+    messages.success(request, f'Página "{pagina.nome}" desativada. Para reativá-la: Formulários > {formulario.codigo} > Grupos e blocos.')
+    destino = request.POST.get('next', '')
+    if destino and url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(destino)
+    return redirect('pcp:pagina_detalhe', pk)
+
+
+@login_required
+@require_POST
 def pagina_alternar(request, pk):
     """Ativa/desativa o bloco. Desativado: não aparece no preenchimento nem entra em pendências e atrasos; o histórico fica."""
     pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario'), pk=pk)
     novo = not pagina.ativo
     pagina.versao.formulario.paginas_equivalentes([pagina.nome]).update(ativo=novo)
     pagina.ativo = novo
+    invalidar_dashboard()
     messages.success(request, f'Página "{pagina.nome}" {"reativada" if novo else "desativada"}.')
     return redirect('pcp:pagina_detalhe', pk)
 
@@ -874,6 +892,19 @@ def _periodo_atrasos(request):
 PERIODOS_DASHBOARD = [7, 14, 30, 60, 90]
 
 
+def _geracao_dashboard():
+    """Marca da 'geração' do cache do dashboard: trocá-la invalida os resultados guardados (ex.: ao desativar uma página)."""
+    marca = cache.get('pcp:dashboard:geracao')
+    if marca is None:
+        marca = tipos_mod.novo_lote()
+        cache.set('pcp:dashboard:geracao', marca, timeout=None)
+    return marca
+
+
+def invalidar_dashboard():
+    cache.set('pcp:dashboard:geracao', tipos_mod.novo_lote(), timeout=None)
+
+
 @login_required
 def dashboard(request):
     """Acompanhamento do cumprimento por página e frequência no período encerrado (até ontem)."""
@@ -883,7 +914,7 @@ def dashboard(request):
     dias = int(request.GET['dias']) if request.GET.get('dias') in {str(d) for d in PERIODOS_DASHBOARD} else 30
     ini = fim - datetime.timedelta(days=dias - 1)
     formulario_id = request.GET.get('formulario') if str(request.GET.get('formulario', '')).isdigit() else None
-    chave_cache = f'pcp:dashboard:v1:{ini}:{fim}:{formulario_id or 0}'
+    chave_cache = f'pcp:dashboard:v1:{_geracao_dashboard()}:{ini}:{fim}:{formulario_id or 0}'
     dados = None if request.GET.get('atualizar') else cache.get(chave_cache)
     if dados is None:
         dados = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), formulario_id, hoje)
@@ -893,7 +924,7 @@ def dashboard(request):
     top = int(request.GET['top']) if request.GET.get('top') in {str(t) for t in pend.TOPS} else 10
     rank_paginas, rank_itens = pend.ranking(dados, ordem, top)
     return render(request, 'pcp/dashboard.html', {
-        'd': dados, 'grafico': grafico, 'rank_paginas': rank_paginas, 'rank_itens': rank_itens, 'ordem': ordem, 'top': top, 'tops': pend.TOPS,
+        'url_atual': request.get_full_path(), 'd': dados, 'grafico': grafico, 'rank_paginas': rank_paginas, 'rank_itens': rank_itens, 'ordem': ordem, 'top': top, 'tops': pend.TOPS,
         'min_pagina': pend.MIN_PRAZOS_PAGINA, 'min_item': pend.MIN_PRAZOS_ITEM, 'dias': dias, 'periodos': PERIODOS_DASHBOARD, 'hoje': hoje, 'fim': fim,
         'formularios': Formulario.objects.filter(ativo=True), 'formulario_id': int(formulario_id) if formulario_id else None})
 

@@ -1,7 +1,9 @@
 {% extends base_template|default:"base.html" %}
+{% load nav_access %}
 {% block title %}PCP - Dashboard - Calibra QMS{% endblock %}
 
 {% block content %}
+{% can_nav_view user 'pcp:pagina_desativar' 'pcp' as pode_desativar %}
 <div class="container-fluid py-3">
     <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Dashboard de acompanhamento</h4>
     {% include "pcp/_nav.html" with secao="dashboard" %}
@@ -76,7 +78,7 @@
         <div class="col-xl-5"><div class="card h-100">
             <div class="card-header">Páginas <span class="small text-muted">(mínimo de {{ min_pagina }} prazos no período)</span></div>
             <div class="table-responsive"><table class="table table-sm align-middle mb-0">
-                <thead><tr><th>#</th><th>Página</th><th class="text-center">Cumpr.</th><th class="text-end">Atrasos</th></tr></thead>
+                <thead><tr><th>#</th><th>Página</th><th class="text-center">Cumpr.</th><th class="text-end">Atrasos</th>{% if pode_desativar %}<th></th>{% endif %}</tr></thead>
                 <tbody>
                 {% for p in rank_paginas %}
                     <tr>
@@ -86,8 +88,14 @@
                         <td class="text-center"><span class="badge {% if p.pct >= 95 %}bg-success{% elif p.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ p.pct }}%</span>
                             <div class="small text-muted">{{ p.feitos }}/{{ p.devidos }}</div></td>
                         <td class="text-end {% if p.atrasados %}text-danger fw-semibold{% endif %}">{{ p.atrasados }}</td>
+                        {% if pode_desativar %}<td class="text-end">
+                            <form method="post" action="{% url 'pcp:pagina_desativar' p.pagina_id %}" class="d-inline"
+                                  onsubmit="return confirm('Desativar a página &quot;{{ p.nome|escapejs }}&quot; ({{ p.codigo }})?\n\nEla sai do preenchimento, das pendências, dos atrasos, do sino e deste dashboard. O histórico é mantido e a página pode ser reativada em Grupos e blocos.');">
+                                {% csrf_token %}<input type="hidden" name="next" value="{{ url_atual }}">
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="Desativar página (equipamento sem uso)"><i class="bi bi-eye-slash"></i> Desativar</button>
+                            </form></td>{% endif %}
                     </tr>
-                {% empty %}<tr><td colspan="4" class="text-center text-muted py-3">Nenhuma página com prazos suficientes no período.</td></tr>{% endfor %}
+                {% empty %}<tr><td colspan="5" class="text-center text-muted py-3">Nenhuma página com prazos suficientes no período.</td></tr>{% endfor %}
                 </tbody></table></div>
         </div></div>
         <div class="col-xl-7"><div class="card h-100">

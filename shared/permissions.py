@@ -366,7 +366,7 @@ NAV_STRUCTURE = [
                         "nome": "Criar e Editar Formulários, Páginas e Campos",
                         "view_name": [
                             "pcp:formulario_novo", "pcp:formulario_editar", "pcp:versao_nova",
-                            "pcp:pagina_nova", "pcp:pagina_editar", "pcp:pagina_excluir", "pcp:pagina_alternar",
+                            "pcp:pagina_nova", "pcp:pagina_editar", "pcp:pagina_excluir", "pcp:pagina_alternar", "pcp:pagina_desativar",
                             "pcp:versao_grupos", "pcp:grupos", "pcp:grupo_criar", "pcp:grupo_renomear", "pcp:grupo_excluir",
                             "pcp:grupo_mover", "pcp:paginas_acao", "pcp:ajustar_tipos", "pcp:sugerir_limites", "pcp:valores", "pcp:vincular_valores", "pcp:ajustes", "pcp:pagina_mover", "pcp:grupo_ordenar", "pcp:campo_alternar",
                             "pcp:campo_novo", "pcp:campo_editar", "pcp:campo_excluir",

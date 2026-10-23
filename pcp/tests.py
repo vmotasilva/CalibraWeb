@@ -1691,3 +1691,49 @@ class RankingDashboardTests(DashboardBase):
         self.assertContains(r, 'Extra por turno')
         r = self.client.get(url + '?ordem=lixo&top=abc')
         self.assertEqual((r.context['ordem'], r.context['top']), ('pct', 10))
+
+
+class DesativarDoRankingTests(DashboardBase):
+    def desativar(self, pagina=None, **extra):
+        return self.client.post(reverse('pcp:pagina_desativar', args=[(pagina or self.pag).pk]), extra)
+
+    def test_botao_aparece_no_ranking_para_quem_tem_permissao(self):
+        r = self.client.get(reverse('pcp:dashboard') + f'?dias=30&ate={self.FIM}')
+        self.assertContains(r, reverse('pcp:pagina_desativar', args=[self.pag.pk]))
+        self.assertContains(r, 'Desativar')
+
+    def test_desativa_volta_para_o_dashboard_com_os_filtros_e_mantem_o_historico(self):
+        url = reverse('pcp:dashboard') + f'?dias=14&ate={self.FIM}&ordem=atrasos&top=20'
+        r = self.desativar(next=url)
+        self.assertRedirects(r, url, fetch_redirect_response=False)
+        self.pag.refresh_from_db()
+        self.assertFalse(self.pag.ativo)
+        self.assertTrue(Resposta.objects.filter(campo=self.c_lista).exists())   # histórico preservado
+
+    def test_some_do_dashboard_na_hora_apesar_do_cache(self):
+        url = reverse('pcp:dashboard') + f'?dias=30&ate={self.FIM}'
+        self.assertContains(self.client.get(url), 'Fitadeira')                  # popula o cache
+        self.desativar()
+        r = self.client.get(url)                                                # sem esperar os 2 minutos do cache
+        self.assertNotContains(r, reverse('pcp:atrasos_pagina', args=[self.pag.pk]))
+        self.assertEqual(r.context['d']['blocos'][0]['grupos'], [])
+
+    def test_vale_para_o_rascunho_de_mesmo_nome_e_nao_reativa(self):
+        rascunho = self.v15.clonar('R16')
+        self.desativar()
+        self.assertFalse(rascunho.paginas.get(nome='Fitadeira').ativo)
+        self.desativar()   # de novo: continua desativada (não alterna)
+        self.pag.refresh_from_db()
+        self.assertFalse(self.pag.ativo)
+
+    def test_next_externo_e_ignorado_e_get_nao_e_permitido(self):
+        r = self.desativar(next='https://site-malicioso.example/x')
+        self.assertRedirects(r, reverse('pcp:pagina_detalhe', args=[self.pag.pk]), fetch_redirect_response=False)
+        self.assertEqual(self.client.get(reverse('pcp:pagina_desativar', args=[self.pag.pk])).status_code, 405)
+
+    def test_reativar_pelo_gerenciador_traz_a_pagina_de_volta_ao_dashboard(self):
+        url = reverse('pcp:dashboard') + f'?dias=30&ate={self.FIM}'
+        self.client.get(url)
+        self.desativar()
+        self.client.post(reverse('pcp:paginas_acao', args=[self.form.pk]), {'paginas': [self.pag.pk], 'acao': 'ativar'})
+        self.assertContains(self.client.get(url), reverse('pcp:atrasos_pagina', args=[self.pag.pk]))

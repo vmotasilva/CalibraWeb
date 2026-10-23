@@ -31,6 +31,7 @@ urlpatterns = [
     path('grupos/<int:pk>/excluir/', views.grupo_excluir, name='grupo_excluir'),
     path('grupos/<int:pk>/mover/', views.grupo_mover, name='grupo_mover'),
     path('paginas/<int:pk>/alternar/', views.pagina_alternar, name='pagina_alternar'),
+    path('paginas/<int:pk>/desativar/', views.pagina_desativar, name='pagina_desativar'),
     path('campos/<int:pk>/alternar/', views.campo_alternar, name='campo_alternar'),
     path('versoes/<int:pk>/paginas/nova/', views.pagina_nova, name='pagina_nova'),
     path('paginas/<int:pk>/', views.pagina_detalhe, name='pagina_detalhe'),
