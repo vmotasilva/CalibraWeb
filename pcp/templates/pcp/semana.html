@@ -167,7 +167,7 @@
                         <div class="card-body p-2">
                             {% if l.info.etapa %}<div class="small text-muted">{{ l.info.etapa|truncatechars:60 }}</div>{% endif %}
                             <div><span class="text-muted me-1">{{ l.info.num }}.</span><span class="fw-semibold {% if l.info.critico %}text-danger{% endif %}">{{ l.info.item|default:"—" }}</span> {{ l.info.descricao|truncatechars:90 }}</div>
-                            <div class="small text-muted mb-2">{{ l.info.frequencia }}</div>
+                            <div class="mb-2"></div>
                             {% if l.tipo == 'janelas' %}
                                 <div class="text-center">{% for p in l.janelas %}{% include "pcp/_farol_btn.html" %}{% endfor %}</div>
                             {% else %}
