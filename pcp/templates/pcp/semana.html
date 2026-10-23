@@ -158,7 +158,7 @@
             </div>
             <div class="modal-body" id="modal-farol-corpo"></div>
             <div class="modal-footer">
-                {% if pode_lancar %}<a id="modal-farol-lancar" href="#" class="btn btn-primary d-none"><i class="bi bi-pencil-square me-1"></i><span></span></a>{% endif %}
+                {% if pode_lancar %}<a id="modal-farol-lancar" href="#" class="btn btn-link me-auto d-none"><i class="bi bi-box-arrow-up-right me-1"></i><span></span></a>{% endif %}
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
@@ -170,6 +170,7 @@
 <script>
 (function () {
     var dados = JSON.parse(document.getElementById('dados-semana').textContent);
+    var pode_lancar = {% if pode_lancar %}true{% else %}false{% endif %};
     var modal = document.getElementById('modal-farol');
     var CORES = { ok: 'success', nok: 'danger', aberto: 'warning text-dark', futuro: 'secondary', dispensado: 'secondary', sem: 'secondary', info: 'primary' };
 
@@ -181,6 +182,66 @@
         d.appendChild(el('div', valor, 'col-sm-8'));
         return d;
     }
+    function csrf() { var m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/); return m ? decodeURIComponent(m[1]) : ''; }
+    // formulário de lançamento no pop-up: o campo de resposta segue o tipo do item (lista, número ou texto)
+    function formularioLancar(det, item) {
+        var anterior = det.registros.length ? det.registros[det.registros.length - 1] : null;
+        var caixa = el('div', null, 'border rounded p-3 mb-3 bg-light');
+        caixa.appendChild(el('h6', det.registros.length ? 'Corrigir lançamento' : 'Lançar resultado', 'mb-2'));
+        var linhaForm = el('div', null, 'row g-2 align-items-end');
+        var colData = el('div', null, 'col-sm-4'); colData.appendChild(el('label', 'Data', 'form-label small mb-0'));
+        var data = el('input', null, 'form-control form-control-sm'); data.type = 'date'; data.value = det.lancar.iso; data.max = dados.hoje; colData.appendChild(data);
+        var colTurno = el('div', null, 'col-sm-3'); colTurno.appendChild(el('label', 'Turno', 'form-label small mb-0'));
+        var turno = el('select', null, 'form-select form-select-sm');
+        dados.turnos.forEach(function (t) { var o = el('option', t.sigla); o.value = t.pk; if (t.pk === det.lancar.turno_id) o.selected = true; turno.appendChild(o); });
+        colTurno.appendChild(turno);
+        var colValor = el('div', null, 'col-sm-5'); colValor.appendChild(el('label', 'Resultado', 'form-label small mb-0'));
+        var valor;
+        if (item.tipo_codigo === 'lista') {
+            valor = el('select', null, 'form-select form-select-sm');
+            valor.appendChild(el('option', ''));
+            item.opcoes.forEach(function (op) { var o = el('option', op); o.value = op; valor.appendChild(o); });
+        } else {
+            valor = el('input', null, 'form-control form-control-sm'); valor.type = 'text';
+            if (item.tipo_codigo === 'numero') valor.inputMode = 'decimal';
+        }
+        if (anterior) {
+            if (item.tipo_codigo === 'lista' && item.opcoes.indexOf(anterior.valor) < 0) { var ex = el('option', anterior.valor); ex.value = anterior.valor; valor.appendChild(ex); }
+            valor.value = anterior.valor;
+        }
+        if (item.tipo_codigo === 'numero') {
+            var grupo = el('div', null, 'input-group input-group-sm'); grupo.appendChild(valor);
+            if (item.unidade) grupo.appendChild(el('span', item.unidade, 'input-group-text'));
+            colValor.appendChild(grupo);
+            if (item.minimo || item.maximo) colValor.appendChild(el('div', 'Limites: ' + (item.minimo || '—') + ' a ' + (item.maximo || '—'), 'form-text mt-0'));
+        } else colValor.appendChild(valor);
+        [colData, colTurno, colValor].forEach(function (c) { linhaForm.appendChild(c); });
+        caixa.appendChild(linhaForm);
+        var aviso = el('div', null, 'small mt-2');
+        var acoes = el('div', null, 'd-flex gap-2 mt-2');
+        var salvar = el('button', 'Salvar', 'btn btn-primary btn-sm'); salvar.type = 'button';
+        acoes.appendChild(salvar);
+        var limpar = null;
+        if (anterior) { limpar = el('button', 'Limpar lançamento', 'btn btn-outline-danger btn-sm'); limpar.type = 'button'; acoes.appendChild(limpar); }
+        function enviar(texto) {
+            salvar.disabled = true; aviso.className = 'small mt-2 text-muted'; aviso.textContent = 'Salvando…';
+            var corpoPost = new URLSearchParams({ campo: det.campo, data: data.value, turno: turno.value, valor: texto });
+            fetch(dados.url_item, { method: 'POST', headers: { 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' }, body: corpoPost, credentials: 'same-origin' })
+                .then(function (r) { return r.json().catch(function () { return { ok: false, erro: 'Falha ao salvar.' }; }); })
+                .then(function (j) {
+                    if (!j.ok) { salvar.disabled = false; aviso.className = 'small mt-2 text-danger'; aviso.textContent = j.erro || 'Falha ao salvar.'; return; }
+                    aviso.className = 'small mt-2 ' + (j.conforme === false ? 'text-danger fw-semibold' : 'text-success');
+                    aviso.textContent = j.limpo ? 'Lançamento removido. Atualizando…' : (j.conforme === false ? 'Salvo: fora do especificado. Atualizando…' : 'Salvo. Atualizando…');
+                    setTimeout(function () { location.reload(); }, j.conforme === false ? 1200 : 400);
+                })
+                .catch(function () { salvar.disabled = false; aviso.className = 'small mt-2 text-danger'; aviso.textContent = 'Sem conexão. Tente novamente.'; });
+        }
+        salvar.addEventListener('click', function () { if (!valor.value.trim()) { aviso.className = 'small mt-2 text-danger'; aviso.textContent = 'Informe o resultado.'; return; } enviar(valor.value.trim()); });
+        if (limpar) limpar.addEventListener('click', function () { if (confirm('Remover o lançamento deste item nesta data e turno?')) enviar(''); });
+        valor.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); salvar.click(); } });
+        caixa.appendChild(acoes); caixa.appendChild(aviso);
+        return caixa;
+    }
     modal.addEventListener('show.bs.modal', function (ev) {
         var chave = ev.relatedTarget && ev.relatedTarget.dataset.key;
         var det = dados.detalhes[chave];
@@ -189,9 +250,9 @@
         var botao = document.getElementById('modal-farol-lancar');
         if (botao) botao.classList.add('d-none');
         if (!det) { corpo.appendChild(el('p', 'Sem detalhes para este farol.')); return; }
-        if (botao && det.lancar) {   // lança (ou corrige) direto na tela de preenchimento, na data e no turno do farol, com o item em destaque
+        if (botao && det.lancar) {   // link secundário: abre a tela completa de preenchimento na data e no turno do farol
             botao.href = det.lancar.url;
-            botao.querySelector('span').textContent = (det.registros.length ? 'Corrigir lançamento' : 'Lançar agora') + ' · ' + det.lancar.data + (det.lancar.turno ? ' · ' + det.lancar.turno : '');
+            botao.querySelector('span').textContent = 'Abrir na tela de preenchimento';
             botao.classList.remove('d-none');
         }
         var item = dados.itens[det.campo];
@@ -205,6 +266,7 @@
         [['O que verificar', item.descricao], ['Etapa', item.etapa], ['Especificação', item.especificacao], ['Método', item.metodo], ['Frequência', item.frequencia],
          ['Tipo', item.tipo], ['Limites', (item.minimo || item.maximo) ? ((item.minimo || '—') + ' a ' + (item.maximo || '—') + (item.unidade ? ' ' + item.unidade : '')) : ''],
          ['Plano de reação', item.plano], ['Crítico', item.critico ? 'Sim (nível 3)' : '']].forEach(function (p) { var l = linha(p[0], p[1]); if (l) corpo.appendChild(l); });
+        if (pode_lancar && det.lancar && dados.editavel) corpo.insertBefore(formularioLancar(det, item), corpo.firstChild);
         corpo.appendChild(el('h6', 'Lançamentos que compõem o farol', 'mt-3'));
         if (!det.registros.length) { corpo.appendChild(el('p', 'Nenhum lançamento neste prazo.', 'text-muted')); return; }
         var tabela = el('table', null, 'table table-sm');

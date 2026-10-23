@@ -46,7 +46,7 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
     turnos = list(Turno.objects.filter(ativo=True))
     formulario = pagina.versao.formulario
     rastreio = inicio_rastreio(formulario)
-    campos = list(pagina.campos.filter(ativo=True).select_related('frequencia', 'lista').order_by('ordem', 'pk'))
+    campos = list(pagina.campos.filter(ativo=True).select_related('frequencia', 'lista').prefetch_related('lista__opcoes').order_by('ordem', 'pk'))
     iniciados_hoje = {t.pk for d, t in turnos_iniciados(agora) if d == hoje}
 
     # prazos periódicos que tocam a semana
@@ -94,7 +94,7 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
     def destino(campo, dia, turno):
         """Link da tela de preenchimento na data e no turno do farol, com o item em destaque."""
         turno = turno or (turnos[0] if turnos else None)
-        return {'data': f'{dia:%d/%m/%Y}', 'turno': turno.sigla if turno else '',
+        return {'data': f'{dia:%d/%m/%Y}', 'iso': f'{dia:%Y-%m-%d}', 'turno': turno.sigla if turno else '', 'turno_id': turno.pk if turno else 0,
                 'url': f'{base_preencher}?data={dia:%Y-%m-%d}' + (f'&turno={turno.pk}' if turno else '') + f'#campo-{campo.pk}'}
 
     def registrar(key, campo, estado, titulo, prazo, regs, maquina='', lancar=None):
@@ -122,7 +122,8 @@ def visao_semanal(pagina, data_ref, hoje=None, agora=None):
             'num': campo.ordem, 'item': campo.item, 'descricao': campo.descricao, 'etapa': campo.etapa, 'especificacao': campo.especificacao,
             'metodo': campo.metodo, 'plano': campo.plano_reacao, 'frequencia': str(campo.frequencia) if campo.frequencia_id else 'Sem frequência',
             'frequencia_id': campo.frequencia_id or 0, 'periodicidade': per, 'critico': campo.critico, 'tipo': campo.get_tipo_display(),
-            'minimo': _fmt(campo.minimo), 'maximo': _fmt(campo.maximo), 'unidade': campo.unidade}
+            'minimo': _fmt(campo.minimo), 'maximo': _fmt(campo.maximo), 'unidade': campo.unidade, 'tipo_codigo': campo.tipo,
+            'opcoes': [o.valor for o in campo.lista.opcoes.all()] if campo.tipo == 'lista' and campo.lista_id else []}
         regs_item = registros.get(chave(campo.item, campo.etapa, campo.descricao), [])
         linha = {'campo': campo.pk, 'tipo': 'dias', 'dias': [[] for _ in dias], 'janelas': []}
         if per == 'turno':

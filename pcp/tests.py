@@ -2582,3 +2582,39 @@ class SemanaGruposETests(SemanaBase):
         self.assertTrue(all(n['url'].endswith(f'#campo-{self.c_ev.pk}') for n in linha['novos'][0]))
         self.assertContains(r, 'farol-novo')
         self.assertContains(r, f'#campo-{self.c_ev.pk}')
+
+
+class SemanaLancarNoPopupTests(SemanaBase):
+    """Lançamento direto do pop-up (endpoint JSON por item) respeitando o tipo do campo."""
+
+    def post(self, campo, valor, dia='2026-10-20', turno=None):
+        return self.client.post(reverse('pcp:preencher_item', args=[self.pag.pk]),
+                                {'campo': campo.pk, 'data': dia, 'turno': (turno or self.t1).pk, 'valor': valor})
+
+    def test_lanca_numero_avalia_conformidade_e_corrige(self):
+        r = self.post(self.c_num, '-0,2')
+        self.assertEqual((r.status_code, r.json()['conforme']), (200, False))
+        self.assertEqual(Resposta.objects.get(campo=self.c_num).valor, '-0,2')
+        self.assertTrue(self.post(self.c_num, '-0,7').json()['conforme'])
+        self.assertEqual(Resposta.objects.filter(campo=self.c_num).count(), 1)
+
+    def test_valida_tipo_e_data(self):
+        self.assertEqual(self.post(self.c_num, 'abc').status_code, 400)
+        self.assertEqual(self.post(self.c_lista, 'valor fora da lista').status_code, 400)
+        self.assertEqual(self.post(self.c_num, '1', dia='2999-01-01').status_code, 400)
+        self.assertEqual(self.post(self.c_num, '1', dia='lixo').status_code, 400)
+
+    def test_lista_aceita_opcao_e_valor_vazio_limpa(self):
+        opcao = self.c_lista.lista.opcoes.first().valor
+        self.assertEqual(self.post(self.c_lista, opcao).status_code, 200)
+        self.assertEqual(Resposta.objects.filter(campo=self.c_lista).count(), 1)
+        self.assertTrue(self.post(self.c_lista, '').json()['limpo'])
+        self.assertEqual(Resposta.objects.filter(campo=self.c_lista).count(), 0)
+
+    def test_dados_do_popup_trazem_tipo_opcoes_e_destino(self):
+        v = self.visao()
+        item = v['itens'][self.c_lista.pk]
+        self.assertEqual(item['tipo_codigo'], 'lista')
+        self.assertTrue(item['opcoes'])
+        d = v['detalhes'][f'{self.c_lista.pk}:20261020:{self.t2.pk}']['lancar']
+        self.assertEqual((d['iso'], d['turno_id']), ('2026-10-20', self.t2.pk))

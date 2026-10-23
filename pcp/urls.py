@@ -73,6 +73,7 @@ urlpatterns = [
     path('paginas/<int:pk>/dados/', views.exportar_dados_pagina, name='exportar_dados_pagina'),
     path('formularios/<int:pk>/dados/', views.exportar_dados_formulario, name='exportar_dados_formulario'),
     path('preencher/<int:pk>/salvar/', views.preencher_salvar, name='preencher_salvar'),
+    path('preencher/<int:pk>/item/', views.preencher_item, name='preencher_item'),
     path('ocorrencias/', views.ocorrencias, name='ocorrencias'),
     path('ocorrencias/<int:pk>/tratar/', views.ocorrencia_tratar, name='ocorrencia_tratar'),
 ]

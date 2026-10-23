@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db import transaction
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.db.models import Count, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -1008,7 +1008,8 @@ def semana(request):
                            'dispensado': total['dispensado'], 'registros': total['info'], 'sob_demanda': linhas_g[0]['tipo'] == 'eventos'})
         contexto.update({
             'd': dados, 'grupos': grupos, 'frequencias': [(k, v[1]) for k, v in ordenadas],
-            'json_detalhes': {'itens': dados['itens'], 'detalhes': dados['detalhes']},
+            'json_detalhes': {'itens': dados['itens'], 'detalhes': dados['detalhes'], 'turnos': dados['turnos'], 'hoje': hoje.isoformat(),
+                              'url_item': reverse('pcp:preencher_item', args=[escolhida.pk]), 'editavel': escolhida.versao.status == FormularioVersao.VIGENTE},
             'anterior': dados['ini'] - datetime.timedelta(days=7), 'proxima': dados['ini'] + datetime.timedelta(days=7),
             'esta_semana': semana_mod.segunda_feira(hoje), 'e_esta_semana': dados['ini'] == semana_mod.segunda_feira(hoje)})
     return render(request, 'pcp/semana.html', contexto)
@@ -1348,6 +1349,40 @@ def preencher_pagina(request, pk):
         'templates_pagina': [t for t in TemplatePagina.objects.filter(formulario=pagina.versao.formulario, ativo=True).defer('arquivo_base64') if t.serve_para(pagina)],
         'tipos_ocorrencia': Ocorrencia.TIPOS,
     })
+
+
+@login_required
+@require_POST
+def preencher_item(request, pk):
+    """Lança (ou corrige/limpa) o resultado de UM item numa data e turno, pelo pop-up da visão semanal. Responde JSON."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao'), pk=pk)
+    campo = get_object_or_404(Campo.objects.select_related('lista').prefetch_related('lista__opcoes'), pk=request.POST.get('campo') or 0, pagina=pagina, ativo=True)
+    turno = get_object_or_404(Turno, pk=request.POST.get('turno') or 0)
+    try:
+        data = datetime.date.fromisoformat(request.POST.get('data') or '')
+    except ValueError:
+        return JsonResponse({'ok': False, 'erro': 'Informe uma data válida.'}, status=400)
+    if pagina.versao.status != FormularioVersao.VIGENTE:
+        return JsonResponse({'ok': False, 'erro': 'Só é possível lançar verificações na revisão vigente.'}, status=400)
+    if data > timezone.localdate():
+        return JsonResponse({'ok': False, 'erro': 'Não é possível lançar em data futura.'}, status=400)
+    valor = (request.POST.get('valor') or '').strip()
+    if valor and campo.tipo == Campo.NUMERO:
+        try:
+            Decimal(valor.replace(',', '.'))
+        except InvalidOperation:
+            return JsonResponse({'ok': False, 'erro': 'Informe um número válido.'}, status=400)
+    if valor and campo.tipo == Campo.LISTA and campo.lista_id and valor not in [o.valor for o in campo.lista.opcoes.all()]:
+        return JsonResponse({'ok': False, 'erro': 'Escolha uma das opções da lista.'}, status=400)
+    with transaction.atomic():
+        if not valor:
+            Resposta.objects.filter(verificacao__pagina=pagina, verificacao__data=data, verificacao__turno=turno, campo=campo).delete()
+            conforme = None
+        else:
+            verificacao, _ = Verificacao.objects.get_or_create(pagina=pagina, data=data, turno=turno, defaults={'responsavel': request.user})
+            conforme = campo.avaliar(valor)
+            Resposta.objects.update_or_create(verificacao=verificacao, campo=campo, defaults={'valor': valor, 'conforme': conforme})
+    return JsonResponse({'ok': True, 'conforme': conforme, 'limpo': not valor})
 
 
 @login_required
