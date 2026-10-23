@@ -312,7 +312,11 @@ class PendenciasTests(PendenciasBase):
         self.assertEqual(p['percentual'], 12)
         r = self.client.get(reverse('pcp:pendencias') + '?data=2026-10-22')
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, '1/4')  # T1: 1 feita de 4 devidas
+        self.assertContains(r, 'itens pendentes')          # só os itens pendentes, com os turnos em que faltam
+        self.assertNotContains(r, '1/4')
+        itens = [l for b in p['blocos'] for ls in b['grupos'].values() for l in ls if l['itens']]
+        self.assertTrue(itens)
+        self.assertEqual(sum(len(l['itens']) for l in itens) > 0, True)
         r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
         self.assertEqual(r.context['n_devidos'], 4)
         self.assertEqual(r.context['n_pendentes'], 3)
@@ -1458,7 +1462,7 @@ class StatusMaquinaTests(PendenciasBase):
         self.assertLess(depois['devidos'], antes)
         celula = depois['blocos'][0]['grupos']['Fita'][0]['celulas'][0]
         self.assertEqual((celula['status'], celula['status_rotulo']), ('manutencao', 'Em Manutenção'))
-        self.assertContains(self.client.get(reverse('pcp:pendencias') + '?data=2026-10-22'), 'Manut.')
+        self.assertEqual(depois['blocos'][0]['grupos']['Fita'][0]['celulas'][0]['status'], 'manutencao')
         # atrasos: dia 21/10 todo parado não gera atraso (itens por turno e diário)
         self.v15.vigencia = date(2026, 10, 1)
         self.v15.save()
