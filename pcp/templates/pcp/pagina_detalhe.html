@@ -27,10 +27,17 @@
     {% if not versao.editavel %}<div class="alert alert-info py-2">Revisão {{ versao.get_status_display|lower }}: somente leitura.</div>{% endif %}
     <div class="card"><div class="table-responsive">
         <table class="table table-sm table-hover align-middle mb-0">
-            <thead><tr><th>Item</th><th>O que verificar</th><th>Especificação</th><th>Método</th><th>Frequência</th><th>Campo</th><th>Plano de reação</th><th>Resp.</th><th></th></tr></thead>
+            <thead><tr><th style="width:9.5rem">Nº</th><th>Item</th><th>O que verificar</th><th>Especificação</th><th>Método</th><th>Frequência</th><th>Campo</th><th>Plano de reação</th><th>Resp.</th><th></th></tr></thead>
             <tbody>
             {% for c in campos %}
                 <tr class="{% if not c.ativo %}text-muted{% endif %}">
+                    <td class="text-nowrap">
+                        <form method="post" action="{% url 'pcp:campo_mover' c.pk %}" class="d-inline-flex align-items-center gap-1">{% csrf_token %}
+                            <input type="number" name="posicao" value="{{ c.ordem }}" min="1" class="form-control form-control-sm" style="width:4.2rem"
+                                   onchange="this.form.submit()" title="Nº do item neste bloco. Altere o número para reposicionar o item.">
+                            <button name="dir" value="up" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subir" {% if forloop.first %}disabled{% endif %}><i class="bi bi-arrow-up"></i></button>
+                            <button name="dir" value="down" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Descer" {% if forloop.last %}disabled{% endif %}><i class="bi bi-arrow-down"></i></button>
+                        </form></td>
                     <td class="text-nowrap fw-semibold {% if c.critico %}text-danger{% endif %}">{{ c.item|default:"—" }}{% if c.critico %} <i class="bi bi-exclamation-octagon" title="Crítico (nível 3)"></i>{% endif %}</td>
                     <td>{% if c.etapa %}<div class="small text-muted">{{ c.etapa }}</div>{% endif %}{{ c.descricao }}</td>
                     <td class="small">{{ c.especificacao|default:"—" }}</td>
@@ -50,7 +57,7 @@
                     </td>
                 </tr>
             {% empty %}
-                <tr><td colspan="9" class="text-center text-muted py-4">Nenhum campo nesta página.</td></tr>
+                <tr><td colspan="10" class="text-center text-muted py-4">Nenhum campo nesta página.</td></tr>
             {% endfor %}
             </tbody>
         </table>

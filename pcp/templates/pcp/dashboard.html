@@ -170,7 +170,7 @@
                     <tr>
                         <td class="text-muted">{{ forloop.counter }}</td>
                         <td>{% if i.etapa %}<div class="small text-muted">{{ i.etapa|truncatechars:45 }}</div>{% endif %}
-                            <span class="fw-semibold {% if i.critico %}text-danger{% endif %}">{{ i.item|default:"—" }}</span> {{ i.descricao|truncatechars:60 }}</td>
+                            <span class="badge bg-light text-dark border" title="Nº do item no bloco">{{ i.numero }}</span> <span class="fw-semibold {% if i.critico %}text-danger{% endif %}">{{ i.item|default:"—" }}</span> {{ i.descricao|truncatechars:60 }}</td>
                         <td class="small"><a href="{% url 'pcp:atrasos_pagina' i.pagina_id %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}" class="text-decoration-none">{{ i.pagina }}</a></td>
                         <td class="small text-nowrap">{{ i.frequencia }}</td>
                         <td class="text-center"><span class="badge {% if i.pct >= 95 %}bg-success{% elif i.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ i.pct }}%</span>

@@ -131,7 +131,7 @@
                 <tbody>
                 {% for l in linhas %}{% with c=l.campo r=l.resposta %}
                     <tr class="{% if r.conforme == False %}table-danger{% elif l.pendente %}table-warning{% endif %}" data-pendente="{% if l.pendente %}1{% else %}0{% endif %}">
-                        <td class="text-nowrap fw-semibold pcp-item {% if c.critico %}text-danger{% endif %}">{{ c.item|default:"—" }}</td>
+                        <td class="text-nowrap fw-semibold pcp-item {% if c.critico %}text-danger{% endif %}"><span class="badge bg-light text-dark border me-1" title="Nº do item neste bloco">{{ c.ordem }}</span>{{ c.item|default:"—" }}</td>
                         <td class="pcp-desc">{% if c.etapa %}<div class="small text-muted">{{ c.etapa }}</div>{% endif %}{{ c.descricao }}{% if c.metodo %}<div class="small text-muted">{{ c.metodo }}</div>{% endif %}</td>
                         <td class="small pcp-spec{% if not c.especificacao %} pcp-sem-valor{% endif %}" data-label="Especificação">{{ c.especificacao|default:"—" }}</td>
                         <td class="small pcp-freq">{{ c.frequencia|default:"—" }}{% if l.pendente %} <span class="badge bg-warning text-dark">Pendente</span>{% elif l.devido %} <span class="badge bg-success">Em dia</span>{% endif %}{% if c.frequencia_detalhe %}<div class="text-muted">{{ c.frequencia_detalhe|truncatechars:80 }}</div>{% endif %}</td>

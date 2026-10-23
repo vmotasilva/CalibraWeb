@@ -33,6 +33,7 @@ urlpatterns = [
     path('paginas/<int:pk>/alternar/', views.pagina_alternar, name='pagina_alternar'),
     path('paginas/<int:pk>/desativar/', views.pagina_desativar, name='pagina_desativar'),
     path('campos/<int:pk>/alternar/', views.campo_alternar, name='campo_alternar'),
+    path('campos/<int:pk>/mover/', views.campo_mover, name='campo_mover'),
     path('versoes/<int:pk>/paginas/nova/', views.pagina_nova, name='pagina_nova'),
     path('paginas/<int:pk>/', views.pagina_detalhe, name='pagina_detalhe'),
     path('paginas/<int:pk>/editar/', views.pagina_editar, name='pagina_editar'),

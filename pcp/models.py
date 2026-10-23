@@ -148,7 +148,10 @@ class Formulario(models.Model):
         """Move as páginas de mesmo nome, em todas as revisões, para o grupo ('' = remover do grupo)."""
         if grupo:
             self.garantir_grupo(grupo)
-        return Pagina.objects.filter(versao__formulario=self, nome__in=list(nomes_paginas)).update(grupo=grupo)
+        n = Pagina.objects.filter(versao__formulario=self, nome__in=list(nomes_paginas)).update(grupo=grupo)
+        for versao in self.versoes.all():
+            self.renumerar_paginas(versao)
+        return n
 
     def paginas_equivalentes(self, nomes):
         """Páginas de mesmo nome nas revisões vigente e em rascunho (as obsoletas ficam como histórico)."""
@@ -158,9 +161,33 @@ class Formulario(models.Model):
     def definir_ordem_paginas(self, versao, nomes):
         """Grava a ordem de exibição (posição na lista) nas páginas de mesmo nome, nas revisões vigente e em rascunho
         e na revisão informada, para a ordem escolhida valer em todas as telas e nas próximas revisões."""
-        for posicao, nome in enumerate(nomes):
+        for posicao, nome in enumerate(nomes, 1):
             Pagina.objects.filter(versao=versao, nome=nome).update(ordem=posicao)
             self.paginas_equivalentes([nome]).update(ordem=posicao)
+
+    def renumerar_paginas(self, versao):
+        """Numera as páginas de cada grupo da revisão de 1 a n, mantendo a ordem atual."""
+        for grupo in set(versao.paginas.values_list('grupo', flat=True)):
+            for numero, pagina in enumerate(versao.paginas.filter(grupo=grupo).order_by('ordem', 'pk'), 1):
+                if pagina.ordem != numero:
+                    Pagina.objects.filter(pk=pagina.pk).update(ordem=numero)
+
+    def posicionar_pagina(self, pagina, posicao):
+        """Move a página para a posição `posicao` (1 = primeira) dentro do grupo, renumerando as demais e as páginas de mesmo nome
+        nas outras revisões. Posição fora do intervalo vai para o início ou o fim."""
+        irmas = [p for p in pagina.versao.paginas.filter(grupo=pagina.grupo).order_by('ordem', 'pk') if p.pk != pagina.pk]
+        posicao = max(1, min(int(posicao or 0) or len(irmas) + 1, len(irmas) + 1))
+        irmas.insert(posicao - 1, pagina)
+        self.definir_ordem_paginas(pagina.versao, [p.nome for p in irmas])
+
+    def aplicar_ordem_campos(self, nome_pagina, chaves):
+        """Aplica a ordem dos itens (lista de (item, etapa, descrição)) às páginas de mesmo nome nas revisões vigente e em rascunho."""
+        indice = {c: i for i, c in enumerate(chaves)}
+        for pagina in self.paginas_equivalentes([nome_pagina]):
+            campos = sorted(pagina.campos.all(), key=lambda c: (indice.get((c.item, c.etapa, c.descricao), 10 ** 6), c.ordem, c.pk))
+            for numero, c in enumerate(campos, 1):
+                if c.ordem != numero:
+                    Campo.objects.filter(pk=c.pk).update(ordem=numero)
 
     def ordenar_grupos(self, grupos):
         """Reordena um dict {nome_do_grupo: valor} pela ordem cadastrada; 'Sem grupo' sempre por último."""
@@ -231,7 +258,7 @@ class Pagina(models.Model):
     codigo_sistema = models.CharField(max_length=60, blank=True, help_text='Código da página no sistema (aba da planilha).')
     grupo = models.CharField(max_length=80, blank=True, help_text='Agrupador no índice (ex.: Blocagem, Corte, Polimento).')
     maquina = models.ForeignKey('maquinas.Maquina', null=True, blank=True, on_delete=models.SET_NULL, related_name='paginas_pcp')
-    ordem = models.PositiveSmallIntegerField(default=0)
+    ordem = models.PositiveSmallIntegerField('Ordem no grupo', default=0, help_text='Nº da página dentro do grupo (1, 2, 3…).')
     ativo = models.BooleanField(default=True)
 
     class Meta:
@@ -239,6 +266,22 @@ class Pagina(models.Model):
 
     def __str__(self):
         return self.nome
+
+    def renumerar_campos(self):
+        """Numera os itens do bloco de 1 a n, mantendo a ordem atual (o Nº identifica o item dentro do bloco)."""
+        for numero, campo in enumerate(self.campos.order_by('ordem', 'pk'), 1):
+            if campo.ordem != numero:
+                Campo.objects.filter(pk=campo.pk).update(ordem=numero)
+
+    def mover_campo(self, campo, posicao):
+        """Move o item para o Nº `posicao` (1 = primeiro), renumerando os demais. Devolve as chaves (item, etapa, descrição) na nova ordem."""
+        outros = [c for c in self.campos.order_by('ordem', 'pk') if c.pk != campo.pk]
+        posicao = max(1, min(int(posicao or 0) or len(outros) + 1, len(outros) + 1))
+        outros.insert(posicao - 1, campo)
+        for numero, c in enumerate(outros, 1):
+            if c.ordem != numero:
+                Campo.objects.filter(pk=c.pk).update(ordem=numero)
+        return [(c.item, c.etapa, c.descricao) for c in outros]
 
 
 class Campo(models.Model):
@@ -264,7 +307,7 @@ class Campo(models.Model):
     maximo = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
     unidade = models.CharField(max_length=20, blank=True)
     critico = models.BooleanField('Crítico (nível 3)', default=False)
-    ordem = models.PositiveSmallIntegerField(default=0)
+    ordem = models.PositiveSmallIntegerField('Nº no bloco', default=0, help_text='Nº do item dentro do bloco (1, 2, 3…): identifica e ordena. Alterar reposiciona os demais.')
     ativo = models.BooleanField(default=True)
 
     class Meta:

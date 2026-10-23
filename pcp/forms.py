@@ -108,6 +108,7 @@ class CampoForm(_BootstrapMixin, forms.ModelForm):
         fields = ['item', 'etapa', 'descricao', 'especificacao', 'metodo', 'plano_reacao', 'responsavel', 'frequencia', 'frequencia_detalhe',
                   'tipo', 'lista', 'minimo', 'maximo', 'unidade', 'critico', 'ordem', 'ativo']
         widgets = {'especificacao': forms.Textarea(attrs={'rows': 2}), 'plano_reacao': forms.Textarea(attrs={'rows': 2})}
+        labels = {'ordem': 'Nº no bloco'}
 
     def clean(self):
         dados = super().clean()

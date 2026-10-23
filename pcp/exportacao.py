@@ -18,8 +18,8 @@ from pcp.pendencias import chave, slots_parados
 
 ROTULOS = {v: n for v, n in Verificacao.STATUS_MAQUINA if v}
 COR_STATUS = {Verificacao.MANUTENCAO: 'FFE0B2', Verificacao.PARADA: 'D9D9D9'}
-COLUNAS_FIXAS = ['Item', 'O que verificar', 'Especificação', 'Método', 'Frequência', 'Plano de reação']
-LARGURAS_FIXAS = [9, 42, 36, 24, 18, 30]
+COLUNAS_FIXAS = ['Nº', 'Item', 'O que verificar', 'Especificação', 'Método', 'Frequência', 'Plano de reação']
+LARGURAS_FIXAS = [6, 9, 42, 36, 24, 18, 30]
 NEGRITO = Font(bold=True)
 CABECALHO = PatternFill('solid', fgColor='14284B')
 BRANCO = Font(bold=True, color='FFFFFF')
@@ -85,12 +85,12 @@ def _aba_pagina(wb, formulario, versao, pagina, ini, fim, turnos, usados):
     parados = slots_parados(pagina, ini, fim)
 
     for linha, campo in enumerate(pagina.campos.filter(ativo=True).select_related('frequencia'), start=6):
-        fixos = [campo.item, campo.descricao, campo.especificacao, campo.metodo,
+        fixos = [campo.ordem, campo.item, campo.descricao, campo.especificacao, campo.metodo,
                  str(campo.frequencia or ''), campo.plano_reacao]
         for j, valor in enumerate(fixos, 1):
             ws.cell(row=linha, column=j, value=valor).alignment = Alignment(wrap_text=True, vertical='top')
         if campo.critico:
-            ws.cell(row=linha, column=1).font = Font(bold=True, color='C00000')
+            ws.cell(row=linha, column=2).font = Font(bold=True, color='C00000')
         lancados = respostas.get(chave(campo.item, campo.etapa, campo.descricao), {})
         for (dia, turno_id), coluna in colunas.items():
             status = parados.get((dia, turno_id))

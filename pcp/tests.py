@@ -867,7 +867,7 @@ class AjustarTiposTests(PcpBase):
         Pagina.objects.filter(pk=fita.pk).update(ativo=False, ordem=7)
         r2 = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.998.R02 - x.xlsx', setor=self.setor)
         fita2 = r2['versao'].paginas.get(nome='Fitadeira')
-        self.assertEqual((fita2.ativo, fita2.ordem), (False, 7))
+        self.assertEqual((fita2.ativo, fita2.ordem), (False, 1))   # ordem renumerada de 1 a n dentro do grupo
         l2 = fita2.campos.get(item='A-1')
         self.assertEqual((l2.tipo, l2.ativo, l2.critico), ('texto', False, True))
         t2 = fita2.campos.get(item='B-12')
@@ -1481,7 +1481,7 @@ class StatusMaquinaTests(PendenciasBase):
         ws = wb['Fitadeira']
         col = next(c for c in range(1, ws.max_column + 1) if ws.cell(row=4, column=c).value == '22/10')
         assert ws.cell(row=5, column=col).value == 'T1' and ws.cell(row=5, column=col + 1).value == 'T2'
-        linhas = [r_ for r_ in range(6, ws.max_row + 1) if ws.cell(row=r_, column=1).value]
+        linhas = [r_ for r_ in range(6, ws.max_row + 1) if ws.cell(row=r_, column=2).value]   # coluna 1 = Nº, coluna 2 = Item
         self.assertGreaterEqual(len(linhas), 4)
         for l in linhas:   # TODOS os itens de T1 saem preenchidos com a situação
             self.assertEqual(ws.cell(row=l, column=col).value, 'Em Manutenção')
@@ -1871,3 +1871,95 @@ class FarolTests(PendenciasBase):
         self.assertContains(r, 'Basta um registro em qualquer turno')
         self.assertEqual(self.client.get(url + '?observar=2026-10-14').context['observar'], date(2026, 10, 14))
         self.assertEqual(self.client.get(url + '?observar=lixo').status_code, 200)
+
+
+class NumeracaoTests(PcpBase):
+    """Itens com Nº de 1 a n em cada bloco (identifica e ordena); páginas numeradas de 1 a n em cada grupo."""
+
+    def setUp(self):
+        super().setUp()
+        for c, n in ((self.c_lista, 1), (self.c_num, 2)):
+            Campo.objects.filter(pk=c.pk).update(ordem=n)
+        self.c3 = Campo.objects.create(pagina=self.pag, item='C-3', descricao='Terceiro', tipo='texto', ordem=3)
+        self.v15.publicar()
+
+    def numeros(self, pagina=None):
+        return [(c.item, c.ordem) for c in (pagina or self.pag).campos.order_by('ordem', 'pk')]
+
+    def test_importador_numera_itens_de_1_a_n_e_paginas_de_1_a_n_por_grupo(self):
+        r = importar_planilha(_planilha_modelo(), nome_arquivo='FOR.999.R03 - x.xlsx', setor=self.setor)
+        for pagina in r['versao'].paginas.all():
+            self.assertEqual([c.ordem for c in pagina.campos.order_by('ordem')], list(range(1, pagina.campos.count() + 1)))
+        for grupo in set(r['versao'].paginas.values_list('grupo', flat=True)):
+            nums = sorted(r['versao'].paginas.filter(grupo=grupo).values_list('ordem', flat=True))
+            self.assertEqual(nums, list(range(1, len(nums) + 1)), grupo)
+
+    def test_mover_item_com_setas_e_numero_digitado(self):
+        url = lambda c: reverse('pcp:campo_mover', args=[c.pk])
+        self.client.post(url(self.c3), {'dir': 'up'})
+        self.assertEqual(self.numeros(), [('B-1', 1), ('C-3', 2), ('B-5', 3)])
+        self.client.post(url(self.c_lista), {'posicao': '3'})                       # digita o Nº
+        self.assertEqual(self.numeros(), [('C-3', 1), ('B-5', 2), ('B-1', 3)])
+        self.client.post(url(self.c_lista), {'dir': 'down'})                        # já é o último: nada muda
+        self.assertEqual([n for _, n in self.numeros()], [1, 2, 3])
+        self.client.post(url(self.c_num), {'posicao': '99'})                        # fora do intervalo vai para o fim
+        self.assertEqual(self.numeros()[-1], ('B-5', 3))
+        self.client.post(url(self.c_num), {'posicao': 'x'})                         # inválido: ignorado
+        self.assertEqual(self.numeros()[-1], ('B-5', 3))
+
+    def test_mover_vale_na_revisao_vigente_e_propaga_ao_rascunho(self):
+        rascunho = self.v15.clonar('R16')
+        self.client.post(reverse('pcp:campo_mover', args=[self.c3.pk]), {'posicao': '1'})   # a revisão vigente está travada: mover é permitido
+        self.assertEqual(self.numeros()[0], ('C-3', 1))
+        self.assertEqual(self.numeros(rascunho.paginas.get())[0], ('C-3', 1))
+
+    def test_excluir_renumera_e_novo_item_entra_no_fim_ou_na_posicao(self):
+        rascunho = self.v15.clonar('R16')
+        pag16 = rascunho.paginas.get()
+        self.client.post(reverse('pcp:campo_excluir', args=[pag16.campos.get(item='B-1').pk]))
+        self.assertEqual(self.numeros(pag16), [('B-5', 1), ('C-3', 2)])                    # renumerado sem buraco
+        self.client.post(reverse('pcp:campo_novo', args=[pag16.pk]), {'descricao': 'Novo', 'tipo': 'texto', 'ordem': 0, 'ativo': 'on'})
+        self.assertEqual(self.numeros(pag16)[-1][1], 3)                                    # ordem 0/vazia: fim do bloco
+        self.client.post(reverse('pcp:campo_novo', args=[pag16.pk]), {'item': 'N-2', 'descricao': 'No início', 'tipo': 'texto', 'ordem': 1, 'ativo': 'on'})
+        self.assertEqual(self.numeros(pag16)[0], ('N-2', 1))
+        self.assertEqual([n for _, n in self.numeros(pag16)], [1, 2, 3, 4])   # 3 itens - 1 excluído + 2 criados
+
+    def test_editar_o_numero_do_item_reposiciona_os_demais(self):
+        rascunho = self.v15.clonar('R16')
+        pag16 = rascunho.paginas.get()
+        c = pag16.campos.get(item='C-3')
+        self.client.post(reverse('pcp:campo_editar', args=[c.pk]), {'item': 'C-3', 'descricao': 'Terceiro', 'tipo': 'texto', 'ordem': 1, 'ativo': 'on'})
+        self.assertEqual(self.numeros(pag16), [('C-3', 1), ('B-1', 2), ('B-5', 3)])
+
+    def test_paginas_numeradas_por_grupo(self):
+        outra = Pagina.objects.create(versao=self.v15, nome='Outra', grupo='Fita', ordem=0)
+        terceira = Pagina.objects.create(versao=self.v15, nome='Terceira', grupo='Fita', ordem=0)
+        self.v15.formulario.renumerar_paginas(self.v15)
+        self.assertEqual(sorted(self.v15.paginas.filter(grupo='Fita').values_list('ordem', flat=True)), [1, 2, 3])
+        self.client.post(reverse('pcp:pagina_editar', args=[terceira.pk]), {'grupo': 'Fita', 'ordem': 1, 'nome': 'Terceira', 'codigo_sistema': '', 'ativo': 'on'})
+        self.assertEqual(list(self.v15.paginas.filter(grupo='Fita').order_by('ordem').values_list('nome', 'ordem'))[0], ('Terceira', 1))
+        self.client.post(reverse('pcp:paginas_acao', args=[self.form.pk]), {'paginas': [outra.pk], 'acao': 'mover', 'destino': '__novo__', 'novo_nome': 'Corte'})
+        self.assertEqual(sorted(self.v15.paginas.filter(grupo='Fita').values_list('ordem', flat=True)), [1, 2])   # o grupo de origem foi renumerado
+        self.assertEqual(list(self.v15.paginas.filter(grupo='Corte').values_list('ordem', flat=True)), [1])
+
+    def test_migracao_renumera_dados_antigos(self):
+        from django.apps import apps
+        from importlib import import_module
+        Campo.objects.filter(pagina=self.pag).update(ordem=0)                 # dados antigos: tudo zero, sem ordem
+        Campo.objects.filter(pk=self.c3.pk).update(ordem=7)
+        Pagina.objects.filter(pk=self.pag.pk).update(ordem=9)
+        import_module('pcp.migrations.0009_numeracao_blocos').renumerar(apps, None)
+        self.assertEqual([n for _, n in self.numeros()], [1, 2, 3])
+        self.assertEqual(self.numeros()[-1][0], 'C-3')                        # manteve a ordem relativa (o 7 vem por último)
+        self.pag.refresh_from_db()
+        self.assertEqual(self.pag.ordem, 1)
+
+    def test_numero_aparece_nas_telas_e_na_planilha(self):
+        import openpyxl as xl
+        r = self.client.get(reverse('pcp:pagina_detalhe', args=[self.pag.pk]))
+        self.assertContains(r, reverse('pcp:campo_mover', args=[self.c3.pk]))
+        self.assertContains(r, 'name="posicao"')
+        r = self.client.get(reverse('pcp:exportar_pagina', args=[self.pag.pk]) + '?mes=2026-10')
+        ws = xl.load_workbook(io.BytesIO(r.content))['Fitadeira']
+        self.assertEqual([ws.cell(row=4, column=1).value, ws.cell(row=4, column=2).value], ['Nº', 'Item'])
+        self.assertEqual([(ws.cell(row=l, column=1).value, ws.cell(row=l, column=2).value) for l in (6, 7, 8)], [(1, 'B-1'), (2, 'B-5'), (3, 'C-3')])

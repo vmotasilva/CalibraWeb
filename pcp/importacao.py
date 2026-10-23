@@ -419,6 +419,7 @@ def importar_planilha(arquivo, nome_arquivo=None, setor=None, codigo=None, revis
             Campo.objects.bulk_create(objetos)
             total_campos += len(objetos)
             paginas_resumo.append((nome_pagina, grupo, layout, len(objetos)))
+        formulario.renumerar_paginas(versao)  # páginas numeradas de 1 a n em cada grupo (itens já entram de 1 a n em cada bloco)
         if publicar:
             versao.publicar()
 

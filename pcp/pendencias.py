@@ -294,7 +294,7 @@ def dashboard(ini, fim, turnos, formulario_id=None, hoje=None):
                 itens_acc[campo.pk][1] += int(feito)
                 if campo.pk not in itens_info:
                     itens_info[campo.pk] = {
-                        'campo_id': campo.pk, 'pagina_id': pagina.pk, 'pagina': pagina.nome, 'codigo': versao.formulario.codigo,
+                        'campo_id': campo.pk, 'numero': campo.ordem, 'pagina_id': pagina.pk, 'pagina': pagina.nome, 'codigo': versao.formulario.codigo,
                         'item': campo.item, 'descricao': campo.descricao[:90], 'etapa': campo.etapa[:60], 'frequencia': f.nome,
                         'critico': campo.critico}
             grupos.setdefault(pagina.grupo or 'Sem grupo', []).append((pagina, dict(por_freq)))

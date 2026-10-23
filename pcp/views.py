@@ -359,6 +359,7 @@ def pagina_nova(request, pk):
         pagina = form.save(commit=False)
         pagina.versao = versao
         pagina.save()
+        versao.formulario.posicionar_pagina(pagina, pagina.ordem)
         messages.success(request, f'Página "{pagina.nome}" criada.')
         return redirect('pcp:pagina_detalhe', pagina.pk)
     return render(request, 'pcp/form_generico.html', {
@@ -382,6 +383,8 @@ def pagina_editar(request, pk):
         form.save()
         if 'grupo' in form.changed_data:
             pagina.versao.formulario.atribuir_grupo([pagina.nome], pagina.grupo)  # vale para as páginas de mesmo nome nas outras revisões
+        if 'ordem' in form.changed_data:
+            pagina.versao.formulario.posicionar_pagina(pagina, pagina.ordem)
         messages.success(request, 'Página atualizada.')
         return redirect('pcp:pagina_detalhe', pk)
     return render(request, 'pcp/form_generico.html', {
@@ -601,6 +604,8 @@ def pagina_excluir(request, pk):
         messages.error(request, f'A página "{nome}" já tem verificações lançadas e não pode ser excluída (o histórico seria perdido). '
                                 'Desative-a para tirá-la do preenchimento, das pendências e dos atrasos.')
         return redirect('pcp:pagina_detalhe', pk)
+    versao = FormularioVersao.objects.get(pk=versao_id)
+    versao.formulario.renumerar_paginas(versao)
     messages.success(request, f'Página "{nome}" excluída.')
     return redirect('pcp:versao_detalhe', versao_id)
 
@@ -645,7 +650,8 @@ def campo_novo(request, pk):
         campo = form.save(commit=False)
         campo.pagina = pagina
         campo.save()
-        messages.success(request, 'Campo criado.')
+        pagina.mover_campo(campo, campo.ordem)
+        messages.success(request, f'Campo criado (Nº {Campo.objects.get(pk=campo.pk).ordem}).')
         return redirect('pcp:pagina_detalhe', pk)
     return render(request, 'pcp/form_generico.html', {
         'form': form, 'titulo': f'Novo campo em {pagina.nome}', 'voltar': 'pcp:pagina_detalhe', 'voltar_pk': pk})
@@ -659,6 +665,9 @@ def campo_editar(request, pk):
     form = CampoForm(request.POST or None, instance=campo)
     if request.method == 'POST' and form.is_valid():
         form.save()
+        if 'ordem' in form.changed_data:
+            chaves = campo.pagina.mover_campo(campo, campo.ordem)
+            campo.pagina.versao.formulario.aplicar_ordem_campos(campo.pagina.nome, chaves)
         messages.success(request, 'Campo atualizado.')
         return redirect('pcp:pagina_detalhe', campo.pagina_id)
     return render(request, 'pcp/form_generico.html', {
@@ -676,8 +685,29 @@ def campo_excluir(request, pk):
     except ProtectedError:
         messages.error(request, 'Este item já tem respostas lançadas e não pode ser excluído. Desative-o para deixar de exigir o preenchimento.')
         return redirect('pcp:pagina_detalhe', pagina_id)
-    messages.success(request, 'Item excluído.')
+    Pagina.objects.get(pk=pagina_id).renumerar_campos()
+    messages.success(request, 'Item excluído. Os Nºs do bloco foram renumerados.')
     return redirect('pcp:pagina_detalhe', pagina_id)
+
+
+@login_required
+@require_POST
+def campo_mover(request, pk):
+    """Sobe, desce ou posiciona o item no Nº informado dentro do bloco; vale em qualquer revisão e nas páginas de mesmo nome."""
+    campo = get_object_or_404(Campo.objects.select_related('pagina__versao__formulario'), pk=pk)
+    pagina = campo.pagina
+    direcao = request.POST.get('dir')
+    if direcao in ('up', 'down'):
+        posicao = campo.ordem + (-1 if direcao == 'up' else 1)
+    else:
+        try:
+            posicao = int(request.POST.get('posicao', ''))
+        except ValueError:
+            messages.error(request, 'Informe o Nº (um número inteiro a partir de 1).')
+            return redirect('pcp:pagina_detalhe', pagina.pk)
+    chaves = pagina.mover_campo(campo, posicao)
+    pagina.versao.formulario.aplicar_ordem_campos(pagina.nome, chaves)
+    return redirect('pcp:pagina_detalhe', pagina.pk)
 
 
 @login_required
@@ -914,7 +944,7 @@ def dashboard(request):
     dias = int(request.GET['dias']) if request.GET.get('dias') in {str(d) for d in PERIODOS_DASHBOARD} else 30
     ini = fim - datetime.timedelta(days=dias - 1)
     formulario_id = request.GET.get('formulario') if str(request.GET.get('formulario', '')).isdigit() else None
-    chave_cache = f'pcp:dashboard:v1:{_geracao_dashboard()}:{ini}:{fim}:{formulario_id or 0}'
+    chave_cache = f'pcp:dashboard:v2:{_geracao_dashboard()}:{ini}:{fim}:{formulario_id or 0}'
     dados = None if request.GET.get('atualizar') else cache.get(chave_cache)
     if dados is None:
         dados = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), formulario_id, hoje)

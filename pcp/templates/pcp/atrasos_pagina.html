@@ -13,19 +13,20 @@
     </div>
     <div class="card"><div class="table-responsive">
         <table class="table table-sm table-hover align-middle mb-0">
-            <thead><tr><th>Prazo</th><th>Turno</th><th>Item</th><th>O que verificar</th><th>Frequência</th><th></th></tr></thead>
+            <thead><tr><th>Prazo</th><th>Turno</th><th>Nº</th><th>Item</th><th>O que verificar</th><th>Frequência</th><th></th></tr></thead>
             <tbody>
             {% for a in atrasos %}
                 <tr>
                     <td class="text-nowrap">{% if a.inicio == a.fim %}{{ a.fim|date:"d/m/Y" }}{% else %}{{ a.inicio|date:"d/m" }} a {{ a.fim|date:"d/m/Y" }}{% endif %}</td>
                     <td>{{ a.turno.sigla|default:"—" }}</td>
+                    <td class="text-muted">{{ a.campo.ordem }}</td>
                     <td class="fw-semibold {% if a.campo.critico %}text-danger{% endif %}">{{ a.campo.item|default:"—" }}</td>
                     <td>{% if a.campo.etapa %}<div class="small text-muted">{{ a.campo.etapa }}</div>{% endif %}{{ a.campo.descricao }}</td>
                     <td class="small">{{ a.campo.frequencia }}</td>
                     <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'pcp:preencher_pagina' pagina.pk %}?data={{ a.fim|date:'Y-m-d' }}&turno={% if a.turno %}{{ a.turno.pk }}{% else %}{{ turno_padrao.pk }}{% endif %}">Preencher</a></td>
                 </tr>
             {% empty %}
-                <tr><td colspan="6" class="text-center text-muted py-4">Nenhum atraso no período.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">Nenhum atraso no período.</td></tr>
             {% endfor %}
             </tbody>
         </table>
