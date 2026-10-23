@@ -48,54 +48,59 @@
                 </span>
             </div>
             {% if b.pendentes %}
-            <div class="list-group list-group-flush d-none d-md-block">
-                {% for grupo, linhas in b.grupos.items %}{% for l in linhas %}{% if l.itens %}
-                    {% ifchanged grupo %}<div class="list-group-item bg-light small text-uppercase text-muted py-1">{{ grupo }}</div>{% endifchanged %}
-                    <div class="list-group-item">
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                            <strong>{{ l.pagina.nome }}</strong>
-                            <span class="badge bg-danger">{{ l.itens|length }} item{{ l.itens|length|pluralize:",ns" }} pendente{{ l.itens|length|pluralize }}</span>
-                            {% for c in l.celulas %}{% if c.status %}<span class="badge {% if c.status == 'manutencao' %}bg-warning text-dark{% else %}bg-secondary{% endif %}" title="Máquina {{ c.status_rotulo|lower }}: itens dispensados">{{ c.turno.sigla }} · {{ c.status_rotulo }}</span>{% endif %}{% endfor %}
-                        </div>
-                        <ul class="list-unstyled mb-0 small">
-                            {% for i in l.itens %}
-                                <li class="d-flex flex-wrap align-items-baseline gap-2 py-1 border-top">
-                                    <span class="text-muted" title="Nº do item no bloco">{{ i.campo.ordem }}</span>
-                                    <span class="flex-grow-1">{% if i.campo.etapa %}<span class="text-muted">{{ i.campo.etapa|truncatechars:50 }} · </span>{% endif %}<span class="fw-semibold">{{ i.campo.item|default:"—" }}</span> {{ i.campo.descricao|truncatechars:100 }}
-                                        <span class="text-muted">({{ i.campo.frequencia|default:"sem frequência" }})</span></span>
-                                    <span class="text-nowrap">{% for t in i.turnos %}<a class="badge bg-danger text-decoration-none" title="Lançar {{ t.sigla }}" href="{% url 'pcp:preencher_pagina' l.pagina.pk %}?data={{ data|date:'Y-m-d' }}&turno={{ t.pk }}#campo-{{ i.campo.pk }}">{{ t.sigla }}</a> {% endfor %}</span>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                {% endif %}{% endfor %}{% endfor %}
+            {% with bloco=forloop.counter %}
+            <div class="d-flex justify-content-end gap-2 px-3 pt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-pcp-todos="#bloco-{{ bloco }}" data-acao="show"><i class="bi bi-arrows-expand me-1"></i>Expandir tudo</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-pcp-todos="#bloco-{{ bloco }}" data-acao="hide"><i class="bi bi-arrows-collapse me-1"></i>Recolher tudo</button>
             </div>
-            <div class="d-md-none p-2">
-                {% for grupo, linhas in b.grupos_pendentes.items %}{% if linhas|length %}
+            <div id="bloco-{{ bloco }}" class="p-2 p-md-3">
+                {% for grupo, linhas in b.grupos_pendentes.items %}
+                {% with gid=forloop.counter %}
                 <div class="card mb-2">
-                    <div class="card-header py-2 small text-uppercase text-muted fw-semibold"><i class="bi bi-collection me-1"></i>{{ grupo }}</div>
-                    <div class="card-body p-2">
-                        {% for l in linhas %}{% if l.itens %}
-                        <div class="card mb-2"><div class="card-body p-2">
-                            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                                <strong>{{ l.pagina.nome }}</strong>
-                                <span class="badge bg-danger">{{ l.itens|length }} pendente{{ l.itens|length|pluralize }}</span>
-                                {% for c in l.celulas %}{% if c.status %}<span class="badge {% if c.status == 'manutencao' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ c.turno.sigla }} · {{ c.status_rotulo }}</span>{% endif %}{% endfor %}
-                            </div>
-                            <ul class="list-unstyled mb-0 small">
-                                {% for i in l.itens %}
-                                <li class="py-1 border-top">
-                                    <div><span class="text-muted">{{ i.campo.ordem }}.</span> <span class="fw-semibold">{{ i.campo.item|default:"—" }}</span> {{ i.campo.descricao|truncatechars:100 }}</div>
-                                    <div class="mt-1">{% for t in i.turnos %}<a class="badge bg-danger text-decoration-none" href="{% url 'pcp:preencher_pagina' l.pagina.pk %}?data={{ data|date:'Y-m-d' }}&turno={{ t.pk }}#campo-{{ i.campo.pk }}">{{ t.sigla }}</a> {% endfor %}</div>
-                                </li>
+                    <button type="button" class="card-header pcp-toggle text-start border-0 w-100" data-bs-toggle="collapse" data-bs-target="#g-{{ bloco }}-{{ gid }}" aria-expanded="true">
+                        <i class="bi bi-chevron-down seta me-1"></i><strong class="text-uppercase small">{{ grupo }}</strong>
+                        <span class="text-muted small ms-2">{{ linhas|length }} página{{ linhas|length|pluralize }}</span>
+                    </button>
+                    <div id="g-{{ bloco }}-{{ gid }}" class="collapse show"><div class="card-body p-2">
+                        {% for l in linhas %}
+                        <div class="card mb-2">
+                            <button type="button" class="card-header pcp-toggle pcp-toggle-pagina text-start border-0 w-100 collapsed" data-bs-toggle="collapse" data-bs-target="#p-{{ bloco }}-{{ l.pagina.pk }}" aria-expanded="false">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <i class="bi bi-chevron-down seta"></i>
+                                    <strong>{{ l.pagina.nome }}</strong>
+                                    <span class="badge bg-danger">{{ l.itens|length }} item{{ l.itens|length|pluralize:",ns" }} pendente{{ l.itens|length|pluralize }}</span>
+                                    {% for c in l.celulas %}{% if c.status %}<span class="badge {% if c.status == 'manutencao' %}bg-warning text-dark{% else %}bg-secondary{% endif %}" title="Máquina {{ c.status_rotulo|lower }}: itens dispensados">{{ c.turno.sigla }} · {{ c.status_rotulo }}</span>{% endif %}{% endfor %}
+                                </div>
+                            </button>
+                            <div id="p-{{ bloco }}-{{ l.pagina.pk }}" class="collapse"><div class="card-body p-2">
+                                {% for f in l.por_frequencia %}
+                                <div class="mb-2">
+                                    <button type="button" class="pcp-toggle pcp-toggle-freq text-start border-0 w-100 rounded" data-bs-toggle="collapse" data-bs-target="#f-{{ bloco }}-{{ l.pagina.pk }}-{{ forloop.counter }}" aria-expanded="true">
+                                        <i class="bi bi-chevron-down seta me-1"></i><i class="bi bi-arrow-repeat me-1 text-muted"></i><span class="fw-semibold small">{{ f.nome }}</span>
+                                        <span class="badge bg-light text-dark border ms-1">{{ f.itens|length }}</span>
+                                    </button>
+                                    <div id="f-{{ bloco }}-{{ l.pagina.pk }}-{{ forloop.counter }}" class="collapse show">
+                                        <ul class="list-unstyled mb-0 small ps-md-4">
+                                            {% for i in f.itens %}
+                                            <li class="d-flex flex-wrap align-items-baseline gap-2 py-1 border-top">
+                                                <span class="text-muted" title="Nº do item no bloco">{{ i.campo.ordem }}</span>
+                                                <span class="flex-grow-1">{% if i.campo.etapa %}<span class="text-muted">{{ i.campo.etapa|truncatechars:50 }} · </span>{% endif %}<span class="fw-semibold">{{ i.campo.item|default:"—" }}</span> {{ i.campo.descricao|truncatechars:100 }}</span>
+                                                <span class="text-nowrap">{% for t in i.turnos %}<a class="badge bg-danger text-decoration-none" title="Lançar {{ t.sigla }}" href="{% url 'pcp:preencher_pagina' l.pagina.pk %}?data={{ data|date:'Y-m-d' }}&turno={{ t.pk }}#campo-{{ i.campo.pk }}">{{ t.sigla }}</a> {% endfor %}</span>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
                                 {% endfor %}
-                            </ul>
-                        </div></div>
-                        {% endif %}{% endfor %}
-                    </div>
+                            </div></div>
+                        </div>
+                        {% endfor %}
+                    </div></div>
                 </div>
-                {% endif %}{% endfor %}
+                {% endwith %}
+                {% endfor %}
             </div>
+            {% endwith %}
             {% else %}
             <div class="text-center text-success py-3"><i class="bi bi-check-circle me-1"></i>Sem itens pendentes nesta data.</div>
             {% endif %}
@@ -105,4 +110,20 @@
     {% endfor %}
     {% if not turnos %}<div class="alert alert-warning">Cadastre ao menos um turno ativo em <em>Turnos</em>.</div>{% endif %}
 </div>
+<style>
+    .pcp-toggle { background: #f1f3f5; padding: .5rem .75rem; cursor: pointer; }
+    .pcp-toggle-freq { background: #f8f9fa; padding: .3rem .6rem; }
+    .pcp-toggle .seta { transition: transform .15s; }
+    .pcp-toggle[aria-expanded="false"] .seta, .pcp-toggle.collapsed .seta { transform: rotate(-90deg); }
+</style>
+<script>
+(function () {
+    document.querySelectorAll('[data-pcp-todos]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var raiz = document.querySelector(b.dataset.pcpTodos), abrir = b.dataset.acao === 'show';
+            raiz.querySelectorAll('.collapse').forEach(function (c) { bootstrap.Collapse.getOrCreateInstance(c, { toggle: false })[abrir ? 'show' : 'hide'](); });
+        });
+    });
+})();
+</script>
 {% endblock %}

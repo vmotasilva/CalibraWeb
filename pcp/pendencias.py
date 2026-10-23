@@ -130,7 +130,14 @@ def painel(data, turnos, formulario_id=None):
             itens = []   # itens especificamente pendentes (com os turnos em que faltam)
             for pk in sorted({pk for t in turnos for pk, ok in por_turno[t.pk].items() if not ok}, key=lambda pk: (campos[pk].ordem, pk)):
                 itens.append({'campo': campos[pk], 'turnos': [t for t in turnos if por_turno[t.pk].get(pk) is False]})
-            grupos.setdefault(pagina.grupo or 'Sem grupo', []).append({'pagina': pagina, 'celulas': celulas, 'itens': itens})
+            por_freq = {}   # itens pendentes agrupados por frequência, na ordem de periodicidade
+            for it in itens:
+                f = it['campo'].frequencia
+                k = (ORDEM_PERIODICIDADE.index(f.periodicidade) if f and f.periodicidade in ORDEM_PERIODICIDADE else 98 if f else 99,
+                     f.ordem if f else 0, f.nome if f else 'Sem frequência')
+                por_freq.setdefault(k, []).append(it)
+            por_frequencia = [{'nome': k[2], 'itens': v} for k, v in sorted(por_freq.items())]
+            grupos.setdefault(pagina.grupo or 'Sem grupo', []).append({'pagina': pagina, 'celulas': celulas, 'itens': itens, 'por_frequencia': por_frequencia})
         ordenados = versao.formulario.ordenar_grupos(grupos)
         so_pendentes = {g: [l for l in ls if l['itens']] for g, ls in ordenados.items()}
         blocos.append({'versao': versao, 'grupos': ordenados, 'grupos_pendentes': {g: ls for g, ls in so_pendentes.items() if ls}, 'devidos': b_devidos, 'feitos': b_feitos, 'pendentes': b_devidos - b_feitos,

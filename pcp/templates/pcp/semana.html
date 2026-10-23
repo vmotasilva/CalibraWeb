@@ -23,6 +23,9 @@
     .dia-m.hoje { background:rgba(13,110,253,.07); border-color:#9ec5fe; }
     .dia-m-rot { font-size:.7rem; font-weight:600; }
     #modal-legenda .legenda-farol { margin-right:0; }
+    .semana-scroll { max-height: calc(100vh - 9rem); overflow: auto; }   /* a tabela rola dentro da tela, com o cabeçalho congelado */
+    .semana-tabela thead th { position: sticky; top: 0; z-index: 3; background: #fff; box-shadow: 0 1px 0 #dee2e6; }
+    .semana-tabela thead th.hoje { background: #eef4ff; }
     .semana-tabela th, .semana-tabela td { vertical-align:middle; }
     .semana-tabela td.dia { text-align:center; white-space:nowrap; min-width:5.2rem; }   /* faróis sempre lado a lado */
     .semana-tabela td.dia .farol-grupo { margin:0 .08rem; }
@@ -90,7 +93,7 @@
         <span class="small text-muted ms-auto d-none d-md-inline">Clique em um farol para ver os dados que o compõem.</span>
     </div>
 
-    <div class="card d-none d-md-block"><div class="table-responsive">
+    <div class="card d-none d-md-block"><div class="table-responsive semana-scroll">
         <table class="table table-sm table-hover mb-0 semana-tabela">
             <thead><tr>
                 <th style="width:3rem">Nº</th><th>Item</th>

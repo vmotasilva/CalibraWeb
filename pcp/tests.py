@@ -2778,3 +2778,25 @@ class TemplateCalendarioTests(TemplatesBase):
         r = self.client.get(reverse('pcp:preencher_pagina', args=[self.p.pk]) + f'?data=2026-10-01&turno={self.t1.pk}')
         self.assertContains(r, 'data-modo="calendario"')
         self.assertContains(r, 'Todas as páginas do formulário')
+
+
+class PendenciasRecolhiveisTests(PendenciasBase):
+    def test_itens_pendentes_agrupados_por_frequencia_e_camadas_recolhiveis(self):
+        p = pend.painel(date(2026, 10, 22), self.turnos)
+        linhas = [l for b in p['blocos'] for ls in b['grupos'].values() for l in ls if l['itens']]
+        self.assertTrue(linhas)
+        for l in linhas:
+            nomes = [f['nome'] for f in l['por_frequencia']]
+            self.assertEqual(sum(len(f['itens']) for f in l['por_frequencia']), len(l['itens']))
+            self.assertEqual(len(nomes), len(set(nomes)))
+        r = self.client.get(reverse('pcp:pendencias') + '?data=2026-10-22')
+        self.assertContains(r, 'data-bs-target="#g-1-1"')                       # grupo recolhível
+        self.assertContains(r, 'pcp-toggle-pagina')                              # página recolhível
+        self.assertContains(r, 'pcp-toggle-freq')                                # frequência recolhível
+        self.assertContains(r, 'data-pcp-todos')                                 # expandir/recolher tudo
+
+    def test_semana_tem_cabecalho_congelado(self):
+        pag = self.pag
+        r = self.client.get(reverse('pcp:semana'), {'pagina': pag.pk})
+        self.assertContains(r, 'semana-scroll')
+        self.assertContains(r, 'position: sticky')
