@@ -131,7 +131,9 @@ def painel(data, turnos, formulario_id=None):
             for pk in sorted({pk for t in turnos for pk, ok in por_turno[t.pk].items() if not ok}, key=lambda pk: (campos[pk].ordem, pk)):
                 itens.append({'campo': campos[pk], 'turnos': [t for t in turnos if por_turno[t.pk].get(pk) is False]})
             grupos.setdefault(pagina.grupo or 'Sem grupo', []).append({'pagina': pagina, 'celulas': celulas, 'itens': itens})
-        blocos.append({'versao': versao, 'grupos': versao.formulario.ordenar_grupos(grupos), 'devidos': b_devidos, 'feitos': b_feitos, 'pendentes': b_devidos - b_feitos,
+        ordenados = versao.formulario.ordenar_grupos(grupos)
+        so_pendentes = {g: [l for l in ls if l['itens']] for g, ls in ordenados.items()}
+        blocos.append({'versao': versao, 'grupos': ordenados, 'grupos_pendentes': {g: ls for g, ls in so_pendentes.items() if ls}, 'devidos': b_devidos, 'feitos': b_feitos, 'pendentes': b_devidos - b_feitos,
                        'percentual': round(100 * b_feitos / b_devidos) if b_devidos else None})
         total_devidos += b_devidos
         total_feitos += b_feitos
