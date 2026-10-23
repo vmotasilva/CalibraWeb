@@ -1058,6 +1058,49 @@ def exportar_formulario(request, pk):
     return _xlsx(wb, f'{formulario.codigo}_{versao.revisao}_{ano}-{mes:02d}')
 
 
+def _periodo_dados(request):
+    """(de, até) dos parâmetros de/ate (padrão: hoje); ordena e limita a 93 dias."""
+    de = _parse_data(request.GET.get('de'))
+    ate = _parse_data(request.GET.get('ate')) if request.GET.get('ate') else de
+    if ate < de:
+        de, ate = ate, de
+    return de, min(ate, de + datetime.timedelta(days=92))
+
+
+def _responder_dados(request, formulario, versao, paginas, nome, voltar):
+    de, ate = _periodo_dados(request)
+    paginas = list(paginas)
+    n_turnos = Turno.objects.filter(ativo=True).count()
+    estimativa = exportacao.estimar_linhas_dados(paginas, de, ate, n_turnos)
+    somente = request.GET.get('somente_valor') == '1'
+    if estimativa > exportacao.LIMITE_LINHAS_DADOS and not somente:
+        messages.warning(request, f'O período gera cerca de {estimativa:,} linhas (limite de {exportacao.LIMITE_LINHAS_DADOS:,}). '
+                                  'Reduza o período, escolha uma página ou marque "só com valor".'.replace(',', '.'))
+        return redirect(*voltar)
+    wb = exportacao.montar_dados(formulario, versao, paginas, de, ate, somente_com_valor=somente)
+    return _xlsx(wb, f'{nome}_DADOS_{de:%Y%m%d}' + (f'_{ate:%Y%m%d}' if ate != de else ''))
+
+
+@login_required
+def exportar_dados_pagina(request, pk):
+    """Exportação DADOS (tabela longa) de uma página no período."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario'), pk=pk)
+    f = pagina.versao.formulario
+    return _responder_dados(request, f, pagina.versao, [pagina], f'{f.codigo}_{pagina.nome}', ('pcp:preencher_pagina', pk))
+
+
+@login_required
+def exportar_dados_formulario(request, pk):
+    """Exportação DADOS (tabela longa) de todas as páginas ativas do formulário (revisão vigente ou a mais recente) no período."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    versao = formulario.versao_vigente or formulario.versoes.first()
+    if versao is None:
+        messages.warning(request, 'O formulário ainda não tem revisão para exportar.')
+        return redirect('pcp:formulario_detalhe', pk)
+    return _responder_dados(request, formulario, versao, versao.paginas.filter(ativo=True).order_by('grupo', 'ordem', 'pk'),
+                            f'{formulario.codigo}_{versao.revisao}', ('pcp:formulario_detalhe', pk))
+
+
 @login_required
 @require_POST
 def preencher_status(request, pk):

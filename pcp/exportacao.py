@@ -159,3 +159,63 @@ def montar_planilha(formulario, versao, paginas, ano, mes):
     _aba_situacoes(wb, formulario, paginas, ini, fim, turnos, usados)
     _aba_ocorrencias(wb, formulario, paginas, ini, fim, usados)
     return wb
+
+
+# --------------------------------------------------------------------------------------
+# Exportação "DADOS": tabela longa (uma linha por item x data x turno)
+# --------------------------------------------------------------------------------------
+COLUNAS_DADOS = ['Formulário', 'Grupo', 'Página', 'ORD', 'Item', 'Data', 'Turno', 'Valor']
+LIMITE_LINHAS_DADOS = 250000
+
+
+def lancamentos_da_pagina(formulario, pagina, ini, fim):
+    """({chave do item: {(data, turno_id): (valor, conforme)}}, {(data, turno_id): status}) do período, juntando as revisões."""
+    respostas = defaultdict(dict)
+    qs = (Resposta.objects.filter(verificacao__pagina__versao__formulario=formulario, verificacao__pagina__nome=pagina.nome,
+                                  verificacao__data__range=(ini, fim)).exclude(valor='')
+          .values_list('campo__item', 'campo__etapa', 'campo__descricao', 'verificacao__data', 'verificacao__turno_id', 'valor', 'conforme'))
+    for item, etapa, desc, dia, turno_id, valor, conforme in qs:
+        respostas[chave(item, etapa, desc)][(dia, turno_id)] = (valor, conforme)
+    return respostas, slots_parados(pagina, ini, fim)
+
+
+def estimar_linhas_dados(paginas, ini, fim, n_turnos):
+    dias = (fim - ini).days + 1
+    return sum(p.campos.filter(ativo=True).count() for p in paginas) * dias * n_turnos
+
+
+def montar_dados(formulario, versao, paginas, ini, fim, somente_com_valor=False):
+    """Workbook com a aba EXPORTAÇÃO no formato DADOS: Formulário | Grupo | Página | ORD | Item | Data | Turno | Valor.
+
+    ORD é o Nº do item no bloco. Uma linha por item ativo, data e turno (mesmo sem valor, a menos que `somente_com_valor`);
+    turnos em manutenção/parada trazem a situação da máquina no Valor. Ordem: página (grupo e ordem), data, turno, ORD."""
+    turnos = list(Turno.objects.filter(ativo=True))
+    dias = [ini + datetime.timedelta(days=n) for n in range((fim - ini).days + 1)]
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'EXPORTAÇÃO'
+    ws.append(COLUNAS_DADOS)
+    for c in ws[1]:
+        c.font = NEGRITO
+    for pagina in paginas:
+        campos = list(pagina.campos.filter(ativo=True).order_by('ordem', 'pk'))
+        respostas, parados = lancamentos_da_pagina(formulario, pagina, ini, fim)
+        for dia in dias:
+            for turno in turnos:
+                status = parados.get((dia, turno.pk))
+                for campo in campos:
+                    if status:
+                        valor = ROTULOS[status]
+                    else:
+                        lancado = respostas.get(chave(campo.item, campo.etapa, campo.descricao), {}).get((dia, turno.pk))
+                        valor = _valor_celula(campo, lancado[0]) if lancado else None
+                    if somente_com_valor and valor in (None, ''):
+                        continue
+                    ws.append([formulario.codigo, pagina.grupo, pagina.nome, campo.ordem, campo.item, dia, turno.sigla, valor])
+    for coluna, largura in zip('ABCDEFGH', (11, 22, 24, 6, 8, 11, 7, 18)):
+        ws.column_dimensions[coluna].width = largura
+    for linha in ws.iter_rows(min_row=2, min_col=6, max_col=6):
+        linha[0].number_format = 'dd/mm/yyyy'
+    ws.freeze_panes = 'A2'
+    ws.auto_filter.ref = ws.dimensions
+    return wb

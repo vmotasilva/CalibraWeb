@@ -2023,3 +2023,89 @@ class VigenciaEditavelTests(PendenciasBase):
         r = self.client.get(reverse('pcp:versao_detalhe', args=[self.v15.pk]))
         self.assertContains(r, 'name="vigencia"')
         self.assertContains(r, 'value="2026-10-22"')
+
+
+class ExportacaoDadosTests(PendenciasBase):
+    D = date(2026, 10, 22)
+
+    def setUp(self):
+        super().setUp()
+        for n, c in enumerate([self.c_lista, self.c_num, self.c_sem, self.c_mes, self.c_ev, self.c_sem0], 1):
+            Campo.objects.filter(pk=c.pk).update(ordem=n)
+        Campo.objects.filter(pk=self.c_num.pk).update(item='B-5')
+
+    def baixar(self, nome='exportar_dados_pagina', pk=None, **params):
+        import openpyxl as xl
+        r = self.client.get(reverse(f'pcp:{nome}', args=[pk or self.pag.pk]), params)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('attachment', r['Content-Disposition'])
+        wb = xl.load_workbook(io.BytesIO(r.content))
+        return wb, list(wb['EXPORTAÇÃO'].iter_rows(values_only=True))
+
+    def lancar(self, dia, turno, campo, valor):
+        ver, _ = Verificacao.objects.get_or_create(pagina=self.pag, data=dia, turno=turno)
+        Resposta.objects.create(verificacao=ver, campo=campo, valor=valor)
+
+    def test_formato_dados_uma_linha_por_item_data_e_turno(self):
+        wb, linhas = self.baixar(de='2026-10-22')
+        self.assertEqual(wb.sheetnames, ['EXPORTAÇÃO'])
+        self.assertEqual(linhas[0], ('Formulário', 'Grupo', 'Página', 'ORD', 'Item', 'Data', 'Turno', 'Valor'))
+        dados = linhas[1:]
+        self.assertEqual(len(dados), 6 * 2)                                       # 6 itens x 1 dia x 2 turnos (T1, T2), mesmo sem valor
+        self.assertEqual(dados[0], ('FOR.080', 'Fita', 'Fitadeira', 1, 'B-1', datetime.datetime(2026, 10, 22), 'T1', None))
+        self.assertEqual([(l[6], l[3]) for l in dados], [('T1', n) for n in range(1, 7)] + [('T2', n) for n in range(1, 7)])  # por turno e ORD
+
+    def test_valores_numeros_e_ordenacao_por_data_e_turno(self):
+        self.lancar(date(2026, 10, 22), self.t2, self.c_num, '-0,7')
+        self.lancar(date(2026, 10, 23), self.t1, self.c_lista, 'Ok')
+        _, linhas = self.baixar(de='2026-10-22', ate='2026-10-23')
+        dados = linhas[1:]
+        self.assertEqual(len(dados), 6 * 2 * 2)
+        self.assertEqual([(l[5].day, l[6]) for l in dados[::6]], [(22, 'T1'), (22, 'T2'), (23, 'T1'), (23, 'T2')])   # data, depois turno
+        num = [l for l in dados if l[4] == 'B-5' and l[5].day == 22 and l[6] == 'T2'][0]
+        self.assertEqual(num[7], -0.7)                                            # número de verdade, não texto
+        ok = [l for l in dados if l[4] == 'B-1' and l[5].day == 23 and l[6] == 'T1'][0]
+        self.assertEqual(ok[7], 'Ok')
+
+    def test_manutencao_e_parada_preenchem_todos_os_itens_do_turno(self):
+        self.client.post(reverse('pcp:preencher_status', args=[self.pag.pk]), {'data': '2026-10-22', 'turno': self.t1.pk, 'status': 'manutencao', 'escopo': 'turno'})
+        self.client.post(reverse('pcp:preencher_status', args=[self.pag.pk]), {'data': '2026-10-22', 'turno': self.t2.pk, 'status': 'parada', 'escopo': 'turno'})
+        _, linhas = self.baixar(de='2026-10-22')
+        self.assertEqual({l[7] for l in linhas[1:] if l[6] == 'T1'}, {'Em Manutenção'})
+        self.assertEqual({l[7] for l in linhas[1:] if l[6] == 'T2'}, {'Parada'})
+
+    def test_somente_com_valor(self):
+        self.lancar(date(2026, 10, 22), self.t1, self.c_lista, 'Ok')
+        _, linhas = self.baixar(de='2026-10-22', somente_valor='1')
+        self.assertEqual([(l[4], l[6], l[7]) for l in linhas[1:]], [('B-1', 'T1', 'Ok')])
+
+    def test_formulario_inteiro_na_ordem_dos_grupos_e_paginas(self):
+        outra = Pagina.objects.create(versao=self.v15, nome='Outra', grupo='Corte', ordem=1)
+        Campo.objects.create(pagina=outra, item='Z-1', descricao='z', tipo='texto', ordem=1)
+        self.v15.formulario.garantir_grupo('Fita')
+        _, linhas = self.baixar('exportar_dados_formulario', pk=self.form.pk, de='2026-10-22', somente_valor='')
+        paginas = list(dict.fromkeys((l[1], l[2]) for l in linhas[1:]))
+        self.assertEqual(paginas, [('Corte', 'Outra'), ('Fita', 'Fitadeira')])    # ordenado por grupo e página
+        self.assertEqual({l[0] for l in linhas[1:]}, {'FOR.080'})
+
+    def test_periodo_invertido_e_limite_de_93_dias_e_estimativa_de_linhas(self):
+        _, linhas = self.baixar(de='2026-10-23', ate='2026-10-22')                # invertido: corrige
+        self.assertEqual({l[5].day for l in linhas[1:]}, {22, 23})
+        _, linhas = self.baixar(de='2026-01-01', ate='2026-12-31', somente_valor='1')   # limitado a 93 dias (e só com valor)
+        self.assertEqual(len(linhas), 1)
+        from pcp import exportacao
+        antigo = exportacao.LIMITE_LINHAS_DADOS
+        exportacao.LIMITE_LINHAS_DADOS = 10
+        try:
+            r = self.client.get(reverse('pcp:exportar_dados_pagina', args=[self.pag.pk]), {'de': '2026-10-22', 'ate': '2026-10-25'})
+            self.assertRedirects(r, reverse('pcp:preencher_pagina', args=[self.pag.pk]), fetch_redirect_response=False)   # acima do limite: não gera
+        finally:
+            exportacao.LIMITE_LINHAS_DADOS = antigo
+
+    def test_menu_exportar_nas_telas(self):
+        r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
+        self.assertContains(r, reverse('pcp:exportar_dados_pagina', args=[self.pag.pk]))
+        self.assertContains(r, reverse('pcp:exportar_pagina', args=[self.pag.pk]))
+        r = self.client.get(reverse('pcp:formulario_detalhe', args=[self.form.pk]))
+        self.assertContains(r, reverse('pcp:exportar_dados_formulario', args=[self.form.pk]))
+        self.assertContains(r, 'Formato DADOS')

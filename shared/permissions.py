@@ -343,7 +343,7 @@ NAV_STRUCTURE = [
                     },
                     {
                         "nome": "Exportar Planilha de Registros",
-                        "view_name": ["pcp:exportar_pagina", "pcp:exportar_formulario"],
+                        "view_name": ["pcp:exportar_pagina", "pcp:exportar_formulario", "pcp:exportar_dados_pagina", "pcp:exportar_dados_formulario"],
                         "perm": "core.nav_pcp_exportar",
                         "descricao": "Gera a planilha do mês (itens x dia/turno). Turnos com a máquina em manutenção ou parada saem com todos os itens preenchidos com a situação.",
                     },

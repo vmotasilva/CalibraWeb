@@ -1,0 +1,29 @@
+{# Menu "Exportar". Contexto: formulario (obrigatório), pagina (opcional: se omitida, exporta o formulário inteiro), data (opcional). #}
+{% now 'Y-m-d' as hoje_iso %}{% now 'Y-m' as mes_iso %}
+<div class="dropdown">
+    <button class="btn btn-sm btn-outline-success dropdown-toggle text-nowrap" type="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+        <i class="bi bi-file-earmark-excel me-1"></i>Exportar
+    </button>
+    <div class="dropdown-menu dropdown-menu-end p-3" style="min-width:22rem; max-width:94vw">
+        <form method="get" action="{% if pagina %}{% url 'pcp:exportar_pagina' pagina.pk %}{% else %}{% url 'pcp:exportar_formulario' formulario.pk %}{% endif %}">
+            <div class="fw-semibold small">Planilha do mês (layout do formulário)</div>
+            <div class="small text-muted mb-1">Itens nas linhas, dia e turno nas colunas{% if not pagina %}; uma aba por página{% endif %}.</div>
+            <div class="d-flex gap-1">
+                <input type="month" name="mes" value="{% if data %}{{ data|date:'Y-m' }}{% else %}{{ mes_iso }}{% endif %}" class="form-control form-control-sm" title="Mês da planilha">
+                <button class="btn btn-sm btn-outline-success text-nowrap">Exportar planilha</button>
+            </div>
+        </form>
+        <hr class="my-3">
+        <form method="get" action="{% if pagina %}{% url 'pcp:exportar_dados_pagina' pagina.pk %}{% else %}{% url 'pcp:exportar_dados_formulario' formulario.pk %}{% endif %}">
+            <div class="fw-semibold small">Dados (tabela: item × data × turno)</div>
+            <div class="small text-muted mb-1">Formato DADOS: Formulário, Grupo, Página, ORD, Item, Data, Turno, Valor.</div>
+            <div class="d-flex flex-wrap gap-1 align-items-center">
+                <input type="date" name="de" value="{% if data %}{{ data|date:'Y-m-d' }}{% else %}{{ hoje_iso }}{% endif %}" class="form-control form-control-sm w-auto" title="De">
+                <input type="date" name="ate" class="form-control form-control-sm w-auto" title="Até (em branco = só o dia)">
+                <button class="btn btn-sm btn-outline-success text-nowrap">Exportar dados</button>
+            </div>
+            <div class="form-check mt-1"><input class="form-check-input" type="checkbox" name="somente_valor" value="1" id="sv-{{ pagina.pk|default:'f' }}">
+                <label class="form-check-label small" for="sv-{{ pagina.pk|default:'f' }}">Só linhas com valor</label></div>
+        </form>
+    </div>
+</div>

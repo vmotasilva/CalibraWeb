@@ -53,10 +53,7 @@
             <div class="text-muted">{{ versao }}{% if pagina.maquina %} · Máquina {{ pagina.maquina.display_name }}{% endif %}</div>
         </div>
         <div class="d-flex gap-2 align-items-center flex-wrap pcp-acoes">
-            <form method="get" action="{% url 'pcp:exportar_pagina' pagina.pk %}" class="d-flex gap-1 flex-grow-1 flex-md-grow-0">
-                <input type="month" name="mes" value="{{ data|date:'Y-m' }}" class="form-control form-control-sm" title="Mês da planilha">
-                <button class="btn btn-sm btn-outline-success text-nowrap"><i class="bi bi-file-earmark-excel me-1"></i>Exportar<span class="d-none d-md-inline"> planilha</span></button>
-            </form>
+            {% include "pcp/_exportar.html" with formulario=versao.formulario pagina=pagina data=data %}
             <a href="{% url 'pcp:preencher' %}" class="btn btn-outline-secondary">Voltar</a>
         </div>
     </div>
