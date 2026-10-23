@@ -59,6 +59,69 @@
     </div>
     {% endif %}
 
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <h5 class="mb-0">Farol dos prazos em andamento</h5>
+        <form method="get" class="d-flex flex-wrap align-items-center gap-2 ms-auto">
+            <input type="hidden" name="dias" value="{{ dias }}"><input type="hidden" name="ate" value="{{ fim|date:'Y-m-d' }}">
+            <input type="hidden" name="ordem" value="{{ ordem }}"><input type="hidden" name="top" value="{{ top }}">
+            {% if formulario_id %}<input type="hidden" name="formulario" value="{{ formulario_id }}">{% endif %}
+            <label class="small text-muted mb-0" for="observar">Observar em</label>
+            <input type="date" id="observar" name="observar" value="{{ observar|date:'Y-m-d' }}" class="form-control form-control-sm w-auto" onchange="this.form.submit()">
+            {% if observar != hoje %}<a class="btn btn-sm btn-outline-secondary" href="?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}{% if formulario_id %}&formulario={{ formulario_id }}{% endif %}">Hoje</a>{% endif %}
+        </form>
+    </div>
+    <div class="card mb-3">
+        <div class="card-body pb-2">
+            <div class="d-flex flex-wrap gap-3 align-items-center mb-2">
+                <span class="farol-ponto farol-verde"></span> <strong>{{ farol.contagem.verde }}</strong> <span class="small text-muted">cumpridos</span>
+                <span class="farol-ponto farol-amarelo"></span> <strong>{{ farol.contagem.amarelo }}</strong> <span class="small text-muted">pendentes com prazo em aberto</span>
+                <span class="farol-ponto farol-vermelho"></span> <strong>{{ farol.contagem.vermelho }}</strong> <span class="small text-muted">com prazo encerrado sem registro</span>
+            </div>
+            <div class="small text-muted">
+                Cada ponto é o <strong>prazo que contém {{ observar|date:"d/m/Y" }}</strong> para a frequência: semana (seg–dom), quinzena (1–15 e 16–fim do mês), mês,
+                trimestre (jan–mar, abr–jun, jul–set, out–dez), semestre (jan–jun, jul–dez) ou ano. <strong>Basta um registro em qualquer turno dentro do prazo.</strong>
+                Itens "a cada turno" olham os turnos já iniciados; máquina em manutenção/parada dispensa os itens. Passe o mouse (ou toque) no ponto para ver o detalhe.
+            </div>
+        </div>
+        {% for b in farol.blocos %}
+            <div class="border-top">
+                <div class="px-3 py-2 bg-light fw-semibold">{{ b.codigo }} - {{ b.titulo }} <span class="badge bg-secondary">{{ b.revisao }}</span></div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0 text-center">
+                        <thead><tr>
+                            <th class="text-start">Página</th>
+                            {% for c in farol.colunas %}<th class="small fw-normal">{{ c.nome }}<div class="text-muted">{{ c.prazo }}</div></th>{% endfor %}
+                        </tr></thead>
+                        <tbody>
+                        {% for g in b.grupos %}
+                            <tr class="table-light"><td colspan="{{ farol.colunas|length|add:1 }}" class="text-start small text-uppercase text-muted">{{ g.nome }}</td></tr>
+                            {% for l in g.linhas %}
+                                <tr>
+                                    <td class="text-start text-nowrap"><span class="farol-ponto farol-{{ l.cor }} me-1" title="Pior situação da página"></span>
+                                        <a href="{% url 'pcp:preencher_pagina' l.pagina_id %}?data={{ observar|date:'Y-m-d' }}" class="text-decoration-none">{{ l.nome }}</a></td>
+                                    {% for c in l.celulas %}
+                                        <td>{% if c %}<span class="farol-celula" title="{{ c.dica }}" tabindex="0">
+                                            <span class="farol-ponto farol-{{ c.cor }}"></span>
+                                            <span class="small {% if c.cor == 'verde' %}text-success{% elif c.cor == 'amarelo' %}text-warning-emphasis{% else %}text-danger{% endif %}">{{ c.feitos }}/{{ c.devidos }}</span></span>
+                                        {% else %}<span class="text-muted">·</span>{% endif %}</td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% empty %}
+            <div class="border-top text-center text-muted py-4">Nenhum prazo em andamento nesta data (formulário sem revisão vigente, anterior à vigência, ou dia futuro).</div>
+        {% endfor %}
+    </div>
+    <style>
+        .farol-ponto { display:inline-block; width:.8rem; height:.8rem; border-radius:50%; vertical-align:middle; }
+        .farol-verde { background:#198754; } .farol-amarelo { background:#e0a800; } .farol-vermelho { background:#dc3545; }
+        .farol-celula { cursor:help; white-space:nowrap; }
+    </style>
+
     {% if d.devidos %}
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
         <h5 class="mb-0">Menor cumprimento</h5>

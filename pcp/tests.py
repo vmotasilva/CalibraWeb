@@ -1737,3 +1737,137 @@ class DesativarDoRankingTests(DashboardBase):
         self.desativar()
         self.client.post(reverse('pcp:paginas_acao', args=[self.form.pk]), {'paginas': [self.pag.pk], 'acao': 'ativar'})
         self.assertContains(self.client.get(url), reverse('pcp:atrasos_pagina', args=[self.pag.pk]))
+
+
+class RegrasDePrazoTests(TestCase):
+    """Regras de prazo por frequência (qualquer turno vale; quinzena e trimestre/semestre fixos)."""
+
+    def test_semana_de_segunda_a_domingo(self):
+        self.assertEqual(pend.janela('semanal', date(2026, 10, 25)), (date(2026, 10, 19), date(2026, 10, 25)))   # domingo
+        self.assertEqual(pend.janela('semanal', date(2026, 10, 26)), (date(2026, 10, 26), date(2026, 11, 1)))    # segunda: nova semana
+
+    def test_quinzena_acompanha_o_fim_do_mes(self):
+        self.assertEqual(pend.janela('quinzenal', date(2026, 1, 15)), (date(2026, 1, 1), date(2026, 1, 15)))
+        self.assertEqual(pend.janela('quinzenal', date(2026, 1, 16)), (date(2026, 1, 16), date(2026, 1, 31)))
+        self.assertEqual(pend.janela('quinzenal', date(2026, 4, 20)), (date(2026, 4, 16), date(2026, 4, 30)))      # mês de 30 dias
+        self.assertEqual(pend.janela('quinzenal', date(2026, 2, 28)), (date(2026, 2, 16), date(2026, 2, 28)))      # fevereiro
+        self.assertEqual(pend.janela('quinzenal', date(2028, 2, 20)), (date(2028, 2, 16), date(2028, 2, 29)))      # bissexto
+        self.assertEqual(pend.janela('quinzenal', date(2026, 12, 31)), (date(2026, 12, 16), date(2026, 12, 31)))
+
+    def test_trimestre_com_referencias_fixas(self):
+        esperado = {1: (1, 3), 3: (1, 3), 4: (4, 6), 6: (4, 6), 7: (7, 9), 9: (7, 9), 10: (10, 12), 12: (10, 12)}
+        for mes, (m0, m1) in esperado.items():
+            ini, fim = pend.janela('trimestral', date(2026, mes, 15))
+            self.assertEqual((ini.month, ini.day, fim.month), (m0, 1, m1), mes)
+        self.assertEqual(pend.janela('trimestral', date(2026, 9, 30))[1], date(2026, 9, 30))
+        self.assertEqual(pend.janela('trimestral', date(2026, 10, 1))[0], date(2026, 10, 1))
+
+    def test_semestre_com_referencias_fixas(self):
+        self.assertEqual(pend.janela('semestral', date(2026, 6, 30)), (date(2026, 1, 1), date(2026, 6, 30)))
+        self.assertEqual(pend.janela('semestral', date(2026, 7, 1)), (date(2026, 7, 1), date(2026, 12, 31)))
+        self.assertEqual(pend.janela('semestral', date(2026, 12, 31)), (date(2026, 7, 1), date(2026, 12, 31)))
+
+    def test_rotulos_dos_prazos(self):
+        d = date(2026, 10, 22)
+        self.assertEqual(pend.rotulo_janela('semanal', d), '19/10–25/10')
+        self.assertEqual(pend.rotulo_janela('quinzenal', d), '16/10–31/10')
+        self.assertEqual(pend.rotulo_janela('mensal', d), 'out/2026')
+        self.assertEqual(pend.rotulo_janela('trimestral', d), 'out–dez/2026')
+        self.assertEqual(pend.rotulo_janela('semestral', d), 'jul–dez/2026')
+        self.assertEqual(pend.rotulo_janela('anual', d), '2026')
+        self.assertEqual(pend.rotulo_janela('turno', d), '22/10')
+
+
+class FarolTests(PendenciasBase):
+    D = date(2026, 10, 22)  # quinta-feira
+
+    def setUp(self):
+        super().setUp()
+        self.v15.vigencia = date(2026, 10, 1)
+        self.v15.save()
+
+    def agora(self, h=10, m=0, dia=22):
+        return timezone.make_aware(datetime.datetime(2026, 10, dia, h, m))
+
+    def lancar(self, dia, turno, campo, valor='x'):
+        ver, _ = Verificacao.objects.get_or_create(pagina=self.pag, data=dia, turno=turno)
+        Resposta.objects.create(verificacao=ver, campo=campo, valor=valor)
+
+    def farol(self, data=None, **kw):
+        data = data or self.D
+        return pend.farol(data, hoje=self.D, agora=self.agora(**kw))
+
+    def celulas(self, f):
+        """{nome da frequência: célula} da única página."""
+        linha = f['blocos'][0]['grupos'][0]['linhas'][0]
+        return {col['nome']: c for col, c in zip(f['colunas'], linha['celulas']) if c}
+
+    def test_prazos_em_aberto_ficam_amarelos_e_cumpridos_verdes(self):
+        c = self.celulas(self.farol())
+        self.assertEqual({k: v['cor'] for k, v in c.items()}, {'Turno': 'amarelo', 'Diária': 'amarelo', 'Semanal': 'amarelo', 'Mensal': 'amarelo'})
+        self.assertEqual((c['Turno']['devidos'], c['Turno']['feitos']), (2, 0))      # T1 e T2 já iniciados (sem horário cadastrado)
+        self.assertIn('vence em 3 dia(s)', c['Semanal']['dica'])
+        self.assertIn('vence em 9 dia(s)', c['Mensal']['dica'])
+        self.assertIn('vence hoje', c['Diária']['dica'])
+
+    def test_basta_um_registro_em_qualquer_turno_da_semana(self):
+        self.lancar(date(2026, 10, 25), self.t2, self.c_sem)            # domingo, T2: ainda dentro da semana 19-25
+        c = self.celulas(self.farol())
+        self.assertEqual((c['Semanal']['cor'], c['Semanal']['feitos']), ('verde', 1))
+        self.assertIn('Cumprido', c['Semanal']['dica'])
+        self.lancar(date(2026, 10, 18), self.t1, self.c_mes)            # outro mês/semana não vale para a semana, mas vale para o mês
+        c = self.celulas(self.farol())
+        self.assertEqual(c['Mensal']['cor'], 'verde')
+
+    def test_registro_da_semana_anterior_nao_vale(self):
+        self.lancar(date(2026, 10, 18), self.t1, self.c_sem)            # domingo da semana anterior
+        self.assertEqual(self.celulas(self.farol())['Semanal']['cor'], 'amarelo')
+
+    def test_data_passada_com_prazo_encerrado_fica_vermelha(self):
+        c = self.celulas(self.farol(data=date(2026, 10, 14)))           # semana 12-18 já encerrou
+        self.assertEqual({k: v['cor'] for k, v in c.items()}, {'Turno': 'vermelho', 'Diária': 'vermelho', 'Semanal': 'vermelho', 'Mensal': 'amarelo'})
+        self.assertIn('Prazo encerrado', c['Semanal']['dica'])
+        self.lancar(date(2026, 10, 16), self.t2, self.c_sem)
+        self.assertEqual(self.celulas(self.farol(data=date(2026, 10, 14)))['Semanal']['cor'], 'verde')
+
+    def test_turno_encerrado_sem_registro_fica_vermelho(self):
+        for t, ini, fim in ((self.t1, time(6), time(14)), (self.t2, time(14), time(22))):
+            t.inicio, t.fim = ini, fim
+            t.save()
+        c = self.celulas(self.farol(h=15))                              # T1 já terminou, T2 em andamento
+        self.assertEqual((c['Turno']['cor'], c['Turno']['devidos']), ('vermelho', 2))
+        self.lancar(self.D, self.t1, self.c_lista)
+        self.assertEqual(self.celulas(self.farol(h=15))['Turno']['cor'], 'amarelo')   # só T2 pendente e ainda em andamento
+        self.lancar(self.D, self.t2, self.c_lista)
+        self.assertEqual(self.celulas(self.farol(h=15))['Turno']['cor'], 'verde')
+        self.assertEqual(self.celulas(self.farol(h=8))['Turno']['devidos'], 1)   # 8h: só T1 iniciado
+
+    def test_vigencia_e_dispensa_e_futuro(self):
+        self.v15.vigencia = date(2026, 10, 26)                          # a semana 19-25 encerrou antes da vigência: não é cobrada
+        self.v15.save()
+        c = self.celulas(self.farol())
+        self.assertNotIn('Semanal', c)
+        self.assertIn('Mensal', c)                                      # o mês termina depois da vigência
+        self.v15.vigencia = date(2026, 10, 1)
+        self.v15.save()
+        self.client.post(reverse('pcp:preencher_status', args=[self.pag.pk]), {'data': '2026-10-22', 'turno': self.t1.pk, 'status': 'parada', 'escopo': 'dia'})
+        c = self.celulas(self.farol())
+        self.assertNotIn('Turno', c)                                    # dia todo parado: itens por turno e diários dispensados
+        self.assertNotIn('Diária', c)
+        self.assertEqual(pend.farol(date(2026, 10, 30), hoje=self.D, agora=self.agora())['contagem']['vermelho'], 0)  # futuro: nada vencido
+
+    def test_contagem_e_cor_da_pagina(self):
+        f = self.farol(data=date(2026, 10, 14))
+        self.assertEqual(f['contagem'], {'verde': 0, 'amarelo': 1, 'vermelho': 3})
+        self.assertEqual(f['blocos'][0]['grupos'][0]['linhas'][0]['cor'], 'vermelho')   # pior situação da página
+        self.assertEqual([(c['nome'], c['prazo']) for c in f['colunas']],
+                         [('Turno', '14/10'), ('Diária', '14/10'), ('Semanal', '12/10–18/10'), ('Mensal', 'out/2026')])
+
+    def test_tela_mostra_o_farol_e_aceita_a_data_de_observacao(self):
+        url = reverse('pcp:dashboard')
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'Farol dos prazos em andamento')
+        self.assertContains(r, 'Basta um registro em qualquer turno')
+        self.assertEqual(self.client.get(url + '?observar=2026-10-14').context['observar'], date(2026, 10, 14))
+        self.assertEqual(self.client.get(url + '?observar=lixo').status_code, 200)

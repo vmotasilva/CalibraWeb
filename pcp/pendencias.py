@@ -360,3 +360,133 @@ def ranking(d, ordem='pct', top=10):
     else:
         chave_ = lambda x: (x['pct'], -x['atrasados'], x['nome'] if 'nome' in x else x['descricao'])  # noqa: E731
     return sorted(paginas, key=chave_)[:top], sorted(itens, key=chave_)[:top]
+
+
+# --------------------------------------------------------------------------------------
+# Farol: situação do prazo em andamento por página e frequência
+# --------------------------------------------------------------------------------------
+VERDE, AMARELO, VERMELHO = 'verde', 'amarelo', 'vermelho'
+_GRAVIDADE = {VERDE: 0, AMARELO: 1, VERMELHO: 2}
+_MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+
+
+def rotulo_janela(periodicidade, data):
+    """Texto curto do prazo em que `data` está (ex.: '19/10–25/10', 'out/2026', 'jul–set/2026')."""
+    ini, fim = janela(periodicidade, data)
+    if periodicidade in ('turno', 'diaria'):
+        return f'{data:%d/%m}'
+    if periodicidade in ('semanal', 'quinzenal'):
+        return f'{ini:%d/%m}–{fim:%d/%m}'
+    if periodicidade == 'mensal':
+        return f'{_MESES[data.month - 1]}/{data.year}'
+    if periodicidade in ('trimestral', 'semestral'):
+        return f'{_MESES[ini.month - 1]}–{_MESES[fim.month - 1]}/{data.year}'
+    return str(data.year)
+
+
+def _turno_encerrado(turno, agora):
+    """Turno de hoje já terminou? Sem horário cadastrado (ou turno que atravessa a meia-noite) conta como em andamento."""
+    if turno.inicio and turno.fim and turno.inicio < turno.fim:
+        return agora.time() >= turno.fim
+    return False
+
+
+def farol(data_obs, formulario_id=None, hoje=None, agora=None):
+    """Situação dos prazos em andamento na data de observação, por página e frequência (dados simples, prontos para cache).
+
+    Para cada frequência olha-se o prazo que contém a data (turno, dia, semana seg-dom, quinzena 1-15/16-fim, mês, trimestre
+    Jan-Mar/Abr-Jun/Jul-Set/Out-Dez, semestre Jan-Jun/Jul-Dez, ano). Basta um lançamento em qualquer turno dentro do prazo.
+    Verde = cumprido; amarelo = pendente com prazo em aberto; vermelho = pendente com prazo já encerrado.
+    Máquina em manutenção/parada dispensa os itens (não entram)."""
+    from django.utils import timezone
+    agora = agora or timezone.localtime()
+    hoje = hoje or agora.date()
+    todos = list(Turno.objects.filter(ativo=True))
+    if data_obs < hoje:
+        consideradas = todos                                   # dia passado: todos os turnos já ocorreram
+    elif data_obs == hoje:
+        consideradas = [t for d, t in _turnos_iniciados_hoje(agora)]
+    else:
+        consideradas = []                                      # futuro: nada é devido ainda
+    versoes = list(FormularioVersao.objects.filter(status=FormularioVersao.VIGENTE, formulario__ativo=True)
+                   .select_related('formulario__setor').order_by('formulario__codigo'))
+    if formulario_id:
+        versoes = [v for v in versoes if v.formulario_id == int(formulario_id)]
+    freq_info, contagem, brutos = {}, {VERDE: 0, AMARELO: 0, VERMELHO: 0}, []
+    for versao in versoes:
+        rastreio = inicio_rastreio(versao.formulario)
+        grupos = {}
+        for pagina in versao.paginas.filter(ativo=True).prefetch_related('campos__frequencia'):
+            resultado = avaliar_pagina(pagina, data_obs, todos) if todos else {}
+            primeiro = todos[0].pk if todos else None
+            celulas = {}
+            for campo in pagina.campos.all():
+                if not (campo.ativo and campo.frequencia_id) or campo.frequencia.periodicidade == 'evento':
+                    continue
+                per, f = campo.frequencia.periodicidade, campo.frequencia
+                fim_prazo = janela(per, data_obs)[1]
+                if rastreio and fim_prazo < rastreio:
+                    continue                                    # prazo encerrou antes da vigência: não é cobrado
+                if per == 'turno':
+                    regs = [(t, resultado[t.pk][campo.pk]) for t in consideradas if campo.pk in resultado.get(t.pk, {})]
+                else:
+                    regs = [(None, resultado[primeiro][campo.pk])] if primeiro and campo.pk in resultado.get(primeiro, {}) else []
+                if not regs:
+                    continue
+                c = celulas.setdefault(f.pk, {'devidos': 0, 'feitos': 0, 'cor': VERDE, 'pendente_encerrado': False})
+                freq_info[f.pk] = {'pk': f.pk, 'nome': f.nome, 'periodicidade': per, 'ordem': f.ordem,
+                                   'prazo': rotulo_janela(per, data_obs)}
+                for turno, feito in regs:
+                    c['devidos'] += 1
+                    c['feitos'] += int(feito)
+                    if feito:
+                        continue
+                    if per == 'turno':
+                        vencido = data_obs < hoje or (data_obs == hoje and _turno_encerrado(turno, agora))
+                    else:
+                        vencido = fim_prazo < hoje
+                    if per == 'diaria':
+                        vencido = data_obs < hoje
+                    c['pendente_encerrado'] = c['pendente_encerrado'] or vencido
+                    c['cor'] = VERMELHO if (vencido or c['cor'] == VERMELHO) else AMARELO
+            for f_pk, c in celulas.items():
+                c['pendentes'] = c['devidos'] - c['feitos']
+                per = freq_info[f_pk]['periodicidade']
+                fim_prazo = janela(per, data_obs)[1]
+                if c['cor'] == VERDE:
+                    c['dica'] = f'Cumprido: {c["feitos"]} de {c["devidos"]} ({freq_info[f_pk]["prazo"]})'
+                elif c['cor'] == VERMELHO:
+                    c['dica'] = f'Prazo encerrado com {c["pendentes"]} pendente(s) de {c["devidos"]} ({freq_info[f_pk]["prazo"]})'
+                else:
+                    restam = (fim_prazo - hoje).days
+                    quando = 'vence hoje' if restam == 0 else (f'vence em {restam} dia(s)' if restam > 0 else 'em andamento')
+                    c['dica'] = f'{c["pendentes"]} pendente(s) de {c["devidos"]} ({freq_info[f_pk]["prazo"]}) · {quando}'
+                contagem[c['cor']] += 1
+                c.pop('pendente_encerrado', None)
+            grupos.setdefault(pagina.grupo or 'Sem grupo', []).append((pagina, celulas))
+        brutos.append((versao, versao.formulario.ordenar_grupos(grupos)))
+
+    colunas = sorted(freq_info.values(), key=lambda f: (ORDEM_PERIODICIDADE.index(f['periodicidade']) if f['periodicidade'] in ORDEM_PERIODICIDADE else 99,
+                                                        f['ordem'], f['nome']))
+    blocos = []
+    for versao, grupos in brutos:
+        lista_grupos = []
+        for nome_grupo, paginas in grupos.items():
+            linhas = []
+            for pagina, celulas in paginas:
+                if not celulas:
+                    continue
+                pior = max((c['cor'] for c in celulas.values()), key=lambda x: _GRAVIDADE[x])
+                linhas.append({'pagina_id': pagina.pk, 'nome': pagina.nome, 'cor': pior,
+                               'celulas': [celulas.get(col['pk']) for col in colunas]})
+            if linhas:
+                lista_grupos.append({'nome': nome_grupo, 'linhas': linhas})
+        if lista_grupos:
+            blocos.append({'formulario_id': versao.formulario_id, 'codigo': versao.formulario.codigo, 'titulo': versao.formulario.titulo,
+                           'revisao': versao.revisao, 'grupos': lista_grupos})
+    return {'data': data_obs, 'colunas': colunas, 'blocos': blocos, 'contagem': contagem, 'hoje': hoje}
+
+
+def _turnos_iniciados_hoje(agora):
+    from pcp.cobranca import turnos_iniciados
+    return [(d, t) for d, t in turnos_iniciados(agora) if d == agora.date()]

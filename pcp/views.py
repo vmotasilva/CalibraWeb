@@ -920,11 +920,18 @@ def dashboard(request):
         dados = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), formulario_id, hoje)
         cache.set(chave_cache, dados, timeout=120)  # resultado simples (sem objetos de modelo); recarrega a cada 2 minutos
     grafico = {'evolucao': dados['evolucao'], 'frequencias': dados['por_frequencia'], 'agrupamento': dados['agrupamento']}
+    # farol: situação dos prazos em andamento na data de observação (padrão: hoje); guardado por 1 minuto
+    observar = _parse_data(request.GET.get('observar')) if request.GET.get('observar') else hoje
+    chave_farol = f'pcp:farol:v1:{_geracao_dashboard()}:{observar}:{formulario_id or 0}'
+    farol = None if request.GET.get('atualizar') else cache.get(chave_farol)
+    if farol is None:
+        farol = pend.farol(observar, formulario_id)
+        cache.set(chave_farol, farol, timeout=60)
     ordem = request.GET.get('ordem') if request.GET.get('ordem') in ('pct', 'atrasos') else 'pct'
     top = int(request.GET['top']) if request.GET.get('top') in {str(t) for t in pend.TOPS} else 10
     rank_paginas, rank_itens = pend.ranking(dados, ordem, top)
     return render(request, 'pcp/dashboard.html', {
-        'url_atual': request.get_full_path(), 'd': dados, 'grafico': grafico, 'rank_paginas': rank_paginas, 'rank_itens': rank_itens, 'ordem': ordem, 'top': top, 'tops': pend.TOPS,
+        'farol': farol, 'observar': observar, 'url_atual': request.get_full_path(), 'd': dados, 'grafico': grafico, 'rank_paginas': rank_paginas, 'rank_itens': rank_itens, 'ordem': ordem, 'top': top, 'tops': pend.TOPS,
         'min_pagina': pend.MIN_PRAZOS_PAGINA, 'min_item': pend.MIN_PRAZOS_ITEM, 'dias': dias, 'periodos': PERIODOS_DASHBOARD, 'hoje': hoje, 'fim': fim,
         'formularios': Formulario.objects.filter(ativo=True), 'formulario_id': int(formulario_id) if formulario_id else None})
 
