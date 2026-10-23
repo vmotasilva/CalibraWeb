@@ -1041,12 +1041,8 @@ def dashboard(request):
         for g in b['grupos']:
             for l in g['linhas']:
                 l['pares'] = [(col, c) for col, c in zip(farol['colunas'], l['celulas']) if c]
-    ordem = request.GET.get('ordem') if request.GET.get('ordem') in ('pct', 'atrasos') else 'pct'
-    top = int(request.GET['top']) if request.GET.get('top') in {str(t) for t in pend.TOPS} else 10
-    rank_paginas, rank_itens = pend.ranking(dados, ordem, top)
     return render(request, 'pcp/dashboard.html', {
-        'farol': farol, 'observar': observar, 'url_atual': request.get_full_path(), 'd': dados, 'grafico': grafico, 'rank_paginas': rank_paginas, 'rank_itens': rank_itens, 'ordem': ordem, 'top': top, 'tops': pend.TOPS,
-        'min_pagina': pend.MIN_PRAZOS_PAGINA, 'min_item': pend.MIN_PRAZOS_ITEM, 'dias': dias, 'periodos': PERIODOS_DASHBOARD, 'hoje': hoje, 'fim': fim,
+        'farol': farol, 'observar': observar, 'url_atual': request.get_full_path(), 'd': dados, 'grafico': grafico, 'dias': dias, 'periodos': PERIODOS_DASHBOARD, 'hoje': hoje, 'fim': fim,
         'formularios': Formulario.objects.filter(ativo=True), 'formulario_id': int(formulario_id) if formulario_id else None})
 
 

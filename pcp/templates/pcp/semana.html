@@ -259,7 +259,7 @@
             valor.appendChild(el('option', ''));
             item.opcoes.forEach(function (op) { var o = el('option', op); o.value = op; valor.appendChild(o); });
         } else {
-            valor = el('input', null, 'form-control form-control-sm'); valor.type = 'text';
+            valor = el('input', null, 'form-control form-control-sm'); valor.type = 'text'; valor.autocomplete = 'off'; valor.name = 'pcp-resultado-' + det.campo;
             if (item.tipo_codigo === 'numero') valor.inputMode = 'decimal';
         }
         if (anterior) {

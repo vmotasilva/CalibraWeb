@@ -151,12 +151,12 @@
                                 </select>
                             {% elif c.tipo == 'numero' %}
                                 <div class="input-group input-group-sm">
-                                    <input type="text" inputmode="decimal" name="c_{{ c.pk }}" value="{{ r.valor }}" class="form-control" {% if travada %}disabled{% endif %}>
+                                    <input type="text" inputmode="decimal" autocomplete="off" name="c_{{ c.pk }}" value="{{ r.valor }}" class="form-control" {% if travada %}disabled{% endif %}>
                                     {% if c.unidade %}<span class="input-group-text">{{ c.unidade }}</span>{% endif %}
                                 </div>
                                 {% if c.minimo is not None or c.maximo is not None %}<div class="form-text mt-0">{{ c.minimo|default_if_none:"" }} – {{ c.maximo|default_if_none:"" }}</div>{% endif %}
                             {% else %}
-                                <input type="text" name="c_{{ c.pk }}" value="{{ r.valor }}" class="form-control form-control-sm" {% if travada %}disabled{% endif %}>
+                                <input type="text" autocomplete="off" name="c_{{ c.pk }}" value="{{ r.valor }}" class="form-control form-control-sm" {% if travada %}disabled{% endif %}>
                             {% endif %}
                         </td>
                         <td class="small pcp-reacao{% if not c.plano_reacao %} pcp-sem-valor{% endif %}" data-label="Plano de reação">{{ c.plano_reacao|default:"—" }}</td>

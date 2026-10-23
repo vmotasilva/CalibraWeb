@@ -3,7 +3,6 @@
 {% block title %}PCP - Dashboard - Calibra QMS{% endblock %}
 
 {% block content %}
-{% can_nav_view user 'pcp:pagina_desativar' 'pcp' as pode_desativar %}
 <div class="container-fluid py-3">
     <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Dashboard de acompanhamento</h4>
     {% include "pcp/_nav.html" with secao="dashboard" %}
@@ -63,7 +62,6 @@
         <h5 class="mb-0">Farol dos prazos em andamento</h5>
         <form method="get" class="d-flex flex-wrap align-items-center gap-2 ms-auto">
             <input type="hidden" name="dias" value="{{ dias }}"><input type="hidden" name="ate" value="{{ fim|date:'Y-m-d' }}">
-            <input type="hidden" name="ordem" value="{{ ordem }}"><input type="hidden" name="top" value="{{ top }}">
             {% if formulario_id %}<input type="hidden" name="formulario" value="{{ formulario_id }}">{% endif %}
             <label class="small text-muted mb-0" for="observar">Observar em</label>
             <input type="date" id="observar" name="observar" value="{{ observar|date:'Y-m-d' }}" class="form-control form-control-sm w-auto" onchange="this.form.submit()">
@@ -157,117 +155,6 @@
         .farol-celula { cursor:help; white-space:nowrap; }
     </style>
 
-    {% if d.devidos %}
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-        <h5 class="mb-0">Menor cumprimento</h5>
-        <form method="get" class="d-flex flex-wrap gap-2 ms-auto">
-            <input type="hidden" name="dias" value="{{ dias }}"><input type="hidden" name="ate" value="{{ fim|date:'Y-m-d' }}">
-            {% if formulario_id %}<input type="hidden" name="formulario" value="{{ formulario_id }}">{% endif %}
-            <select name="ordem" class="form-select form-select-sm w-auto" onchange="this.form.submit()" title="Critério de ordenação">
-                <option value="pct" {% if ordem == 'pct' %}selected{% endif %}>Ordenar por menor %</option>
-                <option value="atrasos" {% if ordem == 'atrasos' %}selected{% endif %}>Ordenar por mais atrasos</option>
-            </select>
-            <select name="top" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
-                {% for t in tops %}<option value="{{ t }}" {% if t == top %}selected{% endif %}>Top {{ t }}</option>{% endfor %}
-            </select>
-        </form>
-    </div>
-    <div class="row g-3 mb-3">
-        <div class="col-xl-5"><div class="card h-100">
-            <div class="card-header">Páginas <span class="small text-muted">(mínimo de {{ min_pagina }} prazos no período)</span></div>
-            <div class="table-responsive"><table class="table table-sm align-middle mb-0">
-                <thead><tr><th>#</th><th>Página</th><th class="text-center">Cumpr.</th><th class="text-end">Atrasos</th>{% if pode_desativar %}<th></th>{% endif %}</tr></thead>
-                <tbody>
-                {% for p in rank_paginas %}
-                    <tr>
-                        <td class="text-muted">{{ forloop.counter }}</td>
-                        <td><a href="{% url 'pcp:atrasos_pagina' p.pagina_id %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}" class="text-decoration-none">{{ p.nome }}</a>
-                            <div class="small text-muted">{{ p.codigo }}</div></td>
-                        <td class="text-center"><span class="badge {% if p.pct >= 95 %}bg-success{% elif p.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ p.pct }}%</span>
-                            <div class="small text-muted">{{ p.feitos }}/{{ p.devidos }}</div></td>
-                        <td class="text-end {% if p.atrasados %}text-danger fw-semibold{% endif %}">{{ p.atrasados }}</td>
-                        {% if pode_desativar %}<td class="text-end">
-                            <form method="post" action="{% url 'pcp:pagina_desativar' p.pagina_id %}" class="d-inline"
-                                  onsubmit="return confirm('Desativar a página &quot;{{ p.nome|escapejs }}&quot; ({{ p.codigo }})?\n\nEla sai do preenchimento, das pendências, dos atrasos, do sino e deste dashboard. O histórico é mantido e a página pode ser reativada em Grupos e blocos.');">
-                                {% csrf_token %}<input type="hidden" name="next" value="{{ url_atual }}">
-                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" title="Desativar página (equipamento sem uso)"><i class="bi bi-eye-slash"></i> Desativar</button>
-                            </form></td>{% endif %}
-                    </tr>
-                {% empty %}<tr><td colspan="5" class="text-center text-muted py-3">Nenhuma página com prazos suficientes no período.</td></tr>{% endfor %}
-                </tbody></table></div>
-        </div></div>
-        <div class="col-xl-7"><div class="card h-100">
-            <div class="card-header">Itens <span class="small text-muted">(mínimo de {{ min_item }} prazos no período)</span></div>
-            <div class="table-responsive"><table class="table table-sm align-middle mb-0">
-                <thead><tr><th>#</th><th>Item</th><th>Página</th><th>Frequência</th><th class="text-center">Cumpr.</th><th class="text-end">Atrasos</th></tr></thead>
-                <tbody>
-                {% for i in rank_itens %}
-                    <tr>
-                        <td class="text-muted">{{ forloop.counter }}</td>
-                        <td>{% if i.etapa %}<div class="small text-muted">{{ i.etapa|truncatechars:45 }}</div>{% endif %}
-                            <span class="badge bg-light text-dark border" title="Nº do item no bloco">{{ i.numero }}</span> <span class="fw-semibold {% if i.critico %}text-danger{% endif %}">{{ i.item|default:"—" }}</span> {{ i.descricao|truncatechars:60 }}</td>
-                        <td class="small"><a href="{% url 'pcp:atrasos_pagina' i.pagina_id %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}" class="text-decoration-none">{{ i.pagina }}</a></td>
-                        <td class="small text-nowrap">{{ i.frequencia }}</td>
-                        <td class="text-center"><span class="badge {% if i.pct >= 95 %}bg-success{% elif i.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ i.pct }}%</span>
-                            <div class="small text-muted">{{ i.feitos }}/{{ i.devidos }}</div></td>
-                        <td class="text-end {% if i.atrasados %}text-danger fw-semibold{% endif %}">{{ i.atrasados }}</td>
-                    </tr>
-                {% empty %}<tr><td colspan="6" class="text-center text-muted py-3">Nenhum item com prazos suficientes no período.</td></tr>{% endfor %}
-                </tbody></table></div>
-        </div></div>
-    </div>
-    {% endif %}
-
-    <div class="small text-muted mb-2">
-        Cada célula mostra o <strong>% de cumprimento</strong> e <strong>feitas/devidas</strong> da frequência naquela página: uma verificação devida conta uma vez por prazo
-        (a cada turno, dia, semana, mês…) e só entra depois que o prazo encerra. <span class="badge bg-success">≥ 95%</span> <span class="badge bg-warning text-dark">80–94%</span> <span class="badge bg-danger">&lt; 80%</span>
-        Clique no nome da página para ver os itens em atraso.
-    </div>
-
-    {% for b in d.blocos %}
-        <div class="card mb-3">
-            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-1">
-                <strong>{{ b.codigo }} - {{ b.titulo }}</strong>
-                <span>
-                    {% if b.pct is not None %}<span class="badge fs-6 {% if b.pct >= 95 %}bg-success{% elif b.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ b.pct }}%</span>
-                    <span class="small text-muted">{{ b.feitos }}/{{ b.devidos }}</span>{% endif %}
-                    <span class="badge bg-secondary">{{ b.revisao }}</span>
-                    {% if b.rastreio and d.ini < b.rastreio %}<span class="small text-muted ms-1" title="Antes dessa data nada é cobrado">rastreio desde {{ b.rastreio|date:"d/m/Y" }}</span>{% endif %}
-                </span>
-            </div>
-            <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0 text-center">
-                    <thead><tr>
-                        <th class="text-start">Página</th>
-                        {% for c in d.colunas %}<th class="small fw-normal">{{ c.nome }}</th>{% endfor %}
-                        <th>Total</th><th>Em atraso</th>
-                    </tr></thead>
-                    <tbody>
-                    {% for g in b.grupos %}
-                        <tr class="table-light"><td colspan="{{ d.colunas|length|add:3 }}" class="text-start small text-uppercase text-muted">{{ g.nome }}</td></tr>
-                        {% for l in g.linhas %}
-                            <tr>
-                                <td class="text-start text-nowrap"><a href="{% url 'pcp:atrasos_pagina' l.pagina_id %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}" class="text-decoration-none">{{ l.nome }}</a></td>
-                                {% for c in l.celulas %}
-                                    <td>{% if c %}
-                                        <span class="badge {% if c.pct >= 95 %}bg-success{% elif c.pct >= 80 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ c.pct }}%</span>
-                                        <div class="small text-muted">{{ c.feitos }}/{{ c.devidos }}</div>
-                                    {% else %}<span class="text-muted">·</span>{% endif %}</td>
-                                {% endfor %}
-                                <td>{% if l.pct is not None %}<span class="fw-semibold">{{ l.pct }}%</span>{% else %}—{% endif %}</td>
-                                <td class="{% if l.atrasados %}text-danger fw-semibold{% endif %}">{{ l.atrasados }}</td>
-                            </tr>
-                        {% endfor %}
-                    {% empty %}
-                        <tr><td colspan="{{ d.colunas|length|add:3 }}" class="text-muted py-3">Sem páginas ativas.</td></tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    {% empty %}
-        <div class="text-center text-muted py-5">Nenhum formulário com revisão vigente.</div>
-    {% endfor %}
     {% if not d.devidos and d.blocos %}<div class="alert alert-info">Nenhuma verificação com prazo encerrado no período. Se o formulário foi publicado há pouco, os prazos só contam a partir da data de vigência.</div>{% endif %}
 </div>
 

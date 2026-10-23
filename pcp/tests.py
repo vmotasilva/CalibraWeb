@@ -1639,10 +1639,9 @@ class DashboardTests(DashboardBase):
         r = self.client.get(reverse('pcp:dashboard') + f'?dias=30&ate={self.FIM}')   # a tela calcula com o relógio real
         self.assertEqual(r.status_code, 200)
         self.assertEqual(r.context['d']['fim'], self.FIM)
-        self.assertContains(r, 'Fitadeira')
-        self.assertContains(r, reverse('pcp:atrasos_pagina', args=[self.pag.pk]))
-        self.assertContains(r, 'Turno')       # colunas por frequência
+        self.assertContains(r, 'Fitadeira')   # farol dos prazos em andamento
         self.assertContains(r, 'Em atraso')
+        self.assertNotContains(r, 'Menor cumprimento')
 
 
 class RankingDashboardTests(DashboardBase):
@@ -1686,25 +1685,9 @@ class RankingDashboardTests(DashboardBase):
         self.assertEqual([(p['nome'], p['pct']) for p in paginas][0], ('Pior', 0))
         self.assertEqual(itens[0]['item'], 'P-1')
 
-    def test_tela_mostra_o_ranking_e_aceita_parametros(self):
-        url = reverse('pcp:dashboard')
-        r = self.client.get(url + f'?dias=30&ate={self.FIM}&ordem=atrasos&top=20')
-        self.assertEqual(r.status_code, 200)
-        self.assertEqual((r.context['ordem'], r.context['top']), ('atrasos', 20))
-        self.assertContains(r, 'Menor cumprimento')
-        self.assertContains(r, 'Extra por turno')
-        r = self.client.get(url + '?ordem=lixo&top=abc')
-        self.assertEqual((r.context['ordem'], r.context['top']), ('pct', 10))
-
-
 class DesativarDoRankingTests(DashboardBase):
     def desativar(self, pagina=None, **extra):
         return self.client.post(reverse('pcp:pagina_desativar', args=[(pagina or self.pag).pk]), extra)
-
-    def test_botao_aparece_no_ranking_para_quem_tem_permissao(self):
-        r = self.client.get(reverse('pcp:dashboard') + f'?dias=30&ate={self.FIM}')
-        self.assertContains(r, reverse('pcp:pagina_desativar', args=[self.pag.pk]))
-        self.assertContains(r, 'Desativar')
 
     def test_desativa_volta_para_o_dashboard_com_os_filtros_e_mantem_o_historico(self):
         url = reverse('pcp:dashboard') + f'?dias=14&ate={self.FIM}&ordem=atrasos&top=20'
@@ -1716,10 +1699,9 @@ class DesativarDoRankingTests(DashboardBase):
 
     def test_some_do_dashboard_na_hora_apesar_do_cache(self):
         url = reverse('pcp:dashboard') + f'?dias=30&ate={self.FIM}'
-        self.assertContains(self.client.get(url), 'Fitadeira')                  # popula o cache
+        self.assertTrue(self.client.get(url).context['d']['blocos'][0]['grupos'])   # popula o cache
         self.desativar()
         r = self.client.get(url)                                                # sem esperar os 2 minutos do cache
-        self.assertNotContains(r, reverse('pcp:atrasos_pagina', args=[self.pag.pk]))
         self.assertEqual(r.context['d']['blocos'][0]['grupos'], [])
 
     def test_vale_para_o_rascunho_de_mesmo_nome_e_nao_reativa(self):
@@ -1740,7 +1722,7 @@ class DesativarDoRankingTests(DashboardBase):
         self.client.get(url)
         self.desativar()
         self.client.post(reverse('pcp:paginas_acao', args=[self.form.pk]), {'paginas': [self.pag.pk], 'acao': 'ativar'})
-        self.assertContains(self.client.get(url), reverse('pcp:atrasos_pagina', args=[self.pag.pk]))
+        self.assertTrue(self.client.get(url).context['d']['blocos'][0]['grupos'])
 
 
 class RegrasDePrazoTests(TestCase):
