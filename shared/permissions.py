@@ -331,7 +331,7 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {
                         "nome": "Preencher Verificações",
-                        "view_name": ["pcp:preencher", "pcp:preencher_pagina", "pcp:preencher_salvar", "pcp:preencher_item", "pcp:preencher_status"],
+                        "view_name": ["pcp:preencher", "pcp:preencher_pagina", "pcp:preencher_salvar", "pcp:preencher_item", "pcp:ocorrencia_registrar", "pcp:preencher_status"],
                         "perm": "core.nav_pcp_preencher",
                         "descricao": "Lança os resultados das verificações por página, data e turno, e registra observações e ocorrências.",
                     },

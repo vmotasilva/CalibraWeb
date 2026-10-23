@@ -2625,3 +2625,32 @@ class DashboardMobileTests(DashboardBase):
         self.assertIn('row g-3 mb-3 d-none d-md-flex', html) if r.context['d']['devidos'] else None
         self.assertIn('small text-muted d-none d-md-block', html)          # texto "Cada ponto é o prazo…" escondido no celular
         self.assertIn('d-md-none p-2', html)                               # cards: grupo > página
+
+
+class SemanaOcorrenciaNoPopupTests(SemanaBase):
+    def post(self, **extra):
+        dados = {'campo': self.c_ev.pk, 'data': '2026-10-20', 'turno': self.t1.pk, 'tipo': 'tratativa', 'descricao': 'Pinça trocada'}
+        dados.update(extra)
+        return self.client.post(reverse('pcp:ocorrencia_registrar', args=[self.pag.pk]), dados)
+
+    def test_registra_ocorrencia_do_item_na_data_e_turno(self):
+        r = self.post()
+        self.assertEqual((r.status_code, r.json()['ok']), (200, True))
+        oc = Ocorrencia.objects.get()
+        self.assertEqual((oc.campo, oc.tipo, oc.descricao, oc.verificacao.data, oc.verificacao.turno), (self.c_ev, 'tratativa', 'Pinça trocada', date(2026, 10, 20), self.t1))
+        self.assertEqual(oc.criado_por, self.user) if hasattr(self, 'user') else None
+
+    def test_valida_descricao_data_e_tipo_desconhecido_vira_observacao(self):
+        self.assertEqual(self.post(descricao='  ').status_code, 400)
+        self.assertEqual(self.post(data='2999-01-01').status_code, 400)
+        self.assertEqual(self.post(data='lixo').status_code, 400)
+        self.assertEqual(self.post(tipo='xyz').status_code, 200)
+        self.assertEqual(Ocorrencia.objects.get().tipo, 'observacao')
+
+    def test_botao_mais_tem_chave_de_detalhe_e_tela_tem_botao_de_ocorrencia(self):
+        r = self.client.get(reverse('pcp:semana'), {'pagina': self.pag.pk, 'semana': '2026-10-19'})
+        linha = next(l for l in r.context['d']['linhas'] if l['campo'] == self.c_ev.pk)
+        n = linha['novos'][1][0]
+        self.assertEqual(r.context['d']['detalhes'][n['key']]['estado'], 'novo')
+        self.assertContains(r, 'id="modal-farol-ocorrencia"')
+        self.assertContains(r, f'data-key="{n["key"]}"')

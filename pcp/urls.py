@@ -74,6 +74,7 @@ urlpatterns = [
     path('formularios/<int:pk>/dados/', views.exportar_dados_formulario, name='exportar_dados_formulario'),
     path('preencher/<int:pk>/salvar/', views.preencher_salvar, name='preencher_salvar'),
     path('preencher/<int:pk>/item/', views.preencher_item, name='preencher_item'),
+    path('preencher/<int:pk>/ocorrencia/', views.ocorrencia_registrar, name='ocorrencia_registrar'),
     path('ocorrencias/', views.ocorrencias, name='ocorrencias'),
     path('ocorrencias/<int:pk>/tratar/', views.ocorrencia_tratar, name='ocorrencia_tratar'),
 ]

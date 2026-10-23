@@ -1009,7 +1009,8 @@ def semana(request):
         contexto.update({
             'd': dados, 'grupos': grupos, 'frequencias': [(k, v[1]) for k, v in ordenadas],
             'json_detalhes': {'itens': dados['itens'], 'detalhes': dados['detalhes'], 'turnos': dados['turnos'], 'hoje': hoje.isoformat(),
-                              'url_item': reverse('pcp:preencher_item', args=[escolhida.pk]), 'editavel': escolhida.versao.status == FormularioVersao.VIGENTE},
+                              'url_item': reverse('pcp:preencher_item', args=[escolhida.pk]), 'url_ocorrencia': reverse('pcp:ocorrencia_registrar', args=[escolhida.pk]),
+                              'tipos_ocorrencia': [[k, v] for k, v in Ocorrencia.TIPOS], 'editavel': escolhida.versao.status == FormularioVersao.VIGENTE},
             'anterior': dados['ini'] - datetime.timedelta(days=7), 'proxima': dados['ini'] + datetime.timedelta(days=7),
             'esta_semana': semana_mod.segunda_feira(hoje), 'e_esta_semana': dados['ini'] == semana_mod.segunda_feira(hoje)})
     return render(request, 'pcp/semana.html', contexto)
@@ -1383,6 +1384,32 @@ def preencher_item(request, pk):
             conforme = campo.avaliar(valor)
             Resposta.objects.update_or_create(verificacao=verificacao, campo=campo, defaults={'valor': valor, 'conforme': conforme})
     return JsonResponse({'ok': True, 'conforme': conforme, 'limpo': not valor})
+
+
+@login_required
+@require_POST
+def ocorrencia_registrar(request, pk):
+    """Registra uma ocorrência (observação ou registro que requer tratativa) de um item numa data e turno, pelo pop-up da visão semanal. Responde JSON."""
+    pagina = get_object_or_404(Pagina.objects.select_related('versao'), pk=pk)
+    campo = get_object_or_404(Campo, pk=request.POST.get('campo') or 0, pagina=pagina)
+    turno = get_object_or_404(Turno, pk=request.POST.get('turno') or 0)
+    try:
+        data = datetime.date.fromisoformat(request.POST.get('data') or '')
+    except ValueError:
+        return JsonResponse({'ok': False, 'erro': 'Informe uma data válida.'}, status=400)
+    if pagina.versao.status != FormularioVersao.VIGENTE:
+        return JsonResponse({'ok': False, 'erro': 'Só é possível registrar ocorrências na revisão vigente.'}, status=400)
+    if data > timezone.localdate():
+        return JsonResponse({'ok': False, 'erro': 'Não é possível registrar em data futura.'}, status=400)
+    descricao = (request.POST.get('descricao') or '').strip()
+    if not descricao:
+        return JsonResponse({'ok': False, 'erro': 'Descreva a ocorrência.'}, status=400)
+    tipo = request.POST.get('tipo')
+    with transaction.atomic():
+        verificacao, _ = Verificacao.objects.get_or_create(pagina=pagina, data=data, turno=turno, defaults={'responsavel': request.user})
+        Ocorrencia.objects.create(verificacao=verificacao, campo=campo, descricao=descricao, criado_por=request.user,
+                                  tipo=tipo if tipo in dict(Ocorrencia.TIPOS) else Ocorrencia.OBSERVACAO)
+    return JsonResponse({'ok': True})
 
 
 @login_required

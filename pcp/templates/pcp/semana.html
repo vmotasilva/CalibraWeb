@@ -216,7 +216,8 @@
             </div>
             <div class="modal-body" id="modal-farol-corpo"></div>
             <div class="modal-footer">
-                {% if pode_lancar %}<a id="modal-farol-lancar" href="#" class="btn btn-link me-auto d-none"><i class="bi bi-box-arrow-up-right me-1"></i><span></span></a>{% endif %}
+                {% if pode_lancar %}<button type="button" id="modal-farol-ocorrencia" class="btn btn-outline-danger d-none"><i class="bi bi-exclamation-triangle me-1"></i>Registrar ocorrência</button>
+                <a id="modal-farol-lancar" href="#" class="btn btn-link me-auto d-none"><i class="bi bi-box-arrow-up-right me-1"></i><span></span></a>{% endif %}
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
@@ -300,18 +301,69 @@
         caixa.appendChild(acoes); caixa.appendChild(aviso);
         return caixa;
     }
-    modal.addEventListener('show.bs.modal', function (ev) {
-        var chave = ev.relatedTarget && ev.relatedTarget.dataset.key;
+    // pop-up de registro de ocorrência (sem sair da visão semanal)
+    function formularioOcorrencia(det, item, voltar) {
+        var corpo = document.getElementById('modal-farol-corpo');
+        corpo.replaceChildren();
+        document.getElementById('modal-farol-titulo').textContent = 'Registrar ocorrência · ' + (item.item ? item.item + ' · ' : '') + 'Nº ' + item.num;
+        corpo.appendChild(el('p', item.descricao, 'text-muted'));
+        var row = el('div', null, 'row g-2 mb-2');
+        var cData = el('div', null, 'col-sm-4'); cData.appendChild(el('label', 'Data', 'form-label small mb-0'));
+        var data = el('input', null, 'form-control form-control-sm'); data.type = 'date'; data.value = det.lancar.iso; data.max = dados.hoje; cData.appendChild(data);
+        var cTurno = el('div', null, 'col-sm-3'); cTurno.appendChild(el('label', 'Turno', 'form-label small mb-0'));
+        var turno = el('select', null, 'form-select form-select-sm');
+        dados.turnos.forEach(function (t) { var o = el('option', t.sigla); o.value = t.pk; if (t.pk === det.lancar.turno_id) o.selected = true; turno.appendChild(o); });
+        cTurno.appendChild(turno);
+        var cTipo = el('div', null, 'col-sm-5'); cTipo.appendChild(el('label', 'Tipo', 'form-label small mb-0'));
+        var tipo = el('select', null, 'form-select form-select-sm');
+        dados.tipos_ocorrencia.forEach(function (t) { var o = el('option', t[1]); o.value = t[0]; tipo.appendChild(o); });
+        cTipo.appendChild(tipo);
+        [cData, cTurno, cTipo].forEach(function (c) { row.appendChild(c); });
+        corpo.appendChild(row);
+        corpo.appendChild(el('label', 'Descrição', 'form-label small mb-0'));
+        var texto = el('textarea', null, 'form-control'); texto.rows = 4; texto.autocomplete = 'off'; texto.placeholder = 'O que aconteceu, o que foi feito…';
+        corpo.appendChild(texto);
+        var aviso = el('div', null, 'small mt-2');
+        var acoes = el('div', null, 'd-flex gap-2 mt-3');
+        var salvar = el('button', 'Registrar ocorrência', 'btn btn-primary btn-sm'); salvar.type = 'button';
+        var cancelar = el('button', 'Voltar', 'btn btn-outline-secondary btn-sm'); cancelar.type = 'button';
+        acoes.appendChild(salvar); acoes.appendChild(cancelar);
+        corpo.appendChild(acoes); corpo.appendChild(aviso);
+        cancelar.addEventListener('click', voltar);
+        salvar.addEventListener('click', function () {
+            if (!texto.value.trim()) { aviso.className = 'small mt-2 text-danger'; aviso.textContent = 'Descreva a ocorrência.'; return; }
+            salvar.disabled = true; aviso.className = 'small mt-2 text-muted'; aviso.textContent = 'Salvando…';
+            fetch(dados.url_ocorrencia, { method: 'POST', headers: { 'X-CSRFToken': csrf(), 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin',
+                body: new URLSearchParams({ campo: det.campo, data: data.value, turno: turno.value, tipo: tipo.value, descricao: texto.value.trim() }) })
+                .then(function (r) { return r.json().catch(function () { return { ok: false, erro: 'Falha ao salvar.' }; }); })
+                .then(function (j) {
+                    if (!j.ok) { salvar.disabled = false; aviso.className = 'small mt-2 text-danger'; aviso.textContent = j.erro || 'Falha ao salvar.'; return; }
+                    aviso.className = 'small mt-2 text-success'; aviso.textContent = 'Ocorrência registrada.';
+                    setTimeout(voltar, 700);
+                })
+                .catch(function () { salvar.disabled = false; aviso.className = 'small mt-2 text-danger'; aviso.textContent = 'Sem conexão. Tente novamente.'; });
+        });
+    }
+    var chaveAtual = null;
+    var botaoOc = document.getElementById('modal-farol-ocorrencia');
+    if (botaoOc) botaoOc.addEventListener('click', function () {
+        var det = dados.detalhes[chaveAtual];
+        if (det && det.lancar) formularioOcorrencia(det, dados.itens[det.campo], function () { render(chaveAtual); });
+    });
+    function render(chave) {
+        chaveAtual = chave;
         var det = dados.detalhes[chave];
         var corpo = document.getElementById('modal-farol-corpo');
         corpo.replaceChildren();
         var botao = document.getElementById('modal-farol-lancar');
         if (botao) botao.classList.add('d-none');
+        if (botaoOc) botaoOc.classList.add('d-none');
         if (!det) { corpo.appendChild(el('p', 'Sem detalhes para este farol.')); return; }
         if (botao && det.lancar) {   // link secundário: abre a tela completa de preenchimento na data e no turno do farol
             botao.href = det.lancar.url;
             botao.querySelector('span').textContent = 'Abrir na tela de preenchimento';
             botao.classList.remove('d-none');
+            if (botaoOc && dados.editavel) botaoOc.classList.remove('d-none');
         }
         var item = dados.itens[det.campo];
         document.getElementById('modal-farol-titulo').textContent = (item.item ? item.item + ' · ' : '') + 'Nº ' + item.num + ' · ' + det.titulo;
@@ -340,7 +392,8 @@
         });
         tabela.appendChild(corpoTab);
         corpo.appendChild(tabela);
-    });
+    }
+    modal.addEventListener('show.bs.modal', function (ev) { render(ev.relatedTarget && ev.relatedTarget.dataset.key); });
 
     // filtros: frequência e "só itens com Não OK"
     var sel = document.getElementById('filtro_frequencia'), nok = document.getElementById('so_nok'), contador = document.getElementById('contador-filtro');
