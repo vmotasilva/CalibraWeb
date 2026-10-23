@@ -990,7 +990,7 @@ def semana(request):
             pontos = [d for dia in linha['dias'] for d in dia] + linha['janelas']
             linha['tem_nok'] = any(d['estado'] == 'nok' for d in pontos)
             novos = linha.get('novos') or [[] for _ in dados['dias']]
-            linha['colunas'] = [{'hoje': dia['hoje'], 'pontos': pts, 'novos': nv} for dia, pts, nv in zip(dados['dias'], linha['dias'], novos)]
+            linha['colunas'] = [{'hoje': dia['hoje'], 'rotulo': dia['rotulo'], 'curto': dia['curto'], 'pontos': pts, 'novos': nv} for dia, pts, nv in zip(dados['dias'], linha['dias'], novos)]
             linha['contagem'] = Counter(d['estado'] for d in pontos)
         ordem = {p: i for i, p in enumerate(pend.ORDEM_PERIODICIDADE)}
         frequencias = {}

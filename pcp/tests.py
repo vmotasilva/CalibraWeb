@@ -2618,3 +2618,14 @@ class SemanaLancarNoPopupTests(SemanaBase):
         self.assertTrue(item['opcoes'])
         d = v['detalhes'][f'{self.c_lista.pk}:20261020:{self.t2.pk}']['lancar']
         self.assertEqual((d['iso'], d['turno_id']), ('2026-10-20', self.t2.pk))
+
+
+class SemanaMobileTests(SemanaBase):
+    def test_cards_por_grupo_recolhiveis_legenda_em_popup_e_nav_em_dropdown(self):
+        r = self.client.get(reverse('pcp:semana'), {'pagina': self.pag.pk, 'semana': '2026-10-21'})
+        self.assertContains(r, 'grupo-card')
+        self.assertContains(r, 'data-bs-toggle="collapse"')
+        self.assertContains(r, 'id="modal-legenda"')
+        self.assertContains(r, 'dropdown-toggle w-100')                    # abas do PCP em drop-down
+        self.assertEqual(r.content.decode().count('class="card mb-3 grupo-card"'), len(r.context['grupos']))
+        self.assertEqual(r.content.decode().count('class="card item-card mb-2"'), len(r.context['d']['linhas']))
