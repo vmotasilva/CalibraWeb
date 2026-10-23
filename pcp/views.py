@@ -21,6 +21,7 @@ from pcp.forms import (TemplatePaginaForm, CampoForm, PaginaOrganizacaoForm, Imp
 from pcp import exportacao
 from pcp import templates_xlsx
 from pcp import pendencias as pend
+from pcp import semana as semana_mod
 from pcp import equivalencias as equiv
 from pcp import tipos as tipos_mod
 from pcp.tipos import aplicar_ajuste
@@ -959,6 +960,48 @@ def invalidar_dashboard():
     cache.set('pcp:dashboard:geracao', tipos_mod.novo_lote(), timeout=None)
 
 
+def _paginas_para_escolher():
+    """[{'formulario', 'grupos': [(grupo, [páginas])]}] das páginas ativas das revisões vigentes, na ordem configurada."""
+    blocos = []
+    for versao in (FormularioVersao.objects.filter(status=FormularioVersao.VIGENTE, formulario__ativo=True)
+                   .select_related('formulario').order_by('formulario__codigo')):
+        grupos = {}
+        for p in versao.paginas.filter(ativo=True):
+            grupos.setdefault(p.grupo or 'Sem grupo', []).append(p)
+        if grupos:
+            blocos.append({'formulario': versao.formulario, 'grupos': list(versao.formulario.ordenar_grupos(grupos).items())})
+    return blocos
+
+
+@login_required
+def semana(request):
+    """Visão semanal de uma página: um farol (verde/vermelho...) por prazo de cada item, com pop-up dos dados que o compõem."""
+    hoje = timezone.localdate()
+    blocos = _paginas_para_escolher()
+    todas = [p for b in blocos for _, ps in b['grupos'] for p in ps]
+    escolhida = next((p for p in todas if str(p.pk) == request.GET.get('pagina')), todas[0] if todas else None)
+    ref = _parse_data(request.GET.get('semana')) if request.GET.get('semana') else hoje
+    contexto = {'blocos': blocos, 'pagina': escolhida, 'hoje': hoje}
+    if escolhida:
+        escolhida = Pagina.objects.select_related('versao__formulario', 'maquina').get(pk=escolhida.pk)
+        dados = semana_mod.visao_semanal(escolhida, ref, hoje=hoje)
+        for linha in dados['linhas']:
+            linha['info'] = dados['itens'][linha['campo']]
+            pontos = [d for dia in linha['dias'] for d in dia] + linha['janelas']
+            linha['tem_nok'] = any(d['estado'] == 'nok' for d in pontos)
+            linha['colunas'] = [{'hoje': dia['hoje'], 'pontos': pts} for dia, pts in zip(dados['dias'], linha['dias'])]
+        ordem = {p: i for i, p in enumerate(pend.ORDEM_PERIODICIDADE)}
+        frequencias = {}
+        for i in dados['itens'].values():
+            frequencias[i['frequencia_id']] = (ordem.get(i['periodicidade'], 98 if i['frequencia_id'] else 99), i['frequencia'])
+        contexto.update({
+            'd': dados, 'frequencias': [(k, v[1]) for k, v in sorted(frequencias.items(), key=lambda kv: kv[1])],
+            'json_detalhes': {'itens': dados['itens'], 'detalhes': dados['detalhes']},
+            'anterior': dados['ini'] - datetime.timedelta(days=7), 'proxima': dados['ini'] + datetime.timedelta(days=7),
+            'esta_semana': semana_mod.segunda_feira(hoje), 'e_esta_semana': dados['ini'] == semana_mod.segunda_feira(hoje)})
+    return render(request, 'pcp/semana.html', contexto)
+
+
 @login_required
 def dashboard(request):
     """Acompanhamento do cumprimento por página e frequência no período encerrado (até ontem)."""
@@ -1251,6 +1294,18 @@ def preencher_status(request, pk):
     return redirect(retorno)
 
 
+def _frequencias_da_pagina(linhas):
+    """[(frequencia_id ou 0, nome, quantidade)] das frequências dos itens da tela, na ordem de periodicidade; 0 = sem frequência."""
+    contagem, nomes = {}, {}
+    for l in linhas:
+        f = l['campo'].frequencia
+        chave_ = f.pk if f else 0
+        contagem[chave_] = contagem.get(chave_, 0) + 1
+        nomes[chave_] = (pend.ORDEM_PERIODICIDADE.index(f.periodicidade) if f and f.periodicidade in pend.ORDEM_PERIODICIDADE else 98 if f else 99,
+                         f.ordem if f else 0, f.nome if f else 'Sem frequência')
+    return [(k, nomes[k][2], contagem[k]) for k in sorted(contagem, key=lambda k: nomes[k])]
+
+
 @login_required
 def preencher_pagina(request, pk):
     pagina = get_object_or_404(Pagina.objects.select_related('versao__formulario', 'maquina'), pk=pk)
@@ -1274,6 +1329,7 @@ def preencher_pagina(request, pk):
         'linhas': linhas, 'verificacao': verificacao, 'ocorrencias': ocorrencias_dia,
         'travada': pagina.versao.status != FormularioVersao.VIGENTE,
         'n_devidos': sum(1 for l in linhas if l['devido']), 'n_pendentes': sum(1 for l in linhas if l['pendente']),
+        'frequencias_pagina': _frequencias_da_pagina(linhas),
         'status': verificacao.status if verificacao else '', 'status_motivo': verificacao.motivo if verificacao else '',
         'status_rotulo': dict(Verificacao.STATUS_MAQUINA).get(verificacao.status, '') if verificacao else '',
         'status_opcoes': Verificacao.STATUS_MAQUINA, 'mes_atual': timezone.localdate().strftime('%Y-%m'),

@@ -2359,3 +2359,138 @@ class TemplatesTelasTests(TemplatesBase):
         TemplatePagina.objects.all().delete()
         r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
         self.assertContains(r, 'Cadastrar template')
+
+
+class SemanaTests(PendenciasBase):
+    HOJE = date(2026, 10, 22)   # quinta-feira
+
+    def setUp(self):
+        super().setUp()
+        cache.clear()
+        for n, c in enumerate([self.c_lista, self.c_num, self.c_sem, self.c_mes, self.c_ev, self.c_sem0], 1):
+            Campo.objects.filter(pk=c.pk).update(ordem=n)
+        Campo.objects.filter(pk=self.c_num.pk).update(minimo=Decimal('-0.8'), maximo=Decimal('-0.6'), tipo='numero', unidade='bar')
+        self.v15.vigencia = date(2026, 10, 1)
+        self.v15.save()
+        self.pag = Pagina.objects.get(pk=self.pag.pk)
+
+    def agora(self, h=10):
+        return timezone.make_aware(datetime.datetime(2026, 10, 22, h, 0))
+
+    def lancar(self, dia, turno, campo, valor, conforme=None):
+        ver, _ = Verificacao.objects.get_or_create(pagina=self.pag, data=dia, turno=turno)
+        Resposta.objects.create(verificacao=ver, campo=campo, valor=valor, conforme=conforme)
+
+    def visao(self, ref=None, h=10):
+        from pcp import semana as sem
+        return sem.visao_semanal(self.pag, ref or self.HOJE, hoje=self.HOJE, agora=self.agora(h))
+
+    def linha(self, v, campo):
+        return next(l for l in v['linhas'] if l['campo'] == campo.pk)
+
+    def estados_dias(self, v, campo):
+        return [[p['estado'] for p in dia] for dia in self.linha(v, campo)['dias']]
+
+    def test_estrutura_da_semana(self):
+        v = self.visao()
+        self.assertEqual((v['ini'], v['fim']), (date(2026, 10, 19), date(2026, 10, 25)))
+        self.assertEqual([d['rotulo'] for d in v['dias']], ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'])
+        self.assertEqual([d['hoje'] for d in v['dias']], [False, False, False, True, False, False, False])
+        self.assertEqual([t['sigla'] for t in v['turnos']], ['T1', 'T2'])
+        self.assertEqual(self.visao(date(2026, 10, 25))['ini'], date(2026, 10, 19))      # domingo pertence à mesma semana
+        self.assertEqual(self.visao(date(2026, 10, 26))['ini'], date(2026, 10, 26))
+
+    def test_item_por_turno_um_farol_por_turno_e_dia(self):
+        v = self.visao()
+        self.assertEqual(self.estados_dias(v, self.c_lista), [['nok', 'nok']] * 3 + [['aberto', 'aberto']] + [['futuro', 'futuro']] * 3)
+        self.lancar(date(2026, 10, 19), self.t1, self.c_lista, 'Ok', True)
+        self.assertEqual(self.estados_dias(self.visao(), self.c_lista)[0], ['ok', 'nok'])    # T1 ok, T2 sem lançamento
+
+    def test_item_diario_qualquer_turno_vale_e_fora_do_limite_e_nok(self):
+        self.lancar(date(2026, 10, 19), self.t2, self.c_num, '-0,7', True)       # segunda: em T2 já vale o dia
+        self.lancar(date(2026, 10, 20), self.t1, self.c_num, '-0,2', False)      # terça: lançado fora do limite
+        e = [d[0] for d in self.estados_dias(self.visao(), self.c_num)]
+        self.assertEqual(e, ['ok', 'nok', 'nok', 'aberto', 'futuro', 'futuro', 'futuro'])
+        detalhe = self.visao()['detalhes'][f'{self.c_num.pk}:20261020:0']
+        self.assertEqual(detalhe['estado'], 'nok')
+        self.assertIn('fora do especificado', detalhe['resumo'])
+
+    def test_item_semanal_um_farol_para_a_semana_e_qualquer_dia_vale(self):
+        j = self.linha(self.visao(), self.c_sem)
+        self.assertEqual((j['tipo'], [p['estado'] for p in j['janelas']], [p['rotulo'] for p in j['janelas']]), ('janelas', ['aberto'], ['19/10–25/10']))
+        self.lancar(date(2026, 10, 21), self.t2, self.c_sem, 'x', True)          # quarta, T2
+        self.assertEqual([p['estado'] for p in self.linha(self.visao(), self.c_sem)['janelas']], ['ok'])
+        self.assertEqual([p['estado'] for p in self.linha(self.visao(), self.c_mes)['janelas']], ['aberto'])
+
+    def test_quinzena_que_cruza_a_semana_gera_dois_farois(self):
+        f = Frequencia.objects.create(nome='Quinzenal', periodicidade='quinzenal')
+        c = Campo.objects.create(pagina=self.pag, item='Q-1', descricao='quinzenal', tipo='texto', frequencia=f, ordem=7)
+        v = self.visao(date(2026, 10, 14))                                         # semana 12-18/10 toca as quinzenas 1-15 e 16-31
+        j = self.linha(v, c)['janelas']
+        self.assertEqual([(p['rotulo'], p['estado']) for p in j], [('01/10–15/10', 'nok'), ('16/10–31/10', 'aberto')])   # a 1ª já encerrou sem registro
+
+    def test_item_sob_demanda_so_mostra_lancamentos(self):
+        self.lancar(date(2026, 10, 20), self.t1, self.c_ev, 'troca')
+        self.lancar(date(2026, 10, 21), self.t2, self.c_sem0, 'algo')
+        v = self.visao()
+        self.assertEqual(self.estados_dias(v, self.c_ev), [[], ['info'], [], [], [], [], []])
+        self.assertEqual(self.estados_dias(v, self.c_sem0), [[], [], ['info'], [], [], [], []])
+        self.assertEqual(sum(v['contagem'].values()), sum(v['contagem'][k] for k in ('ok', 'nok', 'aberto', 'futuro', 'dispensado', 'sem')))   # 'info' não conta
+
+    def test_maquina_parada_dispensa_e_explica_no_detalhe(self):
+        self.client.post(reverse('pcp:preencher_status', args=[self.pag.pk]), {'data': '2026-10-20', 'turno': self.t1.pk, 'status': 'parada', 'escopo': 'turno', 'motivo': 'troca de ferramenta'})
+        v = self.visao()
+        self.assertEqual(self.estados_dias(v, self.c_lista)[1], ['dispensado', 'nok'])      # só T1 de terça está parado
+        self.assertEqual(self.estados_dias(v, self.c_num)[1], ['nok'])                      # o dia não está todo parado
+        d = v['detalhes'][f'{self.c_lista.pk}:20261020:{self.t1.pk}']
+        self.assertIn('Parada (troca de ferramenta)', d['maquina'])
+        self.client.post(reverse('pcp:preencher_status', args=[self.pag.pk]), {'data': '2026-10-20', 'turno': self.t2.pk, 'status': 'manutencao', 'escopo': 'turno'})
+        self.assertEqual(self.estados_dias(self.visao(), self.c_num)[1], ['dispensado'])    # todos os turnos do dia parados
+
+    def test_antes_do_rastreio_fica_sem_exigencia(self):
+        self.v15.vigencia = date(2026, 10, 21)
+        self.v15.save()
+        e = self.estados_dias(self.visao(), self.c_lista)
+        self.assertEqual((e[0], e[1], e[2]), (['sem', 'sem'], ['sem', 'sem'], ['nok', 'nok']))
+
+    def test_turno_encerrado_hoje_sem_registro_fica_nok(self):
+        for t, ini, fim in ((self.t1, time(6), time(14)), (self.t2, time(14), time(22))):
+            t.inicio, t.fim = ini, fim
+            t.save()
+        self.assertEqual(self.estados_dias(self.visao(h=15), self.c_lista)[3], ['nok', 'aberto'])    # T1 encerrou, T2 em andamento
+        self.assertEqual(self.estados_dias(self.visao(h=8), self.c_lista)[3], ['aberto', 'futuro'])  # T2 ainda não começou
+
+    def test_detalhe_traz_os_dados_que_compoem_o_farol_e_e_serializavel(self):
+        import json
+        self.lancar(date(2026, 10, 19), self.t1, self.c_lista, 'Ok', True)
+        v = self.visao()
+        d = v['detalhes'][f'{self.c_lista.pk}:20261019:{self.t1.pk}']
+        self.assertEqual((d['estado'], d['estado_rotulo'], d['prazo']), ('ok', 'OK', 'Dia 19/10/2026, turno T1'))
+        self.assertEqual([(r['data'], r['turno'], r['valor'], r['conforme']) for r in d['registros']], [('19/10/2026', 'T1', 'Ok', True)])
+        item = v['itens'][self.c_lista.pk]
+        self.assertEqual((item['num'], item['item'], item['frequencia']), (1, 'B-1', 'Turno'))
+        json.dumps({'itens': v['itens'], 'detalhes': v['detalhes']})        # vai para o navegador como JSON
+
+    def test_tela_pagina_semana_e_navegacao(self):
+        url = reverse('pcp:semana')
+        r = self.client.get(url, {'pagina': self.pag.pk, 'semana': '2026-10-21'})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual((r.context['d']['ini'], r.context['anterior'], r.context['proxima']), (date(2026, 10, 19), date(2026, 10, 12), date(2026, 10, 26)))
+        self.assertContains(r, 'modal-farol')
+        self.assertContains(r, 'farol-btn')
+        self.assertContains(r, f'?pagina={self.pag.pk}&semana=2026-10-12')
+        self.assertEqual([f[1] for f in r.context['frequencias']][:3], ['Turno', 'Diária', 'Semanal'])
+        r = self.client.get(url)                                              # sem parâmetros: primeira página, semana atual
+        self.assertEqual(r.context['pagina'].pk, self.pag.pk)
+        self.assertEqual(self.client.get(url, {'pagina': 'lixo', 'semana': 'lixo'}).status_code, 200)
+        self.pag.versao.paginas.update(ativo=False)
+        self.assertContains(self.client.get(url), 'Nenhuma página ativa')
+
+    def test_filtro_de_frequencia_na_tela_de_preenchimento(self):
+        r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
+        nomes = [(nome, qtd) for _, nome, qtd in r.context['frequencias_pagina']]
+        self.assertEqual(nomes, [('Turno', 1), ('Diária', 1), ('Semanal', 1), ('Mensal', 1), ('Por evento', 1), ('Sem frequência', 1)])
+        self.assertContains(r, 'id="filtro_frequencia"')
+        self.assertContains(r, f'data-freq="{self.f_turno.pk}"')
+        self.assertContains(r, 'data-freq="0"')                               # item sem frequência
+        self.assertContains(r, 'Todas (6)')

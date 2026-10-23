@@ -1,0 +1,207 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}PCP - Visão semanal - Calibra QMS{% endblock %}
+
+{% block content %}
+<style>
+    .farol-btn { display:inline-flex; align-items:center; justify-content:center; width:1.55rem; height:1.55rem; border-radius:50%; border:0; padding:0;
+                 color:#fff; font-size:.8rem; font-weight:700; line-height:1; cursor:pointer; box-shadow:0 0 0 1px rgba(0,0,0,.12); }
+    .farol-btn:focus-visible { outline:3px solid #0d6efd; outline-offset:2px; }
+    .farol-ok { background:#198754; } .farol-nok { background:#dc3545; } .farol-aberto { background:#e0a800; color:#212529; }
+    .farol-futuro { background:#dee2e6; color:#6c757d; } .farol-sem { background:#e9ecef; color:#6c757d; }
+    .farol-dispensado { background:#6c757d; } .farol-info { background:#0d6efd; }
+    .farol-grupo { display:inline-flex; flex-direction:column; align-items:center; margin:0 .12rem; }
+    .farol-grupo small { font-size:.62rem; color:#6c757d; line-height:1.1; }
+    .semana-tabela th, .semana-tabela td { vertical-align:middle; }
+    .semana-tabela td.dia { text-align:center; min-width:5.4rem; }
+    .semana-tabela th.hoje, .semana-tabela td.hoje { background:rgba(13,110,253,.07); }
+    .legenda-farol { display:inline-flex; align-items:center; gap:.3rem; margin-right:.9rem; font-size:.82rem; }
+    .legenda-farol .farol-btn { width:1.1rem; height:1.1rem; font-size:.65rem; cursor:default; }
+</style>
+<div class="container-fluid py-3">
+    <h4 class="mb-3"><i class="bi bi-clipboard2-check me-2"></i>PCP - Visão semanal</h4>
+    {% include "pcp/_nav.html" with secao="semana" %}
+
+    {% if not pagina %}
+        <div class="alert alert-info">Nenhuma página ativa em revisão vigente. Publique um formulário e ative suas páginas.</div>
+    {% else %}
+    <form method="get" class="card card-body mb-3" id="form-semana">
+        <div class="row g-2 align-items-end">
+            <div class="col-lg-5"><label class="form-label mb-0 small" for="sel-pagina">Página</label>
+                <select name="pagina" id="sel-pagina" class="form-select" onchange="this.form.submit()">
+                    {% for b in blocos %}
+                        {% for grupo, paginas in b.grupos %}
+                            <optgroup label="{{ b.formulario.codigo }} · {{ grupo }}">
+                                {% for p in paginas %}<option value="{{ p.pk }}" {% if p.pk == pagina.pk %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}
+                            </optgroup>
+                        {% endfor %}
+                    {% endfor %}
+                </select></div>
+            <div class="col-auto">
+                <label class="form-label mb-0 small d-block">Semana</label>
+                <div class="btn-group">
+                    <a class="btn btn-outline-secondary" href="?pagina={{ pagina.pk }}&semana={{ anterior|date:'Y-m-d' }}" title="Semana anterior"><i class="bi bi-chevron-left"></i></a>
+                    <span class="btn btn-light disabled text-dark fw-semibold">{{ d.ini|date:"d/m" }} a {{ d.fim|date:"d/m/Y" }}</span>
+                    <a class="btn btn-outline-secondary" href="?pagina={{ pagina.pk }}&semana={{ proxima|date:'Y-m-d' }}" title="Próxima semana"><i class="bi bi-chevron-right"></i></a>
+                </div>
+            </div>
+            <div class="col-auto"><label class="form-label mb-0 small" for="data-semana">Ir para a data</label>
+                <input type="date" id="data-semana" name="semana" value="{{ d.ini|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()"></div>
+            {% if not e_esta_semana %}<div class="col-auto"><a class="btn btn-outline-primary" href="?pagina={{ pagina.pk }}">Esta semana</a></div>{% endif %}
+            <div class="col-auto ms-lg-auto"><a class="btn btn-outline-secondary" href="{% url 'pcp:preencher_pagina' pagina.pk %}?data={% if d.hoje >= d.ini and d.hoje <= d.fim %}{{ d.hoje|date:'Y-m-d' }}{% else %}{{ d.ini|date:'Y-m-d' }}{% endif %}"><i class="bi bi-pencil-square me-1"></i>Preencher esta página</a></div>
+        </div>
+    </form>
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <span class="fw-semibold">{{ pagina.nome }}</span>
+        <span class="text-muted small">{{ pagina.versao }}{% if pagina.maquina %} · Máquina {{ pagina.maquina.display_name }}{% endif %}</span>
+        <span class="ms-auto small">
+            <span class="badge bg-success">{{ d.contagem.ok }} OK</span>
+            <span class="badge bg-danger">{{ d.contagem.nok }} não OK</span>
+            <span class="badge bg-warning text-dark">{{ d.contagem.aberto }} em aberto</span>
+            {% if d.contagem.dispensado %}<span class="badge bg-secondary">{{ d.contagem.dispensado }} dispensados</span>{% endif %}
+        </span>
+    </div>
+    <div class="mb-2">
+        <span class="legenda-farol"><span class="farol-btn farol-ok">✓</span> OK (lançado e conforme)</span>
+        <span class="legenda-farol"><span class="farol-btn farol-nok">✕</span> Não OK (sem lançamento após o prazo ou fora do especificado)</span>
+        <span class="legenda-farol"><span class="farol-btn farol-aberto">…</span> Em aberto</span>
+        <span class="legenda-farol"><span class="farol-btn farol-futuro">·</span> Ainda não começou</span>
+        <span class="legenda-farol"><span class="farol-btn farol-dispensado">⚙</span> Máquina em manutenção/parada</span>
+        <span class="legenda-farol"><span class="farol-btn farol-sem">–</span> Antes do rastreio</span>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <label class="small text-muted mb-0" for="filtro_frequencia"><i class="bi bi-funnel me-1"></i>Frequência</label>
+            <select id="filtro_frequencia" class="form-select form-select-sm w-auto">
+                <option value="">Todas</option>
+                {% for fid, nome in frequencias %}<option value="{{ fid }}">{{ nome }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="so_nok"><label class="form-check-label" for="so_nok">Só itens com algum "Não OK"</label></div>
+        <span class="small text-muted" id="contador-filtro" aria-live="polite"></span>
+        <span class="small text-muted ms-auto">Clique em um farol para ver os dados que o compõem.</span>
+    </div>
+
+    <div class="card"><div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 semana-tabela">
+            <thead><tr>
+                <th style="width:3rem">Nº</th><th>Item</th><th>Frequência</th>
+                {% for dia in d.dias %}<th class="text-center {% if dia.hoje %}hoje{% endif %}">{{ dia.rotulo }}<div class="small fw-normal text-muted">{{ dia.curto }}</div></th>{% endfor %}
+            </tr></thead>
+            <tbody>
+            {% for l in d.linhas %}
+                <tr data-freq="{{ l.info.frequencia_id }}" data-nok="{% if l.tem_nok %}1{% else %}0{% endif %}">
+                    <td class="text-muted">{{ l.info.num }}</td>
+                    <td style="min-width:16rem">{% if l.info.etapa %}<div class="small text-muted">{{ l.info.etapa|truncatechars:60 }}</div>{% endif %}
+                        <span class="fw-semibold {% if l.info.critico %}text-danger{% endif %}">{{ l.info.item|default:"—" }}</span> {{ l.info.descricao|truncatechars:90 }}</td>
+                    <td class="small text-nowrap">{{ l.info.frequencia }}</td>
+                    {% if l.tipo == 'janelas' %}
+                        <td colspan="7" class="text-center">
+                            {% for p in l.janelas %}
+                                <span class="farol-grupo"><button type="button" class="farol-btn farol-{{ p.estado }}" data-key="{{ p.key }}" data-bs-toggle="modal" data-bs-target="#modal-farol"
+                                    title="{{ p.rotulo }}"><span class="visually-hidden">{{ p.rotulo }}</span>{% if p.estado == 'ok' %}✓{% elif p.estado == 'nok' %}✕{% elif p.estado == 'aberto' %}…{% elif p.estado == 'dispensado' %}⚙{% elif p.estado == 'sem' %}–{% else %}·{% endif %}</button>
+                                    <small>{{ p.rotulo }}</small></span>
+                            {% endfor %}
+                        </td>
+                    {% else %}
+                        {% for col in l.colunas %}
+                            <td class="dia {% if col.hoje %}hoje{% endif %}">
+                                {% for p in col.pontos %}
+                                    <span class="farol-grupo"><button type="button" class="farol-btn farol-{{ p.estado }}" data-key="{{ p.key }}" data-bs-toggle="modal" data-bs-target="#modal-farol"
+                                        title="{{ p.rotulo|default:'' }}">{% if p.estado == 'ok' %}✓{% elif p.estado == 'nok' %}✕{% elif p.estado == 'aberto' %}…{% elif p.estado == 'dispensado' %}⚙{% elif p.estado == 'sem' %}–{% elif p.estado == 'info' %}i{% else %}·{% endif %}</button>
+                                        {% if p.rotulo %}<small>{{ p.rotulo }}</small>{% endif %}</span>
+                                {% empty %}<span class="text-muted">·</span>{% endfor %}
+                            </td>
+                        {% endfor %}
+                    {% endif %}
+                </tr>
+            {% empty %}
+                <tr><td colspan="10" class="text-center text-muted py-4">Esta página não tem itens ativos.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="modal-farol" tabindex="-1" aria-labelledby="modal-farol-titulo" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-farol-titulo">Detalhe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body" id="modal-farol-corpo"></div>
+            <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Fechar</button></div>
+        </div>
+    </div>
+</div>
+
+{% if pagina %}
+{{ json_detalhes|json_script:"dados-semana" }}
+<script>
+(function () {
+    var dados = JSON.parse(document.getElementById('dados-semana').textContent);
+    var modal = document.getElementById('modal-farol');
+    var CORES = { ok: 'success', nok: 'danger', aberto: 'warning text-dark', futuro: 'secondary', dispensado: 'secondary', sem: 'secondary', info: 'primary' };
+
+    function el(tag, texto, classe) { var e = document.createElement(tag); if (texto !== undefined && texto !== null) e.textContent = texto; if (classe) e.className = classe; return e; }
+    function linha(rotulo, valor) {
+        if (valor === '' || valor === null || valor === undefined) return null;
+        var d = el('div', null, 'row mb-1');
+        d.appendChild(el('div', rotulo, 'col-sm-4 text-muted small'));
+        d.appendChild(el('div', valor, 'col-sm-8'));
+        return d;
+    }
+    modal.addEventListener('show.bs.modal', function (ev) {
+        var chave = ev.relatedTarget && ev.relatedTarget.dataset.key;
+        var det = dados.detalhes[chave];
+        var corpo = document.getElementById('modal-farol-corpo');
+        corpo.replaceChildren();
+        if (!det) { corpo.appendChild(el('p', 'Sem detalhes para este farol.')); return; }
+        var item = dados.itens[det.campo];
+        document.getElementById('modal-farol-titulo').textContent = (item.item ? item.item + ' · ' : '') + 'Nº ' + item.num + ' · ' + det.titulo;
+        var estado = el('div', null, 'mb-3');
+        estado.appendChild(el('span', det.estado_rotulo, 'badge fs-6 bg-' + (CORES[det.estado] || 'secondary')));
+        estado.appendChild(el('span', ' ' + det.resumo, 'ms-2'));
+        corpo.appendChild(estado);
+        [['Prazo avaliado', det.prazo], ['Situação da máquina', det.maquina]].forEach(function (p) { var l = linha(p[0], p[1]); if (l) corpo.appendChild(l); });
+        corpo.appendChild(el('h6', 'Item', 'mt-3'));
+        [['O que verificar', item.descricao], ['Etapa', item.etapa], ['Especificação', item.especificacao], ['Método', item.metodo], ['Frequência', item.frequencia],
+         ['Tipo', item.tipo], ['Limites', (item.minimo || item.maximo) ? ((item.minimo || '—') + ' a ' + (item.maximo || '—') + (item.unidade ? ' ' + item.unidade : '')) : ''],
+         ['Plano de reação', item.plano], ['Crítico', item.critico ? 'Sim (nível 3)' : '']].forEach(function (p) { var l = linha(p[0], p[1]); if (l) corpo.appendChild(l); });
+        corpo.appendChild(el('h6', 'Lançamentos que compõem o farol', 'mt-3'));
+        if (!det.registros.length) { corpo.appendChild(el('p', 'Nenhum lançamento neste prazo.', 'text-muted')); return; }
+        var tabela = el('table', null, 'table table-sm');
+        var cab = el('tr'); ['Data', 'Turno', 'Valor', 'Conformidade', 'Quem', 'Atualizado em'].forEach(function (t) { cab.appendChild(el('th', t)); });
+        tabela.appendChild(el('thead')).appendChild(cab);
+        var corpoTab = el('tbody');
+        det.registros.forEach(function (r) {
+            var tr = el('tr');
+            [r.data, r.turno, r.valor, r.conforme === false ? 'Fora do especificado' : (r.conforme === true ? 'Conforme' : '—'), r.quem || '—', r.quando || '—'].forEach(function (t, i) {
+                var td = el('td', t); if (i === 3 && r.conforme === false) td.className = 'text-danger fw-semibold'; tr.appendChild(td);
+            });
+            corpoTab.appendChild(tr);
+        });
+        tabela.appendChild(corpoTab);
+        corpo.appendChild(tabela);
+    });
+
+    // filtros: frequência e "só itens com Não OK"
+    var sel = document.getElementById('filtro_frequencia'), nok = document.getElementById('so_nok'), contador = document.getElementById('contador-filtro');
+    var linhas = document.querySelectorAll('.semana-tabela tbody tr[data-freq]');
+    function aplicar() {
+        var f = sel.value, so = nok.checked, visiveis = 0;
+        linhas.forEach(function (tr) {
+            var oculta = (f !== '' && tr.dataset.freq !== f) || (so && tr.dataset.nok !== '1');
+            tr.style.display = oculta ? 'none' : '';
+            if (!oculta) visiveis++;
+        });
+        contador.textContent = (f !== '' || so) ? ('Mostrando ' + visiveis + ' de ' + linhas.length + ' itens') : '';
+    }
+    sel.addEventListener('change', aplicar);
+    nok.addEventListener('change', aplicar);
+})();
+</script>
+{% endif %}
+{% endblock %}

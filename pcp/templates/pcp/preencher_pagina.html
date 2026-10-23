@@ -108,13 +108,23 @@
             {% endif %}
         </div>
     </div>
-    {% if turno and n_devidos %}
-        <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-2" id="barra-filtros">
+        {% if turno and n_devidos %}
             <span><strong>{{ n_devidos|add:0 }}</strong> verificações devidas neste turno ·
                 <span class="{% if n_pendentes %}text-danger fw-semibold{% else %}text-success{% endif %}">{{ n_pendentes }} pendente{{ n_pendentes|pluralize }}</span></span>
             {% if n_pendentes %}<div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="so_pendentes"><label class="form-check-label" for="so_pendentes">Mostrar só pendentes</label></div>{% endif %}
-        </div>
-    {% endif %}
+        {% endif %}
+        {% if frequencias_pagina|length > 1 %}
+            <div class="d-flex align-items-center gap-2 ms-md-auto">
+                <label class="small text-muted mb-0" for="filtro_frequencia"><i class="bi bi-funnel me-1"></i>Frequência</label>
+                <select id="filtro_frequencia" class="form-select form-select-sm w-auto">
+                    <option value="">Todas ({{ linhas|length }})</option>
+                    {% for fid, nome, qtd in frequencias_pagina %}<option value="{{ fid }}">{{ nome }} ({{ qtd }})</option>{% endfor %}
+                </select>
+                <span class="small text-muted" id="contador-filtro" aria-live="polite"></span>
+            </div>
+        {% endif %}
+    </div>
     {% if travada %}<div class="alert alert-warning py-2">Esta página pertence a uma revisão {{ versao.get_status_display|lower }}; só é possível lançar na revisão vigente.</div>{% endif %}
     {% if not turno %}<div class="alert alert-warning py-2">Cadastre ao menos um turno ativo em <em>Turnos</em>.</div>{% endif %}
 
@@ -127,7 +137,7 @@
                 <thead><tr><th>Item</th><th>O que verificar</th><th>Especificação</th><th>Frequência</th><th style="min-width:14rem">Resultado</th><th>Plano de reação</th></tr></thead>
                 <tbody>
                 {% for l in linhas %}{% with c=l.campo r=l.resposta %}
-                    <tr class="{% if r.conforme == False %}table-danger{% elif l.pendente %}table-warning{% endif %}" data-pendente="{% if l.pendente %}1{% else %}0{% endif %}">
+                    <tr class="{% if r.conforme == False %}table-danger{% elif l.pendente %}table-warning{% endif %}" data-pendente="{% if l.pendente %}1{% else %}0{% endif %}" data-freq="{{ c.frequencia_id|default_if_none:'0' }}">
                         <td class="text-nowrap fw-semibold pcp-item {% if c.critico %}text-danger{% endif %}"><span class="badge bg-light text-dark border me-1" title="Nº do item neste bloco">{{ c.ordem }}</span>{{ c.item|default:"—" }}</td>
                         <td class="pcp-desc">{% if c.etapa %}<div class="small text-muted">{{ c.etapa }}</div>{% endif %}{{ c.descricao }}{% if c.metodo %}<div class="small text-muted">{{ c.metodo }}</div>{% endif %}</td>
                         <td class="small pcp-spec{% if not c.especificacao %} pcp-sem-valor{% endif %}" data-label="Especificação">{{ c.especificacao|default:"—" }}</td>
@@ -183,12 +193,33 @@
 <script>
 (function () {
     var cb = document.getElementById('so_pendentes');
-    if (!cb) return;
-    cb.addEventListener('change', function () {
-        document.querySelectorAll('tr[data-pendente]').forEach(function (tr) {
-            tr.style.display = (cb.checked && tr.dataset.pendente !== '1') ? 'none' : '';
+    var sel = document.getElementById('filtro_frequencia');
+    var contador = document.getElementById('contador-filtro');
+    var linhas = document.querySelectorAll('tr[data-pendente]');
+    var CHAVE = 'pcp-filtro-frequencia';
+    function aplicar() {
+        var freq = sel ? sel.value : '';
+        var soPend = cb && cb.checked;
+        var visiveis = 0;
+        linhas.forEach(function (tr) {
+            var oculta = (soPend && tr.dataset.pendente !== '1') || (freq !== '' && tr.dataset.freq !== freq);
+            tr.style.display = oculta ? 'none' : '';
+            if (!oculta) visiveis++;
         });
-    });
+        if (contador) contador.textContent = (freq !== '' || soPend) ? ('Mostrando ' + visiveis + ' de ' + linhas.length) : '';
+    }
+    if (cb) cb.addEventListener('change', aplicar);
+    if (sel) {
+        try {  // lembra o filtro ao trocar de data ou turno
+            var salvo = localStorage.getItem(CHAVE);
+            if (salvo !== null && sel.querySelector('option[value="' + salvo + '"]')) sel.value = salvo;
+        } catch (e) { /* sem armazenamento: segue sem lembrar */ }
+        sel.addEventListener('change', function () {
+            try { localStorage.setItem(CHAVE, sel.value); } catch (e) { /* ignora */ }
+            aplicar();
+        });
+    }
+    aplicar();
 })();
 </script>
 {% endblock %}
