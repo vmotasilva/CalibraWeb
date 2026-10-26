@@ -26,7 +26,7 @@
     </div>
     {% if not versao.editavel %}<div class="alert alert-info py-2">Revisão {{ versao.get_status_display|lower }}: somente leitura.</div>{% endif %}
     <div class="card"><div class="table-responsive">
-        <table class="table table-sm table-hover align-middle mb-0">
+        <table class="tabela-cards table table-sm table-hover align-middle mb-0">
             <thead><tr><th style="width:9.5rem">Nº</th><th>Item</th><th>O que verificar</th><th>Especificação</th><th>Método</th><th>Frequência</th><th>Campo</th><th>Plano de reação</th><th>Resp.</th><th></th></tr></thead>
             <tbody>
             {% for c in campos %}
@@ -63,4 +63,5 @@
         </table>
     </div></div>
 </div>
+{% include "pcp/_tabelas_cards.html" %}
 {% endblock %}

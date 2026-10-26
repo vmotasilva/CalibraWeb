@@ -16,7 +16,7 @@
         <button class="btn btn-outline-secondary">Filtrar</button>
     </form>
     <div class="card"><div class="table-responsive">
-        <table class="table align-middle mb-0">
+        <table class="tabela-cards table align-middle mb-0">
             <thead><tr><th>Data / turno</th><th>Página</th><th>Item</th><th>Tipo</th><th>Descrição</th><th style="min-width:18rem">Tratativa</th></tr></thead>
             <tbody>
             {% for o in ocorrencias %}
@@ -47,4 +47,5 @@
         </table>
     </div></div>
 </div>
+{% include "pcp/_tabelas_cards.html" %}
 {% endblock %}

@@ -90,8 +90,8 @@
                     </select></div>
                 <div><label class="form-label mb-0 small">Aplicar a</label>
                     <select name="escopo" class="form-select form-select-sm">
+                        <option value="dia" selected>Todos os turnos do dia</option>
                         <option value="turno">Somente este turno ({{ turno.sigla }})</option>
-                        <option value="dia">Todos os turnos do dia</option>
                     </select></div>
                 <div><label class="form-label mb-0 small">Até (opcional)</label>
                     <input type="date" name="ate" min="{{ data|date:'Y-m-d' }}" class="form-control form-control-sm" title="Para um período: a mesma situação de {{ data|date:'d/m' }} até esta data"></div>

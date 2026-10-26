@@ -23,7 +23,7 @@
         </div>
     </div>
     <div class="card"><div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="tabela-cards table table-hover align-middle mb-0">
             <thead><tr><th>Revisão</th><th>Status</th><th>Vigência</th><th>Páginas</th><th>O que mudou</th><th>Criada em</th></tr></thead>
             <tbody>
             {% for v in versoes %}
@@ -42,4 +42,5 @@
         </table>
     </div></div>
 </div>
+{% include "pcp/_tabelas_cards.html" %}
 {% endblock %}

@@ -52,7 +52,7 @@
                 </span>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0 text-center">
+                <table class="tabela-cards grade table table-sm align-middle mb-0 text-center">
                     <thead><tr>
                         <th class="text-start">Página</th>
                         {% for d in painel.datas %}<th class="small fw-normal text-nowrap">{{ d|date:"d/m" }}</th>{% endfor %}
@@ -82,4 +82,5 @@
         <div class="text-center text-muted py-5">Nenhum formulário com revisão vigente.</div>
     {% endfor %}
 </div>
+{% include "pcp/_tabelas_cards.html" %}
 {% endblock %}

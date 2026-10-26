@@ -1,0 +1,41 @@
+{# No celular, tabelas com a classe "tabela-cards" viram uma lista de cards (uma linha = um card, rótulo da coluna ao lado de cada valor). "tabela-cards grade" é a variante de matriz (páginas x datas). #}
+<style>
+    @media (max-width: 767.98px) {
+        .tabela-cards, .tabela-cards tbody, .tabela-cards tr, .tabela-cards td { display: block; width: 100%; }
+        .tabela-cards { border: 0; }
+        .tabela-cards thead { display: none; }
+        .tabela-cards tbody tr { background: #fff; border: 1px solid #dee2e6; border-radius: .5rem; margin: .5rem; padding: .35rem .65rem; width: auto; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+        .tabela-cards td { border: 0; padding: .2rem 0; display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; text-align: right; }
+        .tabela-cards td[data-label]::before { content: attr(data-label); flex: 0 0 34%; text-align: left; font-weight: 600; font-size: .78rem; color: #6c757d; }
+        .tabela-cards td:empty, .tabela-cards td[data-vazio] { display: none; }
+        .tabela-cards td[colspan], .tabela-cards tr.table-light td { display: block; text-align: left; }
+        .tabela-cards tr.table-light { background: #eef1f5; }
+        .tabela-cards td .btn { margin-left: auto; }
+        .tabela-cards td:has(textarea), .tabela-cards td:has(form) { display: block; text-align: left; }
+        /* matriz página x datas: cada data vira uma caixinha, a primeira coluna (página) abre o card */
+        .tabela-cards.grade tbody tr { display: flex; flex-wrap: wrap; gap: .3rem; }
+        .tabela-cards.grade td { display: block; width: auto; min-width: 3.8rem; flex: 0 0 auto; text-align: center; padding: .15rem .3rem; border: 1px solid #f1f3f5; border-radius: .3rem; }
+        .tabela-cards.grade td[data-label]::before { display: block; flex: none; font-size: .68rem; font-weight: 500; text-align: center; }
+        .tabela-cards.grade td:first-child { width: 100%; text-align: left; border: 0; font-weight: 600; }
+        .tabela-cards.grade td:first-child::before { display: none; }
+    }
+</style>
+<script>
+(function () {
+    document.querySelectorAll('table.tabela-cards').forEach(function (t) {
+        var cab = [];
+        t.querySelectorAll('thead tr:last-child th').forEach(function (th) {
+            var n = parseInt(th.getAttribute('colspan') || '1', 10), txt = th.textContent.replace(/\s+/g, ' ').trim();
+            for (var i = 0; i < n; i++) cab.push(txt);
+        });
+        t.querySelectorAll('tbody tr').forEach(function (tr) {
+            var col = 0;
+            tr.querySelectorAll('td').forEach(function (td) {
+                var n = parseInt(td.getAttribute('colspan') || '1', 10);
+                if (n === 1 && cab[col] && !td.hasAttribute('data-label')) td.setAttribute('data-label', cab[col]);
+                col += n;
+            });
+        });
+    });
+})();
+</script>

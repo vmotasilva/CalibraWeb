@@ -12,18 +12,38 @@
                 <span class="badge bg-success">{{ b.versao.revisao }}</span>
             </div>
             <div class="card-body">
+                {% with bloco=forloop.counter %}
                 {% for grupo, paginas in b.grupos.items %}
-                    <h6 class="text-muted text-uppercase small">{{ grupo }}</h6>
-                    <div class="d-flex flex-wrap gap-2 mb-3">
-                        {% for p in paginas %}<a href="{% url 'pcp:preencher_pagina' p.pk %}" class="btn btn-outline-primary btn-sm">{{ p.nome }}</a>{% endfor %}
+                    <div class="card mb-2">
+                        <button type="button" class="card-header preencher-grupo text-start border-0 w-100" data-bs-toggle="collapse" data-bs-target="#pg-{{ bloco }}-{{ forloop.counter }}" aria-expanded="true">
+                            <i class="bi bi-chevron-down seta me-1"></i><strong class="text-uppercase small">{{ grupo }}</strong>
+                            <span class="text-muted small ms-1">{{ paginas|length }} página{{ paginas|length|pluralize }}</span>
+                        </button>
+                        <div id="pg-{{ bloco }}-{{ forloop.counter }}" class="collapse show"><div class="card-body p-2">
+                            <div class="preencher-paginas">
+                                {% for p in paginas %}<a href="{% url 'pcp:preencher_pagina' p.pk %}" class="btn btn-outline-primary">{{ p.nome }}</a>{% endfor %}
+                            </div>
+                        </div></div>
                     </div>
                 {% empty %}
                     <span class="text-muted">Sem páginas ativas.</span>
                 {% endfor %}
+                {% endwith %}
             </div>
         </div>
     {% empty %}
         <div class="text-center text-muted py-5">Nenhum formulário com revisão vigente. Publique uma revisão em <em>Formulários</em>.</div>
     {% endfor %}
 </div>
+<style>
+    .preencher-grupo { background: #f1f3f5; padding: .5rem .75rem; cursor: pointer; }
+    .preencher-grupo .seta { transition: transform .15s; }
+    .preencher-grupo[aria-expanded="false"] .seta, .preencher-grupo.collapsed .seta { transform: rotate(-90deg); }
+    .preencher-paginas { display: flex; flex-wrap: wrap; gap: .5rem; }
+    @media (max-width: 767.98px) {   /* celular: uma página por card, botão largo para o toque */
+        .preencher-paginas { flex-direction: column; }
+        .preencher-paginas .btn { text-align: left; min-height: 2.9rem; display: flex; align-items: center; justify-content: space-between; }
+        .preencher-paginas .btn::after { content: "›"; font-size: 1.3rem; line-height: 1; }
+    }
+</style>
 {% endblock %}

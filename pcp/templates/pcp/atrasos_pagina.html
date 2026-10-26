@@ -12,7 +12,7 @@
         <a href="{% url 'pcp:atrasos' %}?dias={{ dias }}&ate={{ fim|date:'Y-m-d' }}&formulario={{ versao.formulario_id }}" class="btn btn-outline-secondary">Voltar</a>
     </div>
     <div class="card"><div class="table-responsive">
-        <table class="table table-sm table-hover align-middle mb-0">
+        <table class="tabela-cards table table-sm table-hover align-middle mb-0">
             <thead><tr><th>Prazo</th><th>Turno</th><th>Nº</th><th>Item</th><th>O que verificar</th><th>Frequência</th><th></th></tr></thead>
             <tbody>
             {% for a in atrasos %}
@@ -32,4 +32,5 @@
         </table>
     </div></div>
 </div>
+{% include "pcp/_tabelas_cards.html" %}
 {% endblock %}

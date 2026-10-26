@@ -2843,3 +2843,24 @@ class SemanaMobileAjustesTests(SemanaBase):
         html = r.content.decode()
         cards = html[html.index('semana-cards d-md-none'):]
         self.assertIn('class="item-desc"', cards)                    # descrição abaixo do código no card
+
+
+class TabelasEmCardsNoCelularTests(PendenciasBase):
+    def test_listas_viram_cards_no_celular(self):
+        self.pag.refresh_from_db()
+        urls = [reverse('pcp:ocorrencias'), reverse('pcp:formularios'), reverse('pcp:atrasos') + '?dias=7', reverse('pcp:turnos'), reverse('pcp:frequencias'),
+                reverse('pcp:listas'), reverse('pcp:templates_pagina'), reverse('pcp:formulario_detalhe', args=[self.form.pk]),
+                reverse('pcp:pagina_detalhe', args=[self.pag.pk]), reverse('pcp:atrasos_pagina', args=[self.pag.pk])]
+        for url in urls:
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200, url)
+            if 'tabela-cards' not in r.content.decode():
+                self.assertNotContains(r, '<table', msg_prefix=url)        # só pode faltar se a tela não tiver tabela (estado vazio)
+            else:
+                self.assertContains(r, '.tabela-cards thead { display: none; }', msg_prefix=url)
+
+
+class PadraoEscopoDaMaquinaTests(PendenciasBase):
+    def test_aplicar_a_vem_com_todos_os_turnos_do_dia_selecionado(self):
+        r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
+        self.assertContains(r, '<option value="dia" selected>Todos os turnos do dia</option>')
