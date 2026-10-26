@@ -1502,7 +1502,7 @@ class StatusMaquinaTests(PendenciasBase):
         url = reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}'
         r = self.client.get(url)
         self.assertContains(r, 'Parada')
-        self.assertContains(r, 'não são obrigatórios')
+        self.assertContains(r, 'não geram pendência nem atraso')
         # só este turno está parado: o item por turno é dispensado, mas diário, semanal e mensal seguem devidos
         self.assertEqual((r.context['status'], r.context['n_devidos']), ('parada', 3))
         self.assertFalse([l for l in r.context['linhas'] if l['campo'].pk == self.c_lista.pk and l['devido']])
