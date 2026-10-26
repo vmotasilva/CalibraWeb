@@ -3,6 +3,11 @@
 
 {% block content %}
 <style>
+    @media (min-width: 768px) {
+        .pcp-itens-card { margin-bottom: 0 !important; }
+        .pcp-itens-card > .table-responsive { overflow: auto; }
+        .pcp-itens thead th { position: sticky; top: 0; z-index: 2; background: var(--bs-body-bg); box-shadow: 0 1px 0 var(--bs-border-color); }
+    }
     @media (max-width: 767.98px) {
         .pcp-titulo { font-size: 1.2rem; }
         .pcp-acoes { width: 100%; }
@@ -47,7 +52,7 @@
     }
 </style>
 <div class="container-fluid px-2 px-md-3 py-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <div>
             <h4 class="mb-0 pcp-titulo">{{ pagina.nome }}</h4>
             <div class="text-muted">{{ versao }}{% if pagina.maquina %} · Máquina {{ pagina.maquina.display_name }}{% endif %}</div>
@@ -58,57 +63,51 @@
         </div>
     </div>
 
-    <form method="get" class="card card-body mb-3 p-2 p-md-3">
-        <div class="row g-2 align-items-end">
-            <div class="col-6 col-md-auto"><label class="form-label mb-0">Data</label><input type="date" name="data" value="{{ data|date:'Y-m-d' }}" class="form-control" onchange="this.form.submit()"></div>
-            <div class="col-6 col-md-auto"><label class="form-label mb-0">Turno</label>
-                <select name="turno" class="form-select" onchange="this.form.submit()">
-                    {% for t in turnos %}<option value="{{ t.pk }}" {% if turno and t.pk == turno.pk %}selected{% endif %}>{{ t }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="col-12 col-md-auto text-muted small pb-md-2">{% if verificacao %}Já lançado · última atualização {{ verificacao.atualizado_em|date:"d/m/Y H:i" }}{% else %}Ainda sem lançamento neste turno.{% endif %}</div>
-        </div>
-    </form>
-
-    <div class="card card-body mb-3 p-2 p-md-3 {% if status %}border-warning{% endif %}">
-        <div class="row g-3 align-items-start">
-            <div class="col-lg-4">
-                <div class="fw-semibold mb-1"><i class="bi bi-tools me-1"></i>Situação da máquina</div>
-                {% if status %}
-                    <span class="badge {% if status == 'manutencao' %}bg-warning text-dark{% else %}bg-secondary{% endif %} fs-6">{{ status_rotulo }}</span>
-                    {% if status_motivo %}<div class="small text-muted mt-1">{{ status_motivo }}</div>{% endif %}
-                    <div class="small mt-2 text-muted">Neste turno os itens <strong>não são obrigatórios</strong>: não geram pendência nem atraso, e na planilha exportada todos saem como "{{ status_rotulo }}".</div>
-                {% else %}
-                    <span class="badge bg-success fs-6">Em operação</span>
-                    <div class="small mt-2 text-muted">Marque manutenção ou parada para dispensar o preenchimento dos itens.</div>
-                {% endif %}
+    <div class="card card-body mb-2 p-2 {% if status %}border-warning{% endif %}">
+        <div class="d-flex flex-wrap gap-2 gap-lg-3 align-items-end">
+            <form method="get" class="d-flex gap-2 align-items-end">
+                <div><label class="form-label mb-0 small">Data</label><input type="date" name="data" value="{{ data|date:'Y-m-d' }}" class="form-control form-control-sm" onchange="this.form.submit()"></div>
+                <div><label class="form-label mb-0 small">Turno</label>
+                    <select name="turno" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for t in turnos %}<option value="{{ t.pk }}" {% if turno and t.pk == turno.pk %}selected{% endif %}>{{ t }}</option>{% endfor %}
+                    </select>
+                </div>
+            </form>
+            <div class="vr d-none d-lg-block"></div>
+            <div>
+                <div class="small fw-semibold"><i class="bi bi-tools me-1"></i>Máquina</div>
+                {% if status %}<span class="badge {% if status == 'manutencao' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ status_rotulo }}</span>
+                {% else %}<span class="badge bg-success">Em operação</span>{% endif %}
             </div>
             {% if not travada and turno %}
-            <form method="post" action="{% url 'pcp:preencher_status' pagina.pk %}" class="col-lg-8">
+            <form method="post" action="{% url 'pcp:preencher_status' pagina.pk %}" class="d-flex flex-wrap gap-2 align-items-end flex-grow-1">
                 {% csrf_token %}
                 <input type="hidden" name="data" value="{{ data|date:'Y-m-d' }}">
                 <input type="hidden" name="turno" value="{{ turno.pk }}">
-                <div class="row g-2 align-items-end">
-                    <div class="col-6 col-md-auto"><label class="form-label mb-0 small">Situação</label>
-                        <select name="status" class="form-select form-select-sm">
-                            {% for v, n in status_opcoes %}<option value="{{ v }}" {% if v == status %}selected{% endif %}>{{ n }}</option>{% endfor %}
-                        </select></div>
-                    <div class="col-6 col-md-auto"><label class="form-label mb-0 small">Aplicar a</label>
-                        <select name="escopo" class="form-select form-select-sm">
-                            <option value="turno">Somente este turno ({{ turno.sigla }})</option>
-                            <option value="dia">Todos os turnos do dia</option>
-                        </select></div>
-                    <div class="col-12 col-md-auto"><label class="form-label mb-0 small">Até (opcional)</label>
-                        <input type="date" name="ate" min="{{ data|date:'Y-m-d' }}" class="form-control form-control-sm" title="Para um período: a mesma situação de {{ data|date:'d/m' }} até esta data"></div>
-                    <div class="col-12 col-md"><label class="form-label mb-0 small">Motivo (opcional)</label>
-                        <input type="text" name="motivo" maxlength="200" value="{{ status_motivo }}" class="form-control form-control-sm" placeholder="Ex.: troca de ferramenta"></div>
-                    <div class="col-12 col-md-auto"><button class="btn btn-sm btn-primary w-100">Aplicar</button></div>
-                </div>
+                <div><label class="form-label mb-0 small">Situação</label>
+                    <select name="status" class="form-select form-select-sm">
+                        {% for v, n in status_opcoes %}<option value="{{ v }}" {% if v == status %}selected{% endif %}>{{ n }}</option>{% endfor %}
+                    </select></div>
+                <div><label class="form-label mb-0 small">Aplicar a</label>
+                    <select name="escopo" class="form-select form-select-sm">
+                        <option value="turno">Somente este turno ({{ turno.sigla }})</option>
+                        <option value="dia">Todos os turnos do dia</option>
+                    </select></div>
+                <div><label class="form-label mb-0 small">Até (opcional)</label>
+                    <input type="date" name="ate" min="{{ data|date:'Y-m-d' }}" class="form-control form-control-sm" title="Para um período: a mesma situação de {{ data|date:'d/m' }} até esta data"></div>
+                <div class="flex-grow-1" style="min-width:10rem"><label class="form-label mb-0 small">Motivo (opcional)</label>
+                    <input type="text" name="motivo" maxlength="200" value="{{ status_motivo }}" class="form-control form-control-sm" placeholder="Ex.: troca de ferramenta"></div>
+                <button class="btn btn-sm btn-primary">Aplicar</button>
             </form>
             {% endif %}
         </div>
+        <div class="small text-muted mt-1">
+            {% if verificacao %}Já lançado · última atualização {{ verificacao.atualizado_em|date:"d/m/Y H:i" }}{% else %}Ainda sem lançamento neste turno.{% endif %}
+            {% if status %} · Todos os itens estão como <strong>{{ status_rotulo }}</strong>: não geram pendência nem atraso e saem assim na planilha exportada.{% else %} · Marque manutenção ou parada para aplicar a situação a todos os itens.{% endif %}
+            {% if status_motivo %}<span class="ms-1">({{ status_motivo }})</span>{% endif %}
+        </div>
     </div>
-    <div class="d-flex flex-wrap align-items-center gap-3 mb-2" id="barra-filtros">
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-1" id="barra-filtros">
         {% if turno and n_devidos %}
             <span><strong>{{ n_devidos|add:0 }}</strong> verificações devidas neste turno ·
                 <span class="{% if n_pendentes %}text-danger fw-semibold{% else %}text-success{% endif %}">{{ n_pendentes }} pendente{{ n_pendentes|pluralize }}</span></span>
@@ -143,7 +142,10 @@
                         <td class="small pcp-spec{% if not c.especificacao %} pcp-sem-valor{% endif %}" data-label="Especificação">{{ c.especificacao|default:"—" }}</td>
                         <td class="small pcp-freq">{{ c.frequencia|default:"—" }}{% if l.pendente %} <span class="badge bg-warning text-dark">Pendente</span>{% elif l.devido %} <span class="badge bg-success">Em dia</span>{% endif %}{% if c.frequencia_detalhe %}<div class="text-muted">{{ c.frequencia_detalhe|truncatechars:80 }}</div>{% endif %}</td>
                         <td class="pcp-res" data-label="Resultado">
-                            {% if c.tipo == 'lista' %}
+                            {% if status %}
+                                <span class="badge {% if status == 'manutencao' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ status_rotulo }}</span>
+                                <input type="hidden" name="c_{{ c.pk }}" value="{{ r.valor }}">
+                            {% elif c.tipo == 'lista' %}
                                 <select name="c_{{ c.pk }}" class="form-select form-select-sm" {% if travada %}disabled{% endif %}>
                                     <option value=""></option>
                                     {% for o in c.lista.opcoes.all %}<option value="{{ o.valor }}" {% if r.valor == o.valor %}selected{% endif %}>{{ o.valor }}</option>{% endfor %}
@@ -168,8 +170,12 @@
             </table>
         </div></div>
 
-        <div class="card mb-3">
-            <div class="card-header">Ocorrências</div>
+        <div class="pcp-rodape">
+            <div class="pcp-salvar d-flex flex-wrap gap-2 align-items-center mt-2">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#pcp-ocorrencias"><i class="bi bi-chat-left-text me-1"></i>Ocorrências{% if ocorrencias|length %} ({{ ocorrencias|length }}){% endif %}</button>
+                {% if not travada and turno %}<button class="btn btn-primary pcp-salvar-btn ms-auto"><i class="bi bi-check2 me-1"></i>Salvar verificação</button>{% endif %}
+            </div>
+            <div class="collapse" id="pcp-ocorrencias"><div class="card mt-2" style="max-height:30vh;overflow:auto">
             <div class="card-body">
                 {% for o in ocorrencias %}
                     <div class="border rounded p-2 mb-2 small">
@@ -186,8 +192,8 @@
                 </div>
                 {% endif %}
             </div>
+            </div></div>
         </div>
-        {% if not travada and turno %}<div class="pcp-salvar"><button class="btn btn-primary pcp-salvar-btn"><i class="bi bi-check2 me-1"></i>Salvar verificação</button></div>{% endif %}
     </form>
 </div>
 <script>
@@ -220,6 +226,21 @@
         });
     }
     aplicar();
+    // desktop: cabeçalho fixo e só a lista de itens rola (altura = o que sobra da tela)
+    var rolagem = document.querySelector('.pcp-itens-card > .table-responsive');
+    var rodape = document.querySelector('.pcp-rodape');
+    function ajustar() {
+        if (!rolagem) return;
+        if (window.innerWidth < 768) { rolagem.style.maxHeight = ''; return; }
+        var topo = rolagem.getBoundingClientRect().top + window.scrollY;
+        var h = window.innerHeight - topo - (rodape ? rodape.offsetHeight : 0) - 16;
+        rolagem.style.maxHeight = Math.max(240, h) + 'px';
+    }
+    window.addEventListener('resize', ajustar);
+    window.addEventListener('load', ajustar);
+    var oc = document.getElementById('pcp-ocorrencias');
+    if (oc) ['shown.bs.collapse', 'hidden.bs.collapse'].forEach(function (e) { oc.addEventListener(e, ajustar); });
+    ajustar();
     // chegou pelo pop-up da visão semanal (#campo-ID): garante o item visível, rola até ele e o destaca
     var alvo = location.hash.indexOf('#campo-') === 0 ? document.querySelector(location.hash) : null;
     if (alvo) {
