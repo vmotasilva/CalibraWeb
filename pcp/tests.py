@@ -2824,3 +2824,22 @@ class TemplateAnoInteiroTests(TemplatesBase):
         r = self.client.get(url, {'template': self.tpl.pk, 'ano': 2100})
         self.assertRedirects(r, reverse('pcp:formulario_detalhe', args=[self.form.pk]), fetch_redirect_response=False)
         self.assertRedirects(self.client.get(url, {'template': 999}), reverse('pcp:formulario_detalhe', args=[self.form.pk]), fetch_redirect_response=False)
+
+
+class SemanaBarraMobileTests(SemanaBase):
+    def test_barra_do_celular_congelada_com_semana_atualizar_e_legenda(self):
+        r = self.client.get(reverse('pcp:semana'), {'pagina': self.pag.pk, 'semana': '2026-10-21'})
+        self.assertContains(r, 'semana-barra-m')
+        self.assertContains(r, 'position: sticky')
+        self.assertContains(r, 'btn-atualizar-semana')
+        self.assertContains(r, 'data-bs-target="#modal-legenda"')
+
+
+class SemanaMobileAjustesTests(SemanaBase):
+    def test_grupo_congelado_popup_em_tela_cheia_e_descricao_em_linha_propria(self):
+        r = self.client.get(reverse('pcp:semana'), {'pagina': self.pag.pk, 'semana': '2026-10-21'})
+        self.assertContains(r, 'var(--barra-h')                      # cabeçalho do grupo preso sob a barra
+        self.assertContains(r, 'modal-fullscreen-md-down')           # pop-up em tela cheia no celular
+        html = r.content.decode()
+        cards = html[html.index('semana-cards d-md-none'):]
+        self.assertIn('class="item-desc"', cards)                    # descrição abaixo do código no card

@@ -16,13 +16,22 @@
     .farol-novo { background:#fff; color:#0d6efd; border:1.5px dashed #0d6efd; text-decoration:none; box-shadow:none; }
     .farol-novo:hover { background:#0d6efd; color:#fff; }
     .grupo-freq td { background:#e9ecef; border-top:2px solid #adb5bd; }
-    .grupo-toggle { background:#e9ecef; padding:.6rem .75rem; }
+    .grupo-toggle { background:#e9ecef; padding:.6rem .75rem; position:sticky; top:calc(3.75rem + var(--barra-h, 3rem)); z-index:15; border-radius:.375rem .375rem 0 0; }   /* fica preso sob a barra enquanto rolam os itens do grupo */
     .grupo-toggle .grupo-seta { transition:transform .2s; } .grupo-toggle:not(.collapsed) .grupo-seta { transform:rotate(180deg); }
     .dias-m { display:flex; flex-wrap:wrap; gap:.35rem .25rem; }
     .dia-m { flex:1 1 calc(33% - .25rem); min-width:5.2rem; max-width:50%; text-align:center; border:1px solid #e9ecef; border-radius:.4rem; padding:.2rem .1rem; }
     .dia-m.hoje { background:rgba(13,110,253,.07); border-color:#9ec5fe; }
     .dia-m-rot { font-size:.7rem; font-weight:600; }
     #modal-legenda .legenda-farol { margin-right:0; }
+    @media (max-width: 767.98px) {   /* pop-up do farol em tela cheia: campos e botões maiores para o toque (16px evita o zoom do navegador) */
+        #modal-farol .form-control-sm, #modal-farol .form-select-sm, #modal-farol textarea.form-control { font-size: 1rem; min-height: 2.75rem; }
+        #modal-farol .btn-sm, #modal-farol .modal-footer .btn { min-height: 2.75rem; padding-left: 1rem; padding-right: 1rem; font-size: 1rem; }
+        #modal-farol .modal-footer { flex-wrap: wrap; gap: .5rem; }
+        #modal-farol .modal-footer .btn { flex: 1 1 45%; }
+        #modal-farol .modal-footer .me-auto { margin-right: 0 !important; flex-basis: 100%; }
+    }
+    /* celular: barra de página/semana congelada sob a barra superior do sistema; rolam só os grupos e os cards de itens */
+    .semana-barra-m { position: sticky; top: 3.75rem; z-index: 20; display: flex; align-items: center; gap: .4rem; background: #f4f6f9; padding: .4rem 0; margin-bottom: .5rem; border-bottom: 1px solid #dee2e6; }
     .semana-scroll { max-height: calc(100vh - 9rem); overflow: auto; }   /* a tabela rola dentro da tela, com o cabeçalho congelado */
     .semana-tabela thead th { position: sticky; top: 0; z-index: 3; background: #fff; box-shadow: 0 1px 0 #dee2e6; }
     .semana-tabela thead th.hoje { background: #eef4ff; }
@@ -68,10 +77,17 @@
         </div>
     </form>
 
+    <div class="semana-barra-m d-md-none">
+        <a class="btn btn-sm btn-outline-secondary" href="?pagina={{ pagina.pk }}&semana={{ anterior|date:'Y-m-d' }}" title="Semana anterior"><i class="bi bi-chevron-left"></i></a>
+        <div class="flex-grow-1 text-center lh-sm"><div class="fw-semibold text-truncate">{{ pagina.nome }}</div><div class="small text-muted">{{ d.ini|date:"d/m" }} a {{ d.fim|date:"d/m/Y" }}</div></div>
+        <a class="btn btn-sm btn-outline-secondary" href="?pagina={{ pagina.pk }}&semana={{ proxima|date:'Y-m-d' }}" title="Próxima semana"><i class="bi bi-chevron-right"></i></a>
+        <button type="button" class="btn btn-sm btn-outline-primary btn-atualizar-semana" title="Atualizar os faróis"><i class="bi bi-arrow-clockwise"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modal-legenda" aria-label="Legendas"><i class="bi bi-info-circle"></i></button>
+    </div>
+
     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
         <span class="fw-semibold">{{ pagina.nome }}</span>
         <span class="text-muted small">{{ pagina.versao }}{% if pagina.maquina %} · Máquina {{ pagina.maquina.display_name }}{% endif %}</span>
-        <button type="button" class="btn btn-sm btn-outline-secondary d-md-none" data-bs-toggle="modal" data-bs-target="#modal-legenda" aria-label="Legendas"><i class="bi bi-info-circle"></i></button>
         <span class="ms-auto small">
             <span class="badge bg-success">{{ d.contagem.ok }} OK</span>
             <span class="badge bg-danger">{{ d.contagem.nok }} não OK</span>
@@ -171,7 +187,8 @@
                     <div class="card item-card mb-2" data-freq="{{ l.info.frequencia_id }}" data-nok="{% if l.tem_nok %}1{% else %}0{% endif %}">
                         <div class="card-body p-2">
                             {% if l.info.etapa %}<div class="small text-muted">{{ l.info.etapa|truncatechars:60 }}</div>{% endif %}
-                            <div><span class="text-muted me-1">{{ l.info.num }}.</span><span class="fw-semibold {% if l.info.critico %}text-danger{% endif %}">{{ l.info.item|default:"—" }}</span> {{ l.info.descricao|truncatechars:90 }}</div>
+                            <div><span class="text-muted me-1">{{ l.info.num }}.</span><span class="fw-semibold {% if l.info.critico %}text-danger{% endif %}">{{ l.info.item|default:"—" }}</span></div>
+                            <div class="item-desc">{{ l.info.descricao|truncatechars:90 }}</div>
                             <div class="mb-2"></div>
                             {% if l.tipo == 'janelas' %}
                                 <div class="text-center">{% for p in l.janelas %}{% include "pcp/_farol_btn.html" %}{% endfor %}</div>
@@ -211,7 +228,7 @@
 </div>
 
 <div class="modal fade" id="modal-farol" tabindex="-1" aria-labelledby="modal-farol-titulo" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-fullscreen-md-down">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modal-farol-titulo">Detalhe</h5>
@@ -439,8 +456,12 @@
         try { sessionStorage.setItem('pcp-semana-filtros', JSON.stringify({ f: sel.value, nok: nok.checked })); } catch (e) {}
         location.reload();
     }
+    var barraM = document.querySelector('.semana-barra-m');
+    function medirBarra() { if (barraM && barraM.offsetHeight) document.documentElement.style.setProperty('--barra-h', barraM.offsetHeight + 'px'); }
+    medirBarra(); window.addEventListener('resize', medirBarra);
     var botaoAtualizar = document.getElementById('btn-atualizar-semana');
     if (botaoAtualizar) botaoAtualizar.addEventListener('click', recarregar);
+    document.querySelectorAll('.btn-atualizar-semana').forEach(function (b) { b.addEventListener('click', recarregar); });
     // atualiza os faróis ao voltar para a aba (ex.: depois de preencher em outra aba), sem interromper um pop-up aberto
     var saiuEm = null;
     document.addEventListener('visibilitychange', function () {
