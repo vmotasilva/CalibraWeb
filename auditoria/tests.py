@@ -1755,3 +1755,19 @@ class ExportarPdfSemanasNcTests(OcorrenciasAcompanhamentoTests):
         resp = self.client.get(reverse("auditoria:registro_exportar_pdf", args=[self.reg2.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertTrue(resp.content.startswith(b"%PDF"))
+
+
+class ExportarExcelSemanasNcTests(OcorrenciasAcompanhamentoTests):
+    def test_excel_tem_aba_semanas_nc(self):
+        from io import BytesIO
+
+        from openpyxl import load_workbook
+
+        RespostaAuditoria.objects.create(registro=self.reg1, pergunta=self.pergunta, dia_semana="QUARTA", valor="Não")
+        RespostaAuditoria.objects.create(registro=self.reg2, pergunta=self.pergunta, dia_semana="QUARTA", valor="Não")
+        resp = self.client.get(reverse("auditoria:exportar_respostas_excel", args=[self.modelo.pk]))
+        self.assertEqual(resp.status_code, 200)
+        ws = load_workbook(BytesIO(resp.content))["Semanas NC"]
+        valores = {row[0]: row[4] for row in ws.iter_rows(min_row=2, values_only=True)}
+        self.assertEqual(valores[self.reg1.id], 1)
+        self.assertEqual(valores[self.reg2.id], 2)

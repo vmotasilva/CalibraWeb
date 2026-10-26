@@ -3557,6 +3557,51 @@ def comentario_delete(request, modelo_id, pk):
     )
 
 
+def _adicionar_aba_semanas_nc(wb, modelo, perguntas, registros) -> None:
+    """Aba "Semanas NC": por registro e pergunta, semanas consecutivas não conformes até aquele registro."""
+    from openpyxl.styles import Font, PatternFill
+
+    def segunda_da_semana(d):
+        return d - timedelta(days=d.weekday())
+
+    semanas_nc: set[tuple[str, int, dt_date]] = set()
+    linhas = (
+        RespostaAuditoria.objects.filter(registro__modelo=modelo, pergunta__in=perguntas)
+        .exclude(valor="")
+        .values_list("registro__alvo", "pergunta_id", "registro__periodo_inicio", "valor")
+    )
+    for alvo, pergunta_id, inicio, valor in linhas:
+        if inicio and _normalize_text_token(valor) in _VALORES_NAO_CONFORME:
+            semanas_nc.add((alvo, pergunta_id, segunda_da_semana(inicio)))
+
+    ws = wb.create_sheet("Semanas NC")
+    ws.append(["ID", "Período Início", "Período Fim", "Alvo"] + [p.pergunta for p in perguntas])
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    destaque = PatternFill("solid", fgColor="F8D7DA")
+    for registro in registros:
+        row = [
+            registro.id,
+            registro.periodo_inicio.strftime("%d/%m/%Y") if registro.periodo_inicio else "",
+            registro.periodo_fim.strftime("%d/%m/%Y") if registro.periodo_fim else "",
+            registro.alvo or "",
+        ]
+        for pergunta in perguntas:
+            total = 0
+            if registro.periodo_inicio:
+                semana = segunda_da_semana(registro.periodo_inicio)
+                while (registro.alvo, pergunta.id, semana) in semanas_nc:
+                    total += 1
+                    semana -= timedelta(weeks=1)
+            row.append(total)
+        ws.append(row)
+        for cell in ws[ws.max_row][4:]:
+            if cell.value:
+                cell.fill = destaque
+                cell.font = Font(bold=True, color="842029")
+
+
 @login_required
 def exportar_respostas_excel(request, modelo_id):
     """Exporta em Excel (.xlsx) as respostas registradas de um modelo específico."""
@@ -3649,6 +3694,9 @@ def exportar_respostas_excel(request, modelo_id):
                     row.append(valor or "")
 
         ws.append(row)
+
+    if is_semanal and perguntas:
+        _adicionar_aba_semanas_nc(wb, modelo, perguntas, registros)
 
     # Gerar arquivo em memória
     stream = BytesIO()
