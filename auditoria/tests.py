@@ -12,8 +12,13 @@ from .models import (
     PerguntaAuditoria,
     RegistroAuditoria,
     RelatorioCompartilhadoAuditoria,
+    RespostaAuditoria,
 )
-from .views import _build_registro_report_share_token, registros_por_modelo
+from .views import (
+    _build_registro_report_share_token,
+    _calcular_semanas_consecutivas_nc,
+    registros_por_modelo,
+)
 
 
 class ModeloDeleteProtectedTests(TestCase):
@@ -1620,3 +1625,49 @@ class AuditoriaPendenciasSemanalETestesAndamento(TestCase):
 
 
 
+
+
+class SemanasConsecutivasNaoConformeTests(TestCase):
+    def setUp(self):
+        self.modelo = ModeloAuditoria.objects.create(
+            nome="MODELO SEMANAL NC",
+            objeto_auditoria="5S",
+            periodicidade="SEMANAL",
+        )
+        self.pergunta = PerguntaAuditoria.objects.create(
+            modelo=self.modelo, pergunta="Seiri", ordem=1, tipo_resposta="SIM_NAO", ativo=True
+        )
+
+    def _registro(self, segunda, valor):
+        reg = RegistroAuditoria.objects.create(
+            modelo=self.modelo,
+            alvo="Linha 1",
+            periodo_inicio=segunda,
+            periodo_fim=date.fromordinal(segunda.toordinal() + 6),
+        )
+        if valor:
+            RespostaAuditoria.objects.create(
+                registro=reg, pergunta=self.pergunta, dia_semana="QUARTA", valor=valor
+            )
+        return reg
+
+    def test_conta_semanas_seguidas_ate_quebrar(self):
+        self._registro(date(2026, 9, 28), "Não")  # fora da sequência (semana seguinte conforme)
+        self._registro(date(2026, 10, 5), "Sim")
+        self._registro(date(2026, 10, 12), "Não")
+        self._registro(date(2026, 10, 19), "Não conforme")
+        atual = self._registro(date(2026, 10, 26), "Não")
+        res = _calcular_semanas_consecutivas_nc(atual, [self.pergunta.id])
+        self.assertEqual(res[self.pergunta.id], 3)
+
+    def test_semana_sem_registro_interrompe(self):
+        self._registro(date(2026, 10, 12), "Não")
+        atual = self._registro(date(2026, 10, 26), "Não")
+        res = _calcular_semanas_consecutivas_nc(atual, [self.pergunta.id])
+        self.assertEqual(res[self.pergunta.id], 1)
+
+    def test_semana_atual_conforme_zera(self):
+        self._registro(date(2026, 10, 19), "Não")
+        atual = self._registro(date(2026, 10, 26), "Sim")
+        res = _calcular_semanas_consecutivas_nc(atual, [self.pergunta.id])
+        self.assertEqual(res[self.pergunta.id], 0)

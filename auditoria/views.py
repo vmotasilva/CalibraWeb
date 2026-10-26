@@ -313,6 +313,52 @@ def _resolve_cor_resposta(pergunta: PerguntaAuditoria, valor: str) -> str:
     return _fallback_cor_resposta(valor)
 
 
+_VALORES_NAO_CONFORME = {"nao conforme", "nao", "nc", "reprovado", "critico"}
+
+
+def _calcular_semanas_consecutivas_nc(registro: RegistroAuditoria, pergunta_ids: list[int]) -> dict[int, int]:
+    """
+    Para cada pergunta, conta quantas semanas seguidas (terminando na semana deste registro)
+    tiveram ao menos um dia com resposta não conforme. Registros do mesmo modelo e alvo;
+    semana sem registro ou sem não conformidade interrompe a contagem.
+    """
+    if not registro.periodo_inicio or not pergunta_ids:
+        return {}
+
+    def segunda_da_semana(d):
+        return d - timedelta(days=d.weekday())
+
+    semana_atual = segunda_da_semana(registro.periodo_inicio)
+    limite_inferior = semana_atual - timedelta(weeks=104)
+
+    linhas = (
+        RespostaAuditoria.objects.filter(
+            registro__modelo_id=registro.modelo_id,
+            registro__alvo=registro.alvo,
+            registro__periodo_inicio__lte=registro.periodo_inicio,
+            registro__periodo_inicio__gte=limite_inferior,
+            pergunta_id__in=pergunta_ids,
+        )
+        .exclude(valor="")
+        .values_list("pergunta_id", "registro__periodo_inicio", "valor")
+    )
+
+    semanas_nc: set[tuple[int, dt_date]] = set()
+    for pergunta_id, inicio, valor in linhas:
+        if _normalize_text_token(valor) in _VALORES_NAO_CONFORME:
+            semanas_nc.add((pergunta_id, segunda_da_semana(inicio)))
+
+    resultado: dict[int, int] = {}
+    for pergunta_id in pergunta_ids:
+        semana = semana_atual
+        total = 0
+        while (pergunta_id, semana) in semanas_nc:
+            total += 1
+            semana -= timedelta(weeks=1)
+        resultado[pergunta_id] = total
+    return resultado
+
+
 def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
     """Monta estrutura consolidada por pergunta para exibição em blocos e exportação."""
     todas_perguntas = list(
@@ -1956,6 +2002,16 @@ def registro_detail(request, pk):
             }
         )
 
+    exibir_semanas_nc = registro.modelo.periodicidade == "SEMANAL"
+    if exibir_semanas_nc:
+        semanas_nc = _calcular_semanas_consecutivas_nc(
+            registro,
+            [linha["pergunta_id"] for bloco in resumo["blocos"] for linha in bloco["linhas"]],
+        )
+        for bloco in resumo["blocos"]:
+            for linha in bloco["linhas"]:
+                linha["semanas_nc"] = semanas_nc.get(linha["pergunta_id"], 0)
+
     # Gráfico único de distribuição de situações por topico (dashboard style)
     subcat_chart = _build_topico_chart_from_resumo(resumo["blocos"])
 
@@ -1988,6 +2044,7 @@ def registro_detail(request, pk):
         "blocos_respostas": resumo["blocos"],
         "subcat_chart": subcat_chart,
         "exibir_dia_semana": resumo["exibir_dias"],
+        "exibir_semanas_nc": exibir_semanas_nc,
         "dias_semana_colunas": dias_semana_colunas,
         "total_respostas": resumo["total_perguntas"],
         "preenchidas": resumo["preenchidas"],
