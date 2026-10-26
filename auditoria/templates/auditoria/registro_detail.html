@@ -960,9 +960,6 @@
                             {% else %}
                                 <th class="col-dia text-center" width="140">Farol / Resposta</th>
                             {% endif %}
-                            {% if exibir_semanas_nc %}
-                            <th class="text-center" width="110" title="Semanas consecutivas com não conformidade, até esta semana">Sem. NC</th>
-                            {% endif %}
                             <th class="col-comentarios">Ocorrências</th>
                         </tr>
                     </thead>
@@ -985,6 +982,13 @@
                                 </span>
                                 {% if linha.obrigatoria %}
                                 <span class="text-danger">*</span>
+                                {% endif %}
+                                {% if exibir_semanas_nc and linha.semanas_nc %}
+                                <div class="mt-1">
+                                    <span class="badge bg-danger rounded-pill" title="{{ linha.semanas_nc }} semana{{ linha.semanas_nc|pluralize }} consecutiva{{ linha.semanas_nc|pluralize }} com não conformidade (incluindo esta)">
+                                        <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ linha.semanas_nc }} semana{{ linha.semanas_nc|pluralize }} seguida{{ linha.semanas_nc|pluralize }} não conforme
+                                    </span>
+                                </div>
                                 {% endif %}
                             </td>
                             {% if exibir_dia_semana %}
@@ -1043,17 +1047,6 @@
                                         {% endif %}
                                     </div>
                                 </td>
-                            {% endif %}
-                            {% if exibir_semanas_nc %}
-                            <td class="text-center">
-                                {% if linha.semanas_nc %}
-                                <span class="badge bg-danger rounded-pill" title="{{ linha.semanas_nc }} semana{{ linha.semanas_nc|pluralize }} consecutiva{{ linha.semanas_nc|pluralize }} com não conformidade">
-                                    {{ linha.semanas_nc }} sem.
-                                </span>
-                                {% else %}
-                                <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
                             {% endif %}
                             <td class="col-comentarios">
                                 <div class="d-flex justify-content-between align-items-start gap-2">
