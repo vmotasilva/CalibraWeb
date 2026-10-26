@@ -278,7 +278,8 @@ def formulario_editar(request, pk):
 def formulario_detalhe(request, pk):
     formulario = get_object_or_404(Formulario.objects.select_related('setor'), pk=pk)
     versoes = formulario.versoes.annotate(n_paginas=Count('paginas', distinct=True))
-    return render(request, 'pcp/formulario_detalhe.html', {'formulario': formulario, 'versoes': versoes})
+    modelos = [t for t in TemplatePagina.objects.filter(formulario=formulario, ativo=True).defer('arquivo_base64') if (t.analise or {}).get('modo') == 'calendario']
+    return render(request, 'pcp/formulario_detalhe.html', {'formulario': formulario, 'versoes': versoes, 'templates_calendario': modelos})
 
 
 @login_required
@@ -1244,6 +1245,46 @@ def template_pagina_alternar(request, pk):
     return redirect('pcp:templates_pagina')
 
 
+def _planilha_response(saida, nome):
+    nome = unicodedata.normalize('NFKD', nome)
+    nome = re.sub(r'[^A-Za-z0-9._-]+', '_', ''.join(c for c in nome if not unicodedata.combining(c))).strip('_')
+    resposta = HttpResponse(saida.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resposta['Content-Disposition'] = f'attachment; filename="{nome}.xlsx"'
+    return resposta
+
+
+@login_required
+def exportar_template_formulario(request, pk):
+    """Template em calendário preenchido com o ano inteiro (1º de janeiro até hoje; 31/12 em anos passados): uma aba por página do formulário."""
+    formulario = get_object_or_404(Formulario, pk=pk)
+    versao = formulario.versao_vigente or formulario.versoes.first()
+    retorno = redirect('pcp:formulario_detalhe', pk)
+    tpl = TemplatePagina.objects.filter(pk=request.GET.get('template') if str(request.GET.get('template', '')).isdigit() else None,
+                                        formulario=formulario, ativo=True).first()
+    if versao is None or tpl is None:
+        messages.error(request, 'Escolha um template ativo deste formulário (e o formulário precisa ter uma revisão).')
+        return retorno
+    conteudo = templates_xlsx.decodificar(tpl.arquivo_base64)
+    if not templates_xlsx.eh_calendario(conteudo):
+        messages.error(request, 'Este template não está no modo calendário (datas nas colunas); gere-o por página, mês a mês.')
+        return retorno
+    hoje = timezone.localdate()
+    ano = int(request.GET['ano']) if str(request.GET.get('ano', '')).isdigit() and 2000 <= int(request.GET['ano']) <= 2100 else hoje.year
+    ini = _parse_data(request.GET.get('de')) if request.GET.get('de') else datetime.date(ano, 1, 1)
+    fim = _parse_data(request.GET.get('ate')) if request.GET.get('ate') else min(datetime.date(ano, 12, 31), hoje)
+    grupos = {}
+    for p in versao.paginas.filter(ativo=True).order_by('ordem', 'pk'):
+        if tpl.serve_para(p):
+            grupos.setdefault(p.grupo or SEM_GRUPO, []).append(p)
+    paginas = [p for ps in formulario.ordenar_grupos(grupos).values() for p in ps]
+    try:
+        saida = templates_xlsx.gerar_calendario(conteudo, formulario, versao, paginas, ini, fim)
+    except ValueError as e:
+        messages.error(request, str(e))
+        return retorno
+    return _planilha_response(saida, f'{formulario.codigo}_{tpl.nome}_{ini:%Y%m%d}-{fim:%Y%m%d}')
+
+
 @login_required
 def exportar_template(request, pk):
     """Gera o PCP do mês de uma página no template escolhido (?template=ID&mes=AAAA-MM)."""
@@ -1280,10 +1321,7 @@ def exportar_template(request, pk):
     except ValueError as e:
         messages.error(request, str(e))
         return redirect('pcp:preencher_pagina', pk)
-    nome = re.sub(r'[^A-Za-z0-9._-]+', '_', ''.join(c for c in nome if not unicodedata.combining(c))).strip('_')
-    resposta = HttpResponse(saida.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    resposta['Content-Disposition'] = f'attachment; filename="{nome}.xlsx"'
-    return resposta
+    return _planilha_response(saida, nome)
 
 
 @login_required

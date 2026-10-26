@@ -2800,3 +2800,27 @@ class PendenciasRecolhiveisTests(PendenciasBase):
         r = self.client.get(reverse('pcp:semana'), {'pagina': pag.pk})
         self.assertContains(r, 'semana-scroll')
         self.assertContains(r, 'position: sticky')
+
+
+class TemplateAnoInteiroTests(TemplatesBase):
+    def setUp(self):
+        super().setUp()
+        from pcp import templates_xlsx
+        Pagina.objects.create(versao=self.v15, nome='Outra', grupo='Fita')
+        self.tpl = TemplatePagina.objects.create(formulario=self.form, nome='Calendário', arquivo_base64=templates_xlsx.codificar(_template_calendario(blocos=3)),
+                                                 analise=templates_xlsx.analisar(_template_calendario(blocos=3)))
+
+    def test_formulario_oferece_o_ano_inteiro_e_gera_todas_as_paginas(self):
+        r = self.client.get(reverse('pcp:formulario_detalhe', args=[self.form.pk]))
+        self.assertContains(r, 'Gerar ano inteiro')
+        url = reverse('pcp:exportar_template_formulario', args=[self.form.pk])
+        r = self.client.get(url, {'template': self.tpl.pk, 'ano': 2026, 'de': '2026-01-01', 'ate': '2026-01-02'})
+        self.assertEqual(r.status_code, 200)
+        wb = openpyxl.load_workbook(io.BytesIO(r.content))
+        self.assertEqual(wb.sheetnames, ['Índice', 'Fitadeira', 'Outra'])
+
+    def test_ano_passado_vai_ate_31_12_e_ano_futuro_da_erro(self):
+        url = reverse('pcp:exportar_template_formulario', args=[self.form.pk])
+        r = self.client.get(url, {'template': self.tpl.pk, 'ano': 2100})
+        self.assertRedirects(r, reverse('pcp:formulario_detalhe', args=[self.form.pk]), fetch_redirect_response=False)
+        self.assertRedirects(self.client.get(url, {'template': 999}), reverse('pcp:formulario_detalhe', args=[self.form.pk]), fetch_redirect_response=False)
