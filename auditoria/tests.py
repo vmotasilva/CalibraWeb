@@ -1746,3 +1746,12 @@ class OcorrenciasAcompanhamentoTests(TestCase):
         self.ocorrencia.refresh_from_db()
         self.assertEqual(self.ocorrencia.status, "ABERTA")
         self.assertIsNone(self.ocorrencia.resolvido_em)
+
+
+class ExportarPdfSemanasNcTests(OcorrenciasAcompanhamentoTests):
+    def test_pdf_gera_com_semanas_nc(self):
+        RespostaAuditoria.objects.create(registro=self.reg1, pergunta=self.pergunta, dia_semana="QUARTA", valor="Não")
+        RespostaAuditoria.objects.create(registro=self.reg2, pergunta=self.pergunta, dia_semana="QUARTA", valor="Não")
+        resp = self.client.get(reverse("auditoria:registro_exportar_pdf", args=[self.reg2.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.content.startswith(b"%PDF"))

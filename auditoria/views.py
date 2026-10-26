@@ -426,6 +426,20 @@ def _calcular_semanas_consecutivas_nc(registro: RegistroAuditoria, pergunta_ids:
     return resultado
 
 
+def _anexar_semanas_nc(registro: RegistroAuditoria, resumo: dict) -> bool:
+    """Preenche linha["semanas_nc"] em cada pergunta (só modelos semanais). Retorna se aplicável."""
+    if registro.modelo.periodicidade != "SEMANAL":
+        return False
+    semanas_nc = _calcular_semanas_consecutivas_nc(
+        registro,
+        [linha["pergunta_id"] for bloco in resumo["blocos"] for linha in bloco["linhas"]],
+    )
+    for bloco in resumo["blocos"]:
+        for linha in bloco["linhas"]:
+            linha["semanas_nc"] = semanas_nc.get(linha["pergunta_id"], 0)
+    return True
+
+
 def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
     """Monta estrutura consolidada por pergunta para exibição em blocos e exportação."""
     todas_perguntas = list(
@@ -2153,15 +2167,7 @@ def registro_detail(request, pk):
             }
         )
 
-    exibir_semanas_nc = registro.modelo.periodicidade == "SEMANAL"
-    if exibir_semanas_nc:
-        semanas_nc = _calcular_semanas_consecutivas_nc(
-            registro,
-            [linha["pergunta_id"] for bloco in resumo["blocos"] for linha in bloco["linhas"]],
-        )
-        for bloco in resumo["blocos"]:
-            for linha in bloco["linhas"]:
-                linha["semanas_nc"] = semanas_nc.get(linha["pergunta_id"], 0)
+    exibir_semanas_nc = _anexar_semanas_nc(registro, resumo)
 
     # Gráfico único de distribuição de situações por topico (dashboard style)
     subcat_chart = _build_topico_chart_from_resumo(resumo["blocos"])
@@ -2303,6 +2309,7 @@ def registro_exportar_pdf(request, pk):
     )
 
     resumo = _build_resumo_respostas_registro(registro)
+    _anexar_semanas_nc(registro, resumo)
     subcat_chart = _build_topico_chart_from_resumo(resumo["blocos"])
     dia_keys = resumo["dia_keys"]
     dia_labels = resumo["dia_labels"]
@@ -2472,7 +2479,7 @@ def registro_exportar_pdf(request, pk):
         headers = ["Ordem", "Pergunta"]
         if exibir_dias:
             headers.extend([dias_semana_abrev.get(k, dia_labels.get(k, k)[:3]) for k in dia_keys])
-        headers.append("Comentários")
+        headers.append("Ocorrências")
 
         if exibir_dias:
             col_widths = [1.2 * cm, 7.2 * cm] + [1.4 * cm for _ in dia_keys] + [8.6 * cm]
@@ -2482,9 +2489,17 @@ def registro_exportar_pdf(request, pk):
         table_data = [[Paragraph(f"<b>{escape(h)}</b>", style_cell_center) for h in headers]]
         for linha in bloco["linhas"]:
             comentarios_texto = "<br/>".join(escape(c) for c in linha["comentarios"]) or "-"
+            pergunta_html = escape(linha["pergunta"])
+            semanas_nc = linha.get("semanas_nc", 0)
+            if semanas_nc:
+                plural = "s" if semanas_nc != 1 else ""
+                pergunta_html += (
+                    f'<br/><font color="#dc3545" size="7"><b>&#9650; {semanas_nc} semana{plural} '
+                    f"seguida{plural} n&atilde;o conforme</b></font>"
+                )
             row = [
                 Paragraph(escape(str(linha["ordem"])), style_cell_center),
-                Paragraph(escape(linha["pergunta"]), style_cell),
+                Paragraph(pergunta_html, style_cell),
             ]
             if exibir_dias:
                 for k in dia_keys:
