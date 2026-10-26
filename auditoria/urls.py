@@ -56,6 +56,8 @@ urlpatterns = [
         views.exportar_respostas_excel,
         name="exportar_respostas_excel",
     ),
+    path("ocorrencias/<int:pk>/resolver/", views.ocorrencia_resolver, name="ocorrencia_resolver"),
+    path("ocorrencias/<int:pk>/reabrir/", views.ocorrencia_reabrir, name="ocorrencia_reabrir"),
     path("dashboard/", views.dashboard_auditoria, name="dashboard"),
 
     # ISO 13485 (Entrevista)

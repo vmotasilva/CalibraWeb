@@ -963,7 +963,7 @@
                             {% if exibir_semanas_nc %}
                             <th class="text-center" width="110" title="Semanas consecutivas com não conformidade, até esta semana">Sem. NC</th>
                             {% endif %}
-                            <th class="col-comentarios">Comentários</th>
+                            <th class="col-comentarios">Ocorrências</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1058,14 +1058,22 @@
                             <td class="col-comentarios">
                                 <div class="d-flex justify-content-between align-items-start gap-2">
                                     <div class="flex-grow-1">
-                                        {% if linha.comentarios %}
-                                        <ul class="mb-0 ps-3 small text-muted">
-                                            {% for comentario in linha.comentarios %}
-                                            <li>{{ comentario }}</li>
+                                        {% if linha.ocorrencias %}
+                                        <ul class="list-unstyled mb-0 small ocorrencias-lista">
+                                            {% for oc in linha.ocorrencias %}
+                                            <li class="mb-1">
+                                                {% if oc.em_aberto %}
+                                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em {{ oc.criado_em }}">Em aberto &middot; {{ oc.dias_aberta }}d</span>
+                                                {% else %}
+                                                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" title="{{ oc.resolucao }}">Resolvida</span>
+                                                {% endif %}
+                                                {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}
+                                                <span class="text-muted">{{ oc.texto }}</span>
+                                            </li>
                                             {% endfor %}
                                         </ul>
                                         {% else %}
-                                        <span class="text-muted fst-italic small">Sem comentários</span>
+                                        <span class="text-muted fst-italic small">Sem ocorrências</span>
                                         {% endif %}
                                     </div>
                                     <button
@@ -1073,7 +1081,7 @@
                                         class="btn btn-sm btn-outline-primary py-0 px-2 comment-open-btn ms-1"
                                         data-pergunta-id="{{ linha.pergunta_id }}"
                                         data-pergunta-texto="{{ linha.pergunta|escape }}"
-                                        title="Adicionar comentário">
+                                        title="Adicionar ou associar ocorrência">
                                         <i class="bi bi-plus-lg"></i>
                                     </button>
                                 </div>
@@ -1173,26 +1181,34 @@
                                 <!-- Campo de Comentário (Abaixo dos Faróis com Margem) -->
                                 <div class="comentario-container-mobile">
                                     <div class="comentario-header-mobile">
-                                        <span class="comentario-title-mobile"><i class="bi bi-chat-left-text me-1"></i> Comentários:</span>
+                                        <span class="comentario-title-mobile"><i class="bi bi-exclamation-diamond me-1"></i> Ocorrências:</span>
                                         <button
                                             type="button"
                                             class="btn btn-sm btn-outline-primary py-0 px-2 comment-open-btn"
                                             data-pergunta-id="{{ linha.pergunta_id }}"
                                             data-pergunta-texto="{{ linha.pergunta|escape }}"
-                                            title="Adicionar comentário">
+                                            title="Adicionar ou associar ocorrência">
                                             <i class="bi bi-plus-lg"></i>
                                         </button>
                                     </div>
                                     
                                     <div class="comentario-body">
-                                        {% if linha.comentarios %}
-                                        <ul class="mb-0 ps-3 small text-muted">
-                                            {% for comentario in linha.comentarios %}
-                                            <li>{{ comentario }}</li>
+                                        {% if linha.ocorrencias %}
+                                        <ul class="list-unstyled mb-0 small ocorrencias-lista">
+                                            {% for oc in linha.ocorrencias %}
+                                            <li class="mb-1">
+                                                {% if oc.em_aberto %}
+                                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em {{ oc.criado_em }}">Em aberto &middot; {{ oc.dias_aberta }}d</span>
+                                                {% else %}
+                                                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" title="{{ oc.resolucao }}">Resolvida</span>
+                                                {% endif %}
+                                                {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}
+                                                <span class="text-muted">{{ oc.texto }}</span>
+                                            </li>
                                             {% endfor %}
                                         </ul>
                                         {% else %}
-                                        <span class="text-muted fst-italic small">Sem comentários</span>
+                                        <span class="text-muted fst-italic small">Sem ocorrências</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -1220,34 +1236,60 @@
 <div class="modal fade" id="modalComentariosPergunta" tabindex="-1" aria-labelledby="modalComentariosPerguntaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="add_question_comment">
-                <input type="hidden" name="pergunta_id" id="modal-pergunta-id" value="">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalComentariosPerguntaLabel">Comentários da Pergunta</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalComentariosPerguntaLabel">Ocorrências da Pergunta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-2 small text-muted" id="modal-pergunta-texto"></div>
+                <div id="modal-comentarios-lista" class="mb-3"></div>
+
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tab-oc-nova" data-bs-toggle="tab" data-bs-target="#pane-oc-nova" type="button" role="tab">Nova ocorrência</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="tab-oc-existente" data-bs-toggle="tab" data-bs-target="#pane-oc-existente" type="button" role="tab">
+                            Associar existente <span class="badge bg-secondary" id="modal-oc-disponiveis-qtd">0</span>
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="pane-oc-nova" role="tabpanel">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_question_comment">
+                            <input type="hidden" name="pergunta_id" id="modal-pergunta-id" value="">
+                            <label class="form-label" for="modal-comentario-texto">Descrição da ocorrência</label>
+                            <textarea class="form-control mb-3" id="modal-comentario-texto" name="comentario" rows="4" maxlength="8000" placeholder="Descreva a ocorrência. Ela ficará em aberto até ser resolvida."></textarea>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Registrar ocorrência
+                            </button>
+                        </form>
+                    </div>
+                    <div class="tab-pane fade" id="pane-oc-existente" role="tabpanel">
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="associar_ocorrencia">
+                            <div id="modal-oc-disponiveis" class="mb-3"></div>
+                            <button type="submit" class="btn btn-primary" id="btn-associar-ocorrencia">
+                                <i class="bi bi-link-45deg"></i> Associar ao registro
+                            </button>
+                        </form>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <div class="mb-2 small text-muted" id="modal-pergunta-texto"></div>
-                    <div id="modal-comentarios-lista" class="mb-3"></div>
-                    <label class="form-label" for="modal-comentario-texto">Novo comentário</label>
-                    <textarea class="form-control" id="modal-comentario-texto" name="comentario" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar esta resposta..."></textarea>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-plus-circle"></i> Adicionar comentário
-                    </button>
-                </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-{{ comentarios_por_pergunta|json_script:"comentarios-por-pergunta" }}
+{{ ocorrencias_por_pergunta|json_script:"comentarios-por-pergunta" }}
+{{ ocorrencias_disponiveis|json_script:"ocorrencias-disponiveis" }}
 {{ subcat_chart|json_script:"auditoria-subcat-registro" }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1275,14 +1317,38 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/'/g, '&#39;');
     }
 
+    let disponiveis = {};
+    try {
+        const dispScript = document.getElementById('ocorrencias-disponiveis');
+        disponiveis = JSON.parse(dispScript ? dispScript.textContent : '{}') || {};
+    } catch (e) {
+        disponiveis = {};
+    }
+
     function renderList(items) {
         if (!items || !items.length) {
-            return '<div class="text-muted">Nenhum comentário nesta pergunta.</div>';
+            return '<div class="text-muted">Nenhuma ocorrência nesta pergunta.</div>';
         }
-        const rows = items.map(function(texto) {
-            return '<li class="mb-1">' + escapeHtml(texto) + '</li>';
+        const rows = items.map(function(oc) {
+            const badge = oc.em_aberto
+                ? '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Em aberto · ' + oc.dias_aberta + 'd</span>'
+                : '<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Resolvida</span>';
+            const rec = oc.associada ? ' <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Recorrente</span>' : '';
+            return '<li class="mb-1">' + badge + rec + ' ' + escapeHtml(oc.texto) + '</li>';
         }).join('');
         return '<ol class="mb-0 ps-3">' + rows + '</ol>';
+    }
+
+    function renderDisponiveis(items) {
+        if (!items || !items.length) {
+            return '<div class="text-muted">Nenhuma ocorrência em aberto disponível para associar.</div>';
+        }
+        return items.map(function(oc, idx) {
+            return '<div class="form-check mb-2">' +
+                '<input class="form-check-input" type="radio" name="ocorrencia_id" id="oc-disp-' + oc.id + '" value="' + oc.id + '"' + (idx === 0 ? ' required' : '') + '>' +
+                '<label class="form-check-label" for="oc-disp-' + oc.id + '"><span class="badge bg-secondary me-1">' + escapeHtml(oc.criado_em) + '</span>' + escapeHtml(oc.texto) + '</label>' +
+                '</div>';
+        }).join('');
     }
 
     const modalEl = document.getElementById('modalComentariosPergunta');
@@ -1291,16 +1357,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const perguntaTextoEl = document.getElementById('modal-pergunta-texto');
     const listaEl = document.getElementById('modal-comentarios-lista');
 
+    const dispEl = document.getElementById('modal-oc-disponiveis');
+    const dispQtdEl = document.getElementById('modal-oc-disponiveis-qtd');
+    const btnAssociar = document.getElementById('btn-associar-ocorrencia');
+
     document.querySelectorAll('.comment-open-btn').forEach(function(btn) {
-        const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
         btn.addEventListener('click', function() {
             const perguntaId = String(btn.getAttribute('data-pergunta-id') || '');
             const perguntaTexto = String(btn.getAttribute('data-pergunta-texto') || '');
             const itens = comentarios[perguntaId] || [];
+            const disp = disponiveis[perguntaId] || [];
 
             idInput.value = perguntaId;
             perguntaTextoEl.textContent = perguntaTexto;
             listaEl.innerHTML = renderList(itens);
+            dispEl.innerHTML = renderDisponiveis(disp);
+            dispQtdEl.textContent = String(disp.length);
+            btnAssociar.disabled = disp.length === 0;
+            if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
+                bootstrap.Tab.getOrCreateInstance(document.getElementById('tab-oc-nova')).show();
+            }
             if (modal) modal.show();
         });
     });

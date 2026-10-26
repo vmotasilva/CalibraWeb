@@ -686,10 +686,42 @@ class ComentarioRespostaAuditoria(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
+    # Ocorrência: o comentário passa a ser acompanhado até a resolução e pode ser
+    # associado a vários registros (semanas) enquanto estiver em aberto.
+    STATUS_ABERTA = "ABERTA"
+    STATUS_RESOLVIDA = "RESOLVIDA"
+    STATUS_CHOICES = [
+        (STATUS_ABERTA, "Em aberto"),
+        (STATUS_RESOLVIDA, "Resolvida"),
+    ]
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default=STATUS_ABERTA, db_index=True, verbose_name="Situação"
+    )
+    resolucao = models.TextField(blank=True, default="", verbose_name="Resolução")
+    resolvido_em = models.DateTimeField(null=True, blank=True, verbose_name="Resolvida em")
+    resolvido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="auditoria_ocorrencias_resolvidas",
+        verbose_name="Resolvida por",
+    )
+    registros_vinculados = models.ManyToManyField(
+        RegistroAuditoria,
+        blank=True,
+        related_name="ocorrencias_vinculadas",
+        verbose_name="Registros associados",
+    )
+
     class Meta:
-        verbose_name = "Comentário da Resposta (Auditoria)"
-        verbose_name_plural = "Comentários das Respostas (Auditoria)"
+        verbose_name = "Ocorrência (Auditoria)"
+        verbose_name_plural = "Ocorrências (Auditoria)"
         ordering = ["-atualizado_em", "-id"]
+
+    @property
+    def em_aberto(self) -> bool:
+        return self.status == self.STATUS_ABERTA
 
     def __str__(self):
         base = (self.texto or "").strip().replace("\n", " ")

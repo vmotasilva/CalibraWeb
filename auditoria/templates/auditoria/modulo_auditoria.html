@@ -67,6 +67,88 @@
         </div>
     </div>
 
+    <div class="card shadow-sm mb-4" id="ocorrencias-em-aberto">
+        <div class="card-header d-flex justify-content-between align-items-center bg-warning-subtle">
+            <h5 class="mb-0"><i class="bi bi-exclamation-diamond"></i> Ocorrências em aberto
+                <small class="text-muted fw-normal">— acompanhamento para plano de ação</small>
+            </h5>
+            <span class="badge bg-warning text-dark rounded-pill">{{ total_ocorrencias_abertas }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Modelo / Pergunta</th>
+                            <th>Ocorrência</th>
+                            <th class="text-center">Em aberto há</th>
+                            <th class="text-center" title="Registros em que a ocorrência apareceu">Registros</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for oc in ocorrencias_abertas %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ oc.pergunta.modelo.nome }}</div>
+                                <div class="small text-muted">{{ oc.pergunta.pergunta }}</div>
+                            </td>
+                            <td style="max-width: 420px;">
+                                <div class="small">{{ oc.texto|linebreaksbr }}</div>
+                                <div class="small text-muted">{{ oc.criado_em|date:"d/m/Y" }}{% if oc.autor %} · {{ oc.autor.get_full_name|default:oc.autor.get_username }}{% endif %}</div>
+                            </td>
+                            <td class="text-center">
+                                <span class="badge {% if oc.dias_aberta >= 14 %}bg-danger{% elif oc.dias_aberta >= 7 %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                    {{ oc.dias_aberta }} dia{{ oc.dias_aberta|pluralize }}
+                                </span>
+                                {% if oc.semanas_aberta %}<div class="small text-muted">{{ oc.semanas_aberta }} sem.</div>{% endif %}
+                            </td>
+                            <td class="text-center">{{ oc.total_vinculos|add:1 }}</td>
+                            <td class="text-end text-nowrap">
+                                {% if oc.registro_id %}
+                                <a href="{% url 'auditoria:registro_detail' oc.registro_id %}" class="btn btn-sm btn-outline-primary">Registro</a>
+                                {% endif %}
+                                <button type="button" class="btn btn-sm btn-success btn-resolver-ocorrencia"
+                                        data-action="{% url 'auditoria:ocorrencia_resolver' oc.id %}"
+                                        data-texto="{{ oc.texto|truncatechars:200 }}">
+                                    <i class="bi bi-check2-circle"></i> Resolver
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center py-3 text-muted">Nenhuma ocorrência em aberto.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if total_ocorrencias_abertas > ocorrencias_abertas|length %}
+            <div class="p-2 small text-muted text-center">Exibindo as {{ ocorrencias_abertas|length }} mais antigas de {{ total_ocorrencias_abertas }}.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalResolverOcorrencia" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="post" class="modal-content" id="form-resolver-ocorrencia">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'auditoria:modulo' %}#ocorrencias-em-aberto">
+                <div class="modal-header">
+                    <h5 class="modal-title">Resolver ocorrência</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted" id="resolver-ocorrencia-texto"></p>
+                    <label class="form-label" for="resolver-ocorrencia-resolucao">Como foi resolvida (plano de ação / providência)</label>
+                    <textarea class="form-control" id="resolver-ocorrencia-resolucao" name="resolucao" rows="4" maxlength="8000"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Marcar como resolvida</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="card shadow-sm">
         <div class="card-header">Últimos Registros</div>
         <div class="card-body p-0">
@@ -99,4 +181,23 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modalEl = document.getElementById('modalResolverOcorrencia');
+    if (!modalEl || typeof bootstrap === 'undefined') return;
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    const form = document.getElementById('form-resolver-ocorrencia');
+    document.querySelectorAll('.btn-resolver-ocorrencia').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            form.setAttribute('action', btn.getAttribute('data-action'));
+            document.getElementById('resolver-ocorrencia-texto').textContent = btn.getAttribute('data-texto') || '';
+            document.getElementById('resolver-ocorrencia-resolucao').value = '';
+            modal.show();
+        });
+    });
+});
+</script>
 {% endblock %}

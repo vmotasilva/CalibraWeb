@@ -240,13 +240,20 @@ def _replace_comentarios_resposta(
     payload = _parse_comentarios_payload(raw_payload)
     allowed_ids = {int(p.id) for p in perguntas}
 
-    ComentarioRespostaAuditoria.objects.filter(registro=registro).delete()
+    # Sincroniza em vez de apagar tudo: ocorrências inalteradas mantêm situação e vínculos.
+    existentes: dict[tuple[int, str], list] = {}
+    for existente in ComentarioRespostaAuditoria.objects.filter(registro=registro).order_by("id"):
+        existentes.setdefault((existente.pergunta_id, (existente.texto or "").strip()), []).append(existente)
 
     novos = []
     for pergunta_id, textos in payload.items():
         if pergunta_id not in allowed_ids:
             continue
         for texto in textos:
+            reaproveitavel = existentes.get((pergunta_id, texto))
+            if reaproveitavel:
+                reaproveitavel.pop(0)
+                continue
             novos.append(
                 ComentarioRespostaAuditoria(
                     registro=registro,
@@ -256,8 +263,68 @@ def _replace_comentarios_resposta(
                     data_referencia=registro.data_auditoria,
                 )
             )
+
+    ids_remover = [c.id for restantes in existentes.values() for c in restantes]
+    if ids_remover:
+        ComentarioRespostaAuditoria.objects.filter(id__in=ids_remover).delete()
     if novos:
         ComentarioRespostaAuditoria.objects.bulk_create(novos)
+
+
+def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, list[dict]]:
+    """Ocorrências do registro (criadas nele ou associadas a ele), por pergunta."""
+    ocorrencias = (
+        ComentarioRespostaAuditoria.objects.filter(
+            models.Q(registro=registro) | models.Q(registros_vinculados=registro)
+        )
+        .select_related("autor", "registro")
+        .distinct()
+        .order_by("criado_em", "id")
+    )
+    hoje = timezone.localdate()
+    result: dict[str, list[dict]] = {}
+    for oc in ocorrencias:
+        dias = (hoje - timezone.localtime(oc.criado_em).date()).days
+        result.setdefault(str(oc.pergunta_id), []).append(
+            {
+                "id": oc.id,
+                "texto": (oc.texto or "").strip(),
+                "status": oc.status,
+                "em_aberto": oc.em_aberto,
+                "resolucao": oc.resolucao,
+                "criado_em": timezone.localtime(oc.criado_em).strftime("%d/%m/%Y"),
+                "dias_aberta": max(dias, 0),
+                "associada": oc.registro_id != registro.id,
+                "autor": (oc.autor.get_full_name() or oc.autor.get_username()) if oc.autor_id else "",
+            }
+        )
+    return result
+
+
+def _ocorrencias_abertas_disponiveis(registro: RegistroAuditoria) -> dict[str, list[dict]]:
+    """Ocorrências em aberto do mesmo modelo/alvo que ainda não estão neste registro, por pergunta."""
+    qs = (
+        ComentarioRespostaAuditoria.objects.filter(
+            pergunta__modelo_id=registro.modelo_id,
+            pergunta__ativo=True,
+            status=ComentarioRespostaAuditoria.STATUS_ABERTA,
+        )
+        .exclude(registro=registro)
+        .exclude(registros_vinculados=registro)
+        .filter(models.Q(registro__isnull=True) | models.Q(registro__alvo=registro.alvo))
+        .select_related("registro")
+        .order_by("criado_em", "id")
+    )
+    result: dict[str, list[dict]] = {}
+    for oc in qs:
+        result.setdefault(str(oc.pergunta_id), []).append(
+            {
+                "id": oc.id,
+                "texto": (oc.texto or "").strip(),
+                "criado_em": timezone.localtime(oc.criado_em).strftime("%d/%m/%Y"),
+            }
+        )
+    return result
 
 
 def _build_comentarios_por_pergunta(registro: RegistroAuditoria) -> dict[str, list[str]]:
@@ -374,7 +441,10 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
     respostas = list(
         registro.respostas.select_related("pergunta").order_by("pergunta__ordem", "pergunta_id", "id")
     )
-    comentarios_por_pergunta = _build_comentarios_por_pergunta(registro)
+    ocorrencias_por_pergunta = _build_ocorrencias_por_pergunta(registro)
+    comentarios_por_pergunta = {
+        k: [o["texto"] for o in v] for k, v in ocorrencias_por_pergunta.items()
+    }
     dia_labels = dict(ModeloAuditoria.DIA_SEMANA_CHOICES)
     dia_keys = [k for k, _ in ModeloAuditoria.DIA_SEMANA_CHOICES]
     is_semanal = (registro.modelo.periodicidade == "SEMANAL")
@@ -412,6 +482,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
             "respostas_por_dia": {},
             "respostas_por_dia_cores": {},
             "comentarios": comentarios_por_pergunta.get(str(pergunta.id), []),
+            "ocorrencias": ocorrencias_por_pergunta.get(str(pergunta.id), []),
         }
         perguntas_consolidadas[pergunta.id] = item
 
@@ -449,6 +520,7 @@ def _build_resumo_respostas_registro(registro: RegistroAuditoria) -> dict:
                 "respostas_por_dia": {},
                 "respostas_por_dia_cores": {},
                 "comentarios": comentarios_por_pergunta.get(str(pergunta.id), []),
+                "ocorrencias": ocorrencias_por_pergunta.get(str(pergunta.id), []),
             }
             perguntas_consolidadas[pergunta.id] = item
 
@@ -843,13 +915,72 @@ def modulo_auditoria_view(request):
         .order_by("-data_auditoria")[:5]
     )
 
+    ocorrencias_qs = (
+        ComentarioRespostaAuditoria.objects.filter(
+            pergunta__modelo__in=modelos_qs,
+            status=ComentarioRespostaAuditoria.STATUS_ABERTA,
+        )
+        .select_related("pergunta", "pergunta__modelo", "registro", "autor")
+        .annotate(total_vinculos=Count("registros_vinculados", distinct=True))
+        .order_by("criado_em", "id")
+    )
+    total_ocorrencias_abertas = ocorrencias_qs.count()
+    hoje = timezone.localdate()
+    ocorrencias_abertas = []
+    for oc in ocorrencias_qs[:100]:
+        oc.dias_aberta = max((hoje - timezone.localtime(oc.criado_em).date()).days, 0)
+        oc.semanas_aberta = oc.dias_aberta // 7
+        ocorrencias_abertas.append(oc)
+
     context = {
         "total_modelos": total_modelos,
         "total_perguntas": total_perguntas,
         "total_registros": total_registros,
         "registros_recentes": registros_recentes,
+        "ocorrencias_abertas": ocorrencias_abertas,
+        "total_ocorrencias_abertas": total_ocorrencias_abertas,
     }
     return render(request, "auditoria/modulo_auditoria.html", context)
+
+
+@login_required
+@require_POST
+def ocorrencia_resolver(request, pk):
+    modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
+    ocorrencia = get_object_or_404(ComentarioRespostaAuditoria, pk=pk, pergunta__modelo__in=modelos_qs)
+    next_url = (request.POST.get("next") or "").strip()
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = reverse("auditoria:modulo")
+
+    resolucao = (request.POST.get("resolucao") or "").strip()
+    if len(resolucao) > 8000:
+        messages.error(request, "Descrição da resolução muito longa (máx. 8000 caracteres).")
+        return redirect(next_url)
+
+    ocorrencia.status = ComentarioRespostaAuditoria.STATUS_RESOLVIDA
+    ocorrencia.resolucao = resolucao
+    ocorrencia.resolvido_em = timezone.now()
+    ocorrencia.resolvido_por = request.user
+    ocorrencia.save(update_fields=["status", "resolucao", "resolvido_em", "resolvido_por", "atualizado_em"])
+    messages.success(request, "Ocorrência marcada como resolvida.")
+    return redirect(next_url)
+
+
+@login_required
+@require_POST
+def ocorrencia_reabrir(request, pk):
+    modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
+    ocorrencia = get_object_or_404(ComentarioRespostaAuditoria, pk=pk, pergunta__modelo__in=modelos_qs)
+    next_url = (request.POST.get("next") or "").strip()
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = reverse("auditoria:modulo")
+
+    ocorrencia.status = ComentarioRespostaAuditoria.STATUS_ABERTA
+    ocorrencia.resolvido_em = None
+    ocorrencia.resolvido_por = None
+    ocorrencia.save(update_fields=["status", "resolvido_em", "resolvido_por", "atualizado_em"])
+    messages.success(request, "Ocorrência reaberta.")
+    return redirect(next_url)
 
 
 @login_required
@@ -1877,7 +2008,7 @@ def registro_detail(request, pk):
             pergunta_id_raw = (request.POST.get("pergunta_id") or "").strip()
             texto = (request.POST.get("comentario") or "").strip()
             if not pergunta_id_raw.isdigit():
-                messages.error(request, "Pergunta inválida para comentário.")
+                messages.error(request, "Pergunta inválida para ocorrência.")
                 return redirect("auditoria:registro_detail", pk=registro.pk)
 
             pergunta = PerguntaAuditoria.objects.filter(
@@ -1890,10 +2021,10 @@ def registro_detail(request, pk):
                 return redirect("auditoria:registro_detail", pk=registro.pk)
 
             if not texto:
-                messages.error(request, "Informe um comentário.")
+                messages.error(request, "Descreva a ocorrência.")
                 return redirect("auditoria:registro_detail", pk=registro.pk)
             if len(texto) > 8000:
-                messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+                messages.error(request, "Ocorrência muito longa (máx. 8000 caracteres).")
                 return redirect("auditoria:registro_detail", pk=registro.pk)
 
             ComentarioRespostaAuditoria.objects.create(
@@ -1903,7 +2034,27 @@ def registro_detail(request, pk):
                 texto=texto,
                 data_referencia=registro.data_auditoria,
             )
-            messages.success(request, "Comentário adicionado com sucesso.")
+            messages.success(request, "Ocorrência registrada e em aberto para acompanhamento.")
+            return redirect("auditoria:registro_detail", pk=registro.pk)
+
+        elif action == "associar_ocorrencia":
+            ocorrencia_id_raw = (request.POST.get("ocorrencia_id") or "").strip()
+            ocorrencia = None
+            if ocorrencia_id_raw.isdigit():
+                ocorrencia = (
+                    ComentarioRespostaAuditoria.objects.filter(
+                        id=int(ocorrencia_id_raw),
+                        pergunta__modelo_id=registro.modelo_id,
+                        status=ComentarioRespostaAuditoria.STATUS_ABERTA,
+                    )
+                    .exclude(registro=registro)
+                    .first()
+                )
+            if not ocorrencia:
+                messages.error(request, "Ocorrência não encontrada ou já resolvida.")
+            else:
+                ocorrencia.registros_vinculados.add(registro)
+                messages.success(request, "Ocorrência associada a este registro.")
             return redirect("auditoria:registro_detail", pk=registro.pk)
 
         elif action == "add_amostra" and registro.modelo.multiplos_registros:
@@ -2050,6 +2201,8 @@ def registro_detail(request, pk):
         "preenchidas": resumo["preenchidas"],
         "percentual_preenchimento": resumo["percentual_preenchimento"],
         "comentarios_por_pergunta": resumo["comentarios_por_pergunta"],
+        "ocorrencias_por_pergunta": _build_ocorrencias_por_pergunta(registro),
+        "ocorrencias_disponiveis": _ocorrencias_abertas_disponiveis(registro),
         "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
         "amostras_dados": amostras_dados,
         "perguntas_amostrais": perguntas_amostrais,
@@ -2634,12 +2787,12 @@ def registros_por_modelo(request, modelo_id):
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_comment":
         texto = (request.POST.get("comentario") or "").strip()
         if not texto:
-            messages.error(request, "Informe um comentário.")
+            messages.error(request, "Descreva a ocorrência.")
         elif len(texto) > 8000:
-            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+            messages.error(request, "Ocorrência muito longa (máx. 8000 caracteres).")
         else:
             ComentarioAuditoria.objects.create(modelo=modelo, autor=request.user, texto=texto)
-            messages.success(request, "Comentário adicionado com sucesso.")
+            messages.success(request, "Ocorrência registrada e em aberto para acompanhamento.")
 
         redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
         preserved = {}
@@ -2666,13 +2819,13 @@ def registros_por_modelo(request, modelo_id):
             redirect_url = f"{redirect_url}?{urlencode(preserved)}"
 
         if not pergunta_id_raw.isdigit():
-            messages.error(request, "Pergunta inválida para comentário.")
+            messages.error(request, "Pergunta inválida para ocorrência.")
             return redirect(redirect_url)
         if not texto:
-            messages.error(request, "Informe um comentário.")
+            messages.error(request, "Descreva a ocorrência.")
             return redirect(redirect_url)
         if len(texto) > 8000:
-            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
+            messages.error(request, "Ocorrência muito longa (máx. 8000 caracteres).")
             return redirect(redirect_url)
         if not comentario_data_raw:
             messages.error(request, "Informe a data do comentário para vincular ao período.")

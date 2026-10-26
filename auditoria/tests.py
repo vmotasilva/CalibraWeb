@@ -1671,3 +1671,78 @@ class SemanasConsecutivasNaoConformeTests(TestCase):
         atual = self._registro(date(2026, 10, 26), "Sim")
         res = _calcular_semanas_consecutivas_nc(atual, [self.pergunta.id])
         self.assertEqual(res[self.pergunta.id], 0)
+
+
+class OcorrenciasAcompanhamentoTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="oc_user", email="oc@example.com", password="senha-forte-123", is_staff=True
+        )
+        try:
+            from django_otp.plugins.otp_static.models import StaticDevice
+
+            StaticDevice.objects.create(user=self.user, name="test-device", confirmed=True)
+        except Exception:
+            pass
+        self.modelo = ModeloAuditoria.objects.create(
+            nome="MODELO OCORRENCIAS", objeto_auditoria="5S", periodicidade="SEMANAL"
+        )
+        self.pergunta = PerguntaAuditoria.objects.create(
+            modelo=self.modelo, pergunta="Seiri", ordem=1, tipo_resposta="SIM_NAO", ativo=True
+        )
+        self.reg1 = RegistroAuditoria.objects.create(
+            modelo=self.modelo, alvo="Linha 1", periodo_inicio=date(2026, 10, 19), periodo_fim=date(2026, 10, 25)
+        )
+        self.reg2 = RegistroAuditoria.objects.create(
+            modelo=self.modelo, alvo="Linha 1", periodo_inicio=date(2026, 10, 26), periodo_fim=date(2026, 11, 1)
+        )
+        self.ocorrencia = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Poeira nas polidoras"
+        )
+        self.client.force_login(self.user)
+
+    def test_ocorrencia_nasce_em_aberto_e_aparece_na_tela_principal(self):
+        self.assertEqual(self.ocorrencia.status, "ABERTA")
+        resp = self.client.get(reverse("auditoria:modulo"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Poeira nas polidoras")
+        self.assertEqual(resp.context["total_ocorrencias_abertas"], 1)
+
+    def test_associar_ocorrencia_em_aberto_a_outro_registro(self):
+        resp = self.client.get(reverse("auditoria:registro_detail", args=[self.reg2.pk]))
+        self.assertEqual(
+            [o["id"] for o in resp.context["ocorrencias_disponiveis"][str(self.pergunta.id)]],
+            [self.ocorrencia.id],
+        )
+        self.client.post(
+            reverse("auditoria:registro_detail", args=[self.reg2.pk]),
+            {"action": "associar_ocorrencia", "ocorrencia_id": self.ocorrencia.id},
+        )
+        self.assertTrue(self.ocorrencia.registros_vinculados.filter(pk=self.reg2.pk).exists())
+        resp = self.client.get(reverse("auditoria:registro_detail", args=[self.reg2.pk]))
+        item = resp.context["ocorrencias_por_pergunta"][str(self.pergunta.id)][0]
+        self.assertTrue(item["associada"])
+        self.assertEqual(resp.context["ocorrencias_disponiveis"], {})
+
+    def test_ocorrencia_resolvida_nao_pode_ser_associada_e_sai_da_tela_principal(self):
+        self.client.post(
+            reverse("auditoria:ocorrencia_resolver", args=[self.ocorrencia.pk]),
+            {"resolucao": "Limpeza feita"},
+        )
+        self.ocorrencia.refresh_from_db()
+        self.assertEqual(self.ocorrencia.status, "RESOLVIDA")
+        self.assertEqual(self.ocorrencia.resolucao, "Limpeza feita")
+        self.assertEqual(self.client.get(reverse("auditoria:modulo")).context["total_ocorrencias_abertas"], 0)
+        self.client.post(
+            reverse("auditoria:registro_detail", args=[self.reg2.pk]),
+            {"action": "associar_ocorrencia", "ocorrencia_id": self.ocorrencia.id},
+        )
+        self.assertFalse(self.ocorrencia.registros_vinculados.exists())
+
+    def test_reabrir_ocorrencia(self):
+        self.client.post(reverse("auditoria:ocorrencia_resolver", args=[self.ocorrencia.pk]), {})
+        self.client.post(reverse("auditoria:ocorrencia_reabrir", args=[self.ocorrencia.pk]), {})
+        self.ocorrencia.refresh_from_db()
+        self.assertEqual(self.ocorrencia.status, "ABERTA")
+        self.assertIsNone(self.ocorrencia.resolvido_em)
