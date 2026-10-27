@@ -2103,6 +2103,15 @@ class AcaoOcorrenciaTests(OcorrenciasAcompanhamentoTests):
         self.assertContains(resp, "Limpar a mesa da PRA002")
 
 
+class AcaoNaAbaOcorrenciasDoModeloTests(OcorrenciasAcompanhamentoTests):
+    def test_coluna_acao_na_tela_de_ciclos_do_modelo(self):
+        self.ocorrencia.acao = "Trocar o filtro da cabine"
+        self.ocorrencia.save()
+        resp = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
+        self.assertContains(resp, "Ação a ser realizada")
+        self.assertContains(resp, "Trocar o filtro da cabine")
+
+
 class FiltroResponsavelTelaPrincipalTests(OcorrenciasAcompanhamentoTests):
     def test_filtra_por_responsavel(self):
         outro = _criar_colaborador("Resp Dois", "MAT-OC-3")

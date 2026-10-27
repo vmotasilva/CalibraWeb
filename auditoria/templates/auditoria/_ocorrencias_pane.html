@@ -89,6 +89,7 @@
                         <th>Pergunta</th>
                         <th>{% if is_oc %}Ocorrência{% else %}Comentário{% endif %}</th>
                         {% if is_oc %}
+                        <th>Ação a ser realizada</th>
                         <th>Responsáveis</th>
                         <th>Prazo</th>
                         {% endif %}
@@ -116,12 +117,12 @@
                         <td class="small">{{ oc.pergunta.pergunta }}</td>
                         <td style="max-width: 420px;">
                             <div class="small">{{ oc.texto|linebreaksbr }}</div>
-                            {% if oc.acao %}<div class="small mt-1 text-primary"><strong>Ação:</strong> {{ oc.acao|truncatechars:160 }}</div>{% endif %}
                             {% if oc.requer_tratativa and not oc.em_aberto and oc.resolucao %}
                             <div class="small text-success mt-1"><i class="bi bi-check2-circle"></i> {{ oc.resolucao|linebreaksbr }}</div>
                             {% endif %}
                         </td>
                         {% if is_oc %}
+                        <td class="small" style="max-width: 300px;">{% if oc.acao %}{{ oc.acao|linebreaksbr }}{% else %}<span class="text-muted">&mdash;</span>{% endif %}</td>
                         <td class="small">{% for u in oc.responsaveis.all %}<span class="badge bg-light text-dark border me-1">{{ u.nome_completo }}</span>{% empty %}<span class="text-muted">&mdash;</span>{% endfor %}</td>
                         <td class="small text-nowrap">{% if oc.prazo %}<span class="badge {% if oc.prazo_vencido %}bg-danger{% else %}bg-light text-dark border{% endif %}">{{ oc.prazo|date:"d/m/Y" }}</span>{% else %}<span class="text-muted">&mdash;</span>{% endif %}</td>
                         {% endif %}
@@ -132,7 +133,7 @@
                         {% if is_oc %}<td class="text-center">{{ oc.total_vinculos|add:1 }}</td>{% endif %}
                     </tr>
                     {% empty %}
-                    <tr><td colspan="{% if is_oc %}8{% else %}3{% endif %}" class="text-center py-3 text-muted">{% if is_oc %}Nenhuma ocorrência registrada para este modelo.{% else %}Nenhum comentário registrado para este modelo.{% endif %}</td></tr>
+                    <tr><td colspan="{% if is_oc %}9{% else %}3{% endif %}" class="text-center py-3 text-muted">{% if is_oc %}Nenhuma ocorrência registrada para este modelo.{% else %}Nenhum comentário registrado para este modelo.{% endif %}</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
