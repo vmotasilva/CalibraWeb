@@ -1064,7 +1064,7 @@
                                                 {% elif oc.requer_tratativa %}
                                                 <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" title="{{ oc.resolucao }}">Resolvida</span>
                                                 {% endif %}
-                                                {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}
+                                                {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}{% if oc.semanas > 1 %}<span class="badge bg-light text-secondary border oc-semanas" style="font-size: .65rem;" title="O mesmo texto se repete em {{ oc.semanas }} semanas">{{ oc.semanas }} sem.</span>{% endif %}
                                                 <span class="text-muted">{{ oc.texto }}</span>
                                                 </div>
                                             </li>
@@ -1202,7 +1202,7 @@
                                                 {% elif oc.requer_tratativa %}
                                                 <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" title="{{ oc.resolucao }}">Resolvida</span>
                                                 {% endif %}
-                                                {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}
+                                                {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}{% if oc.semanas > 1 %}<span class="badge bg-light text-secondary border oc-semanas" style="font-size: .65rem;" title="O mesmo texto se repete em {{ oc.semanas }} semanas">{{ oc.semanas }} sem.</span>{% endif %}
                                                 <span class="text-muted">{{ oc.texto }}</span>
                                                 </div>
                                             </li>
@@ -1277,7 +1277,13 @@
                         <form method="post">
                             {% csrf_token %}
                             <input type="hidden" name="action" value="associar_ocorrencia">
-                            <div id="modal-oc-disponiveis" class="mb-3"></div>
+                            <input type="search" class="form-control form-control-sm mb-2" id="modal-oc-busca" placeholder="Buscar no texto..." autocomplete="off">
+                            <ul class="nav nav-pills nav-sm mb-2 small" id="modal-oc-subtabs">
+                                <li class="nav-item"><button type="button" class="nav-link py-1 px-2 active" data-oc-filtro="comentario">Comentários <span class="badge bg-secondary" id="qtd-sub-comentario">0</span></button></li>
+                                <li class="nav-item"><button type="button" class="nav-link py-1 px-2" data-oc-filtro="ocorrencia">Ocorrências <span class="badge bg-secondary" id="qtd-sub-ocorrencia">0</span></button></li>
+                            </ul>
+                            <div class="small text-muted mb-2">Textos iguais aparecem uma única vez (pela primeira aparição), com a quantidade de semanas em que se repetem.</div>
+                            <div id="modal-oc-disponiveis" class="mb-3" style="max-height: 45vh; overflow-y: auto;"></div>
                             <button type="submit" class="btn btn-primary" id="btn-associar-ocorrencia">
                                 <i class="bi bi-link-45deg"></i> Associar ao registro
                             </button>
@@ -1407,6 +1413,12 @@ document.addEventListener('DOMContentLoaded', function() {
         disponiveis = {};
     }
 
+    function semanasBadge(oc) {
+        return (oc.semanas > 1)
+            ? ' <span class="badge bg-light text-secondary border" style="font-size: .65rem;" title="O mesmo texto se repete em ' + oc.semanas + ' semanas">' + oc.semanas + ' sem.</span>'
+            : '';
+    }
+
     function renderList(items) {
         if (!items || !items.length) {
             return '<div class="text-muted">Nenhum comentário nesta pergunta.</div>';
@@ -1419,19 +1431,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 badge = '<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Resolvida</span>';
             }
             const rec = oc.associada ? ' <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Recorrente</span>' : '';
-            return '<li class="mb-1">' + badge + rec + ' ' + escapeHtml(oc.texto) + '</li>';
+            return '<li class="mb-1">' + badge + rec + semanasBadge(oc) + ' ' + escapeHtml(oc.texto) + '</li>';
         }).join('');
         return '<ol class="mb-0 ps-3">' + rows + '</ol>';
     }
 
-    function renderDisponiveis(items) {
-        if (!items || !items.length) {
-            return '<div class="text-muted">Nenhum comentário ou ocorrência em aberto disponível para associar.</div>';
+    let subFiltro = 'comentario';
+    let dispAtual = [];
+
+    function renderDisponiveis() {
+        const termo = (document.getElementById('modal-oc-busca').value || '').trim().toLowerCase();
+        const qtdCom = dispAtual.filter(function(o) { return !o.requer_tratativa; }).length;
+        document.getElementById('qtd-sub-comentario').textContent = String(qtdCom);
+        document.getElementById('qtd-sub-ocorrencia').textContent = String(dispAtual.length - qtdCom);
+        const lista = dispAtual.filter(function(o) {
+            return (subFiltro === 'ocorrencia') === !!o.requer_tratativa
+                && (!termo || String(o.texto).toLowerCase().indexOf(termo) !== -1);
+        });
+        if (!lista.length) {
+            return '<div class="text-muted">' + (termo ? 'Nada encontrado para a busca.' : 'Nada disponível para associar nesta aba.') + '</div>';
         }
-        return items.map(function(oc, idx) {
+        return lista.map(function(oc, idx) {
+            const meta = (oc.semanas > 1 ? '<span class="badge bg-light text-secondary border me-1" style="font-size: .65rem;" title="Semanas em que o mesmo texto aparece">' + oc.semanas + ' sem.</span>' : '') +
+                '<span class="badge bg-secondary me-1" title="Primeira aparição">' + escapeHtml(oc.criado_em) + '</span>';
             return '<div class="form-check mb-2">' +
                 '<input class="form-check-input" type="radio" name="ocorrencia_id" id="oc-disp-' + oc.id + '" value="' + oc.id + '"' + (idx === 0 ? ' required' : '') + '>' +
-                '<label class="form-check-label" for="oc-disp-' + oc.id + '"><span class="badge ' + (oc.requer_tratativa ? 'bg-warning text-dark' : 'bg-light text-dark border') + ' me-1">' + (oc.requer_tratativa ? 'Ocorrência' : 'Comentário') + '</span><span class="badge bg-secondary me-1">' + escapeHtml(oc.criado_em) + '</span>' + escapeHtml(oc.texto) + '</label>' +
+                '<label class="form-check-label" for="oc-disp-' + oc.id + '">' + meta + escapeHtml(oc.texto) + '</label>' +
                 '</div>';
         }).join('');
     }
@@ -1452,17 +1477,40 @@ document.addEventListener('DOMContentLoaded', function() {
             const perguntaTexto = String(btn.getAttribute('data-pergunta-texto') || '');
             const itens = comentarios[perguntaId] || [];
             const disp = disponiveis[perguntaId] || [];
+            dispAtual = disp;
+            document.getElementById('modal-oc-busca').value = '';
+            const temCom = disp.some(function(o) { return !o.requer_tratativa; });
+            subFiltro = (temCom || !disp.length) ? 'comentario' : 'ocorrencia';
+            document.querySelectorAll('#modal-oc-subtabs [data-oc-filtro]').forEach(function(b) {
+                b.classList.toggle('active', b.getAttribute('data-oc-filtro') === subFiltro);
+            });
 
             idInput.value = perguntaId;
             perguntaTextoEl.textContent = perguntaTexto;
             listaEl.innerHTML = renderList(itens);
-            dispEl.innerHTML = renderDisponiveis(disp);
+            dispEl.innerHTML = renderDisponiveis();
             dispQtdEl.textContent = String(disp.length);
             btnAssociar.disabled = disp.length === 0;
+            dispEl.dataset.perguntaId = perguntaId;
             if (typeof bootstrap !== 'undefined' && bootstrap.Tab) {
                 bootstrap.Tab.getOrCreateInstance(document.getElementById('tab-oc-nova')).show();
             }
             if (modal) modal.show();
+        });
+    });
+
+    function atualizarDisponiveis() {
+        dispEl.innerHTML = renderDisponiveis();
+        btnAssociar.disabled = !dispEl.querySelector('input[type=radio]');
+    }
+    document.getElementById('modal-oc-busca').addEventListener('input', atualizarDisponiveis);
+    document.querySelectorAll('#modal-oc-subtabs [data-oc-filtro]').forEach(function(b) {
+        b.addEventListener('click', function() {
+            subFiltro = b.getAttribute('data-oc-filtro');
+            document.querySelectorAll('#modal-oc-subtabs [data-oc-filtro]').forEach(function(x) {
+                x.classList.toggle('active', x === b);
+            });
+            atualizarDisponiveis();
         });
     });
 
@@ -1529,9 +1577,108 @@ document.addEventListener('DOMContentLoaded', function() {
             itemModal.show();
         }
 
+        function toast(msg, ok) {
+            const el = document.createElement('div');
+            el.className = 'alert alert-' + (ok ? 'success' : 'danger') + ' shadow position-fixed py-2 px-3 mb-0';
+            el.style.cssText = 'right: 1rem; bottom: 1rem; z-index: 2000; transition: opacity .4s;';
+            el.textContent = msg;
+            document.body.appendChild(el);
+            setTimeout(function() { el.style.opacity = '0'; }, 2200);
+            setTimeout(function() { el.remove(); }, 2700);
+        }
+
+        function liHtml(o, n) {
+            let st = '';
+            if (o.em_aberto) {
+                st = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em ' + escapeHtml(o.criado_em) + '">Em aberto &middot; ' + o.dias_aberta + 'd</span> ';
+            } else if (o.requer_tratativa) {
+                st = '<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" title="' + escapeHtml(o.resolucao || '') + '">Resolvida</span> ';
+            }
+            const rec = o.associada ? '<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span> ' : '';
+            const sem = o.semanas > 1 ? '<span class="badge bg-light text-secondary border oc-semanas" style="font-size: .65rem;" title="O mesmo texto se repete em ' + o.semanas + ' semanas">' + o.semanas + ' sem.</span> ' : '';
+            return '<span class="badge rounded-pill ' + (o.em_aberto ? 'bg-warning text-dark' : 'bg-secondary') + ' flex-shrink-0 mt-1 oc-num">' + n + '</span>' +
+                '<div class="flex-grow-1">' + st + rec + sem + '<span class="text-muted">' + escapeHtml(o.texto) + '</span></div>';
+        }
+
+        function renumerar(ul) {
+            ul.querySelectorAll('.oc-item').forEach(function(li, i, todos) {
+                const num = li.querySelector('.oc-num');
+                if (num) num.textContent = String(i + 1);
+                li.classList.toggle('border-bottom', i < todos.length - 1);
+            });
+        }
+
+        function aplicarResposta(data) {
+            if (data.removed_id) {
+                const id = String(data.removed_id);
+                const li = document.querySelector('.oc-item[data-oc-id="' + id + '"]');
+                const ul = li ? li.parentElement : null;
+                const cell = ul ? ul.parentElement : null;
+                if (li) li.remove();
+                Object.keys(comentarios).forEach(function(k) {
+                    comentarios[k] = (comentarios[k] || []).filter(function(o) { return String(o.id) !== id; });
+                });
+                delete itensPorId[id];
+                if (ul) {
+                    if (!ul.querySelector('.oc-item')) {
+                        ul.remove();
+                        if (cell) cell.insertAdjacentHTML('afterbegin', '<span class="text-muted fst-italic small">Sem comentários</span>');
+                    } else {
+                        renumerar(ul);
+                    }
+                }
+                return;
+            }
+            const o = data.item;
+            if (!o) return;
+            const id = String(o.id);
+            Object.keys(comentarios).forEach(function(k) {
+                comentarios[k] = (comentarios[k] || []).map(function(x) { return String(x.id) === id ? o : x; });
+            });
+            itensPorId[id] = o;
+            const li = document.querySelector('.oc-item[data-oc-id="' + id + '"]');
+            if (li) {
+                const n = li.querySelector('.oc-num') ? li.querySelector('.oc-num').textContent : '1';
+                li.innerHTML = liHtml(o, n);
+            }
+        }
+
+        [fEditar, fResolver, fReabrir, fExcluir].forEach(function(form) {
+            form.addEventListener('submit', function(ev) {
+                if (ev.defaultPrevented) return;
+                ev.preventDefault();
+                const fd = new FormData(form);
+                fd.append('registro_id', '{{ registro.pk }}');
+                const botoes = form.querySelectorAll('button[type=submit]');
+                const extras = document.querySelectorAll('button[form="' + form.id + '"]');
+                botoes.forEach(function(b) { b.disabled = true; });
+                extras.forEach(function(b) { b.disabled = true; });
+                fetch(form.getAttribute('action'), {
+                    method: 'POST',
+                    body: fd,
+                    headers: {'X-Requested-With': 'XMLHttpRequest'},
+                    credentials: 'same-origin'
+                }).then(function(r) { return r.json().catch(function() { return {ok: false, message: 'Resposta inesperada do servidor.'}; }); })
+                  .then(function(data) {
+                      if (data.ok) {
+                          aplicarResposta(data);
+                          itemModal.hide();
+                      }
+                      toast(data.message || (data.ok ? 'Salvo.' : 'Não foi possível concluir.'), !!data.ok);
+                  })
+                  .catch(function() { toast('Falha de conexão. Tente novamente.', false); })
+                  .finally(function() {
+                      botoes.forEach(function(b) { b.disabled = false; });
+                      extras.forEach(function(b) { b.disabled = false; });
+                  });
+            });
+        });
+
         {% if not somente_leitura %}
-        document.querySelectorAll('.oc-item').forEach(function(li) {
-            li.addEventListener('click', function() { abrirItem(li.getAttribute('data-oc-id')); });
+        // Delegação: itens re-renderizados continuam clicáveis
+        document.addEventListener('click', function(ev) {
+            const li = ev.target.closest ? ev.target.closest('.oc-item') : null;
+            if (li && li.getAttribute('data-oc-id')) { abrirItem(li.getAttribute('data-oc-id')); }
         });
         {% endif %}
     }

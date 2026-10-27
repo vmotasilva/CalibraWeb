@@ -2014,6 +2014,83 @@ class AssociarComentarioEResponsaveisTests(OcorrenciasAcompanhamentoTests):
         self.assertEqual(self.ocorrencia.status, ComentarioRespostaAuditoria.STATUS_RESOLVIDA)
 
 
+class AtualizacaoParcialComentariosTests(OcorrenciasAcompanhamentoTests):
+    AJAX = {"HTTP_X_REQUESTED_WITH": "XMLHttpRequest"}
+
+    def test_editar_ajax_devolve_item_sem_redirect(self):
+        resp = self.client.post(
+            reverse("auditoria:ocorrencia_editar", args=[self.ocorrencia.pk]),
+            {"texto": "Texto novo", "registro_id": self.reg1.pk},
+            **self.AJAX,
+        )
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["item"]["texto"], "Texto novo")
+        self.assertEqual(data["item"]["id"], self.ocorrencia.pk)
+        self.assertEqual(list(get_messages(resp.wsgi_request)), [])
+
+    def test_excluir_ajax_informa_id_removido(self):
+        pk = self.ocorrencia.pk
+        resp = self.client.post(reverse("auditoria:ocorrencia_excluir", args=[pk]), **self.AJAX)
+        data = resp.json()
+        self.assertTrue(data["ok"])
+        self.assertEqual(data["removed_id"], pk)
+        self.assertIsNone(data["item"])
+        self.assertFalse(ComentarioRespostaAuditoria.objects.filter(pk=pk).exists())
+
+    def test_resolver_e_reabrir_ajax(self):
+        r = self.client.post(
+            reverse("auditoria:ocorrencia_resolver", args=[self.ocorrencia.pk]), {"resolucao": "feito"}, **self.AJAX
+        ).json()
+        self.assertFalse(r["item"]["em_aberto"])
+        r = self.client.post(reverse("auditoria:ocorrencia_reabrir", args=[self.ocorrencia.pk]), **self.AJAX).json()
+        self.assertTrue(r["item"]["em_aberto"])
+
+    def test_erro_ajax_retorna_400_json(self):
+        resp = self.client.post(
+            reverse("auditoria:ocorrencia_editar", args=[self.ocorrencia.pk]), {"prazo": "xx"}, **self.AJAX
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(resp.json()["ok"])
+
+    def test_sem_ajax_continua_redirecionando(self):
+        resp = self.client.post(reverse("auditoria:ocorrencia_editar", args=[self.ocorrencia.pk]), {"texto": "Outro"})
+        self.assertEqual(resp.status_code, 302)
+
+
+class UnificarTextosIguaisEMarcarSemanasTests(OcorrenciasAcompanhamentoTests):
+    def test_disponiveis_unifica_textos_iguais_pela_primeira_aparicao(self):
+        c1 = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Caixas na bancada."
+        )
+        ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg2, pergunta=self.pergunta, autor=self.user, texto="caixas  na bancada"
+        )
+        reg3 = RegistroAuditoria.objects.create(
+            modelo=self.modelo, alvo="Linha 1", periodo_inicio=date(2026, 11, 2), periodo_fim=date(2026, 11, 8), avaliador=self.user
+        )
+        resp = self.client.get(reverse("auditoria:registro_detail", args=[reg3.pk]))
+        itens = [i for i in resp.context["ocorrencias_disponiveis"][str(self.pergunta.pk)] if "bancada" in i["texto"].lower()]
+        self.assertEqual(len(itens), 1)
+        self.assertEqual(itens[0]["id"], c1.pk)
+        self.assertEqual(itens[0]["ocorrencias"], 2)
+        self.assertEqual(itens[0]["semanas"], 2)
+
+    def test_semanas_no_item_do_registro(self):
+        ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Repetido"
+        )
+        c2 = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg2, pergunta=self.pergunta, autor=self.user, texto="Repetido"
+        )
+        resp = self.client.get(reverse("auditoria:registro_detail", args=[self.reg2.pk]))
+        itens = resp.context["ocorrencias_por_pergunta"][str(self.pergunta.pk)]
+        item = next(i for i in itens if i["id"] == c2.pk)
+        self.assertEqual(item["semanas"], 2)
+        self.assertContains(resp, "2 sem.")
+
+
 class AcaoOcorrenciaTests(OcorrenciasAcompanhamentoTests):
     def test_salvar_acao(self):
         self.client.post(

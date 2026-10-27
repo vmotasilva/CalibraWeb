@@ -349,9 +349,64 @@ def _notificar_novos_responsaveis(oc, ids_antes: set[int]) -> None:
         pass
 
 
+def _norm_texto_comentario(texto: str) -> str:
+    """Chave para considerar textos iguais (ignora caixa, espaços repetidos e pontuação final)."""
+    return re.sub(r"\s+", " ", str(texto or "")).strip().lower().rstrip(" .;,!")
+
+
+def _chave_semana(comentario) -> tuple:
+    ref = None
+    if comentario.registro_id and comentario.registro.periodo_inicio:
+        ref = comentario.registro.periodo_inicio
+    if ref is None:
+        ref = timezone.localtime(comentario.criado_em).date()
+    iso = ref.isocalendar()
+    return (iso[0], iso[1])
+
+
+def _semanas_por_texto(pergunta_ids) -> dict:
+    """{(pergunta_id, texto_normalizado): nº de semanas distintas em que o mesmo texto aparece}."""
+    semanas: dict = {}
+    qs = ComentarioRespostaAuditoria.objects.filter(pergunta_id__in=list(pergunta_ids)).select_related("registro")
+    for c in qs:
+        chave = (c.pergunta_id, _norm_texto_comentario(c.texto))
+        semanas.setdefault(chave, set()).add(_chave_semana(c))
+    return {k: len(v) for k, v in semanas.items()}
+
+
+def _ocorrencia_payload(oc, registro_id=None, hoje=None, semanas=None) -> dict:
+    hoje = hoje or timezone.localdate()
+    dias = (hoje - timezone.localtime(oc.criado_em).date()).days
+    if semanas is None:
+        semanas = _semanas_por_texto([oc.pergunta_id])
+    return {
+        "id": oc.id,
+        "pergunta_id": oc.pergunta_id,
+        "texto": (oc.texto or "").strip(),
+        "status": oc.status,
+        "requer_tratativa": oc.requer_tratativa,
+        "em_aberto": oc.em_aberto,
+        "resolucao": oc.resolucao,
+        "criado_em": timezone.localtime(oc.criado_em).strftime("%d/%m/%Y"),
+        "dias_aberta": max(dias, 0),
+        "associada": bool(registro_id) and oc.registro_id != registro_id,
+        "semanas": semanas.get((oc.pergunta_id, _norm_texto_comentario(oc.texto)), 1),
+        "autor_id": oc.autor_id,
+        "prazo": oc.prazo.isoformat() if oc.prazo else "",
+        "acao": oc.acao,
+        "responsaveis": [u.id for u in oc.responsaveis.all()],
+        "responsaveis_info": [{"id": u.id, "nome": _colaborador_nome(u)} for u in oc.responsaveis.all()],
+        "editar_url": reverse("auditoria:ocorrencia_editar", args=[oc.id]),
+        "excluir_url": reverse("auditoria:ocorrencia_excluir", args=[oc.id]),
+        "resolver_url": reverse("auditoria:ocorrencia_resolver", args=[oc.id]),
+        "reabrir_url": reverse("auditoria:ocorrencia_reabrir", args=[oc.id]),
+        "autor": (oc.autor.get_full_name() or oc.autor.get_username()) if oc.autor_id else "",
+    }
+
+
 def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, list[dict]]:
     """Ocorrências do registro (criadas nele ou associadas a ele), por pergunta."""
-    ocorrencias = (
+    ocorrencias = list(
         ComentarioRespostaAuditoria.objects.filter(
             models.Q(registro=registro) | models.Q(registros_vinculados=registro),
             unificada_em__isnull=True,
@@ -362,33 +417,11 @@ def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
         .order_by("-criado_em", "-id")
     )
     hoje = timezone.localdate()
+    semanas = _semanas_por_texto({oc.pergunta_id for oc in ocorrencias})
     result: dict[str, list[dict]] = {}
     for oc in ocorrencias:
-        dias = (hoje - timezone.localtime(oc.criado_em).date()).days
         result.setdefault(str(oc.pergunta_id), []).append(
-            {
-                "id": oc.id,
-                "texto": (oc.texto or "").strip(),
-                "status": oc.status,
-                "requer_tratativa": oc.requer_tratativa,
-                "em_aberto": oc.em_aberto,
-                "resolucao": oc.resolucao,
-                "criado_em": timezone.localtime(oc.criado_em).strftime("%d/%m/%Y"),
-                "dias_aberta": max(dias, 0),
-                "associada": oc.registro_id != registro.id,
-                "autor_id": oc.autor_id,
-                "prazo": oc.prazo.isoformat() if oc.prazo else "",
-                "acao": oc.acao,
-                "responsaveis": [u.id for u in oc.responsaveis.all()],
-                "responsaveis_info": [
-                    {"id": u.id, "nome": _colaborador_nome(u)} for u in oc.responsaveis.all()
-                ],
-                "editar_url": reverse("auditoria:ocorrencia_editar", args=[oc.id]),
-                "excluir_url": reverse("auditoria:ocorrencia_excluir", args=[oc.id]),
-                "resolver_url": reverse("auditoria:ocorrencia_resolver", args=[oc.id]),
-                "reabrir_url": reverse("auditoria:ocorrencia_reabrir", args=[oc.id]),
-                "autor": (oc.autor.get_full_name() or oc.autor.get_username()) if oc.autor_id else "",
-            }
+            _ocorrencia_payload(oc, registro.id, hoje=hoje, semanas=semanas)
         )
     return result
 
@@ -470,16 +503,34 @@ def _ocorrencias_abertas_disponiveis(registro: RegistroAuditoria) -> dict[str, l
         .select_related("registro")
         .order_by("-criado_em", "-id")
     )
+    ocs = list(qs)
+    semanas = _semanas_por_texto({oc.pergunta_id for oc in ocs})
+    grupos: dict = {}
+    for oc in ocs:
+        grupos.setdefault((oc.pergunta_id, _norm_texto_comentario(oc.texto)), []).append(oc)
     result: dict[str, list[dict]] = {}
-    for oc in qs:
-        result.setdefault(str(oc.pergunta_id), []).append(
+    for (pid, chave), membros in grupos.items():
+        primeira = min(membros, key=lambda x: (x.criado_em, x.id))  # primeira aparição
+        ultima = max(membros, key=lambda x: (x.criado_em, x.id))
+        # se algum membro é ocorrência, o grupo é tratado como ocorrência
+        ocorrencia = next((m for m in membros if m.requer_tratativa), None)
+        rep = ocorrencia or primeira
+        result.setdefault(str(pid), []).append(
             {
-                "id": oc.id,
-                "requer_tratativa": oc.requer_tratativa,
-                "texto": (oc.texto or "").strip(),
-                "criado_em": timezone.localtime(oc.criado_em).strftime("%d/%m/%Y"),
+                "id": rep.id,
+                "requer_tratativa": rep.requer_tratativa,
+                "texto": (primeira.texto or "").strip(),
+                "criado_em": timezone.localtime(primeira.criado_em).strftime("%d/%m/%Y"),
+                "ultima": timezone.localtime(ultima.criado_em).strftime("%d/%m/%Y"),
+                "_ord": (ultima.criado_em, ultima.id),
+                "ocorrencias": len(membros),
+                "semanas": semanas.get((pid, chave), 1),
             }
         )
+    for itens in result.values():
+        itens.sort(key=lambda x: x["_ord"], reverse=True)
+        for it in itens:
+            it.pop("_ord", None)
     return result
 
 
@@ -1138,6 +1189,25 @@ def modulo_auditoria_view(request):
     return render(request, "auditoria/modulo_auditoria.html", context)
 
 
+def _is_ajax(request) -> bool:
+    return request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+
+def _ocorr_resposta(request, next_url, msg, ok=True, oc=None, oc_id=None):
+    """Resposta das ações de comentário/ocorrência: JSON (AJAX, sem recarregar a página) ou redirect."""
+    if _is_ajax(request):
+        item = None
+        if ok and oc is not None and oc_id is None:
+            reg = request.POST.get("registro_id") or ""
+            item = _ocorrencia_payload(oc, int(reg) if reg.isdigit() else None)
+        return JsonResponse(
+            {"ok": ok, "message": msg, "item": item, "removed_id": oc_id},
+            status=200 if ok else 400,
+        )
+    (messages.success if ok else messages.error)(request, msg)
+    return redirect(next_url)
+
+
 @login_required
 @require_POST
 def ocorrencia_resolver(request, pk):
@@ -1155,16 +1225,14 @@ def ocorrencia_resolver(request, pk):
 
     resolucao = (request.POST.get("resolucao") or "").strip()
     if len(resolucao) > 8000:
-        messages.error(request, "Descrição da resolução muito longa (máx. 8000 caracteres).")
-        return redirect(next_url)
+        return _ocorr_resposta(request, next_url, "Descrição da resolução muito longa (máx. 8000 caracteres).", ok=False)
 
     ocorrencia.status = ComentarioRespostaAuditoria.STATUS_RESOLVIDA
     ocorrencia.resolucao = resolucao
     ocorrencia.resolvido_em = timezone.now()
     ocorrencia.resolvido_por = request.user
     ocorrencia.save(update_fields=["status", "resolucao", "resolvido_em", "resolvido_por", "atualizado_em"])
-    messages.success(request, "Ocorrência marcada como resolvida.")
-    return redirect(next_url)
+    return _ocorr_resposta(request, next_url, "Ocorrência marcada como resolvida.", oc=ocorrencia)
 
 
 @login_required
@@ -1201,12 +1269,11 @@ def ocorrencia_excluir(request, pk):
     if not next_url.startswith("/") or next_url.startswith("//"):
         next_url = f"{reverse('auditoria:registros_por_modelo', args=[oc.pergunta.modelo_id])}#tab-comentarios"
     if not (_auditoria_is_admin(request.user) or oc.autor_id == request.user.id):
-        messages.error(request, "Apenas o autor ou um administrador pode apagar.")
-        return redirect(next_url)
+        return _ocorr_resposta(request, next_url, "Apenas o autor ou um administrador pode apagar.", ok=False)
     tipo = "Ocorrência" if oc.requer_tratativa else "Comentário"
+    oc_id = oc.id
     oc.delete()
-    messages.success(request, f"{tipo} apagado.")
-    return redirect(next_url)
+    return _ocorr_resposta(request, next_url, f"{tipo} apagado.", oc=oc, oc_id=oc_id)
 
 
 @login_required
@@ -1227,11 +1294,9 @@ def ocorrencia_editar(request, pk):
     texto = (request.POST.get("texto") or "").strip()
     if texto and texto != (oc.texto or "").strip():
         if not (_auditoria_is_admin(request.user) or oc.autor_id == request.user.id):
-            messages.error(request, "Apenas o autor ou um administrador pode editar o texto.")
-            return redirect(next_url)
+            return _ocorr_resposta(request, next_url, "Apenas o autor ou um administrador pode editar o texto.", ok=False)
         if len(texto) > 8000:
-            messages.error(request, "Texto muito longo (máx. 8000 caracteres).")
-            return redirect(next_url)
+            return _ocorr_resposta(request, next_url, "Texto muito longo (máx. 8000 caracteres).", ok=False)
         oc.texto = texto
         campos.append("texto")
 
@@ -1247,16 +1312,14 @@ def ocorrencia_editar(request, pk):
     if oc.requer_tratativa:
         acao = (request.POST.get("acao") or "").strip()
         if len(acao) > 8000:
-            messages.error(request, "Descrição da ação muito longa (máx. 8000 caracteres).")
-            return redirect(next_url)
+            return _ocorr_resposta(request, next_url, "Descrição da ação muito longa (máx. 8000 caracteres).", ok=False)
         if acao != (oc.acao or ""):
             oc.acao = acao
             campos.append("acao")
         prazo_raw = (request.POST.get("prazo") or "").strip()
         prazo = parse_date(prazo_raw) if prazo_raw else None
         if prazo_raw and not prazo:
-            messages.error(request, "Prazo inválido.")
-            return redirect(next_url)
+            return _ocorr_resposta(request, next_url, "Prazo inválido.", ok=False)
         if prazo != oc.prazo:
             oc.prazo = prazo
             campos.append("prazo")
@@ -1272,13 +1335,14 @@ def ocorrencia_editar(request, pk):
         oc.responsaveis.set(Colaborador.objects.filter(pk__in=ids, is_active=True))
         _notificar_novos_responsaveis(oc, ids_antes)
 
-    messages.success(
+    return _ocorr_resposta(
         request,
+        next_url,
         "Comentário convertido em ocorrência e em aberto para acompanhamento."
         if converteu
         else "Alterações salvas.",
+        oc=oc,
     )
-    return redirect(next_url)
 
 
 @login_required
@@ -1355,8 +1419,7 @@ def ocorrencia_reabrir(request, pk):
     ocorrencia.resolvido_em = None
     ocorrencia.resolvido_por = None
     ocorrencia.save(update_fields=["status", "resolvido_em", "resolvido_por", "atualizado_em"])
-    messages.success(request, "Ocorrência reaberta.")
-    return redirect(next_url)
+    return _ocorr_resposta(request, next_url, "Ocorrência reaberta.", oc=ocorrencia)
 
 
 @login_required
