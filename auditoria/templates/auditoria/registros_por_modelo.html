@@ -582,84 +582,6 @@
                     {% endif %}
 
                     {% if not is_read_only %}
-                    <div class="card shadow-sm mb-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <div class="fw-semibold"><i class="bi bi-chat-left-text"></i> Comentários</div>
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="text-muted small">Filtrados pelo período selecionado</div>
-                                <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#modal-novo-comentario">
-                                    <i class="bi bi-plus-circle"></i> Novo Comentário
-                                </button>
-                                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#comentarios-body" aria-expanded="true" aria-controls="comentarios-body">
-                                    <i class="bi bi-arrows-collapse"></i>
-                                </button>
-                            </div>
-                        </div>
-                        <div id="comentarios-body" class="collapse show">
-                            <div class="card-body">
-                                {% if comentarios %}
-                                    <div class="list-group">
-                                        {% for c in comentarios %}
-                                            <div class="list-group-item">
-                                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                                    <div class="fw-semibold">
-                                                        {% if c.autor %}
-                                                            {{ c.autor.get_full_name|default:c.autor.username }}
-                                                        {% else %}
-                                                            <span class="text-muted">-</span>
-                                                        {% endif %}
-                                                    </div>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <div class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</div>
-                                                        {% if is_auditoria_admin or c.autor_id == request.user.id %}
-                                                            <a class="btn btn-outline-secondary btn-sm" href="{% url 'auditoria:comentario_edit' modelo.id c.id %}?{{ querystring_with_page }}" title="Editar">
-                                                                <i class="bi bi-pencil"></i>
-                                                            </a>
-                                                            <a class="btn btn-outline-danger btn-sm" href="{% url 'auditoria:comentario_delete' modelo.id c.id %}?{{ querystring_with_page }}" title="Remover">
-                                                                <i class="bi bi-trash"></i>
-                                                            </a>
-                                                        {% endif %}
-                                                    </div>
-                                                </div>
-                                                <div class="mt-2" style="white-space: pre-wrap;">{{ c.texto }}</div>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                {% else %}
-                                    <div class="text-muted">Nenhum comentário no período selecionado.</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="modal fade" id="modal-novo-comentario" tabindex="-1" aria-labelledby="modal-novo-comentario-label" aria-hidden="true">
-                        <div class="modal-dialog modal-lg modal-dialog-centered">
-                            <div class="modal-content">
-                                <form method="post">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="add_comment">
-
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="modal-novo-comentario-label">Novo Comentário</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="mb-2">
-                                            <label class="form-label fw-semibold">Comentário</label>
-                                            <textarea name="comentario" class="form-control" rows="5" placeholder="Digite seu comentário..."></textarea>
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="bi bi-plus-circle"></i> Adicionar
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="modal fade" id="modal-comentarios-pergunta" tabindex="-1" aria-labelledby="modal-comentarios-pergunta-label" aria-hidden="true">
                         <div class="modal-dialog modal-lg modal-dialog-centered">
                             <div class="modal-content">
@@ -851,7 +773,7 @@
                         {% if not is_read_only %}
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="tab-ocorrencias-btn" data-bs-toggle="tab" data-bs-target="#tab-ocorrencias" type="button" role="tab">
-                                <i class="bi bi-exclamation-diamond me-1"></i>Ocorrências
+                                <i class="bi bi-exclamation-diamond me-1"></i>Ocorrências e comentários
                                 {% if total_ocorrencias_abertas_modelo %}<span class="badge bg-warning text-dark">{{ total_ocorrencias_abertas_modelo }}</span>{% endif %}
                             </button>
                         </li>
@@ -1027,9 +949,14 @@
                         {% if not is_read_only %}
                         <div class="tab-pane fade" id="tab-ocorrencias" role="tabpanel">
                             <div class="card shadow-sm">
-                                <div class="card-header fw-semibold">
-                                    <i class="bi bi-exclamation-diamond"></i> Ocorrências deste modelo
-                                    <small class="text-muted fw-normal">— em aberto primeiro</small>
+                                <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                                    <div class="fw-semibold">
+                                        <i class="bi bi-exclamation-diamond"></i> Comentários e ocorrências deste modelo
+                                        <small class="text-muted fw-normal">— em aberto primeiro</small>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm" type="button" data-bs-toggle="modal" data-bs-target="#modalNovaOcorrencia">
+                                        <i class="bi bi-plus-circle"></i> Novo comentário
+                                    </button>
                                 </div>
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
@@ -1050,14 +977,16 @@
                                                     <td>
                                                         {% if oc.em_aberto %}
                                                         <span class="badge bg-warning text-dark">Em aberto &middot; {{ oc.dias_aberta }}d</span>
-                                                        {% else %}
+                                                        {% elif oc.requer_tratativa %}
                                                         <span class="badge bg-success">Resolvida</span>
+                                                        {% else %}
+                                                        <span class="badge bg-secondary">Comentário</span>
                                                         {% endif %}
                                                     </td>
                                                     <td class="small">{{ oc.pergunta.pergunta }}</td>
                                                     <td style="max-width: 420px;">
                                                         <div class="small">{{ oc.texto|linebreaksbr }}</div>
-                                                        {% if not oc.em_aberto and oc.resolucao %}
+                                                        {% if oc.requer_tratativa and not oc.em_aberto and oc.resolucao %}
                                                         <div class="small text-success mt-1"><i class="bi bi-check2-circle"></i> {{ oc.resolucao|linebreaksbr }}</div>
                                                         {% endif %}
                                                     </td>
@@ -1065,7 +994,7 @@
                                                         {{ oc.criado_em|date:"d/m/Y" }}
                                                         {% if oc.autor %}<div class="text-muted">{{ oc.autor.get_full_name|default:oc.autor.get_username }}</div>{% endif %}
                                                     </td>
-                                                    <td class="text-center">{{ oc.total_vinculos|add:1 }}</td>
+                                                    <td class="text-center">{% if oc.requer_tratativa %}{{ oc.total_vinculos|add:1 }}{% else %}<span class="text-muted">&mdash;</span>{% endif %}</td>
                                                     <td class="text-end text-nowrap">
                                                         {% if oc.registro_id %}
                                                         <a href="{% url 'auditoria:registro_detail' oc.registro_id %}" class="btn btn-sm btn-outline-primary">Registro</a>
@@ -1076,7 +1005,7 @@
                                                                 data-texto="{{ oc.texto|truncatechars:200 }}">
                                                             <i class="bi bi-check2-circle"></i> Resolver
                                                         </button>
-                                                        {% else %}
+                                                        {% elif oc.requer_tratativa %}
                                                         <form method="post" action="{% url 'auditoria:ocorrencia_reabrir' oc.id %}" class="d-inline">
                                                             {% csrf_token %}
                                                             <input type="hidden" name="next" value="{{ request.path }}#tab-ocorrencias">
@@ -1086,11 +1015,90 @@
                                                     </td>
                                                 </tr>
                                                 {% empty %}
-                                                <tr><td colspan="6" class="text-center py-3 text-muted">Nenhuma ocorrência registrada para este modelo.</td></tr>
+                                                <tr><td colspan="6" class="text-center py-3 text-muted">Nenhum comentário ou ocorrência registrado para este modelo.</td></tr>
                                                 {% endfor %}
                                             </tbody>
                                         </table>
                                     </div>
+                                </div>
+                            </div>
+
+                            {% if comentarios %}
+                            <div class="card shadow-sm mt-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <div class="fw-semibold"><i class="bi bi-archive"></i> Comentários gerais anteriores <span class="badge bg-secondary">{{ comentarios|length }}</span></div>
+                                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#comentarios-legado" aria-expanded="false" aria-controls="comentarios-legado">
+                                        <i class="bi bi-arrows-expand"></i>
+                                    </button>
+                                </div>
+                                <div id="comentarios-legado" class="collapse">
+                                    <div class="card-body">
+                                        <div class="small text-muted mb-2">Registrados antes das ocorrências, sem vínculo com uma pergunta. Novos apontamentos devem ser feitos como ocorrência.</div>
+                                        <div class="list-group">
+                                            {% for c in comentarios %}
+                                            <div class="list-group-item">
+                                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                    <div class="fw-semibold">{% if c.autor %}{{ c.autor.get_full_name|default:c.autor.username }}{% else %}<span class="text-muted">-</span>{% endif %}</div>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div class="text-muted small">{{ c.criado_em|date:"d/m/Y H:i" }}</div>
+                                                        {% if is_auditoria_admin or c.autor_id == request.user.id %}
+                                                        <a class="btn btn-outline-secondary btn-sm" href="{% url 'auditoria:comentario_edit' modelo.id c.id %}?{{ querystring_with_page }}" title="Editar"><i class="bi bi-pencil"></i></a>
+                                                        <a class="btn btn-outline-danger btn-sm" href="{% url 'auditoria:comentario_delete' modelo.id c.id %}?{{ querystring_with_page }}" title="Remover"><i class="bi bi-trash"></i></a>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <div class="mt-2" style="white-space: pre-wrap;">{{ c.texto }}</div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <div class="modal fade" id="modalNovaOcorrencia" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-lg modal-dialog-centered">
+                                    <form method="post" class="modal-content">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="action" value="add_question_comment">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Novo comentário</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-8">
+                                                    <label class="form-label fw-semibold" for="nova-ocorrencia-pergunta">Pergunta</label>
+                                                    <select class="form-select" id="nova-ocorrencia-pergunta" name="pergunta_id" required>
+                                                        <option value="">Selecione...</option>
+                                                        {% for p in perguntas %}
+                                                        <option value="{{ p.id }}">{{ p.ordem }} - {{ p.pergunta|truncatechars:90 }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label fw-semibold" for="nova-ocorrencia-data">Data</label>
+                                                    <input type="date" class="form-control" id="nova-ocorrencia-data" name="comentario_data" value="{% now 'Y-m-d' %}" required>
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="form-label fw-semibold" for="nova-ocorrencia-texto">Comentário</label>
+                                                    <textarea class="form-control" id="nova-ocorrencia-texto" name="comentario" rows="4" maxlength="8000" required placeholder="Digite o comentário..."></textarea>
+                                                    <div class="form-text">A data vincula o comentário ao ciclo daquele período, quando existir.</div>
+                                                </div>
+                                                <div class="col-12">
+                                                    <div class="form-check form-switch border rounded p-2 ps-5 bg-light">
+                                                        <input class="form-check-input" type="checkbox" role="switch" id="nova-ocorrencia-tratativa" name="requer_tratativa" value="1">
+                                                        <label class="form-check-label fw-semibold" for="nova-ocorrencia-tratativa">Requer tratativa (registrar como ocorrência)</label>
+                                                        <div class="small text-muted">Marcada, fica em aberto e entra no acompanhamento de plano de ação até ser resolvida. Desmarcada, é apenas um comentário.</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Adicionar</button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
 

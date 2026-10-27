@@ -960,7 +960,7 @@
                             {% else %}
                                 <th class="col-dia text-center" width="140">Farol / Resposta</th>
                             {% endif %}
-                            <th class="col-comentarios">Ocorrências</th>
+                            <th class="col-comentarios">Comentários / Ocorrências</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1057,7 +1057,7 @@
                                             <li class="mb-1">
                                                 {% if oc.em_aberto %}
                                                 <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em {{ oc.criado_em }}">Em aberto &middot; {{ oc.dias_aberta }}d</span>
-                                                {% else %}
+                                                {% elif oc.requer_tratativa %}
                                                 <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" title="{{ oc.resolucao }}">Resolvida</span>
                                                 {% endif %}
                                                 {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}
@@ -1066,7 +1066,7 @@
                                             {% endfor %}
                                         </ul>
                                         {% else %}
-                                        <span class="text-muted fst-italic small">Sem ocorrências</span>
+                                        <span class="text-muted fst-italic small">Sem comentários</span>
                                         {% endif %}
                                     </div>
                                     <button
@@ -1074,7 +1074,7 @@
                                         class="btn btn-sm btn-outline-primary py-0 px-2 comment-open-btn ms-1"
                                         data-pergunta-id="{{ linha.pergunta_id }}"
                                         data-pergunta-texto="{{ linha.pergunta|escape }}"
-                                        title="Adicionar ou associar ocorrência">
+                                        title="Adicionar comentário ou associar ocorrência">
                                         <i class="bi bi-plus-lg"></i>
                                     </button>
                                 </div>
@@ -1174,13 +1174,13 @@
                                 <!-- Campo de Comentário (Abaixo dos Faróis com Margem) -->
                                 <div class="comentario-container-mobile">
                                     <div class="comentario-header-mobile">
-                                        <span class="comentario-title-mobile"><i class="bi bi-exclamation-diamond me-1"></i> Ocorrências:</span>
+                                        <span class="comentario-title-mobile"><i class="bi bi-exclamation-diamond me-1"></i> Comentários / Ocorrências:</span>
                                         <button
                                             type="button"
                                             class="btn btn-sm btn-outline-primary py-0 px-2 comment-open-btn"
                                             data-pergunta-id="{{ linha.pergunta_id }}"
                                             data-pergunta-texto="{{ linha.pergunta|escape }}"
-                                            title="Adicionar ou associar ocorrência">
+                                            title="Adicionar comentário ou associar ocorrência">
                                             <i class="bi bi-plus-lg"></i>
                                         </button>
                                     </div>
@@ -1192,7 +1192,7 @@
                                             <li class="mb-1">
                                                 {% if oc.em_aberto %}
                                                 <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em {{ oc.criado_em }}">Em aberto &middot; {{ oc.dias_aberta }}d</span>
-                                                {% else %}
+                                                {% elif oc.requer_tratativa %}
                                                 <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" title="{{ oc.resolucao }}">Resolvida</span>
                                                 {% endif %}
                                                 {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}
@@ -1201,7 +1201,7 @@
                                             {% endfor %}
                                         </ul>
                                         {% else %}
-                                        <span class="text-muted fst-italic small">Sem ocorrências</span>
+                                        <span class="text-muted fst-italic small">Sem comentários</span>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -1230,7 +1230,7 @@
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalComentariosPerguntaLabel">Ocorrências da Pergunta</h5>
+                <h5 class="modal-title" id="modalComentariosPerguntaLabel">Comentários e ocorrências da pergunta</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
@@ -1239,11 +1239,11 @@
 
                 <ul class="nav nav-tabs mb-3" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="tab-oc-nova" data-bs-toggle="tab" data-bs-target="#pane-oc-nova" type="button" role="tab">Nova ocorrência</button>
+                        <button class="nav-link active" id="tab-oc-nova" data-bs-toggle="tab" data-bs-target="#pane-oc-nova" type="button" role="tab">Novo comentário</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-oc-existente" data-bs-toggle="tab" data-bs-target="#pane-oc-existente" type="button" role="tab">
-                            Associar existente <span class="badge bg-secondary" id="modal-oc-disponiveis-qtd">0</span>
+                            Associar ocorrência <span class="badge bg-secondary" id="modal-oc-disponiveis-qtd">0</span>
                         </button>
                     </li>
                 </ul>
@@ -1253,10 +1253,15 @@
                             {% csrf_token %}
                             <input type="hidden" name="action" value="add_question_comment">
                             <input type="hidden" name="pergunta_id" id="modal-pergunta-id" value="">
-                            <label class="form-label" for="modal-comentario-texto">Descrição da ocorrência</label>
-                            <textarea class="form-control mb-3" id="modal-comentario-texto" name="comentario" rows="4" maxlength="8000" placeholder="Descreva a ocorrência. Ela ficará em aberto até ser resolvida."></textarea>
+                            <label class="form-label" for="modal-comentario-texto">Comentário</label>
+                            <textarea class="form-control mb-3" id="modal-comentario-texto" name="comentario" rows="4" maxlength="8000" placeholder="Digite o comentário..."></textarea>
+                            <div class="form-check form-switch border rounded p-2 ps-5 bg-light mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="modal-requer-tratativa" name="requer_tratativa" value="1">
+                                <label class="form-check-label fw-semibold" for="modal-requer-tratativa">Requer tratativa (registrar como ocorrência)</label>
+                                <div class="small text-muted">Marcada, fica em aberto e entra no acompanhamento de plano de ação até ser resolvida. Desmarcada, é apenas um comentário.</div>
+                            </div>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-plus-circle"></i> Registrar ocorrência
+                                <i class="bi bi-plus-circle"></i> Adicionar
                             </button>
                         </form>
                     </div>
@@ -1320,12 +1325,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderList(items) {
         if (!items || !items.length) {
-            return '<div class="text-muted">Nenhuma ocorrência nesta pergunta.</div>';
+            return '<div class="text-muted">Nenhum comentário nesta pergunta.</div>';
         }
         const rows = items.map(function(oc) {
-            const badge = oc.em_aberto
-                ? '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Em aberto · ' + oc.dias_aberta + 'd</span>'
-                : '<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Resolvida</span>';
+            let badge = '';
+            if (oc.em_aberto) {
+                badge = '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Em aberto · ' + oc.dias_aberta + 'd</span>';
+            } else if (oc.requer_tratativa) {
+                badge = '<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">Resolvida</span>';
+            }
             const rec = oc.associada ? ' <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Recorrente</span>' : '';
             return '<li class="mb-1">' + badge + rec + ' ' + escapeHtml(oc.texto) + '</li>';
         }).join('');

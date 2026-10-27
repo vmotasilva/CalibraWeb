@@ -290,6 +290,7 @@ def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
                 "id": oc.id,
                 "texto": (oc.texto or "").strip(),
                 "status": oc.status,
+                "requer_tratativa": oc.requer_tratativa,
                 "em_aberto": oc.em_aberto,
                 "resolucao": oc.resolucao,
                 "criado_em": timezone.localtime(oc.criado_em).strftime("%d/%m/%Y"),
@@ -307,6 +308,7 @@ def _ocorrencias_abertas_disponiveis(registro: RegistroAuditoria) -> dict[str, l
         ComentarioRespostaAuditoria.objects.filter(
             pergunta__modelo_id=registro.modelo_id,
             pergunta__ativo=True,
+            requer_tratativa=True,
             status=ComentarioRespostaAuditoria.STATUS_ABERTA,
         )
         .exclude(registro=registro)
@@ -932,6 +934,7 @@ def modulo_auditoria_view(request):
     ocorrencias_qs = (
         ComentarioRespostaAuditoria.objects.filter(
             pergunta__modelo__in=modelos_qs,
+            requer_tratativa=True,
             status=ComentarioRespostaAuditoria.STATUS_ABERTA,
         )
         .select_related("pergunta", "pergunta__modelo", "registro", "autor")
@@ -961,7 +964,7 @@ def modulo_auditoria_view(request):
 @require_POST
 def ocorrencia_resolver(request, pk):
     modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
-    ocorrencia = get_object_or_404(ComentarioRespostaAuditoria, pk=pk, pergunta__modelo__in=modelos_qs)
+    ocorrencia = get_object_or_404(ComentarioRespostaAuditoria, pk=pk, requer_tratativa=True, pergunta__modelo__in=modelos_qs)
     next_url = (request.POST.get("next") or "").strip()
     if not next_url.startswith("/") or next_url.startswith("//"):
         next_url = reverse("auditoria:modulo")
@@ -984,7 +987,7 @@ def ocorrencia_resolver(request, pk):
 @require_POST
 def ocorrencia_reabrir(request, pk):
     modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
-    ocorrencia = get_object_or_404(ComentarioRespostaAuditoria, pk=pk, pergunta__modelo__in=modelos_qs)
+    ocorrencia = get_object_or_404(ComentarioRespostaAuditoria, pk=pk, requer_tratativa=True, pergunta__modelo__in=modelos_qs)
     next_url = (request.POST.get("next") or "").strip()
     if not next_url.startswith("/") or next_url.startswith("//"):
         next_url = reverse("auditoria:modulo")
@@ -2022,7 +2025,7 @@ def registro_detail(request, pk):
             pergunta_id_raw = (request.POST.get("pergunta_id") or "").strip()
             texto = (request.POST.get("comentario") or "").strip()
             if not pergunta_id_raw.isdigit():
-                messages.error(request, "Pergunta inválida para ocorrência.")
+                messages.error(request, "Pergunta inválida para comentário.")
                 return redirect("auditoria:registro_detail", pk=registro.pk)
 
             pergunta = PerguntaAuditoria.objects.filter(
@@ -2035,20 +2038,27 @@ def registro_detail(request, pk):
                 return redirect("auditoria:registro_detail", pk=registro.pk)
 
             if not texto:
-                messages.error(request, "Descreva a ocorrência.")
+                messages.error(request, "Digite o comentário.")
                 return redirect("auditoria:registro_detail", pk=registro.pk)
             if len(texto) > 8000:
-                messages.error(request, "Ocorrência muito longa (máx. 8000 caracteres).")
+                messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
                 return redirect("auditoria:registro_detail", pk=registro.pk)
 
+            requer_tratativa = (request.POST.get("requer_tratativa") or "").strip() in ("1", "on", "true")
             ComentarioRespostaAuditoria.objects.create(
                 registro=registro,
                 pergunta=pergunta,
                 autor=request.user,
                 texto=texto,
                 data_referencia=registro.data_auditoria,
+                requer_tratativa=requer_tratativa,
             )
-            messages.success(request, "Ocorrência registrada e em aberto para acompanhamento.")
+            messages.success(
+                request,
+                "Ocorrência registrada e em aberto para acompanhamento."
+                if requer_tratativa
+                else "Comentário adicionado com sucesso.",
+            )
             return redirect("auditoria:registro_detail", pk=registro.pk)
 
         elif action == "associar_ocorrencia":
@@ -2059,6 +2069,7 @@ def registro_detail(request, pk):
                     ComentarioRespostaAuditoria.objects.filter(
                         id=int(ocorrencia_id_raw),
                         pergunta__modelo_id=registro.modelo_id,
+                        requer_tratativa=True,
                         status=ComentarioRespostaAuditoria.STATUS_ABERTA,
                     )
                     .exclude(registro=registro)
@@ -2479,7 +2490,7 @@ def registro_exportar_pdf(request, pk):
         headers = ["Ordem", "Pergunta"]
         if exibir_dias:
             headers.extend([dias_semana_abrev.get(k, dia_labels.get(k, k)[:3]) for k in dia_keys])
-        headers.append("Ocorrências")
+        headers.append("Comentários / Ocorrências")
 
         if exibir_dias:
             col_widths = [1.2 * cm, 7.2 * cm] + [1.4 * cm for _ in dia_keys] + [8.6 * cm]
@@ -2802,9 +2813,9 @@ def registros_por_modelo(request, modelo_id):
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "add_comment":
         texto = (request.POST.get("comentario") or "").strip()
         if not texto:
-            messages.error(request, "Descreva a ocorrência.")
+            messages.error(request, "Digite o comentário.")
         elif len(texto) > 8000:
-            messages.error(request, "Ocorrência muito longa (máx. 8000 caracteres).")
+            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
         else:
             ComentarioAuditoria.objects.create(modelo=modelo, autor=request.user, texto=texto)
             messages.success(request, "Ocorrência registrada e em aberto para acompanhamento.")
@@ -2832,15 +2843,16 @@ def registros_por_modelo(request, modelo_id):
                 preserved[k] = v
         if preserved:
             redirect_url = f"{redirect_url}?{urlencode(preserved)}"
+        redirect_url = f"{redirect_url}#tab-ocorrencias"
 
         if not pergunta_id_raw.isdigit():
-            messages.error(request, "Pergunta inválida para ocorrência.")
+            messages.error(request, "Pergunta inválida para comentário.")
             return redirect(redirect_url)
         if not texto:
-            messages.error(request, "Descreva a ocorrência.")
+            messages.error(request, "Digite o comentário.")
             return redirect(redirect_url)
         if len(texto) > 8000:
-            messages.error(request, "Ocorrência muito longa (máx. 8000 caracteres).")
+            messages.error(request, "Comentário muito longo (máx. 8000 caracteres).")
             return redirect(redirect_url)
         if not comentario_data_raw:
             messages.error(request, "Informe a data do comentário para vincular ao período.")
@@ -2879,21 +2891,30 @@ def registros_por_modelo(request, modelo_id):
             return redirect(redirect_url)
 
         registro_alvo = registros_para_comentario.filter(data_auditoria=comentario_data).order_by("-id").first()
+        if not registro_alvo:
+            registro_alvo = (
+                RegistroAuditoria.objects.filter(
+                    modelo=modelo,
+                    periodo_inicio__lte=comentario_data,
+                    periodo_fim__gte=comentario_data,
+                )
+                .order_by("-id")
+                .first()
+            )
 
+        requer_tratativa = (request.POST.get("requer_tratativa") or "").strip() in ("1", "on", "true")
         ComentarioRespostaAuditoria.objects.create(
             registro=registro_alvo,
             pergunta=pergunta,
             autor=request.user,
             texto=texto,
             data_referencia=comentario_data,
+            requer_tratativa=requer_tratativa,
         )
-        if registro_alvo:
-            messages.success(request, "Comentário da pergunta adicionado com sucesso.")
+        if requer_tratativa:
+            messages.success(request, "Ocorrência registrada e em aberto para acompanhamento.")
         else:
-            messages.success(
-                request,
-                "Comentário da pergunta salvo para a data informada. Ele aparecerá ao criar um registro que inclua esse período.",
-            )
+            messages.success(request, "Comentário adicionado com sucesso.")
         return redirect(redirect_url)
 
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "delete_question_comment":
@@ -3446,10 +3467,18 @@ def registros_por_modelo(request, modelo_id):
             ComentarioRespostaAuditoria.objects.filter(pergunta__modelo=modelo)
             .select_related("pergunta", "registro", "autor", "resolvido_por")
             .annotate(total_vinculos=Count("registros_vinculados", distinct=True))
-            .order_by("status", "criado_em", "id")  # ABERTA antes de RESOLVIDA
+            .annotate(
+                _ordem=models.Case(
+                    models.When(requer_tratativa=True, status=ComentarioRespostaAuditoria.STATUS_ABERTA, then=0),
+                    models.When(requer_tratativa=True, then=1),
+                    default=2,
+                    output_field=models.IntegerField(),
+                )
+            )
+            .order_by("_ordem", "criado_em", "id")  # em aberto, resolvidas, comentários
         )
         total_ocorrencias_abertas_modelo = ocorrencias_qs.filter(
-            status=ComentarioRespostaAuditoria.STATUS_ABERTA
+            requer_tratativa=True, status=ComentarioRespostaAuditoria.STATUS_ABERTA
         ).count()
         for oc in ocorrencias_qs[:300]:
             oc.dias_aberta = max((hoje - timezone.localtime(oc.criado_em).date()).days, 0)

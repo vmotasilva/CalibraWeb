@@ -1698,7 +1698,8 @@ class OcorrenciasAcompanhamentoTests(TestCase):
             modelo=self.modelo, alvo="Linha 1", periodo_inicio=date(2026, 10, 26), periodo_fim=date(2026, 11, 1)
         )
         self.ocorrencia = ComentarioRespostaAuditoria.objects.create(
-            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Poeira nas polidoras"
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Poeira nas polidoras",
+            requer_tratativa=True,
         )
         self.client.force_login(self.user)
 
@@ -1748,6 +1749,27 @@ class OcorrenciasAcompanhamentoTests(TestCase):
         self.assertContains(resp, 'id="tab-ocorrencias"')
         self.assertContains(resp, "Poeira nas polidoras")
         self.assertEqual(resp.context["total_ocorrencias_abertas_modelo"], 1)
+
+    def test_comentario_sem_tratativa_nao_vira_ocorrencia(self):
+        resp = self.client.post(
+            reverse("auditoria:registro_detail", args=[self.reg2.pk]),
+            {"action": "add_question_comment", "pergunta_id": self.pergunta.id, "comentario": "Apenas observacao"},
+        )
+        self.assertEqual(resp.status_code, 302)
+        simples = ComentarioRespostaAuditoria.objects.get(texto="Apenas observacao")
+        self.assertFalse(simples.requer_tratativa)
+        self.assertFalse(simples.em_aberto)
+        self.assertEqual(self.client.get(reverse("auditoria:modulo")).context["total_ocorrencias_abertas"], 1)
+
+    def test_comentario_com_tratativa_vira_ocorrencia_em_aberto(self):
+        self.client.post(
+            reverse("auditoria:registro_detail", args=[self.reg2.pk]),
+            {"action": "add_question_comment", "pergunta_id": self.pergunta.id, "comentario": "Precisa tratar", "requer_tratativa": "1"},
+        )
+        oc = ComentarioRespostaAuditoria.objects.get(texto="Precisa tratar")
+        self.assertTrue(oc.requer_tratativa)
+        self.assertTrue(oc.em_aberto)
+        self.assertEqual(self.client.get(reverse("auditoria:modulo")).context["total_ocorrencias_abertas"], 2)
 
     def test_reabrir_ocorrencia(self):
         self.client.post(reverse("auditoria:ocorrencia_resolver", args=[self.ocorrencia.pk]), {})

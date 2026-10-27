@@ -694,6 +694,12 @@ class ComentarioRespostaAuditoria(models.Model):
         (STATUS_ABERTA, "Em aberto"),
         (STATUS_RESOLVIDA, "Resolvida"),
     ]
+    requer_tratativa = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name="Requer tratativa",
+        help_text="Marcado: é uma ocorrência, acompanhada até a resolução. Desmarcado: apenas um comentário.",
+    )
     status = models.CharField(
         max_length=10, choices=STATUS_CHOICES, default=STATUS_ABERTA, db_index=True, verbose_name="Situação"
     )
@@ -715,13 +721,13 @@ class ComentarioRespostaAuditoria(models.Model):
     )
 
     class Meta:
-        verbose_name = "Ocorrência (Auditoria)"
-        verbose_name_plural = "Ocorrências (Auditoria)"
+        verbose_name = "Comentário/Ocorrência (Auditoria)"
+        verbose_name_plural = "Comentários/Ocorrências (Auditoria)"
         ordering = ["-atualizado_em", "-id"]
 
     @property
     def em_aberto(self) -> bool:
-        return self.status == self.STATUS_ABERTA
+        return self.requer_tratativa and self.status == self.STATUS_ABERTA
 
     def __str__(self):
         base = (self.texto or "").strip().replace("\n", " ")
