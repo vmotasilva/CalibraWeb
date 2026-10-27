@@ -556,6 +556,8 @@ def generate_auditoria_excel_buffer(auditoria) -> io.BytesIO:
         c_val = ws.cell(r, 2).value
         q_val = ws.cell(r, 3).value
         ref_norm = normalize_ref(c_val)
+        if ref_norm.lower() == 'item':
+            continue  # linha de cabeçalho da tabela
         if ref_norm and q_val is not None:
             row_by_ref[ref_norm] = r
         elif c_val and q_val is None:

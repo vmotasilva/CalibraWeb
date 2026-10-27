@@ -3153,7 +3153,7 @@ def registros_por_modelo(request, modelo_id):
                 "modelo_id": targeted_share.modelo_id,
                 "inicio": targeted_share.inicio.isoformat() if targeted_share.inicio else "",
                 "fim": targeted_share.fim.isoformat() if targeted_share.fim else "",
-                "topico": (targeted_share.topico or "").strip(),
+                "topico": (targeted_share.subcategoria or "").strip(),
             }
         else:
             share_data = _read_registro_report_share_token(share_token_raw)
@@ -3228,7 +3228,7 @@ def registros_por_modelo(request, modelo_id):
                     destinatario=destinatario,
                     inicio=inicio_tmp,
                     fim=fim_tmp,
-                    topico=subcat_tmp,
+                    subcategoria=subcat_tmp,
                     expira_em=timezone.now() + timedelta(days=30),
                 )
                 redirect_url = reverse("auditoria:registros_por_modelo", args=[modelo.id])
