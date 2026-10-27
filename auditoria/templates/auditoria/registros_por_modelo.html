@@ -1138,6 +1138,11 @@
                                                 <button type="submit" form="det-form-editar" class="btn btn-primary btn-sm"><i class="bi bi-save"></i> Salvar alterações</button>
                                                 <a href="#" class="btn btn-outline-primary btn-sm d-none" id="det-btn-registro"><i class="bi bi-box-arrow-up-right"></i> Abrir registro</a>
                                                 <button type="button" class="btn btn-success btn-sm d-none" id="det-btn-resolver"><i class="bi bi-check2-circle"></i> Resolver</button>
+                                                <form method="post" id="det-form-excluir" class="d-none" onsubmit="return confirm('Apagar definitivamente? Esta ação não pode ser desfeita.');">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="next" value="{{ request.path }}#tab-ocorrencias">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Apagar</button>
+                                                </form>
                                                 <form method="post" id="det-form-reabrir" class="d-none">
                                                     {% csrf_token %}
                                                     <input type="hidden" name="next" value="{{ request.path }}#tab-ocorrencias">
@@ -1308,6 +1313,10 @@ document.addEventListener('DOMContentLoaded', function() {
         formReabrir.setAttribute('action', o.reabrir_url);
         btnResolver.classList.toggle('d-none', !o.em_aberto);
         formReabrir.classList.toggle('d-none', !resolvida);
+        const formExcluir = document.getElementById('det-form-excluir');
+        formExcluir.setAttribute('action', o.excluir_url);
+        formExcluir.querySelector('input[name=next]').value = formEditar.querySelector('input[name=next]').value;
+        formExcluir.classList.toggle('d-none', !o.pode_editar_texto);
         if (o.registros.length) {
             btnRegistro.setAttribute('href', o.registros[0].url);
             btnRegistro.classList.remove('d-none');

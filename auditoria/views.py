@@ -271,6 +271,15 @@ def _replace_comentarios_resposta(
         ComentarioRespostaAuditoria.objects.bulk_create(novos)
 
 
+def _usuarios_candidatos_ocorrencia(modelo: ModeloAuditoria, extra_ids=()) -> list[dict]:
+    """Usuários que podem ser responsáveis por uma tratativa: responsáveis do modelo e já atribuídos."""
+    ids = set(modelo.responsaveis.values_list("pk", flat=True)) | set(extra_ids)
+    if modelo.responsavel_id:
+        ids.add(modelo.responsavel_id)
+    usuarios = get_user_model().objects.filter(pk__in=ids, is_active=True).order_by("first_name", "username")
+    return [{"id": u.id, "nome": u.get_full_name() or u.get_username()} for u in usuarios]
+
+
 def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, list[dict]]:
     """Ocorrências do registro (criadas nele ou associadas a ele), por pergunta."""
     ocorrencias = (
@@ -279,6 +288,7 @@ def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
             unificada_em__isnull=True,
         )
         .select_related("autor", "registro")
+        .prefetch_related("responsaveis")
         .distinct()
         .order_by("criado_em", "id")
     )
@@ -297,6 +307,13 @@ def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
                 "criado_em": timezone.localtime(oc.criado_em).strftime("%d/%m/%Y"),
                 "dias_aberta": max(dias, 0),
                 "associada": oc.registro_id != registro.id,
+                "autor_id": oc.autor_id,
+                "prazo": oc.prazo.isoformat() if oc.prazo else "",
+                "responsaveis": [u.id for u in oc.responsaveis.all()],
+                "editar_url": reverse("auditoria:ocorrencia_editar", args=[oc.id]),
+                "excluir_url": reverse("auditoria:ocorrencia_excluir", args=[oc.id]),
+                "resolver_url": reverse("auditoria:ocorrencia_resolver", args=[oc.id]),
+                "reabrir_url": reverse("auditoria:ocorrencia_reabrir", args=[oc.id]),
                 "autor": (oc.autor.get_full_name() or oc.autor.get_username()) if oc.autor_id else "",
             }
         )
@@ -985,6 +1002,28 @@ def ocorrencia_resolver(request, pk):
     ocorrencia.resolvido_por = request.user
     ocorrencia.save(update_fields=["status", "resolucao", "resolvido_em", "resolvido_por", "atualizado_em"])
     messages.success(request, "Ocorrência marcada como resolvida.")
+    return redirect(next_url)
+
+
+@login_required
+@require_POST
+def ocorrencia_excluir(request, pk):
+    """Apaga um comentário/ocorrência (autor ou administrador)."""
+    modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
+    oc = get_object_or_404(
+        ComentarioRespostaAuditoria.objects.select_related("pergunta"),
+        pk=pk,
+        pergunta__modelo__in=modelos_qs,
+    )
+    next_url = (request.POST.get("next") or "").strip()
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = f"{reverse('auditoria:registros_por_modelo', args=[oc.pergunta.modelo_id])}#tab-comentarios"
+    if not (_auditoria_is_admin(request.user) or oc.autor_id == request.user.id):
+        messages.error(request, "Apenas o autor ou um administrador pode apagar.")
+        return redirect(next_url)
+    tipo = "Ocorrência" if oc.requer_tratativa else "Comentário"
+    oc.delete()
+    messages.success(request, f"{tipo} apagado.")
     return redirect(next_url)
 
 
@@ -2329,6 +2368,8 @@ def registro_detail(request, pk):
                 "respostas": colunas_respostas,
             })
 
+    ocorrencias_por_pergunta_ctx = _build_ocorrencias_por_pergunta(registro)
+
     context = {
         "registro": registro,
         "blocos_respostas": resumo["blocos"],
@@ -2340,7 +2381,12 @@ def registro_detail(request, pk):
         "preenchidas": resumo["preenchidas"],
         "percentual_preenchimento": resumo["percentual_preenchimento"],
         "comentarios_por_pergunta": resumo["comentarios_por_pergunta"],
-        "ocorrencias_por_pergunta": _build_ocorrencias_por_pergunta(registro),
+        "ocorrencias_por_pergunta": ocorrencias_por_pergunta_ctx,
+        "usuarios_ocorrencia": _usuarios_candidatos_ocorrencia(
+            registro.modelo,
+            {uid for itens in ocorrencias_por_pergunta_ctx.values() for it in itens for uid in it["responsaveis"]},
+        ),
+        "is_auditoria_admin": _auditoria_is_admin(request.user),
         "ocorrencias_disponiveis": _ocorrencias_abertas_disponiveis(registro),
         "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
         "amostras_dados": amostras_dados,
@@ -3635,6 +3681,7 @@ def registros_por_modelo(request, modelo_id):
                     "responsaveis_nomes": [u.get_full_name() or u.get_username() for u in responsaveis_oc],
                     "pode_editar_texto": bool(_auditoria_is_admin(request.user) or oc.autor_id == request.user.id),
                     "editar_url": reverse("auditoria:ocorrencia_editar", args=[oc.id]),
+                    "excluir_url": reverse("auditoria:ocorrencia_excluir", args=[oc.id]),
                     "requer_tratativa": oc.requer_tratativa,
                     "em_aberto": oc.em_aberto,
                     "pergunta": oc.pergunta.pergunta,

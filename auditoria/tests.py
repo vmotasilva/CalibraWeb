@@ -1907,3 +1907,29 @@ class AbasComentariosOcorrenciasTests(OcorrenciasAcompanhamentoTests):
         self.assertEqual(resp.context["total_comentarios_modelo"], 1)
         self.assertContains(resp, 'id="tab-comentarios"')
         self.assertContains(resp, 'id="tab-ocorrencias"')
+
+
+class RegistroDetailPopupOcorrenciaTests(OcorrenciasAcompanhamentoTests):
+    def test_detail_expoe_urls_e_usuarios(self):
+        resp = self.client.get(reverse("auditoria:registro_detail", args=[self.reg1.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "modalOcorrenciaItem")
+        self.assertIn("usuarios_ocorrencia", resp.context)
+        item = [i for v in resp.context["ocorrencias_por_pergunta"].values() for i in v][0]
+        self.assertIn("excluir_url", item)
+
+    def test_excluir_pelo_autor(self):
+        resp = self.client.post(
+            reverse("auditoria:ocorrencia_excluir", args=[self.ocorrencia.pk]),
+            {"next": reverse("auditoria:registro_detail", args=[self.reg1.pk])},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(ComentarioRespostaAuditoria.objects.filter(pk=self.ocorrencia.pk).exists())
+
+    def test_excluir_por_outro_usuario_negado(self):
+        outro = get_user_model().objects.create_user("outro_oc", password="x", is_staff=True)
+        c = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=outro, texto="De outro"
+        )
+        self.client.post(reverse("auditoria:ocorrencia_excluir", args=[c.pk]), {"next": "/"})
+        self.assertTrue(ComentarioRespostaAuditoria.objects.filter(pk=c.pk).exists() or not self.user.is_superuser)

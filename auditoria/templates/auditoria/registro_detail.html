@@ -1054,7 +1054,7 @@
                                         {% if linha.ocorrencias %}
                                         <ul class="list-unstyled mb-0 small ocorrencias-lista">
                                             {% for oc in linha.ocorrencias %}
-                                            <li class="mb-1">
+                                            <li class="mb-1 oc-item" data-oc-id="{{ oc.id }}" style="cursor: pointer;" title="Clique para ver, editar ou converter">
                                                 {% if oc.em_aberto %}
                                                 <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em {{ oc.criado_em }}">Em aberto &middot; {{ oc.dias_aberta }}d</span>
                                                 {% elif oc.requer_tratativa %}
@@ -1189,7 +1189,7 @@
                                         {% if linha.ocorrencias %}
                                         <ul class="list-unstyled mb-0 small ocorrencias-lista">
                                             {% for oc in linha.ocorrencias %}
-                                            <li class="mb-1">
+                                            <li class="mb-1 oc-item" data-oc-id="{{ oc.id }}" style="cursor: pointer;" title="Clique para ver, editar ou converter">
                                                 {% if oc.em_aberto %}
                                                 <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em {{ oc.criado_em }}">Em aberto &middot; {{ oc.dias_aberta }}d</span>
                                                 {% elif oc.requer_tratativa %}
@@ -1279,6 +1279,86 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="modalOcorrenciaItem" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><span id="item-titulo">Comentário</span> <span id="item-badge" class="ms-2"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" id="item-form-editar">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <label class="form-label small text-muted mb-1" for="item-texto">Descrição</label>
+                    <textarea class="form-control mb-2" id="item-texto" name="texto" rows="4" maxlength="8000"></textarea>
+                    <div class="small text-muted mb-3" id="item-meta"></div>
+
+                    <div class="form-check form-switch border rounded p-2 ps-5 bg-light mb-3 d-none" id="item-converter-wrap">
+                        <input class="form-check-input" type="checkbox" role="switch" id="item-converter" name="requer_tratativa" value="1">
+                        <label class="form-check-label fw-semibold" for="item-converter">Converter em ocorrência (requer tratativa)</label>
+                        <div class="small text-muted">Passa a ficar em aberto no acompanhamento de plano de ação.</div>
+                    </div>
+
+                    <div id="item-tratativa" class="border rounded p-3 mb-3 d-none">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-semibold mb-1" for="item-prazo">Prazo de resolução</label>
+                                <input type="date" class="form-control form-control-sm" id="item-prazo" name="prazo">
+                            </div>
+                            <div class="col-md-8">
+                                <div class="form-label small fw-semibold mb-1">Responsáveis</div>
+                                <div class="border rounded p-2" style="max-height: 130px; overflow-y: auto;">
+                                    {% for u in usuarios_ocorrencia %}
+                                    <div class="form-check">
+                                        <input class="form-check-input item-resp" type="checkbox" name="responsaveis" value="{{ u.id }}" id="item-resp-{{ u.id }}">
+                                        <label class="form-check-label small" for="item-resp-{{ u.id }}">{{ u.nome }}</label>
+                                    </div>
+                                    {% empty %}
+                                    <div class="small text-muted">Nenhum responsável cadastrado no modelo.</div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <div id="item-resolucao-wrap" class="alert alert-success d-none">
+                    <div class="fw-semibold mb-1"><i class="bi bi-check2-circle"></i> Resolução</div>
+                    <div id="item-resolucao" style="white-space: pre-wrap;"></div>
+                </div>
+
+                <form method="post" id="item-form-resolver" class="d-none border rounded p-3 bg-light">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <label class="form-label fw-semibold" for="item-resolucao-texto">Como foi resolvida (plano de ação / providência)</label>
+                    <textarea class="form-control mb-2" id="item-resolucao-texto" name="resolucao" rows="3" maxlength="8000"></textarea>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success btn-sm">Marcar como resolvida</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="item-cancelar-resolver">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="submit" form="item-form-editar" class="btn btn-primary btn-sm"><i class="bi bi-save"></i> Salvar alterações</button>
+                    <button type="button" class="btn btn-success btn-sm d-none" id="item-btn-resolver"><i class="bi bi-check2-circle"></i> Resolver</button>
+                    <form method="post" id="item-form-reabrir" class="d-none">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> Reabrir</button>
+                    </form>
+                    <form method="post" id="item-form-excluir" class="d-none" onsubmit="return confirm('Apagar definitivamente? Esta ação não pode ser desfeita.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Apagar</button>
+                    </form>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
@@ -1381,6 +1461,74 @@ document.addEventListener('DOMContentLoaded', function() {
             if (modal) modal.show();
         });
     });
+
+    // Popup de comentário/ocorrência (editar, converter, resolver, apagar)
+    const itensPorId = {};
+    Object.keys(comentarios).forEach(function(k) {
+        (comentarios[k] || []).forEach(function(o) { itensPorId[String(o.id)] = o; });
+    });
+    const itemModalEl = document.getElementById('modalOcorrenciaItem');
+    if (itemModalEl && typeof bootstrap !== 'undefined') {
+        const itemModal = bootstrap.Modal.getOrCreateInstance(itemModalEl);
+        const USER_ID = {{ request.user.id }};
+        const IS_ADMIN = {{ is_auditoria_admin|yesno:"true,false" }};
+        const fEditar = document.getElementById('item-form-editar');
+        const fResolver = document.getElementById('item-form-resolver');
+        const fReabrir = document.getElementById('item-form-reabrir');
+        const fExcluir = document.getElementById('item-form-excluir');
+        const btnRes = document.getElementById('item-btn-resolver');
+        const chkConv = document.getElementById('item-converter');
+        const boxTrat = document.getElementById('item-tratativa');
+
+        chkConv.addEventListener('change', function() { boxTrat.classList.toggle('d-none', !chkConv.checked); });
+        btnRes.addEventListener('click', function() {
+            fResolver.classList.remove('d-none');
+            document.getElementById('item-resolucao-texto').focus();
+        });
+        document.getElementById('item-cancelar-resolver').addEventListener('click', function() {
+            fResolver.classList.add('d-none');
+        });
+
+        function abrirItem(id) {
+            const o = itensPorId[String(id)];
+            if (!o) return;
+            const ocorrencia = !!o.requer_tratativa;
+            const resolvida = ocorrencia && !o.em_aberto;
+            const podeGerir = IS_ADMIN || o.autor_id === USER_ID;
+            document.getElementById('item-titulo').textContent = ocorrencia ? 'Ocorrência' : 'Comentário';
+            document.getElementById('item-badge').innerHTML = o.em_aberto
+                ? '<span class="badge bg-warning text-dark">Em aberto · ' + o.dias_aberta + 'd</span>'
+                : (resolvida ? '<span class="badge bg-success">Resolvida</span>' : '<span class="badge bg-secondary">Comentário</span>');
+            const texto = document.getElementById('item-texto');
+            texto.value = o.texto;
+            texto.readOnly = !podeGerir;
+            document.getElementById('item-meta').textContent =
+                'Registrado em ' + o.criado_em + (o.autor ? ' por ' + o.autor : '') + (o.associada ? ' · ocorrência de registro anterior' : '');
+            fEditar.setAttribute('action', o.editar_url);
+            chkConv.checked = false;
+            document.getElementById('item-converter-wrap').classList.toggle('d-none', ocorrencia);
+            boxTrat.classList.toggle('d-none', !ocorrencia);
+            document.getElementById('item-prazo').value = o.prazo || '';
+            document.querySelectorAll('.item-resp').forEach(function(c) {
+                c.checked = (o.responsaveis || []).indexOf(parseInt(c.value, 10)) !== -1;
+            });
+            document.getElementById('item-resolucao-wrap').classList.toggle('d-none', !resolvida);
+            document.getElementById('item-resolucao').textContent = o.resolucao || 'Sem descrição informada.';
+            fResolver.classList.add('d-none');
+            fResolver.setAttribute('action', o.resolver_url);
+            document.getElementById('item-resolucao-texto').value = '';
+            fReabrir.setAttribute('action', o.reabrir_url);
+            fExcluir.setAttribute('action', o.excluir_url);
+            btnRes.classList.toggle('d-none', !o.em_aberto);
+            fReabrir.classList.toggle('d-none', !resolvida);
+            fExcluir.classList.toggle('d-none', !podeGerir);
+            itemModal.show();
+        }
+
+        document.querySelectorAll('.oc-item').forEach(function(li) {
+            li.addEventListener('click', function() { abrirItem(li.getAttribute('data-oc-id')); });
+        });
+    }
 
     const subcatRaw = document.getElementById('auditoria-subcat-registro');
     let subcatData = null;
