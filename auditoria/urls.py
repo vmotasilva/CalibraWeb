@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import apresentacao, views
 from shared.views import auditoria_hub_view
 
 app_name = "auditoria"
@@ -40,6 +40,7 @@ urlpatterns = [
     path("registros/<int:pk>/", views.registro_detail, name="registro_detail"),
     path("registros/<int:pk>/atualizar-resposta/", views.api_atualizar_resposta_inline, name="api_atualizar_resposta_inline"),
     path("modelos/<int:modelo_id>/registros/", views.registros_por_modelo, name="registros_por_modelo"),
+    path("modelos/<int:modelo_id>/apresentacao/", apresentacao.modelo_apresentacao, name="modelo_apresentacao"),
     path("modelos/<int:modelo_id>/registros/compartilhado/", views.registros_por_modelo, name="registros_por_modelo_compartilhado"),
     path(
         "modelos/<int:modelo_id>/comentarios/<int:pk>/editar/",
@@ -59,6 +60,7 @@ urlpatterns = [
     path("ocorrencias/<int:pk>/resolver/", views.ocorrencia_resolver, name="ocorrencia_resolver"),
     path("ocorrencias/<int:pk>/reabrir/", views.ocorrencia_reabrir, name="ocorrencia_reabrir"),
     path("ocorrencias/<int:pk>/editar/", views.ocorrencia_editar, name="ocorrencia_editar"),
+    path("api/colaboradores/buscar/", views.api_colaboradores_buscar, name="api_colaboradores_buscar"),
     path("ocorrencias/<int:pk>/excluir/", views.ocorrencia_excluir, name="ocorrencia_excluir"),
     path("modelos/<int:modelo_id>/ocorrencias/unificar/", views.ocorrencia_unificar, name="ocorrencia_unificar"),
     path("dashboard/", views.dashboard_auditoria, name="dashboard"),

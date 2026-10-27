@@ -1848,7 +1848,19 @@ class FiltroOcorrenciasTests(OcorrenciasAcompanhamentoTests):
         self.assertContains(resp, 'id="filtro-comentarios-topico"')
 
 
+def _criar_colaborador(nome, matricula, user=None):
+    from rh.models import Colaborador
+
+    return Colaborador.objects.create(
+        user_django=user, matricula=matricula, nome_completo=nome, grupo="TESTE", is_active=True
+    )
+
+
 class EditarOcorrenciaTests(OcorrenciasAcompanhamentoTests):
+    def setUp(self):
+        super().setUp()
+        self.colab = _criar_colaborador("Colaborador Um", "MAT-OC-1", self.user)
+
     def test_converter_comentario_com_responsavel_e_prazo(self):
         comentario = ComentarioRespostaAuditoria.objects.create(
             registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="So um comentario"
@@ -1860,14 +1872,14 @@ class EditarOcorrenciaTests(OcorrenciasAcompanhamentoTests):
                 "texto": "Comentario editado",
                 "requer_tratativa": "1",
                 "prazo": "2026-11-15",
-                "responsaveis": [self.user.pk],
+                "responsaveis": [self.colab.pk],
             },
         )
         comentario.refresh_from_db()
         self.assertEqual(comentario.texto, "Comentario editado")
         self.assertTrue(comentario.em_aberto)
         self.assertEqual(comentario.prazo, date(2026, 11, 15))
-        self.assertEqual(list(comentario.responsaveis.values_list("pk", flat=True)), [self.user.pk])
+        self.assertEqual(list(comentario.responsaveis.values_list("pk", flat=True)), [self.colab.pk])
 
     def test_comentario_sem_converter_ignora_prazo_e_responsaveis(self):
         comentario = ComentarioRespostaAuditoria.objects.create(
@@ -1875,7 +1887,7 @@ class EditarOcorrenciaTests(OcorrenciasAcompanhamentoTests):
         )
         self.client.post(
             reverse("auditoria:ocorrencia_editar", args=[comentario.pk]),
-            {"texto": "Simples", "prazo": "2026-11-15", "responsaveis": [self.user.pk]},
+            {"texto": "Simples", "prazo": "2026-11-15", "responsaveis": [self.colab.pk]},
         )
         comentario.refresh_from_db()
         self.assertFalse(comentario.requer_tratativa)
@@ -1885,13 +1897,13 @@ class EditarOcorrenciaTests(OcorrenciasAcompanhamentoTests):
     def test_prazo_e_responsaveis_aparecem_no_json_e_filtros(self):
         self.client.post(
             reverse("auditoria:ocorrencia_editar", args=[self.ocorrencia.pk]),
-            {"texto": self.ocorrencia.texto, "prazo": "2020-01-01", "responsaveis": [self.user.pk]},
+            {"texto": self.ocorrencia.texto, "prazo": "2020-01-01", "responsaveis": [self.colab.pk]},
         )
         resp = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
         item = resp.context["ocorrencias_json"][0]
         self.assertTrue(item["prazo_vencido"])
-        self.assertEqual(item["responsaveis"], [self.user.pk])
-        self.assertEqual([u["id"] for u in resp.context["ocorrencias_filtros"]["responsaveis"]], [self.user.pk])
+        self.assertEqual(item["responsaveis"], [self.colab.pk])
+        self.assertEqual([u["id"] for u in resp.context["ocorrencias_filtros"]["responsaveis"]], [self.colab.pk])
         for ident in ("filtro-ocorrencias-status", "filtro-ocorrencias-responsavel", "filtro-ocorrencias-prazo"):
             self.assertContains(resp, f'id="{ident}"')
 
@@ -1914,7 +1926,6 @@ class RegistroDetailPopupOcorrenciaTests(OcorrenciasAcompanhamentoTests):
         resp = self.client.get(reverse("auditoria:registro_detail", args=[self.reg1.pk]))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "modalOcorrenciaItem")
-        self.assertIn("usuarios_ocorrencia", resp.context)
         item = [i for v in resp.context["ocorrencias_por_pergunta"].values() for i in v][0]
         self.assertIn("excluir_url", item)
 
@@ -1959,7 +1970,7 @@ class AssociarComentarioEResponsaveisTests(OcorrenciasAcompanhamentoTests):
 
     def test_responsavel_sem_acesso_ao_modelo_ve_e_resolve(self):
         outro = get_user_model().objects.create_user("resp_oc", password="x", is_staff=True)
-        self.ocorrencia.responsaveis.add(outro)
+        self.ocorrencia.responsaveis.add(_criar_colaborador("Resp Oc", "MAT-OC-2", outro))
         self.client.force_login(outro)
         resp = self.client.get(reverse("auditoria:modulo"))
         self.assertIn(self.ocorrencia, list(resp.context["ocorrencias_abertas"]))
@@ -1982,7 +1993,7 @@ class AcaoOcorrenciaTests(OcorrenciasAcompanhamentoTests):
 
 class FiltroResponsavelTelaPrincipalTests(OcorrenciasAcompanhamentoTests):
     def test_filtra_por_responsavel(self):
-        outro = get_user_model().objects.create_user("resp2_oc", password="x", is_staff=True)
+        outro = _criar_colaborador("Resp Dois", "MAT-OC-3")
         self.ocorrencia.responsaveis.add(outro)
         sem = ComentarioRespostaAuditoria.objects.create(
             registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Sem resp", requer_tratativa=True
@@ -1994,3 +2005,64 @@ class FiltroResponsavelTelaPrincipalTests(OcorrenciasAcompanhamentoTests):
         self.assertEqual([o.pk for o in r.context["ocorrencias_abertas"]], [sem.pk])
         r = self.client.get(url)
         self.assertEqual(len(r.context["ocorrencias_abertas"]), 2)
+
+
+class ColaboradoresResponsaveisTests(OcorrenciasAcompanhamentoTests):
+    def test_busca_lista_colaboradores_e_nao_usuarios(self):
+        _criar_colaborador("Maria Auditada", "MAT-OC-10")
+        get_user_model().objects.create_user("so_usuario_login", password="x")
+        resp = self.client.get(reverse("auditoria:api_colaboradores_buscar"), {"q": "maria"})
+        nomes = [r["nome"] for r in resp.json()["results"]]
+        self.assertEqual(nomes, ["Maria Auditada"])
+        resp = self.client.get(reverse("auditoria:api_colaboradores_buscar"), {"q": "so_usuario"})
+        self.assertEqual(resp.json()["results"], [])
+
+    def test_responsavel_com_usuario_recebe_notificacao(self):
+        from shared.inbox import get_user_inbox_items
+
+        alvo_user = get_user_model().objects.create_user("alvo_oc", password="x", is_staff=True)
+        colab = _criar_colaborador("Alvo Oc", "MAT-OC-11", alvo_user)
+        self.assertFalse([i for i in get_user_inbox_items(alvo_user) if i.id.startswith("auditoria_ocorrencia_")])
+        self.client.post(
+            reverse("auditoria:ocorrencia_editar", args=[self.ocorrencia.pk]),
+            {"texto": self.ocorrencia.texto, "acao": "Fazer X", "responsaveis": [colab.pk]},
+        )
+        itens = [i for i in get_user_inbox_items(alvo_user) if i.id.startswith("auditoria_ocorrencia_")]
+        self.assertEqual(len(itens), 1)
+        self.assertIn("Fazer X", itens[0].description)
+
+
+class ApresentacaoRelatorioTests(OcorrenciasAcompanhamentoTests):
+    def setUp(self):
+        super().setUp()
+        self.modelo.responsaveis.add(self.user)
+        RespostaAuditoria.objects.create(registro=self.reg1, pergunta=self.pergunta, dia_semana="QUARTA", valor="Sim")
+        RespostaAuditoria.objects.create(registro=self.reg2, pergunta=self.pergunta, dia_semana="QUARTA", valor="Não")
+
+    def test_apresentacao_renderiza_slides_e_metricas(self):
+        resp = self.client.get(reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context["ciclos_analisados"], 2)
+        self.assertEqual(resp.context["pct_geral"], 50.0)
+        self.assertEqual(resp.context["variacao"], -100.0)
+        self.assertEqual(resp.context["total_ocorrencias_abertas"], 1)
+        kinds = [s["kind"] for s in resp.context["slides"]]
+        for k in ("capa", "resumo", "evolucao", "criticas", "ocorrencias", "encerramento"):
+            self.assertIn(k, kinds)
+        self.assertContains(resp, "Plano de ação")
+
+    def test_sem_acesso_ao_modelo_retorna_404(self):
+        outro = get_user_model().objects.create_user("sem_acesso_ap", password="x")
+        self.client.force_login(outro)
+        resp = self.client.get(reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk]))
+        self.assertEqual(resp.status_code, 404)
+
+    def test_link_compartilhado_invalido_negado(self):
+        resp = self.client.get(
+            reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk]), {"share_token": "invalido"}
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_botao_apresentar_no_relatorio(self):
+        resp = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
+        self.assertContains(resp, reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk]))

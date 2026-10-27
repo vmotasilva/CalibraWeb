@@ -113,7 +113,7 @@
                                 {% if oc.prazo or oc.responsaveis.all %}
                                 <div class="small mt-1">
                                     {% if oc.prazo %}<span class="badge {% if oc.prazo_vencido %}bg-danger{% else %}bg-light text-dark border{% endif %}">Prazo {{ oc.prazo|date:"d/m/Y" }}{% if oc.prazo_vencido %} · vencido{% endif %}</span>{% endif %}
-                                    {% for u in oc.responsaveis.all %}<span class="badge bg-light text-dark border">{{ u.get_full_name|default:u.get_username }}</span> {% endfor %}
+                                    {% for u in oc.responsaveis.all %}<span class="badge bg-light text-dark border">{{ u.nome_completo }}</span> {% endfor %}
                                 </div>
                                 {% endif %}
                             </td>

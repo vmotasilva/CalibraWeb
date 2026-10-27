@@ -59,6 +59,9 @@
                                     <i class="bi bi-link-45deg"></i> SharePoint
                                 </a>
                                 {% endif %}
+                                <a href="{% url 'auditoria:modelo_apresentacao' modelo.id %}{% if is_read_only and share_token %}?share_token={{ share_token }}{% endif %}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">
+                                    <i class="bi bi-easel2"></i> Apresentar
+                                </a>
                                 {% if not is_read_only %}
                                 <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modal-compartilhar-relatorio">
                                     <i class="bi bi-share"></i> Compartilhar Relatório
@@ -91,6 +94,11 @@
                                             <button type="button" class="dropdown-item py-2" id="btnPrintPdfMobile" onclick="document.getElementById('btnPrintPdf').click();">
                                                 <i class="bi bi-printer me-2 text-dark"></i> Imprimir / PDF
                                             </button>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2" target="_blank" rel="noopener" href="{% url 'auditoria:modelo_apresentacao' modelo.id %}{% if is_read_only and share_token %}?share_token={{ share_token }}{% endif %}">
+                                                <i class="bi bi-easel2 me-2 text-primary"></i> Apresentar relatório
+                                            </a>
                                         </li>
                                         {% if not is_read_only %}
                                         <li>
@@ -1097,16 +1105,7 @@
                                                         </div>
                                                         <div class="col-md-8">
                                                             <div class="form-label small fw-semibold mb-1">Responsáveis</div>
-                                                            <div class="border rounded p-2" style="max-height: 130px; overflow-y: auto;" id="det-responsaveis">
-                                                                {% for u in usuarios_ocorrencia %}
-                                                                <div class="form-check">
-                                                                    <input class="form-check-input det-resp" type="checkbox" name="responsaveis" value="{{ u.id }}" id="det-resp-{{ u.id }}">
-                                                                    <label class="form-check-label small" for="det-resp-{{ u.id }}">{{ u.nome }}</label>
-                                                                </div>
-                                                                {% empty %}
-                                                                <div class="small text-muted">Nenhum responsável cadastrado no modelo.</div>
-                                                                {% endfor %}
-                                                            </div>
+                                                            {% include "auditoria/_responsaveis_picker.html" with prefix="det" %}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1197,6 +1196,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{% include "auditoria/_responsaveis_picker_js.html" %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {{ chart_data|json_script:"auditoria-chart-data" }}
 {{ chart_cards|json_script:"auditoria-chart-cards" }}
@@ -1244,6 +1244,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const detalheEl = document.getElementById('modalDetalheOcorrencia');
     const detalheModal = detalheEl ? bootstrap.Modal.getOrCreateInstance(detalheEl) : null;
+    const pickerDet = window.criarSeletorResponsaveis('det');
     const formEditar = document.getElementById('det-form-editar');
     const formResolver = document.getElementById('det-form-resolver');
     const formReabrir = document.getElementById('det-form-reabrir');
@@ -1287,9 +1288,7 @@ document.addEventListener('DOMContentLoaded', function() {
         mostrarTratativa(o.requer_tratativa);
         document.getElementById('det-prazo').value = o.prazo || '';
         document.getElementById('det-acao').value = o.acao || '';
-        document.querySelectorAll('.det-resp').forEach(function(c) {
-            c.checked = (o.responsaveis || []).indexOf(parseInt(c.value, 10)) !== -1;
-        });
+        if (pickerDet) pickerDet.set(o.responsaveis_info || []);
 
         const regs = document.getElementById('det-registros');
         regs.innerHTML = o.registros.map(function(r) {

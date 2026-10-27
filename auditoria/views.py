@@ -271,11 +271,20 @@ def _replace_comentarios_resposta(
         ComentarioRespostaAuditoria.objects.bulk_create(novos)
 
 
-def _usuarios_candidatos_ocorrencia(modelo: ModeloAuditoria = None, extra_ids=()) -> list[dict]:
-    """Qualquer colaborador ativo pode ser responsável por uma tratativa."""
-    ids = set(extra_ids)
-    usuarios = get_user_model().objects.filter(models.Q(is_active=True) | models.Q(pk__in=ids)).order_by("first_name", "username")
-    return [{"id": u.id, "nome": u.get_full_name() or u.get_username()} for u in usuarios]
+def _colaborador_nome(colab) -> str:
+    return (getattr(colab, "nome_completo", "") or "").strip()
+
+
+def _notificar_novos_responsaveis(oc, ids_antes: set[int]) -> None:
+    """Responsável novo com usuário associado passa a ver a ocorrência na caixa de notificações (sino)."""
+    try:
+        from shared.inbox import invalidar_cache_inbox
+
+        for colab in oc.responsaveis.select_related("user_django"):
+            if colab.id not in ids_antes and colab.user_django_id:
+                invalidar_cache_inbox(colab.user_django)
+    except Exception:
+        pass
 
 
 def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, list[dict]]:
@@ -309,6 +318,9 @@ def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
                 "prazo": oc.prazo.isoformat() if oc.prazo else "",
                 "acao": oc.acao,
                 "responsaveis": [u.id for u in oc.responsaveis.all()],
+                "responsaveis_info": [
+                    {"id": u.id, "nome": _colaborador_nome(u)} for u in oc.responsaveis.all()
+                ],
                 "editar_url": reverse("auditoria:ocorrencia_editar", args=[oc.id]),
                 "excluir_url": reverse("auditoria:ocorrencia_excluir", args=[oc.id]),
                 "resolver_url": reverse("auditoria:ocorrencia_resolver", args=[oc.id]),
@@ -954,7 +966,7 @@ def modulo_auditoria_view(request):
 
     ocorrencias_qs = (
         ComentarioRespostaAuditoria.objects.filter(
-            models.Q(pergunta__modelo__in=modelos_qs) | models.Q(responsaveis=request.user),
+            models.Q(pergunta__modelo__in=modelos_qs) | models.Q(responsaveis__user_django=request.user),
             requer_tratativa=True,
             unificada_em__isnull=True,
             status=ComentarioRespostaAuditoria.STATUS_ABERTA,
@@ -970,9 +982,11 @@ def modulo_auditoria_view(request):
         ocorrencias_qs.order_by().values_list("responsaveis", flat=True).distinct()
     )
     resp_ids.discard(None)
+    from rh.models import Colaborador
+
     responsaveis_filtro = [
-        {"id": u.id, "nome": u.get_full_name() or u.get_username()}
-        for u in get_user_model().objects.filter(pk__in=resp_ids).order_by("first_name", "username")
+        {"id": c.id, "nome": _colaborador_nome(c)}
+        for c in Colaborador.objects.filter(pk__in=resp_ids).order_by("nome_completo")
     ]
     filtro_responsavel = (request.GET.get("responsavel") or "").strip()
     if filtro_responsavel == "none":
@@ -1009,7 +1023,7 @@ def ocorrencia_resolver(request, pk):
     modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
     ocorrencia = get_object_or_404(
         ComentarioRespostaAuditoria.objects.filter(
-            models.Q(pergunta__modelo__in=modelos_qs) | models.Q(responsaveis=request.user)
+            models.Q(pergunta__modelo__in=modelos_qs) | models.Q(responsaveis__user_django=request.user)
         ).distinct(),
         pk=pk,
         requer_tratativa=True,
@@ -1030,6 +1044,26 @@ def ocorrencia_resolver(request, pk):
     ocorrencia.save(update_fields=["status", "resolucao", "resolvido_em", "resolvido_por", "atualizado_em"])
     messages.success(request, "Ocorrência marcada como resolvida.")
     return redirect(next_url)
+
+
+@login_required
+def api_colaboradores_buscar(request):
+    """Busca colaboradores ativos (RH) por nome/matrícula para escolher responsáveis."""
+    from rh.models import Colaborador
+
+    q = (request.GET.get("q") or "").strip()
+    qs = Colaborador.objects.filter(is_active=True)
+    for termo in q.split():
+        qs = qs.filter(models.Q(nome_completo__icontains=termo) | models.Q(matricula__icontains=termo))
+    qs = qs.order_by("nome_completo")[:20]
+    return JsonResponse(
+        {
+            "results": [
+                {"id": c.id, "nome": _colaborador_nome(c), "com_usuario": bool(c.user_django_id)}
+                for c in qs
+            ]
+        }
+    )
 
 
 @login_required
@@ -1110,8 +1144,12 @@ def ocorrencia_editar(request, pk):
         oc.save(update_fields=campos + ["atualizado_em"])
 
     if oc.requer_tratativa:
+        from rh.models import Colaborador
+
         ids = [int(x) for x in request.POST.getlist("responsaveis") if str(x).isdigit()]
-        oc.responsaveis.set(get_user_model().objects.filter(pk__in=ids, is_active=True))
+        ids_antes = set(oc.responsaveis.values_list("pk", flat=True))
+        oc.responsaveis.set(Colaborador.objects.filter(pk__in=ids, is_active=True))
+        _notificar_novos_responsaveis(oc, ids_antes)
 
     messages.success(
         request,
@@ -1183,7 +1221,7 @@ def ocorrencia_reabrir(request, pk):
     modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
     ocorrencia = get_object_or_404(
         ComentarioRespostaAuditoria.objects.filter(
-            models.Q(pergunta__modelo__in=modelos_qs) | models.Q(responsaveis=request.user)
+            models.Q(pergunta__modelo__in=modelos_qs) | models.Q(responsaveis__user_django=request.user)
         ).distinct(),
         pk=pk,
         requer_tratativa=True,
@@ -2424,10 +2462,6 @@ def registro_detail(request, pk):
         "percentual_preenchimento": resumo["percentual_preenchimento"],
         "comentarios_por_pergunta": resumo["comentarios_por_pergunta"],
         "ocorrencias_por_pergunta": ocorrencias_por_pergunta_ctx,
-        "usuarios_ocorrencia": _usuarios_candidatos_ocorrencia(
-            registro.modelo,
-            {uid for itens in ocorrencias_por_pergunta_ctx.values() for it in itens for uid in it["responsaveis"]},
-        ),
         "is_auditoria_admin": _auditoria_is_admin(request.user),
         "ocorrencias_disponiveis": _ocorrencias_abertas_disponiveis(registro),
         "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
@@ -3671,6 +3705,7 @@ def registros_por_modelo(request, modelo_id):
     ocorrencias_modelo = []
     ocorrencias_json = []
     ids_responsaveis_usados: set[int] = set()
+    nomes_responsaveis_usados: dict[int, str] = {}
     usuarios_ocorrencia: list[dict] = []
     total_ocorrencias_abertas_modelo = 0
     if not is_read_only:
@@ -3713,6 +3748,7 @@ def registros_por_modelo(request, modelo_id):
             oc.prazo_vencido = bool(oc.em_aberto and oc.prazo and oc.prazo < hoje)
             responsaveis_oc = list(oc.responsaveis.all())
             ids_responsaveis_usados.update(u.id for u in responsaveis_oc)
+            nomes_responsaveis_usados.update({u.id: _colaborador_nome(u) for u in responsaveis_oc})
             ocorrencias_json.append(
                 {
                     "id": oc.id,
@@ -3721,7 +3757,10 @@ def registros_por_modelo(request, modelo_id):
                     "prazo_fmt": oc.prazo.strftime("%d/%m/%Y") if oc.prazo else "",
                     "prazo_vencido": oc.prazo_vencido,
                     "responsaveis": [u.id for u in responsaveis_oc],
-                    "responsaveis_nomes": [u.get_full_name() or u.get_username() for u in responsaveis_oc],
+                    "responsaveis_info": [
+                        {"id": u.id, "nome": _colaborador_nome(u)} for u in responsaveis_oc
+                    ],
+                    "responsaveis_nomes": [_colaborador_nome(u) for u in responsaveis_oc],
                     "pode_editar_texto": bool(_auditoria_is_admin(request.user) or oc.autor_id == request.user.id),
                     "editar_url": reverse("auditoria:ocorrencia_editar", args=[oc.id]),
                     "excluir_url": reverse("auditoria:ocorrencia_excluir", args=[oc.id]),
@@ -3753,8 +3792,10 @@ def registros_por_modelo(request, modelo_id):
 
     filtro_responsaveis: list[dict] = []
     if not is_read_only:
-        usuarios_ocorrencia = _usuarios_candidatos_ocorrencia(modelo, ids_responsaveis_usados)
-        filtro_responsaveis = [u for u in usuarios_ocorrencia if u["id"] in ids_responsaveis_usados]
+        filtro_responsaveis = sorted(
+            ({"id": i, "nome": n} for i, n in nomes_responsaveis_usados.items()),
+            key=lambda x: x["nome"].lower(),
+        )
 
     def _montar_filtros(itens, responsaveis=None):
         nomes_topicos = {int(t["id"]): t["nome"] for t in topicos}

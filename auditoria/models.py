@@ -720,7 +720,7 @@ class ComentarioRespostaAuditoria(models.Model):
         verbose_name="Registros associados",
     )
     responsaveis = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
+        "rh.Colaborador",
         blank=True,
         related_name="auditoria_ocorrencias_responsavel",
         verbose_name="Responsáveis pela tratativa",

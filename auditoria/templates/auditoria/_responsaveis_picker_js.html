@@ -1,0 +1,73 @@
+<script>
+window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(prefix) {
+    const url = "{% url 'auditoria:api_colaboradores_buscar' %}";
+    const chips = document.getElementById(prefix + '-resp-chips');
+    const busca = document.getElementById(prefix + '-resp-busca');
+    const lista = document.getElementById(prefix + '-resp-lista');
+    const hidden = document.getElementById(prefix + '-resp-hidden');
+    if (!chips || !busca || !lista || !hidden) return null;
+    let selecionados = [];
+    let timer = null;
+    let seq = 0;
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    function render() {
+        chips.innerHTML = selecionados.map(function(u) {
+            return '<span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle d-inline-flex align-items-center gap-1">' +
+                esc(u.nome) + '<button type="button" class="btn-close ms-1" style="font-size:.6rem" aria-label="Remover" data-id="' + u.id + '"></button></span>';
+        }).join('') || '<span class="small text-muted">Nenhum responsável selecionado.</span>';
+        hidden.innerHTML = selecionados.map(function(u) {
+            return '<input type="hidden" name="responsaveis" value="' + u.id + '">';
+        }).join('');
+    }
+
+    function fechar() { lista.classList.add('d-none'); lista.innerHTML = ''; }
+
+    function buscar() {
+        const q = busca.value.trim();
+        const mine = ++seq;
+        fetch(url + '?q=' + encodeURIComponent(q), {credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (mine !== seq) return;
+                const ids = selecionados.map(function(u) { return u.id; });
+                const itens = (data.results || []).filter(function(u) { return ids.indexOf(u.id) === -1; });
+                lista.innerHTML = itens.length
+                    ? itens.map(function(u) {
+                        return '<button type="button" class="list-group-item list-group-item-action py-1 small" data-id="' + u.id + '" data-nome="' + esc(u.nome) + '">' + esc(u.nome) + '</button>';
+                    }).join('')
+                    : '<div class="list-group-item small text-muted py-1">Nenhum colaborador encontrado.</div>';
+                lista.classList.remove('d-none');
+            })
+            .catch(fechar);
+    }
+
+    busca.addEventListener('input', function() { clearTimeout(timer); timer = setTimeout(buscar, 250); });
+    busca.addEventListener('focus', buscar);
+    busca.addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
+    lista.addEventListener('click', function(e) {
+        const b = e.target.closest('button[data-id]');
+        if (!b) return;
+        selecionados.push({id: parseInt(b.getAttribute('data-id'), 10), nome: b.getAttribute('data-nome')});
+        busca.value = '';
+        fechar();
+        render();
+        busca.focus();
+    });
+    chips.addEventListener('click', function(e) {
+        const b = e.target.closest('button[data-id]');
+        if (!b) return;
+        const id = parseInt(b.getAttribute('data-id'), 10);
+        selecionados = selecionados.filter(function(u) { return u.id !== id; });
+        render();
+    });
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#' + prefix + '-resp-picker')) fechar();
+    });
+    render();
+    return {
+        set: function(itens) { selecionados = (itens || []).map(function(u) { return {id: u.id, nome: u.nome}; }); busca.value = ''; fechar(); render(); }
+    };
+};
+</script>

@@ -44,6 +44,8 @@ def invalidar_cache_inbox(user: Optional[Any] = None) -> None:
             cache.delete(f"inbox_items:v10:user:{user_id}:global:True")
             cache.delete(f"inbox_items:v11:user:{user_id}:global:False")
             cache.delete(f"inbox_items:v11:user:{user_id}:global:True")
+            cache.delete(f"inbox_items:v12:user:{user_id}:global:False")
+            cache.delete(f"inbox_items:v12:user:{user_id}:global:True")
         if hasattr(cache, "delete_pattern"):
             cache.delete_pattern("inbox_items:*")
     except Exception:
@@ -55,7 +57,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     if not getattr(user, "is_authenticated", False):
         return []
         
-    cache_key = f"inbox_items:v11:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
+    cache_key = f"inbox_items:v12:user:{getattr(user, 'pk', 'anon')}:global:{is_global}"
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -162,6 +164,42 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         sub_type="Relatórios Compartilhados"
                     )
                 )
+    except Exception:
+        pass
+
+    # 1.3 Ocorrências de auditoria atribuídas ao colaborador (responsável pela tratativa)
+    try:
+        from auditoria.models import ComentarioRespostaAuditoria
+
+        atribuidas = (
+            ComentarioRespostaAuditoria.objects.filter(
+                responsaveis__user_django=user,
+                requer_tratativa=True,
+                status=ComentarioRespostaAuditoria.STATUS_ABERTA,
+                unificada_em__isnull=True,
+            )
+            .select_related("pergunta", "pergunta__modelo")
+            .distinct()
+            .order_by("prazo", "-criado_em")[:50]
+        )
+        for oc in atribuidas:
+            vencida = bool(oc.prazo and oc.prazo < hoje)
+            prazo_txt = f" · prazo {oc.prazo:%d/%m/%Y}" if oc.prazo else ""
+            texto = (oc.acao or oc.texto or "").strip()
+            items.append(
+                InboxItem(
+                    id=f"auditoria_ocorrencia_{oc.id}",
+                    title=f"Ocorrência atribuída a você: {oc.pergunta.modelo.nome}",
+                    description=f"{texto[:140]}{prazo_txt}",
+                    module="Auditoria",
+                    icon="bi-exclamation-diamond",
+                    url=reverse("auditoria:modulo") + "#ocorrencias-em-aberto",
+                    action_text="Tratar",
+                    date=oc.prazo or oc.criado_em.date(),
+                    is_urgent=vencida,
+                    sub_type="Ocorrências Atribuídas",
+                )
+            )
     except Exception:
         pass
 
