@@ -2039,18 +2039,33 @@ class ApresentacaoRelatorioTests(OcorrenciasAcompanhamentoTests):
         self.modelo.responsaveis.add(self.user)
         RespostaAuditoria.objects.create(registro=self.reg1, pergunta=self.pergunta, dia_semana="QUARTA", valor="Sim")
         RespostaAuditoria.objects.create(registro=self.reg2, pergunta=self.pergunta, dia_semana="QUARTA", valor="Não")
+        RegistroAuditoria.objects.filter(pk__in=[self.reg1.pk, self.reg2.pk]).update(status="CONCLUIDO")
 
-    def test_apresentacao_renderiza_slides_e_metricas(self):
+    def test_apresentacao_usa_ultimo_ciclo_fechado_com_comentarios(self):
+        # ciclo mais novo ainda em andamento nao deve ser a base
+        aberto = RegistroAuditoria.objects.create(
+            modelo=self.modelo, alvo="Linha 1", periodo_inicio=date(2026, 11, 2), periodo_fim=date(2026, 11, 8),
+            status="RASCUNHO",
+        )
+        ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg2, pergunta=self.pergunta, autor=self.user, texto="Comentario do ciclo base"
+        )
         resp = self.client.get(reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk]))
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.context["ciclos_analisados"], 2)
-        self.assertEqual(resp.context["pct_geral"], 50.0)
+        self.assertEqual(resp.context["base"].pk, self.reg2.pk)
+        self.assertNotEqual(resp.context["base"].pk, aberto.pk)
+        self.assertEqual(resp.context["pct_geral"], 0.0)
         self.assertEqual(resp.context["variacao"], -100.0)
-        self.assertEqual(resp.context["total_ocorrencias_abertas"], 1)
         kinds = [s["kind"] for s in resp.context["slides"]]
-        for k in ("capa", "resumo", "evolucao", "criticas", "ocorrencias", "encerramento"):
+        for k in ("capa", "resumo", "evolucao", "criticas", "itens", "encerramento"):
             self.assertIn(k, kinds)
-        self.assertContains(resp, "Plano de ação")
+        self.assertContains(resp, "Comentario do ciclo base")
+
+    def test_sem_ciclo_fechado_mostra_aviso(self):
+        RegistroAuditoria.objects.filter(modelo=self.modelo).update(status="RASCUNHO")
+        resp = self.client.get(reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("vazio", [s["kind"] for s in resp.context["slides"]])
 
     def test_sem_acesso_ao_modelo_retorna_404(self):
         outro = get_user_model().objects.create_user("sem_acesso_ap", password="x")
@@ -2153,3 +2168,61 @@ class CriarCicloFinalizarTests(OcorrenciasAcompanhamentoTests):
         reg = RegistroAuditoria.objects.get(modelo=self.modelo, alvo="Linha 9")
         self.assertEqual(reg.status, "CONCLUIDO")
         self.assertRedirects(resp, reverse("auditoria:registro_detail", args=[reg.pk]), fetch_redirect_response=False)
+
+
+class AuditoresAuditadosTests(OcorrenciasAcompanhamentoTests):
+    def setUp(self):
+        super().setUp()
+        self.modelo.responsaveis.add(self.user)
+        self.colab_user = _criar_colaborador("Auditor Um", "MAT-AU-1", self.user)
+
+    def _post_create(self, extra=None):
+        dados = {
+            "nome": "Ciclo Aud", "alvo": "Linha 7",
+            "periodo_inicio": "02/11/2026", "periodo_fim": "08/11/2026",
+            "action": "save_draft", f"resposta_{self.pergunta.id}": "Sim",
+            "comentarios_payload": "{}",
+        }
+        dados.update(extra or {})
+        return self.client.post(reverse("auditoria:registro_create_modelo", args=[self.modelo.pk]), dados)
+
+    def test_criar_ciclo_define_auditor_padrao(self):
+        self._post_create()
+        reg = RegistroAuditoria.objects.get(alvo="Linha 7")
+        self.assertEqual(list(reg.auditores.all()), [self.colab_user])
+
+    def test_criar_ciclo_com_auditores_escolhidos(self):
+        outro = _criar_colaborador("Auditor Dois", "MAT-AU-2")
+        self._post_create({"auditores_enviado": "1", "auditores": [outro.pk]})
+        reg = RegistroAuditoria.objects.get(alvo="Linha 7")
+        self.assertEqual(list(reg.auditores.all()), [outro])
+
+    def test_responsavel_define_auditados_do_modelo(self):
+        lider = _criar_colaborador("Lider Auditado", "MAT-AU-3")
+        self.client.post(
+            reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]),
+            {"action": "update_auditados", "auditados": [lider.pk]},
+        )
+        self.assertEqual(list(self.modelo.auditados.all()), [lider])
+
+    def test_auditado_acessa_relatorio_somente_leitura(self):
+        lider_user = get_user_model().objects.create_user("lider_aud", password="x")
+        lider = _criar_colaborador("Lider Aud", "MAT-AU-4", lider_user)
+        self.modelo.auditados.add(lider)
+        self.client.force_login(lider_user)
+        r = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.context["is_read_only"])
+        self.assertEqual(self.client.get(reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk])).status_code, 200)
+        det = reverse("auditoria:registro_detail", args=[self.reg1.pk])
+        self.assertEqual(self.client.get(det).status_code, 200)
+        self.assertEqual(self.client.post(det, {"action": "add_question_comment"}).status_code, 403)
+        self.assertEqual(
+            self.client.post(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]), {"action": "add_comment"}).status_code,
+            403,
+        )
+
+    def test_nao_auditado_continua_sem_acesso(self):
+        estranho = get_user_model().objects.create_user("estranho_aud", password="x")
+        self.client.force_login(estranho)
+        self.assertEqual(self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk])).status_code, 404)

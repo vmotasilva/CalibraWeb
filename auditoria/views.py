@@ -8,7 +8,7 @@ from django.db import models, transaction
 from django.db.models.deletion import ProtectedError
 from django.db.models import Count, Max, Prefetch, Q
 from django.core.paginator import Paginator
-from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
+from django.http import Http404, HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -291,6 +291,46 @@ def _replace_comentarios_resposta(
         ComentarioRespostaAuditoria.objects.filter(id__in=ids_remover).delete()
     if novos:
         ComentarioRespostaAuditoria.objects.bulk_create(novos)
+
+
+def _modelos_como_auditado(user, qs=None):
+    """Modelos em que o usuário (via colaborador) consta como auditado: acesso recorrente somente leitura."""
+    base = qs if qs is not None else ModeloAuditoria.objects.all()
+    if not getattr(user, "is_authenticated", False):
+        return base.none()
+    return base.filter(auditados__user_django=user).distinct()
+
+
+def _ids_colaboradores_post(request, campo: str) -> list[int]:
+    return [int(x) for x in request.POST.getlist(campo) if str(x).isdigit()]
+
+
+def _salvar_auditores_registro(request, registro, default_user=None) -> None:
+    from rh.models import Colaborador
+
+    if "auditores_enviado" in request.POST:
+        registro.auditores.set(
+            Colaborador.objects.filter(pk__in=_ids_colaboradores_post(request, "auditores"), is_active=True)
+        )
+    elif default_user is not None and not registro.auditores.exists():
+        colab = Colaborador.objects.filter(user_django=default_user, is_active=True).first()
+        if colab:
+            registro.auditores.add(colab)
+
+
+def _auditores_info(registro=None, user=None, request=None) -> list[dict]:
+    from rh.models import Colaborador
+
+    if request is not None and request.method == "POST" and "auditores_enviado" in request.POST:
+        qs = Colaborador.objects.filter(pk__in=_ids_colaboradores_post(request, "auditores"))
+        return [{"id": c.id, "nome": _colaborador_nome(c)} for c in qs]
+    if registro is not None and registro.pk:
+        return [{"id": c.id, "nome": _colaborador_nome(c)} for c in registro.auditores.all()]
+    if user is not None:
+        colab = Colaborador.objects.filter(user_django=user, is_active=True).first()
+        if colab:
+            return [{"id": colab.id, "nome": _colaborador_nome(colab)}]
+    return []
 
 
 def _colaborador_nome(colab) -> str:
@@ -1954,6 +1994,7 @@ def registro_create(request, modelo_id=None):
                 registro.grid_itens = "\n".join(grid_itens)
 
             registro.save()
+            _salvar_auditores_registro(request, registro, default_user=request.user)
 
             # Salvar respostas
             erros = []
@@ -2112,6 +2153,7 @@ def registro_create(request, modelo_id=None):
     context = {
         "form": form,
         "modelo": modelo,
+        "auditores_info": _auditores_info(user=request.user, request=request),
         "perguntas": perguntas,
         "grid_enabled": grid_enabled,
         "grid_itens": grid_itens,
@@ -2175,6 +2217,7 @@ def registro_edit(request, pk):
                 registro.grid_itens = "\n".join(grid_itens)
 
             registro.save()
+            _salvar_auditores_registro(request, registro)
 
             erros = []
             # Atualizar respostas existentes
@@ -2336,6 +2379,7 @@ def registro_edit(request, pk):
     context = {
         "form": form,
         "modelo": registro.modelo,
+        "auditores_info": _auditores_info(registro=registro, request=request),
         "ocorrencias_disponiveis": _ocorrencias_abertas_disponiveis(registro),
         "perguntas": perguntas,
         "grid_enabled": grid_enabled,
@@ -2367,13 +2411,21 @@ def registro_pre_finalizacao(request, pk):
 
 @login_required
 def registro_detail(request, pk):
-    registro = get_object_or_404(
-        _filter_registros_para_usuario(
-            request.user,
-            RegistroAuditoria.objects.select_related("modelo", "avaliador"),
-        ),
-        pk=pk,
-    )
+    registro = _filter_registros_para_usuario(
+        request.user,
+        RegistroAuditoria.objects.select_related("modelo", "avaliador"),
+    ).filter(pk=pk).first()
+    somente_leitura = False
+    if registro is None:
+        registro = get_object_or_404(
+            RegistroAuditoria.objects.select_related("modelo", "avaliador").filter(
+                modelo__in=_modelos_como_auditado(request.user)
+            ),
+            pk=pk,
+        )
+        somente_leitura = True
+    if somente_leitura and request.method == "POST":
+        return HttpResponseForbidden("Acesso somente leitura.")
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
         if action == "add_question_comment":
@@ -2593,7 +2645,14 @@ def registro_detail(request, pk):
         "ocorrencias_por_pergunta": ocorrencias_por_pergunta_ctx,
         "is_auditoria_admin": _auditoria_is_admin(request.user),
         "ocorrencias_disponiveis": _ocorrencias_abertas_disponiveis(registro),
-        "can_delete_registro": _has_nav_view_access(request.user, "auditoria:registro_delete"),
+        "can_delete_registro": (not somente_leitura) and _has_nav_view_access(request.user, "auditoria:registro_delete"),
+        "somente_leitura": somente_leitura,
+        "auditores_texto": ", ".join(c.nome_completo for c in registro.auditores.all())
+        or (
+            (registro.avaliador.get_full_name() or registro.avaliador.get_username())
+            if registro.avaliador_id
+            else "—"
+        ),
         "amostras_dados": amostras_dados,
         "perguntas_amostrais": perguntas_amostrais,
     }
@@ -3105,13 +3164,32 @@ def registros_por_modelo(request, modelo_id):
     if is_read_only:
         modelo = get_object_or_404(ModeloAuditoria.objects.all(), pk=modelo_id)
     else:
-        modelo = get_object_or_404(
-            _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
-            pk=modelo_id,
-        )
+        modelo = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()).filter(pk=modelo_id).first()
+        if modelo is None:
+            modelo = _modelos_como_auditado(request.user).filter(pk=modelo_id).first()
+            if modelo is None:
+                raise Http404("Modelo não encontrado.")
+            # Auditado: acesso recorrente somente leitura
+            is_read_only = True
+            share_data = {
+                "modelo_id": modelo.id,
+                "inicio": (request.GET.get("inicio") or "").strip(),
+                "fim": (request.GET.get("fim") or "").strip(),
+                "topico": (request.GET.get("topico") or "").strip(),
+            }
 
     if request.method == "POST" and is_read_only:
         return HttpResponseForbidden("Este link é somente leitura.")
+
+    if request.method == "POST" and (request.POST.get("action") or "").strip() == "update_auditados":
+        if not _auditoria_can_update_modelo(request.user, modelo):
+            return HttpResponseForbidden("Você não tem permissão para alterar os auditados deste modelo.")
+        from rh.models import Colaborador
+
+        ids = _ids_colaboradores_post(request, "auditados")
+        modelo.auditados.set(Colaborador.objects.filter(pk__in=ids, is_active=True))
+        messages.success(request, "Auditados atualizados com sucesso.")
+        return redirect("auditoria:registros_por_modelo", modelo_id=modelo.id)
 
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "update_responsaveis":
         if not _auditoria_can_update_modelo(request.user, modelo):
@@ -3995,6 +4073,7 @@ def registros_por_modelo(request, modelo_id):
     }
     if not is_read_only and _auditoria_can_update_modelo(request.user, modelo):
         context["can_edit_responsaveis"] = True
+        context["auditados_info"] = [{"id": c.id, "nome": _colaborador_nome(c)} for c in modelo.auditados.all()]
         context["usuarios_responsaveis"] = get_user_model().objects.filter(is_active=True).order_by("first_name", "username")
         context["responsaveis_ids"] = set(modelo.responsaveis.values_list("pk", flat=True))
     return render(request, "auditoria/registros_por_modelo.html", context)

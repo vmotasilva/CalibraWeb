@@ -47,6 +47,14 @@
                                 <button type="button" class="btn btn-link btn-sm p-0 ms-2 no-print" data-bs-toggle="modal" data-bs-target="#modal-responsaveis"><i class="bi bi-pencil"></i> Editar</button>
                             </p>
                             {% endif %}
+                            {% if modelo.auditados.all or can_edit_responsaveis %}
+                            <p class="mb-2"><strong>Auditados:</strong>
+                                <span>{% for c in modelo.auditados.all %}{{ c.nome_completo }}{% if not forloop.last %}, {% endif %}{% empty %}<span class="text-muted">Nenhum</span>{% endfor %}</span>
+                                {% if can_edit_responsaveis and not is_read_only %}
+                                <button type="button" class="btn btn-link btn-sm p-0 ms-2 no-print" data-bs-toggle="modal" data-bs-target="#modal-auditados"><i class="bi bi-pencil"></i> Editar</button>
+                                {% endif %}
+                            </p>
+                            {% endif %}
                         </div>
                         <div class="col-md-6 text-start text-md-end mt-2 mt-md-0">
                             <!-- Ações Desktop (>= 768px) -->
@@ -669,6 +677,32 @@
                     </div>
                     {% endif %}
 
+                    {% if can_edit_responsaveis and not is_read_only %}
+                    <div class="modal fade" id="modal-auditados" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="update_auditados">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Auditados (líderes)</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="small text-muted">Líderes relacionados aqui passam a ter acesso recorrente, somente leitura, aos relatórios e ao modo apresentação deste modelo.</p>
+                                        {% include "auditoria/_responsaveis_picker.html" with prefix="aud2" field="auditados" placeholder="Digite para buscar o colaborador..." %}
+                                        {{ auditados_info|json_script:"auditados-info" }}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Salvar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
                     {% if not is_read_only %}
                     <div class="modal fade" id="modal-compartilhar-relatorio" tabindex="-1" aria-labelledby="modal-compartilhar-relatorio-label" aria-hidden="true">
                         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -1245,6 +1279,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const detalheEl = document.getElementById('modalDetalheOcorrencia');
     const detalheModal = detalheEl ? bootstrap.Modal.getOrCreateInstance(detalheEl) : null;
     const pickerDet = window.criarSeletorResponsaveis('det');
+    const pickerAud2 = window.criarSeletorResponsaveis('aud2');
+    (function() {
+        const dados = document.getElementById('auditados-info');
+        if (pickerAud2 && dados) { try { pickerAud2.set(JSON.parse(dados.textContent || '[]')); } catch (e) {} }
+    })();
     const formEditar = document.getElementById('det-form-editar');
     const formResolver = document.getElementById('det-form-resolver');
     const formReabrir = document.getElementById('det-form-reabrir');

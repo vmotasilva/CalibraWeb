@@ -265,6 +265,7 @@
 {% endblock %}
 
 {% block content %}
+{% if somente_leitura %}<style>.comment-open-btn{display:none !important}.oc-item{cursor:default !important}</style>{% endif %}
 <div class="container mt-4">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
@@ -279,12 +280,12 @@
         
         <!-- Ações Desktop (visível apenas em telas >= 768px) -->
         <div class="d-none d-md-flex align-items-center gap-2 audit-detail-actions-desktop">
-            <a href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}" class="btn btn-primary">
+            {% if not somente_leitura %}<a href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}" class="btn btn-primary">
                 <i class="bi bi-plus-circle me-1"></i> Novo Ciclo
-            </a>
-            <a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn {% if registro.status == 'CONCLUIDO' %}btn-outline-primary{% else %}btn-warning{% endif %}">
+            </a>{% endif %}
+            {% if not somente_leitura %}<a href="{% url 'auditoria:registro_edit' registro.pk %}" class="btn {% if registro.status == 'CONCLUIDO' %}btn-outline-primary{% else %}btn-warning{% endif %}">
                 <i class="bi bi-pencil me-1"></i> {% if registro.status == 'CONCLUIDO' %}Editar Ciclo{% else %}Continuar{% endif %}
-            </a>
+            </a>{% endif %}
             <a href="{% url 'auditoria:registro_exportar_pdf' registro.pk %}" class="btn btn-danger">
                 <i class="bi bi-file-earmark-pdf me-1"></i> Exportar PDF
             </a>
@@ -314,14 +315,14 @@
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow w-100 py-2" aria-labelledby="dropdownAcoesMobile">
                     <li>
-                        <a class="dropdown-item py-2" href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}">
+                        {% if not somente_leitura %}<a class="dropdown-item py-2" href="{% url 'auditoria:registro_create_modelo' registro.modelo.id %}">
                             <i class="bi bi-plus-circle text-primary me-2"></i> Novo Ciclo
-                        </a>
+                        </a>{% endif %}
                     </li>
                     <li>
-                        <a class="dropdown-item py-2" href="{% url 'auditoria:registro_edit' registro.pk %}">
+                        {% if not somente_leitura %}<a class="dropdown-item py-2" href="{% url 'auditoria:registro_edit' registro.pk %}">
                             <i class="bi bi-pencil text-warning me-2"></i> {% if registro.status == 'CONCLUIDO' %}Editar Ciclo{% else %}Continuar Preenchimento{% endif %}
-                        </a>
+                        </a>{% endif %}
                     </li>
                     <li>
                         <a class="dropdown-item py-2" href="{% url 'auditoria:registro_exportar_pdf' registro.pk %}">
@@ -359,6 +360,7 @@
                 </div>
                 <div class="col-12 col-md-4">
                     <p class="mb-1"><strong>Avaliado:</strong> {{ registro.alvo|default:registro.nome }}</p>
+                    <p class="mb-1"><strong>Auditor(es):</strong> {{ auditores_texto }}</p>
                 </div>
                 <div class="col-12 col-md-4">
                     <p class="mb-1"><strong>Período:</strong> 
@@ -1527,9 +1529,11 @@ document.addEventListener('DOMContentLoaded', function() {
             itemModal.show();
         }
 
+        {% if not somente_leitura %}
         document.querySelectorAll('.oc-item').forEach(function(li) {
             li.addEventListener('click', function() { abrirItem(li.getAttribute('data-oc-id')); });
         });
+        {% endif %}
     }
 
     const subcatRaw = document.getElementById('auditoria-subcat-registro');

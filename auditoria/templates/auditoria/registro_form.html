@@ -136,6 +136,12 @@
                     {% endif %}
                 </div>
 
+                <div class="mb-4">
+                    <label class="form-label fw-bold">Auditor(es) deste ciclo <span class="text-muted">(quem está auditando)</span></label>
+                    <input type="hidden" name="auditores_enviado" value="1">
+                    {% include "auditoria/_responsaveis_picker.html" with prefix="aud" field="auditores" placeholder="Digite para buscar o colaborador que está auditando..." %}
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label fw-bold">Observações Gerais</label>
                     {{ form.observacoes }}
@@ -646,6 +652,8 @@
 {% endblock %}
 
 {% block extra_js %}
+{% include "auditoria/_responsaveis_picker_js.html" %}
+{{ auditores_info|json_script:"auditores-info" }}
 {% if edicao and respostas_atuais %}
 {{ respostas_atuais|json_script:"respostas-dados" }}
 {% endif %}
@@ -800,6 +808,13 @@
             const contentHtml = contentEl ? contentEl.innerHTML : '';
             new bootstrap.Popover(el, { html: true, content: contentHtml });
         });
+    })();
+
+    // Auditor(es) do ciclo
+    (function() {
+        const picker = window.criarSeletorResponsaveis('aud');
+        const dados = document.getElementById('auditores-info');
+        if (picker && dados) { try { picker.set(JSON.parse(dados.textContent || '[]')); } catch (e) {} }
     })();
 
     // Comentários e ocorrências por pergunta (+, contador e pop-up de listagem)

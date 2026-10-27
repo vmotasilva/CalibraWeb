@@ -69,6 +69,8 @@
 
         .card-oc { border: 1px solid #e2e8f0; border-left: 6px solid var(--alerta); border-radius: 12px; padding: 12px 18px; margin-bottom: 12px; background: #fff; }
         .card-oc.vencida { border-left-color: var(--critico); }
+        .card-oc.comentario { border-left-color: #94a3b8; }
+        .card-oc.resolvida { border-left-color: var(--ok); }
         .card-oc .acao { background: #eff6ff; border-radius: 8px; padding: 6px 10px; font-size: .95rem; }
 
         .nav-hint { position: fixed; bottom: 14px; right: 18px; z-index: 15; display: flex; gap: 8px; }
@@ -115,16 +117,17 @@
     <section class="slide slide-capa">
         <div>
             <div class="d-flex justify-content-between align-items-center mb-4">
-                <span class="badge bg-primary px-3 py-2 fs-6 rounded-pill">Relatório de Auditoria</span>
+                <span class="badge bg-primary px-3 py-2 fs-6 rounded-pill">Relatório do último ciclo fechado</span>
                 <span class="font-monospace text-white-50">{{ periodo_txt|default:"—" }}</span>
             </div>
             <h1 style="font-weight: 800; font-size: 3.2rem; letter-spacing: -1px;">{{ modelo.nome }}</h1>
-            {% if modelo.objeto_auditoria %}<p class="fs-4 text-white-50 mb-0">{{ modelo.objeto_auditoria|truncatechars:220 }}</p>{% endif %}
+            {% if base %}<p class="fs-4 text-white mb-1">Ciclo: <strong>{{ base.nome }}</strong></p>{% endif %}
+            {% if modelo.objeto_auditoria %}<p class="fs-5 text-white-50 mb-0">{{ modelo.objeto_auditoria|truncatechars:200 }}</p>{% endif %}
         </div>
         <div class="row g-4">
-            <div class="col-4"><div class="p-3 rounded-4" style="background: rgba(255,255,255,.1);"><small class="text-white-50 text-uppercase fw-bold d-block mb-1">Periodicidade</small><h5 class="fw-bold mb-0">{{ modelo.get_periodicidade_display }}</h5></div></div>
-            <div class="col-4"><div class="p-3 rounded-4" style="background: rgba(255,255,255,.1);"><small class="text-white-50 text-uppercase fw-bold d-block mb-1">Ciclos analisados</small><h5 class="fw-bold mb-0">{{ ciclos_analisados }} de {{ total_ciclos_periodo }}</h5></div></div>
-            <div class="col-4"><div class="p-3 rounded-4" style="background: rgba(255,255,255,.1);"><small class="text-white-50 text-uppercase fw-bold d-block mb-1">Responsáveis</small><h6 class="fw-bold mb-0">{{ responsaveis|join:", "|default:"—"|truncatechars:90 }}</h6></div></div>
+            <div class="col-4"><div class="p-3 rounded-4" style="background: rgba(255,255,255,.1);"><small class="text-white-50 text-uppercase fw-bold d-block mb-1">Auditor(es) do ciclo</small><h6 class="fw-bold mb-0">{{ auditores|join:", "|default:"—"|truncatechars:80 }}</h6></div></div>
+            <div class="col-4"><div class="p-3 rounded-4" style="background: rgba(255,255,255,.1);"><small class="text-white-50 text-uppercase fw-bold d-block mb-1">Auditados</small><h6 class="fw-bold mb-0">{{ auditados|join:", "|default:"—"|truncatechars:80 }}</h6></div></div>
+            <div class="col-4"><div class="p-3 rounded-4" style="background: rgba(255,255,255,.1);"><small class="text-white-50 text-uppercase fw-bold d-block mb-1">Periodicidade</small><h6 class="fw-bold mb-0">{{ modelo.get_periodicidade_display }}</h6></div></div>
         </div>
         <div class="slide-footer"><span>Calibra Auditoria & Gestão da Qualidade</span><span>Slide {{ sl.numero }}</span></div>
     </section>
@@ -140,16 +143,16 @@
                     <div class="small text-muted">{{ total_c }} conformes · {{ total_nc }} não conformes</div>
                 </div></div>
                 <div class="col-4"><div class="kpi d-flex flex-column justify-content-between">
-                    <div class="rotulo">Variação vs. ciclo anterior</div>
+                    <div class="rotulo">Variação vs. ciclo fechado anterior</div>
                     <div class="valor {% if variacao is None %}c-sem{% elif variacao >= 0 %}c-ok{% else %}c-critico{% endif %}">
                         {% if variacao is None %}—{% else %}<i class="bi {% if variacao >= 0 %}bi-arrow-up-right{% else %}bi-arrow-down-right{% endif %}"></i> {{ variacao|floatformat:1 }} p.p.{% endif %}
                     </div>
-                    <div class="small text-muted">Último ciclo: {{ ultimo_ciclo.periodo|default:'—' }}</div>
+                    <div class="small text-muted">Ciclo: {{ ultimo_ciclo.periodo|default:'—' }}</div>
                 </div></div>
                 <div class="col-4"><div class="kpi d-flex flex-column justify-content-between">
-                    <div class="rotulo">Ocorrências em aberto</div>
-                    <div class="valor {% if total_ocorrencias_abertas %}c-alerta{% else %}c-ok{% endif %}">{{ total_ocorrencias_abertas }}</div>
-                    <div class="small {% if ocorrencias_vencidas %}c-critico fw-semibold{% else %}text-muted{% endif %}">{{ ocorrencias_vencidas }} com prazo vencido</div>
+                    <div class="rotulo">Ocorrências do ciclo</div>
+                    <div class="valor {% if total_ocorrencias_ciclo %}c-alerta{% else %}c-ok{% endif %}">{{ total_ocorrencias_ciclo }}</div>
+                    <div class="small text-muted">{{ total_comentarios_ciclo }} comentário(s) · {{ total_ocorrencias_abertas }} em aberto no modelo{% if ocorrencias_vencidas %} · <span class="c-critico fw-semibold">{{ ocorrencias_vencidas }} vencida(s)</span>{% endif %}</div>
                 </div></div>
             </div>
             <div class="mt-4 p-3 rounded-4 bg-light border">
@@ -212,9 +215,43 @@
         <div class="slide-footer"><span>{{ modelo.nome }}</span><span>Slide {{ sl.numero }}</span></div>
     </section>
 
+    {% elif sl.kind == "vazio" %}
+    <section class="slide">
+        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-hourglass-split text-warning"></i> Sem ciclo fechado</h2></div>
+        <div class="slide-content"><div class="m-auto text-center"><i class="bi bi-inbox" style="font-size: 5rem; color: #94a3b8;"></i><h3 class="mt-3">Ainda não há ciclo finalizado neste modelo</h3><p class="text-muted">A apresentação é montada a partir do último ciclo fechado.</p></div></div>
+        <div class="slide-footer"><span>{{ modelo.nome }}</span><span>Slide {{ sl.numero }}</span></div>
+    </section>
+
+    {% elif sl.kind == "itens" %}
+    <section class="slide">
+        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-chat-square-text-fill text-primary"></i> Comentários e ocorrências do ciclo{% if sl.partes > 1 %} ({{ sl.parte }}/{{ sl.partes }}){% endif %}</h2><span class="text-muted small">{{ total_ocorrencias_ciclo }} ocorrência(s) · {{ total_comentarios_ciclo }} comentário(s)</span></div>
+        <div class="slide-content">
+            {% for o in sl.itens %}
+            <div class="card-oc {% if not o.requer %}comentario{% elif not o.aberta %}resolvida{% endif %}">
+                <div class="d-flex justify-content-between gap-3">
+                    <div class="fw-semibold">{{ o.pergunta|truncatechars:90 }}</div>
+                    <div class="text-nowrap small">
+                        {% if o.requer and o.aberta %}<span class="badge bg-warning text-dark">Ocorrência em aberto · {{ o.dias }}d</span>
+                        {% elif o.requer %}<span class="badge bg-success">Ocorrência resolvida</span>
+                        {% else %}<span class="badge bg-light text-dark border">Comentário</span>{% endif %}
+                        {% if o.recorrente %}<span class="badge bg-info-subtle text-info-emphasis border">Recorrente</span>{% endif %}
+                    </div>
+                </div>
+                <div class="small mb-1">{{ o.texto|truncatechars:230 }}</div>
+                {% if o.acao %}<div class="acao"><strong>Ação:</strong> {{ o.acao|truncatechars:200 }}</div>{% endif %}
+                {% if o.requer and not o.aberta and o.resolucao %}<div class="small c-ok"><i class="bi bi-check2-circle"></i> {{ o.resolucao|truncatechars:160 }}</div>{% endif %}
+                {% if o.responsaveis or o.prazo %}<div class="small mt-1 text-muted">{% if o.responsaveis %}<i class="bi bi-people"></i> {{ o.responsaveis|join:", " }}{% endif %}{% if o.prazo %} · prazo {{ o.prazo }}{% endif %}</div>{% endif %}
+            </div>
+            {% empty %}
+            <div class="m-auto text-center"><i class="bi bi-chat-square c-sem" style="font-size: 5rem;"></i><h3 class="mt-3">Nenhum comentário ou ocorrência neste ciclo</h3></div>
+            {% endfor %}
+        </div>
+        <div class="slide-footer"><span>{{ modelo.nome }}</span><span>Slide {{ sl.numero }}</span></div>
+    </section>
+
     {% elif sl.kind == "ocorrencias" %}
     <section class="slide">
-        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-list-check text-warning"></i> Plano de ação — ocorrências em aberto{% if sl.partes > 1 %} ({{ sl.parte }}/{{ sl.partes }}){% endif %}</h2><span class="badge bg-warning text-dark fs-6">{{ total_ocorrencias_abertas }}</span></div>
+        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-list-check text-warning"></i> Plano de ação — outras ocorrências em aberto{% if sl.partes > 1 %} ({{ sl.parte }}/{{ sl.partes }}){% endif %}</h2><span class="badge bg-warning text-dark fs-6">{{ total_ocorrencias_abertas }}</span></div>
         <div class="slide-content">
             {% for o in sl.itens %}
             <div class="card-oc {% if o.vencida %}vencida{% endif %}">

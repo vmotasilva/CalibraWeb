@@ -6,6 +6,7 @@ window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(pr
     const lista = document.getElementById(prefix + '-resp-lista');
     const hidden = document.getElementById(prefix + '-resp-hidden');
     if (!chips || !busca || !lista || !hidden) return null;
+    const campo = (document.getElementById(prefix + '-resp-picker') || {dataset: {}}).dataset.field || 'responsaveis';
     let selecionados = [];
     let timer = null;
     let seq = 0;
@@ -16,9 +17,9 @@ window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(pr
         chips.innerHTML = selecionados.map(function(u) {
             return '<span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle d-inline-flex align-items-center gap-1">' +
                 esc(u.nome) + '<button type="button" class="btn-close ms-1" style="font-size:.6rem" aria-label="Remover" data-id="' + u.id + '"></button></span>';
-        }).join('') || '<span class="small text-muted">Nenhum responsável selecionado.</span>';
+        }).join('') || '<span class="small text-muted">Nenhum colaborador selecionado.</span>';
         hidden.innerHTML = selecionados.map(function(u) {
-            return '<input type="hidden" name="responsaveis" value="' + u.id + '">';
+            return '<input type="hidden" name="' + campo + '" value="' + u.id + '">';
         }).join('');
     }
 

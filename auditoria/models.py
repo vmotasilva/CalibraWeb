@@ -139,6 +139,13 @@ class ModeloAuditoria(models.Model):
         verbose_name="Responsáveis pela Auditoria",
         help_text="Usuários autorizados a preencher/atualizar auditorias deste modelo.",
     )
+    auditados = models.ManyToManyField(
+        "rh.Colaborador",
+        blank=True,
+        related_name="modelos_auditoria_auditados",
+        verbose_name="Auditados",
+        help_text="Líderes auditados com acesso recorrente (somente leitura) aos relatórios deste modelo.",
+    )
 
     preenchimento_grid = models.BooleanField(
         default=False,
@@ -434,6 +441,12 @@ class RegistroAuditoria(models.Model):
         null=True,
         blank=True,
         related_name="auditorias_realizadas",
+    )
+    auditores = models.ManyToManyField(
+        "rh.Colaborador",
+        blank=True,
+        related_name="ciclos_auditoria_auditor",
+        verbose_name="Auditor(es) do ciclo",
     )
     item_os = models.CharField(
         max_length=120,

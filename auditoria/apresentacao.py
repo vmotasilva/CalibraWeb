@@ -13,7 +13,6 @@ from django.views.decorators.cache import never_cache
 
 from .models import (
     ComentarioRespostaAuditoria,
-    JustificativaAuditoria,
     ModeloAuditoria,
     RegistroAuditoria,
     RelatorioCompartilhadoAuditoria,
@@ -59,21 +58,32 @@ def _faixa(pct):
     return "critico"
 
 
-def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_ciclos: int = 12) -> dict:
-    from .views import _calcular_semanas_consecutivas_nc
+ITENS_POR_SLIDE = 4
 
-    registros_qs = RegistroAuditoria.objects.filter(modelo=modelo)
+
+def _fmt_pct(pct, casas=0):
+    if pct is None:
+        return "—"
+    return (f"{pct:.{casas}f}%").replace(".", ",")
+
+
+def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_ciclos: int = 12) -> dict:
+    """Compõe a apresentação a partir do último ciclo fechado (CONCLUIDO), com seus comentários e ocorrências."""
+    from .views import _build_ocorrencias_por_pergunta, _calcular_semanas_consecutivas_nc
+
+    fechados_qs = RegistroAuditoria.objects.filter(modelo=modelo, status="CONCLUIDO")
     if inicio:
-        registros_qs = registros_qs.filter(periodo_inicio__gte=inicio)
+        fechados_qs = fechados_qs.filter(periodo_inicio__gte=inicio)
     if fim:
-        registros_qs = registros_qs.filter(periodo_inicio__lte=fim)
-    total_ciclos_periodo = registros_qs.count()
-    registros = list(registros_qs.order_by("-periodo_inicio", "-id")[:max_ciclos])
-    registros.reverse()
+        fechados_qs = fechados_qs.filter(periodo_inicio__lte=fim)
+    total_fechados = fechados_qs.count()
+    historico = list(fechados_qs.order_by("-periodo_inicio", "-id")[:max_ciclos])
+    base = historico[0] if historico else None
+    historico.reverse()  # cronológico
 
     respostas = (
         RespostaAuditoria.objects.filter(
-            registro__in=registros,
+            registro__in=historico,
             pergunta__ativo=True,
             pergunta__tipo_resposta__in=_TIPOS_CONFORMIDADE,
         )
@@ -81,7 +91,7 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
         .select_related("pergunta", "pergunta__topico")
     )
 
-    por_registro: dict[int, dict] = {r.id: {"c": 0, "nc": 0} for r in registros}
+    por_registro: dict[int, dict] = {r.id: {"c": 0, "nc": 0} for r in historico}
     por_topico: "OrderedDict[str, dict]" = OrderedDict()
     por_pergunta: dict[int, dict] = {}
     for resp in respostas:
@@ -89,15 +99,16 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
         if classe not in ("c", "nc"):
             continue
         por_registro[resp.registro_id][classe] += 1
-        nome_topico = resp.pergunta.topico.get_full_name() if resp.pergunta.topico_id else "Geral"
-        por_topico.setdefault(nome_topico, {"c": 0, "nc": 0})[classe] += 1
-        info = por_pergunta.setdefault(
-            resp.pergunta_id, {"pergunta": resp.pergunta.pergunta, "topico": nome_topico, "c": 0, "nc": 0}
-        )
-        info[classe] += 1
+        if base is not None and resp.registro_id == base.id:
+            nome_topico = resp.pergunta.topico.get_full_name() if resp.pergunta.topico_id else "Geral"
+            por_topico.setdefault(nome_topico, {"c": 0, "nc": 0})[classe] += 1
+            info = por_pergunta.setdefault(
+                resp.pergunta_id, {"pergunta": resp.pergunta.pergunta, "topico": nome_topico, "c": 0, "nc": 0}
+            )
+            info[classe] += 1
 
     ciclos = []
-    for r in registros:
+    for r in historico:
         c, nc = por_registro[r.id]["c"], por_registro[r.id]["nc"]
         pct = _pct(c, nc)
         periodo = f"{r.periodo_inicio:%d/%m}"
@@ -112,19 +123,21 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
                 "conformes": c,
                 "ncs": nc,
                 "pct": pct,
-                "pct_txt": f"{pct:.0f}%".replace(".", ",") if pct is not None else "—",
+                "pct_txt": _fmt_pct(pct),
                 "altura": max(pct, 4) if pct is not None else 4,
                 "faixa": _faixa(pct),
+                "atual": base is not None and r.id == base.id,
             }
         )
 
-    total_c = sum(v["c"] for v in por_registro.values())
-    total_nc = sum(v["nc"] for v in por_registro.values())
-    pct_geral = _pct(total_c, total_nc)
-    com_pct = [c for c in ciclos if c["pct"] is not None]
+    ciclo_base = ciclos[-1] if ciclos else None
+    pct_geral = ciclo_base["pct"] if ciclo_base else None
+    total_c = ciclo_base["conformes"] if ciclo_base else 0
+    total_nc = ciclo_base["ncs"] if ciclo_base else 0
     variacao = None
-    if len(com_pct) >= 2:
-        variacao = round(com_pct[-1]["pct"] - com_pct[-2]["pct"], 1)
+    anterior = next((c for c in reversed(ciclos[:-1]) if c["pct"] is not None), None)
+    if ciclo_base and ciclo_base["pct"] is not None and anterior:
+        variacao = round(ciclo_base["pct"] - anterior["pct"], 1)
 
     topicos = []
     for nome, v in por_topico.items():
@@ -135,7 +148,7 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
                 "conformes": v["c"],
                 "ncs": v["nc"],
                 "pct": pct,
-                "pct_txt": f"{pct:.0f}%".replace(".", ",") if pct is not None else "—",
+                "pct_txt": _fmt_pct(pct),
                 "largura": pct if pct is not None else 0,
                 "faixa": _faixa(pct),
             }
@@ -143,8 +156,7 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
     topicos.sort(key=lambda t: (t["pct"] is None, t["pct"] if t["pct"] is not None else 0))
 
     criticas = []
-    ultimo = registros[-1] if registros else None
-    semanas = _calcular_semanas_consecutivas_nc(ultimo, list(por_pergunta.keys())) if ultimo else {}
+    semanas = _calcular_semanas_consecutivas_nc(base, list(por_pergunta.keys())) if base else {}
     for pid, info in por_pergunta.items():
         if info["nc"] == 0:
             continue
@@ -160,6 +172,35 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
     criticas.sort(key=lambda x: (-x["semanas"], -x["ncs"], x["pergunta"]))
     criticas = criticas[:8]
 
+    # Comentários e ocorrências do ciclo base (próprios + associados)
+    itens_ciclo: list[dict] = []
+    ids_ciclo: set[int] = set()
+    if base is not None:
+        nomes_perguntas = {
+            str(p.id): p.pergunta for p in modelo.perguntas.filter(ativo=True).only("id", "pergunta")
+        }
+        for pid, itens in _build_ocorrencias_por_pergunta(base).items():
+            for it in itens:
+                ids_ciclo.add(it["id"])
+                itens_ciclo.append(
+                    {
+                        "pergunta": nomes_perguntas.get(pid, ""),
+                        "texto": it["texto"],
+                        "acao": (it.get("acao") or "").strip(),
+                        "requer": bool(it["requer_tratativa"]),
+                        "aberta": bool(it["em_aberto"]),
+                        "resolucao": (it.get("resolucao") or "").strip(),
+                        "prazo": it.get("prazo") or "",
+                        "responsaveis": [r["nome"] for r in it.get("responsaveis_info", [])],
+                        "recorrente": bool(it["associada"]),
+                        "dias": it["dias_aberta"],
+                    }
+                )
+    # ocorrências primeiro (em aberto, depois resolvidas), depois comentários simples
+    itens_ciclo.sort(key=lambda x: (0 if (x["requer"] and x["aberta"]) else 1 if x["requer"] else 2))
+    total_ocorrencias_ciclo = sum(1 for x in itens_ciclo if x["requer"])
+    total_comentarios_ciclo = len(itens_ciclo) - total_ocorrencias_ciclo
+
     hoje = timezone.localdate()
     ocorrencias_qs = (
         ComentarioRespostaAuditoria.objects.filter(
@@ -172,74 +213,86 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
         .prefetch_related("responsaveis")
         .order_by("prazo", "-criado_em", "-id")
     )
-    ocorrencias = []
-    for oc in ocorrencias_qs[:40]:
-        dias = max((hoje - timezone.localtime(oc.criado_em).date()).days, 0)
-        ocorrencias.append(
+    total_ocorrencias_abertas = ocorrencias_qs.count()
+    outras = []
+    vencidas = 0
+    for oc in ocorrencias_qs[:60]:
+        vencida = bool(oc.prazo and oc.prazo < hoje)
+        vencidas += 1 if vencida else 0
+        if oc.id in ids_ciclo:
+            continue
+        outras.append(
             {
                 "pergunta": oc.pergunta.pergunta,
                 "texto": (oc.texto or "").strip(),
                 "acao": (oc.acao or "").strip(),
                 "prazo": oc.prazo,
-                "vencida": bool(oc.prazo and oc.prazo < hoje),
-                "dias": dias,
+                "vencida": vencida,
+                "dias": max((hoje - timezone.localtime(oc.criado_em).date()).days, 0),
                 "responsaveis": [c.nome_completo for c in oc.responsaveis.all()],
             }
         )
-    total_ocorrencias_abertas = ocorrencias_qs.count()
-    vencidas = sum(1 for o in ocorrencias if o["vencida"])
 
-    justificativas = list(
-        JustificativaAuditoria.objects.filter(modelo=modelo).order_by("-criado_em")[:4]
-    )
-
-    periodo_txt = ""
-    if registros:
-        periodo_txt = f"{registros[0].periodo_inicio:%d/%m/%Y} a {(registros[-1].periodo_fim or registros[-1].periodo_inicio):%d/%m/%Y}"
-
+    if base is not None:
+        auditores = [c.nome_completo for c in base.auditores.all()]
+        if not auditores and base.avaliador_id:
+            auditores = [base.avaliador.get_full_name() or base.avaliador.get_username()]
+        periodo_base = f"{base.periodo_inicio:%d/%m/%Y} a {(base.periodo_fim or base.periodo_inicio):%d/%m/%Y}"
+    else:
+        auditores = []
+        periodo_base = ""
+    auditados = [c.nome_completo for c in modelo.auditados.all()]
     responsaveis = [u.get_full_name() or u.get_username() for u in modelo.responsaveis.all()]
 
     slides: list[dict] = [{"kind": "capa", "titulo": "Capa"}]
-    slides.append({"kind": "resumo", "titulo": "Resumo executivo"})
-    if ciclos:
-        slides.append({"kind": "evolucao", "titulo": "Evolução por ciclo"})
-    for i, lote in enumerate(_chunks(topicos, TOPICOS_POR_SLIDE), start=1):
-        slides.append({"kind": "topicos", "titulo": "Conformidade por tópico", "itens": lote, "parte": i})
-    slides.append({"kind": "criticas", "titulo": "Pontos de atenção"})
-    if ocorrencias:
-        lotes = list(_chunks(ocorrencias, OCORRENCIAS_POR_SLIDE))
-        for i, lote in enumerate(lotes, start=1):
-            slides.append(
-                {"kind": "ocorrencias", "titulo": "Plano de ação", "itens": lote, "parte": i, "partes": len(lotes)}
-            )
+    if base is None:
+        slides.append({"kind": "vazio", "titulo": "Sem ciclo fechado"})
     else:
-        slides.append({"kind": "ocorrencias", "titulo": "Plano de ação", "itens": [], "parte": 1, "partes": 1})
-    if justificativas:
-        slides.append({"kind": "justificativas", "titulo": "Justificativas"})
+        slides.append({"kind": "resumo", "titulo": "Resumo executivo"})
+        if len(ciclos) > 1:
+            slides.append({"kind": "evolucao", "titulo": "Evolução por ciclo"})
+        for i, lote in enumerate(_chunks(topicos, TOPICOS_POR_SLIDE), start=1):
+            slides.append({"kind": "topicos", "titulo": "Conformidade por tópico", "itens": lote, "parte": i})
+        slides.append({"kind": "criticas", "titulo": "Pontos de atenção"})
+        lotes_itens = list(_chunks(itens_ciclo, ITENS_POR_SLIDE)) or [[]]
+        for i, lote in enumerate(lotes_itens, start=1):
+            slides.append(
+                {"kind": "itens", "titulo": "Comentários e ocorrências do ciclo", "itens": lote, "parte": i, "partes": len(lotes_itens)}
+            )
+        lotes_outras = list(_chunks(outras, OCORRENCIAS_POR_SLIDE))
+        for i, lote in enumerate(lotes_outras, start=1):
+            slides.append(
+                {"kind": "ocorrencias", "titulo": "Plano de ação", "itens": lote, "parte": i, "partes": len(lotes_outras)}
+            )
     slides.append({"kind": "encerramento", "titulo": "Encerramento"})
     for n, sl in enumerate(slides, start=1):
         sl["numero"] = n
 
     return {
         "modelo": modelo,
+        "base": base,
         "slides": slides,
         "total_slides": len(slides),
         "ciclos": ciclos,
-        "ultimo_ciclo": ciclos[-1] if ciclos else None,
-        "total_ciclos_periodo": total_ciclos_periodo,
+        "ultimo_ciclo": ciclo_base,
+        "total_fechados": total_fechados,
         "ciclos_analisados": len(ciclos),
         "pct_geral": pct_geral,
-        "pct_geral_txt": f"{pct_geral:.1f}%".replace(".", ",") if pct_geral is not None else "—",
+        "pct_geral_txt": _fmt_pct(pct_geral, 1),
         "faixa_geral": _faixa(pct_geral),
         "variacao": variacao,
         "total_nc": total_nc,
         "total_c": total_c,
         "topicos": topicos,
         "criticas": criticas,
+        "itens_ciclo": itens_ciclo,
+        "total_ocorrencias_ciclo": total_ocorrencias_ciclo,
+        "total_comentarios_ciclo": total_comentarios_ciclo,
         "total_ocorrencias_abertas": total_ocorrencias_abertas,
         "ocorrencias_vencidas": vencidas,
-        "justificativas": justificativas,
-        "periodo_txt": periodo_txt,
+        "periodo_txt": periodo_base,
+        "auditores": auditores,
+        "auditados": auditados,
         "responsaveis": responsaveis,
         "gerado_em": timezone.localtime(),
     }
@@ -251,6 +304,7 @@ def modelo_apresentacao(request, modelo_id):
     """Apresentação em slides do relatório do modelo. Disponível a quem tem acesso de visualização."""
     from .views import (
         _filter_modelos_para_usuario,
+        _modelos_como_auditado,
         _read_registro_report_share_token,
     )
 
@@ -279,10 +333,9 @@ def modelo_apresentacao(request, modelo_id):
             fim_raw = data.get("fim") or ""
         modelo = get_object_or_404(ModeloAuditoria.objects.all(), pk=modelo_id)
     else:
-        modelo = get_object_or_404(
-            _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
-            pk=modelo_id,
-        )
+        modelo = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()).filter(pk=modelo_id).first()
+        if modelo is None:
+            modelo = get_object_or_404(_modelos_como_auditado(request.user), pk=modelo_id)
 
     inicio = parse_date(inicio_raw) if inicio_raw else None
     fim = parse_date(fim_raw) if fim_raw else None
