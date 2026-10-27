@@ -2083,7 +2083,7 @@ class FinalizarCicloTests(OcorrenciasAcompanhamentoTests):
             "periodo_inicio": self.reg2.periodo_inicio.strftime("%d/%m/%Y"),
             "periodo_fim": self.reg2.periodo_fim.strftime("%d/%m/%Y"),
             "action": action,
-            f"resposta_{self.pergunta.id}_QUARTA": "Não",
+            f"resposta_{self.pergunta.id}": "Não",
             "comentarios_payload": json.dumps(payload or {}),
         }
         return self.client.post(reverse("auditoria:registro_edit", args=[self.reg2.pk]), dados)
@@ -2095,9 +2095,10 @@ class FinalizarCicloTests(OcorrenciasAcompanhamentoTests):
         self.assertTrue(data["pendentes"])  # semanal: faltam os demais dias
 
     def test_finalizar_bloqueado_sem_comentario_em_nc(self):
-        self._post_edit("submit")
+        resp = self._post_edit("submit")
         self.reg2.refresh_from_db()
         self.assertEqual(self.reg2.status, "RASCUNHO")
+        self.assertIn("não conformidade", " ".join(str(m) for m in resp.context["messages"]))
 
     def test_comentario_com_requer_tratativa_via_payload_vira_ocorrencia(self):
         self._post_edit(
@@ -2122,3 +2123,33 @@ class FinalizarCicloTests(OcorrenciasAcompanhamentoTests):
         self.assertEqual(ComentarioRespostaAuditoria.objects.filter(texto=self.ocorrencia.texto).count(), 1)
         data = self.client.get(reverse("auditoria:registro_pre_finalizacao", args=[self.reg2.pk])).json()
         self.assertEqual(data["nc_sem_comentario"], [])
+
+
+class CriarCicloFinalizarTests(OcorrenciasAcompanhamentoTests):
+    def setUp(self):
+        super().setUp()
+        self.modelo.responsaveis.add(self.user)
+
+    def _post_create(self, action, payload=None):
+        dados = {
+            "nome": "Novo ciclo",
+            "alvo": "Linha 9",
+            "periodo_inicio": "02/11/2026",
+            "periodo_fim": "08/11/2026",
+            "action": action,
+            f"resposta_{self.pergunta.id}": "Não",
+            "comentarios_payload": json.dumps(payload or {}),
+        }
+        return self.client.post(reverse("auditoria:registro_create_modelo", args=[self.modelo.pk]), dados)
+
+    def test_finalizar_na_criacao_sem_comentario_em_nc_fica_rascunho(self):
+        resp = self._post_create("submit")
+        reg = RegistroAuditoria.objects.get(modelo=self.modelo, alvo="Linha 9")
+        self.assertEqual(reg.status, "RASCUNHO")
+        self.assertRedirects(resp, reverse("auditoria:registro_edit", args=[reg.pk]), fetch_redirect_response=False)
+
+    def test_finalizar_na_criacao_com_ocorrencia_conclui(self):
+        resp = self._post_create("submit", {str(self.pergunta.id): [{"t": "Sujeira no piso", "r": True}]})
+        reg = RegistroAuditoria.objects.get(modelo=self.modelo, alvo="Linha 9")
+        self.assertEqual(reg.status, "CONCLUIDO")
+        self.assertRedirects(resp, reverse("auditoria:registro_detail", args=[reg.pk]), fetch_redirect_response=False)

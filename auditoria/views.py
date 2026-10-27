@@ -2032,6 +2032,22 @@ def registro_create(request, modelo_id=None):
                     raw_payload=request.POST.get("comentarios_payload", ""),
                     autor=request.user,
                 )
+                if not is_draft:
+                    sem_comentario = _checar_registro_para_finalizar(registro)["nc_sem_comentario"]
+                    if sem_comentario:
+                        # Não finaliza: mantém como rascunho e leva para a edição para corrigir.
+                        registro.status = "RASCUNHO"
+                        registro.save(update_fields=["status"])
+                        for item in sem_comentario:
+                            messages.error(
+                                request,
+                                f"A pergunta '{item['pergunta']}' tem não conformidade e precisa de um comentário ou uma ocorrência.",
+                            )
+                        messages.warning(
+                            request,
+                            "Ciclo salvo como rascunho. Adicione comentário ou ocorrência nas não conformidades e finalize novamente.",
+                        )
+                        return redirect("auditoria:registro_edit", pk=registro.pk)
                 messages.success(request, "Formulário de auditoria preenchido com sucesso!")
                 return redirect("auditoria:registro_detail", pk=registro.pk)
         comentarios_atuais = {
