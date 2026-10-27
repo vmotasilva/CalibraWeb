@@ -719,6 +719,22 @@ class ComentarioRespostaAuditoria(models.Model):
         related_name="ocorrencias_vinculadas",
         verbose_name="Registros associados",
     )
+    responsaveis = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="auditoria_ocorrencias_responsavel",
+        verbose_name="Responsáveis pela tratativa",
+    )
+    prazo = models.DateField(null=True, blank=True, db_index=True, verbose_name="Prazo de resolução")
+    unificada_em = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="unificadas",
+        verbose_name="Unificada em",
+        help_text="Quando preenchido, esta ocorrência foi unificada à ocorrência principal indicada.",
+    )
 
     class Meta:
         verbose_name = "Comentário/Ocorrência (Auditoria)"

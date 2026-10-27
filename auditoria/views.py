@@ -275,7 +275,8 @@ def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
     """Ocorrências do registro (criadas nele ou associadas a ele), por pergunta."""
     ocorrencias = (
         ComentarioRespostaAuditoria.objects.filter(
-            models.Q(registro=registro) | models.Q(registros_vinculados=registro)
+            models.Q(registro=registro) | models.Q(registros_vinculados=registro),
+            unificada_em__isnull=True,
         )
         .select_related("autor", "registro")
         .distinct()
@@ -309,6 +310,7 @@ def _ocorrencias_abertas_disponiveis(registro: RegistroAuditoria) -> dict[str, l
             pergunta__modelo_id=registro.modelo_id,
             pergunta__ativo=True,
             requer_tratativa=True,
+            unificada_em__isnull=True,
             status=ComentarioRespostaAuditoria.STATUS_ABERTA,
         )
         .exclude(registro=registro)
@@ -935,9 +937,11 @@ def modulo_auditoria_view(request):
         ComentarioRespostaAuditoria.objects.filter(
             pergunta__modelo__in=modelos_qs,
             requer_tratativa=True,
+            unificada_em__isnull=True,
             status=ComentarioRespostaAuditoria.STATUS_ABERTA,
         )
         .select_related("pergunta", "pergunta__modelo", "registro", "autor")
+        .prefetch_related("responsaveis")
         .annotate(total_vinculos=Count("registros_vinculados", distinct=True))
         .order_by("criado_em", "id")
     )
@@ -947,6 +951,7 @@ def modulo_auditoria_view(request):
     for oc in ocorrencias_qs[:100]:
         oc.dias_aberta = max((hoje - timezone.localtime(oc.criado_em).date()).days, 0)
         oc.semanas_aberta = oc.dias_aberta // 7
+        oc.prazo_vencido = bool(oc.prazo and oc.prazo < hoje)
         ocorrencias_abertas.append(oc)
 
     context = {
@@ -980,6 +985,122 @@ def ocorrencia_resolver(request, pk):
     ocorrencia.resolvido_por = request.user
     ocorrencia.save(update_fields=["status", "resolucao", "resolvido_em", "resolvido_por", "atualizado_em"])
     messages.success(request, "Ocorrência marcada como resolvida.")
+    return redirect(next_url)
+
+
+@login_required
+@require_POST
+def ocorrencia_editar(request, pk):
+    """Edita texto, converte comentário em ocorrência e define responsáveis/prazo da tratativa."""
+    modelos_qs = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all())
+    oc = get_object_or_404(
+        ComentarioRespostaAuditoria.objects.select_related("pergunta__modelo", "autor"),
+        pk=pk,
+        pergunta__modelo__in=modelos_qs,
+    )
+    next_url = (request.POST.get("next") or "").strip()
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = f"{reverse('auditoria:registros_por_modelo', args=[oc.pergunta.modelo_id])}#tab-ocorrencias"
+
+    campos = []
+    texto = (request.POST.get("texto") or "").strip()
+    if texto and texto != (oc.texto or "").strip():
+        if not (_auditoria_is_admin(request.user) or oc.autor_id == request.user.id):
+            messages.error(request, "Apenas o autor ou um administrador pode editar o texto.")
+            return redirect(next_url)
+        if len(texto) > 8000:
+            messages.error(request, "Texto muito longo (máx. 8000 caracteres).")
+            return redirect(next_url)
+        oc.texto = texto
+        campos.append("texto")
+
+    converteu = False
+    if (request.POST.get("requer_tratativa") or "").strip() in ("1", "on", "true") and not oc.requer_tratativa:
+        oc.requer_tratativa = True
+        oc.status = ComentarioRespostaAuditoria.STATUS_ABERTA
+        oc.resolvido_em = None
+        oc.resolvido_por = None
+        campos += ["requer_tratativa", "status", "resolvido_em", "resolvido_por"]
+        converteu = True
+
+    if oc.requer_tratativa:
+        prazo_raw = (request.POST.get("prazo") or "").strip()
+        prazo = parse_date(prazo_raw) if prazo_raw else None
+        if prazo_raw and not prazo:
+            messages.error(request, "Prazo inválido.")
+            return redirect(next_url)
+        if prazo != oc.prazo:
+            oc.prazo = prazo
+            campos.append("prazo")
+
+    if campos:
+        oc.save(update_fields=campos + ["atualizado_em"])
+
+    if oc.requer_tratativa:
+        ids = [int(x) for x in request.POST.getlist("responsaveis") if str(x).isdigit()]
+        oc.responsaveis.set(get_user_model().objects.filter(pk__in=ids, is_active=True))
+
+    messages.success(
+        request,
+        "Comentário convertido em ocorrência e em aberto para acompanhamento."
+        if converteu
+        else "Alterações salvas.",
+    )
+    return redirect(next_url)
+
+
+@login_required
+@require_POST
+def ocorrencia_unificar(request, modelo_id):
+    """Unifica ocorrências em aberto (mesma pergunta) numa ocorrência principal, sem apagar as demais."""
+    modelo = get_object_or_404(
+        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
+        pk=modelo_id,
+    )
+    next_url = (request.POST.get("next") or "").strip()
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = f"{reverse('auditoria:registros_por_modelo', args=[modelo.id])}#tab-ocorrencias"
+
+    ids = sorted({int(x) for x in request.POST.getlist("ocorrencia_ids") if str(x).isdigit()})
+    principal_raw = (request.POST.get("principal_id") or "").strip()
+    if len(ids) < 2 or not principal_raw.isdigit() or int(principal_raw) not in ids:
+        messages.error(request, "Selecione pelo menos duas ocorrências e indique a principal.")
+        return redirect(next_url)
+
+    with transaction.atomic():
+        ocorrencias = list(
+            ComentarioRespostaAuditoria.objects.select_for_update()
+            .filter(
+                id__in=ids,
+                pergunta__modelo=modelo,
+                requer_tratativa=True,
+                unificada_em__isnull=True,
+                status=ComentarioRespostaAuditoria.STATUS_ABERTA,
+            )
+            .select_related("registro")
+        )
+        if len(ocorrencias) != len(ids):
+            messages.error(request, "Só é possível unificar ocorrências em aberto deste modelo.")
+            return redirect(next_url)
+        if len({oc.pergunta_id for oc in ocorrencias}) != 1:
+            messages.error(request, "Só é possível unificar ocorrências da mesma pergunta.")
+            return redirect(next_url)
+
+        principal = next(oc for oc in ocorrencias if oc.id == int(principal_raw))
+        for oc in ocorrencias:
+            if oc.id == principal.id:
+                continue
+            registros = set(oc.registros_vinculados.values_list("id", flat=True))
+            if oc.registro_id:
+                registros.add(oc.registro_id)
+            registros.discard(principal.registro_id)
+            if registros:
+                principal.registros_vinculados.add(*registros)
+            oc.unificada_em = principal
+            oc.save(update_fields=["unificada_em", "atualizado_em"])
+        principal.save(update_fields=["atualizado_em"])
+
+    messages.success(request, f"{len(ocorrencias) - 1} ocorrência(s) unificada(s) em uma só.")
     return redirect(next_url)
 
 
@@ -2070,6 +2191,7 @@ def registro_detail(request, pk):
                         id=int(ocorrencia_id_raw),
                         pergunta__modelo_id=registro.modelo_id,
                         requer_tratativa=True,
+                        unificada_em__isnull=True,
                         status=ComentarioRespostaAuditoria.STATUS_ABERTA,
                     )
                     .exclude(registro=registro)
@@ -2843,7 +2965,6 @@ def registros_por_modelo(request, modelo_id):
                 preserved[k] = v
         if preserved:
             redirect_url = f"{redirect_url}?{urlencode(preserved)}"
-        redirect_url = f"{redirect_url}#tab-ocorrencias"
 
         if not pergunta_id_raw.isdigit():
             messages.error(request, "Pergunta inválida para comentário.")
@@ -2915,7 +3036,7 @@ def registros_por_modelo(request, modelo_id):
             messages.success(request, "Ocorrência registrada e em aberto para acompanhamento.")
         else:
             messages.success(request, "Comentário adicionado com sucesso.")
-        return redirect(redirect_url)
+        return redirect(f"{redirect_url}#tab-ocorrencias" if requer_tratativa else f"{redirect_url}#tab-comentarios")
 
     if request.method == "POST" and (request.POST.get("action") or "").strip() == "delete_question_comment":
         comentario_id_raw = (request.POST.get("comentario_id") or "").strip()
@@ -3460,12 +3581,16 @@ def registros_por_modelo(request, modelo_id):
     justificativas = JustificativaAuditoria.objects.filter(modelo=modelo).order_by("-criado_em")
 
     ocorrencias_modelo = []
+    ocorrencias_json = []
+    ids_responsaveis_usados: set[int] = set()
+    usuarios_ocorrencia: list[dict] = []
     total_ocorrencias_abertas_modelo = 0
     if not is_read_only:
         hoje = timezone.localdate()
         ocorrencias_qs = (
-            ComentarioRespostaAuditoria.objects.filter(pergunta__modelo=modelo)
+            ComentarioRespostaAuditoria.objects.filter(pergunta__modelo=modelo, unificada_em__isnull=True)
             .select_related("pergunta", "registro", "autor", "resolvido_por")
+            .prefetch_related("registros_vinculados", "unificadas__autor", "responsaveis")
             .annotate(total_vinculos=Count("registros_vinculados", distinct=True))
             .annotate(
                 _ordem=models.Case(
@@ -3480,12 +3605,107 @@ def registros_por_modelo(request, modelo_id):
         total_ocorrencias_abertas_modelo = ocorrencias_qs.filter(
             requer_tratativa=True, status=ComentarioRespostaAuditoria.STATUS_ABERTA
         ).count()
+        def _registro_info(r):
+            periodo = f"{r.periodo_inicio:%d/%m/%Y}" if r.periodo_inicio else ""
+            if r.periodo_inicio and r.periodo_fim:
+                periodo = f"{r.periodo_inicio:%d/%m/%Y} a {r.periodo_fim:%d/%m/%Y}"
+            return {
+                "id": r.id,
+                "nome": r.nome,
+                "periodo": periodo,
+                "url": reverse("auditoria:registro_detail", args=[r.id]),
+            }
+
         for oc in ocorrencias_qs[:300]:
             oc.dias_aberta = max((hoje - timezone.localtime(oc.criado_em).date()).days, 0)
             ocorrencias_modelo.append(oc)
+            registros_oc = ([oc.registro] if oc.registro_id else []) + [
+                r for r in oc.registros_vinculados.all() if r.id != oc.registro_id
+            ]
+            oc.prazo_vencido = bool(oc.em_aberto and oc.prazo and oc.prazo < hoje)
+            responsaveis_oc = list(oc.responsaveis.all())
+            ids_responsaveis_usados.update(u.id for u in responsaveis_oc)
+            ocorrencias_json.append(
+                {
+                    "id": oc.id,
+                    "prazo": oc.prazo.isoformat() if oc.prazo else "",
+                    "prazo_fmt": oc.prazo.strftime("%d/%m/%Y") if oc.prazo else "",
+                    "prazo_vencido": oc.prazo_vencido,
+                    "responsaveis": [u.id for u in responsaveis_oc],
+                    "responsaveis_nomes": [u.get_full_name() or u.get_username() for u in responsaveis_oc],
+                    "pode_editar_texto": bool(_auditoria_is_admin(request.user) or oc.autor_id == request.user.id),
+                    "editar_url": reverse("auditoria:ocorrencia_editar", args=[oc.id]),
+                    "requer_tratativa": oc.requer_tratativa,
+                    "em_aberto": oc.em_aberto,
+                    "pergunta": oc.pergunta.pergunta,
+                    "texto": (oc.texto or "").strip(),
+                    "autor": (oc.autor.get_full_name() or oc.autor.get_username()) if oc.autor_id else "",
+                    "criado_em": timezone.localtime(oc.criado_em).strftime("%d/%m/%Y"),
+                    "dias_aberta": oc.dias_aberta,
+                    "resolucao": oc.resolucao,
+                    "resolvido_em": timezone.localtime(oc.resolvido_em).strftime("%d/%m/%Y") if oc.resolvido_em else "",
+                    "resolvido_por": (
+                        (oc.resolvido_por.get_full_name() or oc.resolvido_por.get_username()) if oc.resolvido_por_id else ""
+                    ),
+                    "registros": [_registro_info(r) for r in registros_oc],
+                    "unificadas": [
+                        {
+                            "texto": (u.texto or "").strip(),
+                            "criado_em": timezone.localtime(u.criado_em).strftime("%d/%m/%Y"),
+                            "autor": (u.autor.get_full_name() or u.autor.get_username()) if u.autor_id else "",
+                        }
+                        for u in oc.unificadas.all()
+                    ],
+                    "resolver_url": reverse("auditoria:ocorrencia_resolver", args=[oc.id]),
+                    "reabrir_url": reverse("auditoria:ocorrencia_reabrir", args=[oc.id]),
+                }
+            )
+
+    filtro_responsaveis: list[dict] = []
+    if not is_read_only:
+        ids_candidatos = set(modelo.responsaveis.values_list("pk", flat=True)) | ids_responsaveis_usados
+        if modelo.responsavel_id:
+            ids_candidatos.add(modelo.responsavel_id)
+        candidatos = get_user_model().objects.filter(pk__in=ids_candidatos, is_active=True).order_by("first_name", "username")
+        usuarios_ocorrencia = [{"id": u.id, "nome": u.get_full_name() or u.get_username()} for u in candidatos]
+        filtro_responsaveis = [u for u in usuarios_ocorrencia if u["id"] in ids_responsaveis_usados]
+
+    def _montar_filtros(itens, responsaveis=None):
+        nomes_topicos = {int(t["id"]): t["nome"] for t in topicos}
+        perguntas_vistas = {oc.pergunta_id: oc.pergunta for oc in itens}
+        perguntas_filtro = [
+            {
+                "id": pergunta.id,
+                "texto": f"{pergunta.ordem} - {pergunta.pergunta}",
+                "topico": pergunta.topico_id or "",
+            }
+            for pergunta in sorted(perguntas_vistas.values(), key=lambda x: (x.ordem, x.id))
+        ]
+        ids_topicos = {p["topico"] for p in perguntas_filtro}
+        topicos_filtro = sorted(
+            (
+                {"id": tid, "nome": nomes_topicos.get(tid, f"Agrupamento {tid}")}
+                for tid in ids_topicos
+                if tid != ""
+            ),
+            key=lambda x: x["nome"],
+        )
+        if "" in ids_topicos:
+            topicos_filtro.append({"id": "", "nome": "Sem agrupamento"})
+        return {"topicos": topicos_filtro, "perguntas": perguntas_filtro, "responsaveis": responsaveis or []}
+
+    lista_ocorrencias = [oc for oc in ocorrencias_modelo if oc.requer_tratativa]
+    lista_comentarios = [oc for oc in ocorrencias_modelo if not oc.requer_tratativa]
 
     context = {
+        "ocorrencias_filtros": _montar_filtros(lista_ocorrencias, filtro_responsaveis),
+        "comentarios_filtros": _montar_filtros(lista_comentarios),
+        "lista_ocorrencias": lista_ocorrencias,
+        "lista_comentarios": lista_comentarios,
+        "total_comentarios_modelo": len(lista_comentarios),
+        "usuarios_ocorrencia": usuarios_ocorrencia,
         "ocorrencias_modelo": ocorrencias_modelo,
+        "ocorrencias_json": ocorrencias_json,
         "total_ocorrencias_abertas_modelo": total_ocorrencias_abertas_modelo,
         "modelo": modelo,
         "page_obj": page_obj,

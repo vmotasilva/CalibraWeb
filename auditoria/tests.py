@@ -1802,3 +1802,108 @@ class ExportarExcelSemanasNcTests(OcorrenciasAcompanhamentoTests):
         valores = {row[0]: row[4] for row in ws.iter_rows(min_row=2, values_only=True)}
         self.assertEqual(valores[self.reg1.id], 1)
         self.assertEqual(valores[self.reg2.id], 2)
+
+
+class UnificarOcorrenciasTests(OcorrenciasAcompanhamentoTests):
+    def test_unificar_mantem_principal_e_esconde_demais(self):
+        outra = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg2, pergunta=self.pergunta, autor=self.user, texto="Outra poeira", requer_tratativa=True
+        )
+        resp = self.client.post(
+            reverse("auditoria:ocorrencia_unificar", args=[self.modelo.pk]),
+            {"ocorrencia_ids": [self.ocorrencia.id, outra.id], "principal_id": self.ocorrencia.id},
+        )
+        self.assertEqual(resp.status_code, 302)
+        outra.refresh_from_db()
+        self.assertEqual(outra.unificada_em_id, self.ocorrencia.id)
+        self.assertTrue(self.ocorrencia.registros_vinculados.filter(pk=self.reg2.pk).exists())
+        self.assertEqual(self.client.get(reverse("auditoria:modulo")).context["total_ocorrencias_abertas"], 1)
+        lista = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk])).context["ocorrencias_json"]
+        self.assertEqual([o["id"] for o in lista], [self.ocorrencia.id])
+        self.assertEqual(len(lista[0]["unificadas"]), 1)
+
+    def test_unificar_exige_mesma_pergunta(self):
+        outra_pergunta = PerguntaAuditoria.objects.create(
+            modelo=self.modelo, pergunta="Seiton", ordem=2, tipo_resposta="SIM_NAO", ativo=True
+        )
+        outra = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg2, pergunta=outra_pergunta, autor=self.user, texto="x", requer_tratativa=True
+        )
+        self.client.post(
+            reverse("auditoria:ocorrencia_unificar", args=[self.modelo.pk]),
+            {"ocorrencia_ids": [self.ocorrencia.id, outra.id], "principal_id": self.ocorrencia.id},
+        )
+        outra.refresh_from_db()
+        self.assertIsNone(outra.unificada_em_id)
+
+
+class FiltroOcorrenciasTests(OcorrenciasAcompanhamentoTests):
+    def test_filtros_de_agrupamento_e_pergunta_no_contexto(self):
+        resp = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
+        filtros = resp.context["ocorrencias_filtros"]
+        self.assertEqual([p["id"] for p in filtros["perguntas"]], [self.pergunta.id])
+        self.assertEqual(filtros["topicos"], [{"id": "", "nome": "Sem agrupamento"}])
+        self.assertContains(resp, 'id="filtro-ocorrencias-topico"')
+        self.assertContains(resp, 'id="filtro-ocorrencias-pergunta"')
+        self.assertContains(resp, 'id="filtro-comentarios-topico"')
+
+
+class EditarOcorrenciaTests(OcorrenciasAcompanhamentoTests):
+    def test_converter_comentario_com_responsavel_e_prazo(self):
+        comentario = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="So um comentario"
+        )
+        self.assertFalse(comentario.requer_tratativa)
+        self.client.post(
+            reverse("auditoria:ocorrencia_editar", args=[comentario.pk]),
+            {
+                "texto": "Comentario editado",
+                "requer_tratativa": "1",
+                "prazo": "2026-11-15",
+                "responsaveis": [self.user.pk],
+            },
+        )
+        comentario.refresh_from_db()
+        self.assertEqual(comentario.texto, "Comentario editado")
+        self.assertTrue(comentario.em_aberto)
+        self.assertEqual(comentario.prazo, date(2026, 11, 15))
+        self.assertEqual(list(comentario.responsaveis.values_list("pk", flat=True)), [self.user.pk])
+
+    def test_comentario_sem_converter_ignora_prazo_e_responsaveis(self):
+        comentario = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Simples"
+        )
+        self.client.post(
+            reverse("auditoria:ocorrencia_editar", args=[comentario.pk]),
+            {"texto": "Simples", "prazo": "2026-11-15", "responsaveis": [self.user.pk]},
+        )
+        comentario.refresh_from_db()
+        self.assertFalse(comentario.requer_tratativa)
+        self.assertIsNone(comentario.prazo)
+        self.assertFalse(comentario.responsaveis.exists())
+
+    def test_prazo_e_responsaveis_aparecem_no_json_e_filtros(self):
+        self.client.post(
+            reverse("auditoria:ocorrencia_editar", args=[self.ocorrencia.pk]),
+            {"texto": self.ocorrencia.texto, "prazo": "2020-01-01", "responsaveis": [self.user.pk]},
+        )
+        resp = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
+        item = resp.context["ocorrencias_json"][0]
+        self.assertTrue(item["prazo_vencido"])
+        self.assertEqual(item["responsaveis"], [self.user.pk])
+        self.assertEqual([u["id"] for u in resp.context["ocorrencias_filtros"]["responsaveis"]], [self.user.pk])
+        for ident in ("filtro-ocorrencias-status", "filtro-ocorrencias-responsavel", "filtro-ocorrencias-prazo"):
+            self.assertContains(resp, f'id="{ident}"')
+
+
+class AbasComentariosOcorrenciasTests(OcorrenciasAcompanhamentoTests):
+    def test_comentarios_e_ocorrencias_em_abas_separadas(self):
+        ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Apenas um comentario"
+        )
+        resp = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
+        self.assertEqual([o.texto for o in resp.context["lista_ocorrencias"]], ["Poeira nas polidoras"])
+        self.assertEqual([o.texto for o in resp.context["lista_comentarios"]], ["Apenas um comentario"])
+        self.assertEqual(resp.context["total_comentarios_modelo"], 1)
+        self.assertContains(resp, 'id="tab-comentarios"')
+        self.assertContains(resp, 'id="tab-ocorrencias"')
