@@ -726,6 +726,7 @@ class ComentarioRespostaAuditoria(models.Model):
         verbose_name="Responsáveis pela tratativa",
     )
     prazo = models.DateField(null=True, blank=True, db_index=True, verbose_name="Prazo de resolução")
+    acao = models.TextField(blank=True, default="", verbose_name="Ação a ser realizada")
     unificada_em = models.ForeignKey(
         "self",
         on_delete=models.SET_NULL,

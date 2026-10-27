@@ -1933,3 +1933,48 @@ class RegistroDetailPopupOcorrenciaTests(OcorrenciasAcompanhamentoTests):
         )
         self.client.post(reverse("auditoria:ocorrencia_excluir", args=[c.pk]), {"next": "/"})
         self.assertTrue(ComentarioRespostaAuditoria.objects.filter(pk=c.pk).exists() or not self.user.is_superuser)
+
+
+class AssociarComentarioEResponsaveisTests(OcorrenciasAcompanhamentoTests):
+    def test_associar_comentario_simples(self):
+        c = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Comentario simples"
+        )
+        resp = self.client.get(reverse("auditoria:registro_detail", args=[self.reg2.pk]))
+        ids = [i["id"] for v in resp.context["ocorrencias_disponiveis"].values() for i in v]
+        self.assertIn(c.pk, ids)
+        self.client.post(
+            reverse("auditoria:registro_detail", args=[self.reg2.pk]),
+            {"action": "associar_ocorrencia", "ocorrencia_id": c.pk},
+        )
+        self.assertTrue(c.registros_vinculados.filter(pk=self.reg2.pk).exists())
+
+    def test_ocorrencias_mais_recentes_primeiro(self):
+        novo = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Mais novo", requer_tratativa=True
+        )
+        resp = self.client.get(reverse("auditoria:registro_detail", args=[self.reg1.pk]))
+        itens = resp.context["ocorrencias_por_pergunta"][str(self.pergunta.pk)]
+        self.assertEqual(itens[0]["id"], novo.pk)
+
+    def test_responsavel_sem_acesso_ao_modelo_ve_e_resolve(self):
+        outro = get_user_model().objects.create_user("resp_oc", password="x", is_staff=True)
+        self.ocorrencia.responsaveis.add(outro)
+        self.client.force_login(outro)
+        resp = self.client.get(reverse("auditoria:modulo"))
+        self.assertIn(self.ocorrencia, list(resp.context["ocorrencias_abertas"]))
+        self.client.post(reverse("auditoria:ocorrencia_resolver", args=[self.ocorrencia.pk]), {"resolucao": "ok"})
+        self.ocorrencia.refresh_from_db()
+        self.assertEqual(self.ocorrencia.status, ComentarioRespostaAuditoria.STATUS_RESOLVIDA)
+
+
+class AcaoOcorrenciaTests(OcorrenciasAcompanhamentoTests):
+    def test_salvar_acao(self):
+        self.client.post(
+            reverse("auditoria:ocorrencia_editar", args=[self.ocorrencia.pk]),
+            {"texto": self.ocorrencia.texto, "acao": "Limpar a mesa da PRA002"},
+        )
+        self.ocorrencia.refresh_from_db()
+        self.assertEqual(self.ocorrencia.acao, "Limpar a mesa da PRA002")
+        resp = self.client.get(reverse("auditoria:modulo"))
+        self.assertContains(resp, "Limpar a mesa da PRA002")

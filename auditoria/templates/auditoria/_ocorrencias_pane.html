@@ -116,6 +116,7 @@
                         <td class="small">{{ oc.pergunta.pergunta }}</td>
                         <td style="max-width: 420px;">
                             <div class="small">{{ oc.texto|linebreaksbr }}</div>
+                            {% if oc.acao %}<div class="small mt-1 text-primary"><strong>Ação:</strong> {{ oc.acao|truncatechars:160 }}</div>{% endif %}
                             {% if oc.requer_tratativa and not oc.em_aberto and oc.resolucao %}
                             <div class="small text-success mt-1"><i class="bi bi-check2-circle"></i> {{ oc.resolucao|linebreaksbr }}</div>
                             {% endif %}
@@ -158,6 +159,7 @@
                     </div>
                     <div class="small text-muted mb-1">{{ oc.pergunta.pergunta }}</div>
                     <div class="small" style="display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;">{{ oc.texto }}</div>
+                    {% if oc.acao %}<div class="small mt-1 text-primary"><strong>Ação:</strong> {{ oc.acao|truncatechars:120 }}</div>{% endif %}
                     {% if is_oc %}
                     {% if oc.prazo %}<div class="small mt-2"><span class="badge {% if oc.prazo_vencido %}bg-danger{% else %}bg-light text-dark border{% endif %}">Prazo {{ oc.prazo|date:"d/m/Y" }}</span></div>{% endif %}
                     {% for u in oc.responsaveis.all %}{% if forloop.first %}<div class="small text-muted mt-1">Resp.: {% endif %}{{ u.get_full_name|default:u.get_username }}{% if not forloop.last %}, {% else %}</div>{% endif %}{% endfor %}

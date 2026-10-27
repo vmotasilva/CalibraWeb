@@ -96,6 +96,7 @@
                             <td style="max-width: 420px;">
                                 <div class="small">{{ oc.texto|linebreaksbr }}</div>
                                 <div class="small text-muted">{{ oc.criado_em|date:"d/m/Y" }}{% if oc.autor %} · {{ oc.autor.get_full_name|default:oc.autor.get_username }}{% endif %}</div>
+                                {% if oc.acao %}<div class="small mt-1"><strong>Ação:</strong> {{ oc.acao|linebreaksbr }}</div>{% endif %}
                                 {% if oc.prazo or oc.responsaveis.all %}
                                 <div class="small mt-1">
                                     {% if oc.prazo %}<span class="badge {% if oc.prazo_vencido %}bg-danger{% else %}bg-light text-dark border{% endif %}">Prazo {{ oc.prazo|date:"d/m/Y" }}{% if oc.prazo_vencido %} · vencido{% endif %}</span>{% endif %}

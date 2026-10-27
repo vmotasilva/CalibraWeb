@@ -1054,7 +1054,9 @@
                                         {% if linha.ocorrencias %}
                                         <ul class="list-unstyled mb-0 small ocorrencias-lista">
                                             {% for oc in linha.ocorrencias %}
-                                            <li class="mb-1 oc-item" data-oc-id="{{ oc.id }}" style="cursor: pointer;" title="Clique para ver, editar ou converter">
+                                            <li class="oc-item d-flex gap-2 align-items-start py-2{% if not forloop.last %} border-bottom{% endif %}" data-oc-id="{{ oc.id }}" style="cursor: pointer;" title="Clique para ver, editar ou converter">
+                                                <span class="badge rounded-pill {% if oc.em_aberto %}bg-warning text-dark{% else %}bg-secondary{% endif %} flex-shrink-0 mt-1">{{ forloop.counter }}</span>
+                                                <div class="flex-grow-1">
                                                 {% if oc.em_aberto %}
                                                 <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em {{ oc.criado_em }}">Em aberto &middot; {{ oc.dias_aberta }}d</span>
                                                 {% elif oc.requer_tratativa %}
@@ -1062,6 +1064,7 @@
                                                 {% endif %}
                                                 {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}
                                                 <span class="text-muted">{{ oc.texto }}</span>
+                                                </div>
                                             </li>
                                             {% endfor %}
                                         </ul>
@@ -1189,7 +1192,9 @@
                                         {% if linha.ocorrencias %}
                                         <ul class="list-unstyled mb-0 small ocorrencias-lista">
                                             {% for oc in linha.ocorrencias %}
-                                            <li class="mb-1 oc-item" data-oc-id="{{ oc.id }}" style="cursor: pointer;" title="Clique para ver, editar ou converter">
+                                            <li class="oc-item d-flex gap-2 align-items-start py-2{% if not forloop.last %} border-bottom{% endif %}" data-oc-id="{{ oc.id }}" style="cursor: pointer;" title="Clique para ver, editar ou converter">
+                                                <span class="badge rounded-pill {% if oc.em_aberto %}bg-warning text-dark{% else %}bg-secondary{% endif %} flex-shrink-0 mt-1">{{ forloop.counter }}</span>
+                                                <div class="flex-grow-1">
                                                 {% if oc.em_aberto %}
                                                 <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle" title="Aberta em {{ oc.criado_em }}">Em aberto &middot; {{ oc.dias_aberta }}d</span>
                                                 {% elif oc.requer_tratativa %}
@@ -1197,6 +1202,7 @@
                                                 {% endif %}
                                                 {% if oc.associada %}<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" title="Ocorrência de registro anterior, associada a este">Recorrente</span>{% endif %}
                                                 <span class="text-muted">{{ oc.texto }}</span>
+                                                </div>
                                             </li>
                                             {% endfor %}
                                         </ul>
@@ -1243,7 +1249,7 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="tab-oc-existente" data-bs-toggle="tab" data-bs-target="#pane-oc-existente" type="button" role="tab">
-                            Associar ocorrência <span class="badge bg-secondary" id="modal-oc-disponiveis-qtd">0</span>
+                            Associar existente <span class="badge bg-secondary" id="modal-oc-disponiveis-qtd">0</span>
                         </button>
                     </li>
                 </ul>
@@ -1305,6 +1311,10 @@
                     </div>
 
                     <div id="item-tratativa" class="border rounded p-3 mb-3 d-none">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold mb-1" for="item-acao">Ação a ser realizada</label>
+                            <textarea class="form-control form-control-sm" id="item-acao" name="acao" rows="3" maxlength="8000" placeholder="Descreva concretamente o que deve ser feito para tratar esta ocorrência..."></textarea>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-4">
                                 <label class="form-label small fw-semibold mb-1" for="item-prazo">Prazo de resolução</label>
@@ -1422,12 +1432,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderDisponiveis(items) {
         if (!items || !items.length) {
-            return '<div class="text-muted">Nenhuma ocorrência em aberto disponível para associar.</div>';
+            return '<div class="text-muted">Nenhum comentário ou ocorrência em aberto disponível para associar.</div>';
         }
         return items.map(function(oc, idx) {
             return '<div class="form-check mb-2">' +
                 '<input class="form-check-input" type="radio" name="ocorrencia_id" id="oc-disp-' + oc.id + '" value="' + oc.id + '"' + (idx === 0 ? ' required' : '') + '>' +
-                '<label class="form-check-label" for="oc-disp-' + oc.id + '"><span class="badge bg-secondary me-1">' + escapeHtml(oc.criado_em) + '</span>' + escapeHtml(oc.texto) + '</label>' +
+                '<label class="form-check-label" for="oc-disp-' + oc.id + '"><span class="badge ' + (oc.requer_tratativa ? 'bg-warning text-dark' : 'bg-light text-dark border') + ' me-1">' + (oc.requer_tratativa ? 'Ocorrência' : 'Comentário') + '</span><span class="badge bg-secondary me-1">' + escapeHtml(oc.criado_em) + '</span>' + escapeHtml(oc.texto) + '</label>' +
                 '</div>';
         }).join('');
     }
@@ -1509,6 +1519,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('item-converter-wrap').classList.toggle('d-none', ocorrencia);
             boxTrat.classList.toggle('d-none', !ocorrencia);
             document.getElementById('item-prazo').value = o.prazo || '';
+            document.getElementById('item-acao').value = o.acao || '';
             document.querySelectorAll('.item-resp').forEach(function(c) {
                 c.checked = (o.responsaveis || []).indexOf(parseInt(c.value, 10)) !== -1;
             });
