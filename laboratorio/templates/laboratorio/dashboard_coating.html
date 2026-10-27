@@ -40,6 +40,15 @@
                     <input type="date" name="data_ate" id="inputDataAte" class="form-control form-control-sm" value="{{ data_ate }}">
                 </div>
                 <div class="col-12 col-sm-6 col-md-2 col-lg-2">
+                    <label class="form-label fw-bold text-muted small mb-1">Competência</label>
+                    <select name="competencia" id="selectCompetencia" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        {% for c in competencias_opcoes %}
+                        <option value="{{ c.valor }}" {% if competencia == c.valor %}selected{% endif %}>{{ c.rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-2 col-lg-2">
                     <label class="form-label fw-bold text-muted small mb-1">Máquina</label>
                     <select name="maquina" id="selectMaquina" class="form-select form-select-sm">
                         <option value="">Todas as Máquinas</option>
@@ -54,6 +63,33 @@
                         <option value="">Todos os Turnos</option>
                         {% for t in turnos_disponiveis %}
                         <option value="{{ t.id }}" {% if turno_selecionado == t.id %}selected{% endif %}>{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-bold text-muted small mb-1">Tratamento</label>
+                    <select name="tratamento" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for t in tratamentos %}
+                        <option value="{{ t.id }}" {% if tratamento_selecionado == t.id %}selected{% endif %}>{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-bold text-muted small mb-1">Preparação</label>
+                    <select name="preparacao" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for c in preparacao_opcoes %}
+                        <option value="{{ c.id }}" {% if preparacao_selecionada == c.id %}selected{% endif %}>{{ c.nome_completo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-sm-6 col-md-3 col-lg-2">
+                    <label class="form-label fw-bold text-muted small mb-1">Montagem</label>
+                    <select name="montagem" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        {% for c in montagem_opcoes %}
+                        <option value="{{ c.id }}" {% if montagem_selecionada == c.id %}selected{% endif %}>{{ c.nome_completo }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -578,6 +614,11 @@
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
+
+        // Competência tem precedência sobre o período: ao mexer em período/datas, ela é desfeita
+        const selectCompetencia = document.getElementById('selectCompetencia');
+        function limparCompetencia() { if (selectCompetencia) selectCompetencia.value = ''; }
+        [selectPeriodo, inputDataDe, inputDataAte].forEach(el => { if (el) el.addEventListener('change', limparCompetencia); });
 
         if (selectPeriodo && inputDataDe && inputDataAte) {
             selectPeriodo.addEventListener('change', function() {

@@ -2570,8 +2570,25 @@ def dashboard_coating(request):
     data_ate_str = request.GET.get('data_ate', '').strip()
     
     hoje = timezone.localtime().date()
-    
-    if data_de_str and data_ate_str:
+
+    # Filtros compartilhados com o Painel: competência (AAAA-MM), tratamento, preparação e montagem
+    competencia = request.GET.get('competencia', '').strip()
+    filtro_tratamento = request.GET.get('tratamento', '').strip()
+    filtro_preparacao = request.GET.get('preparacao', '').strip()
+    filtro_montagem = request.GET.get('montagem', '').strip()
+    inicio_comp = None
+    if competencia:
+        try:
+            ano_c, mes_c = (int(p) for p in competencia.split('-'))
+            inicio_comp = date(ano_c, mes_c, 1)
+        except ValueError:
+            competencia = ''
+
+    if inicio_comp:
+        inicio = inicio_comp
+        fim = (inicio_comp.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        periodo = 'custom'
+    elif data_de_str and data_ate_str:
         try:
             inicio = datetime.strptime(data_de_str, '%Y-%m-%d').date()
             fim = datetime.strptime(data_ate_str, '%Y-%m-%d').date()
@@ -2644,7 +2661,16 @@ def dashboard_coating(request):
             qs_manutencoes = qs_manutencoes.filter(registro__turno_coating__regra_id=t_id_int)
         except ValueError:
             pass
-        
+
+    for valor, campo in (
+        (filtro_tratamento, 'tratamento_id'),
+        (filtro_preparacao, 'preparacao_id'),
+        (filtro_montagem, 'montagem_id'),
+    ):
+        if valor.isdigit():
+            qs_registros = qs_registros.filter(**{campo: int(valor)})
+            qs_manutencoes = qs_manutencoes.filter(**{f'registro__{campo}': int(valor)})
+
     maquinas_ids = RegistroCoating.objects.values_list('maquina_id', flat=True).order_by().distinct()
     maquinas = Maquina.objects.filter(id__in=maquinas_ids).order_by('codigo')
     if not maquinas.exists():
@@ -3188,7 +3214,31 @@ def dashboard_coating(request):
     tratamentos = TratamentoAntiReflexo.objects.filter(ativo=True).order_by('nome')
     equipe = EquipeCoating.objects.filter(colaborador__is_active=True).select_related('colaborador').order_by('colaborador__nome_completo')
 
+    meses_pt = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+    competencias_opcoes = [
+        {'valor': f'{d.year}-{d.month:02d}', 'rotulo': f'{meses_pt[d.month - 1]}/{d.year}'}
+        for d in TurnoCoating.objects.dates('data', 'month', order='DESC')
+    ]
+    if inicio_comp:
+        periodo_display = f'{meses_pt[inicio_comp.month - 1]}/{inicio_comp.year}'
+        if apenas_dias_uteis:
+            periodo_display += " (Seg a Sex)"
+        elif apenas_fim_semana:
+            periodo_display += " (Sáb-Dom)"
+    todos_registros = RegistroCoating.objects.all()
+
     return render(request, "laboratorio/dashboard_coating.html", {
+        "competencia": competencia,
+        "competencias_opcoes": competencias_opcoes,
+        "tratamento_selecionado": int(filtro_tratamento) if filtro_tratamento.isdigit() else "",
+        "preparacao_selecionada": int(filtro_preparacao) if filtro_preparacao.isdigit() else "",
+        "montagem_selecionada": int(filtro_montagem) if filtro_montagem.isdigit() else "",
+        "preparacao_opcoes": Colaborador.objects.filter(
+            id__in=todos_registros.exclude(preparacao__isnull=True).values('preparacao_id')
+        ).order_by('nome_completo'),
+        "montagem_opcoes": Colaborador.objects.filter(
+            id__in=todos_registros.exclude(montagem__isnull=True).values('montagem_id')
+        ).order_by('nome_completo'),
         "kpi_grupos_maq": kpi_grupos_maq,
         "kpi_grupos_turno": kpi_grupos_turno,
         "kpi_total_geral": kpi_total_geral,

@@ -93,7 +93,7 @@
                 </a>
                 {% endif %}
                 
-                <a href="{% url 'laboratorio:dashboard_coating' %}" class="btn btn-outline-secondary fw-bold shadow-sm">
+                <a href="{% url 'laboratorio:dashboard_coating' %}{% if qs_filtros %}?{{ qs_filtros|slice:'1:' }}{% endif %}" class="btn btn-outline-secondary fw-bold shadow-sm">
                     <i class="bi bi-bar-chart-line"></i> Dashboard
                 </a>
                 

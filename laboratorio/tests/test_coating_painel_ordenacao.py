@@ -109,3 +109,31 @@ class CoatingPainelFiltrosTests(CoatingPainelOrdenacaoTests):
         lotes, response = self._lotes(competencia="abc", turno="x", tratamento="'; drop")
         self.assertEqual(len(lotes), 6)
         self.assertEqual(response.context["filtros_ativos"], 0)
+
+
+class CoatingDashboardFiltrosTests(CoatingPainelOrdenacaoTests):
+    """Dashboard aceita os mesmos filtros do Painel."""
+
+    def _dash(self, **params):
+        response = self.client.get(reverse("laboratorio:dashboard_coating"), params)
+        self.assertEqual(response.status_code, 200)
+        return response
+
+    def test_competencia_define_periodo_e_filtra(self):
+        hoje = timezone.localdate()
+        response = self._dash(competencia=f"{hoje.year}-{hoje.month:02d}")
+        self.assertEqual(response.context["total_lotes"], 3)
+        self.assertEqual(response.context["data_de"], hoje.replace(day=1).strftime("%Y-%m-%d"))
+        response = self._dash(competencia="2000-01")
+        self.assertEqual(response.context["total_lotes"], 0)
+
+    def test_filtra_por_tratamento(self):
+        trat = TratamentoAntiReflexo.objects.get(nome="AZUL")
+        response = self._dash(tratamento=trat.id, periodo="30")
+        self.assertEqual(response.context["total_lotes"], 1)
+        self.assertEqual(response.context["tratamento_selecionado"], trat.id)
+
+    def test_competencia_invalida_e_ignorada(self):
+        response = self._dash(competencia="abc", tratamento="x")
+        self.assertEqual(response.context["competencia"], "")
+        self.assertEqual(response.context["total_lotes"], 3)
