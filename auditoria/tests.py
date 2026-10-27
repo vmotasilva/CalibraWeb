@@ -1,3 +1,4 @@
+import io
 import json
 from datetime import date
 
@@ -35,6 +36,10 @@ from .views import (
     registros_por_modelo,
 )
 
+try:
+    from docx import Document
+except ImportError:  # python-docx opcional no ambiente local
+    Document = None
 
 _requer_docx = skipUnless(find_spec("docx"), "python-docx não instalado")
 
