@@ -965,6 +965,22 @@ def modulo_auditoria_view(request):
         .annotate(total_vinculos=Count("registros_vinculados", distinct=True))
         .order_by("-criado_em", "-id")
     )
+    # Responsáveis disponíveis no filtro (considera todas as abertas visíveis ao usuário)
+    resp_ids = set(
+        ocorrencias_qs.order_by().values_list("responsaveis", flat=True).distinct()
+    )
+    resp_ids.discard(None)
+    responsaveis_filtro = [
+        {"id": u.id, "nome": u.get_full_name() or u.get_username()}
+        for u in get_user_model().objects.filter(pk__in=resp_ids).order_by("first_name", "username")
+    ]
+    filtro_responsavel = (request.GET.get("responsavel") or "").strip()
+    if filtro_responsavel == "none":
+        ocorrencias_qs = ocorrencias_qs.filter(responsaveis__isnull=True)
+    elif filtro_responsavel.isdigit():
+        ocorrencias_qs = ocorrencias_qs.filter(responsaveis__pk=int(filtro_responsavel))
+    else:
+        filtro_responsavel = ""
     total_ocorrencias_abertas = ocorrencias_qs.count()
     hoje = timezone.localdate()
     ocorrencias_abertas = []
@@ -981,6 +997,8 @@ def modulo_auditoria_view(request):
         "registros_recentes": registros_recentes,
         "ocorrencias_abertas": ocorrencias_abertas,
         "total_ocorrencias_abertas": total_ocorrencias_abertas,
+        "responsaveis_filtro": responsaveis_filtro,
+        "filtro_responsavel": filtro_responsavel,
     }
     return render(request, "auditoria/modulo_auditoria.html", context)
 

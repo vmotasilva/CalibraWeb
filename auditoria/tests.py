@@ -1978,3 +1978,19 @@ class AcaoOcorrenciaTests(OcorrenciasAcompanhamentoTests):
         self.assertEqual(self.ocorrencia.acao, "Limpar a mesa da PRA002")
         resp = self.client.get(reverse("auditoria:modulo"))
         self.assertContains(resp, "Limpar a mesa da PRA002")
+
+
+class FiltroResponsavelTelaPrincipalTests(OcorrenciasAcompanhamentoTests):
+    def test_filtra_por_responsavel(self):
+        outro = get_user_model().objects.create_user("resp2_oc", password="x", is_staff=True)
+        self.ocorrencia.responsaveis.add(outro)
+        sem = ComentarioRespostaAuditoria.objects.create(
+            registro=self.reg1, pergunta=self.pergunta, autor=self.user, texto="Sem resp", requer_tratativa=True
+        )
+        url = reverse("auditoria:modulo")
+        r = self.client.get(url, {"responsavel": outro.pk})
+        self.assertEqual([o.pk for o in r.context["ocorrencias_abertas"]], [self.ocorrencia.pk])
+        r = self.client.get(url, {"responsavel": "none"})
+        self.assertEqual([o.pk for o in r.context["ocorrencias_abertas"]], [sem.pk])
+        r = self.client.get(url)
+        self.assertEqual(len(r.context["ocorrencias_abertas"]), 2)

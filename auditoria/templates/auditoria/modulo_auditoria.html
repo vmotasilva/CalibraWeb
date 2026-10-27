@@ -75,6 +75,19 @@
             <span class="badge bg-warning text-dark rounded-pill">{{ total_ocorrencias_abertas }}</span>
         </div>
         <div class="card-body p-0">
+            <form method="get" action="#ocorrencias-em-aberto" class="d-flex flex-wrap align-items-end gap-2 p-2 border-bottom bg-light">
+                <div>
+                    <label class="form-label small fw-semibold mb-1" for="filtro-responsavel-oc">Responsável</label>
+                    <select class="form-select form-select-sm" id="filtro-responsavel-oc" name="responsavel" onchange="this.form.submit()">
+                        <option value="">Todos</option>
+                        <option value="none" {% if filtro_responsavel == "none" %}selected{% endif %}>Sem responsável</option>
+                        {% for u in responsaveis_filtro %}
+                        <option value="{{ u.id }}" {% if filtro_responsavel == u.id|stringformat:"s" %}selected{% endif %}>{{ u.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if filtro_responsavel %}<a href="{% url 'auditoria:modulo' %}#ocorrencias-em-aberto" class="btn btn-sm btn-outline-secondary">Limpar</a>{% endif %}
+            </form>
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead>
@@ -129,7 +142,7 @@
                 </table>
             </div>
             {% if total_ocorrencias_abertas > ocorrencias_abertas|length %}
-            <div class="p-2 small text-muted text-center">Exibindo as {{ ocorrencias_abertas|length }} mais antigas de {{ total_ocorrencias_abertas }}.</div>
+            <div class="p-2 small text-muted text-center">Exibindo as {{ ocorrencias_abertas|length }} mais recentes de {{ total_ocorrencias_abertas }}.</div>
             {% endif %}
         </div>
     </div>
