@@ -1740,6 +1740,15 @@ class OcorrenciasAcompanhamentoTests(TestCase):
         )
         self.assertFalse(self.ocorrencia.registros_vinculados.exists())
 
+    def test_aba_ocorrencias_na_tela_de_ciclos_do_modelo(self):
+        resp = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, 'id="tab-ciclos"')
+        self.assertContains(resp, 'id="tab-justificativas"')
+        self.assertContains(resp, 'id="tab-ocorrencias"')
+        self.assertContains(resp, "Poeira nas polidoras")
+        self.assertEqual(resp.context["total_ocorrencias_abertas_modelo"], 1)
+
     def test_reabrir_ocorrencia(self):
         self.client.post(reverse("auditoria:ocorrencia_resolver", args=[self.ocorrencia.pk]), {})
         self.client.post(reverse("auditoria:ocorrencia_reabrir", args=[self.ocorrencia.pk]), {})

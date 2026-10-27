@@ -3438,7 +3438,26 @@ def registros_por_modelo(request, modelo_id):
     from auditoria.models import JustificativaAuditoria
     justificativas = JustificativaAuditoria.objects.filter(modelo=modelo).order_by("-criado_em")
 
+    ocorrencias_modelo = []
+    total_ocorrencias_abertas_modelo = 0
+    if not is_read_only:
+        hoje = timezone.localdate()
+        ocorrencias_qs = (
+            ComentarioRespostaAuditoria.objects.filter(pergunta__modelo=modelo)
+            .select_related("pergunta", "registro", "autor", "resolvido_por")
+            .annotate(total_vinculos=Count("registros_vinculados", distinct=True))
+            .order_by("status", "criado_em", "id")  # ABERTA antes de RESOLVIDA
+        )
+        total_ocorrencias_abertas_modelo = ocorrencias_qs.filter(
+            status=ComentarioRespostaAuditoria.STATUS_ABERTA
+        ).count()
+        for oc in ocorrencias_qs[:300]:
+            oc.dias_aberta = max((hoje - timezone.localtime(oc.criado_em).date()).days, 0)
+            ocorrencias_modelo.append(oc)
+
     context = {
+        "ocorrencias_modelo": ocorrencias_modelo,
+        "total_ocorrencias_abertas_modelo": total_ocorrencias_abertas_modelo,
         "modelo": modelo,
         "page_obj": page_obj,
         "paginator": paginator,
