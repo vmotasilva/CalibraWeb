@@ -558,7 +558,7 @@
                     <button type="submit" name="action" value="save_draft" class="btn btn-primary" id="btn-salvar-rascunho">
                         <i class="bi bi-save"></i> Salvar Rascunho
                     </button>
-                    <button type="submit" name="action" value="submit" class="btn btn-success" id="btn-finalizar">
+                    <button type="{% if edicao %}button{% else %}submit{% endif %}" name="action" value="submit" class="btn btn-success" id="btn-finalizar">
                         <i class="bi bi-check-circle"></i> Finalizar Ciclo
                     </button>
                     <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-secondary">
@@ -578,21 +578,71 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="modalComentarioPerguntaLabel">Adicionar comentário da pergunta</h5>
+                <h5 class="modal-title" id="modalComentarioPerguntaLabel">Comentários e ocorrências da pergunta</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-2 small text-muted" id="modalComentarioPerguntaContexto"></div>
+                {% if edicao %}
+                <ul class="nav nav-tabs mb-3" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-form-nova" type="button" role="tab" id="tab-form-nova">Novo comentário</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-form-assoc" type="button" role="tab" id="tab-form-assoc">
+                            Associar existente <span class="badge bg-secondary" id="modalDispQtd">0</span>
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                <div class="tab-pane fade show active" id="pane-form-nova" role="tabpanel">
+                {% endif %}
                 <label class="form-label" for="modalComentarioPerguntaTexto">Comentário</label>
-                <textarea id="modalComentarioPerguntaTexto" class="form-control" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar esta resposta..."></textarea>
+                <textarea id="modalComentarioPerguntaTexto" class="form-control mb-3" rows="4" maxlength="8000" placeholder="Digite um comentário para contextualizar esta resposta..."></textarea>
+                <div class="form-check form-switch border rounded p-2 ps-5 bg-light">
+                    <input class="form-check-input" type="checkbox" role="switch" id="modalComentarioPerguntaRequer">
+                    <label class="form-check-label fw-semibold" for="modalComentarioPerguntaRequer">Requer tratativa (registrar como ocorrência)</label>
+                    <div class="small text-muted">Marcada, fica em aberto e entra no acompanhamento de plano de ação até ser resolvida. Desmarcada, é apenas um comentário.</div>
+                </div>
+                {% if edicao %}
+                </div>
+                <div class="tab-pane fade" id="pane-form-assoc" role="tabpanel">
+                    <div id="modalDispLista" class="mb-2"></div>
+                    <div class="small text-muted">A associação é gravada imediatamente neste ciclo.</div>
+                </div>
+                </div>
+                {% endif %}
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" id="modalComentarioPerguntaSalvar">Adicionar</button>
+                {% if edicao %}
+                <button type="button" class="btn btn-primary d-none" id="modalDispAssociar"><i class="bi bi-link-45deg"></i> Associar ao ciclo</button>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+{% if edicao %}
+<div class="modal fade" id="modalFinalizarCiclo" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-check-circle"></i> Finalizar ciclo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body" id="finalizarCorpo">
+                <div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div> Verificando pendências...</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Voltar e corrigir</button>
+                <button type="button" class="btn btn-success" id="finalizarConfirmar" disabled><i class="bi bi-check-circle"></i> Confirmar e finalizar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}
@@ -600,6 +650,7 @@
 {{ respostas_atuais|json_script:"respostas-dados" }}
 {% endif %}
 {{ comentarios_atuais|json_script:"comentarios-dados" }}
+{% if edicao %}{{ ocorrencias_disponiveis|json_script:"ocorrencias-disponiveis" }}{% endif %}
 <script>
     // Bootstrap form validation
     (function () {
@@ -751,7 +802,7 @@
         });
     })();
 
-    // Comentários por pergunta (+, contador e pop-up de listagem)
+    // Comentários e ocorrências por pergunta (+, contador e pop-up de listagem)
     (function() {
         const hiddenInput = document.getElementById('id_comentarios_payload');
         const scriptEl = document.getElementById('comentarios-dados');
@@ -759,14 +810,21 @@
         const countButtons = document.querySelectorAll('.comment-count-btn');
         const modalEl = document.getElementById('modalComentarioPergunta');
         const modalText = document.getElementById('modalComentarioPerguntaTexto');
+        const modalReq = document.getElementById('modalComentarioPerguntaRequer');
         const modalSave = document.getElementById('modalComentarioPerguntaSalvar');
         const modalContexto = document.getElementById('modalComentarioPerguntaContexto');
+        const dispScript = document.getElementById('ocorrencias-disponiveis');
+        const dispLista = document.getElementById('modalDispLista');
+        const dispQtd = document.getElementById('modalDispQtd');
+        const dispBtn = document.getElementById('modalDispAssociar');
         if (!hiddenInput || !scriptEl || !modalEl || !modalText || !modalSave || !modalContexto) return;
         if (typeof bootstrap === 'undefined' || !bootstrap.Modal || !bootstrap.Popover) return;
 
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        const form = hiddenInput.closest('form');
         let perguntaAtual = null;
         let comentarios = {};
+        let disponiveis = {};
 
         function escapeHtml(str) {
             return String(str || '')
@@ -777,24 +835,29 @@
                 .replace(/'/g, '&#39;');
         }
 
+        function normalizeItem(item) {
+            if (item && typeof item === 'object') {
+                const t = String(item.t || '').trim();
+                if (!t) return null;
+                return {t: t, r: !!item.r, a: !!item.a, id: item.id || null, aberta: item.aberta !== false};
+            }
+            const t = String(item || '').trim();
+            return t ? {t: t, r: false, a: false, id: null, aberta: true} : null;
+        }
+
         function normalize(input) {
             const out = {};
             if (!input || typeof input !== 'object') return out;
             Object.keys(input).forEach(function(key) {
                 const arr = Array.isArray(input[key]) ? input[key] : [];
-                const valid = arr
-                    .map(function(item) { return String(item || '').trim(); })
-                    .filter(function(item) { return !!item; });
+                const valid = arr.map(normalizeItem).filter(function(item) { return !!item; });
                 if (valid.length) out[String(key)] = valid;
             });
             return out;
         }
 
-        try {
-            comentarios = normalize(JSON.parse(scriptEl.textContent || '{}'));
-        } catch (e) {
-            comentarios = {};
-        }
+        try { comentarios = normalize(JSON.parse(scriptEl.textContent || '{}')); } catch (e) { comentarios = {}; }
+        try { disponiveis = dispScript ? JSON.parse(dispScript.textContent || '{}') : {}; } catch (e) { disponiveis = {}; }
 
         function syncPayload() {
             hiddenInput.value = JSON.stringify(comentarios);
@@ -804,12 +867,23 @@
             return comentarios[String(perguntaId)] || [];
         }
 
+        function badgeItem(item) {
+            if (item.r) {
+                return item.aberta
+                    ? '<span class="badge bg-warning text-dark me-1">Ocorrência</span>'
+                    : '<span class="badge bg-success me-1">Resolvida</span>';
+            }
+            return '<span class="badge bg-light text-dark border me-1">Comentário</span>';
+        }
+
         function renderCommentList(list) {
             if (!list.length) {
                 return '<div class="small text-muted mb-0">Sem comentários.</div>';
             }
-            const items = list.map(function(texto) {
-                return '<li class="mb-1">' + escapeHtml(texto) + '</li>';
+            const items = list.map(function(item) {
+                return '<li class="mb-2">' + badgeItem(item) +
+                    (item.a ? '<span class="badge bg-info-subtle text-info-emphasis border me-1">Recorrente</span>' : '') +
+                    escapeHtml(item.t) + '</li>';
             }).join('');
             return '<ol class="ps-3 mb-0">' + items + '</ol>';
         }
@@ -817,7 +891,8 @@
         function refreshCountButtons() {
             countButtons.forEach(function(btn) {
                 const perguntaId = btn.getAttribute('data-pergunta-id');
-                const count = getList(perguntaId).length;
+                const list = getList(perguntaId);
+                const count = list.length;
                 const pop = bootstrap.Popover.getInstance(btn);
                 if (!count) {
                     btn.classList.add('d-none');
@@ -825,11 +900,36 @@
                     if (pop) pop.dispose();
                     return;
                 }
+                const abertas = list.filter(function(i) { return i.r && i.aberta; }).length;
                 btn.classList.remove('d-none');
-                btn.innerHTML = '<i class="bi bi-chat-left-text"></i> <span class="badge text-bg-primary ms-1">' + count + '</span>';
-                btn.setAttribute('title', 'Ver comentários (' + count + ')');
+                btn.innerHTML = '<i class="bi bi-chat-left-text"></i> <span class="badge ' + (abertas ? 'text-bg-warning' : 'text-bg-primary') + ' ms-1">' + count + '</span>';
+                btn.setAttribute('title', 'Ver comentários e ocorrências (' + count + ')');
             });
         }
+
+        function renderDisponiveis() {
+            if (!dispLista) return;
+            const itens = disponiveis[String(perguntaAtual)] || [];
+            if (dispQtd) dispQtd.textContent = String(itens.length);
+            dispLista.innerHTML = itens.length ? itens.map(function(oc, idx) {
+                return '<div class="form-check mb-2">' +
+                    '<input class="form-check-input" type="radio" name="modal_ocorrencia_id" id="form-oc-' + oc.id + '" value="' + oc.id + '"' + (idx === 0 ? ' checked' : '') + '>' +
+                    '<label class="form-check-label" for="form-oc-' + oc.id + '">' +
+                    '<span class="badge ' + (oc.requer_tratativa ? 'bg-warning text-dark' : 'bg-light text-dark border') + ' me-1">' + (oc.requer_tratativa ? 'Ocorrência' : 'Comentário') + '</span>' +
+                    '<span class="badge bg-secondary me-1">' + escapeHtml(oc.criado_em) + '</span>' + escapeHtml(oc.texto) + '</label></div>';
+            }).join('') : '<div class="text-muted">Nenhum comentário ou ocorrência em aberto disponível para associar.</div>';
+        }
+
+        function alternarRodape(aba) {
+            if (!dispBtn) return;
+            const assoc = aba === 'assoc';
+            dispBtn.classList.toggle('d-none', !assoc);
+            modalSave.classList.toggle('d-none', assoc);
+        }
+        const tabAssoc = document.getElementById('tab-form-assoc');
+        const tabNova = document.getElementById('tab-form-nova');
+        if (tabAssoc) tabAssoc.addEventListener('shown.bs.tab', function() { alternarRodape('assoc'); });
+        if (tabNova) tabNova.addEventListener('shown.bs.tab', function() { alternarRodape('nova'); });
 
         addButtons.forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -838,6 +938,10 @@
                 const perguntaTexto = card ? (card.querySelector('label.form-label') || {}).textContent : '';
                 modalContexto.textContent = (perguntaTexto || '').trim();
                 modalText.value = '';
+                if (modalReq) modalReq.checked = false;
+                renderDisponiveis();
+                if (tabNova && bootstrap.Tab) bootstrap.Tab.getOrCreateInstance(tabNova).show();
+                alternarRodape('nova');
                 modal.show();
                 setTimeout(function() { modalText.focus(); }, 150);
             });
@@ -852,11 +956,36 @@
             }
             const key = String(perguntaAtual);
             if (!Array.isArray(comentarios[key])) comentarios[key] = [];
-            comentarios[key].push(texto);
+            comentarios[key].push({t: texto, r: !!(modalReq && modalReq.checked), a: false, id: null, aberta: true});
             syncPayload();
             refreshCountButtons();
             modal.hide();
         });
+
+        if (dispBtn) {
+            dispBtn.addEventListener('click', function() {
+                const marcado = dispLista.querySelector('input[name="modal_ocorrencia_id"]:checked');
+                if (!marcado || !perguntaAtual) return;
+                const fd = new FormData();
+                fd.set('action', 'associar_ocorrencia');
+                fd.set('ocorrencia_id', marcado.value);
+                fd.set('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
+                dispBtn.disabled = true;
+                fetch('{% if edicao %}{% url "auditoria:registro_detail" registro.pk %}{% endif %}', {
+                    method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}
+                }).then(function(r) { return r.json(); }).then(function(data) {
+                    dispBtn.disabled = false;
+                    if (!data.ok) { alert(data.error || 'Não foi possível associar.'); return; }
+                    const key = String(data.pergunta_id);
+                    if (!Array.isArray(comentarios[key])) comentarios[key] = [];
+                    comentarios[key].push(normalizeItem(data.item));
+                    disponiveis[key] = (disponiveis[key] || []).filter(function(o) { return String(o.id) !== String(marcado.value); });
+                    syncPayload();
+                    refreshCountButtons();
+                    modal.hide();
+                }).catch(function() { dispBtn.disabled = false; alert('Falha de conexão ao associar.'); });
+            });
+        }
 
         countButtons.forEach(function(btn) {
             btn.addEventListener('click', function() {
@@ -869,15 +998,96 @@
                     trigger: 'focus',
                     placement: 'auto',
                     container: 'body',
-                    title: 'Comentários (' + list.length + ')',
+                    title: 'Comentários e ocorrências (' + list.length + ')',
                     content: renderCommentList(list),
                 });
                 instance.show();
             });
         });
 
+        // usado pela confirmação de finalização: abre o pop-up da pergunta
+        window.abrirComentarioPergunta = function(perguntaId) {
+            const btn = document.querySelector('.comment-add-btn[data-pergunta-id="' + perguntaId + '"]');
+            if (!btn) return;
+            btn.scrollIntoView({behavior: 'smooth', block: 'center'});
+            setTimeout(function() { btn.click(); }, 350);
+        };
+
         syncPayload();
         refreshCountButtons();
+    })();
+
+    // Confirmação de finalização do ciclo (pendências e não conformidades sem comentário)
+    (function() {
+        {% if edicao %}
+        const btn = document.getElementById('btn-finalizar');
+        const form = document.querySelector('form.needs-validation');
+        const modalEl = document.getElementById('modalFinalizarCiclo');
+        if (!btn || !form || !modalEl || typeof bootstrap === 'undefined') return;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        const corpo = document.getElementById('finalizarCorpo');
+        const confirmar = document.getElementById('finalizarConfirmar');
+        const PRE_URL = '{% url "auditoria:registro_pre_finalizacao" registro.pk %}';
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+        function renderResumo(d) {
+            const bloqueios = d.nc_sem_comentario.length + d.pendentes_obrigatorias;
+            let html = '';
+            if (d.nc_sem_comentario.length) {
+                html += '<div class="alert alert-danger"><div class="fw-semibold mb-2"><i class="bi bi-x-octagon"></i> ' +
+                    d.nc_sem_comentario.length + ' pergunta(s) com não conformidade sem comentário ou ocorrência (obrigatório):</div><ul class="mb-0 ps-3">' +
+                    d.nc_sem_comentario.map(function(q) {
+                        return '<li class="mb-1">' + esc(q.ordem) + ' - ' + esc(q.pergunta) +
+                            ' <button type="button" class="btn btn-sm btn-outline-danger py-0 ms-1" data-ir="' + q.pergunta_id + '">Comentar</button></li>';
+                    }).join('') + '</ul></div>';
+            }
+            if (d.pendentes.length) {
+                const obrig = d.pendentes_obrigatorias;
+                html += '<div class="alert ' + (obrig ? 'alert-danger' : 'alert-warning') + '"><div class="fw-semibold mb-2"><i class="bi bi-exclamation-triangle"></i> ' +
+                    d.pendentes.length + ' pergunta(s) com preenchimento pendente' + (obrig ? ' (' + obrig + ' obrigatória(s) — impedem a finalização)' : ' (não obrigatórias — serão mantidas em branco)') +
+                    ':</div><ul class="mb-0 ps-3" style="max-height: 220px; overflow-y: auto;">' +
+                    d.pendentes.map(function(q) {
+                        return '<li>' + (q.obrigatoria ? '<span class="badge bg-danger me-1">obrigatória</span>' : '') + esc(q.ordem) + ' - ' + esc(q.pergunta) +
+                            ' <span class="text-muted">(faltam ' + q.faltam + ')</span></li>';
+                    }).join('') + '</ul></div>';
+            }
+            if (!html) {
+                html = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle"></i> Tudo preenchido e todas as não conformidades têm comentário ou ocorrência.</div>';
+            }
+            html += '<p class="small text-muted mt-3 mb-0">Ao confirmar, o ciclo passa para o status <strong>Concluído</strong>.</p>';
+            corpo.innerHTML = html;
+            confirmar.disabled = bloqueios > 0;
+            corpo.querySelectorAll('[data-ir]').forEach(function(b) {
+                b.addEventListener('click', function() {
+                    modal.hide();
+                    setTimeout(function() { window.abrirComentarioPergunta(b.getAttribute('data-ir')); }, 400);
+                });
+            });
+        }
+
+        btn.addEventListener('click', function(ev) {
+            ev.preventDefault();
+            if (!form.checkValidity()) { form.reportValidity(); return; }
+            corpo.innerHTML = '<div class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm me-2"></div> Salvando e verificando pendências...</div>';
+            confirmar.disabled = true;
+            modal.show();
+            const fd = new FormData(form);
+            fd.set('action', 'save_draft');
+            fetch(window.location.href, {method: 'POST', body: fd, headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                .then(function() { return fetch(PRE_URL, {credentials: 'same-origin'}); })
+                .then(function(r) { return r.json(); })
+                .then(renderResumo)
+                .catch(function() { corpo.innerHTML = '<div class="alert alert-danger mb-0">Não foi possível verificar as pendências. Tente novamente.</div>'; });
+        });
+
+        confirmar.addEventListener('click', function() {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden'; hidden.name = 'action'; hidden.value = 'submit';
+            form.appendChild(hidden);
+            form.submit();
+        });
+        {% endif %}
     })();
 
     // AJAX Auto-save feature

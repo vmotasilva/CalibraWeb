@@ -203,7 +203,8 @@ def _get_effective_grid_itens_for_edit(registro: RegistroAuditoria, raw_from_for
     return _parse_grid_itens(getattr(registro, "grid_itens", ""))
 
 
-def _parse_comentarios_payload(raw_payload: str) -> dict[int, list[str]]:
+def _parse_comentarios_payload(raw_payload: str) -> dict[int, list[dict]]:
+    """Itens aceitos: texto simples ou objeto {t: texto, r: requer tratativa, a: associado de outro registro}."""
     if not raw_payload:
         return {}
     try:
@@ -213,7 +214,7 @@ def _parse_comentarios_payload(raw_payload: str) -> dict[int, list[str]]:
     if not isinstance(data, dict):
         return {}
 
-    parsed: dict[int, list[str]] = {}
+    parsed: dict[int, list[dict]] = {}
     for raw_key, raw_values in data.items():
         try:
             pergunta_id = int(str(raw_key).strip())
@@ -221,11 +222,18 @@ def _parse_comentarios_payload(raw_payload: str) -> dict[int, list[str]]:
             continue
         if not isinstance(raw_values, list):
             continue
-        values: list[str] = []
+        values: list[dict] = []
         for item in raw_values:
-            texto = str(item or "").strip()
+            if isinstance(item, dict):
+                texto = str(item.get("t") or "").strip()
+                requer = bool(item.get("r"))
+                associado = bool(item.get("a"))
+            else:
+                texto = str(item or "").strip()
+                requer = False
+                associado = False
             if texto:
-                values.append(texto)
+                values.append({"t": texto, "r": requer, "a": associado})
         if values:
             parsed[pergunta_id] = values
     return parsed
@@ -246,13 +254,26 @@ def _replace_comentarios_resposta(
         existentes.setdefault((existente.pergunta_id, (existente.texto or "").strip()), []).append(existente)
 
     novos = []
-    for pergunta_id, textos in payload.items():
+    for pergunta_id, itens in payload.items():
         if pergunta_id not in allowed_ids:
             continue
-        for texto in textos:
+        for item in itens:
+            if item["a"]:
+                continue  # associado de outro registro: não pertence a este
+            texto = item["t"]
+            requer = item["r"]
             reaproveitavel = existentes.get((pergunta_id, texto))
             if reaproveitavel:
-                reaproveitavel.pop(0)
+                existente = reaproveitavel.pop(0)
+                if existente.requer_tratativa != requer:
+                    existente.requer_tratativa = requer
+                    campos = ["requer_tratativa", "atualizado_em"]
+                    if requer:
+                        existente.status = ComentarioRespostaAuditoria.STATUS_ABERTA
+                        existente.resolvido_em = None
+                        existente.resolvido_por = None
+                        campos += ["status", "resolvido_em", "resolvido_por"]
+                    existente.save(update_fields=campos)
                 continue
             novos.append(
                 ComentarioRespostaAuditoria(
@@ -261,6 +282,7 @@ def _replace_comentarios_resposta(
                     autor=autor,
                     texto=texto,
                     data_referencia=registro.data_auditoria,
+                    requer_tratativa=requer,
                 )
             )
 
@@ -329,6 +351,65 @@ def _build_ocorrencias_por_pergunta(registro: RegistroAuditoria) -> dict[str, li
             }
         )
     return result
+
+
+def _comentarios_form_payload(registro: RegistroAuditoria) -> dict[str, list[dict]]:
+    """Estado inicial do formulário de edição: comentários/ocorrências do registro (inclui associados)."""
+    result: dict[str, list[dict]] = {}
+    for pid, itens in _build_ocorrencias_por_pergunta(registro).items():
+        # ordem cronológica no formulário (o builder devolve mais recentes primeiro)
+        for it in reversed(itens):
+            result.setdefault(pid, []).append(
+                {
+                    "t": it["texto"],
+                    "r": bool(it["requer_tratativa"]),
+                    "a": bool(it["associada"]),
+                    "id": it["id"],
+                    "aberta": bool(it["em_aberto"]),
+                }
+            )
+    return result
+
+
+def _checar_registro_para_finalizar(registro: RegistroAuditoria) -> dict:
+    """Pendências de preenchimento e não conformidades sem comentário/ocorrência."""
+    perguntas = list(
+        registro.modelo.perguntas.filter(ativo=True).select_related("topico").order_by("ordem", "id")
+    )
+    grid_itens = [i.strip() for i in (registro.grid_itens or "").split("\n") if i.strip()]
+    is_semanal = registro.modelo.periodicidade == "SEMANAL"
+
+    preenchidas: dict[int, int] = {}
+    ncs: dict[int, int] = {}
+    for pergunta_id, valor in registro.respostas.exclude(valor="").values_list("pergunta_id", "valor"):
+        preenchidas[pergunta_id] = preenchidas.get(pergunta_id, 0) + 1
+        if _normalize_text_token(valor) in _VALORES_NAO_CONFORME:
+            ncs[pergunta_id] = ncs.get(pergunta_id, 0) + 1
+
+    com_comentario = {int(pid) for pid, itens in _build_ocorrencias_por_pergunta(registro).items() if itens}
+
+    pendentes = []
+    nc_sem_comentario = []
+    for p in perguntas:
+        fator_grid = len(grid_itens) if grid_itens else 1
+        fator_semanal = 7 if (is_semanal or getattr(p, "preenchimento_semanal", "UNICO") == "POR_DIA") else 1
+        esperado = fator_grid * fator_semanal
+        faltam = max(esperado - preenchidas.get(p.id, 0), 0)
+        base = {
+            "pergunta_id": p.id,
+            "ordem": p.ordem,
+            "pergunta": p.pergunta,
+            "topico": p.topico.get_full_name() if p.topico_id else "",
+        }
+        if faltam:
+            pendentes.append({**base, "faltam": faltam, "obrigatoria": bool(p.obrigatoria)})
+        if ncs.get(p.id) and p.id not in com_comentario:
+            nc_sem_comentario.append({**base, "ncs": ncs[p.id]})
+    return {
+        "pendentes": pendentes,
+        "pendentes_obrigatorias": sum(1 for x in pendentes if x["obrigatoria"]),
+        "nc_sem_comentario": nc_sem_comentario,
+    }
 
 
 def _ocorrencias_abertas_disponiveis(registro: RegistroAuditoria) -> dict[str, list[dict]]:
@@ -2188,6 +2269,12 @@ def registro_edit(request, pk):
                 autor=request.user,
             )
             
+            if not is_draft:
+                for item in _checar_registro_para_finalizar(registro)["nc_sem_comentario"]:
+                    erros.append(
+                        f"A pergunta '{item['pergunta']}' tem não conformidade e precisa de um comentário ou uma ocorrência."
+                    )
+
             if erros and not is_draft:
                 for erro in erros:
                     messages.error(request, erro)
@@ -2228,11 +2315,12 @@ def registro_edit(request, pk):
                     respostas_atuais[f"grid_{resposta.pergunta_id}_{idx}"] = resposta.valor
             else:
                 respostas_atuais[f"resposta_{resposta.pergunta_id}"] = resposta.valor
-        comentarios_atuais = _build_comentarios_por_pergunta(registro)
+        comentarios_atuais = _comentarios_form_payload(registro)
 
     context = {
         "form": form,
         "modelo": registro.modelo,
+        "ocorrencias_disponiveis": _ocorrencias_abertas_disponiveis(registro),
         "perguntas": perguntas,
         "grid_enabled": grid_enabled,
         "grid_itens": grid_itens,
@@ -2246,6 +2334,19 @@ def registro_edit(request, pk):
         "dias_semana_choices": dias_semana_choices,
     }
     return render(request, "auditoria/registro_form.html", context)
+
+
+@login_required
+def registro_pre_finalizacao(request, pk):
+    """Resumo das pendências antes de finalizar o ciclo (usado pela confirmação na tela de edição)."""
+    registro = get_object_or_404(
+        _filter_registros_para_usuario(
+            request.user,
+            RegistroAuditoria.objects.select_related("modelo"),
+        ),
+        pk=pk,
+    )
+    return JsonResponse(_checar_registro_para_finalizar(registro))
 
 
 @login_required
@@ -2316,6 +2417,18 @@ def registro_detail(request, pk):
                     .exclude(registro=registro)
                     .first()
                 )
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                if not ocorrencia:
+                    return JsonResponse({"ok": False, "error": "Item não encontrado ou ocorrência já resolvida."}, status=404)
+                ocorrencia.registros_vinculados.add(registro)
+                item = {
+                    "t": (ocorrencia.texto or "").strip(),
+                    "r": bool(ocorrencia.requer_tratativa),
+                    "a": True,
+                    "id": ocorrencia.id,
+                    "aberta": bool(ocorrencia.em_aberto),
+                }
+                return JsonResponse({"ok": True, "pergunta_id": ocorrencia.pergunta_id, "item": item})
             if not ocorrencia:
                 messages.error(request, "Item não encontrado ou ocorrência já resolvida.")
             else:

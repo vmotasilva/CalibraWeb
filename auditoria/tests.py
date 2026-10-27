@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 from django.contrib.auth import get_user_model
@@ -2066,3 +2067,58 @@ class ApresentacaoRelatorioTests(OcorrenciasAcompanhamentoTests):
     def test_botao_apresentar_no_relatorio(self):
         resp = self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]))
         self.assertContains(resp, reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk]))
+
+
+class FinalizarCicloTests(OcorrenciasAcompanhamentoTests):
+    def setUp(self):
+        super().setUp()
+        self.modelo.responsaveis.add(self.user)
+        # reg2 (semanal) com NC na pergunta; sem comentarios/ocorrencias proprios
+        RespostaAuditoria.objects.create(registro=self.reg2, pergunta=self.pergunta, dia_semana="QUARTA", valor="Não")
+
+    def _post_edit(self, action, payload=None):
+        dados = {
+            "nome": self.reg2.nome,
+            "alvo": self.reg2.alvo,
+            "periodo_inicio": self.reg2.periodo_inicio.strftime("%d/%m/%Y"),
+            "periodo_fim": self.reg2.periodo_fim.strftime("%d/%m/%Y"),
+            "action": action,
+            f"resposta_{self.pergunta.id}_QUARTA": "Não",
+            "comentarios_payload": json.dumps(payload or {}),
+        }
+        return self.client.post(reverse("auditoria:registro_edit", args=[self.reg2.pk]), dados)
+
+    def test_pre_finalizacao_aponta_nc_sem_comentario_e_pendencias(self):
+        resp = self.client.get(reverse("auditoria:registro_pre_finalizacao", args=[self.reg2.pk]))
+        data = resp.json()
+        self.assertEqual([q["pergunta_id"] for q in data["nc_sem_comentario"]], [self.pergunta.id])
+        self.assertTrue(data["pendentes"])  # semanal: faltam os demais dias
+
+    def test_finalizar_bloqueado_sem_comentario_em_nc(self):
+        self._post_edit("submit")
+        self.reg2.refresh_from_db()
+        self.assertEqual(self.reg2.status, "RASCUNHO")
+
+    def test_comentario_com_requer_tratativa_via_payload_vira_ocorrencia(self):
+        self._post_edit(
+            "save_draft", {str(self.pergunta.id): [{"t": "Vazamento no chiller", "r": True}]}
+        )
+        oc = ComentarioRespostaAuditoria.objects.get(registro=self.reg2, texto="Vazamento no chiller")
+        self.assertTrue(oc.requer_tratativa)
+        self.assertTrue(oc.em_aberto)
+        data = self.client.get(reverse("auditoria:registro_pre_finalizacao", args=[self.reg2.pk])).json()
+        self.assertEqual(data["nc_sem_comentario"], [])
+
+    def test_associar_via_ajax_conta_como_comentario_e_nao_duplica(self):
+        resp = self.client.post(
+            reverse("auditoria:registro_detail", args=[self.reg2.pk]),
+            {"action": "associar_ocorrencia", "ocorrencia_id": self.ocorrencia.pk},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        self.assertTrue(resp.json()["ok"])
+        item = resp.json()["item"]
+        self.assertTrue(item["a"])
+        self._post_edit("save_draft", {str(self.pergunta.id): [item]})
+        self.assertEqual(ComentarioRespostaAuditoria.objects.filter(texto=self.ocorrencia.texto).count(), 1)
+        data = self.client.get(reverse("auditoria:registro_pre_finalizacao", args=[self.reg2.pk])).json()
+        self.assertEqual(data["nc_sem_comentario"], [])

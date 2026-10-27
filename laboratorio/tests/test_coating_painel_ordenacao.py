@@ -79,3 +79,33 @@ class CoatingPainelOrdenacaoTests(TestCase):
 
         _, response = self._lotes(ordem="saida", dir="desc")
         self.assertNotIn("ordem=", response.context["links_ordenacao"]["saida"]["url"])
+
+
+class CoatingPainelFiltrosTests(CoatingPainelOrdenacaoTests):
+    """Pop-up de filtros: competência, turno, tratamento, preparação e montagem."""
+
+    def test_filtra_por_tratamento_e_turno(self):
+        trat = TratamentoAntiReflexo.objects.get(nome="AZUL")
+        lotes, response = self._lotes(tratamento=trat.id)
+        self.assertEqual({l for l, _ in lotes}, {102})
+        self.assertEqual(response.context["filtros_ativos"], 1)
+        self.assertContains(response, f"&amp;tratamento={trat.id}")
+
+        regra = RegraTurnoCoating.objects.get()
+        lotes, _ = self._lotes(turno=regra.id)
+        self.assertEqual(len(lotes), 6)
+        lotes, _ = self._lotes(turno=regra.id + 999)
+        self.assertEqual(lotes, [])
+
+    def test_filtra_por_competencia(self):
+        hoje = timezone.localdate()
+        lotes, response = self._lotes(competencia=f"{hoje.year}-{hoje.month:02d}")
+        self.assertEqual(len(lotes), 6)
+        self.assertEqual(response.context["competencias_opcoes"][0]["valor"], f"{hoje.year}-{hoje.month:02d}")
+        lotes, _ = self._lotes(competencia="2000-01")
+        self.assertEqual(lotes, [])
+
+    def test_valores_invalidos_sao_ignorados(self):
+        lotes, response = self._lotes(competencia="abc", turno="x", tratamento="'; drop")
+        self.assertEqual(len(lotes), 6)
+        self.assertEqual(response.context["filtros_ativos"], 0)

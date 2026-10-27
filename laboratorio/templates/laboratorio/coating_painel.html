@@ -42,7 +42,8 @@
                 {% if anomaly_filter %}<input type="hidden" name="anomaly" value="{{ anomaly_filter }}">{% endif %}
                 <input type="hidden" name="tab" id="searchTabInput" value="{{ active_tab|default:'' }}">
                 {% if not ordenacao_padrao %}<input type="hidden" name="ordem" value="{{ ordem }}"><input type="hidden" name="dir" value="{{ direcao }}">{% endif %}
-                
+                {% for chave, valor in filtros.items %}{% if valor %}<input type="hidden" name="{{ chave }}" value="{{ valor }}">{% endif %}{% endfor %}
+
                 <div class="input-group input-group-sm shadow-sm" style="max-width: 140px;">
                     <input type="date" 
                            name="date_search" 
@@ -65,8 +66,8 @@
                            autocomplete="off"
                            oninput="filterLotesLive(this.value)">
                     {% if lote_search or date_search %}
-                    <a href="?{% if audit_mode %}audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{% if active_tab %}&tab={{ active_tab }}{% endif %}{{ qs_ordenacao }}" 
-                       class="btn btn-outline-secondary border-start-0 text-muted" 
+                    <a href="?{% if audit_mode %}audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{% if active_tab %}&tab={{ active_tab }}{% endif %}{{ qs_ordenacao }}{{ qs_filtros }}"
+                       class="btn btn-outline-secondary border-start-0 text-muted"
                        title="Limpar busca">
                         <i class="bi bi-x-lg"></i>
                     </a>
@@ -79,6 +80,9 @@
 
             <!-- Botões Individuais em Desktop (>= 768px) -->
             <div class="d-none d-md-flex gap-2 align-items-center">
+                <button type="button" class="btn {% if filtros_ativos %}btn-secondary{% else %}btn-outline-secondary{% endif %} fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#filtrosModal" title="Filtros">
+                    <i class="bi bi-funnel{% if filtros_ativos %}-fill{% endif %}"></i> Filtros{% if filtros_ativos %} <span class="badge bg-light text-dark">{{ filtros_ativos }}</span>{% endif %}
+                </button>
                 {% if not audit_mode %}
                 <a href="?audit=true" class="btn btn-outline-danger fw-bold shadow-sm" title="Investigar Anomalias">
                     <i class="bi bi-search"></i> Auditoria
@@ -112,6 +116,11 @@
                     <i class="bi bi-three-dots-vertical fs-5"></i>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 mt-1" aria-labelledby="dropdownMobileMenu" style="z-index: 1060;">
+                    <li>
+                        <button class="dropdown-item py-2 px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#filtrosModal">
+                            <i class="bi bi-funnel me-2"></i> Filtros{% if filtros_ativos %} ({{ filtros_ativos }}){% endif %}
+                        </button>
+                    </li>
                     {% if not audit_mode %}
                     <li>
                         <button class="dropdown-item py-2 px-3 fw-bold text-primary" data-bs-toggle="modal" data-bs-target="#novoLoteModal">
@@ -282,7 +291,7 @@
         {% for evap in evaporadoras %}
         {% cycle 'tab-color-1' 'tab-color-2' 'tab-color-3' 'tab-color-4' 'tab-color-5' 'tab-color-6' as tcolor silent %}
         <li class="nav-item" role="presentation">
-            <a href="?equipamento={{ evap.codigo }}&tab={{ evap.id }}&page=1{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{{ qs_ordenacao }}" 
+            <a href="?equipamento={{ evap.codigo }}&tab={{ evap.id }}&page=1{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{{ qs_ordenacao }}{{ qs_filtros }}" 
                class="nav-link {% if maquina_ativa and maquina_ativa.id == evap.id %}active{% elif not maquina_ativa and forloop.first %}active{% endif %} fw-bold {{ tcolor }}" 
                id="evap-{{ evap.id }}-tab">
                 {{ evap.codigo }}
@@ -611,7 +620,7 @@
             <ul class="pagination justify-content-center mb-0">
                 {% if registros_page.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?equipamento={{ maquina_ativa.codigo }}&tab={{ maquina_ativa.id }}&page={{ registros_page.previous_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{{ qs_ordenacao }}" aria-label="Anterior">
+                    <a class="page-link" href="?equipamento={{ maquina_ativa.codigo }}&tab={{ maquina_ativa.id }}&page={{ registros_page.previous_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{{ qs_ordenacao }}{{ qs_filtros }}" aria-label="Anterior">
                         <span aria-hidden="true">&laquo; Anterior</span>
                     </a>
                 </li>
@@ -623,7 +632,7 @@
                 </li>
                 {% if registros_page.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?equipamento={{ maquina_ativa.codigo }}&tab={{ maquina_ativa.id }}&page={{ registros_page.next_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{{ qs_ordenacao }}" aria-label="Próxima">
+                    <a class="page-link" href="?equipamento={{ maquina_ativa.codigo }}&tab={{ maquina_ativa.id }}&page={{ registros_page.next_page_number }}{% if lote_search %}&lote_search={{ lote_search }}{% endif %}{% if date_search %}&date_search={{ date_search }}{% endif %}{% if audit_mode %}&audit=true{% endif %}{% if anomaly_filter %}&anomaly={{ anomaly_filter }}{% endif %}{{ qs_ordenacao }}{{ qs_filtros }}" aria-label="Próxima">
                         <span aria-hidden="true">Próxima &raquo;</span>
                     </a>
                 </li>
@@ -640,6 +649,75 @@
 </div>
 
 <!-- Modal Novo Lote -->
+<!-- Modal de Filtros -->
+<div class="modal fade" id="filtrosModal" tabindex="-1" aria-labelledby="filtrosModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="get" action="." class="modal-content">
+            {% if audit_mode %}<input type="hidden" name="audit" value="true">{% endif %}
+            {% if anomaly_filter %}<input type="hidden" name="anomaly" value="{{ anomaly_filter }}">{% endif %}
+            {% if active_tab %}<input type="hidden" name="tab" value="{{ active_tab }}">{% endif %}
+            {% if lote_search %}<input type="hidden" name="lote_search" value="{{ lote_search }}">{% endif %}
+            {% if date_search %}<input type="hidden" name="date_search" value="{{ date_search }}">{% endif %}
+            {% if not ordenacao_padrao %}<input type="hidden" name="ordem" value="{{ ordem }}"><input type="hidden" name="dir" value="{{ direcao }}">{% endif %}
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="filtrosModalLabel"><i class="bi bi-funnel me-2"></i>Filtros</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small" for="filtroCompetencia">Competência</label>
+                    <select class="form-select" name="competencia" id="filtroCompetencia">
+                        <option value="">Todas</option>
+                        {% for c in competencias_opcoes %}
+                        <option value="{{ c.valor }}" {% if filtros.competencia == c.valor %}selected{% endif %}>{{ c.rotulo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small" for="filtroTurno">Turno</label>
+                    <select class="form-select" name="turno" id="filtroTurno">
+                        <option value="">Todos</option>
+                        {% for t in turnos_opcoes %}
+                        <option value="{{ t.id }}" {% if filtros.turno == t.id|stringformat:"s" %}selected{% endif %}>{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small" for="filtroTratamento">Tratamento</label>
+                    <select class="form-select" name="tratamento" id="filtroTratamento">
+                        <option value="">Todos</option>
+                        {% for t in tratamentos_opcoes %}
+                        <option value="{{ t.id }}" {% if filtros.tratamento == t.id|stringformat:"s" %}selected{% endif %}>{{ t.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small" for="filtroPreparacao">Preparação</label>
+                    <select class="form-select" name="preparacao" id="filtroPreparacao">
+                        <option value="">Todos</option>
+                        {% for c in preparacao_opcoes %}
+                        <option value="{{ c.id }}" {% if filtros.preparacao == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nome_completo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label fw-bold small" for="filtroMontagem">Montagem</label>
+                    <select class="form-select" name="montagem" id="filtroMontagem">
+                        <option value="">Todos</option>
+                        {% for c in montagem_opcoes %}
+                        <option value="{{ c.id }}" {% if filtros.montagem == c.id|stringformat:"s" %}selected{% endif %}>{{ c.nome_completo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a href="?{% if audit_mode %}audit=true&{% endif %}{% if anomaly_filter %}anomaly={{ anomaly_filter }}&{% endif %}{% if active_tab %}tab={{ active_tab }}&{% endif %}{% if lote_search %}lote_search={{ lote_search|urlencode }}&{% endif %}{% if date_search %}date_search={{ date_search }}&{% endif %}{{ qs_ordenacao }}" class="btn btn-outline-secondary">Limpar</a>
+                <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-funnel"></i> Aplicar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="modal fade" id="novoLoteModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">

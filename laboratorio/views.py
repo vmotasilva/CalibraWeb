@@ -1166,10 +1166,33 @@ def coating_painel(request):
             base_qs = base_qs.filter(turno_coating__data=filter_date)
         except ValueError:
             pass
-    
+
+    # Filtros avançados (pop-up): competência (AAAA-MM), turno, tratamento, preparação e montagem
+    filtros = {
+        chave: request.GET.get(chave, '').strip()
+        for chave in ('competencia', 'turno', 'tratamento', 'preparacao', 'montagem')
+    }
+    if filtros['competencia']:
+        try:
+            ano_c, mes_c = (int(p) for p in filtros['competencia'].split('-'))
+            base_qs = base_qs.filter(turno_coating__data__year=ano_c, turno_coating__data__month=mes_c)
+        except ValueError:
+            filtros['competencia'] = ''
+    if filtros['turno'].isdigit():
+        base_qs = base_qs.filter(turno_coating__regra_id=int(filtros['turno']))
+    else:
+        filtros['turno'] = ''
+    for chave, campo in (('tratamento', 'tratamento_id'), ('preparacao', 'preparacao_id'), ('montagem', 'montagem_id')):
+        if filtros[chave].isdigit():
+            base_qs = base_qs.filter(**{campo: int(filtros[chave])})
+        else:
+            filtros[chave] = ''
+    filtros_ativos = sum(1 for v in filtros.values() if v)
+    qs_filtros = ''.join(f'&{k}={v}' for k, v in filtros.items() if v)
+
     if audit_mode:
         from django.db.models import F, ExpressionWrapper, DurationField
-        
+
         if anomaly_filter == 'over_24h':
             base_qs = base_qs.annotate(
                 duracao=ExpressionWrapper(F('hora_saida') - F('hora_entrada'), output_field=DurationField())
@@ -1620,7 +1643,29 @@ def coating_painel(request):
 
     links_ordenacao, qs_ordenacao = _links_ordenacao_coating(request, ordem, direcao)
 
+    # Opções do pop-up de filtros
+    meses_pt = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+    competencias_opcoes = [
+        {'valor': f'{d.year}-{d.month:02d}', 'rotulo': f'{meses_pt[d.month - 1]}/{d.year}'}
+        for d in TurnoCoating.objects.dates('data', 'month', order='DESC')
+    ]
+    registros_all = RegistroCoating.objects.all()
+    colaboradores_prep = Colaborador.objects.filter(
+        id__in=registros_all.exclude(preparacao__isnull=True).values('preparacao_id')
+    ).order_by('nome_completo')
+    colaboradores_mont = Colaborador.objects.filter(
+        id__in=registros_all.exclude(montagem__isnull=True).values('montagem_id')
+    ).order_by('nome_completo')
+
     context = {
+        "filtros": filtros,
+        "filtros_ativos": filtros_ativos,
+        "qs_filtros": qs_filtros,
+        "competencias_opcoes": competencias_opcoes,
+        "turnos_opcoes": RegraTurnoCoating.objects.filter(ativo=True),
+        "tratamentos_opcoes": TratamentoAntiReflexo.objects.all().order_by('nome'),
+        "preparacao_opcoes": colaboradores_prep,
+        "montagem_opcoes": colaboradores_mont,
         "registros": registros,
         "registros_page": registros_page,
         "maquina_ativa": maquina_ativa,
