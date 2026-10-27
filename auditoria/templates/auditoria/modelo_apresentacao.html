@@ -1,3 +1,4 @@
+{% load l10n %}
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -64,6 +65,8 @@
         .ref-line { position: absolute; left: 0; right: 0; border-top: 2px dashed #16a34a55; }
 
         .topico-row { display: grid; grid-template-columns: 420px 1fr 90px 120px; gap: 14px; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+        .topico-row.compacto { padding: 4px 0; font-size: .92rem; }
+        .topico-row.compacto .meter { height: 12px; }
         .meter { height: 18px; border-radius: 9px; background: #e2e8f0; overflow: hidden; }
         .meter > span { display: block; height: 100%; border-radius: 9px; }
 
@@ -167,27 +170,37 @@
 
     {% elif sl.kind == "evolucao" %}
     <section class="slide">
-        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-bar-chart-line-fill text-primary"></i> Evolução da conformidade por ciclo</h2><span class="text-muted small">Meta de referência: 95%</span></div>
+        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-bar-chart-line-fill text-primary"></i> Evolução da conformidade por ciclo</h2><span class="text-muted small">Meta: {{ grafico.meta }}%</span></div>
         <div class="slide-content">
-            <div class="bars">
-                {% for c in ciclos %}
-                <div class="bar-col" title="{{ c.nome }} — {{ c.periodo }}">
-                    <div class="bar-val c-{{ c.faixa }}">{{ c.pct_txt }}</div>
-                    <div class="bar bg-{{ c.faixa }}" style="height: {{ c.altura }}%;"></div>
-                </div>
+            {% localize off %}
+            <svg viewBox="0 0 1000 400" style="width: 100%; flex: 1; min-height: 0;" role="img" aria-label="Evolução da conformidade por ciclo">
+                {% for g in grafico.grade %}
+                <line x1="{{ grafico.esq }}" x2="{{ grafico.dir }}" y1="{{ g.y }}" y2="{{ g.y }}" stroke="#e2e8f0" stroke-width="1"/>
+                <text x="{{ grafico.esq|add:'-10' }}" y="{{ g.y }}" text-anchor="end" dominant-baseline="middle" font-size="14" fill="#94a3b8">{{ g.rotulo }}</text>
                 {% endfor %}
-            </div>
-            <div class="bar-labels">{% for c in ciclos %}<div>{{ c.label }}<br><span class="text-danger">{{ c.ncs }} NC</span></div>{% endfor %}</div>
+                <line x1="{{ grafico.esq }}" x2="{{ grafico.dir }}" y1="{{ grafico.meta_y }}" y2="{{ grafico.meta_y }}" stroke="#16a34a" stroke-width="2" stroke-dasharray="8 6"/>
+                <text x="{{ grafico.dir }}" y="{{ grafico.meta_y|add:'-8' }}" text-anchor="end" font-size="14" font-weight="700" fill="#16a34a">Meta {{ grafico.meta }}%</text>
+                <polyline points="{{ grafico.linha }}" fill="none" stroke="#2563eb" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+                {% for p in grafico.pontos %}
+                {% if p.y %}
+                <circle cx="{{ p.x }}" cy="{{ p.y }}" r="8" fill="#fff" stroke-width="4" style="stroke: var(--{{ p.faixa }});"><title>{{ p.nome }} — {{ p.periodo }}</title></circle>
+                <text x="{{ p.x }}" y="{{ p.y|add:'-16' }}" text-anchor="middle" font-size="17" font-weight="800" style="fill: var(--{{ p.faixa }});">{{ p.pct_txt }}</text>
+                {% endif %}
+                <text x="{{ p.x }}" y="{{ grafico.base|add:'34' }}" text-anchor="middle" font-size="15" fill="#475569">{{ p.label }}</text>
+                <text x="{{ p.x }}" y="{{ grafico.base|add:'58' }}" text-anchor="middle" font-size="13" font-weight="600" fill="#dc2626">{{ p.ncs }} NC</text>
+                {% endfor %}
+            </svg>
+            {% endlocalize %}
         </div>
         <div class="slide-footer"><span>{{ modelo.nome }}</span><span>Slide {{ sl.numero }}</span></div>
     </section>
 
     {% elif sl.kind == "topicos" %}
     <section class="slide">
-        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-diagram-3-fill text-primary"></i> Conformidade por tópico{% if sl.parte > 1 %} ({{ sl.parte }}){% endif %}</h2><span class="text-muted small">Do menor para o maior índice</span></div>
+        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-diagram-3-fill text-primary"></i> Conformidade por tópico</h2><span class="text-muted small">Do menor para o maior índice</span></div>
         <div class="slide-content">
             {% for t in sl.itens %}
-            <div class="topico-row">
+            <div class="topico-row{% if sl.compacto %} compacto{% endif %}">
                 <div class="fw-semibold">{{ t.nome }}</div>
                 <div class="meter"><span class="bg-{{ t.faixa }}" style="width: {{ t.largura }}%;"></span></div>
                 <div class="fw-bold c-{{ t.faixa }} text-end">{{ t.pct_txt }}</div>

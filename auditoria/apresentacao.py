@@ -59,6 +59,37 @@ def _faixa(pct):
 
 
 ITENS_POR_SLIDE = 4
+META_CONFORMIDADE = 100
+
+
+def _grafico_evolucao(ciclos: list[dict]) -> dict:
+    """Geometria (SVG 1000x400) do gráfico de linhas e pontos com a meta de 100%."""
+    esq, dir_, topo, base = 70, 970, 30, 300
+    valores = [c["pct"] for c in ciclos if c["pct"] is not None]
+    y_min = max(0, int((min(valores) - 10) // 10 * 10)) if valores else 0
+    y_min = min(y_min, 80)
+
+    def y_de(p):
+        return round(base - (p - y_min) / (META_CONFORMIDADE - y_min) * (base - topo), 1)
+
+    n = len(ciclos)
+    passo = (dir_ - esq) / n if n else 0
+    pontos = []
+    for i, c in enumerate(ciclos):
+        x = round(esq + passo * (i + 0.5), 1)
+        pontos.append({**c, "x": x, "y": y_de(c["pct"]) if c["pct"] is not None else None})
+    com_valor = [p for p in pontos if p["y"] is not None]
+    linhas = [{"y": y_de(v), "rotulo": f"{v}%"} for v in range(y_min, META_CONFORMIDADE + 1, 10)]
+    return {
+        "pontos": pontos,
+        "linha": " ".join(f"{p['x']},{p['y']}" for p in com_valor),
+        "grade": linhas,
+        "meta_y": y_de(META_CONFORMIDADE),
+        "esq": esq,
+        "dir": dir_,
+        "base": base,
+        "meta": META_CONFORMIDADE,
+    }
 
 
 def _fmt_pct(pct, casas=0):
@@ -251,8 +282,9 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
         slides.append({"kind": "resumo", "titulo": "Resumo executivo"})
         if len(ciclos) > 1:
             slides.append({"kind": "evolucao", "titulo": "Evolução por ciclo"})
-        for i, lote in enumerate(_chunks(topicos, TOPICOS_POR_SLIDE), start=1):
-            slides.append({"kind": "topicos", "titulo": "Conformidade por tópico", "itens": lote, "parte": i})
+        if topicos:  # todos os tópicos num único slide
+            slides.append({"kind": "topicos", "titulo": "Conformidade por tópico", "itens": topicos, "parte": 1,
+                           "compacto": len(topicos) > 8})
         slides.append({"kind": "criticas", "titulo": "Pontos de atenção"})
         lotes_itens = list(_chunks(itens_ciclo, ITENS_POR_SLIDE)) or [[]]
         for i, lote in enumerate(lotes_itens, start=1):
@@ -274,6 +306,7 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
         "slides": slides,
         "total_slides": len(slides),
         "ciclos": ciclos,
+        "grafico": _grafico_evolucao(ciclos),
         "ultimo_ciclo": ciclo_base,
         "total_fechados": total_fechados,
         "ciclos_analisados": len(ciclos),

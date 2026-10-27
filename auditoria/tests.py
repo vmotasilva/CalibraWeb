@@ -2152,6 +2152,18 @@ class ApresentacaoRelatorioTests(OcorrenciasAcompanhamentoTests):
         RespostaAuditoria.objects.create(registro=self.reg2, pergunta=self.pergunta, dia_semana="QUARTA", valor="Não")
         RegistroAuditoria.objects.filter(pk__in=[self.reg1.pk, self.reg2.pk]).update(status="CONCLUIDO")
 
+    def test_evolucao_em_linha_com_meta_100_e_topicos_em_um_slide(self):
+        resp = self.client.get(reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk]))
+        graf = resp.context["grafico"]
+        self.assertEqual(graf["meta"], 100)
+        self.assertEqual(len(graf["pontos"]), len(resp.context["ciclos"]))
+        kinds = [s["kind"] for s in resp.context["slides"]]
+        self.assertLessEqual(kinds.count("topicos"), 1)
+        if len(resp.context["ciclos"]) > 1:
+            self.assertContains(resp, "<polyline")
+            self.assertContains(resp, "Meta 100%")
+            self.assertNotRegex(resp.content.decode(), r'y1="d+,d')
+
     def test_apresentacao_usa_ultimo_ciclo_fechado_com_comentarios(self):
         # ciclo mais novo ainda em andamento nao deve ser a base
         aberto = RegistroAuditoria.objects.create(
