@@ -1256,6 +1256,22 @@ def api_colaboradores_buscar(request):
 
 
 @login_required
+def api_usuarios_buscar(request):
+    """Busca usuários ativos por nome/username para escolher responsáveis do modelo."""
+    User = get_user_model()
+    q = (request.GET.get("q") or "").strip()
+    qs = User.objects.filter(is_active=True)
+    for termo in q.split():
+        qs = qs.filter(
+            models.Q(first_name__icontains=termo)
+            | models.Q(last_name__icontains=termo)
+            | models.Q(username__icontains=termo)
+        )
+    qs = qs.order_by("first_name", "username")[:20]
+    return JsonResponse({"results": [{"id": u.id, "nome": u.get_full_name() or u.username} for u in qs]})
+
+
+@login_required
 @require_POST
 def ocorrencia_excluir(request, pk):
     """Apaga um comentário/ocorrência (autor ou administrador)."""
@@ -3260,6 +3276,16 @@ def registros_por_modelo(request, modelo_id):
         User = get_user_model()
         ids = [int(i) for i in request.POST.getlist("responsaveis") if i.isdigit()]
         modelo.responsaveis.set(User.objects.filter(pk__in=ids, is_active=True))
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse(
+                {
+                    "ok": True,
+                    "responsaveis": [
+                        {"id": u.id, "nome": u.get_full_name() or u.username}
+                        for u in modelo.responsaveis.order_by("first_name", "username")
+                    ],
+                }
+            )
         messages.success(request, "Responsáveis atualizados com sucesso.")
         return redirect("auditoria:registros_por_modelo", modelo_id=modelo.id)
 
@@ -4137,8 +4163,9 @@ def registros_por_modelo(request, modelo_id):
     if not is_read_only and _auditoria_can_update_modelo(request.user, modelo):
         context["can_edit_responsaveis"] = True
         context["auditados_info"] = [{"id": c.id, "nome": _colaborador_nome(c)} for c in modelo.auditados.all()]
-        context["usuarios_responsaveis"] = get_user_model().objects.filter(is_active=True).order_by("first_name", "username")
-        context["responsaveis_ids"] = set(modelo.responsaveis.values_list("pk", flat=True))
+        context["responsaveis_info"] = [
+            {"id": u.id, "nome": u.get_full_name() or u.username} for u in modelo.responsaveis.all()
+        ]
     return render(request, "auditoria/registros_por_modelo.html", context)
 
 

@@ -1,12 +1,15 @@
 <script>
-window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(prefix) {
-    const url = "{% url 'auditoria:api_colaboradores_buscar' %}";
+window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(prefix, opts) {
+    opts = opts || {};
     const chips = document.getElementById(prefix + '-resp-chips');
     const busca = document.getElementById(prefix + '-resp-busca');
     const lista = document.getElementById(prefix + '-resp-lista');
     const hidden = document.getElementById(prefix + '-resp-hidden');
     if (!chips || !busca || !lista || !hidden) return null;
-    const campo = (document.getElementById(prefix + '-resp-picker') || {dataset: {}}).dataset.field || 'responsaveis';
+    const dataset = (document.getElementById(prefix + '-resp-picker') || {dataset: {}}).dataset;
+    const campo = dataset.field || 'responsaveis';
+    const url = dataset.searchUrl || "{% url 'auditoria:api_colaboradores_buscar' %}";
+    const rotulo = dataset.label || 'colaborador';
     let selecionados = [];
     let timer = null;
     let seq = 0;
@@ -17,7 +20,7 @@ window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(pr
         chips.innerHTML = selecionados.map(function(u) {
             return '<span class="badge bg-primary-subtle text-primary-emphasis border border-primary-subtle d-inline-flex align-items-center gap-1">' +
                 esc(u.nome) + '<button type="button" class="btn-close ms-1" style="font-size:.6rem" aria-label="Remover" data-id="' + u.id + '"></button></span>';
-        }).join('') || '<span class="small text-muted">Nenhum colaborador selecionado.</span>';
+        }).join('') || '<span class="small text-muted">Nenhum ' + rotulo + ' selecionado.</span>';
         hidden.innerHTML = selecionados.map(function(u) {
             return '<input type="hidden" name="' + campo + '" value="' + u.id + '">';
         }).join('');
@@ -38,7 +41,7 @@ window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(pr
                     ? itens.map(function(u) {
                         return '<button type="button" class="list-group-item list-group-item-action py-1 small" data-id="' + u.id + '" data-nome="' + esc(u.nome) + '">' + esc(u.nome) + '</button>';
                     }).join('')
-                    : '<div class="list-group-item small text-muted py-1">Nenhum colaborador encontrado.</div>';
+                    : '<div class="list-group-item small text-muted py-1">Nenhum ' + rotulo + ' encontrado.</div>';
                 lista.classList.remove('d-none');
             })
             .catch(fechar);
@@ -55,6 +58,7 @@ window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(pr
         fechar();
         render();
         busca.focus();
+        if (opts.onChange) opts.onChange(selecionados.slice());
     });
     chips.addEventListener('click', function(e) {
         const b = e.target.closest('button[data-id]');
@@ -62,6 +66,7 @@ window.criarSeletorResponsaveis = window.criarSeletorResponsaveis || function(pr
         const id = parseInt(b.getAttribute('data-id'), 10);
         selecionados = selecionados.filter(function(u) { return u.id !== id; });
         render();
+        if (opts.onChange) opts.onChange(selecionados.slice());
     });
     document.addEventListener('click', function(e) {
         if (!e.target.closest('#' + prefix + '-resp-picker')) fechar();

@@ -27,23 +27,19 @@
                             <p class="mb-2"><strong>Periodicidade:</strong> {{ modelo.get_periodicidade_completa }}</p>
                             {% if modelo.responsaveis.all %}
                             <p class="mb-2 responsaveis-texto"><strong>Responsáveis:</strong>
-                                <span>
-                                {% for u in modelo.responsaveis.all %}
-                                    {{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}
-                                {% endfor %}
-                                </span>
+                                <span id="responsaveis-lista">{% for u in modelo.responsaveis.all %}{{ u.get_full_name|default:u.username }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
                                 {% if can_edit_responsaveis %}
                                 <button type="button" class="btn btn-link btn-sm p-0 ms-2 no-print" data-bs-toggle="modal" data-bs-target="#modal-responsaveis"><i class="bi bi-pencil"></i> Editar</button>
                                 {% endif %}
                             </p>
                             {% elif modelo.responsavel %}
-                            <p class="mb-2"><strong>Responsável:</strong> {{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}
+                            <p class="mb-2 responsaveis-texto"><strong>Responsável:</strong> <span id="responsaveis-lista">{{ modelo.responsavel.get_full_name|default:modelo.responsavel.username }}</span>
                                 {% if can_edit_responsaveis %}
                                 <button type="button" class="btn btn-link btn-sm p-0 ms-2 no-print" data-bs-toggle="modal" data-bs-target="#modal-responsaveis"><i class="bi bi-pencil"></i> Editar</button>
                                 {% endif %}
                             </p>
                             {% elif can_edit_responsaveis %}
-                            <p class="mb-2"><strong>Responsáveis:</strong> <span class="text-muted">Nenhum</span>
+                            <p class="mb-2 responsaveis-texto"><strong>Responsáveis:</strong> <span id="responsaveis-lista"><span class="text-muted">Nenhum</span></span>
                                 <button type="button" class="btn btn-link btn-sm p-0 ms-2 no-print" data-bs-toggle="modal" data-bs-target="#modal-responsaveis"><i class="bi bi-pencil"></i> Editar</button>
                             </p>
                             {% endif %}
@@ -651,7 +647,7 @@
                     <div class="modal fade" id="modal-responsaveis" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content">
-                                <form method="post">
+                                <form method="post" id="form-responsaveis">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="update_responsaveis">
                                     <div class="modal-header">
@@ -659,17 +655,14 @@
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <p class="small text-muted">Somente os responsáveis (e administradores) veem este formulário para preenchimento.</p>
-                                        <select class="form-select" name="responsaveis" multiple size="12">
-                                            {% for u in usuarios_responsaveis %}
-                                            <option value="{{ u.id }}" {% if u.id in responsaveis_ids %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <div class="form-text">Segure Ctrl para selecionar mais de um.</div>
+                                        <p class="small text-muted">Somente os responsáveis (e administradores) veem este formulário para preenchimento. As alterações são salvas automaticamente ao adicionar ou remover.</p>
+                                        {% url 'auditoria:api_usuarios_buscar' as url_busca_usuarios %}
+                                        {% include "auditoria/_responsaveis_picker.html" with prefix="resp2" field="responsaveis" placeholder="Digite para buscar o usuário..." search_url=url_busca_usuarios label="responsável" %}
+                                        {{ responsaveis_info|json_script:"responsaveis-info" }}
+                                        <div class="small mt-2" id="resp2-status" aria-live="polite"></div>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-primary">Salvar</button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                                     </div>
                                 </form>
                             </div>
@@ -1280,6 +1273,41 @@ document.addEventListener('DOMContentLoaded', function() {
     const detalheModal = detalheEl ? bootstrap.Modal.getOrCreateInstance(detalheEl) : null;
     const pickerDet = window.criarSeletorResponsaveis('det');
     const pickerAud2 = window.criarSeletorResponsaveis('aud2');
+    (function() {
+        const form = document.getElementById('form-responsaveis');
+        if (!form) return;
+        const status = document.getElementById('resp2-status');
+        const lista = document.getElementById('responsaveis-lista');
+        let fila = Promise.resolve();
+        function salvar(itens) {
+            fila = fila.then(function() {
+                const fd = new FormData();
+                fd.append('action', 'update_responsaveis');
+                fd.append('csrfmiddlewaretoken', form.querySelector('[name=csrfmiddlewaretoken]').value);
+                itens.forEach(function(u) { fd.append('responsaveis', u.id); });
+                status.className = 'small mt-2 text-muted';
+                status.textContent = 'Salvando...';
+                return fetch(window.location.href, {method: 'POST', body: fd, credentials: 'same-origin', headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+                    .then(function(data) {
+                        if (lista) {
+                            lista.textContent = '';
+                            if (data.responsaveis.length) lista.textContent = data.responsaveis.map(function(u) { return u.nome; }).join(', ');
+                            else { const s = document.createElement('span'); s.className = 'text-muted'; s.textContent = 'Nenhum'; lista.appendChild(s); }
+                        }
+                        status.className = 'small mt-2 text-success';
+                        status.textContent = 'Responsáveis atualizados.';
+                    })
+                    .catch(function() {
+                        status.className = 'small mt-2 text-danger';
+                        status.textContent = 'Não foi possível salvar. Recarregue a página e tente novamente.';
+                    });
+            });
+        }
+        const pickerResp2 = window.criarSeletorResponsaveis('resp2', {onChange: salvar});
+        const dados = document.getElementById('responsaveis-info');
+        if (pickerResp2 && dados) { try { pickerResp2.set(JSON.parse(dados.textContent || '[]')); } catch (e) {} }
+    })();
     (function() {
         const dados = document.getElementById('auditados-info');
         if (pickerAud2 && dados) { try { pickerAud2.set(JSON.parse(dados.textContent || '[]')); } catch (e) {} }

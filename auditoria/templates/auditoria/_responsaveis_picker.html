@@ -1,4 +1,4 @@
-<div class="resp-picker" id="{{ prefix }}-resp-picker" data-prefix="{{ prefix }}" data-field="{{ field|default:'responsaveis' }}">
+<div class="resp-picker" id="{{ prefix }}-resp-picker" data-prefix="{{ prefix }}" data-field="{{ field|default:'responsaveis' }}"{% if search_url %} data-search-url="{{ search_url }}"{% endif %}{% if label %} data-label="{{ label }}"{% endif %}>
     <div class="d-flex flex-wrap gap-1 mb-1" id="{{ prefix }}-resp-chips"></div>
     <div class="position-relative">
         <input type="text" class="form-control form-control-sm" id="{{ prefix }}-resp-busca" placeholder="{{ placeholder|default:'Digite para buscar colaborador...' }}" autocomplete="off">

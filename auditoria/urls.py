@@ -62,6 +62,7 @@ urlpatterns = [
     path("ocorrencias/<int:pk>/reabrir/", views.ocorrencia_reabrir, name="ocorrencia_reabrir"),
     path("ocorrencias/<int:pk>/editar/", views.ocorrencia_editar, name="ocorrencia_editar"),
     path("api/colaboradores/buscar/", views.api_colaboradores_buscar, name="api_colaboradores_buscar"),
+    path("api/usuarios/buscar/", views.api_usuarios_buscar, name="api_usuarios_buscar"),
     path("ocorrencias/<int:pk>/excluir/", views.ocorrencia_excluir, name="ocorrencia_excluir"),
     path("modelos/<int:modelo_id>/ocorrencias/unificar/", views.ocorrencia_unificar, name="ocorrencia_unificar"),
     path("dashboard/", views.dashboard_auditoria, name="dashboard"),
