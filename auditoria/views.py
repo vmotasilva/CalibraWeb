@@ -1995,6 +1995,23 @@ def selecionar_modelo_preenchimento(request):
             continue
         modelos_com_pendencias.append(modelo)
         
+    # Modelos em que o usuário é apenas auditado: só acompanham o relatório (somente leitura)
+    if pendentes != "mes":
+        auditado_qs = _modelos_como_auditado(request.user, ModeloAuditoria.objects.filter(ativo=True)).exclude(
+            pk__in=[m.pk for m in modelos_com_pendencias]
+        )
+        if q:
+            auditado_qs = auditado_qs.filter(models.Q(nome__icontains=q) | models.Q(objeto_auditoria__icontains=q))
+        if periodicidade:
+            auditado_qs = auditado_qs.filter(periodicidade=periodicidade)
+        auditado_qs = auditado_qs.annotate(
+            total_perguntas=Count("perguntas", filter=models.Q(perguntas__ativo=True), distinct=True)
+        ).order_by("nome")
+        for modelo in auditado_qs:
+            modelo.somente_auditado = True
+            modelo.tem_ciclo_fechado = modelo.registros.filter(status="CONCLUIDO").exists()
+            modelos_com_pendencias.append(modelo)
+
     modelos = modelos_com_pendencias
 
     User = get_user_model()

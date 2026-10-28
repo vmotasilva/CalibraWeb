@@ -2356,6 +2356,17 @@ class AuditoresAuditadosTests(OcorrenciasAcompanhamentoTests):
             403,
         )
 
+    def test_auditado_ve_modelo_na_selecao_sem_preencher(self):
+        lider_user = get_user_model().objects.create_user("lider_sel", password="x")
+        lider = _criar_colaborador("Lider Sel", "MAT-AU-5", lider_user)
+        self.modelo.auditados.add(lider)
+        self.client.force_login(lider_user)
+        r = self.client.get(reverse("auditoria:selecionar_modelo_preenchimento"))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, self.modelo.nome)
+        self.assertNotContains(r, "Preencher Formulário</a>")
+        self.assertNotContains(r, reverse("auditoria:registro_create_modelo", args=[self.modelo.pk]))
+
     def test_nao_auditado_continua_sem_acesso(self):
         estranho = get_user_model().objects.create_user("estranho_aud", password="x")
         self.client.force_login(estranho)
