@@ -71,10 +71,12 @@
                                     <i class="bi bi-share"></i> Compartilhar Relatório
                                 </button>
                                 {% endif %}
-                                {% if not is_read_only %}
+                                {% if not is_read_only or is_auditado %}
                                 <a href="{% url 'auditoria:exportar_respostas_excel' modelo.id %}" class="btn btn-outline-success btn-sm">
                                     <i class="bi bi-file-earmark-excel"></i> Exportar Excel
                                 </a>
+                                {% endif %}
+                                {% if not is_read_only %}
                                 <a href="{% url 'auditoria:registro_create_modelo' modelo.id %}" class="btn btn-success btn-sm">
                                     <i class="bi bi-plus-circle"></i> Novo Ciclo
                                 </a>

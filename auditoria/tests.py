@@ -2348,6 +2348,8 @@ class AuditoresAuditadosTests(OcorrenciasAcompanhamentoTests):
         self.assertEqual(self.client.get(reverse("auditoria:modelo_apresentacao", args=[self.modelo.pk])).status_code, 200)
         det = reverse("auditoria:registro_detail", args=[self.reg1.pk])
         self.assertEqual(self.client.get(det).status_code, 200)
+        self.assertEqual(self.client.get(reverse("auditoria:registro_exportar_pdf", args=[self.reg1.pk])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("auditoria:exportar_respostas_excel", args=[self.modelo.pk])).status_code, 200)
         self.assertEqual(self.client.post(det, {"action": "add_question_comment"}).status_code, 403)
         self.assertEqual(
             self.client.post(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk]), {"action": "add_comment"}).status_code,

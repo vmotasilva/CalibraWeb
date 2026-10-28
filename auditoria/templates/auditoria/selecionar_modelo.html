@@ -165,6 +165,11 @@
                             <a href="{% url 'auditoria:registros_por_modelo' modelo.id %}" class="btn btn-outline-primary btn-sm">
                                 <i class="bi bi-file-earmark-text"></i> Ver Registros
                             </a>
+                            {% if modelo.tem_ciclo_fechado %}
+                            <a href="{% url 'auditoria:modelo_apresentacao' modelo.id %}" class="btn btn-primary btn-sm" target="_blank" rel="noopener" title="Apresentação do último ciclo fechado">
+                                <i class="bi bi-easel2"></i> Apresentar último ciclo
+                            </a>
+                            {% endif %}
                             {% if modelo.is_pendente %}
                             <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#justificarModal{{ modelo.id }}">
                                 <i class="bi bi-x-circle"></i> Justificar Não Execução

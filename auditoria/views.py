@@ -1964,6 +1964,7 @@ def selecionar_modelo_preenchimento(request):
             reg_andamento = modelo.registros.filter(status="RASCUNHO").exclude(progresso__gte=100).order_by("-atualizado_em").first()
 
         modelo.registro_em_andamento = reg_andamento
+        modelo.tem_ciclo_fechado = modelo.registros.filter(status="CONCLUIDO").exists()
         modelo.tem_em_andamento = bool(reg_andamento)
 
         dia_atual_preenchido = False
@@ -2822,13 +2823,21 @@ def registro_exportar_pdf(request, pk):
     from reportlab.lib.colors import HexColor
     from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-    registro = get_object_or_404(
+    registro = (
         _filter_registros_para_usuario(
             request.user,
             RegistroAuditoria.objects.select_related("modelo", "avaliador"),
-        ),
-        pk=pk,
+        )
+        .filter(pk=pk)
+        .first()
     )
+    if registro is None:
+        registro = get_object_or_404(
+            RegistroAuditoria.objects.select_related("modelo", "avaliador").filter(
+                modelo__in=_modelos_como_auditado(request.user)
+            ),
+            pk=pk,
+        )
 
     resumo = _build_resumo_respostas_registro(registro)
     _anexar_semanas_nc(registro, resumo)
@@ -3212,6 +3221,7 @@ def registros_por_modelo(request, modelo_id):
     targeted_share = None
     share_data = None
     is_read_only = False
+    is_auditado = False
 
     if share_token_raw:
         targeted_share = (
@@ -3250,6 +3260,7 @@ def registros_por_modelo(request, modelo_id):
                 raise Http404("Modelo não encontrado.")
             # Auditado: acesso recorrente somente leitura
             is_read_only = True
+            is_auditado = True
             share_data = {
                 "modelo_id": modelo.id,
                 "inicio": (request.GET.get("inicio") or "").strip(),
@@ -4152,6 +4163,7 @@ def registros_por_modelo(request, modelo_id):
         "fim": fim_raw,
         "comentario_data_default": fim_raw or inicio_raw,
         "is_read_only": is_read_only,
+        "is_auditado": is_auditado,
         "share_token": share_token_raw,
         "share_link": share_link,
         "share_created": share_created,
@@ -4300,10 +4312,9 @@ def exportar_respostas_excel(request, modelo_id):
     """Exporta em Excel (.xlsx) as respostas registradas de um modelo específico."""
     from openpyxl import Workbook
 
-    modelo = get_object_or_404(
-        _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()),
-        pk=modelo_id,
-    )
+    modelo = _filter_modelos_para_usuario(request.user, ModeloAuditoria.objects.all()).filter(pk=modelo_id).first()
+    if modelo is None:
+        modelo = get_object_or_404(_modelos_como_auditado(request.user), pk=modelo_id)
 
     perguntas = list(
         PerguntaAuditoria.objects.filter(modelo=modelo, ativo=True).order_by("ordem", "id")
