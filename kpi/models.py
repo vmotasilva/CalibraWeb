@@ -36,6 +36,9 @@ class Indicador(models.Model):
     formula = models.CharField(
         'Fórmula do valor', max_length=200, blank=True,
         help_text='Opcional. Calcula o valor a partir dos campos. Ex.: [Lentes perdidas] / [Lentes produzidas] * 100')
+    grupo = models.CharField(
+        'Grupo de variáveis compartilhadas', max_length=100, blank=True,
+        help_text='Opcional. Indicadores do mesmo grupo que têm uma variável com o mesmo nome compartilham o valor: lançou em um, vale para todos.')
     responsavel = models.CharField('Responsável', max_length=120, blank=True)
     responsavel_analise = models.ForeignKey(
         User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+',

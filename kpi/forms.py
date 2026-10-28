@@ -24,7 +24,7 @@ class IndicadorForm(forms.ModelForm):
         fields = ['nome', 'area', 'unidade', 'meta', 'sentido', 'periodicidade',
                   'exibir_mensal', 'exibir_semanal', 'exibir_diario',
                   'motivos_diario', 'motivos_semanal', 'motivos_mensal',
-                  'campos', 'formula', 'responsavel', 'responsavel_analise', 'ordem', 'descricao', 'ativo']
+                  'campos', 'formula', 'grupo', 'responsavel', 'responsavel_analise', 'ordem', 'descricao', 'ativo']
         widgets = {'descricao': forms.Textarea(attrs={'rows': 3}), 'campos': forms.Textarea(attrs={'rows': 3})}
 
     setores_texto = forms.CharField(
@@ -126,6 +126,9 @@ class IndicadorForm(forms.ModelForm):
             for chave, s in existentes.items():
                 if chave not in nomes:
                     s.delete()
+
+    def clean_grupo(self):
+        return ' '.join((self.cleaned_data.get('grupo') or '').split())
 
     def clean_ordem(self):
         return self.cleaned_data.get('ordem') or 0

@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -779,3 +780,65 @@ class MotivosCadastroTests(TestCase):
         self.assertTrue(has_view_access(comum, 'kpi:motivos_perdas'))
         self.assertTrue(has_view_access(comum, 'kpi:motivos_retorno'))
         self.assertFalse(has_view_access(comum, 'kpi:motivo_cadastro_salvar'))
+
+
+class VariaveisCompartilhadasTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_superuser('kpi2', 'k2@x.com', 'x')
+        self.client.force_login(self.user)
+        base = dict(meta=100, exibir_semanal=True, grupo='Insumos')
+        self.pol = Indicador.objects.create(nome='Polidor', campos='Produção Surf\nLiq. Polidor', formula='[Produção Surf] / [Liq. Polidor]', **base)
+        self.pad = Indicador.objects.create(nome='PAD', campos='Produção Surf\nPad DLP', formula='[Produção Surf] * 0.5 / [Pad DLP]', **base)
+        self.solto = Indicador.objects.create(nome='Solto', campos='Produção Surf\nX', formula='[Produção Surf] / [X]', meta=1, exibir_semanal=True)
+
+    def lancar(self, ind, **campos):
+        post = {'granularidade': 'semanal', 'periodo': '2026-09-07', 'valor': '', 'observacao': ''}
+        for n, v in enumerate(campos.values()):
+            post[f'campo_{n}'] = v
+        return self.client.post(reverse('kpi:medicao_salvar', args=[ind.pk]), post)
+
+    def test_lancar_em_um_completa_o_outro(self):
+        self.lancar(self.pol, a='8470', b='19')
+        self.assertFalse(Medicao.objects.filter(indicador=self.pad).exists())  # falta Pad DLP
+        self.lancar(self.pad, a='', b='22')  # Produção Surf vem do Polidor
+        m = Medicao.objects.get(indicador=self.pad)
+        self.assertEqual(m.valor, Decimal('192.50'))
+        self.assertEqual(m.dados['Produção Surf'], '8470')
+
+    def test_alterar_variavel_compartilhada_recalcula_irmao(self):
+        self.lancar(self.pol, a='8470', b='19')
+        self.lancar(self.pad, a='', b='22')
+        self.lancar(self.pol, a='9000', b='19')
+        self.assertEqual(Medicao.objects.get(indicador=self.pad).valor, Decimal('204.55'))
+
+    def test_sem_grupo_nada_muda(self):
+        self.lancar(self.pol, a='8470', b='19')
+        self.lancar(self.solto, a='', b='2')
+        self.assertFalse(Medicao.objects.filter(indicador=self.solto).exists())  # sem grupo: não herda
+
+    def test_divisao_por_zero_e_sem_dado(self):
+        r = self.lancar(self.pol, a='8470', b='0')
+        self.assertFalse(Medicao.objects.filter(indicador=self.pol).exists())
+        self.assertEqual(r.status_code, 302)
+
+    def test_importa_planilha_de_variaveis(self):
+        import io
+        from openpyxl import Workbook
+        from kpi import importacao
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Acompanhamento Semanal'
+        ws.append([None, None, 1000])
+        ws.append(['Semana', 'Produção Surf', 'Liq. Polidor', 'Pad DLP', 'Ind/Polidor'])
+        ws.append([36, 8470, 19, 22, 445.78])
+        ws.append([37, 6627, 0, 16, 1])
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        res = importacao.importar_planilha(buf, 'semanal', self.user, 2026, 'Insumos')
+        self.assertEqual(res['valores'], 3)
+        self.assertEqual(len(res['sem_dado']), 1)
+        self.assertEqual(res['erros'], [])
+        m = Medicao.objects.get(indicador=self.pol, periodo=date(2026, 8, 31))  # semana 36 de 2026
+        self.assertEqual(m.valor, Decimal('445.79'))
+        self.assertFalse(Medicao.objects.filter(indicador=self.solto).exists())

@@ -10,7 +10,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from kpi import calculo, consolidacao
+from kpi import calculo, compartilhamento, consolidacao
 from kpi.models import Indicador, Medicao, Motivo
 from kpi.views import _normalizar, _rotulo
 
@@ -169,7 +169,7 @@ def importar(arquivo, gran, usuario, tipo='valores'):
             '—', '—', f'Esta planilha não é um modelo de {TIPOS[tipo].upper()} (falta a aba "{aba}"). '
                       f'Parece ser de {outro.upper()}: use a importação correspondente.')]}
     indicadores = {i.nome.strip().lower(): i for i in Indicador.objects.prefetch_related('setores')}
-    erros, valores, motivos_n = [], 0, 0
+    erros, sem_dado, valores, motivos_n = [], [], 0, 0
     alt_valores, alt_motivos = set(), set()  # (indicador, setor_id, data) diários alterados
 
     def achar_setor(aba, n, ind, nome_setor):
@@ -231,10 +231,14 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                     if row[col_val] not in (None, ''):
                         valor = _numero(row[col_val])
                     elif ind.formula:
-                        valor = calculo.calcular(ind.formula, dados)
+                        dados = compartilhamento.completar(ind, setor, gran, periodo, dados)
+                        valor = calculo.calcular_ou_none(ind.formula, dados)
+                        if valor is None:
+                            sem_dado.append((n, ABA_VALORES, f'{ind.nome}: sem dado (divisão por zero)'))
+                            continue
                     else:
                         raise ValueError('valor vazio')
-                except (ValueError, ZeroDivisionError) as e:
+                except ValueError as e:
                     erros.append((n, ABA_VALORES, str(e)))
                     continue
                 obs = row[col_obs] if col_obs is not None else ''
@@ -244,6 +248,7 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                               'dados': {k: str(v) for k, v in dados.items()}, 'registrado_por': usuario})
                 valores += 1
                 alt_valores.add((ind, setor.pk if setor else None, periodo))
+                compartilhamento.propagar(ind, setor, gran, periodo, dados, usuario)
         if tipo == 'motivos':
             grupos = {}
             cab_m = [str(c or '').strip().lower() for c in next(wb[ABA_MOTIVOS].iter_rows(min_row=1, max_row=1, values_only=True), [])]
@@ -282,4 +287,104 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                 por_ind[(ind, setor_pk)].append(periodo)
             for (ind, setor_pk), datas in por_ind.items():
                 consolidacao.consolidar_valores(ind, setor_pk, datas, usuario)
-    return {'valores': valores, 'motivos': motivos_n, 'erros': erros, 'tipo': tipo, 'rotulo': CABECALHO_PERIODO[gran]}
+    return {'valores': valores, 'motivos': motivos_n, 'erros': erros, 'sem_dado': sem_dado, 'tipo': tipo, 'rotulo': CABECALHO_PERIODO[gran]}
+
+
+ROTULOS_PERIODO = {'dia', 'semana', 'mês', 'mes', 'período', 'periodo', 'data'}
+PALAVRA_ABA = {'diaria': ('diar', 'dia'), 'semanal': ('seman',), 'mensal': ('mensal', 'mês', 'mes')}
+
+
+def _periodo_planilha(gran, bruto, ano):
+    """Semana (nº 1-53) e mês (nº 1-12) precisam do ano; datas e textos mm/aaaa valem sozinhos."""
+    if isinstance(bruto, (int, float)) and not isinstance(bruto, bool) and float(bruto).is_integer() and ano:
+        n = int(bruto)
+        if gran == 'semanal' and 1 <= n <= 53:
+            try:
+                return datetime.date.fromisocalendar(ano, n, 1)
+            except ValueError:
+                raise ValueError(f'semana {n} não existe em {ano}')
+        if gran == 'mensal' and 1 <= n <= 12:
+            return datetime.date(ano, n, 1)
+    return _data(bruto)
+
+
+def importar_planilha(arquivo, gran, usuario, ano=None, grupo=''):
+    """Importa uma planilha "larga": uma linha por período e uma coluna por variável (ex.: Semana, Produção Surf, Líq. Polidor...).
+    Cada indicador com fórmula (do grupo, se informado) que tenha todas as suas variáveis na linha é calculado e gravado.
+    Colunas que não são variável de nenhum indicador (Ind/..., Meta/...) são ignoradas. Retorna contadores, erros e sem dado."""
+    base = {'valores': 0, 'motivos': 0, 'erros': [], 'sem_dado': [], 'tipo': 'planilha', 'rotulo': CABECALHO_PERIODO[gran],
+            'por_indicador': {}, 'ignoradas': 0}
+    try:
+        wb = load_workbook(arquivo, data_only=True)
+    except Exception:
+        base['erros'].append(('—', '—', 'Arquivo inválido: envie um .xlsx.'))
+        return base
+    abas = [ws for ws in wb.worksheets if any(p in ws.title.lower() for p in PALAVRA_ABA[gran])] or list(wb.worksheets)
+    cab, ws, linha_cab = None, None, None
+    for aba in abas:
+        for n, row in enumerate(aba.iter_rows(min_row=1, max_row=15, values_only=True), start=1):
+            if row and str(row[0] or '').strip().lower() in ROTULOS_PERIODO:
+                cab, ws, linha_cab = [str(c or '').strip().lower() for c in row], aba, n
+                break
+        if cab:
+            break
+    if not cab:
+        base['erros'].append(('—', '—', 'Não encontrei o cabeçalho: a primeira coluna deve se chamar Semana, Mês, Dia ou Data.'))
+        return base
+    alvos = [i for i in Indicador.objects.filter(ativo=True).exclude(formula='').prefetch_related('setores')
+             if i.permite_valor(gran) and (not grupo or i.grupo.strip().lower() == grupo.strip().lower())]
+    colunas = {}  # indicador pk -> {variável: coluna}
+    for i in alvos:
+        mapa = {c: cab.index(c.lower()) for c in calculo.lista_campos(i) if c.lower() in cab}
+        if mapa:
+            colunas[i.pk] = mapa
+    alvos = [i for i in alvos if i.pk in colunas]
+    if not alvos:
+        base['erros'].append(('—', ws.title, 'Nenhum indicador tem variáveis com o mesmo nome das colunas da planilha'
+                              + (f' (grupo "{grupo}")' if grupo else '') + '.'))
+        return base
+    ignorar = {c for m in colunas.values() for c in (x.lower() for x in m)}
+    base['ignoradas'] = len([c for c in cab[1:] if c and c not in ignorar])
+    por_ind = defaultdict(list)
+    with transaction.atomic():
+        for n, row in enumerate(ws.iter_rows(min_row=linha_cab + 1, values_only=True), start=linha_cab + 1):
+            if not row or row[0] in (None, ''):
+                continue
+            try:
+                periodo = _normalizar(gran, _periodo_planilha(gran, row[0], ano))
+            except ValueError as e:
+                base['erros'].append((n, ws.title, str(e) + ('' if ano or gran == 'diaria' else ' (informe o ano)')))
+                continue
+            row = list(row) + [None] * len(cab)
+            for ind in alvos:
+                dados, falha = {}, False
+                for nome, col in colunas[ind.pk].items():
+                    if row[col] in (None, ''):
+                        continue
+                    try:
+                        dados[nome] = _numero(row[col])
+                    except ValueError as e:
+                        base['erros'].append((n, ws.title, f'{nome}: {e}'))
+                        falha = True
+                if falha or not dados:
+                    continue
+                dados = compartilhamento.completar(ind, None, gran, periodo, dados)
+                try:
+                    valor = calculo.calcular_ou_none(ind.formula, dados)
+                except ValueError:
+                    continue  # faltam variáveis neste período: não calcula este indicador
+                if valor is None:
+                    base['sem_dado'].append((n, ws.title, f'{ind.nome}: sem dado (divisão por zero)'))
+                    continue
+                atual = Medicao.objects.filter(indicador=ind, setor=None, periodo=periodo, granularidade=gran).first()
+                Medicao.objects.update_or_create(
+                    indicador=ind, setor=None, periodo=periodo, granularidade=gran,
+                    defaults={'valor': valor, 'dados': {k: str(v) for k, v in dados.items()}, 'registrado_por': usuario,
+                              'observacao': atual.observacao if atual else 'Importação de planilha'})
+                base['valores'] += 1
+                base['por_indicador'][ind.nome] = base['por_indicador'].get(ind.nome, 0) + 1
+                if gran == 'diaria':
+                    por_ind[ind].append(periodo)
+        for ind, datas in por_ind.items():
+            consolidacao.consolidar_valores(ind, None, datas, usuario)
+    return base

@@ -103,3 +103,12 @@ def calcular(formula, dados):
         raise ZeroDivisionError('Divisão por zero na fórmula.')
     except InvalidOperation:
         raise ValueError('Resultado inválido.')
+
+
+def calcular_ou_none(formula, dados):
+    """Como `calcular`, mas devolve None (sem dado) quando há divisão por zero, ex.: insumo sem consumo no período.
+    Campo faltando continua levantando ValueError."""
+    try:
+        return calcular(formula, dados)
+    except ZeroDivisionError:
+        return None

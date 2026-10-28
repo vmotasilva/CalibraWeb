@@ -10,13 +10,20 @@
 
     {% if resultado %}
     <div class="alert {% if resultado.erros %}alert-warning{% else %}alert-success{% endif %}">
-        <strong>Importação de {% if resultado.tipo == 'motivos' %}tabelas (motivos){% else %}gráficos (valores){% endif %}:</strong>
+        <strong>Importação de {% if resultado.tipo == 'motivos' %}tabelas (motivos){% elif resultado.tipo == 'planilha' %}planilha de variáveis{% else %}gráficos (valores){% endif %}:</strong>
         {% if resultado.tipo == 'motivos' %}{{ resultado.motivos }} motivo(s) importado(s).{% else %}{{ resultado.valores }} valor(es) importado(s).{% endif %}
         {% if resultado.erros %}<br>{{ resultado.erros|length }} linha(s) ignorada(s):{% endif %}
+        {% if resultado.por_indicador %}<ul class="mb-0 mt-1 small">{% for nome, n in resultado.por_indicador.items %}<li>{{ nome }}: {{ n }}</li>{% endfor %}</ul>{% endif %}
+        {% if resultado.ignoradas %}<div class="small text-muted">{{ resultado.ignoradas }} coluna(s) sem variável correspondente foram ignoradas (ex.: Ind/..., Meta/...).</div>{% endif %}
         {% if resultado.erros %}
         <ul class="mb-0 mt-2 small">
             {% for linha, aba, msg in resultado.erros|slice:":50" %}<li>{% if linha != '—' %}Aba {{ aba }}, linha {{ linha }}: {% endif %}{{ msg }}</li>{% endfor %}
         </ul>
+        {% endif %}
+        {% if resultado.sem_dado %}
+        <div class="mt-2 small"><strong>Sem dado ({{ resultado.sem_dado|length }}):</strong> divisão por zero, nada gravado (não é erro).
+            <ul class="mb-0">{% for linha, aba, msg in resultado.sem_dado|slice:":30" %}<li>Linha {{ linha }}: {{ msg }}</li>{% endfor %}</ul>
+        </div>
         {% endif %}
     </div>
     {% endif %}
@@ -26,11 +33,12 @@
     <ul class="nav nav-tabs mb-3" role="tablist">
         <li class="nav-item"><button class="nav-link {% if tipo != 'motivos' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#imp-valores" type="button"><i class="bi bi-bar-chart me-1"></i>Gráficos (valores)</button></li>
         <li class="nav-item"><button class="nav-link {% if tipo == 'motivos' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#imp-motivos" type="button"><i class="bi bi-list-ol me-1"></i>Tabelas (motivos)</button></li>
+        <li class="nav-item"><button class="nav-link {% if tipo == 'planilha' %}active{% endif %}" data-bs-toggle="tab" data-bs-target="#imp-planilha" type="button"><i class="bi bi-table me-1"></i>Planilha de variáveis</button></li>
     </ul>
 
     <div class="tab-content">
     {% for t, titulo in tipos.items %}
-        <div class="tab-pane fade {% if tipo == t or t == 'valores' and tipo != 'motivos' %}show active{% endif %}" id="imp-{{ t }}">
+        <div class="tab-pane fade {% if tipo == t or t == 'valores' and tipo != 'motivos' and tipo != 'planilha' %}show active{% endif %}" id="imp-{{ t }}">
             <div class="card card-body mb-3">
                 <h6>1. Baixe o modelo de {{ titulo|lower }} <small class="text-muted fw-normal">(geral: vários indicadores, sem campos específicos)</small></h6>
                 <div class="d-flex flex-wrap gap-2">
@@ -100,6 +108,41 @@
             </form>
         </div>
     {% endfor %}
+        <div class="tab-pane fade {% if tipo == 'planilha' %}show active{% endif %}" id="imp-planilha">
+            <form method="post" enctype="multipart/form-data" class="card card-body">
+                {% csrf_token %}
+                <input type="hidden" name="tipo" value="planilha">
+                <h6>Planilha com uma linha por período e uma coluna por variável</h6>
+                <p class="small text-muted mb-2">Primeira coluna <strong>Semana</strong>, <strong>Mês</strong> ou <strong>Dia</strong>; as demais, uma coluna por variável (ex.: Produção Surf, Liq. Polidor). O cabeçalho pode estar abaixo de linhas de constantes. Colunas sem variável correspondente (Ind/..., Meta/...) são ignoradas. Cada indicador com memória de cálculo cujas variáveis estejam na linha é calculado e gravado; divisão por zero fica "sem dado".</p>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label" for="gran-planilha">Período</label>
+                        <select class="form-select" name="granularidade" id="gran-planilha" required>
+                            <option value="diaria" {% if tipo == 'planilha' and gran == 'diaria' %}selected{% endif %}>Diário</option>
+                            <option value="semanal" {% if tipo == 'planilha' and gran == 'semanal' %}selected{% endif %}>Semanal</option>
+                            <option value="mensal" {% if tipo == 'planilha' and gran == 'mensal' %}selected{% endif %}>Mensal</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label" for="ano-planilha">Ano</label>
+                        <input type="number" class="form-control" name="ano" id="ano-planilha" value="{{ ano }}" min="2000" max="2100">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label" for="grupo-planilha">Grupo</label>
+                        <select class="form-select" name="grupo" id="grupo-planilha">
+                            <option value="">Todos os indicadores</option>
+                            {% for g in grupos %}<option value="{{ g }}">{{ g }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="arq-planilha">Arquivo (.xlsx)</label>
+                        <input type="file" class="form-control" name="arquivo" id="arq-planilha" accept=".xlsx" required>
+                    </div>
+                </div>
+                <div class="small text-muted mt-2">O ano vale quando a primeira coluna traz só o número da semana ou do mês. Valores existentes no mesmo período são atualizados.</div>
+                <div class="text-end mt-3"><button class="btn btn-primary" type="submit"><i class="bi bi-upload me-1"></i>Importar planilha</button></div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

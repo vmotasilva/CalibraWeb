@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from kpi import calculo, consolidacao, pendencias
+from kpi import calculo, compartilhamento, consolidacao, pendencias
 from kpi.forms import IndicadorForm, MedicaoForm
 from kpi.models import Indicador, Medicao, Motivo
 from shared.permissions import has_view_access
@@ -32,6 +32,13 @@ def _normalizar(gran, d):
     if gran == 'semanal':
         return d - datetime.timedelta(days=d.weekday())
     return d
+
+
+def _data_post(txt):
+    try:
+        return datetime.date.fromisoformat((txt or '').strip())
+    except ValueError:
+        return None
 
 
 def _rotulo(gran, d):
@@ -347,10 +354,17 @@ def medicao_salvar_view(request, pk):
                 return _voltar(ind.pk)
     if not (post.get('valor') or '').strip() and ind.formula:
         try:
-            post['valor'] = str(calculo.calcular(ind.formula, dados))
-        except (ValueError, ZeroDivisionError) as e:
+            gran_post, per_post = post.get('granularidade'), _data_post(post.get('periodo'))
+            if gran_post in JANELAS and per_post:
+                dados = compartilhamento.completar(ind, setor, gran_post, _normalizar(gran_post, per_post), dados)
+            calculado = calculo.calcular_ou_none(ind.formula, dados)
+        except ValueError as e:
             messages.error(request, f'Não foi possível calcular o valor: {e}')
             return _voltar(ind.pk)
+        if calculado is None:
+            messages.warning(request, 'Sem dado: a memória de cálculo dividiria por zero (ex.: insumo sem consumo no período). Nada foi gravado.')
+            return _voltar(ind.pk, setor=setor)
+        post['valor'] = str(calculado)
     form = MedicaoForm(post)
     if not form.is_valid():
         messages.error(request, 'Informe data e valor válidos.')
@@ -371,6 +385,7 @@ def medicao_salvar_view(request, pk):
     )
     if gran == 'diaria':
         consolidacao.consolidar_valores(ind, setor.pk if setor else None, [periodo], request.user)
+    compartilhamento.propagar(ind, setor, gran, periodo, dados, request.user)
     messages.success(request, f'Informação de {_rotulo(gran, periodo)} salva' + (f' ({setor.nome}).' if setor else '.'))
     return _voltar(ind.pk, setor=setor)
 
@@ -439,12 +454,18 @@ def importar_view(request):
     tipo = request.POST.get('tipo', 'valores')
     if request.method == 'POST':
         arquivo = request.FILES.get('arquivo')
-        if gran not in importacao.NOMES or tipo not in importacao.TIPOS or not arquivo:
+        if gran not in importacao.NOMES or (tipo not in importacao.TIPOS and tipo != 'planilha') or not arquivo:
             messages.error(request, 'Escolha o período e envie o arquivo .xlsx.')
+        elif tipo == 'planilha':
+            ano = request.POST.get('ano', '').strip()
+            resultado = importacao.importar_planilha(arquivo, gran, request.user, int(ano) if ano.isdigit() else None,
+                                                     request.POST.get('grupo', '').strip())
         else:
             resultado = importacao.importar(arquivo, gran, request.user, tipo)
+    grupos = sorted(set(Indicador.objects.exclude(grupo='').values_list('grupo', flat=True)))
     return render(request, 'kpi/importar.html', {
-        'resultado': resultado, 'gran': gran, 'tipo': tipo, 'tipos': importacao.TIPOS,
+        'resultado': resultado, 'gran': gran, 'tipo': tipo, 'tipos': importacao.TIPOS, 'grupos': grupos,
+        'ano': request.POST.get('ano') or timezone.localdate().year,
         'indicadores': Indicador.objects.filter(ativo=True).prefetch_related('setores')})
 
 

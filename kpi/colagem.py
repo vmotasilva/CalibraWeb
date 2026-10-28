@@ -14,7 +14,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
 
-from kpi import calculo, consolidacao
+from kpi import calculo, compartilhamento, consolidacao
 from kpi.models import Indicador, Medicao
 
 OPERACOES = {'+': 'soma', '-': 'subtrai', '=': 'substitui'}
@@ -158,11 +158,12 @@ def aplicar(linhas, valores, gran, data, usuario, gravar):
                 else:
                     valor = total
             if valor is None and ind.formula:
+                dados = compartilhamento.completar(ind, setor, gran, periodo, dados)
                 try:
-                    valor = calculo.calcular(ind.formula, dados)
-                except ZeroDivisionError:
-                    avisos.append(f'"{ind.nome}": divisão por zero na memória de cálculo.')
-                    continue
+                    valor = calculo.calcular_ou_none(ind.formula, dados)
+                    if valor is None:
+                        avisos.append(f'"{ind.nome}": sem dado (divisão por zero na memória de cálculo); nada foi gravado para ele.')
+                        continue
                 except ValueError as e:
                     avisos.append(f'"{ind.nome}": {e} — ainda faltam variáveis; nada foi gravado para ele.')
                     continue
@@ -176,6 +177,7 @@ def aplicar(linhas, valores, gran, data, usuario, gravar):
                     defaults={'valor': valor, 'dados': {k: str(v) for k, v in dados.items()}, 'registrado_por': usuario,
                               'observacao': atual.observacao if atual else 'Colagem'})
                 salvos += 1
+                compartilhamento.propagar(ind, setor, gran, periodo, dados, usuario)
                 if gran == 'diaria':
                     consolidacao.consolidar_valores(ind, setor.pk if setor else None, [periodo], usuario)
     return {'itens': itens, 'avisos': avisos, 'salvos': salvos, 'periodo': periodo}
