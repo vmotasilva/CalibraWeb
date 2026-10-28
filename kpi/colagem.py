@@ -178,6 +178,5 @@ def aplicar(linhas, valores, gran, data, usuario, gravar):
                               'observacao': atual.observacao if atual else 'Colagem'})
                 salvos += 1
                 compartilhamento.propagar(ind, setor, gran, periodo, dados, usuario)
-                if gran == 'diaria':
-                    consolidacao.consolidar_valores(ind, setor.pk if setor else None, [periodo], usuario)
+                consolidacao.consolidar(ind, setor.pk if setor else None, gran, [periodo], usuario)
     return {'itens': itens, 'avisos': avisos, 'salvos': salvos, 'periodo': periodo}

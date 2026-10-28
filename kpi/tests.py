@@ -801,7 +801,7 @@ class VariaveisCompartilhadasTests(TestCase):
         self.lancar(self.pol, a='8470', b='19')
         self.assertFalse(Medicao.objects.filter(indicador=self.pad).exists())  # falta Pad DLP
         self.lancar(self.pad, a='', b='22')  # Produção Surf vem do Polidor
-        m = Medicao.objects.get(indicador=self.pad)
+        m = Medicao.objects.get(indicador=self.pad, granularidade='semanal')
         self.assertEqual(m.valor, Decimal('192.50'))
         self.assertEqual(m.dados['Produção Surf'], '8470')
 
@@ -809,7 +809,7 @@ class VariaveisCompartilhadasTests(TestCase):
         self.lancar(self.pol, a='8470', b='19')
         self.lancar(self.pad, a='', b='22')
         self.lancar(self.pol, a='9000', b='19')
-        self.assertEqual(Medicao.objects.get(indicador=self.pad).valor, Decimal('204.55'))
+        self.assertEqual(Medicao.objects.get(indicador=self.pad, granularidade='semanal').valor, Decimal('204.55'))
 
     def test_sem_grupo_nada_muda(self):
         self.lancar(self.pol, a='8470', b='19')
@@ -842,3 +842,48 @@ class VariaveisCompartilhadasTests(TestCase):
         m = Medicao.objects.get(indicador=self.pol, periodo=date(2026, 8, 31))  # semana 36 de 2026
         self.assertEqual(m.valor, Decimal('445.79'))
         self.assertFalse(Medicao.objects.filter(indicador=self.solto).exists())
+
+
+class ConsolidacaoMensalDasSemanasTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_superuser('kpi3', 'k3@x.com', 'x')
+        self.client.force_login(self.user)
+        self.ind = Indicador.objects.create(nome='Pol', meta=100, exibir_semanal=True, campos='Prod\nLiq',
+                                            formula='[Prod] / [Liq]')
+
+    def sem(self, periodo, prod, liq):
+        return self.client.post(reverse('kpi:medicao_salvar', args=[self.ind.pk]), {
+            'granularidade': 'semanal', 'periodo': periodo, 'valor': '', 'observacao': '', 'campo_0': prod, 'campo_1': liq})
+
+    def mes(self, d):
+        return Medicao.objects.filter(indicador=self.ind, granularidade='mensal', periodo=d).first()
+
+    def test_soma_as_semanas_do_mes_pela_quinta_feira(self):
+        # semanas de seg 07/09, 14/09, 21/09 e 28/09 (quinta 01/10 -> outubro)
+        self.sem('2026-09-07', '100', '10')
+        self.sem('2026-09-14', '200', '10')
+        self.sem('2026-09-21', '300', '20')
+        self.sem('2026-09-28', '999', '1')
+        m = self.mes(date(2026, 9, 30))
+        self.assertEqual(m.valor, Decimal('15.00'))  # 600 / 40
+        self.assertEqual(m.dados['Prod'], '600')
+        self.assertEqual(self.mes(date(2026, 10, 31)).valor, Decimal('999.00'))
+
+    def test_corrigir_e_excluir_semana_atualiza_o_mes(self):
+        self.sem('2026-09-07', '100', '10')
+        self.sem('2026-09-14', '200', '10')
+        self.sem('2026-09-14', '300', '10')
+        self.assertEqual(self.mes(date(2026, 9, 30)).valor, Decimal('20.00'))
+        for m in Medicao.objects.filter(indicador=self.ind, granularidade='semanal'):
+            self.client.post(reverse('kpi:medicao_excluir', args=[m.pk]))
+        self.assertIsNone(self.mes(date(2026, 9, 30)))
+
+    def test_mes_lancado_a_mao_nao_e_sobrescrito(self):
+        Medicao.objects.create(indicador=self.ind, granularidade='mensal', periodo=date(2026, 9, 30), valor=7, observacao='')
+        self.sem('2026-09-07', '100', '10')
+        self.assertEqual(self.mes(date(2026, 9, 30)).valor, 7)
+
+    def test_indicador_com_diario_nao_consolida_pelas_semanas(self):
+        Indicador.objects.filter(pk=self.ind.pk).update(exibir_diario=True)
+        self.sem('2026-09-07', '100', '10')
+        self.assertIsNone(self.mes(date(2026, 9, 30)))

@@ -76,6 +76,5 @@ def propagar(ind, setor, gran, periodo, dados, usuario=None):
                 defaults={'valor': valor, 'dados': {k: str(v) for k, v in base.items()}, 'registrado_por': usuario,
                           'observacao': atual.observacao if atual else 'Variáveis compartilhadas'})
             atualizados.append(outro)
-        if gran == 'diaria':
-            consolidacao.consolidar_valores(outro, alvo.pk if alvo else None, [periodo], usuario)
+        consolidacao.consolidar(outro, alvo.pk if alvo else None, gran, [periodo], usuario)
     return atualizados

@@ -282,11 +282,11 @@ def importar(arquivo, gran, usuario, tipo='valores'):
                     alt_motivos.add((itens[0][0], setor_pk, periodo))
         if gran == 'diaria':
             consolidar_motivos_diarios(alt_motivos, usuario)
-            por_ind = defaultdict(list)
-            for ind, setor_pk, periodo in alt_valores:
-                por_ind[(ind, setor_pk)].append(periodo)
-            for (ind, setor_pk), datas in por_ind.items():
-                consolidacao.consolidar_valores(ind, setor_pk, datas, usuario)
+        por_ind = defaultdict(list)
+        for ind, setor_pk, periodo in alt_valores:
+            por_ind[(ind, setor_pk)].append(periodo)
+        for (ind, setor_pk), datas in por_ind.items():
+            consolidacao.consolidar(ind, setor_pk, gran, datas, usuario)
     return {'valores': valores, 'motivos': motivos_n, 'erros': erros, 'sem_dado': sem_dado, 'tipo': tipo, 'rotulo': CABECALHO_PERIODO[gran]}
 
 
@@ -383,8 +383,7 @@ def importar_planilha(arquivo, gran, usuario, ano=None, grupo=''):
                               'observacao': atual.observacao if atual else 'Importação de planilha'})
                 base['valores'] += 1
                 base['por_indicador'][ind.nome] = base['por_indicador'].get(ind.nome, 0) + 1
-                if gran == 'diaria':
-                    por_ind[ind].append(periodo)
+                por_ind[ind].append(periodo)
         for ind, datas in por_ind.items():
-            consolidacao.consolidar_valores(ind, None, datas, usuario)
+            consolidacao.consolidar(ind, None, gran, datas, usuario)
     return base

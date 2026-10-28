@@ -383,8 +383,7 @@ def medicao_salvar_view(request, pk):
             'registrado_por': request.user,
         },
     )
-    if gran == 'diaria':
-        consolidacao.consolidar_valores(ind, setor.pk if setor else None, [periodo], request.user)
+    consolidacao.consolidar(ind, setor.pk if setor else None, gran, [periodo], request.user)
     compartilhamento.propagar(ind, setor, gran, periodo, dados, request.user)
     messages.success(request, f'Informação de {_rotulo(gran, periodo)} salva' + (f' ({setor.nome}).' if setor else '.'))
     return _voltar(ind.pk, setor=setor)
@@ -396,8 +395,7 @@ def medicao_excluir_view(request, pk):
     m = get_object_or_404(Medicao, pk=pk)
     ind_pk, setor = m.indicador_id, m.setor
     m.delete()
-    if m.granularidade == 'diaria':
-        consolidacao.consolidar_valores(m.indicador, m.setor_id, [m.periodo], request.user)
+    consolidacao.consolidar(m.indicador, m.setor_id, m.granularidade, [m.periodo], request.user)
     messages.success(request, 'Informação excluída.')
     return _voltar(ind_pk, setor=setor)
 
