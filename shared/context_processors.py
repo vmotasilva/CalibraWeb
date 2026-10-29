@@ -123,7 +123,18 @@ def nav_notifications(request: Any) -> dict[str, Any]:
         except Exception:
             pass
             
+    nav_ocorrencias = {"minhas": 0, "abertas": 0}
+    if user and user.is_authenticated:
+        try:
+            from shared.ocorrencias import contar_ocorrencias
+
+            nav_ocorrencias = contar_ocorrencias(user)
+        except Exception:
+            pass
+
     return {
+        "nav_ocorrencias_minhas": nav_ocorrencias["minhas"],
+        "nav_ocorrencias_abertas": nav_ocorrencias["abertas"],
         "nav_notifications_total": total,
         "nav_inbox_origins": nav_inbox_origins,
         "nav_inbox_items": inbox_items[:5],

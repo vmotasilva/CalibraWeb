@@ -876,6 +876,22 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                     <i class="bi bi-grid-1x2-fill me-1"></i>Hub
                 </a>
 
+                <!-- Central de Ocorrências -->
+                <a href="{% url 'ocorrencias_central' %}" class="btn btn-sm btn-outline-light me-2 position-relative" title="Ocorrências{% if nav_ocorrencias_minhas %} ({{ nav_ocorrencias_minhas }} envolvem você){% elif nav_ocorrencias_abertas %} ({{ nav_ocorrencias_abertas }} em aberto){% endif %}">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    {% if nav_ocorrencias_minhas %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
+                            {{ nav_ocorrencias_minhas }}
+                            <span class="visually-hidden">ocorrências que envolvem você</span>
+                        </span>
+                    {% elif nav_ocorrencias_abertas %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary">
+                            {{ nav_ocorrencias_abertas }}
+                            <span class="visually-hidden">ocorrências em aberto</span>
+                        </span>
+                    {% endif %}
+                </a>
+
                 <!-- Notificações de Inbox -->
                 <!-- Notificações de Inbox Agrupadas por Origem -->
                 <div class="dropdown">

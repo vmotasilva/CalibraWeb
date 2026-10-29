@@ -862,6 +862,15 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                         <i class="bi bi-grid-1x2-fill"></i>
                     </a>
 
+                    <a href="{% url 'ocorrencias_central' %}" class="btn btn-sm btn-outline-light position-relative" title="Ocorrências">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        {% if nav_ocorrencias_minhas %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">{{ nav_ocorrencias_minhas }}</span>
+                        {% elif nav_ocorrencias_abertas %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-secondary">{{ nav_ocorrencias_abertas }}</span>
+                        {% endif %}
+                    </a>
+
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-light position-relative" type="button" id="inboxDropdownMobile" data-bs-toggle="dropdown" aria-expanded="false" title="Notificações e Pendências">
                             <i class="bi bi-bell"></i>

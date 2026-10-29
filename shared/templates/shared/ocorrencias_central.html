@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Ocorrências &mdash; CalibraWEB{% endblock %}
+
+{% block content %}
+<style>
+    .oc-card { border: 1px solid #e2e8f0; border-left: 4px solid #94a3b8; border-radius: 12px; background: #fff; }
+    .oc-card.mine { border-left-color: #f59e0b; background: #fffdf5; }
+    .oc-card.vencida { border-left-color: #dc2626; }
+    .oc-card.fechada { opacity: .85; border-left-color: #16a34a; }
+    .oc-desc { white-space: pre-line; color: #334155; }
+    .oc-hist { background: #f8fafc; border-radius: 8px; font-size: .85rem; }
+    .oc-pill { border: 1px solid #e2e8f0; background: #fff; color: #475569; border-radius: 24px; padding: 6px 14px;
+               font-size: .88rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
+    .oc-pill.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .oc-pill.active .badge { background: rgba(255,255,255,.25) !important; color: #fff !important; }
+</style>
+
+<div class="container-fluid px-0 py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+        <div>
+            <h3 class="mb-1"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Central de Ocorrências</h3>
+            <div class="text-muted small">Todas as ocorrências do sistema em um só lugar. Trate-as aqui, sem sair da tela.
+                {% if total_vencidas %}<span class="badge bg-danger ms-1">{{ total_vencidas }} com prazo vencido</span>{% endif %}
+            </div>
+        </div>
+        <form method="get" class="d-flex gap-2">
+            <input type="hidden" name="aba" value="{{ aba }}">
+            {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
+            <input type="search" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Buscar ocorrência..." style="min-width:240px;">
+            <button class="btn btn-sm btn-dark"><i class="bi bi-search"></i></button>
+        </form>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-2">
+        {% for key, nome, total in abas %}
+            <a class="oc-pill {% if aba == key %}active{% endif %}" href="?aba={{ key }}{% if origem %}&origem={{ origem }}{% endif %}">
+                {{ nome }}{% if total is not None %} <span class="badge bg-secondary rounded-pill">{{ total }}</span>{% endif %}
+            </a>
+        {% endfor %}
+    </div>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+        <a class="oc-pill {% if not origem %}active{% endif %}" href="?aba={{ aba }}">Todas as origens</a>
+        {% for key, nome, icon, total in origens %}
+            <a class="oc-pill {% if origem == key %}active{% endif %}" href="?aba={{ aba }}&origem={{ key }}">
+                <i class="bi {{ icon }} me-1"></i>{{ nome }} <span class="badge bg-secondary rounded-pill">{{ total }}</span>
+            </a>
+        {% endfor %}
+    </div>
+
+    {% for oc in itens %}
+        <div class="oc-card mb-3 p-3 {% if oc.envolve_usuario and oc.status == 'aberta' %}mine{% endif %} {% if oc.vencida %}vencida{% endif %} {% if oc.status == 'encerrada' %}fechada{% endif %}">
+            <div class="d-flex flex-wrap justify-content-between gap-2">
+                <div class="flex-grow-1" style="min-width:0;">
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                        <span class="badge text-bg-dark"><i class="bi {{ oc.icon }} me-1"></i>{{ oc.origem_nome }}</span>
+                        {% if oc.envolve_usuario %}<span class="badge text-bg-warning"><i class="bi bi-person-fill me-1"></i>{{ oc.papel }}</span>{% endif %}
+                        {% if oc.status == 'encerrada' %}<span class="badge text-bg-success">Encerrada</span>{% else %}<span class="badge text-bg-primary">Em aberto</span>{% endif %}
+                        {% if oc.vencida %}<span class="badge text-bg-danger">Prazo vencido</span>{% endif %}
+                        <span class="text-muted small">{{ oc.data|date:"d/m/Y" }}{% if oc.prazo %} · prazo {{ oc.prazo|date:"d/m/Y" }}{% endif %}</span>
+                    </div>
+                    <div class="fw-bold">{{ oc.titulo }}</div>
+                    {% if oc.descricao %}<div class="oc-desc mt-1">{{ oc.descricao|truncatechars:400 }}</div>{% endif %}
+                    <div class="small text-muted mt-2">
+                        {% if oc.responsaveis %}<i class="bi bi-people me-1"></i>{{ oc.responsaveis|join:", " }}{% else %}<i class="bi bi-person-dash me-1"></i>Sem responsável{% endif %}
+                        {% for rot, val in oc.detalhes %}
+                            <span class="ms-3"><strong>{{ rot }}:</strong> {{ val|truncatechars:120 }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="d-flex flex-wrap align-content-start justify-content-end gap-2">
+                    {% for a in oc.acoes %}
+                        <button type="button" class="btn btn-sm btn-{{ a.btn }}" data-oc-acao
+                                data-uid="{{ oc.uid }}" data-acao="{{ a.key }}" data-label="{{ a.label }}"
+                                data-campo="{{ a.campo }}" data-placeholder="{{ a.placeholder }}"
+                                data-obrigatorio="{{ a.obrigatorio|yesno:'1,0' }}" data-titulo="{{ oc.titulo|truncatechars:80 }}">
+                            <i class="bi {{ a.icon }} me-1"></i>{{ a.label }}
+                        </button>
+                    {% endfor %}
+                    {% if oc.url_origem %}
+                        <a class="btn btn-sm btn-outline-dark" href="{{ oc.url_origem }}" title="Abrir na tela de origem"><i class="bi bi-box-arrow-up-right"></i></a>
+                    {% endif %}
+                </div>
+            </div>
+            {% if oc.historico %}
+                <details class="mt-2">
+                    <summary class="small text-muted" style="cursor:pointer;">Histórico ({{ oc.historico|length }})</summary>
+                    <div class="oc-hist p-2 mt-1">
+                        {% for quando, quem, texto in oc.historico %}
+                            <div class="{% if not forloop.last %}border-bottom pb-1 mb-1{% endif %}">
+                                <span class="text-muted">{{ quando }}{% if quem %} · {{ quem }}{% endif %}</span><br>
+                                <span style="white-space:pre-line;">{{ texto }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </details>
+            {% endif %}
+        </div>
+    {% empty %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-check-circle display-4 text-success opacity-50"></i>
+            <p class="mt-2 mb-0">Nenhuma ocorrência nesta visão.</p>
+        </div>
+    {% endfor %}
+</div>
+
+<div class="modal fade" id="ocAcaoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{% url 'ocorrencias_acao' %}" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="uid" id="ocUid">
+            <input type="hidden" name="acao" id="ocAcao">
+            <input type="hidden" name="next_qs" value="{{ next_qs }}">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ocTitulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="small text-muted mb-2" id="ocSub"></div>
+                <div id="ocBlocoTexto" class="mb-3">
+                    <textarea name="texto" id="ocTexto" class="form-control" rows="5"></textarea>
+                </div>
+                <div id="ocBlocoDest" class="mb-3 d-none">
+                    <label class="form-label small fw-bold">Direcionar a (opcional)</label>
+                    <select name="destinatarios" class="form-select" multiple size="6">
+                        {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div id="ocBlocoResp" class="mb-3 d-none">
+                    <label class="form-label small fw-bold">Responsável pela tratativa</label>
+                    <select name="responsavel" class="form-select">
+                        <option value="">— Sem responsável —</option>
+                        {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary" id="ocConfirmar">Confirmar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modalEl = document.getElementById('ocAcaoModal');
+    const modal = new bootstrap.Modal(modalEl);
+    const $ = id => document.getElementById(id);
+    document.querySelectorAll('[data-oc-acao]').forEach(btn => btn.addEventListener('click', () => {
+        const d = btn.dataset;
+        const comTexto = d.campo === 'texto' || d.campo === 'texto_destinatarios';
+        $('ocUid').value = d.uid;
+        $('ocAcao').value = d.acao;
+        $('ocTitulo').textContent = d.label;
+        $('ocSub').textContent = d.titulo;
+        $('ocConfirmar').textContent = d.label;
+        $('ocBlocoTexto').classList.toggle('d-none', !comTexto);
+        $('ocTexto').required = comTexto && d.obrigatorio === '1';
+        $('ocTexto').placeholder = d.placeholder || '';
+        $('ocTexto').value = '';
+        $('ocBlocoDest').classList.toggle('d-none', d.campo !== 'texto_destinatarios');
+        $('ocBlocoResp').classList.toggle('d-none', d.campo !== 'responsavel');
+        modal.show();
+    }));
+});
+</script>
+{% endblock %}
