@@ -1232,8 +1232,11 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
             try {
                 const response = await fetch("{% url 'api_change_password' %}", {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
                         'X-CSRFToken': '{{ csrf_token }}'
                     },
                     body: JSON.stringify({
@@ -1243,13 +1246,25 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                     })
                 });
 
-                const data = await response.json();
-                if (data.success) {
+                let data = null;
+                try {
+                    data = await response.json();
+                } catch (parseErr) {
+                    data = null;
+                }
+
+                if (data && data.success) {
                     setAlert(data.message || 'Senha alterada com sucesso.', true);
                     const instance = bootstrap.Modal.getInstance(changeModalEl);
                     setTimeout(() => instance?.hide(), 600);
-                } else {
+                } else if (data) {
                     setAlert(data.error || 'Erro ao alterar senha.', false);
+                } else if (response.redirected || response.status === 401) {
+                    setAlert('Sua sessão expirou ou a autenticação em duas etapas não está concluída. Recarregue a página e tente novamente.', false);
+                } else if (response.status === 403) {
+                    setAlert('Requisição recusada (403). Recarregue a página e tente novamente.', false);
+                } else {
+                    setAlert(`Erro no servidor (HTTP ${response.status}). Tente novamente ou contate o suporte.`, false);
                 }
             } catch (e) {
                 setAlert('Erro de conexão.', false);
