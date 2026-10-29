@@ -1,3 +1,4 @@
+from .ocorrencias import ocorrencias_central_view, ocorrencias_acao_view
 from .views import (
     home_view,
     hub_view,
