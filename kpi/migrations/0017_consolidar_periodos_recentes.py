@@ -7,7 +7,8 @@ def forwards(apps, schema_editor):
     """Compõe agora as semanas e meses recentes que ainda não existem a partir dos dias já lançados
     (ex.: o mês corrente aparecia sem barra no gráfico mês a mês). Valores já existentes não são alterados."""
     try:
-        # Savepoint: se a consulta falhar (ex.: coluna de migration posterior ainda inexistente), o erro não aborta a transação da migration no PostgreSQL.
+        # Savepoint: esta migração usa os modelos atuais, que podem ter colunas ainda não criadas (ex.: Indicador.grupo,
+        # da 0022). Sem ele, o erro de SQL aborta a transação do Postgres mesmo com o except abaixo.
         with transaction.atomic():
             from kpi.consolidacao import consolidar_valores
             from kpi.models import Indicador, Medicao
@@ -20,7 +21,6 @@ def forwards(apps, schema_editor):
                     consolidar_valores(ind, setor_id, datas)
     except Exception:  # a composição é só uma conveniência: nunca impedir a migração
         pass
-
 
 class Migration(migrations.Migration):
 
