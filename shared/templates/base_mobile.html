@@ -862,7 +862,13 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                         <i class="bi bi-grid-1x2-fill"></i>
                     </a>
 
-                    <a href="{% url 'ocorrencias_central' %}" class="btn btn-sm btn-outline-light position-relative" title="Ocorrências">
+                    <style>
+                        @keyframes ocPulse { 0%{box-shadow:0 0 0 0 rgba(220,53,69,.75)} 70%{box-shadow:0 0 0 9px rgba(220,53,69,0)} 100%{box-shadow:0 0 0 0 rgba(220,53,69,0)} }
+                        .nav-oc-envolve { background:#dc3545 !important; border-color:#dc3545 !important; color:#fff !important; animation:ocPulse 1.6s infinite; }
+                        .nav-oc-envolve .badge { background:#fff !important; color:#dc3545 !important; border:1px solid #dc3545; font-weight:700; }
+                        @media (prefers-reduced-motion: reduce) { .nav-oc-envolve { animation:none; } }
+                    </style>
+                    <a href="{% url 'ocorrencias_central' %}" class="btn btn-sm btn-outline-light position-relative{% if nav_ocorrencias_minhas %} nav-oc-envolve{% endif %}" title="Ocorrências">
                         <i class="bi bi-exclamation-triangle"></i>
                         {% if nav_ocorrencias_minhas %}
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">{{ nav_ocorrencias_minhas }}</span>
