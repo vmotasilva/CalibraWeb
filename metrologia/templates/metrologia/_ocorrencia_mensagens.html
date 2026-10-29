@@ -68,7 +68,7 @@ Parâmetros: oc (OcorrenciaInstrumento), uid (reservado). Os responsáveis são 
     function iniciar() {
         document.querySelectorAll('[data-pa-picker]').forEach(function (el) {
             if (el.dataset.paOk) return; el.dataset.paOk = '1';
-            PlanoAcao.picker(el, {name: el.dataset.paPicker});
+            PlanoAcao.picker(el, {name: el.dataset.paPicker, usuarios: true});
         });
         document.querySelectorAll('details[data-pa-plano]').forEach(function (d) {
             d.addEventListener('toggle', function () {

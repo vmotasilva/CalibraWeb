@@ -530,7 +530,6 @@
 {{ motivos_js|json_script:"kpi-motivos" }}
 {{ campos_js|json_script:"kpi-campos" }}
 {{ analises_js|json_script:"kpi-analises" }}
-{{ usuarios_js|json_script:"kpi-usuarios" }}
 <script src="{% static 'shared/plano_acao.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
@@ -832,7 +831,7 @@
         var btn = el('kpiAnaliseBtn');
         if (!btn) return;
         var ANALISES = JSON.parse(document.getElementById('kpi-analises').textContent);
-        var USUARIOS = JSON.parse(document.getElementById('kpi-usuarios').textContent), SEQ_CARD = 0;
+        var SEQ_CARD = 0;
         var PODE_ANALISAR = {{ pode_analisar|yesno:"true,false" }}, PODE_DISPENSAR = {{ pode_dispensar|yesno:"true,false" }};
         var URL_CENTRAL = "{% url 'ocorrencias_central' %}";
         var URL_DADOS = "{% url 'kpi:analise_dados' 0 %}", URL_SALVAR = "{% url 'kpi:analise_salvar' 0 %}", URL_DISPENSAR = "{% url 'kpi:analise_dispensar' 0 %}", URL_MASSA_SALVAR = "{% url 'kpi:analise_salvar_massa' 0 %}", URL_MASSA_DISPENSAR = "{% url 'kpi:analise_dispensar_massa' 0 %}";
@@ -1071,10 +1070,9 @@
             var ehOc = dados.tipo === 'ocorrencia';
             card.querySelector('.an-tipo[value="' + (ehOc ? 'ocorrencia' : 'comentario') + '"]').checked = true;
             var planoGerido = !!(dados.id && ehOc);   // ocorrência já criada: ações, responsáveis e prazos ficam no plano de ação
-            var padrao = (dados.responsaveis && dados.responsaveis.length) ? dados.responsaveis
-                : ((CAMPOS[pk] || {}).resp_analise_id ? [(CAMPOS[pk] || {}).resp_analise_id] : []);
-            var inicial = padrao.map(function (id) { return USUARIOS.filter(function (u) { return String(u.id) === String(id); })[0]; })
-                .filter(Boolean).map(function (u) { return {id: u.id, nome: u.nome}; });
+            var campo = CAMPOS[pk] || {};
+            var inicial = (dados.responsaveisInfo && dados.responsaveisInfo.length) ? dados.responsaveisInfo
+                : (campo.resp_analise_id ? [{id: campo.resp_analise_id, nome: campo.resp_analise_colab}] : []);
             card._pick = ro ? null : PlanoAcao.picker(card.querySelector('.an-resp'), {name: 'responsaveis', initial: inicial});
             card.querySelector('.an-prazo').value = dados.prazo || '';
             if (planoGerido) {
@@ -1144,7 +1142,7 @@
                 origem: 'agrupado de ' + cards.length + ' cards'
             };
             var oc1 = dados.filter(function (d) { return d.tipo === 'ocorrencia'; })[0];
-            if (oc1) { junto.tipo = 'ocorrencia'; junto.id = oc1.id; junto.responsaveis = oc1.responsaveis; junto.prazo = oc1.prazo; }
+            if (oc1) { junto.tipo = 'ocorrencia'; junto.id = oc1.id; junto.responsaveisInfo = oc1.responsaveisInfo; junto.prazo = oc1.prazo; }
             var novo = novoCard(junto);                  // entra no fim; é reposicionado onde estava o primeiro selecionado
             el('anCards').insertBefore(novo, cards[0]);
             cards.forEach(function (c) { c.remove(); });
@@ -1159,7 +1157,7 @@
                 var ocs = Array.prototype.map.call(card.querySelectorAll('.an-oc:checked'), function (c) { return Number(c.value); })
                     .concat(Array.prototype.map.call(card.querySelectorAll('.an-oc-extra'), function (c) { return Number(c.value); }));
                 return {id: card.dataset.id || null, tipo: card.querySelector('.an-tipo:checked').value,
-                        responsaveis: card._pick ? card._pick.values() : [], prazo: card.querySelector('.an-prazo').value,
+                        responsaveis: card._pick ? card._pick.values() : [], responsaveisInfo: card._pick ? card._pick.items() : [], prazo: card.querySelector('.an-prazo').value,
                         causa: card.querySelector('.an-c').value, analise: card.querySelector('.an-a').value, acao: card.querySelector('.an-x').value, ocorrencias: ocs};
             });
         }

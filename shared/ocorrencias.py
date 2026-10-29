@@ -113,17 +113,20 @@ def _nome_user(u) -> str:
     return (nome or u.get_full_name() or u.get_username()).strip()
 
 
-def buscar_usuarios(q: str, limite: int = 20) -> list[dict]:
-    """Colaboradores ativos (com usuário no sistema) cujo nome ou matrícula contém todos os termos de `q`.
+def buscar_usuarios(q: str, limite: int = 20, so_usuarios: bool = False) -> list[dict]:
+    """Colaboradores ativos cujo nome ou matrícula contém todos os termos de `q`.
 
-    O `id` devolvido é o do usuário do colaborador, pois é ele quem recebe e conclui as ações.
+    Quem não tem usuário no sistema também pode ser responsável (`sem_usuario`), mas não recebe aviso nem age na ação.
     """
     from rh.models import Colaborador
 
-    qs = Colaborador.objects.filter(is_active=True, user_django__isnull=False, user_django__is_active=True)
+    qs = Colaborador.objects.filter(is_active=True).select_related("user_django")
+    if so_usuarios:  # telas que ainda atribuem a usuários (ex.: mensagens da Metrologia): devolve o id do usuário
+        qs = qs.filter(user_django__isnull=False, user_django__is_active=True)
     for termo in (q or "").split()[:5]:
         qs = qs.filter(Q(nome_completo__icontains=termo) | Q(matricula__icontains=termo))
-    return [{"id": c.user_django_id, "nome": c.nome_completo, "usuario": f"mat. {c.matricula}"}
+    return [{"id": c.user_django_id if so_usuarios else c.pk, "nome": c.nome_completo, "usuario": f"mat. {c.matricula}" + ("" if c.user_django_id else " · sem usuário"),
+             "sem_usuario": not c.user_django_id}
             for c in qs.order_by("nome_completo")[:limite]]
 
 
@@ -610,7 +613,7 @@ def _mine_filter(orig: _Origem, user) -> Q:
     from shared.models import AcaoOcorrencia
 
     ids = set(AcaoOcorrencia.objects.filter(
-        origem=orig.key, responsaveis=user, status=AcaoOcorrencia.ABERTA).values_list("ocorrencia_id", flat=True))
+        origem=orig.key, responsaveis__user_django=user, status=AcaoOcorrencia.ABERTA).values_list("ocorrencia_id", flat=True))
     q = orig.mine_q(user)
     return (q | Q(pk__in=ids)) if ids else q
 
@@ -625,8 +628,12 @@ def _ids_responsaveis(dados: dict) -> list[int]:
     return list(dict.fromkeys(int(x) for x in bruto if str(x).isdigit()))
 
 
-def _nomes(users) -> str:
-    return ", ".join(_nome_user(u) for u in users)
+def _nomes(colaboradores) -> str:
+    return ", ".join(c.nome_completo for c in colaboradores)
+
+
+def _users_dos(colaboradores) -> list:
+    return [c.user_django for c in colaboradores if getattr(c, "user_django_id", None)]
 
 
 def _montar_plano(acoes_raw, user, ocorrencia_aberta: bool) -> list[AcaoPlano]:
@@ -639,11 +646,11 @@ def _montar_plano(acoes_raw, user, ocorrencia_aberta: bool) -> list[AcaoPlano]:
     for a in acoes_raw:
         aberta = a.status == A.ABERTA
         resp = list(a.responsaveis.all())
-        e_resp = any(r.pk == user.pk for r in resp)
+        e_resp = any(r.user_django_id == user.pk for r in resp)
         pode_gerir = aberta and ocorrencia_aberta and (_eh_admin(user) or e_resp or a.criado_por_id == user.pk)
         anterior, filha = por_id.get(a.origem_acao_id), filhas.get(a.pk)
         plano.append(AcaoPlano(
-            id=a.pk, descricao=a.descricao, responsaveis=[{"id": r.pk, "nome": _nome_user(r)} for r in resp],
+            id=a.pk, descricao=a.descricao, responsaveis=[{"id": r.pk, "nome": r.nome_completo} for r in resp],
             prazo=a.prazo, vencida=bool(aberta and a.prazo and a.prazo < hoje),
             status=a.status, status_label=a.get_status_display(), resultado=a.resultado,
             criado_por=_nome_user(a.criado_por), criado_em=_fmt_dt(a.criado_em),
@@ -666,10 +673,10 @@ def _aplicar_plano(item: OcorrenciaItem, acoes_raw, user) -> None:
     item.plano = _montar_plano(acoes_raw, user, aberta)
     for a in (x for x in acoes_raw if x.status == A.ABERTA):
         for r in a.responsaveis.all():
-            nome = _nome_user(r)
+            nome = r.nome_completo
             if nome and nome not in item.responsaveis:
                 item.responsaveis.append(nome)
-            if r.pk == user.pk:
+            if r.user_django_id == user.pk:
                 item.envolve_usuario = True
                 if item.papel in ("", "Envolvido"):
                     item.papel = "Responsável pela ação"
@@ -695,12 +702,12 @@ def _data_valida(bruto):
 
 
 def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAcao:
-    from django.contrib.auth.models import User
+    from rh.models import Colaborador
     from shared.models import AcaoOcorrencia as A, ComentarioAcao
 
     texto = (dados.get("texto") or "").strip()
     ids = _ids_responsaveis(dados)
-    novos = list(User.objects.filter(pk__in=ids, is_active=True)) if ids else []
+    novos = list(Colaborador.objects.filter(pk__in=ids, is_active=True).select_related("user_django")) if ids else []
     if acao == "nova_acao":
         if not texto:
             return ResultadoAcao(False, "Descreva a ação a realizar.")
@@ -711,7 +718,7 @@ def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAca
             return ResultadoAcao(False, erro)
         a = A.objects.create(origem=key, ocorrencia_id=obj.pk, descricao=texto, prazo=prazo, criado_por=user)
         a.responsaveis.set(novos)
-        _invalidar_usuarios(user, *novos)
+        _invalidar_usuarios(user, *_users_dos(novos))
         return ResultadoAcao(True, f"Ação atribuída a {_nomes(novos)}.")
 
     aid = str(dados.get("acao_id") or "")
@@ -722,13 +729,13 @@ def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAca
         if alvo is None:
             return ResultadoAcao(False, "Ação não encontrada.")
         ComentarioAcao.objects.create(acao=alvo, autor=user, texto=texto)
-        _invalidar_usuarios(*alvo.responsaveis.all())
+        _invalidar_usuarios(*_users_dos(alvo.responsaveis.select_related('user_django')))
         return ResultadoAcao(True, "Comentário registrado.")
     a = A.objects.filter(pk=aid, origem=key, ocorrencia_id=obj.pk, status=A.ABERTA).first() if aid.isdigit() else None
     if a is None:
         return ResultadoAcao(False, "Ação não encontrada ou já encerrada.")
-    antigos = list(a.responsaveis.all())
-    pode_gerir = _eh_admin(user) or any(r.pk == user.pk for r in antigos) or a.criado_por_id == user.pk
+    antigos = list(a.responsaveis.select_related("user_django"))
+    pode_gerir = _eh_admin(user) or any(r.user_django_id == user.pk for r in antigos) or a.criado_por_id == user.pk
     agora = timezone.now()
 
     if acao == "cancelar_acao":
@@ -738,7 +745,7 @@ def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAca
             return ResultadoAcao(False, "Informe o motivo do cancelamento.")
         a.status, a.resultado, a.encerrada_em, a.encerrada_por = A.CANCELADA, texto, agora, user
         a.save()
-        _invalidar_usuarios(user, *antigos)
+        _invalidar_usuarios(user, *_users_dos(antigos))
         return ResultadoAcao(True, "Ação cancelada.")
 
     if not pode_gerir:
@@ -746,7 +753,7 @@ def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAca
     if acao == "concluir_acao":
         a.status, a.resultado, a.encerrada_em, a.encerrada_por = A.CONCLUIDA, texto, agora, user
         a.save()
-        _invalidar_usuarios(user, *antigos)
+        _invalidar_usuarios(user, *_users_dos(antigos))
         return ResultadoAcao(True, "Ação concluída.")
     if acao == "redirecionar_acao":
         if not novos:
@@ -763,7 +770,7 @@ def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAca
         nova = A.objects.create(origem=key, ocorrencia_id=obj.pk, descricao=a.descricao, prazo=prazo or a.prazo,
                                 origem_acao=a, criado_por=user)
         nova.responsaveis.set(novos)
-        _invalidar_usuarios(user, *antigos, *novos)
+        _invalidar_usuarios(user, *_users_dos(antigos), *_users_dos(novos))
         return ResultadoAcao(True, f"Ação redirecionada para {_nomes(novos)}.")
     return ResultadoAcao(False, "Ação inválida.")
 
@@ -779,7 +786,7 @@ def plano_json(user, key: str, pk: int) -> Optional[dict]:
     if not visiveis.filter(pk=pk).exists():
         return None
     aberta = visiveis.filter(orig.aberta_q(), pk=pk).exists()
-    raws = list(A.objects.filter(origem=key, ocorrencia_id=pk).prefetch_related("responsaveis__colaborador", "comentarios__autor")
+    raws = list(A.objects.filter(origem=key, ocorrencia_id=pk).prefetch_related("responsaveis", "comentarios__autor")
                 .select_related("criado_por", "encerrada_por"))
     return {
         "aberta": aberta,
@@ -812,7 +819,7 @@ def criar_acao_inicial(origem: str, ocorrencia_id: int, descricao: str, responsa
     a = AcaoOcorrencia.objects.create(origem=origem, ocorrencia_id=ocorrencia_id, descricao=descricao, prazo=prazo,
                                       criado_por=criado_por)
     a.responsaveis.set(responsaveis)
-    _invalidar_usuarios(criado_por, *responsaveis)
+    _invalidar_usuarios(criado_por, *_users_dos(responsaveis))
 
 
 def tem_acoes(origem: str, ocorrencia_id: int) -> bool:
@@ -872,7 +879,7 @@ def listar_ocorrencias(user: Any, status: str = "abertas", origem: str = "") -> 
             objs = list(qs.order_by("-pk")[:300])
             planos: dict[int, list] = {}
             for a in AcaoOcorrencia.objects.filter(origem=key, ocorrencia_id__in=[o.pk for o in objs]).select_related(
-                    "criado_por", "encerrada_por").prefetch_related("responsaveis__colaborador", "comentarios__autor"):
+                    "criado_por", "encerrada_por").prefetch_related("responsaveis", "comentarios__autor"):
                 planos.setdefault(a.ocorrencia_id, []).append(a)
             for obj in objs:
                 item = orig.to_item(obj, user, mine_ids)

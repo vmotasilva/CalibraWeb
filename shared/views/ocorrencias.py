@@ -102,7 +102,7 @@ def ocorrencias_acao_view(request):
 @login_required
 def api_usuarios_view(request):
     """Busca (AJAX) de usuários para escolher responsáveis: ?q=texto (nome, colaborador ou login)."""
-    return JsonResponse({"results": central.buscar_usuarios(request.GET.get("q", ""))})
+    return JsonResponse({"results": central.buscar_usuarios(request.GET.get("q", ""), so_usuarios=request.GET.get("modo") == "usuario")})
 
 
 @login_required

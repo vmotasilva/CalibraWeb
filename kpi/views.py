@@ -234,7 +234,8 @@ def painel_view(request):
             'motivos': [g for g in ('diaria', 'semanal', 'mensal') if ind.permite_motivos(g)],
             'unidade': ind.unidade, 'setor': setor_id or '', 'setor_nome': setor.nome if setor else '',
             'resp_analise': _nome_usuario(pendencias.responsavel_do_escopo(ind, setor)),
-            'resp_analise_id': getattr(pendencias.responsavel_do_escopo(ind, setor), 'pk', ''),
+            'resp_analise_id': getattr(getattr(pendencias.responsavel_do_escopo(ind, setor), 'colaborador', None), 'pk', ''),
+            'resp_analise_colab': getattr(getattr(pendencias.responsavel_do_escopo(ind, setor), 'colaborador', None), 'nome_completo', ''),
         }
         charts[str(ind.pk)] = {g: _serie(ind, g, meds, meta) for g in ind.graficos()}
         analises_js[str(ind.pk)] = {}
@@ -268,8 +269,6 @@ def painel_view(request):
         'pode_excluir_dados': has_view_access(request.user, 'kpi:medicao_excluir'),
         'pode_analisar': has_view_access(request.user, 'kpi:analise_salvar'),
         'pode_dispensar': has_view_access(request.user, 'kpi:analise_dispensar'),
-        'usuarios_js': [{'id': u.pk, 'nome': _nome_usuario(u)}
-                        for u in User.objects.filter(is_active=True).order_by('first_name', 'username')],
     })
 
 
@@ -738,6 +737,7 @@ def _itens_do_post(post):
     else:
         lista = [{'causa': post.get('causa', ''), 'analise': post.get('analise', ''), 'acao': post.get('acao', '')}]
     from kpi.models import AnaliseItem
+    from rh.models import Colaborador
     from shared.ocorrencias import tem_acoes
     itens = []
     for i in lista[:50]:
@@ -754,7 +754,7 @@ def _itens_do_post(post):
                 raise ValueError('Descreva a ocorrência (causa, análise ou ação).')
             if not ja_tem_plano:  # a ocorrência pode nascer já com a 1ª ação (responsáveis e prazo); senão as ações são atribuídas depois, no pop-up
                 ids = [int(x) for x in (i.get('responsaveis') or []) if str(x).isdigit()]
-                item['responsaveis'] = list(User.objects.filter(pk__in=ids, is_active=True))
+                item['responsaveis'] = list(Colaborador.objects.filter(pk__in=ids, is_active=True))
                 try:
                     item['prazo'] = datetime.date.fromisoformat(str(i.get('prazo') or '')) if i.get('prazo') else None
                 except ValueError:
@@ -788,7 +788,7 @@ def _gravar_itens(registro, itens):
             if i.get('responsaveis') and not tem_acoes('kpi', card.pk):
                 criar_acao_inicial('kpi', card.pk, card.acao or card.causa or card.analise, i['responsaveis'],
                                    i.get('prazo'), registro.registrado_por)
-                afetados.update(u.pk for u in i['responsaveis'])
+                afetados.update(c.user_django_id for c in i['responsaveis'] if c.user_django_id)
         else:
             limpar_acoes('kpi', [card.pk])  # voltou a ser relato: não há plano de ação
         card.ocorrencias.set(OcorrenciaLaboratorio.objects.filter(pk__in=i['ocorrencias']))

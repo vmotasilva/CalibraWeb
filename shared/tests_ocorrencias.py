@@ -10,6 +10,14 @@ from qms.models import OcorrenciaInstrumento
 from shared import ocorrencias as central
 
 
+def colab(user, nome=None, **extra):
+    """Colaborador vinculado ao usuário (os responsáveis das ações são colaboradores)."""
+    from rh.models import Colaborador
+
+    return Colaborador.objects.create(matricula=f"m{user.pk}", nome_completo=nome or user.get_username(),
+                                      user_django=user, **extra)
+
+
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class CentralOcorrenciasTests(TestCase):
     def setUp(self):
@@ -125,6 +133,9 @@ class PlanoDeAcaoTests(TestCase):
         self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
         self.ana = U.objects.create_user("ana", password="x", is_superuser=True, is_staff=True)
         self.bia = U.objects.create_user("bia", password="x", is_superuser=True, is_staff=True)
+        self.c_admin = colab(self.admin)
+        self.c_ana = colab(self.ana)
+        self.c_bia = colab(self.bia)
         self.oc = OcorrenciaLaboratorio.objects.create(assunto="Falha", detalhamento="d", criado_por=self.admin)
         self.uid = f"laboratorio:{self.oc.pk}"
 
@@ -137,9 +148,9 @@ class PlanoDeAcaoTests(TestCase):
     def test_varias_acoes_com_responsavel_e_prazo(self):
         hoje = date.today().isoformat()
         self.assertFalse(self._acao(self.admin, "nova_acao", texto="x", responsavel="").ok)  # responsável obrigatório
-        self.assertFalse(self._acao(self.admin, "nova_acao", texto="x", responsavel=str(self.ana.pk), prazo="2001-01-01").ok)
-        self.assertTrue(self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk), prazo=hoje).ok)
-        self.assertTrue(self._acao(self.admin, "nova_acao", texto="Validar", responsavel=str(self.bia.pk)).ok)
+        self.assertFalse(self._acao(self.admin, "nova_acao", texto="x", responsavel=str(self.c_ana.pk), prazo="2001-01-01").ok)
+        self.assertTrue(self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.c_ana.pk), prazo=hoje).ok)
+        self.assertTrue(self._acao(self.admin, "nova_acao", texto="Validar", responsavel=str(self.c_bia.pk)).ok)
         item = self._item(self.ana)
         self.assertEqual(len(item.plano), 2)
         self.assertEqual(item.responsaveis, ["ana", "bia"])
@@ -147,11 +158,11 @@ class PlanoDeAcaoTests(TestCase):
         self.assertEqual(central.contar_ocorrencias(self.bia)["minhas"], 1)
 
     def test_redirecionar_mantem_historico(self):
-        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk))
+        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.c_ana.pk))
         a1 = self._item(self.admin).plano[0]
-        self.assertFalse(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.bia.pk), texto="").ok)
-        self.assertFalse(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.ana.pk), texto="m").ok)
-        self.assertTrue(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.bia.pk), texto="Férias").ok)
+        self.assertFalse(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.c_bia.pk), texto="").ok)
+        self.assertFalse(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.c_ana.pk), texto="m").ok)
+        self.assertTrue(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.c_bia.pk), texto="Férias").ok)
         plano = self._item(self.admin).plano
         self.assertEqual([p.status for p in plano], ["REDIRECIONADA", "ABERTA"])
         self.assertEqual((plano[0].para, plano[1].de, plano[0].resultado), ("bia", "ana", "Férias"))
@@ -163,7 +174,7 @@ class PlanoDeAcaoTests(TestCase):
         from django.contrib.auth.models import User
 
         comum = User.objects.create_user("comum", password="x")
-        self._acao(self.admin, "nova_acao", texto="A", responsavel=str(self.ana.pk))
+        self._acao(self.admin, "nova_acao", texto="A", responsavel=str(self.c_ana.pk))
         aid = self._item(self.admin).plano[0].id
         r = self._acao(self.admin, "encerrar", texto="ok")
         self.assertFalse(r.ok)
@@ -171,23 +182,23 @@ class PlanoDeAcaoTests(TestCase):
         self.assertFalse(self._acao(comum, "concluir_acao", acao_id=aid).ok)  # sem acesso à ocorrência
         self.assertTrue(self._acao(self.ana, "concluir_acao", acao_id=aid, texto="feito").ok)
         self.assertFalse(self._acao(self.ana, "concluir_acao", acao_id=aid).ok)  # já encerrada
-        self._acao(self.admin, "nova_acao", texto="B", responsavel=str(self.bia.pk))
+        self._acao(self.admin, "nova_acao", texto="B", responsavel=str(self.c_bia.pk))
         bid = [p for p in self._item(self.admin).plano if p.status == "ABERTA"][0].id
         self.assertTrue(self._acao(self.admin, "cancelar_acao", acao_id=bid, texto="desnecessária").ok)
         self.assertTrue(self._acao(self.admin, "encerrar", texto="ok").ok)
         # em ocorrência encerrada não há mais ação nova
-        self.assertFalse(self._acao(self.admin, "nova_acao", texto="C", responsavel=str(self.ana.pk)).ok)
+        self.assertFalse(self._acao(self.admin, "nova_acao", texto="C", responsavel=str(self.c_ana.pk)).ok)
 
     def test_acao_aparece_na_caixa_de_entrada(self):
         from shared.inbox import get_user_inbox_items
 
-        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk))
+        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.c_ana.pk))
         itens = [i for i in get_user_inbox_items(self.ana) if i.module == "Ocorrências"]
         self.assertEqual(len(itens), 1)
         self.assertIn("Trocar peça", itens[0].description)
 
     def test_tela_exibe_plano_e_acoes(self):
-        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk))
+        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.c_ana.pk))
         self.client.force_login(self.ana)
         resp = self.client.get(reverse("ocorrencias_central"))
         self.assertContains(resp, "data-plano-mount")          # o pop-up monta o widget do plano
@@ -202,6 +213,8 @@ class OcorrenciaKpiTests(TestCase):
         U = get_user_model()
         self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
         self.ana = U.objects.create_user("ana", password="x", is_superuser=True, is_staff=True)
+        self.c_admin = colab(self.admin)
+        self.c_ana = colab(self.ana)
         from kpi.models import Indicador
 
         self.ind = Indicador.objects.create(nome="Late Orders", meta=1, sentido="menor", periodicidade="mensal")
@@ -218,7 +231,7 @@ class OcorrenciaKpiTests(TestCase):
         from shared.models import AcaoOcorrencia
 
         r = self._salvar([{"tipo": "comentario", "causa": "só um relato"},
-                          {"tipo": "ocorrencia", "causa": "falta de peça", "acao": "comprar", "responsaveis": [self.ana.pk, self.admin.pk]}])
+                          {"tipo": "ocorrencia", "causa": "falta de peça", "acao": "comprar", "responsaveis": [self.c_ana.pk, self.c_admin.pk]}])
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.json()["o"], 1)
         card = AnaliseItem.objects.get(tipo="ocorrencia")
@@ -252,7 +265,7 @@ class OcorrenciaKpiTests(TestCase):
         card.refresh_from_db()
         self.assertEqual(card.tipo, AnaliseItem.TIPO_OCORRENCIA)
         self.assertFalse(AcaoOcorrencia.objects.exists())
-        self._salvar([{"tipo": "ocorrencia", "id": card.pk, "causa": "x", "responsaveis": [self.ana.pk]}])
+        self._salvar([{"tipo": "ocorrencia", "id": card.pk, "causa": "x", "responsaveis": [self.c_ana.pk]}])
         self.assertEqual(AcaoOcorrencia.objects.count(), 1)
         self._salvar([{"tipo": "comentario", "id": card.pk, "causa": "x"}])  # volta a ser relato
         self.assertFalse(AcaoOcorrencia.objects.exists())
@@ -266,6 +279,7 @@ class PopupEFiltroAtrasoTests(TestCase):
         cache.clear()
         U = get_user_model()
         self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
+        self.c_admin = colab(self.admin)
         self.em_dia = OcorrenciaLaboratorio.objects.create(assunto="Em dia", detalhamento="d", criado_por=self.admin)
         self.atrasada = OcorrenciaLaboratorio.objects.create(assunto="Atrasada", detalhamento="d", criado_por=self.admin)
         self.client.force_login(self.admin)
@@ -276,7 +290,7 @@ class PopupEFiltroAtrasoTests(TestCase):
         a = AcaoOcorrencia.objects.create(
             origem="laboratorio", ocorrencia_id=self.atrasada.pk, descricao="X",
             prazo=date(2020, 1, 1), criado_por=self.admin)
-        a.responsaveis.add(self.admin)
+        a.responsaveis.add(self.c_admin)
 
     def test_filtro_em_atraso(self):
         self._atrasar()
@@ -319,6 +333,10 @@ class VariosResponsaveisEApiTests(TestCase):
         self.ana = U.objects.create_user("ana", first_name="Ana", last_name="Souza", password="x", is_superuser=True, is_staff=True)
         self.bia = U.objects.create_user("bia", first_name="Bia", password="x", is_superuser=True, is_staff=True)
         self.inativo = U.objects.create_user("zeca", first_name="Zeca", password="x", is_active=False)
+        self.c_admin = colab(self.admin)
+        self.c_ana = colab(self.ana, "Ana Souza")
+        self.c_bia = colab(self.bia, "Bia")
+        self.c_inativo = colab(self.inativo, is_active=False)
         self.oc = OcorrenciaLaboratorio.objects.create(assunto="Falha", detalhamento="d", criado_por=self.admin)
         self.uid = f"laboratorio:{self.oc.pk}"
         self.client.force_login(self.admin)
@@ -329,23 +347,34 @@ class VariosResponsaveisEApiTests(TestCase):
     def test_busca_ajax_nos_colaboradores(self):
         from rh.models import Colaborador
 
-        Colaborador.objects.create(matricula="1", nome_completo="Ana Souza", user_django=self.ana)
-        Colaborador.objects.create(matricula="2", nome_completo="Beatriz Camargo Lima", user_django=self.bia)
-        Colaborador.objects.create(matricula="3", nome_completo="Zeca Inativo", user_django=self.inativo)
-        Colaborador.objects.create(matricula="4", nome_completo="Sem Usuario")           # sem login: não pode agir
-        Colaborador.objects.create(matricula="5", nome_completo="Ana Desligada", is_active=False)
+        Colaborador.objects.create(matricula="900", nome_completo="Beatriz Camargo Lima")  # sem usuário: também é listado
         url = reverse("ocorrencias_api_usuarios")
         res = self.client.get(url, {"q": "camargo"}).json()["results"]
-        self.assertEqual([(r["id"], r["nome"]) for r in res], [(self.bia.pk, "Beatriz Camargo Lima")])
-        self.assertEqual([r["nome"] for r in self.client.get(url, {"q": "ana"}).json()["results"]], ["Ana Souza"])
+        self.assertEqual([(r["nome"], r["sem_usuario"]) for r in res], [("Beatriz Camargo Lima", True)])
+        self.assertIn("sem usuário", res[0]["usuario"])
+        self.assertEqual([r["id"] for r in self.client.get(url, {"q": "ana"}).json()["results"]], [self.c_ana.pk])
         self.assertEqual(len(self.client.get(url, {"q": "a s"}).json()["results"]), 1)   # todos os termos
-        self.assertEqual([r["id"] for r in self.client.get(url, {"q": "2"}).json()["results"]], [self.bia.pk])  # matrícula
-        self.assertEqual(len(self.client.get(url).json()["results"]), 2)                 # inativos/sem usuário fora
+        self.assertEqual([r["id"] for r in self.client.get(url, {"q": "900"}).json()["results"]], [res[0]["id"]])  # matrícula
+        self.assertEqual(self.client.get(url, {"q": "zeca"}).json()["results"], [])      # colaborador inativo fora
+        # modo "usuario": só quem tem login, devolvendo o id do usuário (telas que ainda atribuem a usuários)
+        res = self.client.get(url, {"q": "ana", "modo": "usuario"}).json()["results"]
+        self.assertEqual([r["id"] for r in res], [self.ana.pk])
+        self.assertEqual(self.client.get(url, {"q": "camargo", "modo": "usuario"}).json()["results"], [])
         self.client.logout()
         self.assertEqual(self.client.get(url).status_code, 302)  # exige login
 
+    def test_responsavel_sem_usuario_recebe_acao_mas_nao_age(self):
+        from rh.models import Colaborador
+
+        sem = Colaborador.objects.create(matricula="901", nome_completo="Sem Login")
+        r = self._post("nova_acao", texto="Verificar", responsaveis=[sem.pk, self.c_ana.pk])
+        self.assertEqual(r.status_code, 200, r.content)
+        acao = r.json()["plano"]["acoes"][0]
+        self.assertEqual([x["nome"] for x in acao["responsaveis"]], ["Ana Souza", "Sem Login"])
+        self.assertEqual(central.contar_ocorrencias(self.ana)["minhas"], 1)
+
     def test_acao_com_varios_responsaveis_pela_api(self):
-        r = self._post("nova_acao", texto="Trocar peça", responsaveis=[self.ana.pk, self.bia.pk], prazo="")
+        r = self._post("nova_acao", texto="Trocar peça", responsaveis=[self.c_ana.pk, self.c_bia.pk], prazo="")
         self.assertEqual(r.status_code, 200, r.content)
         acao = r.json()["plano"]["acoes"][0]
         self.assertEqual([x["nome"] for x in acao["responsaveis"]], ["Ana Souza", "Bia"])
@@ -358,13 +387,13 @@ class VariosResponsaveisEApiTests(TestCase):
 
     def test_responsavel_obrigatorio_e_redirecionar_para_novo_grupo(self):
         self.assertEqual(self._post("nova_acao", texto="x").status_code, 400)
-        self.assertEqual(self._post("nova_acao", texto="x", responsaveis=[self.inativo.pk]).status_code, 400)
-        self._post("nova_acao", texto="x", responsaveis=[self.ana.pk, self.bia.pk])
+        self.assertEqual(self._post("nova_acao", texto="x", responsaveis=[self.c_inativo.pk]).status_code, 400)
+        self._post("nova_acao", texto="x", responsaveis=[self.c_ana.pk, self.c_bia.pk])
         aid = central.plano_json(self.admin, "laboratorio", self.oc.pk)["acoes"][0]["id"]
         # mesmo grupo: recusado; grupo diferente: redireciona e preserva o histórico
-        r = self._post("redirecionar_acao", acao_id=aid, texto="m", responsaveis=[self.bia.pk, self.ana.pk])
+        r = self._post("redirecionar_acao", acao_id=aid, texto="m", responsaveis=[self.c_bia.pk, self.c_ana.pk])
         self.assertEqual(r.status_code, 400)
-        r = self._post("redirecionar_acao", acao_id=aid, texto="Férias", responsaveis=[self.admin.pk, self.bia.pk])
+        r = self._post("redirecionar_acao", acao_id=aid, texto="Férias", responsaveis=[self.c_admin.pk, self.c_bia.pk])
         self.assertEqual(r.status_code, 200, r.content)
         acoes = r.json()["plano"]["acoes"]
         self.assertEqual([a["status"] for a in acoes], ["REDIRECIONADA", "ABERTA"])
@@ -412,6 +441,33 @@ class MigracaoResponsaveisTests(TransactionTestCase):
             MigrationExecutor(connection).migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())
 
 
+class MigracaoColaboradoresTests(TransactionTestCase):
+    """0004: responsáveis (usuários) viram os colaboradores vinculados; usuário sem colaborador não tem equivalente."""
+
+    def test_usuarios_viram_colaboradores(self):
+        from django.db import connection
+        from django.db.migrations.executor import MigrationExecutor
+
+        U = get_user_model()
+        executor = MigrationExecutor(connection)
+        if ("shared", "0003_comentarioacao") not in executor.loader.graph.nodes:
+            self.skipTest("migrações desativadas nesta configuração de teste (rode com config.settings)")
+        antes, depois = [("shared", "0003_comentarioacao")], [("shared", "0004_responsaveis_colaboradores")]
+        executor.migrate(antes)
+        try:
+            Antiga = executor.loader.project_state(antes).apps.get_model("shared", "AcaoOcorrencia")
+            ana, solto = U.objects.create_user("ana", password="x"), U.objects.create_user("solto", password="x")
+            c_ana = colab(ana, "Ana Souza")
+            a = Antiga.objects.create(origem="laboratorio", ocorrencia_id=1, descricao="d")
+            a.responsaveis.add(ana.pk, solto.pk)
+            executor = MigrationExecutor(connection)
+            executor.migrate(depois)
+            Acao = executor.loader.project_state(depois).apps.get_model("shared", "AcaoOcorrencia")
+            self.assertEqual(list(Acao.objects.get(ocorrencia_id=1).responsaveis.values_list("pk", flat=True)), [c_ana.pk])
+        finally:
+            MigrationExecutor(connection).migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class ComentariosDaAcaoTests(TestCase):
     def setUp(self):
@@ -419,11 +475,13 @@ class ComentariosDaAcaoTests(TestCase):
         U = get_user_model()
         self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
         self.ana = U.objects.create_user("ana", first_name="Ana", password="x", is_superuser=True, is_staff=True)
+        self.c_admin = colab(self.admin)
+        self.c_ana = colab(self.ana)
         self.oc = OcorrenciaLaboratorio.objects.create(assunto="Falha", detalhamento="d", criado_por=self.admin)
         self.uid = f"laboratorio:{self.oc.pk}"
         self.client.force_login(self.admin)
         self.client.post(reverse("ocorrencias_api_plano_acao"), {
-            "uid": self.uid, "acao": "nova_acao", "texto": "Trocar peça", "responsaveis": [self.ana.pk]})
+            "uid": self.uid, "acao": "nova_acao", "texto": "Trocar peça", "responsaveis": [self.c_ana.pk]})
         self.aid = central.plano_json(self.admin, "laboratorio", self.oc.pk)["acoes"][0]["id"]
 
     def _comentar(self, texto):
@@ -437,7 +495,7 @@ class ComentariosDaAcaoTests(TestCase):
         self.assertEqual(r.status_code, 200, r.content)
         coments = r.json()["plano"]["acoes"][0]["comentarios"]
         self.assertEqual([c["texto"] for c in coments], ["Qual peça exatamente?", "A do lote 7."])
-        self.assertEqual(coments[1]["autor"], "Ana")
+        self.assertEqual(coments[1]["autor"], "ana")
 
     def test_comentario_vazio_recusado_e_vale_em_acao_encerrada(self):
         self.assertEqual(self._comentar("  ").status_code, 400)

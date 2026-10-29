@@ -23,7 +23,7 @@ class AcaoOcorrencia(models.Model):
     ocorrencia_id = models.PositiveIntegerField("Ocorrência", db_index=True)
     descricao = models.TextField("Ação a realizar")
     responsaveis = models.ManyToManyField(
-        settings.AUTH_USER_MODEL, blank=True, related_name="acoes_ocorrencia", verbose_name="Responsáveis",
+        "rh.Colaborador", blank=True, related_name="acoes_ocorrencia", verbose_name="Responsáveis",
     )
     prazo = models.DateField("Prazo", null=True, blank=True)
     status = models.CharField("Situação", max_length=14, choices=STATUS, default=ABERTA, db_index=True)

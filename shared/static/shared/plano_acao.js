@@ -111,7 +111,7 @@
 
         function buscar() {
             var minha = ++seq;
-            fetch(BASE + 'api/usuarios/?q=' + encodeURIComponent(q.value.trim()), {credentials: 'same-origin'})
+            fetch(BASE + 'api/usuarios/?q=' + encodeURIComponent(q.value.trim()) + (opts.usuarios ? '&modo=usuario' : ''), {credentials: 'same-origin'})
                 .then(function (r) { return r.json(); })
                 .then(function (j) { if (minha !== seq) return; resultados = j.results || []; ativo = -1; mostrar(); })
                 .catch(function () { lista.replaceChildren(h('div', {class: 'pa-vazio', text: 'Não foi possível buscar.'})); lista.classList.add('aberto'); });

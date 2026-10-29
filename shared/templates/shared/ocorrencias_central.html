@@ -204,8 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const $ = id => document.getElementById(id);
     const detEl = $('ocDetalheModal'), acaoEl = $('ocAcaoModal');
     const detalhe = new bootstrap.Modal(detEl), acao = new bootstrap.Modal(acaoEl);
-    const pickDest = PlanoAcao.picker($('ocPickDest'), {name: 'destinatarios', placeholder: 'Buscar pessoas…'});
-    const pickResp = PlanoAcao.picker($('ocPickResp'), {name: 'responsaveis', multiple: false, placeholder: 'Buscar pessoa…'});
+    const pickDest = PlanoAcao.picker($('ocPickDest'), {name: 'destinatarios', usuarios: true, placeholder: 'Buscar pessoas…'});
+    const pickResp = PlanoAcao.picker($('ocPickResp'), {name: 'responsaveis', usuarios: true, multiple: false, placeholder: 'Buscar pessoa…'});
     let planoAtual = null, uidAberto = null, voltarPara = null, enviando = false, trocando = false, mudou = false, respObrig = false;
 
     function abrirDetalhe(uid) {
