@@ -114,18 +114,17 @@ def _nome_user(u) -> str:
 
 
 def buscar_usuarios(q: str, limite: int = 20) -> list[dict]:
-    """Usuários ativos cujo nome (do colaborador ou do usuário) ou login contém todos os termos de `q`."""
-    from django.contrib.auth import get_user_model
+    """Colaboradores ativos (com usuário no sistema) cujo nome ou matrícula contém todos os termos de `q`.
 
-    qs = get_user_model().objects.filter(is_active=True).select_related("colaborador")
+    O `id` devolvido é o do usuário do colaborador, pois é ele quem recebe e conclui as ações.
+    """
+    from rh.models import Colaborador
+
+    qs = Colaborador.objects.filter(is_active=True, user_django__isnull=False, user_django__is_active=True)
     for termo in (q or "").split()[:5]:
-        qs = qs.filter(
-            Q(first_name__icontains=termo) | Q(last_name__icontains=termo) | Q(username__icontains=termo)
-            | Q(colaborador__nome_completo__icontains=termo)
-        )
-    usuarios = list(qs.order_by("first_name", "last_name", "username")[:limite])
-    usuarios.sort(key=lambda u: _nome_user(u).lower())
-    return [{"id": u.pk, "nome": _nome_user(u), "usuario": u.get_username()} for u in usuarios]
+        qs = qs.filter(Q(nome_completo__icontains=termo) | Q(matricula__icontains=termo))
+    return [{"id": c.user_django_id, "nome": c.nome_completo, "usuario": f"mat. {c.matricula}"}
+            for c in qs.order_by("nome_completo")[:limite]]
 
 
 def _fmt_dt(dt) -> str:

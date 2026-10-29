@@ -326,22 +326,23 @@ class VariosResponsaveisEApiTests(TestCase):
     def _post(self, acao, **dados):
         return self.client.post(reverse("ocorrencias_api_plano_acao"), {"uid": self.uid, "acao": acao, **dados})
 
-    def test_busca_ajax_de_usuarios(self):
-        url = reverse("ocorrencias_api_usuarios")
-        nomes = [r["nome"] for r in self.client.get(url, {"q": "ana"}).json()["results"]]
-        self.assertEqual(nomes, ["Ana Souza"])
-        self.assertEqual(len(self.client.get(url, {"q": "a s"}).json()["results"]), 1)  # todos os termos
-        self.assertEqual(self.client.get(url, {"q": "zeca"}).json()["results"], [])      # inativos não entram
-        self.assertGreaterEqual(len(self.client.get(url).json()["results"]), 3)
-        self.client.logout()
-        self.assertEqual(self.client.get(url).status_code, 302)  # exige login
-
-    def test_busca_por_nome_do_colaborador(self):
+    def test_busca_ajax_nos_colaboradores(self):
         from rh.models import Colaborador
 
-        Colaborador.objects.create(matricula="9", nome_completo="Beatriz Camargo Lima", user_django=self.bia)
-        res = self.client.get(reverse("ocorrencias_api_usuarios"), {"q": "camargo"}).json()["results"]
+        Colaborador.objects.create(matricula="1", nome_completo="Ana Souza", user_django=self.ana)
+        Colaborador.objects.create(matricula="2", nome_completo="Beatriz Camargo Lima", user_django=self.bia)
+        Colaborador.objects.create(matricula="3", nome_completo="Zeca Inativo", user_django=self.inativo)
+        Colaborador.objects.create(matricula="4", nome_completo="Sem Usuario")           # sem login: não pode agir
+        Colaborador.objects.create(matricula="5", nome_completo="Ana Desligada", is_active=False)
+        url = reverse("ocorrencias_api_usuarios")
+        res = self.client.get(url, {"q": "camargo"}).json()["results"]
         self.assertEqual([(r["id"], r["nome"]) for r in res], [(self.bia.pk, "Beatriz Camargo Lima")])
+        self.assertEqual([r["nome"] for r in self.client.get(url, {"q": "ana"}).json()["results"]], ["Ana Souza"])
+        self.assertEqual(len(self.client.get(url, {"q": "a s"}).json()["results"]), 1)   # todos os termos
+        self.assertEqual([r["id"] for r in self.client.get(url, {"q": "2"}).json()["results"]], [self.bia.pk])  # matrícula
+        self.assertEqual(len(self.client.get(url).json()["results"]), 2)                 # inativos/sem usuário fora
+        self.client.logout()
+        self.assertEqual(self.client.get(url).status_code, 302)  # exige login
 
     def test_acao_com_varios_responsaveis_pela_api(self):
         r = self._post("nova_acao", texto="Trocar peça", responsaveis=[self.ana.pk, self.bia.pk], prazo="")
