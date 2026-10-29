@@ -272,8 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const n = e.target.closest('[data-oc-nota-acao]');
         if (n) {  // ações a partir de anotações/comentários (podem ser várias agrupadas)
             const textos = Array.from($('ocDetCorpo').querySelectorAll('.oc-nota-sel:checked')).map(c => c.dataset.texto);
-            if (planoAtual && textos.length) planoAtual.novaAcao(textos.join('
-'));
+            if (planoAtual && textos.length) planoAtual.novaAcao(textos.join('\n'));
             return;
         }
         const b = e.target.closest('[data-oc-acao]');
