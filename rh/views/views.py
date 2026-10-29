@@ -3564,8 +3564,8 @@ def detalhe_usuario_view(request, user_id):
             else:
                 itens_modulo.append(bloco_data)
 
-        if not itens_modulo and modulo.get("key") == "kpi":
-            continue  # todos os blocos do KPI ficam em Gestão > KPI
+        if not itens_modulo and modulo.get("key") in GESTAO_MODULOS_COM_SECAO:
+            continue  # todos os blocos (KPI, PCP, Motivos de Perdas) ficam em seções de Gestão
         modulos.append(
             {
                 "key": modulo.get("key"),
