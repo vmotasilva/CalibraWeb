@@ -664,10 +664,9 @@ def _ocorrencias_periodo(gran, periodo):
 
 
 def _itens_json(registro):
-    from shared.ocorrencias import plano_resumo
     return [{'id': i.pk, 'causa': i.causa, 'analise': i.analise, 'acao': i.acao,
              'ocorrencias': list(i.ocorrencias.values_list('pk', flat=True)),
-             'tipo': i.tipo, 'plano': plano_resumo('kpi', i.pk) if i.tipo == i.TIPO_OCORRENCIA else None,
+             'tipo': i.tipo,
              'status': i.status, 'resolucao': i.resolucao,
              'resolvido_em': timezone.localtime(i.resolvido_em).strftime('%d/%m/%Y %H:%M') if i.resolvido_em else '',
              'resolvido_por': _nome_usuario(i.resolvido_por)} for i in registro.itens.all()]
@@ -748,16 +747,16 @@ def _itens_do_post(post):
         ocs = [int(x) for x in (i.get('ocorrencias') or []) if str(x).isdigit()]
         tipo = i.get('tipo') if i.get('tipo') in (AnaliseItem.TIPO_COMENTARIO, AnaliseItem.TIPO_OCORRENCIA) else AnaliseItem.TIPO_COMENTARIO
         item = {'id': int(i['id']) if str(i.get('id', '')).isdigit() else None, 'tipo': tipo,
-                'causa': causa, 'analise': analise, 'acao': acao, 'ocorrencias': ocs, 'responsavel': None, 'prazo': None}
+                'causa': causa, 'analise': analise, 'acao': acao, 'ocorrencias': ocs, 'responsaveis': [], 'prazo': None}
         ja_tem_plano = bool(item['id']) and tem_acoes('kpi', item['id'])
         if tipo == AnaliseItem.TIPO_OCORRENCIA:
             if not (causa or analise or acao):
                 raise ValueError('Descreva a ocorrência (causa, análise ou ação).')
-            if not ja_tem_plano:  # a ocorrência nasce com a primeira ação do plano: responsável e prazo
-                rid = str(i.get('responsavel') or '')
-                item['responsavel'] = User.objects.filter(pk=rid, is_active=True).first() if rid.isdigit() else None
-                if item['responsavel'] is None:
-                    raise ValueError('Informe o responsável pela tratativa da ocorrência.')
+            if not ja_tem_plano:  # a ocorrência nasce com a primeira ação do plano: responsáveis e prazo
+                ids = [int(x) for x in (i.get('responsaveis') or []) if str(x).isdigit()]
+                item['responsaveis'] = list(User.objects.filter(pk__in=ids, is_active=True))
+                if not item['responsaveis']:
+                    raise ValueError('Informe ao menos um responsável pela tratativa da ocorrência.')
                 try:
                     item['prazo'] = datetime.date.fromisoformat(str(i.get('prazo') or '')) if i.get('prazo') else None
                 except ValueError:
@@ -788,10 +787,10 @@ def _gravar_itens(registro, itens):
         card.save()
         manter.add(card.pk)
         if card.tipo == AnaliseItem.TIPO_OCORRENCIA:
-            if i.get('responsavel') and not tem_acoes('kpi', card.pk):
-                criar_acao_inicial('kpi', card.pk, card.acao or card.causa or card.analise, i['responsavel'],
+            if i.get('responsaveis') and not tem_acoes('kpi', card.pk):
+                criar_acao_inicial('kpi', card.pk, card.acao or card.causa or card.analise, i['responsaveis'],
                                    i.get('prazo'), registro.registrado_por)
-                afetados.add(i['responsavel'].pk)
+                afetados.update(u.pk for u in i['responsaveis'])
         else:
             limpar_acoes('kpi', [card.pk])  # voltou a ser relato: não há plano de ação
         card.ocorrencias.set(OcorrenciaLaboratorio.objects.filter(pk__in=i['ocorrencias']))

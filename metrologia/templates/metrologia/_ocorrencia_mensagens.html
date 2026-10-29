@@ -1,7 +1,8 @@
 {% comment %}
-Histórico de mensagens + lançamento de nova mensagem de uma ocorrência.
-Parâmetros: oc (OcorrenciaInstrumento), usuarios_responsaveis (queryset de User), uid (reservado).
+Plano de ação (várias ações, responsáveis e prazos) + histórico de mensagens + lançamento de nova mensagem.
+Parâmetros: oc (OcorrenciaInstrumento), uid (reservado). Os responsáveis são buscados por AJAX (shared/plano_acao.js).
 {% endcomment %}
+{% load static %}
 <div class="mb-3 p-2 rounded bg-light border">
     <div class="d-flex justify-content-between align-items-center mb-2">
         <label class="form-label fw-bold small text-muted text-uppercase mb-0" style="font-size: 0.72rem;">
@@ -16,6 +17,11 @@ Parâmetros: oc (OcorrenciaInstrumento), usuarios_responsaveis (queryset de User
             <strong class="text-dark">{{ oc.usuario_responsavel.get_full_name|default:oc.usuario_responsavel.username }}</strong>
         </div>
     {% endif %}
+
+    <details class="mb-2" data-pa-plano data-origem="metrologia" data-oc="{{ oc.id }}">
+        <summary class="small fw-semibold text-primary" style="cursor: pointer;"><i class="bi bi-list-check me-1"></i>Plano de ação (ações, responsáveis e prazos)</summary>
+        <div class="bg-white border rounded p-2 mt-1" data-pa-corpo><div class="small text-muted">Carregando plano de ação…</div></div>
+    </details>
 
     <div class="mb-2" style="max-height: 240px; overflow-y: auto;">
         {% for m in oc.mensagens.all %}
@@ -44,18 +50,34 @@ Parâmetros: oc (OcorrenciaInstrumento), usuarios_responsaveis (queryset de User
     <form method="post" action="{% url 'metrologia:adicionar_mensagem_ocorrencia' oc.id %}">
         {% csrf_token %}
         <textarea name="texto" class="form-control form-control-sm mb-2" rows="2" required placeholder="Escreva uma nova mensagem / andamento da tratativa..."></textarea>
-        <details class="mb-2">
-            <summary class="small text-primary" style="cursor: pointer;"><i class="bi bi-people me-1"></i>Direcionar a responsáveis (opcional, vários)</summary>
-            <div class="border rounded bg-white p-2 mt-1" style="max-height: 160px; overflow-y: auto;">
-                {% for u in usuarios_responsaveis %}
-                    <label class="form-check d-block small">
-                        <input class="form-check-input" type="checkbox" name="destinatarios" value="{{ u.id }}">
-                        <span class="form-check-label">{% if u.get_full_name %}{{ u.get_full_name }}{% elif u.colaborador.nome_completo %}{{ u.colaborador.nome_completo }}{% else %}{{ u.username }}{% endif %}{% if u.colaborador.setor %} ({{ u.colaborador.setor.nome }}){% endif %}</span>
-                    </label>
-                {% endfor %}
-            </div>
-        </details>
+        <div class="mb-2">
+            <label class="form-label small text-primary mb-1"><i class="bi bi-people me-1"></i>Direcionar a responsáveis (opcional, vários)</label>
+            <div data-pa-picker="destinatarios"></div>
+        </div>
         <button type="submit" class="btn btn-sm btn-primary fw-semibold"><i class="bi bi-send me-1"></i>Lançar mensagem</button>
         <small class="text-muted d-block mt-1" style="font-size: 0.70rem;"><i class="bi bi-info-circle me-1"></i>Os responsáveis marcados recebem notificação no painel. O histórico completo é mantido.</small>
     </form>
 </div>
+<script>
+(function () {
+    // carregado uma única vez por página, mesmo com várias ocorrências incluindo este bloco
+    if (window.__paMensagens) return;
+    window.__paMensagens = true;
+    function pronto(fn) { if (window.PlanoAcao) fn(); else {
+        var sc = document.createElement('script'); sc.src = "{% static 'shared/plano_acao.js' %}"; sc.onload = fn; document.head.appendChild(sc); } }
+    function iniciar() {
+        document.querySelectorAll('[data-pa-picker]').forEach(function (el) {
+            if (el.dataset.paOk) return; el.dataset.paOk = '1';
+            PlanoAcao.picker(el, {name: el.dataset.paPicker});
+        });
+        document.querySelectorAll('details[data-pa-plano]').forEach(function (d) {
+            d.addEventListener('toggle', function () {
+                if (!d.open || d.dataset.paOk) return; d.dataset.paOk = '1';
+                PlanoAcao.mount(d.querySelector('[data-pa-corpo]'), {origem: d.dataset.origem, id: d.dataset.oc});
+            });
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function () { pronto(iniciar); });
+    if (document.readyState !== 'loading') pronto(iniciar);
+})();
+</script>

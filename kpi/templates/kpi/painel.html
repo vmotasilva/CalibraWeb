@@ -1,4 +1,5 @@
 {% extends base_template|default:"base.html" %}
+{% load static %}
 {% block title %}KPI - Painel de Indicadores - Calibra QMS{% endblock %}
 
 {% block content %}
@@ -530,6 +531,7 @@
 {{ campos_js|json_script:"kpi-campos" }}
 {{ analises_js|json_script:"kpi-analises" }}
 {{ usuarios_js|json_script:"kpi-usuarios" }}
+<script src="{% static 'shared/plano_acao.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
@@ -1050,9 +1052,9 @@
                 '<input type="radio" class="btn-check an-tipo" name="' + nome + '" id="' + nome + 'o" value="ocorrencia" autocomplete="off"' + (ro ? ' disabled' : '') + '><label class="btn btn-outline-warning" for="' + nome + 'o"><i class="bi bi-exclamation-triangle me-1"></i>Ocorrência</label></div>' +
                 '<span class="an-oc-estado small"></span></div>' +
                 '<div class="row g-2 mb-2 an-oc-campos d-none">' +
-                '<div class="col-md-6"><label class="form-label small mb-1">Responsável pela 1ª ação</label><select class="form-select form-select-sm an-resp"' + (ro ? ' disabled' : '') + '><option value="">— Selecione —</option>' +
-                USUARIOS.map(function (u) { return '<option value="' + u.id + '">' + esc(u.nome) + '</option>'; }).join('') + '</select></div>' +
-                '<div class="col-md-3"><label class="form-label small mb-1">Prazo</label><input type="date" class="form-control form-control-sm an-prazo"' + (ro ? ' readonly' : '') + '></div>' +
+                '<div class="col-md-8 an-nova-acao"><label class="form-label small mb-1">Responsáveis pela 1ª ação (busque pelo nome; pode ser mais de um)</label><div class="an-resp"></div></div>' +
+                '<div class="col-md-4 an-nova-acao"><label class="form-label small mb-1">Prazo</label><input type="date" class="form-control form-control-sm an-prazo"' + (ro ? ' readonly' : '') + '></div>' +
+                '<div class="col-12 an-plano d-none"></div>' +
                 '</div>' +
                 '<div class="row g-2">' +
                 '<div class="col-lg-4"><label class="form-label small mb-1">Causa</label><textarea class="form-control an-c" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
@@ -1068,17 +1070,18 @@
             card.querySelector('.an-x').value = dados.acao || '';
             var ehOc = dados.tipo === 'ocorrencia';
             card.querySelector('.an-tipo[value="' + (ehOc ? 'ocorrencia' : 'comentario') + '"]').checked = true;
-            var plano = dados.plano || null;
-            // ocorrência já criada: responsável e prazo passam a ser geridos no plano de ação (Central de Ocorrências)
-            if (dados.id && ehOc) {
-                card.querySelector('.an-resp').value = plano ? plano.responsavel : '';
-                card.querySelector('.an-prazo').value = plano ? plano.prazo : '';
-                card.querySelector('.an-resp').disabled = true;
-                card.querySelector('.an-prazo').readOnly = true;
-                card.querySelector('.an-oc-campos').insertAdjacentHTML('beforeend', '<div class="col-12 form-text mt-0">Responsável e prazo da 1ª ação. Para atribuir novas ações ou redirecionar, use o plano de ação na <a href="' + URL_CENTRAL + '" target="_blank">Central de Ocorrências</a>.</div>');
-            } else {
-                card.querySelector('.an-resp').value = dados.responsavel || ((CAMPOS[pk] || {}).resp_analise_id || '');
-                card.querySelector('.an-prazo').value = dados.prazo || '';
+            var planoGerido = !!(dados.id && ehOc);   // ocorrência já criada: ações, responsáveis e prazos ficam no plano de ação
+            var padrao = (dados.responsaveis && dados.responsaveis.length) ? dados.responsaveis
+                : ((CAMPOS[pk] || {}).resp_analise_id ? [(CAMPOS[pk] || {}).resp_analise_id] : []);
+            var inicial = padrao.map(function (id) { return USUARIOS.filter(function (u) { return String(u.id) === String(id); })[0]; })
+                .filter(Boolean).map(function (u) { return {id: u.id, nome: u.nome}; });
+            card._pick = ro ? null : PlanoAcao.picker(card.querySelector('.an-resp'), {name: 'responsaveis', initial: inicial});
+            card.querySelector('.an-prazo').value = dados.prazo || '';
+            if (planoGerido) {
+                card.querySelectorAll('.an-nova-acao').forEach(function (x) { x.classList.add('d-none'); });
+                var alvo = card.querySelector('.an-plano');
+                alvo.classList.remove('d-none');
+                PlanoAcao.mount(alvo, {origem: 'kpi', id: dados.id});
             }
             function tipoMudou() {
                 var oc = card.querySelector('.an-tipo:checked').value === 'ocorrencia';
@@ -1141,7 +1144,7 @@
                 origem: 'agrupado de ' + cards.length + ' cards'
             };
             var oc1 = dados.filter(function (d) { return d.tipo === 'ocorrencia'; })[0];
-            if (oc1) { junto.tipo = 'ocorrencia'; junto.id = oc1.id; junto.responsavel = oc1.responsavel; junto.prazo = oc1.prazo; }
+            if (oc1) { junto.tipo = 'ocorrencia'; junto.id = oc1.id; junto.responsaveis = oc1.responsaveis; junto.prazo = oc1.prazo; }
             var novo = novoCard(junto);                  // entra no fim; é reposicionado onde estava o primeiro selecionado
             el('anCards').insertBefore(novo, cards[0]);
             cards.forEach(function (c) { c.remove(); });
@@ -1156,7 +1159,7 @@
                 var ocs = Array.prototype.map.call(card.querySelectorAll('.an-oc:checked'), function (c) { return Number(c.value); })
                     .concat(Array.prototype.map.call(card.querySelectorAll('.an-oc-extra'), function (c) { return Number(c.value); }));
                 return {id: card.dataset.id || null, tipo: card.querySelector('.an-tipo:checked').value,
-                        responsavel: card.querySelector('.an-resp').value, prazo: card.querySelector('.an-prazo').value,
+                        responsaveis: card._pick ? card._pick.values() : [], prazo: card.querySelector('.an-prazo').value,
                         causa: card.querySelector('.an-c').value, analise: card.querySelector('.an-a').value, acao: card.querySelector('.an-x').value, ocorrencias: ocs};
             });
         }

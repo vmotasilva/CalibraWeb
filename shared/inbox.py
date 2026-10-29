@@ -362,7 +362,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
 
         nomes_origem = {"auditoria": "Auditoria", "laboratorio": "Laboratório", "pcp": "PCP",
                         "metrologia": "Metrologia", "kpi": "KPI"}
-        for a in AcaoOcorrencia.objects.filter(responsavel=user, status="ABERTA").order_by("prazo", "criado_em")[:50]:
+        for a in AcaoOcorrencia.objects.filter(responsaveis=user, status="ABERTA").order_by("prazo", "criado_em")[:50]:
             vencida = bool(a.prazo and a.prazo < hoje)
             prazo_txt = f" · prazo {a.prazo:%d/%m/%Y}" if a.prazo else ""
             items.append(

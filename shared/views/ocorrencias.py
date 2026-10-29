@@ -2,8 +2,8 @@
 from urllib.parse import urlencode
 
 from django.contrib import messages
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
@@ -65,7 +65,6 @@ def ocorrencias_central_view(request):
     ctx = _lista_para(request)
     abrir = (request.GET.get("abrir") or "").strip()
     ctx["abrir"] = abrir if any(i.uid == abrir for i in ctx["itens"]) else ""
-    ctx["usuarios"] = get_user_model().objects.filter(is_active=True).order_by("first_name", "username")
     ctx["next_qs"] = request.GET.urlencode()
     return render(request, "shared/ocorrencias_central.html", ctx)
 
@@ -80,7 +79,8 @@ def ocorrencias_acao_view(request):
         {
             "texto": request.POST.get("texto", ""),
             "destinatarios": request.POST.getlist("destinatarios"),
-            "responsavel": request.POST.get("responsavel", ""),
+            "responsaveis": request.POST.getlist("responsaveis"),
+            "responsavel": request.POST.get("responsavel", "") or next(iter(request.POST.getlist("responsaveis")), ""),
             "prazo": request.POST.get("prazo", ""),
             "acao_id": request.POST.get("acao_id", ""),
         },
@@ -97,3 +97,38 @@ def ocorrencias_acao_view(request):
     qs = urlencode(params)
     url = reverse("ocorrencias_central") + (f"?{qs}" if qs else "")
     return redirect(url)
+
+
+@login_required
+def api_usuarios_view(request):
+    """Busca (AJAX) de usuários para escolher responsáveis: ?q=texto (nome, colaborador ou login)."""
+    return JsonResponse({"results": central.buscar_usuarios(request.GET.get("q", ""))})
+
+
+@login_required
+def api_plano_view(request, origem, pk):
+    """Plano de ação da ocorrência (usado pelo widget das telas de origem)."""
+    dados = central.plano_json(request.user, origem, pk)
+    if dados is None:
+        return JsonResponse({"erro": "Ocorrência não encontrada ou sem acesso."}, status=404)
+    return JsonResponse(dados)
+
+
+@login_required
+@require_POST
+def api_plano_acao_view(request):
+    """Executa uma ação do plano (nova, concluir, redirecionar, cancelar) e devolve o plano atualizado."""
+    uid = request.POST.get("uid", "")
+    acao = request.POST.get("acao", "")
+    if acao not in central.ACOES_PLANO:
+        return JsonResponse({"ok": False, "erro": "Ação inválida."}, status=400)
+    res = central.executar_acao(request.user, uid, acao, {
+        "texto": request.POST.get("texto", ""),
+        "responsaveis": request.POST.getlist("responsaveis"),
+        "prazo": request.POST.get("prazo", ""),
+        "acao_id": request.POST.get("acao_id", ""),
+    })
+    origem, _, pk = uid.partition(":")
+    plano = central.plano_json(request.user, origem, int(pk)) if pk.isdigit() else None
+    return JsonResponse({"ok": res.ok, "mensagem": res.msg, "erro": "" if res.ok else res.msg, "plano": plano},
+                        status=200 if res.ok else 400)

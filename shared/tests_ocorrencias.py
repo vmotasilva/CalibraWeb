@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from datetime import date
 
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
 from laboratorio.models import OcorrenciaLaboratorio
@@ -190,13 +190,9 @@ class PlanoDeAcaoTests(TestCase):
         self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk))
         self.client.force_login(self.ana)
         resp = self.client.get(reverse("ocorrencias_central"))
-        self.assertContains(resp, "Plano de ação")
-        self.assertContains(resp, "Trocar peça")
-        self.assertContains(resp, 'data-acao="redirecionar_acao"')
-        resp = self.client.post(reverse("ocorrencias_acao"), {
-            "uid": self.uid, "acao": "nova_acao", "texto": "Nova", "responsavel": self.bia.pk, "prazo": "", "next_qs": ""})
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(len(self._item(self.admin).plano), 2)
+        self.assertContains(resp, "data-plano-mount")          # o pop-up monta o widget do plano
+        self.assertContains(resp, "shared/plano_acao.js")
+        self.assertContains(resp, "1 ação(ões)")                  # resumo no card
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
@@ -222,12 +218,13 @@ class OcorrenciaKpiTests(TestCase):
         from shared.models import AcaoOcorrencia
 
         r = self._salvar([{"tipo": "comentario", "causa": "só um relato"},
-                          {"tipo": "ocorrencia", "causa": "falta de peça", "acao": "comprar", "responsavel": self.ana.pk}])
+                          {"tipo": "ocorrencia", "causa": "falta de peça", "acao": "comprar", "responsaveis": [self.ana.pk, self.admin.pk]}])
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.json()["o"], 1)
         card = AnaliseItem.objects.get(tipo="ocorrencia")
         acao = AcaoOcorrencia.objects.get(origem="kpi", ocorrencia_id=card.pk)
-        self.assertEqual((acao.responsavel_id, acao.descricao), (self.ana.pk, "comprar"))
+        self.assertEqual(acao.descricao, "comprar")
+        self.assertEqual(set(acao.responsaveis.values_list("pk", flat=True)), {self.ana.pk, self.admin.pk})
         itens = central.listar_ocorrencias(self.ana, "abertas", "kpi")
         self.assertEqual(len(itens), 1)  # o relato não vira ocorrência
         self.assertTrue(itens[0].envolve_usuario)
@@ -249,7 +246,7 @@ class OcorrenciaKpiTests(TestCase):
         from shared.models import AcaoOcorrencia
 
         self.assertEqual(self._salvar([{"tipo": "ocorrencia", "causa": "x"}]).status_code, 400)
-        self._salvar([{"tipo": "ocorrencia", "causa": "x", "responsavel": self.ana.pk}])
+        self._salvar([{"tipo": "ocorrencia", "causa": "x", "responsaveis": [self.ana.pk]}])
         card = AnaliseItem.objects.get()
         self._salvar([{"tipo": "comentario", "id": card.pk, "causa": "x"}])  # volta a ser relato
         self.assertFalse(AcaoOcorrencia.objects.exists())
@@ -270,9 +267,10 @@ class PopupEFiltroAtrasoTests(TestCase):
     def _atrasar(self):
         from shared.models import AcaoOcorrencia
 
-        AcaoOcorrencia.objects.create(
-            origem="laboratorio", ocorrencia_id=self.atrasada.pk, descricao="X", responsavel=self.admin,
+        a = AcaoOcorrencia.objects.create(
+            origem="laboratorio", ocorrencia_id=self.atrasada.pk, descricao="X",
             prazo=date(2020, 1, 1), criado_por=self.admin)
+        a.responsaveis.add(self.admin)
 
     def test_filtro_em_atraso(self):
         self._atrasar()
@@ -304,3 +302,104 @@ class PopupEFiltroAtrasoTests(TestCase):
         self.assertEqual(
             resp["Location"],
             reverse("ocorrencias_central") + f"?aba=abertas&origem=laboratorio&atraso=1&abrir=laboratorio%3A{self.em_dia.pk}")
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class VariosResponsaveisEApiTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        U = get_user_model()
+        self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
+        self.ana = U.objects.create_user("ana", first_name="Ana", last_name="Souza", password="x", is_superuser=True, is_staff=True)
+        self.bia = U.objects.create_user("bia", first_name="Bia", password="x", is_superuser=True, is_staff=True)
+        self.inativo = U.objects.create_user("zeca", first_name="Zeca", password="x", is_active=False)
+        self.oc = OcorrenciaLaboratorio.objects.create(assunto="Falha", detalhamento="d", criado_por=self.admin)
+        self.uid = f"laboratorio:{self.oc.pk}"
+        self.client.force_login(self.admin)
+
+    def _post(self, acao, **dados):
+        return self.client.post(reverse("ocorrencias_api_plano_acao"), {"uid": self.uid, "acao": acao, **dados})
+
+    def test_busca_ajax_de_usuarios(self):
+        url = reverse("ocorrencias_api_usuarios")
+        nomes = [r["nome"] for r in self.client.get(url, {"q": "ana"}).json()["results"]]
+        self.assertEqual(nomes, ["Ana Souza"])
+        self.assertEqual(len(self.client.get(url, {"q": "a s"}).json()["results"]), 1)  # todos os termos
+        self.assertEqual(self.client.get(url, {"q": "zeca"}).json()["results"], [])      # inativos não entram
+        self.assertGreaterEqual(len(self.client.get(url).json()["results"]), 3)
+        self.client.logout()
+        self.assertEqual(self.client.get(url).status_code, 302)  # exige login
+
+    def test_busca_por_nome_do_colaborador(self):
+        from rh.models import Colaborador
+
+        Colaborador.objects.create(matricula="9", nome_completo="Beatriz Camargo Lima", user_django=self.bia)
+        res = self.client.get(reverse("ocorrencias_api_usuarios"), {"q": "camargo"}).json()["results"]
+        self.assertEqual([(r["id"], r["nome"]) for r in res], [(self.bia.pk, "Beatriz Camargo Lima")])
+
+    def test_acao_com_varios_responsaveis_pela_api(self):
+        r = self._post("nova_acao", texto="Trocar peça", responsaveis=[self.ana.pk, self.bia.pk], prazo="")
+        self.assertEqual(r.status_code, 200, r.content)
+        acao = r.json()["plano"]["acoes"][0]
+        self.assertEqual([x["nome"] for x in acao["responsaveis"]], ["Ana Souza", "Bia"])
+        for u in (self.ana, self.bia):
+            self.assertEqual(central.contar_ocorrencias(u)["minhas"], 1)
+        # qualquer um dos responsáveis conclui
+        r = self.client.post(reverse("ocorrencias_api_plano_acao"), {"uid": self.uid, "acao": "concluir_acao", "acao_id": acao["id"]})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["plano"]["acoes"][0]["status"], "CONCLUIDA")
+
+    def test_responsavel_obrigatorio_e_redirecionar_para_novo_grupo(self):
+        self.assertEqual(self._post("nova_acao", texto="x").status_code, 400)
+        self.assertEqual(self._post("nova_acao", texto="x", responsaveis=[self.inativo.pk]).status_code, 400)
+        self._post("nova_acao", texto="x", responsaveis=[self.ana.pk, self.bia.pk])
+        aid = central.plano_json(self.admin, "laboratorio", self.oc.pk)["acoes"][0]["id"]
+        # mesmo grupo: recusado; grupo diferente: redireciona e preserva o histórico
+        r = self._post("redirecionar_acao", acao_id=aid, texto="m", responsaveis=[self.bia.pk, self.ana.pk])
+        self.assertEqual(r.status_code, 400)
+        r = self._post("redirecionar_acao", acao_id=aid, texto="Férias", responsaveis=[self.admin.pk, self.bia.pk])
+        self.assertEqual(r.status_code, 200, r.content)
+        acoes = r.json()["plano"]["acoes"]
+        self.assertEqual([a["status"] for a in acoes], ["REDIRECIONADA", "ABERTA"])
+        self.assertEqual(acoes[0]["para"], "admin, Bia")
+        self.assertEqual(acoes[1]["de"], "Ana Souza, Bia")
+
+    def test_api_do_plano_respeita_acesso_e_ocorrencia_encerrada(self):
+        from django.contrib.auth.models import User
+
+        url = reverse("ocorrencias_api_plano", args=["laboratorio", self.oc.pk])
+        self.assertTrue(self.client.get(url).json()["pode_criar"])
+        self.assertEqual(self.client.get(reverse("ocorrencias_api_plano", args=["laboratorio", 99999])).status_code, 404)
+        self.assertEqual(self.client.get(reverse("ocorrencias_api_plano", args=["xyz", 1])).status_code, 404)
+        self.assertEqual(self._post("encerrar", texto="x").status_code, 400)  # só ações do plano pela API
+        central.executar_acao(self.admin, self.uid, "encerrar", {"texto": "ok"})
+        self.assertFalse(self.client.get(url).json()["pode_criar"])
+        self.client.force_login(User.objects.create_user("comum", password="x"))
+        self.assertEqual(self.client.get(url).status_code, 404)  # sem acesso à origem
+
+
+class MigracaoResponsaveisTests(TransactionTestCase):
+    """0002: o responsável único anterior vira o primeiro da lista de responsáveis da ação."""
+
+    def test_copia_responsavel_antigo(self):
+        from django.db import connection
+        from django.db.migrations.executor import MigrationExecutor
+
+        U = get_user_model()
+        executor = MigrationExecutor(connection)
+        if ("shared", "0001_initial") not in executor.loader.graph.nodes:
+            self.skipTest("migrações desativadas nesta configuração de teste (rode com config.settings)")
+        antes, depois = [("shared", "0001_initial")], [("shared", "0002_acaoocorrencia_responsaveis")]
+        executor.migrate(antes)
+        try:
+            AcaoAntiga = executor.loader.project_state(antes).apps.get_model("shared", "AcaoOcorrencia")
+            u = U.objects.create_user("ana", password="x")
+            AcaoAntiga.objects.create(origem="laboratorio", ocorrencia_id=1, descricao="d", responsavel_id=u.pk)
+            AcaoAntiga.objects.create(origem="laboratorio", ocorrencia_id=2, descricao="sem responsável")
+            executor = MigrationExecutor(connection)
+            executor.migrate(depois)
+            Acao = executor.loader.project_state(depois).apps.get_model("shared", "AcaoOcorrencia")
+            self.assertEqual(list(Acao.objects.get(ocorrencia_id=1).responsaveis.values_list("pk", flat=True)), [u.pk])
+            self.assertEqual(Acao.objects.get(ocorrencia_id=2).responsaveis.count(), 0)
+        finally:
+            MigrationExecutor(connection).migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())

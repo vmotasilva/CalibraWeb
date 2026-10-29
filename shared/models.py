@@ -6,7 +6,8 @@ from django.utils import timezone
 class AcaoOcorrencia(models.Model):
     """Ação do plano de tratativa de uma ocorrência (de qualquer módulo), com responsável e prazo definidos.
 
-    Uma ocorrência pode ter várias ações. Ao redirecionar uma ação, ela é encerrada como REDIRECIONADA e
+    Uma ocorrência pode ter várias ações, cada uma com um ou mais responsáveis (qualquer um deles pode
+    concluí-la). Ao redirecionar uma ação, ela é encerrada como REDIRECIONADA e
     nasce uma nova ação (ligada à anterior por `origem_acao`), de modo que o histórico de responsáveis e
     prazos fica preservado.
     """
@@ -21,9 +22,8 @@ class AcaoOcorrencia(models.Model):
     origem = models.CharField("Origem", max_length=20, db_index=True)
     ocorrencia_id = models.PositiveIntegerField("Ocorrência", db_index=True)
     descricao = models.TextField("Ação a realizar")
-    responsavel = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
-        related_name="acoes_ocorrencia", verbose_name="Responsável",
+    responsaveis = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="acoes_ocorrencia", verbose_name="Responsáveis",
     )
     prazo = models.DateField("Prazo", null=True, blank=True)
     status = models.CharField("Situação", max_length=14, choices=STATUS, default=ABERTA, db_index=True)
