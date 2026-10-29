@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Ciclos de Auditoria - {{ modelo.nome }} - Auditoria{% endblock %}
 
@@ -1140,6 +1141,7 @@
                                                 </div>
                                             </form>
 
+                                            <div id="det-plano" class="mb-3 d-none"></div>
                                             <div id="det-registros-wrap" class="mb-3">
                                                 <div class="small text-muted mb-1">Registros em que apareceu</div>
                                                 <ul class="list-unstyled mb-0 small" id="det-registros"></ul>
@@ -1226,6 +1228,7 @@
 
 {% block extra_js %}
 {% include "auditoria/_responsaveis_picker_js.html" %}
+<script src="{% static 'shared/plano_acao.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 {{ chart_data|json_script:"auditoria-chart-data" }}
 {{ chart_cards|json_script:"auditoria-chart-cards" }}
@@ -1358,6 +1361,10 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('det-prazo').value = o.prazo || '';
         document.getElementById('det-acao').value = o.acao || '';
         if (pickerDet) pickerDet.set(o.responsaveis_info || []);
+        const planoBox = document.getElementById('det-plano');
+        planoBox.classList.toggle('d-none', !o.requer_tratativa);
+        planoBox.replaceChildren();
+        if (o.requer_tratativa && window.PlanoAcao) PlanoAcao.mount(planoBox, {origem: 'auditoria', id: id});
 
         const regs = document.getElementById('det-registros');
         regs.innerHTML = o.registros.map(function(r) {

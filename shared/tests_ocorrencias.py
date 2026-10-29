@@ -241,13 +241,19 @@ class OcorrenciaKpiTests(TestCase):
         self.assertEqual((card.status, card.resolucao, card.causa), ("RESOLVIDA", "ok", "falta de peça (editado)"))
         self.assertEqual(AcaoOcorrencia.objects.filter(origem="kpi", ocorrencia_id=card.pk).count(), 1)
 
-    def test_ocorrencia_exige_responsavel_e_remocao_limpa_plano(self):
+    def test_relato_vira_ocorrencia_sem_acao_e_remocao_limpa_plano(self):
         from kpi.models import AnaliseItem
         from shared.models import AcaoOcorrencia
 
-        self.assertEqual(self._salvar([{"tipo": "ocorrencia", "causa": "x"}]).status_code, 400)
-        self._salvar([{"tipo": "ocorrencia", "causa": "x", "responsaveis": [self.ana.pk]}])
+        # relato primeiro; a conversão em ocorrência não exige ação: ela é atribuída depois, no pop-up
+        self._salvar([{"tipo": "comentario", "causa": "x"}])
         card = AnaliseItem.objects.get()
+        self._salvar([{"tipo": "ocorrencia", "id": card.pk, "causa": "x"}])
+        card.refresh_from_db()
+        self.assertEqual(card.tipo, AnaliseItem.TIPO_OCORRENCIA)
+        self.assertFalse(AcaoOcorrencia.objects.exists())
+        self._salvar([{"tipo": "ocorrencia", "id": card.pk, "causa": "x", "responsaveis": [self.ana.pk]}])
+        self.assertEqual(AcaoOcorrencia.objects.count(), 1)
         self._salvar([{"tipo": "comentario", "id": card.pk, "causa": "x"}])  # volta a ser relato
         self.assertFalse(AcaoOcorrencia.objects.exists())
         self._salvar([])
@@ -403,3 +409,36 @@ class MigracaoResponsaveisTests(TransactionTestCase):
             self.assertEqual(Acao.objects.get(ocorrencia_id=2).responsaveis.count(), 0)
         finally:
             MigrationExecutor(connection).migrate(MigrationExecutor(connection).loader.graph.leaf_nodes())
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ComentariosDaAcaoTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        U = get_user_model()
+        self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
+        self.ana = U.objects.create_user("ana", first_name="Ana", password="x", is_superuser=True, is_staff=True)
+        self.oc = OcorrenciaLaboratorio.objects.create(assunto="Falha", detalhamento="d", criado_por=self.admin)
+        self.uid = f"laboratorio:{self.oc.pk}"
+        self.client.force_login(self.admin)
+        self.client.post(reverse("ocorrencias_api_plano_acao"), {
+            "uid": self.uid, "acao": "nova_acao", "texto": "Trocar peça", "responsaveis": [self.ana.pk]})
+        self.aid = central.plano_json(self.admin, "laboratorio", self.oc.pk)["acoes"][0]["id"]
+
+    def _comentar(self, texto):
+        return self.client.post(reverse("ocorrencias_api_plano_acao"), {
+            "uid": self.uid, "acao": "comentar_acao", "acao_id": self.aid, "texto": texto})
+
+    def test_varios_comentarios_na_acao(self):
+        self.assertEqual(self._comentar("Qual peça exatamente?").status_code, 200)
+        self.client.force_login(self.ana)
+        r = self._comentar("A do lote 7.")
+        self.assertEqual(r.status_code, 200, r.content)
+        coments = r.json()["plano"]["acoes"][0]["comentarios"]
+        self.assertEqual([c["texto"] for c in coments], ["Qual peça exatamente?", "A do lote 7."])
+        self.assertEqual(coments[1]["autor"], "Ana")
+
+    def test_comentario_vazio_recusado_e_vale_em_acao_encerrada(self):
+        self.assertEqual(self._comentar("  ").status_code, 400)
+        self.client.post(reverse("ocorrencias_api_plano_acao"), {"uid": self.uid, "acao": "concluir_acao", "acao_id": self.aid})
+        self.assertEqual(self._comentar("Obrigado").status_code, 200)

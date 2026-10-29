@@ -53,3 +53,19 @@ class AcaoOcorrencia(models.Model):
     @property
     def aberta(self) -> bool:
         return self.status == self.ABERTA
+
+
+class ComentarioAcao(models.Model):
+    """Comentário de uma ação do plano: tratativas, dúvidas e respostas sobre a execução da ação."""
+    acao = models.ForeignKey(AcaoOcorrencia, on_delete=models.CASCADE, related_name="comentarios")
+    autor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    texto = models.TextField("Comentário")
+    criado_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["criado_em", "id"]
+        verbose_name = "Comentário de ação"
+        verbose_name_plural = "Comentários de ações"
+
+    def __str__(self):
+        return f"{self.acao_id}: {self.texto[:40]}"

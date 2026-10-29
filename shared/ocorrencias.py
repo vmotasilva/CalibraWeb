@@ -60,6 +60,7 @@ class AcaoPlano:
     pode_concluir: bool = False
     pode_redirecionar: bool = False
     pode_cancelar: bool = False
+    comentarios: list = field(default_factory=list)   # [{"autor", "quando", "texto"}]
 
     @property
     def responsavel(self) -> str:
@@ -589,7 +590,7 @@ ORIGENS: dict[str, _Origem] = {o.key: o for o in (
 # ---------------------------------------------------------------------------
 # Plano de ação: várias ações por ocorrência, cada uma com responsáveis e prazo
 # ---------------------------------------------------------------------------
-ACOES_PLANO = {"nova_acao", "concluir_acao", "redirecionar_acao", "cancelar_acao"}
+ACOES_PLANO = {"nova_acao", "concluir_acao", "redirecionar_acao", "cancelar_acao", "comentar_acao"}
 ACOES_QUE_ENCERRAM = {"resolver", "encerrar", "tratar"}  # exigem o plano sem ações em aberto
 
 
@@ -652,6 +653,8 @@ def _montar_plano(acoes_raw, user, ocorrencia_aberta: bool) -> list[AcaoPlano]:
             para=_nomes(filha.responsaveis.all()) if filha else "",
             pode_concluir=pode_gerir, pode_redirecionar=pode_gerir,
             pode_cancelar=bool(aberta and ocorrencia_aberta and (_eh_admin(user) or a.criado_por_id == user.pk)),
+            comentarios=[{"autor": _nome_user(c.autor) or "Usuário removido", "quando": _fmt_dt(c.criado_em), "texto": c.texto}
+                         for c in a.comentarios.all()],
         ))
     return plano
 
@@ -694,7 +697,7 @@ def _data_valida(bruto):
 
 def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAcao:
     from django.contrib.auth.models import User
-    from shared.models import AcaoOcorrencia as A
+    from shared.models import AcaoOcorrencia as A, ComentarioAcao
 
     texto = (dados.get("texto") or "").strip()
     ids = _ids_responsaveis(dados)
@@ -713,6 +716,15 @@ def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAca
         return ResultadoAcao(True, f"Ação atribuída a {_nomes(novos)}.")
 
     aid = str(dados.get("acao_id") or "")
+    if acao == "comentar_acao":  # qualquer pessoa com acesso à ocorrência comenta, mesmo em ação já encerrada
+        if not texto:
+            return ResultadoAcao(False, "Escreva o comentário.")
+        alvo = A.objects.filter(pk=aid, origem=key, ocorrencia_id=obj.pk).first() if aid.isdigit() else None
+        if alvo is None:
+            return ResultadoAcao(False, "Ação não encontrada.")
+        ComentarioAcao.objects.create(acao=alvo, autor=user, texto=texto)
+        _invalidar_usuarios(*alvo.responsaveis.all())
+        return ResultadoAcao(True, "Comentário registrado.")
     a = A.objects.filter(pk=aid, origem=key, ocorrencia_id=obj.pk, status=A.ABERTA).first() if aid.isdigit() else None
     if a is None:
         return ResultadoAcao(False, "Ação não encontrada ou já encerrada.")
@@ -768,7 +780,7 @@ def plano_json(user, key: str, pk: int) -> Optional[dict]:
     if not visiveis.filter(pk=pk).exists():
         return None
     aberta = visiveis.filter(orig.aberta_q(), pk=pk).exists()
-    raws = list(A.objects.filter(origem=key, ocorrencia_id=pk).prefetch_related("responsaveis__colaborador")
+    raws = list(A.objects.filter(origem=key, ocorrencia_id=pk).prefetch_related("responsaveis__colaborador", "comentarios__autor")
                 .select_related("criado_por", "encerrada_por"))
     return {
         "aberta": aberta,
@@ -780,6 +792,7 @@ def plano_json(user, key: str, pk: int) -> Optional[dict]:
             "criado_por": p.criado_por, "criado_em": p.criado_em, "encerrada_em": p.encerrada_em,
             "encerrada_por": p.encerrada_por, "de": p.de, "para": p.para,
             "pode_concluir": p.pode_concluir, "pode_redirecionar": p.pode_redirecionar, "pode_cancelar": p.pode_cancelar,
+            "comentarios": p.comentarios,
         } for p in _montar_plano(raws, user, aberta)],
     }
 
@@ -860,7 +873,7 @@ def listar_ocorrencias(user: Any, status: str = "abertas", origem: str = "") -> 
             objs = list(qs.order_by("-pk")[:300])
             planos: dict[int, list] = {}
             for a in AcaoOcorrencia.objects.filter(origem=key, ocorrencia_id__in=[o.pk for o in objs]).select_related(
-                    "criado_por", "encerrada_por").prefetch_related("responsaveis__colaborador"):
+                    "criado_por", "encerrada_por").prefetch_related("responsaveis__colaborador", "comentarios__autor"):
                 planos.setdefault(a.ocorrencia_id, []).append(a)
             for obj in objs:
                 item = orig.to_item(obj, user, mine_ids)

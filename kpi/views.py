@@ -752,11 +752,9 @@ def _itens_do_post(post):
         if tipo == AnaliseItem.TIPO_OCORRENCIA:
             if not (causa or analise or acao):
                 raise ValueError('Descreva a ocorrência (causa, análise ou ação).')
-            if not ja_tem_plano:  # a ocorrência nasce com a primeira ação do plano: responsáveis e prazo
+            if not ja_tem_plano:  # a ocorrência pode nascer já com a 1ª ação (responsáveis e prazo); senão as ações são atribuídas depois, no pop-up
                 ids = [int(x) for x in (i.get('responsaveis') or []) if str(x).isdigit()]
                 item['responsaveis'] = list(User.objects.filter(pk__in=ids, is_active=True))
-                if not item['responsaveis']:
-                    raise ValueError('Informe ao menos um responsável pela tratativa da ocorrência.')
                 try:
                     item['prazo'] = datetime.date.fromisoformat(str(i.get('prazo') or '')) if i.get('prazo') else None
                 except ValueError:

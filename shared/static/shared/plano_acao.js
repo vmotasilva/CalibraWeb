@@ -40,6 +40,8 @@
         if (document.getElementById('plano-acao-css')) return;
         var css = '' +
             '.pa-picker{position:relative}' +
+            '.pa-coment-lista{border-left:3px solid #dee2e6;padding-left:8px;margin-bottom:6px;font-size:.85rem}' +
+            '.pa-coment-item+.pa-coment-item{margin-top:6px}' +
             '.pa-picker .pa-box{display:flex;flex-wrap:wrap;gap:4px;align-items:center;border:1px solid #ced4da;border-radius:6px;padding:4px 6px;background:#fff;min-height:38px}' +
             '.pa-picker .pa-box:focus-within{border-color:#86b7fe;box-shadow:0 0 0 .2rem rgba(13,110,253,.15)}' +
             '.pa-picker input.pa-q{border:0;outline:0;flex:1 1 140px;min-width:120px;padding:2px 4px;font-size:.9rem;background:transparent}' +
@@ -154,7 +156,7 @@
     function mount(el, opts) {
         injetarCss();
         var uid = opts.origem + ':' + opts.id;
-        var dados = null, formAberto = null, aviso = null;
+        var dados = null, formAberto = null, aviso = null, comentando = {}, rascunho = '';
 
         function chamar(url, corpo) {
             var init = {credentials: 'same-origin', headers: {'X-CSRFToken': csrf(opts), 'X-Requested-With': 'XMLHttpRequest'}};
@@ -198,6 +200,7 @@
             var c = CONFIG[acao], pk = null;
             var erro = h('div', {class: 'pa-erro text-danger small mb-2'});
             var texto = h('textarea', {name: 'texto', class: 'form-control form-control-sm', rows: 3, placeholder: c.texto, required: c.textoObrig});
+            if (acao === 'nova_acao' && rascunho) { texto.value = rascunho; rascunho = ''; }
             var form = h('form', {class: 'pa-form'},
                 h('div', {class: 'fw-bold small mb-2', text: c.titulo + (a ? ' — ' + a.descricao.slice(0, 60) : '')}),
                 h('div', {class: 'mb-2'}, texto));
@@ -220,6 +223,36 @@
                 enviar(form, acao, a ? a.id : '', pk);
             });
             return form;
+        }
+
+        function comentarios(a) {
+            var caixa = h('div', {class: 'pa-coment mt-2'});
+            var lista = a.comentarios || [];
+            if (lista.length) {
+                var corpo = h('div', {class: 'pa-coment-lista'});
+                lista.forEach(function (c) {
+                    corpo.appendChild(h('div', {class: 'pa-coment-item'},
+                        h('span', {class: 'text-muted', text: c.quando + ' · '}), h('strong', {text: c.autor}),
+                        h('div', {style: 'white-space:pre-line', text: c.texto})));
+                });
+                caixa.appendChild(corpo);
+            }
+            if (!comentando[a.id]) {
+                caixa.appendChild(h('button', {type: 'button', class: 'btn btn-sm btn-link p-0',
+                    onclick: function () { comentando[a.id] = true; desenhar(); }},
+                    h('i', {class: 'bi bi-chat-left-text me-1'}), lista.length ? 'Comentar (' + lista.length + ')' : 'Comentar'));
+                return caixa;
+            }
+            var erro = h('div', {class: 'pa-erro text-danger small'});
+            var texto = h('textarea', {name: 'texto', class: 'form-control form-control-sm', rows: 2, required: true,
+                                       placeholder: 'Escreva uma tratativa, dúvida ou resposta…'});
+            var form = h('form', {class: 'mt-1'}, texto, erro,
+                h('div', {class: 'd-flex gap-2 justify-content-end mt-1'},
+                    h('button', {type: 'button', class: 'btn btn-sm btn-light', onclick: function () { delete comentando[a.id]; desenhar(); }}, 'Fechar'),
+                    h('button', {type: 'submit', class: 'btn btn-sm btn-primary'}, 'Comentar')));
+            form.addEventListener('submit', function (e) { e.preventDefault(); enviar(form, 'comentar_acao', a.id, null); });
+            caixa.appendChild(form);
+            return caixa;
         }
 
         function nomes(lista) { return lista.length ? lista.map(function (r) { return r.nome; }).join(', ') : 'Sem responsável'; }
@@ -248,7 +281,8 @@
                         h('div', {class: 'text-muted small', text: meta}),
                         fim ? h('div', {class: 'text-muted small', text: fim}) : null),
                     botoes),
-                formAberto && formAberto.id === a.id ? h('div', {class: 'mt-2'}, formulario(formAberto.acao, a)) : null);
+                formAberto && formAberto.id === a.id ? h('div', {class: 'mt-2'}, formulario(formAberto.acao, a)) : null,
+                comentarios(a));
         }
 
         function desenhar() {
@@ -268,7 +302,15 @@
         }
 
         carregar();
-        return {recarregar: carregar};
+        return {
+            recarregar: carregar,
+            novaAcao: function (texto) {  // abre o formulário de nova ação com a descrição sugerida
+                if (!dados || !dados.pode_criar) return false;
+                rascunho = texto || ''; formAberto = {acao: 'nova_acao', id: 0}; desenhar();
+                el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+                return true;
+            }
+        };
     }
 
     global.PlanoAcao = {mount: mount, picker: picker};

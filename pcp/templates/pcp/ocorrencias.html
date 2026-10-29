@@ -1,4 +1,5 @@
 {% extends base_template|default:"base.html" %}
+{% load static %}
 {% block title %}PCP - Ocorrências - Calibra QMS{% endblock %}
 
 {% block content %}
@@ -37,6 +38,10 @@
                                     <button class="btn btn-sm btn-success">Concluir</button>
                                 </form>
                             {% endif %}
+                            <details class="mt-1" data-pa-plano data-origem="pcp" data-oc="{{ o.pk }}">
+                                <summary class="small text-primary" style="cursor:pointer"><i class="bi bi-list-check me-1"></i>Plano de ação</summary>
+                                <div class="pt-1" data-pa-corpo></div>
+                            </details>
                         {% else %}—{% endif %}
                     </td>
                 </tr>
@@ -48,4 +53,15 @@
     </div></div>
 </div>
 {% include "pcp/_tabelas_cards.html" %}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'shared/plano_acao.js' %}"></script>
+<script>
+document.querySelectorAll('details[data-pa-plano]').forEach(function (d) {
+    d.addEventListener('toggle', function () {
+        if (!d.open || d.dataset.paOk) return; d.dataset.paOk = '1';
+        PlanoAcao.mount(d.querySelector('[data-pa-corpo]'), {origem: d.dataset.origem, id: d.dataset.oc});
+    });
+});
+</script>
 {% endblock %}

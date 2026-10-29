@@ -110,10 +110,14 @@
 
             {% if oc.historico %}
                 <div class="oc-plano">
-                    <div class="fw-bold mb-2"><i class="bi bi-clock-history me-1"></i>Histórico ({{ oc.historico|length }})</div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                        <div class="fw-bold"><i class="bi bi-clock-history me-1"></i>Anotações e comentários ({{ oc.historico|length }})</div>
+                        {% if oc.status != 'encerrada' %}<button type="button" class="btn btn-sm btn-outline-dark" data-oc-nota-acao disabled><i class="bi bi-list-check me-1"></i>Criar ação com as selecionadas</button>{% endif %}
+                    </div>
                     <div class="oc-hist p-2">
                         {% for quando, quem, texto in oc.historico %}
                             <div class="{% if not forloop.last %}border-bottom pb-1 mb-1{% endif %}">
+                                {% if oc.status != 'encerrada' %}<input type="checkbox" class="form-check-input me-1 oc-nota-sel" title="Selecionar para criar uma ação" data-texto="{{ texto|escape }}">{% endif %}
                                 <span class="text-muted">{{ quando }}{% if quem %} · {{ quem }}{% endif %}</span><br>
                                 <span style="white-space:pre-line;">{{ texto }}</span>
                             </div>
@@ -202,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const detalhe = new bootstrap.Modal(detEl), acao = new bootstrap.Modal(acaoEl);
     const pickDest = PlanoAcao.picker($('ocPickDest'), {name: 'destinatarios', placeholder: 'Buscar pessoas…'});
     const pickResp = PlanoAcao.picker($('ocPickResp'), {name: 'responsaveis', multiple: false, placeholder: 'Buscar pessoa…'});
-    let uidAberto = null, voltarPara = null, enviando = false, trocando = false, mudou = false, respObrig = false;
+    let planoAtual = null, uidAberto = null, voltarPara = null, enviando = false, trocando = false, mudou = false, respObrig = false;
 
     function abrirDetalhe(uid) {
         const tpl = Array.from(document.querySelectorAll('template[data-oc-detalhe]')).find(t => t.dataset.ocDetalhe === uid);
@@ -214,7 +218,8 @@ document.addEventListener('DOMContentLoaded', function () {
         $('ocDetCorpo').replaceChildren(tpl.content.cloneNode(true));
         const [origem, id] = uid.split(':');
         const alvo = $('ocDetCorpo').querySelector('[data-plano-mount]');
-        if (alvo) PlanoAcao.mount(alvo, {origem: origem, id: id, onChange: () => { mudou = true; }});
+        planoAtual = null;
+        if (alvo) planoAtual = PlanoAcao.mount(alvo, {origem: origem, id: id, onChange: () => { mudou = true; }});
         detalhe.show();
     }
 
@@ -258,7 +263,19 @@ document.addEventListener('DOMContentLoaded', function () {
         enviando = true;
     });
 
+    document.addEventListener('change', e => {
+        if (!e.target.classList.contains('oc-nota-sel')) return;
+        const corpo = $('ocDetCorpo'), btn = corpo.querySelector('[data-oc-nota-acao]');
+        if (btn) btn.disabled = !corpo.querySelector('.oc-nota-sel:checked');
+    });
     document.addEventListener('click', e => {
+        const n = e.target.closest('[data-oc-nota-acao]');
+        if (n) {  // ações a partir de anotações/comentários (podem ser várias agrupadas)
+            const textos = Array.from($('ocDetCorpo').querySelectorAll('.oc-nota-sel:checked')).map(c => c.dataset.texto);
+            if (planoAtual && textos.length) planoAtual.novaAcao(textos.join('
+'));
+            return;
+        }
         const b = e.target.closest('[data-oc-acao]');
         if (b) { abrirAcao(b); return; }
         const c = e.target.closest('[data-oc-abrir]');
