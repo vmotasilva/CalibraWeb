@@ -1618,9 +1618,16 @@ def api_change_password(request):
         msg = errors[0] if errors else 'Senha nova inválida.'
         return JsonResponse({'success': False, 'error': msg}, status=400)
 
-    user.set_password(new_password)
-    user.save(update_fields=['password'])
-    update_session_auth_hash(request, user)
+    try:
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        update_session_auth_hash(request, user)
+    except Exception:
+        logger.exception("Falha ao trocar a senha do usuário %s", user.pk)
+        return JsonResponse(
+            {'success': False, 'error': 'Não foi possível salvar a nova senha. Tente novamente.'},
+            status=500,
+        )
 
     return JsonResponse({'success': True, 'message': 'Senha alterada com sucesso.'})
 
