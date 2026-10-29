@@ -598,7 +598,9 @@ def dashboard_treinamentos_view(request):
         valid_registros = valid_registros.filter(colaborador__turno__in=filtro_turno_list)
     
     if filtro_lider_list:
-        valid_registros = valid_registros.filter(colaborador__lider_id__in=filtro_lider_list)
+        valid_registros = valid_registros.filter(
+            Q(colaborador__lider_id__in=filtro_lider_list) | Q(colaborador__vice_lider_id__in=filtro_lider_list)
+        )
 
     if filtro_supervisor_list:
         valid_registros = valid_registros.filter(colaborador__supervisor_id__in=filtro_supervisor_list)
@@ -682,7 +684,7 @@ def dashboard_treinamentos_view(request):
                 colaborador_obj = None
             if filtro_turno_list and str(getattr(colaborador_obj, 'turno', '') or '') not in set(map(str, filtro_turno_list)):
                 colaborador_obj = None
-            if filtro_lider_list and str(getattr(colaborador_obj, 'lider_id', '') or '') not in set(map(str, filtro_lider_list)):
+            if filtro_lider_list and not ({str(getattr(colaborador_obj, 'lider_id', '') or ''), str(getattr(colaborador_obj, 'vice_lider_id', '') or '')} & set(map(str, filtro_lider_list))):
                 colaborador_obj = None
 
         if colaborador_obj:
@@ -1096,7 +1098,9 @@ def dashboard_treinamentos_view(request):
     if filtro_turno_list:
         planejamentos_filtrados = planejamentos_filtrados.filter(colaboradores__turno__in=filtro_turno_list)
     if filtro_lider_list:
-        planejamentos_filtrados = planejamentos_filtrados.filter(colaboradores__lider_id__in=filtro_lider_list)
+        planejamentos_filtrados = planejamentos_filtrados.filter(
+            Q(colaboradores__lider_id__in=filtro_lider_list) | Q(colaboradores__vice_lider_id__in=filtro_lider_list)
+        )
     if filtro_supervisor_list:
         planejamentos_filtrados = planejamentos_filtrados.filter(colaboradores__supervisor_id__in=filtro_supervisor_list)
     if filtro_gerente_list:
@@ -1393,7 +1397,7 @@ def dashboard_treinamentos_filtered_view(request):
             pass
     if lider_id:
         try:
-            base_query &= Q(colaborador__lider_id=int(lider_id))
+            base_query &= Q(colaborador__lider_id=int(lider_id)) | Q(colaborador__vice_lider_id=int(lider_id))
         except:
             pass
     if supervisor_id:
@@ -1669,7 +1673,7 @@ def dashboard_treinamentos_exportar_csv_view(request):
         try:
             lideres_int = [int(l) for l in lideres if l.strip()]
             if lideres_int:
-                base_query &= Q(colaborador__lider_id__in=lideres_int)
+                base_query &= Q(colaborador__lider_id__in=lideres_int) | Q(colaborador__vice_lider_id__in=lideres_int)
         except:
             pass
 
@@ -1748,7 +1752,10 @@ def dashboard_treinamentos_exportar_csv_view(request):
     if colaborador_obj and lideres:
         try:
             lideres_int_check = [int(l) for l in lideres if str(l).strip().isdigit()]
-            if lideres_int_check and getattr(colaborador_obj, 'lider_id', None) not in lideres_int_check:
+            if lideres_int_check and not (
+                getattr(colaborador_obj, 'lider_id', None) in lideres_int_check
+                or getattr(colaborador_obj, 'vice_lider_id', None) in lideres_int_check
+            ):
                 colaborador_obj = None
         except Exception:
             pass

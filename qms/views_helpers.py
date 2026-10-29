@@ -86,7 +86,7 @@ def get_all_subordinates(colaborador):
         
         # Subordinados diretos deste colaborador
         diretos_ids = list(Colaborador.objects.filter(
-            Q(lider_id=atual_id) | Q(supervisor_id=atual_id) | Q(gerente_id=atual_id)
+            Q(lider_id=atual_id) | Q(vice_lider_id=atual_id) | Q(supervisor_id=atual_id) | Q(gerente_id=atual_id)
         ).exclude(
             id=atual_id  # Excluir auto-referência
         ).values_list('id', flat=True))

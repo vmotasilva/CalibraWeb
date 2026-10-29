@@ -101,6 +101,7 @@ class ColaboradorForm(forms.ModelForm):
             "turno": forms.Select(attrs={"class": "form-select"}),
             "posto_lideranca": forms.Select(attrs={"class": "form-select"}),
             "lider": forms.Select(attrs={"class": "form-select"}),
+            "vice_lider": forms.Select(attrs={"class": "form-select"}),
             "supervisor": forms.Select(attrs={"class": "form-select"}),
             "gerente": forms.Select(attrs={"class": "form-select"}),
             "salario": forms.NumberInput(attrs={
@@ -138,13 +139,21 @@ class ColaboradorForm(forms.ModelForm):
         
         # 1. Filtrar lider (Líder / Superior Direto) para mostrar Colaboradores com posto_lideranca de gestão
         lider_qs = Colaborador.objects.filter(
-            posto_lideranca__in=["LIDER", "SUPERVISOR", "GERENTE", "QUALIDADE", "PROCESSOS", "MANUTENCAO", "EHS"],
+            posto_lideranca__in=["LIDER", "VICE_LIDER", "SUPERVISOR", "GERENTE", "QUALIDADE", "PROCESSOS", "MANUTENCAO", "EHS"],
             is_active=True
         )
         if self.instance and self.instance.lider_id:
             lider_qs = lider_qs | Colaborador.objects.filter(pk=self.instance.lider_id)
         self.fields['lider'].queryset = lider_qs.distinct().order_by('nome_completo')
         
+        vice_lider_qs = Colaborador.objects.filter(
+            posto_lideranca__in=["LIDER", "VICE_LIDER", "SUPERVISOR", "GERENTE", "QUALIDADE", "PROCESSOS", "MANUTENCAO", "EHS"],
+            is_active=True
+        )
+        if self.instance and self.instance.vice_lider_id:
+            vice_lider_qs = vice_lider_qs | Colaborador.objects.filter(pk=self.instance.vice_lider_id)
+        self.fields['vice_lider'].queryset = vice_lider_qs.distinct().order_by('nome_completo')
+
         # 2. Filtrar supervisor para mostrar Colaboradores com posto_lideranca em ["SUPERVISOR", "GERENTE"]
         supervisor_qs = Colaborador.objects.filter(posto_lideranca__in=["SUPERVISOR", "GERENTE"], is_active=True)
         if self.instance and self.instance.supervisor_id:

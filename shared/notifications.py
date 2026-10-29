@@ -168,7 +168,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
 
         if colaborador:
             scope_colabs = Colaborador.objects.filter(
-                Q(pk=colaborador.pk) | Q(lider=colaborador) | Q(supervisor=colaborador) | Q(gerente=colaborador),
+                Q(pk=colaborador.pk) | Q(lider=colaborador) | Q(vice_lider=colaborador) | Q(supervisor=colaborador) | Q(gerente=colaborador),
                 is_active=True,
             )
 
@@ -224,6 +224,7 @@ def get_user_cobrancas_counts(user: Any) -> dict[str, int]:
                 counts["trein_planejamentos"] = planejamento_base.filter(
                     Q(instrutor=colaborador)
                     | Q(colaboradores__lider=colaborador)
+                    | Q(colaboradores__vice_lider=colaborador)
                     | Q(colaboradores__supervisor=colaborador)
                     | Q(colaboradores__gerente=colaborador)
                 ).distinct().count()
@@ -299,6 +300,8 @@ def get_user_cobrancas_items(user: Any) -> list[CobrancaItem]:
             from rh.models import Colaborador as RhColaborador
 
             if RhColaborador.objects.filter(lider=colaborador, is_active=True).exists():
+                treinamentos_scope_qs = f"lider={colaborador.pk}"
+            elif RhColaborador.objects.filter(vice_lider=colaborador, is_active=True).exists():
                 treinamentos_scope_qs = f"lider={colaborador.pk}"
             elif RhColaborador.objects.filter(supervisor=colaborador, is_active=True).exists():
                 treinamentos_scope_qs = f"supervisor={colaborador.pk}"

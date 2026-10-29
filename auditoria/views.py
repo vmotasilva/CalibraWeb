@@ -1325,13 +1325,15 @@ def ocorrencia_editar(request, pk):
         campos += ["requer_tratativa", "status", "resolvido_em", "resolvido_por"]
         converteu = True
 
-    if oc.requer_tratativa:
+    # ação/prazo/responsáveis vêm do formulário legado; o modal novo usa só o plano de ação (não envia esses campos)
+    if oc.requer_tratativa and "acao" in request.POST:
         acao = (request.POST.get("acao") or "").strip()
         if len(acao) > 8000:
             return _ocorr_resposta(request, next_url, "Descrição da ação muito longa (máx. 8000 caracteres).", ok=False)
         if acao != (oc.acao or ""):
             oc.acao = acao
             campos.append("acao")
+    if oc.requer_tratativa and "prazo" in request.POST:
         prazo_raw = (request.POST.get("prazo") or "").strip()
         prazo = parse_date(prazo_raw) if prazo_raw else None
         if prazo_raw and not prazo:
@@ -1343,7 +1345,7 @@ def ocorrencia_editar(request, pk):
     if campos:
         oc.save(update_fields=campos + ["atualizado_em"])
 
-    if oc.requer_tratativa:
+    if oc.requer_tratativa and "responsaveis" in request.POST:
         from rh.models import Colaborador
 
         ids = [int(x) for x in request.POST.getlist("responsaveis") if str(x).isdigit()]

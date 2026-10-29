@@ -1120,25 +1120,9 @@
                                                 <div class="form-check form-switch border rounded p-2 ps-5 bg-light mb-3 d-none" id="det-converter-wrap">
                                                     <input class="form-check-input" type="checkbox" role="switch" id="det-converter" name="requer_tratativa" value="1">
                                                     <label class="form-check-label fw-semibold" for="det-converter">Converter em ocorrência (requer tratativa)</label>
-                                                    <div class="small text-muted">Passa a ficar em aberto no acompanhamento de plano de ação.</div>
+                                                    <div class="small text-muted">Depois de convertida, atribua as ações, responsáveis e prazos no plano de ação.</div>
                                                 </div>
 
-                                                <div id="det-tratativa" class="border rounded p-3 mb-3 d-none">
-                                                    <div class="mb-3">
-                            <label class="form-label small fw-semibold mb-1" for="det-acao">Ação a ser realizada</label>
-                            <textarea class="form-control form-control-sm" id="det-acao" name="acao" rows="3" maxlength="8000" placeholder="Descreva concretamente o que deve ser feito para tratar esta ocorrência..."></textarea>
-                        </div>
-                        <div class="row g-3">
-                                                        <div class="col-md-4">
-                                                            <label class="form-label small fw-semibold mb-1" for="det-prazo">Prazo de resolução</label>
-                                                            <input type="date" class="form-control form-control-sm" id="det-prazo" name="prazo">
-                                                        </div>
-                                                        <div class="col-md-8">
-                                                            <div class="form-label small fw-semibold mb-1">Responsáveis</div>
-                                                            {% include "auditoria/_responsaveis_picker.html" with prefix="det" %}
-                                                        </div>
-                                                    </div>
-                                                </div>
                                             </form>
 
                                             <div id="det-plano" class="mb-3 d-none"></div>
@@ -1276,7 +1260,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const detalheEl = document.getElementById('modalDetalheOcorrencia');
     const detalheModal = detalheEl ? bootstrap.Modal.getOrCreateInstance(detalheEl) : null;
-    const pickerDet = window.criarSeletorResponsaveis('det');
     const pickerAud2 = window.criarSeletorResponsaveis('aud2');
     (function() {
         const form = document.getElementById('form-responsaveis');
@@ -1327,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tratativaBox = document.getElementById('det-tratativa');
 
     function mostrarTratativa(visivel) {
-        tratativaBox.classList.toggle('d-none', !visivel);
+        if (tratativaBox) tratativaBox.classList.toggle('d-none', !visivel);
     }
     if (converterChk) converterChk.addEventListener('change', function() {
         mostrarTratativa(converterChk.checked);
@@ -1358,9 +1341,6 @@ document.addEventListener('DOMContentLoaded', function() {
         converterChk.checked = false;
         converterWrap.classList.toggle('d-none', o.requer_tratativa);
         mostrarTratativa(o.requer_tratativa);
-        document.getElementById('det-prazo').value = o.prazo || '';
-        document.getElementById('det-acao').value = o.acao || '';
-        if (pickerDet) pickerDet.set(o.responsaveis_info || []);
         const planoBox = document.getElementById('det-plano');
         planoBox.classList.toggle('d-none', !o.requer_tratativa);
         planoBox.replaceChildren();

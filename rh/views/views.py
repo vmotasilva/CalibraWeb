@@ -255,7 +255,7 @@ def can_user_access_colaborador(request_user, target_colaborador):
     
     # ✅ NOVO: Verificar se é subordinado direto (lider, supervisor, gerente)
     if Colaborador.objects.filter(
-        Q(lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado),
+        Q(lider=usuario_logado) | Q(vice_lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado),
         id=target_colaborador.id
     ).exists():
         return True
@@ -307,7 +307,7 @@ def can_user_register_ocorrencia(request_user, target_colaborador=None):
             return True
 
         if Colaborador.objects.filter(
-            Q(lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado)
+            Q(lider=usuario_logado) | Q(vice_lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado)
         ).exists():
             return True
 
@@ -324,6 +324,7 @@ def can_user_register_ocorrencia(request_user, target_colaborador=None):
     # Subordinação direta
     if (
         getattr(target_colaborador, 'lider_id', None) == usuario_logado.id
+        or getattr(target_colaborador, 'vice_lider_id', None) == usuario_logado.id
         or getattr(target_colaborador, 'supervisor_id', None) == usuario_logado.id
         or getattr(target_colaborador, 'gerente_id', None) == usuario_logado.id
     ):
@@ -360,7 +361,7 @@ def get_colaboradores_acessiveis(request_user):
     
     # Verificar se é líder ou supervisor - que também têm subordinados
     subordinados_como_lider = Colaborador.objects.filter(
-        Q(lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado)
+        Q(lider=usuario_logado) | Q(vice_lider=usuario_logado) | Q(supervisor=usuario_logado) | Q(gerente=usuario_logado)
     ).exists()
     
     if subordinados_como_lider:
@@ -4010,18 +4011,20 @@ def atualizar_liderancas_em_massa(request):
     setor_id = request.POST.get('setor_id', '')
     turno = request.POST.get('turno', '')
     lider_id = request.POST.get('lider_id', '')
+    vice_lider_id = request.POST.get('vice_lider_id', '')
     supervisor_id = request.POST.get('supervisor_id', '')
     gerente_id = request.POST.get('gerente_id', '')
-    
+
     # Obter dados para o formulário
     setores = Setor.objects.all().order_by('nome')
     turnos = TURNOS_CHOICES
     
     # Listar colaboradores que podem ser líderes, supervisores ou gerentes
-    lideres = Colaborador.objects.filter(posto_lideranca__in=["LIDER", "SUPERVISOR", "GERENTE", "QUALIDADE", "PROCESSOS", "MANUTENCAO", "EHS"], is_active=True).order_by('nome_completo')
+    lideres = Colaborador.objects.filter(posto_lideranca__in=["LIDER", "VICE_LIDER", "SUPERVISOR", "GERENTE", "QUALIDADE", "PROCESSOS", "MANUTENCAO", "EHS"], is_active=True).order_by('nome_completo')
+    vice_lideres = lideres
     supervisores = Colaborador.objects.filter(posto_lideranca__in=["SUPERVISOR", "GERENTE"], is_active=True).order_by('nome_completo')
     gerentes = Colaborador.objects.filter(posto_lideranca="GERENTE", is_active=True).order_by('nome_completo')
-    
+
     # Colaboradores que serão atualizados (inclui ativos, em férias, afastados e desligados)
     colaboradores_afetados = Colaborador.objects.all()
     
@@ -4049,6 +4052,11 @@ def atualizar_liderancas_em_massa(request):
                     updates['lider_id'] = int(lider_id)
                 except:
                     pass
+            if vice_lider_id:
+                try:
+                    updates['vice_lider_id'] = int(vice_lider_id)
+                except:
+                    pass
             if supervisor_id:
                 try:
                     updates['supervisor_id'] = int(supervisor_id)
@@ -4067,6 +4075,7 @@ def atualizar_liderancas_em_massa(request):
                     'setores': setores,
                     'turnos': turnos,
                     'lideres': lideres,
+                    'vice_lideres': vice_lideres,
                     'supervisores': supervisores,
                     'gerentes': gerentes,
                     'sucesso': True,
@@ -4084,11 +4093,13 @@ def atualizar_liderancas_em_massa(request):
         'setores': setores,
         'turnos': turnos,
         'lideres': lideres,
+        'vice_lideres': vice_lideres,
         'supervisores': supervisores,
         'gerentes': gerentes,
         'setor_id': setor_id,
         'turno': turno,
         'lider_id': lider_id,
+        'vice_lider_id': vice_lider_id,
         'supervisor_id': supervisor_id,
         'gerente_id': gerente_id,
         'preview_colaboradores': preview_colaboradores,

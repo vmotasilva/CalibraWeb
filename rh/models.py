@@ -12,6 +12,7 @@ from core.models import TURNOS_CHOICES
 POSTO_LIDERANCA_CHOICES = [
     ("NAO_APLICA", "Não se aplica"),
     ("LIDER", "Líder"),
+    ("VICE_LIDER", "Vice-Líder"),
     ("SUPERVISOR", "Supervisor"),
     ("GERENTE", "Gerente"),
     ("QUALIDADE", "Qualidade"),
@@ -108,6 +109,14 @@ class Colaborador(models.Model):
         blank=True,
         related_name="liderados",
         verbose_name="Líder/Supervisor Direto",
+    )
+    vice_lider = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="vice_liderados",
+        verbose_name="Vice-Líder",
     )
     supervisor = models.ForeignKey(
         "self",

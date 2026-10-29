@@ -432,6 +432,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         Q(gestor_responsavel__isnull=True)
                         & (
                             Q(colaborador__lider=colaborador)
+                            | Q(colaborador__vice_lider=colaborador)
                             | Q(colaborador__supervisor=colaborador)
                             | Q(colaborador__gerente=colaborador)
                         )
@@ -533,7 +534,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                 qs_base_pendentes = qs_base_pendentes.none()
             if not is_global_viewer and colaborador:
                 scoped_demandas = qs_base_pendentes.filter(
-                    Q(colaborador=colaborador) | Q(colaborador__lider=colaborador) | Q(colaborador__supervisor=colaborador) | Q(colaborador__gerente=colaborador)
+                    Q(colaborador=colaborador) | Q(colaborador__lider=colaborador) | Q(colaborador__vice_lider=colaborador) | Q(colaborador__supervisor=colaborador) | Q(colaborador__gerente=colaborador)
                 )
                 target_demandas = scoped_demandas
             else:
@@ -742,6 +743,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                     qs_plan = qs_plan.filter(
                         Q(instrutor=colaborador)
                         | Q(colaboradores__lider=colaborador)
+                        | Q(colaboradores__vice_lider=colaborador)
                         | Q(colaboradores__supervisor=colaborador)
                         | Q(colaboradores__gerente=colaborador)
                     ).distinct()

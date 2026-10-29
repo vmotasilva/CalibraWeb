@@ -207,6 +207,19 @@
                             <small class="text-muted d-block mt-1">Quem gerencia diretamente</small>
                         </div>
                         <div class="col-md-4">
+                            <label class="form-label fw-bold text-dark">Vice-Líder</label>
+                            <div class="input-group">
+                                {{ form.vice_lider }}
+                                <button type="button" class="btn btn-outline-primary role-search-btn" data-select-id="{{ form.vice_lider.id_for_label }}" data-title="Vice-Líder">
+                                    <i class="bi bi-search me-1"></i>Buscar
+                                </button>
+                            </div>
+                            {% if form.vice_lider.errors %}
+                                <div class="invalid-feedback d-block">{{ form.vice_lider.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted d-block mt-1">Tem o mesmo acesso do líder</small>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label fw-bold text-dark">Supervisor</label>
                             <div class="input-group">
                                 {{ form.supervisor }}

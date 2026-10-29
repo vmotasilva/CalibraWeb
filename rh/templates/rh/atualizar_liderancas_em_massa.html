@@ -96,6 +96,28 @@
                         <div class="row mb-3">
                             <div class="col-md-12">
                                 <label class="form-label fw-bold">
+                                    <i class="bi bi-person-plus text-success me-1"></i>Vice-Líder
+                                </label>
+                                <div class="input-group">
+                                    <select name="vice_lider_id" id="vice_lider_id" class="form-select" title="Selecionar vice-líder">
+                                        <option value="">-- Não alterar --</option>
+                                        {% for pessoa in vice_lideres %}
+                                        <option value="{{ pessoa.id }}" data-nome="{{ pessoa.nome_completo }}" data-matricula="{{ pessoa.matricula }}" {% if vice_lider_id|stringformat:"s" == pessoa.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ pessoa.nome_completo }} ({{ pessoa.matricula }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="button" class="btn btn-outline-primary" onclick="openRolePicker('vice_lider_id', 'Vice-Líder')">
+                                        <i class="bi bi-search me-1"></i>Buscar
+                                    </button>
+                                </div>
+                                <small class="text-muted d-block mt-1">Deixe em branco para não alterar. O vice-líder tem o mesmo acesso do líder.</small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">
                                     <i class="bi bi-person-check text-info me-1"></i>Supervisor
                                 </label>
                                 <div class="input-group">
@@ -315,6 +337,7 @@ function previewChanges() {
     const setorId = document.getElementById('setor_id').value;
     const turno = document.getElementById('turno').value;
     const liderSelect = document.getElementById('lider_id');
+    const viceLiderSelect = document.getElementById('vice_lider_id');
     const supervisorSelect = document.getElementById('supervisor_id');
     const gerenteSelect = document.getElementById('gerente_id');
 
@@ -325,6 +348,7 @@ function previewChanges() {
 
     // Obter nomes selecionados
     const liderName = liderSelect.value ? liderSelect.options[liderSelect.selectedIndex].text : 'Não alterar';
+    const viceLiderName = viceLiderSelect.value ? viceLiderSelect.options[viceLiderSelect.selectedIndex].text : 'Não alterar';
     const supervisorName = supervisorSelect.value ? supervisorSelect.options[supervisorSelect.selectedIndex].text : 'Não alterar';
     const gerenteName = gerenteSelect.value ? gerenteSelect.options[gerenteSelect.selectedIndex].text : 'Não alterar';
 
@@ -347,6 +371,10 @@ function previewChanges() {
                 <div class="list-group-item d-flex justify-content-between">
                     <span class="fw-bold">Líder:</span>
                     <span>${liderName}</span>
+                </div>
+                <div class="list-group-item d-flex justify-content-between">
+                    <span class="fw-bold">Vice-Líder:</span>
+                    <span>${viceLiderName}</span>
                 </div>
                 <div class="list-group-item d-flex justify-content-between">
                     <span class="fw-bold">Supervisor:</span>
@@ -381,7 +409,7 @@ function confirmarAtualizacao() {
 // Habilitar preview quando o formulário mudar
 document.getElementById('setor_id').addEventListener('change', previewChanges);
 document.getElementById('turno').addEventListener('change', previewChanges);
-['lider_id', 'supervisor_id', 'gerente_id'].forEach((id) => {
+['lider_id', 'vice_lider_id', 'supervisor_id', 'gerente_id'].forEach((id) => {
     const select = document.getElementById(id);
     if (!select) return;
     select.addEventListener('change', function() {

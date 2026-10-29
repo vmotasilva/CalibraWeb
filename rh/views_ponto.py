@@ -458,7 +458,8 @@ def tratativa_falhas_ponto_view(request, demanda_id=None):
                 Q(matricula_lider=colaborador_logado.matricula) |
                 Q(matricula_lider=colaborador_logado.matricula_global) |
                 Q(nome_lider__iexact=colaborador_logado.nome_completo) |
-                Q(colaborador=colaborador_logado)
+                Q(colaborador=colaborador_logado) |
+                Q(colaborador__vice_lider=colaborador_logado)
             )
     else:
         # Se puder ver todos e houver filtro por Manager no GET (estritamente pelo relatório importado)
