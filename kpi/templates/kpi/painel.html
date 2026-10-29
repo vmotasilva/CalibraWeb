@@ -529,6 +529,7 @@
 {{ motivos_js|json_script:"kpi-motivos" }}
 {{ campos_js|json_script:"kpi-campos" }}
 {{ analises_js|json_script:"kpi-analises" }}
+{{ usuarios_js|json_script:"kpi-usuarios" }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script>
@@ -829,7 +830,9 @@
         var btn = el('kpiAnaliseBtn');
         if (!btn) return;
         var ANALISES = JSON.parse(document.getElementById('kpi-analises').textContent);
+        var USUARIOS = JSON.parse(document.getElementById('kpi-usuarios').textContent), SEQ_CARD = 0;
         var PODE_ANALISAR = {{ pode_analisar|yesno:"true,false" }}, PODE_DISPENSAR = {{ pode_dispensar|yesno:"true,false" }};
+        var URL_CENTRAL = "{% url 'ocorrencias_central' %}";
         var URL_DADOS = "{% url 'kpi:analise_dados' 0 %}", URL_SALVAR = "{% url 'kpi:analise_salvar' 0 %}", URL_DISPENSAR = "{% url 'kpi:analise_dispensar' 0 %}", URL_MASSA_SALVAR = "{% url 'kpi:analise_salvar_massa' 0 %}", URL_MASSA_DISPENSAR = "{% url 'kpi:analise_dispensar_massa' 0 %}";
         var NOMES = {mensal: 'Mês a mês', semanal: 'Semana a semana', diaria: 'Dia a dia'};
         var pk = null, gran = null, atual = null, sel = {};
@@ -897,7 +900,8 @@
                 td(tr, fmt(d.meta), 'text-end text-muted');
                 var s = td(tr, '', '');
                 s.innerHTML = disp ? '<span class="badge text-bg-secondary">Dispensado</span>' : (a ? '<span class="badge text-bg-success">Analisado</span>' : (f ? '<span class="badge text-bg-warning">Sem análise</span>' : '<span class="badge text-bg-light border text-muted">Na meta</span>'));
-                td(tr, disp ? 'Dispensa: ' + a.m : (a ? a.c + (a.n > 1 ? '  (+' + (a.n - 1) + ' card' + (a.n > 2 ? 's' : '') + ')' : '') : ''), 'small text-muted');
+                var obs = td(tr, disp ? 'Dispensa: ' + a.m : (a ? a.c + (a.n > 1 ? '  (+' + (a.n - 1) + ' card' + (a.n > 2 ? 's' : '') + ')' : '') : ''), 'small text-muted');
+                if (a && a.o) obs.insertAdjacentHTML('beforeend', ' <span class="badge ' + (a.oa ? 'text-bg-warning text-dark' : 'text-bg-success') + '" title="Ocorrências abertas a partir desta análise"><i class="bi bi-exclamation-triangle me-1"></i>' + a.o + ' ocorrência' + (a.o > 1 ? 's' : '') + (a.oa ? ' · ' + a.oa + ' em aberto' : '') + '</span>');
                 var ac = tr.insertCell(); ac.className = 'text-end text-nowrap';
                 (function (iso, rot) {
                     function botao(html, classe, aoClicar) {
@@ -1019,7 +1023,10 @@
             var ro = !PODE_ANALISAR, marcadas = {};
             (dados.ocorrencias || []).forEach(function (id) { marcadas[id] = 1; });
             var card = document.createElement('div');
+            var nome = 'antipo' + (++SEQ_CARD);
             card.className = 'border rounded p-3 mb-3 an-card';
+            if (dados.id) card.dataset.id = dados.id;
+            card.dataset.status = dados.status || 'ABERTA';
             var ocs = (atual && atual.ocorrencias) || [];
             // ocorrências já vinculadas que saíram da janela do período continuam marcadas
             var conhecidas = {};
@@ -1037,6 +1044,16 @@
                 (ro ? '' : '<input type="checkbox" class="form-check-input me-2 an-card-sel" title="Selecionar para agrupar">') + '<strong class="an-card-n"></strong>' +
                 (dados.origem ? ' <span class="badge text-bg-light border text-muted fw-normal ms-1">Sugestão · ' + esc(dados.origem) + '</span>' : '') + '</span>' +
                 (ro ? '' : '<button type="button" class="btn btn-sm btn-link text-danger p-0 an-card-rem" title="Remover card"><i class="bi bi-trash"></i> Remover card</button>') + '</div>' +
+                '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">' +
+                '<div class="btn-group btn-group-sm" role="group" title="Relato: apenas registra o que aconteceu. Ocorrência: tem responsável e prazo e é acompanhada até a resolução na Central de Ocorrências.">' +
+                '<input type="radio" class="btn-check an-tipo" name="' + nome + '" id="' + nome + 'c" value="comentario" autocomplete="off"' + (ro ? ' disabled' : '') + '><label class="btn btn-outline-secondary" for="' + nome + 'c"><i class="bi bi-chat-left-text me-1"></i>Relato</label>' +
+                '<input type="radio" class="btn-check an-tipo" name="' + nome + '" id="' + nome + 'o" value="ocorrencia" autocomplete="off"' + (ro ? ' disabled' : '') + '><label class="btn btn-outline-warning" for="' + nome + 'o"><i class="bi bi-exclamation-triangle me-1"></i>Ocorrência</label></div>' +
+                '<span class="an-oc-estado small"></span></div>' +
+                '<div class="row g-2 mb-2 an-oc-campos d-none">' +
+                '<div class="col-md-6"><label class="form-label small mb-1">Responsável pela 1ª ação</label><select class="form-select form-select-sm an-resp"' + (ro ? ' disabled' : '') + '><option value="">— Selecione —</option>' +
+                USUARIOS.map(function (u) { return '<option value="' + u.id + '">' + esc(u.nome) + '</option>'; }).join('') + '</select></div>' +
+                '<div class="col-md-3"><label class="form-label small mb-1">Prazo</label><input type="date" class="form-control form-control-sm an-prazo"' + (ro ? ' readonly' : '') + '></div>' +
+                '</div>' +
                 '<div class="row g-2">' +
                 '<div class="col-lg-4"><label class="form-label small mb-1">Causa</label><textarea class="form-control an-c" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
                 '<div class="col-lg-4"><label class="form-label small mb-1">Análise</label><textarea class="form-control an-a" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
@@ -1049,6 +1066,32 @@
             card.querySelector('.an-c').value = dados.causa || '';
             card.querySelector('.an-a').value = dados.analise || '';
             card.querySelector('.an-x').value = dados.acao || '';
+            var ehOc = dados.tipo === 'ocorrencia';
+            card.querySelector('.an-tipo[value="' + (ehOc ? 'ocorrencia' : 'comentario') + '"]').checked = true;
+            var plano = dados.plano || null;
+            // ocorrência já criada: responsável e prazo passam a ser geridos no plano de ação (Central de Ocorrências)
+            if (dados.id && ehOc) {
+                card.querySelector('.an-resp').value = plano ? plano.responsavel : '';
+                card.querySelector('.an-prazo').value = plano ? plano.prazo : '';
+                card.querySelector('.an-resp').disabled = true;
+                card.querySelector('.an-prazo').readOnly = true;
+                card.querySelector('.an-oc-campos').insertAdjacentHTML('beforeend', '<div class="col-12 form-text mt-0">Responsável e prazo da 1ª ação. Para atribuir novas ações ou redirecionar, use o plano de ação na <a href="' + URL_CENTRAL + '" target="_blank">Central de Ocorrências</a>.</div>');
+            } else {
+                card.querySelector('.an-resp').value = dados.responsavel || ((CAMPOS[pk] || {}).resp_analise_id || '');
+                card.querySelector('.an-prazo').value = dados.prazo || '';
+            }
+            function tipoMudou() {
+                var oc = card.querySelector('.an-tipo:checked').value === 'ocorrencia';
+                card.querySelector('.an-oc-campos').classList.toggle('d-none', !oc);
+                card.classList.toggle('border-warning', oc);
+                var est = card.querySelector('.an-oc-estado');
+                if (!oc) { est.innerHTML = ''; return; }
+                est.innerHTML = card.dataset.status === 'RESOLVIDA'
+                    ? '<span class="badge text-bg-success">Resolvida' + (dados.resolvido_em ? ' em ' + esc(dados.resolvido_em) : '') + (dados.resolvido_por ? ' por ' + esc(dados.resolvido_por) : '') + '</span>' + (dados.resolucao ? ' <span class="text-muted">— ' + esc(dados.resolucao) + '</span>' : '')
+                    : '<span class="badge text-bg-warning text-dark">Em aberto</span> <span class="text-muted">acompanhada na Central de Ocorrências</span>';
+            }
+            card.addEventListener('change', function (ev) { if (ev.target.classList.contains('an-tipo')) tipoMudou(); });
+            tipoMudou();
             function resumo() {
                 var n = card.querySelectorAll('.an-oc:checked, .an-oc-extra').length;
                 card.querySelector('.an-oc-resumo').textContent = 'Ocorrências do laboratório que afetaram o indicador (' + n + ' vinculada' + (n === 1 ? '' : 's') + ')';
@@ -1056,7 +1099,10 @@
             card.addEventListener('change', resumo);
             resumo();
             var rem = card.querySelector('.an-card-rem');
-            if (rem) rem.addEventListener('click', function () { card.remove(); renumerarCards(); atualizarBarraAgrupar(); });
+            if (rem) rem.addEventListener('click', function () {
+                if (card.dataset.id && card.querySelector('.an-tipo:checked').value === 'ocorrencia' && !confirm('Esta ocorrência será excluída (inclusive a resolução registrada) ao salvar. Continuar?')) return;
+                card.remove(); renumerarCards(); atualizarBarraAgrupar();
+            });
             var selc = card.querySelector('.an-card-sel');
             if (selc) selc.addEventListener('change', function () { card.classList.toggle('border-primary', selc.checked); atualizarBarraAgrupar(); });
             el('anCards').appendChild(card);
@@ -1094,6 +1140,8 @@
                 ocorrencias: dados.reduce(function (a, d) { return a.concat(d.ocorrencias.filter(function (id) { return a.indexOf(id) === -1; })); }, []),
                 origem: 'agrupado de ' + cards.length + ' cards'
             };
+            var oc1 = dados.filter(function (d) { return d.tipo === 'ocorrencia'; })[0];
+            if (oc1) { junto.tipo = 'ocorrencia'; junto.id = oc1.id; junto.responsavel = oc1.responsavel; junto.prazo = oc1.prazo; }
             var novo = novoCard(junto);                  // entra no fim; é reposicionado onde estava o primeiro selecionado
             el('anCards').insertBefore(novo, cards[0]);
             cards.forEach(function (c) { c.remove(); });
@@ -1107,7 +1155,9 @@
             return Array.prototype.map.call(cards, function (card) {
                 var ocs = Array.prototype.map.call(card.querySelectorAll('.an-oc:checked'), function (c) { return Number(c.value); })
                     .concat(Array.prototype.map.call(card.querySelectorAll('.an-oc-extra'), function (c) { return Number(c.value); }));
-                return {causa: card.querySelector('.an-c').value, analise: card.querySelector('.an-a').value, acao: card.querySelector('.an-x').value, ocorrencias: ocs};
+                return {id: card.dataset.id || null, tipo: card.querySelector('.an-tipo:checked').value,
+                        responsavel: card.querySelector('.an-resp').value, prazo: card.querySelector('.an-prazo').value,
+                        causa: card.querySelector('.an-c').value, analise: card.querySelector('.an-a').value, acao: card.querySelector('.an-x').value, ocorrencias: ocs};
             });
         }
 
@@ -1156,7 +1206,7 @@
                     if (!res[0]) { el('anErro').textContent = res[1].erro || 'Não foi possível salvar.'; return; }
                     ANALISES[pk] = ANALISES[pk] || {}; ANALISES[pk][gran] = ANALISES[pk][gran] || {};
                     if (res[1].removida) { delete ANALISES[pk][gran][atual.iso]; }
-                    else { ANALISES[pk][gran][atual.iso] = {c: res[1].c, a: res[1].a, n: res[1].n, d: false, m: ''}; }
+                    else { ANALISES[pk][gran][atual.iso] = {c: res[1].c, a: res[1].a, n: res[1].n, d: false, m: '', o: res[1].o, oa: res[1].oa}; }
                     mostrar(false); abas(); lista(); atualizarSelo();
                 })
                 .catch(function () { el('anErro').textContent = 'Não foi possível salvar.'; });

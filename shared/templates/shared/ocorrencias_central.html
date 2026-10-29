@@ -10,6 +10,13 @@
     .oc-card.fechada { opacity: .85; border-left-color: #16a34a; }
     .oc-desc { white-space: pre-line; color: #334155; }
     .oc-hist { background: #f8fafc; border-radius: 8px; font-size: .85rem; }
+    .oc-plano { border-top: 1px dashed #cbd5e1; margin-top: .75rem; padding-top: .6rem; }
+    .oc-acao { border-left: 3px solid #94a3b8; background: #f8fafc; border-radius: 6px; padding: .45rem .65rem; margin-bottom: .4rem; font-size: .88rem; }
+    .oc-acao.ABERTA { border-left-color: #2563eb; background: #eff6ff; }
+    .oc-acao.ABERTA.vencida { border-left-color: #dc2626; background: #fef2f2; }
+    .oc-acao.CONCLUIDA { border-left-color: #16a34a; }
+    .oc-acao.REDIRECIONADA { border-left-color: #f59e0b; }
+    .oc-acao.CANCELADA { opacity: .65; }
     .oc-pill { border: 1px solid #e2e8f0; background: #fff; color: #475569; border-radius: 24px; padding: 6px 14px;
                font-size: .88rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
     .oc-pill.active { background: #0f172a; color: #fff; border-color: #0f172a; }
@@ -72,8 +79,9 @@
                     {% for a in oc.acoes %}
                         <button type="button" class="btn btn-sm btn-{{ a.btn }}" data-oc-acao
                                 data-uid="{{ oc.uid }}" data-acao="{{ a.key }}" data-label="{{ a.label }}"
-                                data-campo="{{ a.campo }}" data-placeholder="{{ a.placeholder }}"
-                                data-obrigatorio="{{ a.obrigatorio|yesno:'1,0' }}" data-titulo="{{ oc.titulo|truncatechars:80 }}">
+                                data-campo="{{ a.campo }}" data-placeholder="{{ a.placeholder }}" data-acao-id="{{ a.acao_id }}"
+                                data-obrigatorio="{{ a.obrigatorio|yesno:'1,0' }}" data-resp-obrig="{{ a.resp_obrig|yesno:'1,0' }}"
+                                data-titulo="{{ oc.titulo|truncatechars:80 }}">
                             <i class="bi {{ a.icon }} me-1"></i>{{ a.label }}
                         </button>
                     {% endfor %}
@@ -81,6 +89,41 @@
                         <a class="btn btn-sm btn-outline-dark" href="{{ oc.url_origem }}" title="Abrir na tela de origem"><i class="bi bi-box-arrow-up-right"></i></a>
                     {% endif %}
                 </div>
+            </div>
+            <div class="oc-plano">
+                <div class="small fw-bold text-muted mb-1"><i class="bi bi-list-check me-1"></i>Plano de ação
+                    {% if oc.plano %}<span class="fw-normal">({{ oc.plano|length }})</span>{% endif %}</div>
+                {% for p in oc.plano %}
+                    <div class="oc-acao {{ p.status }}{% if p.vencida %} vencida{% endif %}">
+                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                            <div style="min-width:0;">
+                                <span class="badge {% if p.status == 'ABERTA' %}text-bg-primary{% elif p.status == 'CONCLUIDA' %}text-bg-success{% elif p.status == 'REDIRECIONADA' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ p.status_label }}</span>
+                                <strong class="ms-1">{{ p.responsavel }}</strong>
+                                {% if p.prazo %}<span class="{% if p.vencida %}text-danger fw-bold{% else %}text-muted{% endif %}"> · prazo {{ p.prazo|date:"d/m/Y" }}{% if p.vencida %} (vencido){% endif %}</span>{% endif %}
+                                <div style="white-space:pre-line;">{{ p.descricao }}</div>
+                                <div class="text-muted small">
+                                    Criada {{ p.criado_em }}{% if p.criado_por %} por {{ p.criado_por }}{% endif %}
+                                    {% if p.de %} · redirecionada de {{ p.de }}{% endif %}
+                                    {% if p.para %} · redirecionada para {{ p.para }}{% endif %}
+                                    {% if p.status != 'ABERTA' and p.encerrada_em %}<br>{{ p.status_label }} em {{ p.encerrada_em }}{% if p.encerrada_por %} por {{ p.encerrada_por }}{% endif %}{% if p.resultado %}: {{ p.resultado }}{% endif %}{% endif %}
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap align-content-start gap-1">
+                                {% for a in p.acoes %}
+                                    <button type="button" class="btn btn-sm btn-{{ a.btn }}" data-oc-acao
+                                            data-uid="{{ oc.uid }}" data-acao="{{ a.key }}" data-label="{{ a.rotulo|default:a.label }}"
+                                            data-campo="{{ a.campo }}" data-placeholder="{{ a.placeholder }}" data-acao-id="{{ a.acao_id }}"
+                                            data-obrigatorio="{{ a.obrigatorio|yesno:'1,0' }}" data-resp-obrig="{{ a.resp_obrig|yesno:'1,0' }}"
+                                            data-titulo="{{ oc.titulo|truncatechars:80 }}">
+                                        <i class="bi {{ a.icon }} me-1"></i>{{ a.label }}
+                                    </button>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="small text-muted">Nenhuma ação definida{% if oc.status == 'aberta' %}. Use <strong>Nova ação</strong> para atribuir um responsável e um prazo.{% endif %}</div>
+                {% endfor %}
             </div>
             {% if oc.historico %}
                 <details class="mt-2">
@@ -110,6 +153,7 @@
             {% csrf_token %}
             <input type="hidden" name="uid" id="ocUid">
             <input type="hidden" name="acao" id="ocAcao">
+            <input type="hidden" name="acao_id" id="ocAcaoId">
             <input type="hidden" name="next_qs" value="{{ next_qs }}">
             <div class="modal-header">
                 <h5 class="modal-title" id="ocTitulo"></h5>
@@ -126,16 +170,20 @@
                         {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
                     </select>
                 </div>
+                <div id="ocBlocoPrazo" class="mb-3 d-none">
+                    <label class="form-label small fw-bold">Prazo</label>
+                    <input type="date" name="prazo" id="ocPrazo" class="form-control" min="{% now 'Y-m-d' %}">
+                </div>
                 <div id="ocBlocoResp" class="mb-3 d-none">
-                    <label class="form-label small fw-bold">Responsável pela tratativa</label>
-                    <select name="responsavel" class="form-select">
-                        <option value="">— Sem responsável —</option>
+                    <label class="form-label small fw-bold" id="ocRespLabel">Responsável</label>
+                    <select name="responsavel" id="ocResp" class="form-select">
+                        <option value="">— Selecione —</option>
                         {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
                     </select>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Voltar</button>
                 <button type="submit" class="btn btn-primary" id="ocConfirmar">Confirmar</button>
             </div>
         </form>
@@ -149,9 +197,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const $ = id => document.getElementById(id);
     document.querySelectorAll('[data-oc-acao]').forEach(btn => btn.addEventListener('click', () => {
         const d = btn.dataset;
-        const comTexto = d.campo === 'texto' || d.campo === 'texto_destinatarios';
+        const campos = (d.campo || '').split(' ');
+        const comTexto = campos.includes('texto');
         $('ocUid').value = d.uid;
         $('ocAcao').value = d.acao;
+        $('ocAcaoId').value = d.acaoId || '';
         $('ocTitulo').textContent = d.label;
         $('ocSub').textContent = d.titulo;
         $('ocConfirmar').textContent = d.label;
@@ -159,8 +209,13 @@ document.addEventListener('DOMContentLoaded', function () {
         $('ocTexto').required = comTexto && d.obrigatorio === '1';
         $('ocTexto').placeholder = d.placeholder || '';
         $('ocTexto').value = '';
-        $('ocBlocoDest').classList.toggle('d-none', d.campo !== 'texto_destinatarios');
-        $('ocBlocoResp').classList.toggle('d-none', d.campo !== 'responsavel');
+        $('ocBlocoDest').classList.toggle('d-none', !campos.includes('dest'));
+        $('ocBlocoResp').classList.toggle('d-none', !campos.includes('resp'));
+        $('ocBlocoPrazo').classList.toggle('d-none', !campos.includes('prazo'));
+        $('ocResp').required = campos.includes('resp') && d.respObrig === '1';
+        $('ocResp').value = '';
+        $('ocPrazo').value = '';
+        $('ocRespLabel').textContent = d.acao === 'redirecionar_acao' ? 'Novo responsável' : (d.acao === 'nova_acao' ? 'Responsável pela ação' : 'Responsável');
         modal.show();
     }));
 });

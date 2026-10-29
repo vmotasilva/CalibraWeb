@@ -73,6 +73,8 @@ def ocorrencias_acao_view(request):
             "texto": request.POST.get("texto", ""),
             "destinatarios": request.POST.getlist("destinatarios"),
             "responsavel": request.POST.get("responsavel", ""),
+            "prazo": request.POST.get("prazo", ""),
+            "acao_id": request.POST.get("acao_id", ""),
         },
     )
     (messages.success if res.ok else messages.error)(request, res.msg)

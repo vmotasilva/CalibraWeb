@@ -112,3 +112,143 @@ class CentralOcorrenciasTests(TestCase):
         self.assertTrue(central.executar_acao(self.admin, f"auditoria:{oc_aud.pk}", "reabrir", {}).ok)
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get(reverse("ocorrencias_central") + "?aba=encerradas").status_code, 200)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class PlanoDeAcaoTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        U = get_user_model()
+        self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
+        self.ana = U.objects.create_user("ana", password="x", is_superuser=True, is_staff=True)
+        self.bia = U.objects.create_user("bia", password="x", is_superuser=True, is_staff=True)
+        self.oc = OcorrenciaLaboratorio.objects.create(assunto="Falha", detalhamento="d", criado_por=self.admin)
+        self.uid = f"laboratorio:{self.oc.pk}"
+
+    def _acao(self, user, acao, **dados):
+        return central.executar_acao(user, self.uid, acao, dados)
+
+    def _item(self, user):
+        return next(i for i in central.listar_ocorrencias(user, "abertas") if i.uid == self.uid)
+
+    def test_varias_acoes_com_responsavel_e_prazo(self):
+        hoje = date.today().isoformat()
+        self.assertFalse(self._acao(self.admin, "nova_acao", texto="x", responsavel="").ok)  # responsável obrigatório
+        self.assertFalse(self._acao(self.admin, "nova_acao", texto="x", responsavel=str(self.ana.pk), prazo="2001-01-01").ok)
+        self.assertTrue(self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk), prazo=hoje).ok)
+        self.assertTrue(self._acao(self.admin, "nova_acao", texto="Validar", responsavel=str(self.bia.pk)).ok)
+        item = self._item(self.ana)
+        self.assertEqual(len(item.plano), 2)
+        self.assertEqual(item.responsaveis, ["ana", "bia"])
+        self.assertTrue(item.envolve_usuario and item.papel == "Responsável pela ação")
+        self.assertEqual(central.contar_ocorrencias(self.bia)["minhas"], 1)
+
+    def test_redirecionar_mantem_historico(self):
+        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk))
+        a1 = self._item(self.admin).plano[0]
+        self.assertFalse(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.bia.pk), texto="").ok)
+        self.assertFalse(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.ana.pk), texto="m").ok)
+        self.assertTrue(self._acao(self.ana, "redirecionar_acao", acao_id=a1.id, responsavel=str(self.bia.pk), texto="Férias").ok)
+        plano = self._item(self.admin).plano
+        self.assertEqual([p.status for p in plano], ["REDIRECIONADA", "ABERTA"])
+        self.assertEqual((plano[0].para, plano[1].de, plano[0].resultado), ("bia", "ana", "Férias"))
+        self.assertEqual(plano[1].responsavel, "bia")
+        self.assertEqual(central.contar_ocorrencias(self.ana)["minhas"], 0)
+        self.assertEqual(central.contar_ocorrencias(self.bia)["minhas"], 1)
+
+    def test_concluir_cancelar_e_bloqueio_de_encerramento(self):
+        from django.contrib.auth.models import User
+
+        comum = User.objects.create_user("comum", password="x")
+        self._acao(self.admin, "nova_acao", texto="A", responsavel=str(self.ana.pk))
+        aid = self._item(self.admin).plano[0].id
+        r = self._acao(self.admin, "encerrar", texto="ok")
+        self.assertFalse(r.ok)
+        self.assertIn("ações em aberto", r.msg)
+        self.assertFalse(self._acao(comum, "concluir_acao", acao_id=aid).ok)  # sem acesso à ocorrência
+        self.assertTrue(self._acao(self.ana, "concluir_acao", acao_id=aid, texto="feito").ok)
+        self.assertFalse(self._acao(self.ana, "concluir_acao", acao_id=aid).ok)  # já encerrada
+        self._acao(self.admin, "nova_acao", texto="B", responsavel=str(self.bia.pk))
+        bid = [p for p in self._item(self.admin).plano if p.status == "ABERTA"][0].id
+        self.assertTrue(self._acao(self.admin, "cancelar_acao", acao_id=bid, texto="desnecessária").ok)
+        self.assertTrue(self._acao(self.admin, "encerrar", texto="ok").ok)
+        # em ocorrência encerrada não há mais ação nova
+        self.assertFalse(self._acao(self.admin, "nova_acao", texto="C", responsavel=str(self.ana.pk)).ok)
+
+    def test_acao_aparece_na_caixa_de_entrada(self):
+        from shared.inbox import get_user_inbox_items
+
+        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk))
+        itens = [i for i in get_user_inbox_items(self.ana) if i.module == "Ocorrências"]
+        self.assertEqual(len(itens), 1)
+        self.assertIn("Trocar peça", itens[0].description)
+
+    def test_tela_exibe_plano_e_acoes(self):
+        self._acao(self.admin, "nova_acao", texto="Trocar peça", responsavel=str(self.ana.pk))
+        self.client.force_login(self.ana)
+        resp = self.client.get(reverse("ocorrencias_central"))
+        self.assertContains(resp, "Plano de ação")
+        self.assertContains(resp, "Trocar peça")
+        self.assertContains(resp, 'data-acao="redirecionar_acao"')
+        resp = self.client.post(reverse("ocorrencias_acao"), {
+            "uid": self.uid, "acao": "nova_acao", "texto": "Nova", "responsavel": self.bia.pk, "prazo": "", "next_qs": ""})
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(len(self._item(self.admin).plano), 2)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class OcorrenciaKpiTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        U = get_user_model()
+        self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
+        self.ana = U.objects.create_user("ana", password="x", is_superuser=True, is_staff=True)
+        from kpi.models import Indicador
+
+        self.ind = Indicador.objects.create(nome="Late Orders", meta=1, sentido="menor", periodicidade="mensal")
+        self.client.force_login(self.admin)
+
+    def _salvar(self, itens):
+        import json
+
+        return self.client.post(reverse("kpi:analise_salvar", args=[self.ind.pk]),
+                                {"gran": "mensal", "data": "2026-10-01", "setor": "", "itens": json.dumps(itens)})
+
+    def test_card_ocorrencia_cria_acao_e_entra_na_central_sem_perder_estado(self):
+        from kpi.models import AnaliseItem
+        from shared.models import AcaoOcorrencia
+
+        r = self._salvar([{"tipo": "comentario", "causa": "só um relato"},
+                          {"tipo": "ocorrencia", "causa": "falta de peça", "acao": "comprar", "responsavel": self.ana.pk}])
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["o"], 1)
+        card = AnaliseItem.objects.get(tipo="ocorrencia")
+        acao = AcaoOcorrencia.objects.get(origem="kpi", ocorrencia_id=card.pk)
+        self.assertEqual((acao.responsavel_id, acao.descricao), (self.ana.pk, "comprar"))
+        itens = central.listar_ocorrencias(self.ana, "abertas", "kpi")
+        self.assertEqual(len(itens), 1)  # o relato não vira ocorrência
+        self.assertTrue(itens[0].envolve_usuario)
+        self.assertIn("Late Orders", itens[0].titulo)
+
+        # resolver na central (após concluir a ação) e re-salvar o card no painel não perde a resolução
+        self.assertFalse(central.executar_acao(self.admin, itens[0].uid, "resolver", {"texto": "ok"}).ok)
+        a = itens[0].plano[0]
+        self.assertTrue(central.executar_acao(self.ana, itens[0].uid, "concluir_acao", {"acao_id": a.id}).ok)
+        self.assertTrue(central.executar_acao(self.admin, itens[0].uid, "resolver", {"texto": "ok"}).ok)
+        r = self._salvar([{"tipo": "ocorrencia", "id": card.pk, "causa": "falta de peça (editado)", "acao": "comprar"}])
+        self.assertEqual(r.status_code, 200, r.content)
+        card.refresh_from_db()
+        self.assertEqual((card.status, card.resolucao, card.causa), ("RESOLVIDA", "ok", "falta de peça (editado)"))
+        self.assertEqual(AcaoOcorrencia.objects.filter(origem="kpi", ocorrencia_id=card.pk).count(), 1)
+
+    def test_ocorrencia_exige_responsavel_e_remocao_limpa_plano(self):
+        from kpi.models import AnaliseItem
+        from shared.models import AcaoOcorrencia
+
+        self.assertEqual(self._salvar([{"tipo": "ocorrencia", "causa": "x"}]).status_code, 400)
+        self._salvar([{"tipo": "ocorrencia", "causa": "x", "responsavel": self.ana.pk}])
+        card = AnaliseItem.objects.get()
+        self._salvar([{"tipo": "comentario", "id": card.pk, "causa": "x"}])  # volta a ser relato
+        self.assertFalse(AcaoOcorrencia.objects.exists())
+        self._salvar([])
+        self.assertFalse(AnaliseItem.objects.exists())

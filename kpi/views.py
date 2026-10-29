@@ -6,6 +6,7 @@ from collections import OrderedDict
 from decimal import Decimal
 
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.utils.http import urlencode
@@ -233,6 +234,7 @@ def painel_view(request):
             'motivos': [g for g in ('diaria', 'semanal', 'mensal') if ind.permite_motivos(g)],
             'unidade': ind.unidade, 'setor': setor_id or '', 'setor_nome': setor.nome if setor else '',
             'resp_analise': _nome_usuario(pendencias.responsavel_do_escopo(ind, setor)),
+            'resp_analise_id': getattr(pendencias.responsavel_do_escopo(ind, setor), 'pk', ''),
         }
         charts[str(ind.pk)] = {g: _serie(ind, g, meds, meta) for g in ind.graficos()}
         analises_js[str(ind.pk)] = {}
@@ -266,6 +268,8 @@ def painel_view(request):
         'pode_excluir_dados': has_view_access(request.user, 'kpi:medicao_excluir'),
         'pode_analisar': has_view_access(request.user, 'kpi:analise_salvar'),
         'pode_dispensar': has_view_access(request.user, 'kpi:analise_dispensar'),
+        'usuarios_js': [{'id': u.pk, 'nome': _nome_usuario(u)}
+                        for u in User.objects.filter(is_active=True).order_by('first_name', 'username')],
     })
 
 
@@ -606,7 +610,7 @@ def _cards_sugeridos(ind, setor_id, gran, periodo):
     cards = []
 
     def de_registro(a, origem):
-        for it in a.itens.all():
+        for it in a.itens.all():  # sempre como relato: uma ocorrência não é duplicada nos períodos acima
             if it.causa.strip() or it.analise.strip() or it.acao.strip():
                 cards.append({'causa': it.causa, 'analise': it.analise, 'acao': it.acao,
                               'ocorrencias': list(it.ocorrencias.values_list('pk', flat=True)), 'origem': origem})
@@ -660,8 +664,13 @@ def _ocorrencias_periodo(gran, periodo):
 
 
 def _itens_json(registro):
-    return [{'causa': i.causa, 'analise': i.analise, 'acao': i.acao,
-             'ocorrencias': list(i.ocorrencias.values_list('pk', flat=True))} for i in registro.itens.all()]
+    from shared.ocorrencias import plano_resumo
+    return [{'id': i.pk, 'causa': i.causa, 'analise': i.analise, 'acao': i.acao,
+             'ocorrencias': list(i.ocorrencias.values_list('pk', flat=True)),
+             'tipo': i.tipo, 'plano': plano_resumo('kpi', i.pk) if i.tipo == i.TIPO_OCORRENCIA else None,
+             'status': i.status, 'resolucao': i.resolucao,
+             'resolvido_em': timezone.localtime(i.resolvido_em).strftime('%d/%m/%Y %H:%M') if i.resolvido_em else '',
+             'resolvido_por': _nome_usuario(i.resolvido_por)} for i in registro.itens.all()]
 
 
 def _resumo_registro(registro):
@@ -669,7 +678,9 @@ def _resumo_registro(registro):
     itens = list(registro.itens.all())
     primeira = next((i.causa for i in itens if i.causa.strip()), '')
     return {'c': (primeira or registro.causa)[:140], 'a': any(i.analise.strip() or i.acao.strip() for i in itens) or bool(registro.analise.strip()),
-            'n': len(itens), 'd': registro.dispensada, 'm': registro.motivo_dispensa}
+            'n': len(itens), 'd': registro.dispensada, 'm': registro.motivo_dispensa,
+            'o': sum(1 for i in itens if i.tipo == i.TIPO_OCORRENCIA),
+            'oa': sum(1 for i in itens if i.tipo == i.TIPO_OCORRENCIA and i.status == i.STATUS_ABERTA)}
 
 
 def _parametros_analise(request, ind, origem):
@@ -727,27 +738,79 @@ def _itens_do_post(post):
             raise ValueError('Cards inválidos.')
     else:
         lista = [{'causa': post.get('causa', ''), 'analise': post.get('analise', ''), 'acao': post.get('acao', '')}]
+    from kpi.models import AnaliseItem
+    from shared.ocorrencias import tem_acoes
     itens = []
     for i in lista[:50]:
         if not isinstance(i, dict):
             continue
         causa, analise, acao = (str(i.get(k, '')).strip() for k in ('causa', 'analise', 'acao'))
         ocs = [int(x) for x in (i.get('ocorrencias') or []) if str(x).isdigit()]
+        tipo = i.get('tipo') if i.get('tipo') in (AnaliseItem.TIPO_COMENTARIO, AnaliseItem.TIPO_OCORRENCIA) else AnaliseItem.TIPO_COMENTARIO
+        item = {'id': int(i['id']) if str(i.get('id', '')).isdigit() else None, 'tipo': tipo,
+                'causa': causa, 'analise': analise, 'acao': acao, 'ocorrencias': ocs, 'responsavel': None, 'prazo': None}
+        ja_tem_plano = bool(item['id']) and tem_acoes('kpi', item['id'])
+        if tipo == AnaliseItem.TIPO_OCORRENCIA:
+            if not (causa or analise or acao):
+                raise ValueError('Descreva a ocorrência (causa, análise ou ação).')
+            if not ja_tem_plano:  # a ocorrência nasce com a primeira ação do plano: responsável e prazo
+                rid = str(i.get('responsavel') or '')
+                item['responsavel'] = User.objects.filter(pk=rid, is_active=True).first() if rid.isdigit() else None
+                if item['responsavel'] is None:
+                    raise ValueError('Informe o responsável pela tratativa da ocorrência.')
+                try:
+                    item['prazo'] = datetime.date.fromisoformat(str(i.get('prazo') or '')) if i.get('prazo') else None
+                except ValueError:
+                    raise ValueError('Prazo da ocorrência inválido.')
+                if item['prazo'] and item['prazo'] < timezone.localdate():
+                    raise ValueError('O prazo da ocorrência não pode ser anterior a hoje.')
         if causa or analise or acao or ocs:
-            itens.append({'causa': causa, 'analise': analise, 'acao': acao, 'ocorrencias': ocs})
+            itens.append(item)
     return itens
 
 
 def _gravar_itens(registro, itens):
+    """Sincroniza os cards do registro. Cards com `id` são atualizados no lugar (preserva a situação e a
+    resolução de uma ocorrência); os sem `id` são criados e os que saíram da lista são removidos."""
+    from kpi.models import AnaliseItem
     from laboratorio.models import OcorrenciaLaboratorio
-    registro.itens.all().delete()
+    from shared.ocorrencias import criar_acao_inicial, limpar_acoes, tem_acoes
+    existentes = {i.pk: i for i in registro.itens.all()}
+    manter, afetados = set(), set()
     for n, i in enumerate(itens):
-        card = registro.itens.create(ordem=n, causa=i['causa'], analise=i['analise'], acao=i['acao'])
-        if i['ocorrencias']:
-            card.ocorrencias.set(OcorrenciaLaboratorio.objects.filter(pk__in=i['ocorrencias']))
+        card = existentes.get(i.get('id'))
+        if card is None or card.pk in manter:
+            card = AnaliseItem(registro=registro, criado_em=timezone.now())
+        card.ordem, card.causa, card.analise, card.acao = n, i['causa'], i['analise'], i['acao']
+        card.tipo = i.get('tipo') or AnaliseItem.TIPO_COMENTARIO
+        if card.tipo == AnaliseItem.TIPO_COMENTARIO:
+            card.status, card.resolucao, card.resolvido_em, card.resolvido_por = AnaliseItem.STATUS_ABERTA, '', None, None
+        card.save()
+        manter.add(card.pk)
+        if card.tipo == AnaliseItem.TIPO_OCORRENCIA:
+            if i.get('responsavel') and not tem_acoes('kpi', card.pk):
+                criar_acao_inicial('kpi', card.pk, card.acao or card.causa or card.analise, i['responsavel'],
+                                   i.get('prazo'), registro.registrado_por)
+                afetados.add(i['responsavel'].pk)
+        else:
+            limpar_acoes('kpi', [card.pk])  # voltou a ser relato: não há plano de ação
+        card.ocorrencias.set(OcorrenciaLaboratorio.objects.filter(pk__in=i['ocorrencias']))
+    for pk, card in existentes.items():
+        if pk not in manter:
+            limpar_acoes('kpi', [pk])
+            card.delete()
     primeiro = itens[0] if itens else {'causa': '', 'analise': ''}
     registro.causa, registro.analise = primeiro['causa'], primeiro['analise']  # resumo do primeiro card
     registro.save(update_fields=['causa', 'analise', 'atualizado_em'])
+    _invalidar_contagem_ocorrencias(afetados | {registro.registrado_por_id})
+
+
+def _invalidar_contagem_ocorrencias(user_ids):
+    """O selo da Central de Ocorrências é guardado em cache: descarta o de quem teve ocorrência criada/alterada."""
+    from shared.ocorrencias import invalidar_counts
+    for uid in user_ids:
+        if uid:
+            invalidar_counts(uid)
 
 
 @login_required
@@ -767,7 +830,11 @@ def analise_salvar_view(request, pk):
     if AnaliseCausa.objects.filter(**filtro, dispensada=True).exists():
         return JsonResponse({'erro': 'Este período está dispensado de análise. Reative-o para registrar causa e análise.'}, status=400)
     if not itens:
-        AnaliseCausa.objects.filter(**filtro).delete()
+        from shared.ocorrencias import limpar_acoes
+        antigos = AnaliseCausa.objects.filter(**filtro)
+        limpar_acoes('kpi', antigos.values_list('itens__pk', flat=True))
+        _invalidar_contagem_ocorrencias({request.user.pk})
+        antigos.delete()
         return JsonResponse({'ok': True, 'removida': True})
     registro, _ = AnaliseCausa.objects.get_or_create(**filtro, defaults={'registrado_por': request.user})
     registro.registrado_por = request.user
@@ -843,7 +910,7 @@ def analise_salvar_massa_view(request, pk):
             ignorados += 1
             continue
         registro = AnaliseCausa.objects.create(indicador=ind, setor=setor, granularidade=gran, periodo=p, registrado_por=request.user)
-        _gravar_itens(registro, [{'causa': causa, 'analise': analise, 'acao': request.POST.get('acao', '').strip(), 'ocorrencias': []}])
+        _gravar_itens(registro, [{'causa': causa, 'analise': analise, 'acao': request.POST.get('acao', '').strip(), 'ocorrencias': [], 'tipo': 'comentario'}])
         aplicados[p.isoformat()] = {'c': causa[:140], 'a': bool(analise), 'n': 1, 'd': False, 'm': ''}
     return JsonResponse({'ok': True, 'aplicados': aplicados, 'ignorados': ignorados})
 

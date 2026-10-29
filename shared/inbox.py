@@ -355,6 +355,34 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
         pass
 
     # =========================================================================
+    # 4.1 PLANO DE AÇÃO DE OCORRÊNCIAS (ações atribuídas ao usuário, de qualquer módulo)
+    # =========================================================================
+    try:
+        from shared.models import AcaoOcorrencia
+
+        nomes_origem = {"auditoria": "Auditoria", "laboratorio": "Laboratório", "pcp": "PCP",
+                        "metrologia": "Metrologia", "kpi": "KPI"}
+        for a in AcaoOcorrencia.objects.filter(responsavel=user, status="ABERTA").order_by("prazo", "criado_em")[:50]:
+            vencida = bool(a.prazo and a.prazo < hoje)
+            prazo_txt = f" · prazo {a.prazo:%d/%m/%Y}" if a.prazo else ""
+            items.append(
+                InboxItem(
+                    id=f"acao_ocorrencia_{a.id}",
+                    title=f"Ação de ocorrência atribuída a você ({nomes_origem.get(a.origem, a.origem)})",
+                    description=f"{a.descricao[:140]}{prazo_txt}",
+                    module="Ocorrências",
+                    icon="bi-exclamation-triangle",
+                    url=reverse("ocorrencias_central") + f"?aba=minhas&origem={a.origem}",
+                    action_text="Tratar",
+                    date=a.prazo or a.criado_em.date(),
+                    is_urgent=vencida,
+                    sub_type="Minhas ações",
+                )
+            )
+    except Exception:
+        pass
+
+    # =========================================================================
     # 5. TREINAMENTOS (Eficácia, Demandas por Liderança e Instrutor)
     # =========================================================================
     try:

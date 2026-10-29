@@ -1,6 +1,6 @@
 """Central de Ocorrências: visão única das ocorrências de todos os módulos.
 
-Cada origem (Auditoria, Laboratório, PCP, Metrologia) tem um adaptador que sabe:
+Cada origem (Auditoria, Laboratório, PCP, Metrologia, KPI) tem um adaptador que sabe:
   - quais ocorrências o usuário pode ver (mesmas regras de acesso das telas de origem);
   - quais envolvem o usuário (responsável, autor ou destinatário);
   - quais ações pode executar sem sair da central.
@@ -32,9 +32,32 @@ class Acao:
     label: str
     icon: str
     btn: str = "outline-primary"
-    campo: str = ""          # "" (sem formulário) | "texto" | "texto_destinatarios" | "responsavel"
+    campo: str = ""          # campos do formulário, separados por espaço: texto, dest, resp, prazo
     placeholder: str = ""
-    obrigatorio: bool = True
+    obrigatorio: bool = True  # o texto é obrigatório
+    resp_obrig: bool = False  # o responsável é obrigatório
+    acao_id: int = 0          # ação do plano alvo (concluir/redirecionar/cancelar)
+    rotulo: str = ""          # título do modal (padrão: label)
+
+
+@dataclass
+class AcaoPlano:
+    """Ação do plano de tratativa de uma ocorrência, pronta para exibir."""
+    id: int
+    descricao: str
+    responsavel: str
+    prazo: Optional[date]
+    vencida: bool
+    status: str
+    status_label: str
+    resultado: str
+    criado_por: str
+    criado_em: str
+    encerrada_em: str
+    encerrada_por: str
+    de: str = ""               # "redirecionada de <nome>" (nome do responsável anterior)
+    para: str = ""             # "redirecionada para <nome>"
+    acoes: list = field(default_factory=list)
 
 
 @dataclass
@@ -56,6 +79,7 @@ class OcorrenciaItem:
     historico: list[tuple[str, str, str]] = field(default_factory=list)  # (quando, quem, texto)
     url_origem: str = ""
     acoes: list[Acao] = field(default_factory=list)
+    plano: list[AcaoPlano] = field(default_factory=list)
 
     @property
     def data_ordem(self) -> datetime:
@@ -382,9 +406,9 @@ class OrigemMetrologia(_Origem):
         acoes = []
         if self.pode(user, "metrologia:adicionar_mensagem_ocorrencia"):
             acoes.append(Acao("mensagem", "Mensagem", "bi-chat-left-text", "outline-primary",
-                              "texto_destinatarios", "Escreva a mensagem de tratativa"))
+                              "texto dest", "Escreva a mensagem de tratativa"))
         if self.pode(user, "metrologia:atribuir_responsavel_ocorrencia"):
-            acoes.append(Acao("atribuir", "Atribuir", "bi-person-check", "outline-secondary", "responsavel",
+            acoes.append(Acao("atribuir", "Responsável geral", "bi-person-check", "outline-secondary", "resp",
                               obrigatorio=False))
         if aberta and self.pode(user, "metrologia:encerrar_ocorrencia"):
             acoes.append(Acao("encerrar", "Encerrar", "bi-check2-circle", "success"))
@@ -458,9 +482,282 @@ class OrigemMetrologia(_Origem):
         return ResultadoAcao(False, "Ação inválida.")
 
 
+class OrigemKpi(_Origem):
+    """Cards de causa/análise dos indicadores fora da meta marcados como ocorrência (os relatos não entram)."""
+    key, nome, icon = "kpi", "KPI", "bi-speedometer2"
+
+    def base_qs(self, user):
+        from kpi.models import AnaliseItem
+
+        if not _can(user, "kpi", "kpi:painel"):
+            return AnaliseItem.objects.none()
+        return AnaliseItem.objects.filter(
+            tipo=AnaliseItem.TIPO_OCORRENCIA, registro__indicador__ativo=True, registro__dispensada=False
+        ).select_related("registro__indicador", "registro__setor", "registro__registrado_por", "resolvido_por")
+
+    def aberta_q(self):
+        return Q(status="ABERTA")
+
+    def mine_q(self, user):
+        return Q(registro__registrado_por=user)
+
+    def _pode_editar(self, user) -> bool:
+        return self.pode(user, "kpi:analise_salvar")
+
+    def to_item(self, it, user, mine_ids):
+        from kpi.views import _rotulo_longo
+
+        reg = it.registro
+        aberta = it.status == "ABERTA"
+        papel = "Autor" if reg.registrado_por_id == user.pk else ""
+        titulo = f"{reg.indicador.nome} — {_rotulo_longo(reg.granularidade, reg.periodo)}"
+        if reg.setor_id:
+            titulo += f" · {reg.setor.nome}"
+        principal = (it.acao or it.causa or it.analise or "").strip()
+        detalhes = [(rot, txt) for rot, txt in (("Causa", it.causa), ("Análise", it.analise)) if txt and txt != principal]
+        historico = []
+        if it.resolucao:
+            historico.append((_fmt_dt(it.resolvido_em), _nome_user(it.resolvido_por), it.resolucao))
+        acoes = []
+        if self._pode_editar(user):
+            if aberta:
+                acoes.append(Acao("resolver", "Resolver", "bi-check2-circle", "success", "texto",
+                                  "Descreva como a ocorrência foi tratada", obrigatorio=False))
+            else:
+                acoes.append(Acao("reabrir", "Reabrir", "bi-arrow-counterclockwise", "outline-secondary"))
+        return OcorrenciaItem(
+            uid=f"{self.key}:{it.pk}", origem=self.key, origem_nome=self.nome, icon=self.icon,
+            titulo=titulo, descricao=principal,
+            status=STATUS_ABERTA if aberta else STATUS_ENCERRADA,
+            data=it.criado_em, envolve_usuario=papel != "", papel=papel,
+            detalhes=detalhes, historico=historico,
+            url_origem=reverse("kpi:painel") + f"?ind={reg.indicador_id}", acoes=acoes,
+        )
+
+    def executar(self, user, it, acao, dados):
+        if not self._pode_editar(user):
+            return ResultadoAcao(False, "Você não tem permissão para tratar ocorrências de KPI.")
+        if acao == "resolver":
+            if it.status == "RESOLVIDA":
+                return ResultadoAcao(False, "A ocorrência já está resolvida.")
+            it.status, it.resolucao = "RESOLVIDA", (dados.get("texto") or "").strip()
+            it.resolvido_em, it.resolvido_por = timezone.now(), user
+            it.save(update_fields=["status", "resolucao", "resolvido_em", "resolvido_por"])
+            return ResultadoAcao(True, "Ocorrência de KPI marcada como resolvida.")
+        if acao == "reabrir":
+            it.status, it.resolvido_em, it.resolvido_por = "ABERTA", None, None
+            it.save(update_fields=["status", "resolvido_em", "resolvido_por"])
+            return ResultadoAcao(True, "Ocorrência de KPI reaberta.")
+        return ResultadoAcao(False, "Ação inválida.")
+
+
 ORIGENS: dict[str, _Origem] = {o.key: o for o in (
-    OrigemAuditoria(), OrigemLaboratorio(), OrigemPcp(), OrigemMetrologia(),
+    OrigemAuditoria(), OrigemLaboratorio(), OrigemPcp(), OrigemMetrologia(), OrigemKpi(),
 )}
+
+
+# ---------------------------------------------------------------------------
+# Plano de ação: várias ações por ocorrência, cada uma com responsável e prazo
+# ---------------------------------------------------------------------------
+ACOES_PLANO = {"nova_acao", "concluir_acao", "redirecionar_acao", "cancelar_acao"}
+ACOES_QUE_ENCERRAM = {"resolver", "encerrar", "tratar"}  # exigem o plano sem ações em aberto
+
+
+def _eh_admin(user) -> bool:
+    return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+
+
+def _invalidar_usuarios(*users) -> None:
+    for u in users:
+        if u is None:
+            continue
+        invalidar_counts(u)
+        invalidar_cache_inbox(u)
+
+
+def _mine_filter(orig: _Origem, user) -> Q:
+    """Ocorrências que envolvem o usuário: pelo vínculo da origem ou por ter uma ação em aberto no plano."""
+    from shared.models import AcaoOcorrencia
+
+    ids = set(AcaoOcorrencia.objects.filter(
+        origem=orig.key, responsavel=user, status=AcaoOcorrencia.ABERTA).values_list("ocorrencia_id", flat=True))
+    q = orig.mine_q(user)
+    return (q | Q(pk__in=ids)) if ids else q
+
+
+def _montar_plano(acoes_raw, user, ocorrencia_aberta: bool) -> list[AcaoPlano]:
+    from shared.models import AcaoOcorrencia as A
+
+    hoje = timezone.localdate()
+    filhas = {a.origem_acao_id: a for a in acoes_raw if a.origem_acao_id}
+    por_id = {a.pk: a for a in acoes_raw}
+    plano = []
+    for a in acoes_raw:
+        aberta = a.status == A.ABERTA
+        pode_gerir = _eh_admin(user) or a.responsavel_id == user.pk or a.criado_por_id == user.pk
+        botoes = []
+        if aberta and ocorrencia_aberta:
+            if pode_gerir:
+                botoes.append(Acao("concluir_acao", "Concluir", "bi-check2", "outline-success", "texto",
+                                   "Resultado da ação (opcional)", obrigatorio=False, acao_id=a.pk,
+                                   rotulo="Concluir ação"))
+                botoes.append(Acao("redirecionar_acao", "Redirecionar", "bi-arrow-right-circle",
+                                   "outline-primary", "texto resp prazo", "Motivo do redirecionamento",
+                                   resp_obrig=True, acao_id=a.pk, rotulo="Redirecionar ação"))
+            if _eh_admin(user) or a.criado_por_id == user.pk:
+                botoes.append(Acao("cancelar_acao", "Cancelar", "bi-x-circle", "outline-danger", "texto",
+                                   "Motivo do cancelamento", acao_id=a.pk, rotulo="Cancelar ação"))
+        anterior = por_id.get(a.origem_acao_id)
+        filha = filhas.get(a.pk)
+        plano.append(AcaoPlano(
+            id=a.pk, descricao=a.descricao, responsavel=_nome_user(a.responsavel) or "Sem responsável",
+            prazo=a.prazo, vencida=bool(aberta and a.prazo and a.prazo < hoje),
+            status=a.status, status_label=a.get_status_display(), resultado=a.resultado,
+            criado_por=_nome_user(a.criado_por), criado_em=_fmt_dt(a.criado_em),
+            encerrada_em=_fmt_dt(a.encerrada_em), encerrada_por=_nome_user(a.encerrada_por),
+            de=_nome_user(anterior.responsavel) if anterior else "",
+            para=_nome_user(filha.responsavel) if filha else "", acoes=botoes,
+        ))
+    return plano
+
+
+def _aplicar_plano(item: OcorrenciaItem, acoes_raw, user) -> None:
+    """Anexa o plano ao item e deriva responsáveis, prazo, atraso e envolvimento a partir das ações em aberto."""
+    from shared.models import AcaoOcorrencia as A
+
+    aberta = item.status == STATUS_ABERTA
+    item.plano = _montar_plano(acoes_raw, user, aberta)
+    em_aberto = [a for a in acoes_raw if a.status == A.ABERTA]
+    for a in em_aberto:
+        nome = _nome_user(a.responsavel)
+        if nome and nome not in item.responsaveis:
+            item.responsaveis.append(nome)
+        if a.responsavel_id == user.pk:
+            item.envolve_usuario = True
+            if item.papel in ("", "Envolvido"):
+                item.papel = "Responsável pela ação"
+    prazos = [a.prazo for a in em_aberto if a.prazo]
+    if prazos:
+        proximo = min(prazos)
+        item.prazo = min(item.prazo, proximo) if item.prazo else proximo
+    if aberta and any(p.vencida for p in item.plano):
+        item.vencida = True
+    if aberta:
+        item.acoes.append(Acao("nova_acao", "Nova ação", "bi-plus-circle", "outline-dark", "texto resp prazo",
+                               "Descreva a ação a realizar", resp_obrig=True, rotulo="Nova ação"))
+
+
+def _data_valida(bruto):
+    bruto = (bruto or "").strip()
+    if not bruto:
+        return None, None
+    try:
+        d = date.fromisoformat(bruto)
+    except ValueError:
+        return None, "Prazo inválido."
+    if d < timezone.localdate():
+        return None, "O prazo não pode ser anterior a hoje."
+    return d, None
+
+
+def _executar_plano(user, key: str, obj, acao: str, dados: dict) -> ResultadoAcao:
+    from django.contrib.auth.models import User
+    from shared.models import AcaoOcorrencia as A
+
+    texto = (dados.get("texto") or "").strip()
+    if acao == "nova_acao":
+        if not texto:
+            return ResultadoAcao(False, "Descreva a ação a realizar.")
+        rid = str(dados.get("responsavel") or "")
+        resp = User.objects.filter(pk=rid, is_active=True).first() if rid.isdigit() else None
+        if resp is None:
+            return ResultadoAcao(False, "Defina o responsável pela ação.")
+        prazo, erro = _data_valida(dados.get("prazo"))
+        if erro:
+            return ResultadoAcao(False, erro)
+        A.objects.create(origem=key, ocorrencia_id=obj.pk, descricao=texto, responsavel=resp, prazo=prazo,
+                         criado_por=user)
+        _invalidar_usuarios(resp, user)
+        return ResultadoAcao(True, f"Ação atribuída a {_nome_user(resp)}.")
+
+    aid = str(dados.get("acao_id") or "")
+    a = A.objects.filter(pk=aid, origem=key, ocorrencia_id=obj.pk, status=A.ABERTA).first() if aid.isdigit() else None
+    if a is None:
+        return ResultadoAcao(False, "Ação não encontrada ou já encerrada.")
+    pode_gerir = _eh_admin(user) or a.responsavel_id == user.pk or a.criado_por_id == user.pk
+    agora = timezone.now()
+    antigo = a.responsavel
+
+    if acao == "cancelar_acao":
+        if not (_eh_admin(user) or a.criado_por_id == user.pk):
+            return ResultadoAcao(False, "Apenas quem criou a ação (ou um administrador) pode cancelá-la.")
+        if not texto:
+            return ResultadoAcao(False, "Informe o motivo do cancelamento.")
+        a.status, a.resultado, a.encerrada_em, a.encerrada_por = A.CANCELADA, texto, agora, user
+        a.save()
+        _invalidar_usuarios(antigo, user)
+        return ResultadoAcao(True, "Ação cancelada.")
+
+    if not pode_gerir:
+        return ResultadoAcao(False, "Apenas o responsável pela ação, quem a criou ou um administrador pode alterá-la.")
+    if acao == "concluir_acao":
+        a.status, a.resultado, a.encerrada_em, a.encerrada_por = A.CONCLUIDA, texto, agora, user
+        a.save()
+        _invalidar_usuarios(antigo, user)
+        return ResultadoAcao(True, "Ação concluída.")
+    if acao == "redirecionar_acao":
+        rid = str(dados.get("responsavel") or "")
+        novo = User.objects.filter(pk=rid, is_active=True).first() if rid.isdigit() else None
+        if novo is None:
+            return ResultadoAcao(False, "Selecione o novo responsável.")
+        if novo.pk == a.responsavel_id:
+            return ResultadoAcao(False, "Selecione um responsável diferente do atual.")
+        if not texto:
+            return ResultadoAcao(False, "Informe o motivo do redirecionamento.")
+        prazo, erro = _data_valida(dados.get("prazo"))
+        if erro:
+            return ResultadoAcao(False, erro)
+        a.status, a.resultado, a.encerrada_em, a.encerrada_por = A.REDIRECIONADA, texto, agora, user
+        a.save()
+        A.objects.create(origem=key, ocorrencia_id=obj.pk, descricao=a.descricao, responsavel=novo,
+                         prazo=prazo or a.prazo, origem_acao=a, criado_por=user)
+        _invalidar_usuarios(antigo, novo, user)
+        return ResultadoAcao(True, f"Ação redirecionada para {_nome_user(novo)}.")
+    return ResultadoAcao(False, "Ação inválida.")
+
+
+def limpar_acoes(origem: str, ocorrencia_ids) -> None:
+    """Remove o plano das ocorrências excluídas na origem (evita ações órfãs)."""
+    from shared.models import AcaoOcorrencia
+
+    ids = [i for i in ocorrencia_ids if i]
+    if ids:
+        AcaoOcorrencia.objects.filter(origem=origem, ocorrencia_id__in=ids).delete()
+
+
+def criar_acao_inicial(origem: str, ocorrencia_id: int, descricao: str, responsavel, prazo, criado_por) -> None:
+    """Primeira ação do plano, criada junto com a ocorrência (ex.: card de KPI marcado como ocorrência)."""
+    from shared.models import AcaoOcorrencia
+
+    AcaoOcorrencia.objects.create(origem=origem, ocorrencia_id=ocorrencia_id, descricao=descricao,
+                                  responsavel=responsavel, prazo=prazo, criado_por=criado_por)
+    _invalidar_usuarios(responsavel, criado_por)
+
+
+def tem_acoes(origem: str, ocorrencia_id: int) -> bool:
+    from shared.models import AcaoOcorrencia
+
+    return AcaoOcorrencia.objects.filter(origem=origem, ocorrencia_id=ocorrencia_id).exists()
+
+
+def plano_resumo(origem: str, ocorrencia_id: int) -> dict:
+    """Ação em aberto mais antiga (responsável e prazo) para exibir fora da Central."""
+    from shared.models import AcaoOcorrencia
+
+    a = (AcaoOcorrencia.objects.filter(origem=origem, ocorrencia_id=ocorrencia_id, status=AcaoOcorrencia.ABERTA)
+         .select_related("responsavel").first())
+    return {"responsavel": a.responsavel_id or "", "prazo": a.prazo.isoformat() if a and a.prazo else "",
+            "nome": _nome_user(a.responsavel)} if a else {"responsavel": "", "prazo": "", "nome": ""}
 
 
 # ---------------------------------------------------------------------------
@@ -491,7 +788,7 @@ def contar_ocorrencias(user: Any) -> dict[str, int]:
         try:
             qs = origem.base_qs(user).filter(origem.aberta_q())
             abertas += qs.distinct().count()
-            minhas += qs.filter(origem.mine_q(user)).distinct().count()
+            minhas += qs.filter(_mine_filter(origem, user)).distinct().count()
         except Exception:
             continue
     dados = {"minhas": minhas, "abertas": abertas}
@@ -501,6 +798,8 @@ def contar_ocorrencias(user: Any) -> dict[str, int]:
 
 def listar_ocorrencias(user: Any, status: str = "abertas", origem: str = "") -> list[OcorrenciaItem]:
     """Ocorrências visíveis ao usuário, as que o envolvem primeiro (depois vencidas, depois as mais antigas)."""
+    from shared.models import AcaoOcorrencia
+
     itens: list[OcorrenciaItem] = []
     for key, orig in ORIGENS.items():
         if origem and origem != key:
@@ -508,12 +807,18 @@ def listar_ocorrencias(user: Any, status: str = "abertas", origem: str = "") -> 
         try:
             qs = orig.base_qs(user)
             qs = qs.filter(orig.aberta_q()) if status != "encerradas" else qs.exclude(orig.aberta_q())
-            mine_ids = set(qs.filter(orig.mine_q(user)).values_list("pk", flat=True))
-            for obj in qs.order_by("-pk")[:300]:
+            mine_ids = set(qs.filter(_mine_filter(orig, user)).values_list("pk", flat=True))
+            objs = list(qs.order_by("-pk")[:300])
+            planos: dict[int, list] = {}
+            for a in AcaoOcorrencia.objects.filter(origem=key, ocorrencia_id__in=[o.pk for o in objs]).select_related(
+                    "responsavel", "criado_por", "encerrada_por"):
+                planos.setdefault(a.ocorrencia_id, []).append(a)
+            for obj in objs:
                 item = orig.to_item(obj, user, mine_ids)
                 item.envolve_usuario = item.envolve_usuario or obj.pk in mine_ids
                 if item.envolve_usuario and not item.papel:
                     item.papel = "Envolvido"
+                _aplicar_plano(item, planos.get(obj.pk, []), user)
                 itens.append(item)
         except Exception:
             continue
@@ -528,12 +833,26 @@ def executar_acao(user: Any, uid: str, acao: str, dados: dict) -> ResultadoAcao:
     orig = ORIGENS.get(key)
     if not orig or not pk.isdigit():
         return ResultadoAcao(False, "Ocorrência inválida.")
-    obj = orig.base_qs(user).filter(pk=int(pk)).first()
+    visiveis = orig.base_qs(user)
+    obj = visiveis.filter(pk=int(pk)).first()
     if obj is None:
         return ResultadoAcao(False, "Ocorrência não encontrada ou sem acesso.")
-    res = orig.executar(user, obj, acao, dados)
+    if acao in ACOES_PLANO:
+        if acao == "nova_acao" and not visiveis.filter(orig.aberta_q(), pk=obj.pk).exists():
+            return ResultadoAcao(False, "Só é possível atribuir ações a ocorrências em aberto.")
+        res = _executar_plano(user, key, obj, acao, dados)
+    else:
+        if acao in ACOES_QUE_ENCERRAM and _tem_acao_aberta(key, obj.pk):
+            return ResultadoAcao(
+                False, "Conclua, redirecione ou cancele as ações em aberto do plano antes de encerrar a ocorrência.")
+        res = orig.executar(user, obj, acao, dados)
     if res.ok:
         invalidar_counts()
-        invalidar_counts(user)
-        invalidar_cache_inbox(user)
+        _invalidar_usuarios(user)
     return res
+
+
+def _tem_acao_aberta(key: str, pk: int) -> bool:
+    from shared.models import AcaoOcorrencia
+
+    return AcaoOcorrencia.objects.filter(origem=key, ocorrencia_id=pk, status=AcaoOcorrencia.ABERTA).exists()

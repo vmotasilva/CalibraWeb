@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils import timezone
 
 
 class Indicador(models.Model):
@@ -196,6 +197,19 @@ class AnaliseItem(models.Model):
     acao = models.TextField('Ação', blank=True)
     ocorrencias = models.ManyToManyField('laboratorio.OcorrenciaLaboratorio', blank=True, related_name='+',
                                          verbose_name='Ocorrências do laboratório que afetaram o indicador')
+
+    # Um card é um relato (comentário) ou uma ocorrência: esta tem plano de ação (ações com responsável e
+    # prazo, em shared.AcaoOcorrencia) e é acompanhada até a resolução na Central de Ocorrências.
+    TIPO_COMENTARIO, TIPO_OCORRENCIA = 'comentario', 'ocorrencia'
+    TIPOS = [(TIPO_COMENTARIO, 'Relato'), (TIPO_OCORRENCIA, 'Ocorrência')]
+    STATUS_ABERTA, STATUS_RESOLVIDA = 'ABERTA', 'RESOLVIDA'
+    STATUS = [(STATUS_ABERTA, 'Em aberto'), (STATUS_RESOLVIDA, 'Resolvida')]
+    tipo = models.CharField('Tipo', max_length=10, choices=TIPOS, default=TIPO_COMENTARIO, db_index=True)
+    status = models.CharField('Situação', max_length=10, choices=STATUS, default=STATUS_ABERTA, db_index=True)
+    resolucao = models.TextField('Resolução', blank=True)
+    resolvido_em = models.DateTimeField(null=True, blank=True)
+    resolvido_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(default=timezone.now)
 
     class Meta:
         ordering = ['ordem', 'id']
