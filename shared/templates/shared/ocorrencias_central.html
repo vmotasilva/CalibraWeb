@@ -4,7 +4,8 @@
 
 {% block content %}
 <style>
-    .oc-card { border: 1px solid #e2e8f0; border-left: 4px solid #94a3b8; border-radius: 12px; background: #fff; }
+    .oc-card { border: 1px solid #e2e8f0; border-left: 4px solid #94a3b8; border-radius: 12px; background: #fff; cursor: pointer; transition: box-shadow .15s, transform .15s; }
+    .oc-card:hover, .oc-card:focus-visible { box-shadow: 0 6px 18px rgba(15, 23, 42, .12); transform: translateY(-1px); outline: none; }
     .oc-card.mine { border-left-color: #f59e0b; background: #fffdf5; }
     .oc-card.vencida { border-left-color: #dc2626; }
     .oc-card.fechada { opacity: .85; border-left-color: #16a34a; }
@@ -17,23 +18,26 @@
     .oc-acao.CONCLUIDA { border-left-color: #16a34a; }
     .oc-acao.REDIRECIONADA { border-left-color: #f59e0b; }
     .oc-acao.CANCELADA { opacity: .65; }
+    .oc-det dt { font-size: .75rem; text-transform: uppercase; letter-spacing: .03em; color: #64748b; margin-top: .6rem; }
+    .oc-det dd { margin-bottom: 0; white-space: pre-line; }
     .oc-pill { border: 1px solid #e2e8f0; background: #fff; color: #475569; border-radius: 24px; padding: 6px 14px;
                font-size: .88rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
     .oc-pill.active { background: #0f172a; color: #fff; border-color: #0f172a; }
     .oc-pill.active .badge { background: rgba(255,255,255,.25) !important; color: #fff !important; }
+    .oc-pill.atraso { border-color: #fecaca; color: #b91c1c; background: #fef2f2; }
+    .oc-pill.atraso.active { background: #dc2626; border-color: #dc2626; color: #fff; }
 </style>
 
 <div class="container-fluid px-0 py-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
         <div>
             <h3 class="mb-1"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Central de Ocorrências</h3>
-            <div class="text-muted small">Todas as ocorrências do sistema em um só lugar. Trate-as aqui, sem sair da tela.
-                {% if total_vencidas %}<span class="badge bg-danger ms-1">{{ total_vencidas }} com prazo vencido</span>{% endif %}
-            </div>
+            <div class="text-muted small">Todas as ocorrências do sistema em um só lugar. Clique em uma ocorrência para ver os detalhes e tratá-la, sem sair da tela.</div>
         </div>
         <form method="get" class="d-flex gap-2">
             <input type="hidden" name="aba" value="{{ aba }}">
             {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
+            {% if atraso %}<input type="hidden" name="atraso" value="1">{% endif %}
             <input type="search" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Buscar ocorrência..." style="min-width:240px;">
             <button class="btn btn-sm btn-dark"><i class="bi bi-search"></i></button>
         </form>
@@ -41,58 +45,77 @@
 
     <div class="d-flex flex-wrap gap-2 mb-2">
         {% for key, nome, total in abas %}
-            <a class="oc-pill {% if aba == key %}active{% endif %}" href="?aba={{ key }}{% if origem %}&origem={{ origem }}{% endif %}">
+            <a class="oc-pill {% if aba == key %}active{% endif %}" href="?aba={{ key }}{% if origem %}&origem={{ origem }}{% endif %}{% if atraso and key != 'encerradas' %}&atraso=1{% endif %}">
                 {{ nome }}{% if total is not None %} <span class="badge bg-secondary rounded-pill">{{ total }}</span>{% endif %}
             </a>
         {% endfor %}
+        {% if aba != 'encerradas' %}
+            <a class="oc-pill atraso {% if atraso %}active{% endif %}" title="Mostrar somente ocorrências com prazo vencido (da ocorrência ou de alguma ação)"
+               href="?aba={{ aba }}{% if origem %}&origem={{ origem }}{% endif %}{% if not atraso %}&atraso=1{% endif %}">
+                <i class="bi bi-alarm me-1"></i>Em atraso <span class="badge {% if atraso %}bg-light text-danger{% else %}bg-danger{% endif %} rounded-pill">{{ total_vencidas }}</span>
+            </a>
+        {% endif %}
     </div>
     <div class="d-flex flex-wrap gap-2 mb-4">
-        <a class="oc-pill {% if not origem %}active{% endif %}" href="?aba={{ aba }}">Todas as origens</a>
+        <a class="oc-pill {% if not origem %}active{% endif %}" href="?aba={{ aba }}{% if atraso %}&atraso=1{% endif %}">Todas as origens</a>
         {% for key, nome, icon, total in origens %}
-            <a class="oc-pill {% if origem == key %}active{% endif %}" href="?aba={{ aba }}&origem={{ key }}">
+            <a class="oc-pill {% if origem == key %}active{% endif %}" href="?aba={{ aba }}&origem={{ key }}{% if atraso %}&atraso=1{% endif %}">
                 <i class="bi {{ icon }} me-1"></i>{{ nome }} <span class="badge bg-secondary rounded-pill">{{ total }}</span>
             </a>
         {% endfor %}
     </div>
 
     {% for oc in itens %}
-        <div class="oc-card mb-3 p-3 {% if oc.envolve_usuario and oc.status == 'aberta' %}mine{% endif %} {% if oc.vencida %}vencida{% endif %} {% if oc.status == 'encerrada' %}fechada{% endif %}">
-            <div class="d-flex flex-wrap justify-content-between gap-2">
-                <div class="flex-grow-1" style="min-width:0;">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                        <span class="badge text-bg-dark"><i class="bi {{ oc.icon }} me-1"></i>{{ oc.origem_nome }}</span>
-                        {% if oc.envolve_usuario %}<span class="badge text-bg-warning"><i class="bi bi-person-fill me-1"></i>{{ oc.papel }}</span>{% endif %}
-                        {% if oc.status == 'encerrada' %}<span class="badge text-bg-success">Encerrada</span>{% else %}<span class="badge text-bg-primary">Em aberto</span>{% endif %}
-                        {% if oc.vencida %}<span class="badge text-bg-danger">Prazo vencido</span>{% endif %}
-                        <span class="text-muted small">{{ oc.data|date:"d/m/Y" }}{% if oc.prazo %} · prazo {{ oc.prazo|date:"d/m/Y" }}{% endif %}</span>
-                    </div>
-                    <div class="fw-bold">{{ oc.titulo }}</div>
-                    {% if oc.descricao %}<div class="oc-desc mt-1">{{ oc.descricao|truncatechars:400 }}</div>{% endif %}
-                    <div class="small text-muted mt-2">
-                        {% if oc.responsaveis %}<i class="bi bi-people me-1"></i>{{ oc.responsaveis|join:", " }}{% else %}<i class="bi bi-person-dash me-1"></i>Sem responsável{% endif %}
-                        {% for rot, val in oc.detalhes %}
-                            <span class="ms-3"><strong>{{ rot }}:</strong> {{ val|truncatechars:120 }}</span>
-                        {% endfor %}
-                    </div>
-                </div>
-                <div class="d-flex flex-wrap align-content-start justify-content-end gap-2">
-                    {% for a in oc.acoes %}
+        <div class="oc-card mb-3 p-3 {% if oc.envolve_usuario and oc.status == 'aberta' %}mine{% endif %} {% if oc.vencida %}vencida{% endif %} {% if oc.status == 'encerrada' %}fechada{% endif %}"
+             role="button" tabindex="0" data-oc-abrir="{{ oc.uid }}" title="Clique para abrir">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+                <span class="badge text-bg-dark"><i class="bi {{ oc.icon }} me-1"></i>{{ oc.origem_nome }}</span>
+                {% if oc.envolve_usuario %}<span class="badge text-bg-warning"><i class="bi bi-person-fill me-1"></i>{{ oc.papel }}</span>{% endif %}
+                {% if oc.status == 'encerrada' %}<span class="badge text-bg-success">Encerrada</span>{% else %}<span class="badge text-bg-primary">Em aberto</span>{% endif %}
+                {% if oc.vencida %}<span class="badge text-bg-danger"><i class="bi bi-alarm me-1"></i>Em atraso</span>{% endif %}
+                <span class="text-muted small">{{ oc.data|date:"d/m/Y" }}{% if oc.prazo %} · prazo {{ oc.prazo|date:"d/m/Y" }}{% endif %}</span>
+            </div>
+            <div class="fw-bold">{{ oc.titulo }}</div>
+            {% if oc.descricao %}<div class="oc-desc mt-1">{{ oc.descricao|truncatechars:220 }}</div>{% endif %}
+            <div class="d-flex flex-wrap justify-content-between gap-2 small text-muted mt-2">
+                <span>
+                    {% if oc.responsaveis %}<i class="bi bi-people me-1"></i>{{ oc.responsaveis|join:", "|truncatechars:140 }}{% else %}<i class="bi bi-person-dash me-1"></i>Sem responsável{% endif %}
+                </span>
+                <span>
+                    <i class="bi bi-list-check me-1"></i>{{ oc.plano|length }} ação(ões){% if oc.acoes_abertas %} · <strong class="text-primary">{{ oc.acoes_abertas }} em aberto</strong>{% endif %}
+                    <i class="bi bi-chevron-right ms-2"></i>
+                </span>
+            </div>
+        </div>
+
+        {# Conteúdo do pop-up (clonado para o modal ao clicar no card) #}
+        <template data-oc-detalhe="{{ oc.uid }}"
+                  data-titulo="{{ oc.titulo }}" data-origem="{{ oc.origem_nome }}" data-icon="{{ oc.icon }}">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                {% if oc.envolve_usuario %}<span class="badge text-bg-warning"><i class="bi bi-person-fill me-1"></i>{{ oc.papel }}</span>{% endif %}
+                {% if oc.status == 'encerrada' %}<span class="badge text-bg-success">Encerrada</span>{% else %}<span class="badge text-bg-primary">Em aberto</span>{% endif %}
+                {% if oc.vencida %}<span class="badge text-bg-danger"><i class="bi bi-alarm me-1"></i>Em atraso</span>{% endif %}
+                <span class="text-muted small">Aberta em {{ oc.data|date:"d/m/Y" }}{% if oc.prazo %} · prazo {{ oc.prazo|date:"d/m/Y" }}{% endif %}</span>
+            </div>
+
+            <dl class="oc-det mb-0">
+                {% if oc.descricao %}<dt>Descrição</dt><dd>{{ oc.descricao }}</dd>{% endif %}
+                {% for rot, val in oc.detalhes %}<dt>{{ rot }}</dt><dd>{{ val }}</dd>{% endfor %}
+                <dt>Responsáveis</dt>
+                <dd>{% if oc.responsaveis %}{{ oc.responsaveis|join:", " }}{% else %}<span class="text-muted">Sem responsável definido</span>{% endif %}</dd>
+            </dl>
+
+            <div class="oc-plano">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-bold"><i class="bi bi-list-check me-1"></i>Plano de ação {% if oc.plano %}<span class="fw-normal text-muted">({{ oc.plano|length }})</span>{% endif %}</div>
+                    {% for a in oc.acoes %}{% if a.key == 'nova_acao' %}
                         <button type="button" class="btn btn-sm btn-{{ a.btn }}" data-oc-acao
-                                data-uid="{{ oc.uid }}" data-acao="{{ a.key }}" data-label="{{ a.label }}"
+                                data-uid="{{ oc.uid }}" data-acao="{{ a.key }}" data-label="{{ a.rotulo|default:a.label }}"
                                 data-campo="{{ a.campo }}" data-placeholder="{{ a.placeholder }}" data-acao-id="{{ a.acao_id }}"
                                 data-obrigatorio="{{ a.obrigatorio|yesno:'1,0' }}" data-resp-obrig="{{ a.resp_obrig|yesno:'1,0' }}"
-                                data-titulo="{{ oc.titulo|truncatechars:80 }}">
-                            <i class="bi {{ a.icon }} me-1"></i>{{ a.label }}
-                        </button>
-                    {% endfor %}
-                    {% if oc.url_origem %}
-                        <a class="btn btn-sm btn-outline-dark" href="{{ oc.url_origem }}" title="Abrir na tela de origem"><i class="bi bi-box-arrow-up-right"></i></a>
-                    {% endif %}
+                                data-titulo="{{ oc.titulo|truncatechars:80 }}"><i class="bi {{ a.icon }} me-1"></i>{{ a.label }}</button>
+                    {% endif %}{% endfor %}
                 </div>
-            </div>
-            <div class="oc-plano">
-                <div class="small fw-bold text-muted mb-1"><i class="bi bi-list-check me-1"></i>Plano de ação
-                    {% if oc.plano %}<span class="fw-normal">({{ oc.plano|length }})</span>{% endif %}</div>
                 {% for p in oc.plano %}
                     <div class="oc-acao {{ p.status }}{% if p.vencida %} vencida{% endif %}">
                         <div class="d-flex flex-wrap justify-content-between gap-2">
@@ -125,10 +148,11 @@
                     <div class="small text-muted">Nenhuma ação definida{% if oc.status == 'aberta' %}. Use <strong>Nova ação</strong> para atribuir um responsável e um prazo.{% endif %}</div>
                 {% endfor %}
             </div>
+
             {% if oc.historico %}
-                <details class="mt-2">
-                    <summary class="small text-muted" style="cursor:pointer;">Histórico ({{ oc.historico|length }})</summary>
-                    <div class="oc-hist p-2 mt-1">
+                <div class="oc-plano">
+                    <div class="fw-bold mb-2"><i class="bi bi-clock-history me-1"></i>Histórico ({{ oc.historico|length }})</div>
+                    <div class="oc-hist p-2">
                         {% for quando, quem, texto in oc.historico %}
                             <div class="{% if not forloop.last %}border-bottom pb-1 mb-1{% endif %}">
                                 <span class="text-muted">{{ quando }}{% if quem %} · {{ quem }}{% endif %}</span><br>
@@ -136,9 +160,23 @@
                             </div>
                         {% endfor %}
                     </div>
-                </details>
+                </div>
             {% endif %}
-        </div>
+
+            <div class="oc-plano d-flex flex-wrap align-items-center gap-2" data-rodape>
+                <span class="small text-muted me-auto">Tratativa da ocorrência</span>
+                {% for a in oc.acoes %}{% if a.key != 'nova_acao' %}
+                    <button type="button" class="btn btn-sm btn-{{ a.btn }}" data-oc-acao
+                            data-uid="{{ oc.uid }}" data-acao="{{ a.key }}" data-label="{{ a.rotulo|default:a.label }}"
+                            data-campo="{{ a.campo }}" data-placeholder="{{ a.placeholder }}" data-acao-id="{{ a.acao_id }}"
+                            data-obrigatorio="{{ a.obrigatorio|yesno:'1,0' }}" data-resp-obrig="{{ a.resp_obrig|yesno:'1,0' }}"
+                            data-titulo="{{ oc.titulo|truncatechars:80 }}"><i class="bi {{ a.icon }} me-1"></i>{{ a.label }}</button>
+                {% endif %}{% endfor %}
+                {% if oc.url_origem %}
+                    <a class="btn btn-sm btn-outline-dark" href="{{ oc.url_origem }}"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir na tela de origem</a>
+                {% endif %}
+            </div>
+        </template>
     {% empty %}
         <div class="text-center text-muted py-5">
             <i class="bi bi-check-circle display-4 text-success opacity-50"></i>
@@ -147,9 +185,24 @@
     {% endfor %}
 </div>
 
+<div class="modal fade" id="ocDetalheModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div style="min-width:0;">
+                    <div class="small text-muted"><i class="bi me-1" id="ocDetIcon"></i><span id="ocDetOrigem"></span></div>
+                    <h5 class="modal-title" id="ocDetTitulo"></h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body" id="ocDetCorpo"></div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="ocAcaoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <form method="post" action="{% url 'ocorrencias_acao' %}" class="modal-content">
+        <form method="post" action="{% url 'ocorrencias_acao' %}" class="modal-content" id="ocAcaoForm">
             {% csrf_token %}
             <input type="hidden" name="uid" id="ocUid">
             <input type="hidden" name="acao" id="ocAcao">
@@ -170,16 +223,16 @@
                         {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
                     </select>
                 </div>
-                <div id="ocBlocoPrazo" class="mb-3 d-none">
-                    <label class="form-label small fw-bold">Prazo</label>
-                    <input type="date" name="prazo" id="ocPrazo" class="form-control" min="{% now 'Y-m-d' %}">
-                </div>
                 <div id="ocBlocoResp" class="mb-3 d-none">
                     <label class="form-label small fw-bold" id="ocRespLabel">Responsável</label>
                     <select name="responsavel" id="ocResp" class="form-select">
                         <option value="">— Selecione —</option>
                         {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.get_full_name|default:u.username }}</option>{% endfor %}
                     </select>
+                </div>
+                <div id="ocBlocoPrazo" class="mb-3 d-none">
+                    <label class="form-label small fw-bold">Prazo</label>
+                    <input type="date" name="prazo" id="ocPrazo" class="form-control" min="{% now 'Y-m-d' %}">
                 </div>
             </div>
             <div class="modal-footer">
@@ -192,10 +245,23 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const modalEl = document.getElementById('ocAcaoModal');
-    const modal = new bootstrap.Modal(modalEl);
     const $ = id => document.getElementById(id);
-    document.querySelectorAll('[data-oc-acao]').forEach(btn => btn.addEventListener('click', () => {
+    const detEl = $('ocDetalheModal'), acaoEl = $('ocAcaoModal');
+    const detalhe = new bootstrap.Modal(detEl), acao = new bootstrap.Modal(acaoEl);
+    let uidAberto = null, voltarPara = null, enviando = false;
+
+    function abrirDetalhe(uid) {
+        const tpl = Array.from(document.querySelectorAll('template[data-oc-detalhe]')).find(t => t.dataset.ocDetalhe === uid);
+        if (!tpl) return;
+        uidAberto = uid;
+        $('ocDetTitulo').textContent = tpl.dataset.titulo;
+        $('ocDetOrigem').textContent = tpl.dataset.origem;
+        $('ocDetIcon').className = 'bi me-1 ' + tpl.dataset.icon;
+        $('ocDetCorpo').replaceChildren(tpl.content.cloneNode(true));
+        detalhe.show();
+    }
+
+    function abrirAcao(btn) {
         const d = btn.dataset;
         const campos = (d.campo || '').split(' ');
         const comTexto = campos.includes('texto');
@@ -216,8 +282,34 @@ document.addEventListener('DOMContentLoaded', function () {
         $('ocResp').value = '';
         $('ocPrazo').value = '';
         $('ocRespLabel').textContent = d.acao === 'redirecionar_acao' ? 'Novo responsável' : (d.acao === 'nova_acao' ? 'Responsável pela ação' : 'Responsável');
-        modal.show();
-    }));
+        enviando = false;
+        voltarPara = detEl.classList.contains('show') ? uidAberto : null;
+        if (detEl.classList.contains('show')) {  // um modal por vez: fecha o detalhe e, ao concluir, abre o formulário
+            detEl.addEventListener('hidden.bs.modal', () => acao.show(), {once: true});
+            detalhe.hide();
+        } else {
+            acao.show();
+        }
+    }
+
+    // se o usuário desistir da ação, volta para o pop-up da ocorrência
+    acaoEl.addEventListener('hidden.bs.modal', () => { if (!enviando && voltarPara) abrirDetalhe(voltarPara); });
+    $('ocAcaoForm').addEventListener('submit', () => { enviando = true; });
+
+    document.addEventListener('click', e => {
+        const b = e.target.closest('[data-oc-acao]');
+        if (b) { abrirAcao(b); return; }
+        const c = e.target.closest('[data-oc-abrir]');
+        if (c && !e.target.closest('a')) abrirDetalhe(c.dataset.ocAbrir);
+    });
+    document.addEventListener('keydown', e => {
+        const c = e.target.closest && e.target.closest('[data-oc-abrir]');
+        if (c && c === e.target && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); abrirDetalhe(c.dataset.ocAbrir); }
+    });
+    {% if abrir %}abrirDetalhe('{{ abrir|escapejs }}');{% endif %}
+    if (history.replaceState && /[?&]abrir=/.test(location.search)) {
+        const u = new URL(location.href); u.searchParams.delete('abrir'); history.replaceState(null, '', u);
+    }
 });
 </script>
 {% endblock %}

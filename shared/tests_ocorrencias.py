@@ -75,7 +75,10 @@ class CentralOcorrenciasTests(TestCase):
             reverse("ocorrencias_acao"),
             {"uid": f"laboratorio:{self.lab_minha.pk}", "acao": "anotar", "texto": "via tela", "next_qs": "aba=abertas&x=1"},
         )
-        self.assertRedirects(resp, reverse("ocorrencias_central") + "?aba=abertas", fetch_redirect_response=False)
+        uid = f"laboratorio:{self.lab_minha.pk}"
+        self.assertRedirects(
+            resp, reverse("ocorrencias_central") + f"?aba=abertas&abrir=laboratorio%3A{self.lab_minha.pk}",
+            fetch_redirect_response=False)
         self.assertEqual(self.lab_minha.anotacoes_registradas.count(), 1)
         # o ícone aparece no menu das demais telas
         self.assertContains(self.client.get(reverse("inbox")), reverse("ocorrencias_central"))
@@ -252,3 +255,52 @@ class OcorrenciaKpiTests(TestCase):
         self.assertFalse(AcaoOcorrencia.objects.exists())
         self._salvar([])
         self.assertFalse(AnaliseItem.objects.exists())
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class PopupEFiltroAtrasoTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        U = get_user_model()
+        self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
+        self.em_dia = OcorrenciaLaboratorio.objects.create(assunto="Em dia", detalhamento="d", criado_por=self.admin)
+        self.atrasada = OcorrenciaLaboratorio.objects.create(assunto="Atrasada", detalhamento="d", criado_por=self.admin)
+        self.client.force_login(self.admin)
+
+    def _atrasar(self):
+        from shared.models import AcaoOcorrencia
+
+        AcaoOcorrencia.objects.create(
+            origem="laboratorio", ocorrencia_id=self.atrasada.pk, descricao="X", responsavel=self.admin,
+            prazo=date(2020, 1, 1), criado_por=self.admin)
+
+    def test_filtro_em_atraso(self):
+        self._atrasar()
+        url = reverse("ocorrencias_central")
+        resp = self.client.get(url + "?aba=abertas")
+        self.assertEqual(resp.context["total_vencidas"], 1)
+        self.assertEqual(len(resp.context["itens"]), 2)
+        resp = self.client.get(url + "?aba=abertas&atraso=1")
+        self.assertEqual([i.titulo for i in resp.context["itens"]], ["Atrasada"])
+        self.assertTrue(resp.context["atraso"])
+        # o filtro não se aplica às encerradas
+        self.assertFalse(self.client.get(url + "?aba=encerradas&atraso=1").context["atraso"])
+
+    def test_popup_com_detalhe_e_abertura_automatica(self):
+        self._atrasar()
+        uid = f"laboratorio:{self.atrasada.pk}"
+        resp = self.client.get(reverse("ocorrencias_central") + "?aba=abertas&abrir=" + uid)
+        self.assertContains(resp, f'data-oc-abrir="{uid}"')       # card clicável
+        self.assertContains(resp, f'<template data-oc-detalhe="{uid}"')  # conteúdo do pop-up
+        self.assertContains(resp, 'id="ocDetalheModal"')
+        self.assertContains(resp, "abrirDetalhe('laboratorio:%d')" % self.atrasada.pk)
+        # uid desconhecido ou fora da lista não abre nada
+        self.assertEqual(self.client.get(reverse("ocorrencias_central") + "?abrir=foo:1").context["abrir"], "")
+
+    def test_acao_preserva_filtros_e_reabre_popup(self):
+        resp = self.client.post(reverse("ocorrencias_acao"), {
+            "uid": f"laboratorio:{self.em_dia.pk}", "acao": "anotar", "texto": "ok",
+            "next_qs": "aba=abertas&origem=laboratorio&atraso=1&abrir=lixo&x=1"})
+        self.assertEqual(
+            resp["Location"],
+            reverse("ocorrencias_central") + f"?aba=abertas&origem=laboratorio&atraso=1&abrir=laboratorio%3A{self.em_dia.pk}")

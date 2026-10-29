@@ -82,6 +82,10 @@ class OcorrenciaItem:
     plano: list[AcaoPlano] = field(default_factory=list)
 
     @property
+    def acoes_abertas(self) -> int:
+        return sum(1 for p in self.plano if p.status == "ABERTA")
+
+    @property
     def data_ordem(self) -> datetime:
         d = self.data
         if isinstance(d, datetime):

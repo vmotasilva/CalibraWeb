@@ -17,6 +17,7 @@ def _lista_para(request):
     aba = (request.GET.get("aba") or "").strip()
     origem = (request.GET.get("origem") or "").strip()
     q = (request.GET.get("q") or "").strip().lower()
+    atraso = request.GET.get("atraso") == "1"
     if aba not in {a for a, _ in ABAS}:
         aba = ""
     if origem not in central.ORIGENS:
@@ -32,6 +33,10 @@ def _lista_para(request):
     if not aba:
         aba = "minhas" if minhas else "abertas"
     itens = {"minhas": minhas, "abertas": abertas, "encerradas": encerradas or []}[aba]
+    if aba == "encerradas":
+        atraso = False
+    elif atraso:
+        itens = [i for i in itens if i.vencida]
     if q:
         itens = [
             i for i in itens
@@ -50,6 +55,7 @@ def _lista_para(request):
         "origem": origem,
         "origens": [(k, o.nome, o.icon, por_origem.get(k, 0)) for k, o in central.ORIGENS.items()],
         "q": q,
+        "atraso": atraso,
         "total_vencidas": sum(1 for i in abertas if i.vencida),
     }
 
@@ -57,6 +63,8 @@ def _lista_para(request):
 @login_required
 def ocorrencias_central_view(request):
     ctx = _lista_para(request)
+    abrir = (request.GET.get("abrir") or "").strip()
+    ctx["abrir"] = abrir if any(i.uid == abrir for i in ctx["itens"]) else ""
     ctx["usuarios"] = get_user_model().objects.filter(is_active=True).order_by("first_name", "username")
     ctx["next_qs"] = request.GET.urlencode()
     return render(request, "shared/ocorrencias_central.html", ctx)
@@ -82,7 +90,10 @@ def ocorrencias_acao_view(request):
     # next_qs vem do próprio formulário; mantém apenas parâmetros conhecidos da listagem
     from urllib.parse import parse_qsl
 
-    permitido = {"aba", "origem", "q"}
-    qs = urlencode([(k, v) for k, v in parse_qsl(qs) if k in permitido])
+    permitido = {"aba", "origem", "q", "atraso"}
+    params = [(k, v) for k, v in parse_qsl(qs) if k in permitido]
+    if res.ok or request.POST.get("uid"):
+        params.append(("abrir", request.POST.get("uid", "")))  # reabre o pop-up da ocorrência tratada
+    qs = urlencode(params)
     url = reverse("ocorrencias_central") + (f"?{qs}" if qs else "")
     return redirect(url)
