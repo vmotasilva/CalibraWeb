@@ -199,20 +199,12 @@ class OrigemAuditoria(_Origem):
         return Q(status="ABERTA")
 
     def mine_q(self, user):
-        return Q(responsaveis__user_django=user) | Q(autor=user)
+        return Q(autor=user)  # responsáveis, ação e prazo vêm do plano de ação (AcaoOcorrencia)
 
     def to_item(self, oc, user, mine_ids):
-        hoje = timezone.localdate()
         aberta = oc.status == "ABERTA"
-        resp_users = [r.user_django_id for r in oc.responsaveis.all()]
-        papel = ""
-        if user.pk in resp_users:
-            papel = "Responsável"
-        elif oc.autor_id == user.pk:
-            papel = "Autor"
+        papel = "Autor" if oc.autor_id == user.pk else ""
         detalhes = []
-        if oc.acao:
-            detalhes.append(("Ação a realizar", oc.acao))
         historico = []
         if oc.resolucao:
             historico.append((_fmt_dt(oc.resolvido_em), _nome_user(oc.resolvido_por), oc.resolucao))
@@ -228,8 +220,6 @@ class OrigemAuditoria(_Origem):
             descricao=(oc.texto or "").strip(),
             status=STATUS_ABERTA if aberta else STATUS_ENCERRADA,
             data=oc.criado_em, envolve_usuario=papel != "", papel=papel,
-            responsaveis=[r.nome_completo for r in oc.responsaveis.all()],
-            prazo=oc.prazo, vencida=bool(aberta and oc.prazo and oc.prazo < hoje),
             detalhes=detalhes, historico=historico,
             url_origem=reverse("auditoria:modulo") + "#ocorrencias-em-aberto", acoes=acoes,
         )

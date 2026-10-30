@@ -469,6 +469,43 @@ class MigracaoColaboradoresTests(TransactionTestCase):
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class SemearAcoesAuditoriaTests(TestCase):
+    """0005: ação, prazo e responsáveis antigos de uma ocorrência de Auditoria viram a 1ª ação do plano."""
+
+    def test_semeia_primeira_acao(self):
+        from importlib import import_module
+
+        from django.apps import apps
+
+        from auditoria.models import ComentarioRespostaAuditoria as C, ModeloAuditoria, PerguntaAuditoria
+        from shared.models import AcaoOcorrencia
+
+        U = get_user_model()
+        admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
+        ana = U.objects.create_user("ana", password="x", is_superuser=True, is_staff=True)
+        c_ana = colab(ana, "Ana Souza")
+        modelo = ModeloAuditoria.objects.create(nome="MOD", objeto_auditoria="o", periodicidade="MENSAL")
+        perg = PerguntaAuditoria.objects.create(modelo=modelo, pergunta="Perg", ordem=1, tipo_resposta="SIM_NAO")
+
+        def nova(**kw):
+            return C.objects.create(pergunta=perg, autor=admin, texto="falha", requer_tratativa=True,
+                                    data_referencia=date.today(), **kw)
+
+        com = nova(acao="Atualizar o formulário", prazo=date(2026, 11, 6))
+        com.responsaveis.add(c_ana)
+        so_texto = nova()                                   # sem ação nem responsável: nada a semear
+        resolvida = nova(acao="x", status="RESOLVIDA")       # encerrada: não semeia
+        import_module("shared.migrations.0005_semear_acoes_auditoria").semear(apps, None)
+        import_module("shared.migrations.0005_semear_acoes_auditoria").semear(apps, None)  # idempotente
+        a = AcaoOcorrencia.objects.get(origem="auditoria", ocorrencia_id=com.pk)
+        self.assertEqual((a.descricao, a.prazo, a.criado_por_id), ("Atualizar o formulário", date(2026, 11, 6), admin.pk))
+        self.assertEqual(list(a.responsaveis.all()), [c_ana])
+        self.assertEqual(AcaoOcorrencia.objects.count(), 1)
+        item = next(i for i in central.listar_ocorrencias(ana, "abertas") if i.uid == f"auditoria:{com.pk}")
+        self.assertEqual((len(item.plano), item.responsaveis, item.envolve_usuario), (1, ["Ana Souza"], True))
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class ComentariosDaAcaoTests(TestCase):
     def setUp(self):
         cache.clear()
