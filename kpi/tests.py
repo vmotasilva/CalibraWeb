@@ -196,6 +196,46 @@ class KpiTests(TestCase):
         q = Medicao.objects.get(indicador=qb, granularidade='diaria')
         self.assertEqual(q.dados, {'Produzidas': '1000', 'Perdidas': '-10'})  # -20 + (5 × 2)
 
+    def test_colagem_registra_lote_e_desfaz(self):
+        from kpi.models import LoteColagem, ModeloColagem
+        ind = Indicador.objects.create(nome='Qb', meta=5, sentido='menor', exibir_diario=True,
+                                       campos='Perdidas\nProduzidas', formula='[Perdidas] / [Produzidas] * 100')
+        existente = Medicao.objects.create(indicador=ind, granularidade='diaria', periodo=date(2026, 10, 14),
+                                           valor=7, dados={'Perdidas': '7', 'Produzidas': '100'})
+        modelo = ModeloColagem.objects.create(nome='M', linhas='Perdidas || Qb | Perdidas\nProduzidas || Qb | Produzidas')
+        url = reverse('kpi:colagem')
+        self.client.post(url, {'modelo': modelo.pk, 'granularidade': 'diaria', 'data': '2026-10-14', 'texto': '1\n100'})
+        self.assertEqual(LoteColagem.objects.count(), 0)  # conferir não grava lote
+        self.client.post(url, {'modelo': modelo.pk, 'granularidade': 'diaria', 'data': '2026-10-14', 'confirmar': '1', 'texto': '1\n100'})
+        lote = LoteColagem.objects.get()
+        diaria = [a for a in lote.alteracoes if a['granularidade'] == 'diaria']
+        self.assertEqual(diaria[0]['antes']['valor'], '7.00')
+        self.assertEqual(Medicao.objects.get(pk=existente.pk).valor, 1)
+        self.assertEqual(self.client.get(reverse('kpi:colagem_historico')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('kpi:colagem_historico_detalhe', args=[lote.pk])).status_code, 200)
+        self.client.post(reverse('kpi:colagem_desfazer', args=[lote.pk]))
+        existente.refresh_from_db()
+        self.assertEqual(str(existente.valor), '7.00')
+        self.assertEqual(existente.dados, {'Perdidas': '7', 'Produzidas': '100'})
+        lote.refresh_from_db()
+        self.assertIsNotNone(lote.desfeito_em)
+        # só o que a colagem criou é removido: nada sobra além da medição original
+        self.assertEqual(Medicao.objects.filter(indicador=ind, granularidade='diaria').count(), 1)
+
+    def test_desfazer_colagem_com_alteracao_posterior_pede_confirmacao(self):
+        from kpi.models import LoteColagem, ModeloColagem
+        ind = Indicador.objects.create(nome='Qa', meta=5, sentido='menor', exibir_diario=True)
+        modelo = ModeloColagem.objects.create(nome='M2', linhas='V || Qa | Valor')
+        self.client.post(reverse('kpi:colagem'), {'modelo': modelo.pk, 'granularidade': 'diaria', 'data': '2026-10-14',
+                                                  'confirmar': '1', 'texto': '3'})
+        lote = LoteColagem.objects.get()
+        Medicao.objects.filter(indicador=ind, granularidade='diaria').update(valor=9)
+        r = self.client.post(reverse('kpi:colagem_desfazer', args=[lote.pk]))
+        self.assertTrue(r.context['conflitos'])
+        self.assertTrue(Medicao.objects.filter(indicador=ind, granularidade='diaria').exists())
+        self.client.post(reverse('kpi:colagem_desfazer', args=[lote.pk]), {'forcar': '1'})
+        self.assertFalse(Medicao.objects.filter(indicador=ind, granularidade='diaria').exists())
+
     def test_migracao_vincula_kpi_diario_sem_tocar_no_que_ja_foi_vinculado(self):
         import importlib
         from django.apps import apps

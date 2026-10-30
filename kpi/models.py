@@ -165,6 +165,28 @@ class ModeloColagem(models.Model):
         return self.nome
 
 
+class LoteColagem(models.Model):
+    """Registro de uma gravação por colagem, com o antes/depois de cada medição alterada (permite desfazer)."""
+    modelo = models.ForeignKey(ModeloColagem, null=True, blank=True, on_delete=models.SET_NULL, related_name='lotes')
+    modelo_nome = models.CharField('Modelo', max_length=100)
+    granularidade = models.CharField('Período', max_length=8, choices=Medicao.GRANULARIDADES)
+    periodo = models.DateField('Data de referência')
+    texto = models.TextField('Números colados', blank=True)
+    alteracoes = models.JSONField('Medições alteradas', default=list, blank=True)
+    criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(default=timezone.now)
+    desfeito_em = models.DateTimeField(null=True, blank=True)
+    desfeito_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        ordering = ['-criado_em', '-pk']
+        verbose_name = 'Lote de colagem'
+        verbose_name_plural = 'Lotes de colagem'
+
+    def __str__(self):
+        return f'{self.modelo_nome} - {self.periodo:%d/%m/%Y} ({self.criado_em:%d/%m/%Y %H:%M})'
+
+
 class AnaliseCausa(models.Model):
     """Causa e análise (justificativa/plano de ação) de um período fora da meta: dia, semana ou mês."""
     indicador = models.ForeignKey(Indicador, on_delete=models.CASCADE, related_name='analises')

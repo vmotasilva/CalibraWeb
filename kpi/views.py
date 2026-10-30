@@ -523,11 +523,51 @@ def colagem_view(request):
                 pass  # aguardando a decisão do usuário sobre as linhas a mais
             else:
                 gravar = request.POST.get('confirmar') == '1'
-                res = colagem.aplicar(linhas, valores, ctx['gran'], data, request.user, gravar)
+                res = colagem.aplicar(linhas, valores, ctx['gran'], data, request.user, gravar, modelo=modelo, texto=ctx['texto'])
                 ctx.update(res, linhas=[dict(l, valor=v) for l, v in zip(linhas, valores)], gravado=gravar)
                 if gravar:
                     messages.success(request, f'{res["salvos"]} indicador(es) atualizado(s) em {_rotulo(ctx["gran"], res["periodo"])}.')
+                    ctx['lote'] = res.get('lote')
     return render(request, 'kpi/colagem.html', ctx)
+
+
+@login_required
+def colagem_historico_view(request):
+    """Relação das colagens gravadas, com o que cada uma alterou; de onde se desfaz uma colagem."""
+    from kpi.models import LoteColagem
+    lotes = LoteColagem.objects.select_related('criado_por', 'desfeito_por')
+    if request.GET.get('data'):
+        try:
+            lotes = lotes.filter(periodo=datetime.date.fromisoformat(request.GET['data']))
+        except ValueError:
+            pass
+    return render(request, 'kpi/colagem_historico.html', {'lotes': lotes[:200], 'data': request.GET.get('data', '')})
+
+
+@login_required
+def colagem_historico_detalhe_view(request, pk):
+    from kpi.models import LoteColagem
+    lote = get_object_or_404(LoteColagem.objects.select_related('criado_por', 'desfeito_por'), pk=pk)
+    return render(request, 'kpi/colagem_historico_detalhe.html', {
+        'lote': lote, 'alteracoes': lote.alteracoes, 'conflitos': [], 'texto_linhas': lote.texto.splitlines()})
+
+
+@login_required
+@require_POST
+def colagem_desfazer_view(request, pk):
+    from kpi import colagem
+    from kpi.models import LoteColagem
+    lote = get_object_or_404(LoteColagem, pk=pk)
+    if lote.desfeito_em:
+        messages.warning(request, 'Esta colagem já foi desfeita.')
+        return redirect('kpi:colagem_historico_detalhe', pk=pk)
+    res = colagem.desfazer(lote, request.user, forcar=request.POST.get('forcar') == '1')
+    if res['conflitos'] and not res['restauradas']:
+        return render(request, 'kpi/colagem_historico_detalhe.html', {
+            'lote': lote, 'alteracoes': lote.alteracoes, 'conflitos': res['conflitos'],
+            'texto_linhas': lote.texto.splitlines()})
+    messages.success(request, f'Colagem desfeita: {res["restauradas"]} medição(ões) restaurada(s).')
+    return redirect('kpi:colagem_historico_detalhe', pk=pk)
 
 
 @login_required

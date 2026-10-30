@@ -1,0 +1,42 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI - Histórico de colagens - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 1000px;">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="mb-0"><i class="bi bi-clock-history me-2"></i>Histórico de colagens</h4>
+        <a href="{% url 'kpi:colagem' %}" class="btn btn-outline-secondary">Voltar à colagem</a>
+    </div>
+    <p class="text-muted small">Cada gravação feita por colagem fica registrada aqui, com o valor de antes e de depois de cada indicador. Abra uma colagem para desfazê-la.</p>
+
+    <form method="get" class="d-flex gap-2 align-items-end mb-3">
+        <div>
+            <label class="form-label small mb-1" for="hData">Data de referência</label>
+            <input type="date" class="form-control form-control-sm" id="hData" name="data" value="{{ data }}">
+        </div>
+        <button class="btn btn-sm btn-outline-primary">Filtrar</button>
+        {% if data %}<a href="{% url 'kpi:colagem_historico' %}" class="btn btn-sm btn-outline-secondary">Limpar</a>{% endif %}
+    </form>
+
+    <div class="card"><div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Gravada em</th><th>Por</th><th>Modelo</th><th>Período</th><th class="text-end">Medições</th><th>Situação</th><th></th></tr></thead>
+            <tbody>
+            {% for l in lotes %}
+                <tr>
+                    <td>{{ l.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td>{{ l.criado_por.get_username|default:"—" }}</td>
+                    <td>{{ l.modelo_nome }}</td>
+                    <td>{{ l.get_granularidade_display }} · {{ l.periodo|date:"d/m/Y" }}</td>
+                    <td class="text-end">{{ l.alteracoes|length }}</td>
+                    <td>{% if l.desfeito_em %}<span class="badge text-bg-secondary">Desfeita em {{ l.desfeito_em|date:"d/m H:i" }}</span>{% else %}<span class="badge text-bg-success">Em vigor</span>{% endif %}</td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-primary" href="{% url 'kpi:colagem_historico_detalhe' l.pk %}">Detalhes</a></td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7" class="text-center text-muted py-4">Nenhuma colagem registrada.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div></div>
+</div>
+{% endblock %}

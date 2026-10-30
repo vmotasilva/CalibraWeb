@@ -9,13 +9,17 @@ Modelo (texto, uma linha por posição). Dois formatos:
 - Variável vazia ou "Valor": o número é o valor do indicador. Setor vazio = acompanhamento geral.
 """
 import re
+import threading
 from collections import OrderedDict
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
+from django.db.models.signals import pre_delete, pre_save
+from django.dispatch import receiver
+from django.utils import timezone
 
 from kpi import calculo, compartilhamento, consolidacao
-from kpi.models import Indicador, Medicao
+from kpi.models import Indicador, LoteColagem, Medicao, SetorIndicador
 
 OPERACOES = {'+': 'soma', '-': 'subtrai', '=': 'substitui'}
 
@@ -130,11 +134,132 @@ def _acumular(contribuicoes):
     return total
 
 
-def aplicar(linhas, valores, gran, data, usuario, gravar):
-    """Distribui os valores pelos destinos. Retorna dict(itens, avisos, salvos). Sem `gravar`, só simula."""
+_ativo = threading.local()
+
+
+def _foto(med):
+    return {'valor': str(med.valor), 'dados': {k: str(v) for k, v in (med.dados or {}).items()},
+            'observacao': med.observacao, 'registrado_por_id': med.registrado_por_id}
+
+
+def _chave(med):
+    return (med.indicador_id, med.setor_id, med.granularidade, med.periodo.isoformat())
+
+
+class _Gravador:
+    """Anota o estado anterior de toda Medicao criada, alterada ou apagada enquanto a colagem grava
+    (inclui o que a propagação entre indicadores e a consolidação semanal/mensal mexem)."""
+
+    def __init__(self):
+        self.antes = OrderedDict()
+
+    def __enter__(self):
+        _ativo.gravador = self
+        return self
+
+    def __exit__(self, *exc):
+        _ativo.gravador = None
+
+    def anotar(self, med, existente):
+        self.antes.setdefault(_chave(med), _foto(existente) if existente else None)
+
+    def alteracoes(self):
+        """Lista de {antes, depois} para cada medição cujo valor final difere do inicial."""
+        saida = []
+        for (ind_id, setor_id, gran, periodo), antes in self.antes.items():
+            atual = Medicao.objects.select_related('indicador', 'setor').filter(
+                indicador_id=ind_id, setor_id=setor_id, granularidade=gran, periodo=periodo).first()
+            depois = _foto(atual) if atual else None
+            if antes == depois or (antes and depois and Decimal(antes['valor']) == Decimal(depois['valor'])
+                                   and _dados(antes) == _dados(depois)):
+                continue
+            ind = atual.indicador if atual else Indicador.objects.filter(pk=ind_id).first()
+            setor = atual.setor if atual else (SetorIndicador.objects.filter(pk=setor_id).first() if setor_id else None)
+            saida.append({'indicador_id': ind_id, 'indicador': ind.nome if ind else f'#{ind_id}',
+                          'setor_id': setor_id, 'setor': setor.nome if setor else '',
+                          'granularidade': gran, 'periodo': periodo, 'antes': antes, 'depois': depois})
+        return saida
+
+
+def _dados(foto):
+    return {k: Decimal(v) for k, v in foto['dados'].items()}
+
+
+@receiver(pre_save, sender=Medicao)
+def _antes_de_salvar(sender, instance, **kwargs):
+    gravador = getattr(_ativo, 'gravador', None)
+    if gravador:
+        gravador.anotar(instance, Medicao.objects.filter(pk=instance.pk).first() if instance.pk else None)
+
+
+@receiver(pre_delete, sender=Medicao)
+def _antes_de_apagar(sender, instance, **kwargs):
+    gravador = getattr(_ativo, 'gravador', None)
+    if gravador:
+        gravador.anotar(instance, instance)
+
+
+def desfazer(lote, usuario, forcar=False):
+    """Restaura as medições de um lote ao estado anterior à colagem.
+    Se alguma foi alterada depois da colagem, não faz nada e devolve os conflitos, a menos que `forcar`.
+    Retorna dict(conflitos, restauradas)."""
+    conflitos, atuais = [], []
+    for alt in lote.alteracoes:
+        atual = Medicao.objects.filter(indicador_id=alt['indicador_id'], setor_id=alt['setor_id'],
+                                       granularidade=alt['granularidade'], periodo=alt['periodo']).first()
+        atuais.append(atual)
+        depois = alt['depois']
+        igual = (atual is None and depois is None) or (
+            atual is not None and depois is not None and atual.valor == Decimal(depois['valor'])
+            and _dados(_foto(atual)) == _dados(depois))
+        if not igual:
+            conflitos.append(alt)
+    if conflitos and not forcar:
+        return {'conflitos': conflitos, 'restauradas': 0}
+    restauradas = 0
+    with transaction.atomic():
+        for alt, atual in zip(lote.alteracoes, atuais):
+            antes = alt['antes']
+            chave = dict(indicador_id=alt['indicador_id'], setor_id=alt['setor_id'],
+                         granularidade=alt['granularidade'], periodo=alt['periodo'])
+            if antes is None:
+                if atual:
+                    atual.delete()
+                    restauradas += 1
+            elif Indicador.objects.filter(pk=alt['indicador_id']).exists():
+                Medicao.objects.update_or_create(**chave, defaults={
+                    'valor': Decimal(antes['valor']), 'dados': antes['dados'], 'observacao': antes['observacao'],
+                    'registrado_por_id': antes['registrado_por_id']})
+                restauradas += 1
+        lote.desfeito_em, lote.desfeito_por = timezone.now(), usuario
+        lote.save(update_fields=['desfeito_em', 'desfeito_por'])
+    return {'conflitos': conflitos, 'restauradas': restauradas}
+
+
+def aplicar(linhas, valores, gran, data, usuario, gravar, modelo=None, texto=''):
+    """Distribui os valores pelos destinos. Retorna dict(itens, avisos, salvos, lote). Sem `gravar`, só simula.
+    Ao gravar, cria um LoteColagem com o antes/depois das medições para permitir desfazer."""
     from kpi.views import _normalizar
 
     periodo = _normalizar(gran, data)
+    gravador = _Gravador() if gravar else None
+    if gravador:
+        gravador.__enter__()
+    try:
+        res = _aplicar(linhas, valores, gran, periodo, usuario, gravar)
+        if gravador:
+            alteracoes = gravador.alteracoes()
+            if alteracoes:
+                res['lote'] = LoteColagem.objects.create(
+                    modelo=modelo, modelo_nome=modelo.nome if modelo else '', granularidade=gran, periodo=periodo,
+                    texto=texto or '', alteracoes=alteracoes, criado_por=usuario)
+    finally:
+        if gravador:
+            gravador.__exit__()
+    return res
+
+
+def _aplicar(linhas, valores, gran, periodo, usuario, gravar):
     # (indicador, setor) -> {variável ('' = valor do indicador): [(op, valor × fator)]}
     grupos = OrderedDict()
     for linha, valor in zip(linhas, valores):
