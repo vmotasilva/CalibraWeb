@@ -7,15 +7,18 @@ class AutoLoginMiddleware:
     Middleware para ambiente de desenvolvimento (DEBUG=True) que faz o login automático 
     do primeiro superusuário encontrado para agilizar o processo.
     """
+    # login() rotaciona o token CSRF; fazer isso antes do CsrfViewMiddleware
+    # invalida o formulario de login (403 no POST), entao nao interferimos nelas.
+    SKIP_PREFIXES = ('/logout/', '/admin/logout/', '/account/', '/admin/login/')
+
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         if getattr(settings, 'DEBUG', False) and not request.user.is_authenticated:
-            # Não auto-logar em páginas de login/logout explícitas se desejado
-            if request.path.startswith('/logout/') or request.path.startswith('/admin/logout/'):
+            if request.method != 'GET' or request.path.startswith(self.SKIP_PREFIXES):
                 return self.get_response(request)
-                
+
             user = User.objects.filter(is_superuser=True, is_active=True).first()
             if user:
                 # Isentar o usuário do 2FA se não estiver isento
