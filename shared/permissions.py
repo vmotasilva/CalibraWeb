@@ -313,6 +313,24 @@ NAV_STRUCTURE = [
                     {"nome": "Excluir Indicador", "view_name": "kpi:indicador_excluir", "perm": "core.nav_kpi_indicador_excluir"},
                 ],
             },
+            {
+                "key": "setores",
+                "grupo": "KPI",
+                "nome": "KPI por Setor (Insumos)",
+                "perm": "core.nav_kpi_bloco_setores",
+                "funcoes": [
+                    {"nome": "Ver KPI por Setor", "view_name": "kpi:hier_painel", "perm": "core.nav_kpi_setores"},
+                    {"nome": "Lançar Consumo", "view_name": "kpi:hier_lancar", "perm": "core.nav_kpi_setores_lancar"},
+                    {"nome": "Excluir Consumo", "view_name": "kpi:hier_consumo_excluir", "perm": "core.nav_kpi_setores_consumo_excluir"},
+                    {
+                        "nome": "Cadastrar Setores, Categorias e Itens",
+                        "view_name": ["kpi:hier_cadastro", "kpi:hier_cadastro_salvar"],
+                        "perm": "core.nav_kpi_setores_cadastro",
+                        "descricao": "Monta a árvore KPI > Setor > Categoria (máquina) > Subcategoria (item) e define unidade e meta de consumo de cada item.",
+                    },
+                    {"nome": "Excluir do Cadastro", "view_name": "kpi:hier_cadastro_excluir", "perm": "core.nav_kpi_setores_cadastro_excluir"},
+                ],
+            },
         ],
     },
     {

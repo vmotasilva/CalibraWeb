@@ -258,3 +258,92 @@ class MotivoCadastro(models.Model):
 
     def __str__(self):
         return f'{self.get_tipo_display()}: {self.nome}'
+
+
+class KpiHierarquico(models.Model):
+    """KPI em árvore (ex.: Insumos): Setor > Categoria (ex.: máquina) > Subcategoria (item avaliado), com consumo mensal."""
+    nome = models.CharField('KPI', max_length=100, unique=True)
+    descricao = models.CharField('Descrição', max_length=255, blank=True)
+    ordem = models.PositiveIntegerField(default=0)
+    ativo = models.BooleanField('Ativo', default=True)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        verbose_name = 'KPI por setor'
+        verbose_name_plural = 'KPIs por setor'
+
+    def __str__(self):
+        return self.nome
+
+
+class HierSetor(models.Model):
+    kpi = models.ForeignKey(KpiHierarquico, on_delete=models.CASCADE, related_name='setores')
+    nome = models.CharField('Setor', max_length=100)
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        unique_together = [('kpi', 'nome')]
+        verbose_name = 'Setor (KPI por setor)'
+        verbose_name_plural = 'Setores (KPI por setor)'
+
+    def __str__(self):
+        return f'{self.kpi} / {self.nome}'
+
+
+class HierCategoria(models.Model):
+    setor = models.ForeignKey(HierSetor, on_delete=models.CASCADE, related_name='categorias')
+    nome = models.CharField('Categoria', max_length=100, help_text='Ex.: a máquina (Corte Orbit 2.0, Polimento DLP).')
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        unique_together = [('setor', 'nome')]
+        verbose_name = 'Categoria (KPI por setor)'
+        verbose_name_plural = 'Categorias (KPI por setor)'
+
+    def __str__(self):
+        return f'{self.setor} / {self.nome}'
+
+
+class HierSubcategoria(models.Model):
+    """Item avaliado (ex.: Diamante, Fresa, Líquido polidor). Tem meta própria de consumo (quanto menor, melhor)."""
+    categoria = models.ForeignKey(HierCategoria, on_delete=models.CASCADE, related_name='subcategorias')
+    nome = models.CharField('Subcategoria (item avaliado)', max_length=100)
+    unidade = models.CharField('Unidade', max_length=20, blank=True, help_text='Ex.: L, un, kg.')
+    meta = models.DecimalField('Meta de consumo mensal (máximo)', max_digits=14, decimal_places=2, null=True, blank=True)
+    ordem = models.PositiveIntegerField(default=0)
+    ativo = models.BooleanField('Ativo', default=True)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        unique_together = [('categoria', 'nome')]
+        verbose_name = 'Subcategoria (KPI por setor)'
+        verbose_name_plural = 'Subcategorias (KPI por setor)'
+
+    def __str__(self):
+        return f'{self.categoria} / {self.nome}'
+
+    def atingiu(self, valor):
+        if valor is None or self.meta is None:
+            return None
+        return valor <= self.meta
+
+
+class HierConsumo(models.Model):
+    """Consumo de uma subcategoria em um mês (período = último dia do mês)."""
+    subcategoria = models.ForeignKey(HierSubcategoria, on_delete=models.CASCADE, related_name='consumos')
+    periodo = models.DateField('Mês (último dia)')
+    valor = models.DecimalField('Consumo', max_digits=14, decimal_places=2)
+    observacao = models.CharField('Observação', max_length=255, blank=True)
+    registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    registrado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-periodo']
+        unique_together = [('subcategoria', 'periodo')]
+        verbose_name = 'Consumo (KPI por setor)'
+        verbose_name_plural = 'Consumos (KPI por setor)'
+
+    def __str__(self):
+        return f'{self.subcategoria} - {self.periodo:%m/%Y}: {self.valor}'

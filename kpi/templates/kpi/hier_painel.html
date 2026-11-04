@@ -1,0 +1,143 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI por setor - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>KPI por setor{% if kpi %} — {{ kpi.nome }}{% endif %}</h4>
+            <div class="text-muted small">Setor › Categoria (máquina) › Subcategoria (item avaliado). Consumo mensal com meta por item.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'kpi:painel' %}" class="btn btn-outline-secondary">Painel de indicadores</a>
+            <a href="{% url 'kpi:hier_cadastro' %}" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Cadastro</a>
+        </div>
+    </div>
+
+    {% if not kpi %}
+        <div class="alert alert-info">Nenhum KPI por setor cadastrado. <a href="{% url 'kpi:hier_cadastro' %}">Cadastrar agora</a>.</div>
+    {% else %}
+    {% if kpis|length > 1 %}
+    <ul class="nav nav-tabs mb-3">
+        {% for k in kpis %}<li class="nav-item"><a class="nav-link {% if k.pk == kpi.pk %}active{% endif %}" href="?kpi={{ k.pk }}">{{ k.nome }}</a></li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="get" class="card card-body mb-3" id="filtros">
+        <input type="hidden" name="kpi" value="{{ kpi.pk }}">
+        <div class="row g-2 align-items-end">
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Setor</label>
+                <select name="setor" class="form-select" onchange="this.form.categoria.value='';this.form.sub.value='';this.form.submit()">
+                    <option value="">Todos</option>
+                    {% for s in setores %}<option value="{{ s.pk }}" {% if setor.pk == s.pk %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Categoria (máquina)</label>
+                <select name="categoria" class="form-select" {% if not setor %}disabled{% endif %} onchange="this.form.sub.value='';this.form.submit()">
+                    <option value="">Todas</option>
+                    {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria.pk == c.pk %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Subcategoria (item)</label>
+                <select name="sub" class="form-select" {% if not categoria %}disabled{% endif %} onchange="this.form.submit()">
+                    <option value="">Todas</option>
+                    {% for s in subs %}<option value="{{ s.pk }}" {% if sub.pk == s.pk %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Mês</label>
+                <input type="month" name="mes" value="{{ mes_valor }}" class="form-control" onchange="this.form.submit()">
+            </div>
+        </div>
+    </form>
+
+    {% if not linhas %}
+        <div class="alert alert-warning">Nenhum item avaliado neste filtro. Cadastre setores, categorias e subcategorias em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
+    {% else %}
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card h-100"><div class="card-body">
+                <div class="fw-semibold mb-2">{{ serie.titulo }} <span class="text-muted small">— últimos 12 meses{% if serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
+                <div style="position:relative;height:280px"><canvas id="grafico"></canvas></div>
+            </div></div>
+        </div>
+        <div class="col-lg-6">
+            <form method="post" action="{% url 'kpi:hier_lancar' %}" class="card h-100">
+                {% csrf_token %}
+                <input type="hidden" name="kpi" value="{{ kpi.pk }}">
+                <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
+                <input type="hidden" name="categoria" value="{{ categoria.pk|default:'' }}">
+                <input type="hidden" name="sub" value="{{ sub.pk|default:'' }}">
+                <input type="hidden" name="mes" value="{{ mes_valor }}">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">Consumo de {{ mes|date:"m/Y" }}</span>
+                    <span class="small">
+                        <span class="badge bg-success">{{ dentro }} na meta</span>
+                        <span class="badge bg-danger">{{ fora }} acima</span>
+                        {% if sem_lancamento %}<span class="badge bg-secondary">{{ sem_lancamento }} sem lançamento</span>{% endif %}
+                    </span>
+                </div>
+                <div class="table-responsive" style="max-height:340px">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead><tr><th>Item</th><th class="text-end">Meta</th><th style="width:7.5rem">Consumo</th><th class="text-center">%</th><th></th></tr></thead>
+                        <tbody>
+                        {% for l in linhas %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ l.item.nome }}</div>
+                                    <div class="text-muted small">{{ l.item.categoria.setor.nome }} › {{ l.item.categoria.nome }}</div>
+                                </td>
+                                <td class="text-end text-nowrap">{% if l.item.meta is not None %}≤ {{ l.item.meta|floatformat:"-2" }} {{ l.item.unidade }}{% else %}—{% endif %}</td>
+                                <td>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" inputmode="decimal" name="valor_{{ l.item.pk }}" class="form-control text-end" value="{{ l.consumo|default_if_none:''|stringformat:'s'|cut:'None' }}" placeholder="—">
+                                        {% if l.item.unidade %}<span class="input-group-text">{{ l.item.unidade }}</span>{% endif %}
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    {% if l.pct is not None %}<span class="badge {% if l.ok %}bg-success{% else %}bg-danger{% endif %}">{{ l.pct }}%</span>{% else %}<span class="text-muted">—</span>{% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if l.consumo is not None %}<button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Excluir o consumo deste mês" formaction="{% url 'kpi:hier_consumo_excluir' l.item.pk %}" onclick="return confirm('Excluir o consumo deste item no mês?');"><i class="bi bi-trash"></i></button>{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="card-footer text-end"><button class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Salvar consumo do mês</button></div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+{% if serie %}
+{{ serie|json_script:"dados-grafico" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var d = JSON.parse(document.getElementById('dados-grafico').textContent);
+    var VERDE = '#198754', VERMELHO = '#dc3545', CINZA = '#6c757d';
+    var cores = d.valores.map(function (v) { return d.meta === null || v === null ? CINZA : (v <= d.meta ? VERDE : VERMELHO); });
+    var datasets = [{type: 'bar', label: d.titulo, data: d.valores, backgroundColor: cores, order: 2}];
+    if (d.meta !== null) {
+        datasets.push({type: 'line', label: 'Meta', data: d.labels.map(function () { return d.meta; }),
+            borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1});
+    }
+    new Chart(document.getElementById('grafico'), {
+        data: {labels: d.labels, datasets: datasets},
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {legend: {display: false}},
+            scales: {y: {beginAtZero: true, title: {display: true, text: d.modo === 'percentual' ? '% da meta' : (d.unidade || '')}}}
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}
