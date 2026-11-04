@@ -153,6 +153,7 @@ class ModeloColagem(models.Model):
     nome = models.CharField('Nome do modelo', max_length=100, unique=True)
     linhas = models.TextField(
         'Posições', help_text='Uma linha por número colado, na ordem: Rótulo | Indicador | Variável | Setor (opcional).')
+    padrao = models.BooleanField('Modelo padrão', default=False, help_text='Vem selecionado na tela de colagem.')
     criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     atualizado_em = models.DateTimeField(auto_now=True)
 

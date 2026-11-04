@@ -492,8 +492,8 @@ def colagem_view(request):
     from kpi.models import ModeloColagem
     modelos = list(ModeloColagem.objects.all())
     ctx = {'modelos': modelos, 'gran': request.POST.get('granularidade', 'diaria'),
-           'data': request.POST.get('data') or timezone.localdate().isoformat(),
-           'modelo_id': request.POST.get('modelo', ''), 'texto': request.POST.get('texto', '')}
+           'data': request.POST.get('data') or (timezone.localdate() - datetime.timedelta(days=1)).isoformat(),
+           'modelo_id': request.POST.get('modelo') if request.method == 'POST' else str(next((m.pk for m in modelos if m.padrao), '')), 'texto': request.POST.get('texto', '')}
     if request.method == 'POST':
         modelo = next((m for m in modelos if str(m.pk) == ctx['modelo_id']), None)
         try:
@@ -594,11 +594,15 @@ def colagem_modelo_form_view(request, pk=None):
         if not erros:
             modelo = modelo or ModeloColagem(criado_por=request.user)
             modelo.nome, modelo.linhas = nome[:100], linhas_txt.strip()
+            modelo.padrao = request.POST.get('padrao') == '1'
             modelo.save()
+            if modelo.padrao:
+                ModeloColagem.objects.exclude(pk=modelo.pk).filter(padrao=True).update(padrao=False)
             messages.success(request, 'Modelo salvo.')
             return redirect('kpi:colagem_modelos')
     return render(request, 'kpi/colagem_modelo_form.html', {
         'modelo': modelo, 'nome': nome, 'linhas': linhas_txt, 'erros': erros,
+        'padrao': request.POST.get('padrao') == '1' if request.method == 'POST' else bool(modelo and modelo.padrao),
         'ind_dados': {i.nome: {'variaveis': calculo.lista_campos(i), 'setores': [x.nome for x in i.setores.all()]}
                       for i in Indicador.objects.filter(ativo=True).prefetch_related('setores')}})
 

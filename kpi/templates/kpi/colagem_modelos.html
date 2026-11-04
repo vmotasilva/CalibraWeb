@@ -14,7 +14,7 @@
     <div class="list-group">
         {% for m in modelos %}
         <div class="list-group-item d-flex justify-content-between align-items-center">
-            <div><strong>{{ m.nome }}</strong> <span class="text-muted small">· {{ m.linhas.splitlines|length }} linha(s)</span></div>
+            <div><strong>{{ m.nome }}</strong>{% if m.padrao %} <span class="badge text-bg-primary">padrão</span>{% endif %} <span class="text-muted small">· {{ m.linhas.splitlines|length }} linha(s)</span></div>
             <div class="d-flex gap-2">
                 <a class="btn btn-sm btn-outline-secondary" href="{% url 'kpi:colagem_modelo_editar' m.pk %}"><i class="bi bi-pencil"></i></a>
                 <form method="post" action="{% url 'kpi:colagem_modelo_excluir' m.pk %}" onsubmit="return confirm('Excluir este modelo?');">{% csrf_token %}<button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button></form>
