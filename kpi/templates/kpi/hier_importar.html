@@ -1,0 +1,47 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI por setor - Importar relatório - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 860px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h4 class="mb-0"><i class="bi bi-upload me-2"></i>Importar movimentação de insumos</h4>
+        <div class="d-flex gap-2">
+            <a href="{% url 'kpi:hier_codigos' %}" class="btn btn-outline-primary"><i class="bi bi-link-45deg me-1"></i>Códigos{% if pendentes %} <span class="badge bg-danger">{{ pendentes }}</span>{% endif %}</a>
+            <a href="{% url 'kpi:hier_painel' %}" class="btn btn-outline-secondary">Voltar ao painel</a>
+        </div>
+    </div>
+
+    <div class="card mb-3"><div class="card-body">
+        <p class="small text-muted mb-3">
+            Envie o relatório <strong>Consulta Movimento em Estoque</strong> (saídas) do almoxarifado, em <code>.xls</code> ou <code>.xlsx</code>,
+            tanto no formato enxuto quanto no formatado. Cada saída é guardada e o consumo mensal de cada item é calculado somando
+            os <strong>códigos vinculados</strong> a ele. Pode reimportar períodos que se sobrepõem: o que já existe não é duplicado.
+            Conta como consumo: <strong>{{ tipos_consumo|join:", " }}</strong> (devoluções ficam de fora).
+        </p>
+        <form method="post" enctype="multipart/form-data" class="d-flex flex-wrap gap-2 align-items-end">{% csrf_token %}
+            <div class="flex-grow-1">
+                <label class="form-label small mb-1">Arquivo do relatório</label>
+                <input type="file" name="arquivo" class="form-control" accept=".xls,.xlsx" required>
+            </div>
+            <button class="btn btn-primary"><i class="bi bi-cloud-upload me-1"></i>Importar</button>
+        </form>
+    </div></div>
+
+    {% if resumo %}
+    <div class="card border-success"><div class="card-header bg-success text-white">Resultado da importação</div>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">Período do arquivo: <strong>{{ resumo.inicio|date:"d/m/Y" }}</strong> a <strong>{{ resumo.fim|date:"d/m/Y" }}</strong></li>
+            <li class="list-group-item">Movimentações lidas: <strong>{{ resumo.lidas }}</strong> — novas: <strong>{{ resumo.adicionadas }}</strong>, já existentes: <strong>{{ resumo.ja_existiam }}</strong>{% if resumo.estornos %}, estornos ignorados: <strong>{{ resumo.estornos }}</strong>{% endif %}{% if resumo.ignoradas %}, linhas com formato inesperado: <strong>{{ resumo.ignoradas }}</strong>{% endif %}</li>
+            <li class="list-group-item">Códigos no arquivo: <strong>{{ resumo.codigos }}</strong> (<strong>{{ resumo.codigos_novos }}</strong> novo(s))</li>
+            <li class="list-group-item">Itens com consumo recalculado: <strong>{{ resumo.itens_recalculados }}</strong> — meses criados {{ resumo.recalculo.criados }}, atualizados {{ resumo.recalculo.atualizados }}, removidos {{ resumo.recalculo.removidos }}</li>
+            {% if resumo.sem_vinculo %}
+            <li class="list-group-item list-group-item-warning">
+                <i class="bi bi-exclamation-triangle me-1"></i><strong>{{ resumo.sem_vinculo }}</strong> código(s) deste arquivo ainda não estão vinculados a um item e não entram no KPI.
+                <a href="{% url 'kpi:hier_codigos' %}" class="alert-link">Vincular agora</a>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

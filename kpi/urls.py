@@ -1,6 +1,6 @@
 from django.urls import path
 
-from kpi import views, views_hier
+from kpi import views, views_decide, views_hier
 
 app_name = 'kpi'
 
@@ -12,6 +12,10 @@ urlpatterns = [
     path('motivos/retorno/', views.motivos_retorno_view, name='motivos_retorno'),
     path('motivos/salvar/', views.motivo_cadastro_salvar_view, name='motivo_cadastro_salvar'),
     path('motivos/<int:pk>/excluir/', views.motivo_cadastro_excluir_view, name='motivo_cadastro_excluir'),
+    path('decide/', views_decide.decide_view, name='decide'),
+    path('decide/importar/', views_decide.decide_importar_view, name='decide_importar'),
+    path('decide/indicadores/salvar/', views_decide.decide_indicador_salvar_view, name='decide_indicador_salvar'),
+    path('decide/indicadores/<int:pk>/excluir/', views_decide.decide_indicador_excluir_view, name='decide_indicador_excluir'),
     path('colar/', views.colagem_view, name='colagem'),
     path('colar/historico/', views.colagem_historico_view, name='colagem_historico'),
     path('colar/historico/<int:pk>/', views.colagem_historico_detalhe_view, name='colagem_historico_detalhe'),
@@ -20,16 +24,19 @@ urlpatterns = [
     path('colar/modelos/novo/', views.colagem_modelo_form_view, name='colagem_modelo_novo'),
     path('colar/modelos/<int:pk>/', views.colagem_modelo_form_view, name='colagem_modelo_editar'),
     path('colar/modelos/<int:pk>/excluir/', views.colagem_modelo_excluir_view, name='colagem_modelo_excluir'),
+    path('setores/', views_hier.painel_view, name='hier_painel'),
+    path('setores/lancar/', views_hier.lancar_view, name='hier_lancar'),
+    path('setores/consumo/<int:item_pk>/excluir/', views_hier.consumo_excluir_view, name='hier_consumo_excluir'),
+    path('setores/importar/', views_hier.importar_view, name='hier_importar'),
+    path('setores/codigos/', views_hier.codigos_view, name='hier_codigos'),
+    path('setores/codigos/acao/', views_hier.codigos_acao_view, name='hier_codigos_acao'),
+    path('setores/cadastro/', views_hier.cadastro_view, name='hier_cadastro'),
+    path('setores/cadastro/salvar/', views_hier.cadastro_salvar_view, name='hier_cadastro_salvar'),
+    path('setores/cadastro/excluir/', views_hier.cadastro_excluir_view, name='hier_cadastro_excluir'),
     path('indicadores/', views.indicadores_view, name='indicadores'),
     path('indicadores/novo/', views.indicador_form_view, name='indicador_novo'),
     path('indicadores/<int:pk>/', views.indicador_detalhe_view, name='indicador_detalhe'),
     path('indicadores/<int:pk>/mover/', views.indicador_mover_view, name='indicador_mover'),
-    path('setores/', views_hier.painel_view, name='hier_painel'),
-    path('setores/lancar/', views_hier.lancar_view, name='hier_lancar'),
-    path('setores/consumo/<int:sub_pk>/excluir/', views_hier.consumo_excluir_view, name='hier_consumo_excluir'),
-    path('setores/cadastro/', views_hier.cadastro_view, name='hier_cadastro'),
-    path('setores/cadastro/salvar/', views_hier.cadastro_salvar_view, name='hier_cadastro_salvar'),
-    path('setores/cadastro/excluir/', views_hier.cadastro_excluir_view, name='hier_cadastro_excluir'),
     path('indicadores/<int:pk>/editar/', views.indicador_form_view, name='indicador_editar'),
     path('indicadores/<int:pk>/excluir/', views.indicador_excluir_view, name='indicador_excluir'),
     path('indicadores/<int:pk>/medicao/', views.medicao_salvar_view, name='medicao_salvar'),

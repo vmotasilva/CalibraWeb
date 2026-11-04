@@ -6,10 +6,12 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <div>
             <h4 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>KPI por setor{% if kpi %} — {{ kpi.nome }}{% endif %}</h4>
-            <div class="text-muted small">Setor › Categoria (máquina) › Subcategoria (item avaliado). Consumo mensal com meta por item.</div>
+            <div class="text-muted small">Setor › Categoria › Subcategoria › Item. Consumo mensal com meta por item, alimentado pelos códigos do almoxarifado.</div>
         </div>
         <div class="d-flex gap-2">
             <a href="{% url 'kpi:painel' %}" class="btn btn-outline-secondary">Painel de indicadores</a>
+            <a href="{% url 'kpi:hier_importar' %}" class="btn btn-outline-primary"><i class="bi bi-upload me-1"></i>Importar relatório</a>
+            <a href="{% url 'kpi:hier_codigos' %}" class="btn btn-outline-primary"><i class="bi bi-link-45deg me-1"></i>Códigos</a>
             <a href="{% url 'kpi:hier_cadastro' %}" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Cadastro</a>
         </div>
     </div>
@@ -26,28 +28,35 @@
     <form method="get" class="card card-body mb-3" id="filtros">
         <input type="hidden" name="kpi" value="{{ kpi.pk }}">
         <div class="row g-2 align-items-end">
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md-2">
                 <label class="form-label small mb-1">Setor</label>
-                <select name="setor" class="form-select" onchange="this.form.categoria.value='';this.form.sub.value='';this.form.submit()">
+                <select name="setor" class="form-select" onchange="this.form.categoria.value='';this.form.sub.value='';this.form.item.value='';this.form.submit()">
                     <option value="">Todos</option>
                     {% for s in setores %}<option value="{{ s.pk }}" {% if setor.pk == s.pk %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-6 col-md-3">
-                <label class="form-label small mb-1">Categoria (máquina)</label>
-                <select name="categoria" class="form-select" {% if not setor %}disabled{% endif %} onchange="this.form.sub.value='';this.form.submit()">
+                <label class="form-label small mb-1">Categoria</label>
+                <select name="categoria" class="form-select" {% if not setor %}disabled{% endif %} onchange="this.form.sub.value='';this.form.item.value='';this.form.submit()">
                     <option value="">Todas</option>
                     {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria.pk == c.pk %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}
                 </select>
             </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small mb-1">Subcategoria (item)</label>
-                <select name="sub" class="form-select" {% if not categoria %}disabled{% endif %} onchange="this.form.submit()">
+            <div class="col-6 col-md-2">
+                <label class="form-label small mb-1">Subcategoria</label>
+                <select name="sub" class="form-select" {% if not categoria %}disabled{% endif %} onchange="this.form.item.value='';this.form.submit()">
                     <option value="">Todas</option>
                     {% for s in subs %}<option value="{{ s.pk }}" {% if sub.pk == s.pk %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-6 col-md-3">
+                <label class="form-label small mb-1">Item</label>
+                <select name="item" class="form-select" {% if not sub %}disabled{% endif %} onchange="this.form.submit()">
+                    <option value="">Todos</option>
+                    {% for i in itens_opcoes %}<option value="{{ i.pk }}" {% if item.pk == i.pk %}selected{% endif %}>{{ i.nome }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
                 <label class="form-label small mb-1">Mês</label>
                 <input type="month" name="mes" value="{{ mes_valor }}" class="form-control" onchange="this.form.submit()">
             </div>
@@ -55,7 +64,7 @@
     </form>
 
     {% if not linhas %}
-        <div class="alert alert-warning">Nenhum item avaliado neste filtro. Cadastre setores, categorias e subcategorias em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
+        <div class="alert alert-warning">Nenhum item avaliado neste filtro. Cadastre setores, categorias, subcategorias e itens em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
     {% else %}
     <div class="row g-3">
         <div class="col-lg-6">
@@ -71,6 +80,7 @@
                 <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
                 <input type="hidden" name="categoria" value="{{ categoria.pk|default:'' }}">
                 <input type="hidden" name="sub" value="{{ sub.pk|default:'' }}">
+                <input type="hidden" name="item" value="{{ item.pk|default:'' }}">
                 <input type="hidden" name="mes" value="{{ mes_valor }}">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span class="fw-semibold">Consumo de {{ mes|date:"m/Y" }}</span>
@@ -88,7 +98,8 @@
                             <tr>
                                 <td>
                                     <div class="fw-semibold">{{ l.item.nome }}</div>
-                                    <div class="text-muted small">{{ l.item.categoria.setor.nome }} › {{ l.item.categoria.nome }}</div>
+                                    <div class="text-muted small">{{ l.item.subcategoria.categoria.setor.nome }} › {{ l.item.subcategoria.categoria.nome }} › {{ l.item.subcategoria.nome }}</div>
+                                    {% if l.codigos %}<div class="text-muted small"><i class="bi bi-upc-scan"></i> {{ l.codigos|join:", " }}</div>{% endif %}
                                 </td>
                                 <td class="text-end text-nowrap">{% if l.item.meta is not None %}≤ {{ l.item.meta|floatformat:"-2" }} {{ l.item.unidade }}{% else %}—{% endif %}</td>
                                 <td>
@@ -96,12 +107,13 @@
                                         <input type="text" inputmode="decimal" name="valor_{{ l.item.pk }}" class="form-control text-end" value="{{ l.consumo|default_if_none:''|stringformat:'s'|cut:'None' }}" placeholder="—">
                                         {% if l.item.unidade %}<span class="input-group-text">{{ l.item.unidade }}</span>{% endif %}
                                     </div>
+                                    {% if l.origem == 'importado' %}<div class="small text-primary"><i class="bi bi-cloud-download"></i> importado</div>{% elif l.origem == 'manual' %}<div class="small text-muted"><i class="bi bi-pencil"></i> manual</div>{% endif %}
                                 </td>
                                 <td class="text-center">
                                     {% if l.pct is not None %}<span class="badge {% if l.ok %}bg-success{% else %}bg-danger{% endif %}">{{ l.pct }}%</span>{% else %}<span class="text-muted">—</span>{% endif %}
                                 </td>
                                 <td class="text-end">
-                                    {% if l.consumo is not None %}<button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Excluir o consumo deste mês" formaction="{% url 'kpi:hier_consumo_excluir' l.item.pk %}" onclick="return confirm('Excluir o consumo deste item no mês?');"><i class="bi bi-trash"></i></button>{% endif %}
+                                    {% if l.origem == 'manual' %}<button type="submit" class="btn btn-sm btn-outline-danger py-0 px-1" title="Excluir o lançamento manual deste mês" formaction="{% url 'kpi:hier_consumo_excluir' l.item.pk %}" onclick="return confirm('Excluir o consumo deste item no mês?');"><i class="bi bi-trash"></i></button>{% endif %}
                                 </td>
                             </tr>
                         {% endfor %}

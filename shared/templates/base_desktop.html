@@ -494,6 +494,18 @@ MOTIVOS DE PERDAS <i class="bi bi-chevron-down transition-transform"></i>
 </ul>
 </li>
 {% endif %}
+{% can_nav_group user 'Processos > Decide' as nav_grp_decide %}
+{% if nav_grp_decide %}
+{% can_nav_view user 'kpi:decide' 'decide' as nav_decide_ver %}
+<li>
+<h6 class="dropdown-header text-white d-flex justify-content-between align-items-center ps-4" data-bs-toggle="collapse" data-bs-target="#collapseGESTAODECIDE" style="cursor: pointer; background-color: #14284b !important; color: #fff !important;">
+DECIDE <i class="bi bi-chevron-down transition-transform"></i>
+</h6>
+<ul class="list-unstyled collapse ps-2" id="collapseGESTAODECIDE">
+{% if nav_decide_ver %}<li><a class="dropdown-item" href="{% url 'kpi:decide' %}"><i class="bi bi-bullseye"></i> Indicador de Acompanhamento</a></li>{% endif %}
+</ul>
+</li>
+{% endif %}
 </ul>
 </li>
 {% endif %}

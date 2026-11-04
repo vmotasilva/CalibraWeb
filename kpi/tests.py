@@ -927,3 +927,54 @@ class ConsolidacaoMensalDasSemanasTests(TestCase):
         Indicador.objects.filter(pk=self.ind.pk).update(exibir_diario=True)
         self.sem('2026-09-07', '100', '10')
         self.assertIsNone(self.mes(date(2026, 9, 30)))
+
+
+class DecideTests(TestCase):
+    def setUp(self):
+        from openpyxl import Workbook
+        self.user = User.objects.create_superuser('dec', 'd@x.com', 'x')
+        self.client.force_login(self.user)
+        wb = Workbook()
+        ws = wb.active
+        ws.title = 'Dados'
+        ws.append(['Final TrackID', 'Qty Pass', 'Last Measure', 'DATE_MESURE', 'SYS_VERDICT', 'ID_ILOT', 'MARQUE', 'S_VERDICT', 'AXE_VERDICT'])
+        ws.append(['78_1_1-1', 2, 0, '2026-10-26 10:00:00.000', 2, 'PM01', 'G9Q', 2, 0])
+        ws.append(['78_1_1-1', 2, 1, '2026-10-26 11:00:00.000', 0, 'PM01', 'G9Q', 0, 0])
+        ws.append(['78_2_1-1', 1, 1, '2026-10-27 10:00:00.000', 2, 'PM01', 'G9N', 0, 2])
+        ws.append(['78_3_1-1', 1, 1, '2026-10-27 12:00:00.000', 0, 'FM01', 'G9N', 0, 0])
+        import io
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        buf.name = 'DCD_teste.xlsx'
+        self.arquivo = buf
+
+    def test_importa_e_calcula(self):
+        from kpi import decide
+        from kpi.models import DecideLente
+        r = self.client.post(reverse('kpi:decide_importar'), {'arquivo': self.arquivo})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(DecideLente.objects.count(), 4)
+        res = decide.calcular('reprovacao', 'dia')
+        self.assertEqual(res['resumo']['lentes'], 3)
+        self.assertEqual(res['resumo']['reprovadas'], 1)
+        self.assertEqual(res['resumo']['valor'], 33.33)
+        self.assertEqual(decide.calcular('aprovacao_1a', 'dia')['resumo']['valor'], 33.33)
+        self.assertEqual(decide.calcular('remedicao', 'mes')['resumo']['valor'], 33.33)
+        self.assertEqual(decide.calcular('reprovacao', 'semana', 'marca')['series'][0]['nome'], 'G9N')
+        self.assertEqual(decide.calcular('reprovacao', 'dia')['pareto'][0]['codigo'], 'AXE')
+        self.assertEqual(self.client.get(reverse('kpi:decide'), {'medida': 'reprovacao', 'meta': '5'}).status_code, 200)
+
+    def test_reimportar_nao_duplica(self):
+        from kpi.models import DecideLente
+        self.client.post(reverse('kpi:decide_importar'), {'arquivo': self.arquivo})
+        self.arquivo.seek(0)
+        self.client.post(reverse('kpi:decide_importar'), {'arquivo': self.arquivo})
+        self.assertEqual(DecideLente.objects.count(), 4)
+
+    def test_salva_indicador(self):
+        from kpi.models import DecideIndicador
+        self.client.post(reverse('kpi:decide_indicador_salvar'), {'nome': 'Reprov', 'medida': 'reprovacao', 'periodo': 'semana', 'meta': '5', 'ilot': 'PM01'})
+        ind = DecideIndicador.objects.get()
+        self.assertEqual(ind.config['ilot'], 'PM01')
+        self.assertEqual(self.client.get(reverse('kpi:decide'), {'ind': ind.pk}).status_code, 200)

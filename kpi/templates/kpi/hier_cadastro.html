@@ -7,7 +7,7 @@
         <h4 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Cadastro — KPI por setor</h4>
         <a href="{% url 'kpi:hier_painel' %}" class="btn btn-outline-secondary">Voltar ao painel</a>
     </div>
-    <p class="text-muted small">Monte a árvore: <strong>KPI</strong> › <strong>Setor</strong> › <strong>Categoria</strong> (ex.: a máquina) › <strong>Subcategoria</strong> (o item avaliado, com unidade e meta de consumo mensal). Excluir um nível apaga tudo o que está dentro dele, inclusive os consumos lançados.</p>
+    <p class="text-muted small">Monte a árvore: <strong>KPI</strong> › <strong>Setor</strong> › <strong>Categoria</strong> (ex.: Polidora) › <strong>Subcategoria</strong> (ex.: DLP) › <strong>Item</strong> (ex.: Pads, com unidade, meta de consumo mensal e os <strong>códigos</strong> do almoxarifado que alimentam o consumo). Também dá para vincular códigos em lote em <a href="{% url 'kpi:hier_codigos' %}">Códigos</a>. Excluir um nível apaga tudo o que está dentro dele, inclusive os consumos lançados.</p>
 
     {% for k in kpis %}
     <div class="card mb-4">
@@ -55,37 +55,62 @@
                         </form>
                     </div>
 
-                    {% for i in c.subcategorias.all %}
-                    <div class="d-flex flex-wrap gap-2 align-items-center mb-1 ms-3">
-                        <form method="post" action="{% url 'kpi:hier_cadastro_salvar' %}" class="d-flex flex-wrap gap-2 align-items-center">{% csrf_token %}
-                            <input type="hidden" name="tipo" value="sub"><input type="hidden" name="pk" value="{{ i.pk }}"><input type="hidden" name="ativo_form" value="1">
-                            <span class="badge bg-secondary">Item</span>
-                            <input name="nome" value="{{ i.nome }}" class="form-control form-control-sm" style="width:12rem" required>
-                            <input name="unidade" value="{{ i.unidade }}" class="form-control form-control-sm" style="width:5rem" placeholder="Unid.">
-                            <input name="meta" value="{{ i.meta|default_if_none:''|stringformat:'s'|cut:'None' }}" class="form-control form-control-sm text-end" style="width:7rem" placeholder="Meta ≤" inputmode="decimal">
-                            <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="ativo" id="ativo_i{{ i.pk }}" {% if i.ativo %}checked{% endif %}><label class="form-check-label small" for="ativo_i{{ i.pk }}">Ativo</label></div>
-                            <button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button>
-                        </form>
-                        <form method="post" action="{% url 'kpi:hier_cadastro_excluir' %}" onsubmit="return confirm('Excluir o item {{ i.nome|escapejs }} e seus consumos?');">{% csrf_token %}
-                            <input type="hidden" name="tipo" value="sub"><input type="hidden" name="pk" value="{{ i.pk }}">
-                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                    {% for sb in c.subcategorias.all %}
+                    <div class="ms-3 ps-3 border-start mb-2">
+                        <div class="d-flex flex-wrap justify-content-between gap-2 mb-1">
+                            <form method="post" action="{% url 'kpi:hier_cadastro_salvar' %}" class="d-flex gap-2">{% csrf_token %}
+                                <input type="hidden" name="tipo" value="sub"><input type="hidden" name="pk" value="{{ sb.pk }}">
+                                <span class="badge bg-warning text-dark align-self-center">Subcategoria</span>
+                                <input name="nome" value="{{ sb.nome }}" class="form-control form-control-sm" style="width:12rem" required>
+                                <button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button>
+                            </form>
+                            <form method="post" action="{% url 'kpi:hier_cadastro_excluir' %}" onsubmit="return confirm('Excluir a subcategoria {{ sb.nome|escapejs }} e seus itens?');">{% csrf_token %}
+                                <input type="hidden" name="tipo" value="sub"><input type="hidden" name="pk" value="{{ sb.pk }}">
+                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+
+                        {% for i in sb.itens.all %}
+                        <div class="d-flex flex-wrap gap-2 align-items-center mb-1 ms-3">
+                            <form method="post" action="{% url 'kpi:hier_cadastro_salvar' %}" class="d-flex flex-wrap gap-2 align-items-center">{% csrf_token %}
+                                <input type="hidden" name="tipo" value="item"><input type="hidden" name="pk" value="{{ i.pk }}"><input type="hidden" name="ativo_form" value="1">
+                                <span class="badge bg-secondary">Item</span>
+                                <input name="nome" value="{{ i.nome }}" class="form-control form-control-sm" style="width:11rem" required>
+                                <input name="unidade" value="{{ i.unidade }}" class="form-control form-control-sm" style="width:4.5rem" placeholder="Unid.">
+                                <input name="meta" value="{{ i.meta|default_if_none:''|stringformat:'s'|cut:'None' }}" class="form-control form-control-sm text-end" style="width:6.5rem" placeholder="Meta ≤" inputmode="decimal">
+                                <input name="codigos" value="{% for cd in i.codigos.all %}{{ cd.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}" class="form-control form-control-sm" style="width:11rem" placeholder="Códigos (ex.: 3989, 3993)" title="Códigos do almoxarifado deste item, separados por vírgula">
+                                <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="ativo" id="ativo_i{{ i.pk }}" {% if i.ativo %}checked{% endif %}><label class="form-check-label small" for="ativo_i{{ i.pk }}">Ativo</label></div>
+                                <button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button>
+                            </form>
+                            <form method="post" action="{% url 'kpi:hier_cadastro_excluir' %}" onsubmit="return confirm('Excluir o item {{ i.nome|escapejs }} e seus consumos?');">{% csrf_token %}
+                                <input type="hidden" name="tipo" value="item"><input type="hidden" name="pk" value="{{ i.pk }}">
+                                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                        {% endfor %}
+
+                        <form method="post" action="{% url 'kpi:hier_cadastro_salvar' %}" class="d-flex flex-wrap gap-2 align-items-center mt-2 ms-3">{% csrf_token %}
+                            <input type="hidden" name="tipo" value="item"><input type="hidden" name="pai" value="{{ sb.pk }}">
+                            <input name="nome" class="form-control form-control-sm" style="width:11rem" placeholder="Novo item (ex.: Pads)" required>
+                            <input name="unidade" class="form-control form-control-sm" style="width:4.5rem" placeholder="Unid.">
+                            <input name="meta" class="form-control form-control-sm text-end" style="width:6.5rem" placeholder="Meta ≤" inputmode="decimal">
+                            <input name="codigos" class="form-control form-control-sm" style="width:11rem" placeholder="Códigos (ex.: 3989, 3993)">
+                            <button class="btn btn-sm btn-success"><i class="bi bi-plus-lg me-1"></i>Item</button>
                         </form>
                     </div>
                     {% endfor %}
 
-                    <form method="post" action="{% url 'kpi:hier_cadastro_salvar' %}" class="d-flex flex-wrap gap-2 align-items-center mt-2 ms-3">{% csrf_token %}
+                    <form method="post" action="{% url 'kpi:hier_cadastro_salvar' %}" class="d-flex gap-2 mt-2 ms-3">{% csrf_token %}
                         <input type="hidden" name="tipo" value="sub"><input type="hidden" name="pai" value="{{ c.pk }}">
-                        <input name="nome" class="form-control form-control-sm" style="width:12rem" placeholder="Novo item (ex.: Diamante)" required>
-                        <input name="unidade" class="form-control form-control-sm" style="width:5rem" placeholder="Unid.">
-                        <input name="meta" class="form-control form-control-sm text-end" style="width:7rem" placeholder="Meta ≤" inputmode="decimal">
-                        <button class="btn btn-sm btn-success"><i class="bi bi-plus-lg me-1"></i>Item</button>
+                        <input name="nome" class="form-control form-control-sm" style="width:16rem" placeholder="Nova subcategoria (ex.: DLP)" required>
+                        <button class="btn btn-sm btn-success"><i class="bi bi-plus-lg me-1"></i>Subcategoria</button>
                     </form>
                 </div>
                 {% endfor %}
 
                 <form method="post" action="{% url 'kpi:hier_cadastro_salvar' %}" class="d-flex gap-2 ms-3 mt-2">{% csrf_token %}
                     <input type="hidden" name="tipo" value="categoria"><input type="hidden" name="pai" value="{{ s.pk }}">
-                    <input name="nome" class="form-control form-control-sm" style="width:16rem" placeholder="Nova categoria (ex.: Corte Orbit 2.0)" required>
+                    <input name="nome" class="form-control form-control-sm" style="width:16rem" placeholder="Nova categoria (ex.: Polidora)" required>
                     <button class="btn btn-sm btn-success"><i class="bi bi-plus-lg me-1"></i>Categoria</button>
                 </form>
             </div>

@@ -308,13 +308,10 @@ class HierCategoria(models.Model):
 
 
 class HierSubcategoria(models.Model):
-    """Item avaliado (ex.: Diamante, Fresa, Líquido polidor). Tem meta própria de consumo (quanto menor, melhor)."""
+    """Agrupador abaixo da categoria (ex.: o modelo da máquina: DLP, Toro Flex, Orbit 2.0)."""
     categoria = models.ForeignKey(HierCategoria, on_delete=models.CASCADE, related_name='subcategorias')
-    nome = models.CharField('Subcategoria (item avaliado)', max_length=100)
-    unidade = models.CharField('Unidade', max_length=20, blank=True, help_text='Ex.: L, un, kg.')
-    meta = models.DecimalField('Meta de consumo mensal (máximo)', max_digits=14, decimal_places=2, null=True, blank=True)
+    nome = models.CharField('Subcategoria', max_length=100)
     ordem = models.PositiveIntegerField(default=0)
-    ativo = models.BooleanField('Ativo', default=True)
 
     class Meta:
         ordering = ['ordem', 'nome']
@@ -325,6 +322,26 @@ class HierSubcategoria(models.Model):
     def __str__(self):
         return f'{self.categoria} / {self.nome}'
 
+
+class HierItem(models.Model):
+    """Item avaliado (ex.: Pads, Diamante, Líquido polidor). Tem meta própria de consumo (quanto menor, melhor) e
+    recebe o consumo dos códigos de almoxarifado vinculados a ele (HierCodigo)."""
+    subcategoria = models.ForeignKey(HierSubcategoria, on_delete=models.CASCADE, related_name='itens')
+    nome = models.CharField('Item avaliado', max_length=100)
+    unidade = models.CharField('Unidade', max_length=20, blank=True, help_text='Ex.: L, un, kg.')
+    meta = models.DecimalField('Meta de consumo mensal (máximo)', max_digits=14, decimal_places=2, null=True, blank=True)
+    ordem = models.PositiveIntegerField(default=0)
+    ativo = models.BooleanField('Ativo', default=True)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        unique_together = [('subcategoria', 'nome')]
+        verbose_name = 'Item (KPI por setor)'
+        verbose_name_plural = 'Itens (KPI por setor)'
+
+    def __str__(self):
+        return f'{self.subcategoria} / {self.nome}'
+
     def atingiu(self, valor):
         if valor is None or self.meta is None:
             return None
@@ -332,19 +349,130 @@ class HierSubcategoria(models.Model):
 
 
 class HierConsumo(models.Model):
-    """Consumo de uma subcategoria em um mês (período = último dia do mês)."""
-    subcategoria = models.ForeignKey(HierSubcategoria, on_delete=models.CASCADE, related_name='consumos')
+    """Consumo de um item em um mês (período = último dia do mês). Vem do cálculo sobre as movimentações
+    importadas (origem 'importado') ou de lançamento manual, que prevalece sobre o importado."""
+    ORIGEM_MANUAL, ORIGEM_IMPORTADO = 'manual', 'importado'
+    ORIGENS = [(ORIGEM_MANUAL, 'Manual'), (ORIGEM_IMPORTADO, 'Importado')]
+
+    item = models.ForeignKey(HierItem, on_delete=models.CASCADE, related_name='consumos')
     periodo = models.DateField('Mês (último dia)')
     valor = models.DecimalField('Consumo', max_digits=14, decimal_places=2)
+    origem = models.CharField('Origem', max_length=10, choices=ORIGENS, default=ORIGEM_MANUAL)
     observacao = models.CharField('Observação', max_length=255, blank=True)
     registrado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     registrado_em = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-periodo']
-        unique_together = [('subcategoria', 'periodo')]
+        unique_together = [('item', 'periodo')]
         verbose_name = 'Consumo (KPI por setor)'
         verbose_name_plural = 'Consumos (KPI por setor)'
 
     def __str__(self):
-        return f'{self.subcategoria} - {self.periodo:%m/%Y}: {self.valor}'
+        return f'{self.item} - {self.periodo:%m/%Y}: {self.valor}'
+
+
+class HierCodigo(models.Model):
+    """Código do insumo no almoxarifado (chave única do tipo de insumo), vinculado a um item avaliado."""
+    codigo = models.PositiveIntegerField('Código', unique=True)
+    descricao = models.CharField('Material / referência', max_length=300, blank=True)
+    unidade = models.CharField('Unidade do almoxarifado', max_length=20, blank=True)
+    familia = models.CharField('Família (almoxarifado)', max_length=100, blank=True)
+    item = models.ForeignKey(HierItem, null=True, blank=True, on_delete=models.SET_NULL, related_name='codigos')
+    fator = models.DecimalField('Fator de conversão', max_digits=14, decimal_places=6, default=1,
+                                help_text='Multiplica a quantidade do código para chegar na unidade do item (ex.: galão → litros).')
+    ignorado = models.BooleanField('Ignorado (fora do KPI)', default=False, db_index=True)
+
+    class Meta:
+        ordering = ['codigo']
+        verbose_name = 'Código de insumo'
+        verbose_name_plural = 'Códigos de insumo'
+
+    def __str__(self):
+        return f'{self.codigo} - {self.descricao}'
+
+
+class HierMovimento(models.Model):
+    """Uma saída do almoxarifado importada do relatório de movimentação. Guardada integralmente: vincular ou
+    desvincular um código recalcula o consumo sem precisar reimportar."""
+    codigo = models.ForeignKey(HierCodigo, on_delete=models.CASCADE, related_name='movimentos')
+    data = models.DateField(db_index=True)
+    quantidade = models.DecimalField(max_digits=14, decimal_places=3)
+    tipo = models.CharField('Tipo de movimento', max_length=20, help_text='UTILIZACOES, PERDAS, DEVOLUCAO...')
+    origem = models.CharField(max_length=30, blank=True)
+    identif = models.BigIntegerField('Identificador do movimento', null=True, blank=True)
+
+    class Meta:
+        ordering = ['-data', 'codigo']
+        indexes = [models.Index(fields=['codigo', 'data'], name='kpi_hiermov_codigo_data_idx')]
+        verbose_name = 'Movimento de insumo'
+        verbose_name_plural = 'Movimentos de insumo'
+
+    def __str__(self):
+        return f'{self.codigo_id} {self.data:%d/%m/%Y} {self.quantidade}'
+
+
+class DecideImportacao(models.Model):
+    """Um envio da planilha semanal do DECIDE (medidor de lentes)."""
+    arquivo = models.CharField('Arquivo', max_length=200)
+    linhas = models.PositiveIntegerField('Medições', default=0)
+    lentes = models.PositiveIntegerField('Lentes', default=0)
+    inicio = models.DateField('Primeira medição', null=True, blank=True)
+    fim = models.DateField('Última medição', null=True, blank=True)
+    criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-criado_em', '-pk']
+        verbose_name = 'Importação DECIDE'
+        verbose_name_plural = 'Importações DECIDE'
+
+    def __str__(self):
+        return self.arquivo
+
+
+class DecideLente(models.Model):
+    """Uma medição de uma lente (linha da planilha). `ultima` marca a medição final da lente."""
+    importacao = models.ForeignKey(DecideImportacao, on_delete=models.CASCADE, related_name='medicoes')
+    track_id = models.CharField('Final TrackID', max_length=60, db_index=True)
+    medido_em = models.DateTimeField('Data da medição', db_index=True)
+    passagens = models.PositiveSmallIntegerField('Passagens', default=1)
+    ultima = models.BooleanField('Medição final', default=False)
+    reprovada = models.BooleanField('Reprovada', default=False)
+    reprovada_1a = models.BooleanField('Reprovada na 1ª medição', default=False)
+    falhas = models.CharField('Parâmetros reprovados', max_length=60, blank=True)
+    ilot = models.CharField(max_length=20, blank=True)
+    decisao = models.CharField('Decisão do operador', max_length=20, blank=True)
+    codigo_op = models.CharField('Código da operação', max_length=20, blank=True)
+    marca = models.CharField(max_length=30, blank=True)
+    indice = models.CharField('Índice', max_length=20, blank=True)
+    diametro = models.CharField('Diâmetro', max_length=20, blank=True)
+    olho = models.CharField(max_length=5, blank=True)
+    medidor = models.CharField('Operador (INI)', max_length=30, blank=True)
+
+    class Meta:
+        ordering = ['-medido_em']
+        unique_together = [('track_id', 'medido_em')]
+        verbose_name = 'Medição DECIDE'
+        verbose_name_plural = 'Medições DECIDE'
+
+    def __str__(self):
+        return f'{self.track_id} {self.medido_em:%d/%m/%Y %H:%M}'
+
+
+class DecideIndicador(models.Model):
+    """Indicador de acompanhamento montado no construtor do DECIDE (configuração salva)."""
+    nome = models.CharField('Nome', max_length=150)
+    descricao = models.CharField('Descrição', max_length=255, blank=True)
+    config = models.JSONField('Configuração', default=dict)
+    meta = models.DecimalField('Meta', max_digits=14, decimal_places=2, null=True, blank=True)
+    criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = 'Indicador DECIDE'
+        verbose_name_plural = 'Indicadores DECIDE'
+
+    def __str__(self):
+        return self.nome

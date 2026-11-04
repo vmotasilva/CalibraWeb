@@ -1,20 +1,28 @@
-"""KPI por setor (hierárquico): KPI > Setor > Categoria (máquina) > Subcategoria (item), com consumo mensal e meta por item."""
+"""KPI por setor (hierárquico): KPI > Setor > Categoria > Subcategoria > Item, com consumo mensal e meta por item.
+
+O consumo do item vem da importação do relatório de movimentação do almoxarifado, via códigos vinculados ao item
+(kpi.insumos), ou de lançamento manual."""
 import calendar
 import datetime
+import re
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
+from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
-from kpi.models import HierCategoria, HierConsumo, HierSetor, HierSubcategoria, KpiHierarquico
+from kpi import insumos
+from kpi.models import HierCategoria, HierCodigo, HierConsumo, HierItem, HierSetor, HierSubcategoria, KpiHierarquico
 
 JANELA_MESES = 12
+LIMITE_ARQUIVO = 25 * 1024 * 1024
 
 
 def _fim_do_mes(d):
@@ -58,7 +66,7 @@ def _serie(itens, meses, consumos):
     """Um item: consumo real e a meta dele. Vários itens: média do % da meta (consumo ÷ meta), pois as unidades diferem."""
     por_item = {}
     for c in consumos:
-        por_item.setdefault(c.subcategoria_id, {})[c.periodo] = c.valor
+        por_item.setdefault(c.item_id, {})[c.periodo] = c.valor
     rotulos = [f'{m:%m/%Y}' for m in meses]
     if len(itens) == 1:
         item = itens[0]
@@ -88,32 +96,40 @@ def painel_view(request):
     setor = next((s for s in setores if s.pk == _int(request.GET.get('setor'))), None)
     categorias = list(setor.categorias.all()) if setor else []
     categoria = next((c for c in categorias if c.pk == _int(request.GET.get('categoria'))), None)
-    subs = list(categoria.subcategorias.filter(ativo=True)) if categoria else []
+    subs = list(categoria.subcategorias.all()) if categoria else []
     sub = next((s for s in subs if s.pk == _int(request.GET.get('sub'))), None)
+    itens_opcoes = list(sub.itens.filter(ativo=True)) if sub else []
+    item = next((i for i in itens_opcoes if i.pk == _int(request.GET.get('item'))), None)
 
-    itens_qs = HierSubcategoria.objects.filter(ativo=True, categoria__setor__kpi=kpi).select_related('categoria__setor')
-    if sub:
-        itens_qs = itens_qs.filter(pk=sub.pk)
+    itens_qs = (HierItem.objects.filter(ativo=True, subcategoria__categoria__setor__kpi=kpi)
+                .select_related('subcategoria__categoria__setor').prefetch_related('codigos'))
+    if item:
+        itens_qs = itens_qs.filter(pk=item.pk)
+    elif sub:
+        itens_qs = itens_qs.filter(subcategoria=sub)
     elif categoria:
-        itens_qs = itens_qs.filter(categoria=categoria)
+        itens_qs = itens_qs.filter(subcategoria__categoria=categoria)
     elif setor:
-        itens_qs = itens_qs.filter(categoria__setor=setor)
-    itens = list(itens_qs.order_by('categoria__setor__ordem', 'categoria__ordem', 'ordem', 'nome'))
+        itens_qs = itens_qs.filter(subcategoria__categoria__setor=setor)
+    itens = list(itens_qs.order_by('subcategoria__categoria__setor__ordem', 'subcategoria__categoria__ordem',
+                                   'subcategoria__ordem', 'ordem', 'nome'))
 
     fim = _mes_param(request.GET.get('mes'))
     meses = _meses_ate(fim, JANELA_MESES)
-    consumos = list(HierConsumo.objects.filter(subcategoria__in=itens, periodo__in=meses))
-    atual = {c.subcategoria_id: c for c in consumos if c.periodo == fim}
+    consumos = list(HierConsumo.objects.filter(item__in=itens, periodo__in=meses))
+    atual = {c.item_id: c for c in consumos if c.periodo == fim}
     linhas = []
     for i in itens:
         c = atual.get(i.pk)
         v = c.valor if c else None
-        linhas.append({'item': i, 'consumo': v, 'obs': c.observacao if c else '',
+        linhas.append({'item': i, 'consumo': v, 'origem': c.origem if c else '',
+                       'codigos': [x.codigo for x in i.codigos.all()],
                        'pct': round(v / i.meta * 100) if v is not None and i.meta else None,
                        'ok': i.atingiu(v)})
     com_meta = [l for l in linhas if l['ok'] is not None]
     ctx.update(
         setores=setores, setor=setor, categorias=categorias, categoria=categoria, subs=subs, sub=sub,
+        itens_opcoes=itens_opcoes, item=item,
         linhas=linhas, mes=fim, mes_valor=f'{fim:%Y-%m}', serie=_serie(itens, meses, consumos) if itens else None,
         dentro=sum(1 for l in com_meta if l['ok']), fora=sum(1 for l in com_meta if not l['ok']),
         sem_lancamento=sum(1 for l in linhas if l['consumo'] is None),
@@ -122,27 +138,31 @@ def painel_view(request):
 
 
 def _voltar_painel(post):
-    params = {k: post.get(k) for k in ('kpi', 'setor', 'categoria', 'sub', 'mes') if post.get(k)}
+    params = {k: post.get(k) for k in ('kpi', 'setor', 'categoria', 'sub', 'item', 'mes') if post.get(k)}
     return redirect(reverse('kpi:hier_painel') + ('?' + urlencode(params) if params else ''))
 
 
 @login_required
 @require_POST
 def lancar_view(request):
-    """Grava o consumo do mês de cada item enviado (campos valor_<id>). Campo em branco não altera nada."""
+    """Grava o consumo do mês de cada item enviado (campos valor_<id>). Em branco ou igual ao já importado não altera nada;
+    um valor diferente vira lançamento manual, que prevalece sobre o importado."""
     periodo = _mes_param(request.POST.get('mes'))
     gravados = 0
     for chave, bruto in request.POST.items():
         if not chave.startswith('valor_') or not (bruto or '').strip():
             continue
-        item = HierSubcategoria.objects.filter(pk=_int(chave[6:])).first()
+        item = HierItem.objects.filter(pk=_int(chave[6:])).first()
         valor = _decimal(bruto)
         if not item or valor is None or valor < 0:
             messages.error(request, f'Valor inválido para "{item or chave}".')
             continue
+        atual = HierConsumo.objects.filter(item=item, periodo=periodo).first()
+        if atual and atual.origem == HierConsumo.ORIGEM_IMPORTADO and atual.valor == valor.quantize(Decimal('0.01')):
+            continue
         HierConsumo.objects.update_or_create(
-            subcategoria=item, periodo=periodo,
-            defaults={'valor': valor, 'registrado_por': request.user,
+            item=item, periodo=periodo,
+            defaults={'valor': valor, 'registrado_por': request.user, 'origem': HierConsumo.ORIGEM_MANUAL,
                       'observacao': (request.POST.get(f'obs_{item.pk}') or '').strip()[:255]})
         gravados += 1
     if gravados:
@@ -152,36 +172,189 @@ def lancar_view(request):
 
 @login_required
 @require_POST
-def consumo_excluir_view(request, sub_pk):
-    """Exclui o consumo de um item no mês informado."""
+def consumo_excluir_view(request, item_pk):
+    """Exclui o lançamento manual do item no mês (volta a valer o importado, se houver). Importado só some desvinculando códigos."""
     periodo = _mes_param(request.POST.get('mes'))
-    apagados, _ = HierConsumo.objects.filter(subcategoria_id=sub_pk, periodo=periodo).delete()
-    if apagados:
-        messages.success(request, 'Consumo excluído.')
+    consumo = HierConsumo.objects.filter(item_id=item_pk, periodo=periodo).first()
+    if not consumo:
+        return _voltar_painel(request.POST)
+    if consumo.origem == HierConsumo.ORIGEM_IMPORTADO:
+        messages.warning(request, 'Este consumo vem do relatório importado. Para tirá-lo, desvincule os códigos do item.')
+        return _voltar_painel(request.POST)
+    consumo.delete()
+    insumos.recalcular({item_pk})
+    messages.success(request, 'Lançamento manual excluído.')
     return _voltar_painel(request.POST)
+
+
+# ----- Importação do relatório de movimentação -----
+
+@login_required
+def importar_view(request):
+    ctx = {'resumo': None, 'pendentes': HierCodigo.objects.filter(item__isnull=True, ignorado=False).count(),
+           'tipos_consumo': sorted(insumos.TIPOS_CONSUMO)}
+    if request.method == 'POST':
+        arq = request.FILES.get('arquivo')
+        if not arq:
+            messages.error(request, 'Escolha o arquivo do relatório.')
+        elif arq.size > LIMITE_ARQUIVO:
+            messages.error(request, 'Arquivo muito grande (limite de 25 MB).')
+        else:
+            try:
+                linhas, datemode = insumos.ler_linhas(arq.read(), arq.name)
+                lido = insumos.interpretar(linhas, datemode)
+                resumo = insumos.importar(lido['registros'])
+                resumo.update(ignoradas=lido['ignoradas'], estornos=lido['estornos'])
+                ctx['resumo'] = resumo
+                ctx['pendentes'] = HierCodigo.objects.filter(item__isnull=True, ignorado=False).count()
+                messages.success(request, f'Importação concluída: {resumo["adicionadas"]} movimentação(ões) nova(s).')
+            except insumos.ErroImportacao as e:
+                messages.error(request, str(e))
+    return render(request, 'kpi/hier_importar.html', ctx)
+
+
+# ----- Códigos de insumo -----
+
+def _codigos_filtrados(params):
+    qs = HierCodigo.objects.all()
+    q = (params.get('q') or '').strip()
+    if q:
+        filtro = Q(descricao__icontains=q) | Q(familia__icontains=q)
+        if q.isdigit():
+            filtro |= Q(codigo=int(q))
+        qs = qs.filter(filtro)
+    if params.get('familia'):
+        qs = qs.filter(familia=params['familia'])
+    status = params.get('status') or 'pendente'
+    if status == 'pendente':
+        qs = qs.filter(item__isnull=True, ignorado=False)
+    elif status == 'vinculado':
+        qs = qs.filter(item__isnull=False)
+    elif status == 'ignorado':
+        qs = qs.filter(ignorado=True)
+    return qs, status
+
+
+def _opcoes_itens():
+    itens = (HierItem.objects.select_related('subcategoria__categoria__setor__kpi')
+             .order_by('subcategoria__categoria__setor__kpi__nome', 'subcategoria__categoria__setor__ordem',
+                       'subcategoria__categoria__ordem', 'subcategoria__ordem', 'ordem', 'nome'))
+    return [(i.pk, f'{i.subcategoria.categoria.setor.nome} › {i.subcategoria.categoria.nome} › {i.subcategoria.nome} › {i.nome}')
+            for i in itens]
+
+
+@login_required
+def codigos_view(request):
+    qs, status = _codigos_filtrados(request.GET)
+    qs = (qs.select_related('item__subcategoria__categoria__setor')
+          .annotate(n_mov=Count('movimentos'), qtd=Sum('movimentos__quantidade')).order_by('-n_mov', 'codigo'))
+    pagina = Paginator(qs, 50).get_page(request.GET.get('page'))
+    filtro = {k: request.GET.get(k, '') for k in ('q', 'familia', 'status') if request.GET.get(k)}
+    ctx = {
+        'pagina': pagina, 'status': status, 'q': request.GET.get('q', ''), 'familia': request.GET.get('familia', ''),
+        'familias': list(HierCodigo.objects.exclude(familia='').order_by('familia').values_list('familia', flat=True).distinct()),
+        'itens': _opcoes_itens(), 'total': pagina.paginator.count, 'filtro_qs': urlencode(filtro),
+        'contagens': {
+            'pendente': HierCodigo.objects.filter(item__isnull=True, ignorado=False).count(),
+            'vinculado': HierCodigo.objects.filter(item__isnull=False).count(),
+            'ignorado': HierCodigo.objects.filter(ignorado=True).count(),
+        },
+    }
+    return render(request, 'kpi/hier_codigos.html', ctx)
+
+
+@login_required
+@require_POST
+def codigos_acao_view(request):
+    """Ação em lote nos códigos marcados (ou em todos os do filtro): vincular a um item, desvincular, ignorar,
+    reativar ou salvar fatores de conversão. Recalcula o consumo dos itens afetados."""
+    p, acao = request.POST, request.POST.get('acao')
+    if p.get('todos_filtro') == '1':
+        ids = [c.pk for c in _codigos_filtrados(p)[0]]
+    else:
+        ids = [x for x in (_int(v) for v in p.getlist('sel')) if x]
+    qs = HierCodigo.objects.filter(pk__in=ids)
+    afetados = set(qs.exclude(item__isnull=True).values_list('item_id', flat=True))
+    if not ids:
+        messages.warning(request, 'Marque ao menos um código.')
+    elif acao == 'vincular':
+        item = get_object_or_404(HierItem, pk=_int(p.get('item')))
+        qs.update(item=item, ignorado=False)
+        afetados.add(item.pk)
+        messages.success(request, f'{len(ids)} código(s) vinculado(s) a "{item.nome}".')
+    elif acao == 'desvincular':
+        qs.update(item=None)
+        messages.success(request, f'{len(ids)} código(s) desvinculado(s).')
+    elif acao == 'ignorar':
+        qs.update(item=None, ignorado=True)
+        messages.success(request, f'{len(ids)} código(s) ignorado(s).')
+    elif acao == 'reativar':
+        qs.update(ignorado=False)
+        messages.success(request, f'{len(ids)} código(s) reativado(s).')
+    elif acao == 'fatores':
+        n = 0
+        for c in qs:
+            f = _decimal(p.get(f'fator_{c.pk}'))
+            if f is not None and f > 0 and f != c.fator:
+                c.fator = f
+                c.save(update_fields=['fator'])
+                n += 1
+        messages.success(request, f'{n} fator(es) atualizado(s).')
+    else:
+        messages.error(request, 'Ação inválida.')
+    if afetados:
+        insumos.recalcular(afetados)
+    volta = {k: p.get(k) for k in ('q', 'familia', 'status', 'page') if p.get(k)}
+    return redirect(reverse('kpi:hier_codigos') + ('?' + urlencode(volta) if volta else ''))
 
 
 # ----- Cadastro da árvore -----
 
 @login_required
 def cadastro_view(request):
-    kpis = KpiHierarquico.objects.prefetch_related('setores__categorias__subcategorias')
+    kpis = KpiHierarquico.objects.prefetch_related('setores__categorias__subcategorias__itens__codigos')
     return render(request, 'kpi/hier_cadastro.html', {'kpis': kpis})
+
+
+def _sincronizar_codigos(request, item, texto):
+    """Deixa o item com exatamente os códigos informados (números separados por vírgula/espaço). Retorna os itens afetados."""
+    numeros, invalidos = [], []
+    for token in re.split(r'[\s,;]+', texto or ''):
+        if not token:
+            continue
+        if token.isdigit() and 0 < int(token) < 2 ** 31:
+            numeros.append(int(token))
+        else:
+            invalidos.append(token)
+    afetados = {item.pk}
+    for n in numeros:
+        codigo, _ = HierCodigo.objects.get_or_create(codigo=n)
+        if codigo.item_id and codigo.item_id != item.pk:
+            afetados.add(codigo.item_id)
+            messages.warning(request, f'O código {n} estava em "{codigo.item.nome}" e foi movido para "{item.nome}".')
+        if codigo.item_id != item.pk or codigo.ignorado:
+            codigo.item, codigo.ignorado = item, False
+            codigo.save(update_fields=['item', 'ignorado'])
+    HierCodigo.objects.filter(item=item).exclude(codigo__in=numeros).update(item=None)
+    if invalidos:
+        messages.warning(request, 'Códigos ignorados por não serem números: ' + ', '.join(invalidos))
+    return afetados
 
 
 @login_required
 @require_POST
 def cadastro_salvar_view(request):
-    """Cria/edita um nó. tipo: kpi | setor | categoria | sub; pk (edição) ou pai (criação)."""
+    """Cria/edita um nó. tipo: kpi | setor | categoria | sub | item; pk (edição) ou pai (criação)."""
     p, tipo = request.POST, request.POST.get('tipo')
     nome = (p.get('nome') or '').strip()
     pk, pai = _int(p.get('pk')), _int(p.get('pai'))
     if not nome:
         messages.error(request, 'Informe o nome.')
         return redirect('kpi:hier_cadastro')
-    if tipo not in ('kpi', 'setor', 'categoria', 'sub'):
+    if tipo not in ('kpi', 'setor', 'categoria', 'sub', 'item'):
         messages.error(request, 'Tipo inválido.')
         return redirect('kpi:hier_cadastro')
+    afetados = set()
     try:
         if tipo == 'kpi':
             obj = get_object_or_404(KpiHierarquico, pk=pk) if pk else KpiHierarquico()
@@ -192,8 +365,11 @@ def cadastro_salvar_view(request):
         elif tipo == 'categoria':
             obj = get_object_or_404(HierCategoria, pk=pk) if pk else HierCategoria(setor=get_object_or_404(HierSetor, pk=pai))
             obj.nome = nome
-        else:
+        elif tipo == 'sub':
             obj = get_object_or_404(HierSubcategoria, pk=pk) if pk else HierSubcategoria(categoria=get_object_or_404(HierCategoria, pk=pai))
+            obj.nome = nome
+        else:
+            obj = get_object_or_404(HierItem, pk=pk) if pk else HierItem(subcategoria=get_object_or_404(HierSubcategoria, pk=pai))
             meta = (p.get('meta') or '').strip()
             if meta and _decimal(meta) is None:
                 messages.error(request, 'Meta inválida.')
@@ -204,9 +380,13 @@ def cadastro_salvar_view(request):
             obj.ativo = p.get('ativo') == 'on'
         with transaction.atomic():
             obj.save()
+            if tipo == 'item' and 'codigos' in p:
+                afetados = _sincronizar_codigos(request, obj, p.get('codigos'))
     except IntegrityError:
         messages.error(request, 'Já existe um item com esse nome neste nível.')
         return redirect('kpi:hier_cadastro')
+    if afetados:
+        insumos.recalcular(afetados)
     messages.success(request, 'Salvo.')
     return redirect('kpi:hier_cadastro')
 
@@ -214,9 +394,9 @@ def cadastro_salvar_view(request):
 @login_required
 @require_POST
 def cadastro_excluir_view(request):
-    modelos = {'kpi': KpiHierarquico, 'setor': HierSetor, 'categoria': HierCategoria, 'sub': HierSubcategoria}
+    modelos = {'kpi': KpiHierarquico, 'setor': HierSetor, 'categoria': HierCategoria, 'sub': HierSubcategoria, 'item': HierItem}
     modelo = modelos.get(request.POST.get('tipo'))
     if modelo:
         get_object_or_404(modelo, pk=_int(request.POST.get('pk'))).delete()
-        messages.success(request, 'Excluído (inclui o que estava dentro e os consumos lançados).')
+        messages.success(request, 'Excluído (inclui o que estava dentro e os consumos lançados; os códigos voltam a ficar sem vínculo).')
     return redirect('kpi:hier_cadastro')

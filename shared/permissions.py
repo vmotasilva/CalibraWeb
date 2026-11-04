@@ -293,7 +293,7 @@ NAV_STRUCTURE = [
                 "nome": "Importação de Planilhas",
                 "perm": "core.nav_kpi_bloco_importacao",
                 "funcoes": [
-                    {"nome": "Importar Valores e Tabelas", "view_name": ["kpi:importar", "kpi:modelo_importacao"], "perm": "core.nav_kpi_importar"},
+                    {"nome": "Importar Valores e Tabelas", "view_name": ["kpi:importar", "kpi:modelo_importacao", "kpi:hier_importar"], "perm": "core.nav_kpi_importar"},
                     {
                         "nome": "Registro por Colagem",
                         "view_name": ["kpi:colagem", "kpi:colagem_modelos", "kpi:colagem_modelo_novo", "kpi:colagem_modelo_editar", "kpi:colagem_modelo_excluir", "kpi:colagem_historico", "kpi:colagem_historico_detalhe", "kpi:colagem_desfazer"],
@@ -323,10 +323,10 @@ NAV_STRUCTURE = [
                     {"nome": "Lançar Consumo", "view_name": "kpi:hier_lancar", "perm": "core.nav_kpi_setores_lancar"},
                     {"nome": "Excluir Consumo", "view_name": "kpi:hier_consumo_excluir", "perm": "core.nav_kpi_setores_consumo_excluir"},
                     {
-                        "nome": "Cadastrar Setores, Categorias e Itens",
-                        "view_name": ["kpi:hier_cadastro", "kpi:hier_cadastro_salvar"],
+                        "nome": "Cadastrar Setores, Categorias, Itens e Códigos",
+                        "view_name": ["kpi:hier_cadastro", "kpi:hier_cadastro_salvar", "kpi:hier_codigos", "kpi:hier_codigos_acao"],
                         "perm": "core.nav_kpi_setores_cadastro",
-                        "descricao": "Monta a árvore KPI > Setor > Categoria (máquina) > Subcategoria (item) e define unidade e meta de consumo de cada item.",
+                        "descricao": "Monta a árvore KPI > Setor > Categoria > Subcategoria > Item, define unidade e meta de consumo de cada item e vincula os códigos de almoxarifado aos itens.",
                     },
                     {"nome": "Excluir do Cadastro", "view_name": "kpi:hier_cadastro_excluir", "perm": "core.nav_kpi_setores_cadastro_excluir"},
                 ],
@@ -461,6 +461,29 @@ NAV_STRUCTURE = [
                         "descricao": "Cria e altera motivos de perdas e de retorno (nome, descrição, ordem e situação).",
                     },
                     {"nome": "Excluir Motivos", "view_name": "kpi:motivo_cadastro_excluir", "perm": "core.nav_perdas_excluir"},
+                ],
+            },
+        ],
+    },
+    {
+        "key": "decide",
+        "nome": "Decide",
+        "cor": "primary",
+        "icone": "bi bi-bullseye",
+        # Módulo exibido só dentro de Gestão > Processos > Decide: a flag do módulo é a própria chave do grupo.
+        "module_perm": "core.nav_gestao_decide",
+        "blocos": [
+            {
+                "key": "acompanhamento",
+                "grupo": "Processos > Decide",
+                "nome": "Indicador de Acompanhamento",
+                "perm": "core.nav_decide_bloco_acompanhamento",
+                "funcoes": [
+                    {"nome": "Ver e Montar Indicadores", "view_name": "kpi:decide", "perm": "core.nav_decide_ver",
+                     "descricao": "Monta o indicador a partir das medições do DECIDE (medida, período, agrupamento e filtros)."},
+                    {"nome": "Importar Planilha do DECIDE", "view_name": "kpi:decide_importar", "perm": "core.nav_decide_importar"},
+                    {"nome": "Salvar Indicadores", "view_name": "kpi:decide_indicador_salvar", "perm": "core.nav_decide_salvar"},
+                    {"nome": "Excluir Indicadores", "view_name": "kpi:decide_indicador_excluir", "perm": "core.nav_decide_excluir"},
                 ],
             },
         ],
@@ -1845,6 +1868,7 @@ NAV_GROUP_PERMS = {
     "Processos": "core.nav_gestao_processos",
     "Processos > PCP": "core.nav_gestao_pcp",
     "Processos > Motivos de Perdas": "core.nav_gestao_motivos_perdas",
+    "Processos > Decide": "core.nav_gestao_decide",
     "Qualidade": "core.nav_gestao_qualidade",
     "Qualidade > Homologações": "core.nav_gestao_homologacoes",
     "ISO 13485": "core.nav_auditoria_iso_grupo",
@@ -1860,7 +1884,7 @@ NAV_GROUP_PERMS = {
 # Seções do módulo de exibição "Gestão" e módulos inteiros exibidos dentro dele.
 GESTAO_SECOES = ("Ferramentas Auxiliares", "KPI", "Processos", "Qualidade")
 # Módulos cujos blocos (campo "grupo") aparecem dentro de uma seção de Gestão.
-GESTAO_MODULOS_COM_SECAO = ("laboratorio", "kpi", "pcp", "perdas")
+GESTAO_MODULOS_COM_SECAO = ("laboratorio", "kpi", "pcp", "perdas", "decide")
 GESTAO_MODULES = {"boards": "Ferramentas Auxiliares", "diagramas": "Ferramentas Auxiliares"}
 
 

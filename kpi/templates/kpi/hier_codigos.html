@@ -1,0 +1,98 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}KPI por setor - Códigos - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-link-45deg me-2"></i>Códigos de insumo</h4>
+            <div class="text-muted small">Vincule cada código do almoxarifado a um item (Setor › Categoria › Subcategoria › Item). O consumo do item é a soma dos seus códigos.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'kpi:hier_importar' %}" class="btn btn-outline-primary"><i class="bi bi-upload me-1"></i>Importar relatório</a>
+            <a href="{% url 'kpi:hier_cadastro' %}" class="btn btn-outline-secondary">Cadastro</a>
+            <a href="{% url 'kpi:hier_painel' %}" class="btn btn-outline-secondary">Painel</a>
+        </div>
+    </div>
+
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item"><a class="nav-link {% if status == 'pendente' %}active{% endif %}" href="?status=pendente{% if familia %}&familia={{ familia|urlencode }}{% endif %}">Sem vínculo <span class="badge bg-light text-dark">{{ contagens.pendente }}</span></a></li>
+        <li class="nav-item"><a class="nav-link {% if status == 'vinculado' %}active{% endif %}" href="?status=vinculado{% if familia %}&familia={{ familia|urlencode }}{% endif %}">Vinculados <span class="badge bg-light text-dark">{{ contagens.vinculado }}</span></a></li>
+        <li class="nav-item"><a class="nav-link {% if status == 'ignorado' %}active{% endif %}" href="?status=ignorado{% if familia %}&familia={{ familia|urlencode }}{% endif %}">Ignorados <span class="badge bg-light text-dark">{{ contagens.ignorado }}</span></a></li>
+        <li class="nav-item"><a class="nav-link {% if status == 'todos' %}active{% endif %}" href="?status=todos{% if familia %}&familia={{ familia|urlencode }}{% endif %}">Todos</a></li>
+    </ul>
+
+    <form method="get" class="row g-2 mb-3">
+        <input type="hidden" name="status" value="{{ status }}">
+        <div class="col-12 col-md-5"><input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar por código, descrição ou família"></div>
+        <div class="col-8 col-md-4">
+            <select name="familia" class="form-select" onchange="this.form.submit()">
+                <option value="">Todas as famílias</option>
+                {% for f in familias %}<option value="{{ f }}" {% if f == familia %}selected{% endif %}>{{ f }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="col-4 col-md-2"><button class="btn btn-outline-secondary w-100">Filtrar</button></div>
+    </form>
+
+    <form method="post" action="{% url 'kpi:hier_codigos_acao' %}" id="form-codigos">
+        {% csrf_token %}
+        <input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="familia" value="{{ familia }}">
+        <input type="hidden" name="status" value="{{ status }}"><input type="hidden" name="page" value="{{ pagina.number }}">
+        <div class="card mb-3"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
+            <select name="item" class="form-select" style="max-width:30rem">
+                <option value="">Vincular a qual item?</option>
+                {% for pk, rotulo in itens %}<option value="{{ pk }}">{{ rotulo }}</option>{% endfor %}
+            </select>
+            <button name="acao" value="vincular" class="btn btn-primary"><i class="bi bi-link-45deg me-1"></i>Vincular</button>
+            <button name="acao" value="desvincular" class="btn btn-outline-secondary">Desvincular</button>
+            <button name="acao" value="ignorar" class="btn btn-outline-secondary" title="Não faz parte do KPI (ex.: papel higiênico)">Ignorar</button>
+            <button name="acao" value="reativar" class="btn btn-outline-secondary">Reativar</button>
+            {% if status == 'vinculado' or status == 'todos' %}<button name="acao" value="fatores" class="btn btn-outline-secondary" title="Salva os fatores de conversão digitados nesta página">Salvar fatores</button>{% endif %}
+            <div class="form-check ms-auto mb-0">
+                <input class="form-check-input" type="checkbox" name="todos_filtro" value="1" id="todos_filtro">
+                <label class="form-check-label small" for="todos_filtro">Aplicar a todos os {{ total }} do filtro (não só aos marcados)</label>
+            </div>
+        </div></div>
+
+        <div class="card"><div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+                <thead><tr>
+                    <th style="width:2rem"><input type="checkbox" class="form-check-input" onclick="document.querySelectorAll('.sel-codigo').forEach(c => c.checked = this.checked)"></th>
+                    <th>Código</th><th>Material / referência</th><th>Família</th><th class="text-end">Movim.</th><th class="text-end">Qtd.</th><th>Un.</th><th>Item vinculado</th>{% if status == 'vinculado' or status == 'todos' %}<th style="width:6rem">Fator</th>{% endif %}
+                </tr></thead>
+                <tbody>
+                {% for c in pagina %}
+                    <tr {% if c.ignorado %}class="table-secondary"{% endif %}>
+                        <td><input type="checkbox" class="form-check-input sel-codigo" name="sel" value="{{ c.pk }}"></td>
+                        <td class="fw-semibold">{{ c.codigo }}</td>
+                        <td>{{ c.descricao|default:"—" }}</td>
+                        <td class="small text-muted">{{ c.familia|default:"—" }}</td>
+                        <td class="text-end">{{ c.n_mov }}</td>
+                        <td class="text-end">{{ c.qtd|default_if_none:0|floatformat:"-2" }}</td>
+                        <td>{{ c.unidade }}</td>
+                        <td class="small">
+                            {% if c.item %}{{ c.item.subcategoria.categoria.setor.nome }} › {{ c.item.subcategoria.categoria.nome }} › {{ c.item.subcategoria.nome }} › <strong>{{ c.item.nome }}</strong>
+                            {% elif c.ignorado %}<span class="badge bg-secondary">ignorado</span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
+                        {% if status == 'vinculado' or status == 'todos' %}
+                        <td>{% if c.item %}<input name="fator_{{ c.pk }}" value="{{ c.fator|floatformat:"-6" }}" class="form-control form-control-sm text-end" inputmode="decimal">{% endif %}</td>
+                        {% endif %}
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="9" class="text-center text-muted py-4">Nenhum código neste filtro. {% if status == 'pendente' %}Importe um relatório em <a href="{% url 'kpi:hier_importar' %}">Importar relatório</a>.{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </form>
+
+    {% if pagina.paginator.num_pages > 1 %}
+    <nav class="mt-3"><ul class="pagination pagination-sm justify-content-center mb-0">
+        {% if pagina.has_previous %}<li class="page-item"><a class="page-link" href="?{{ filtro_qs }}&page={{ pagina.previous_page_number }}">Anterior</a></li>{% endif %}
+        <li class="page-item disabled"><span class="page-link">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }} ({{ total }} códigos)</span></li>
+        {% if pagina.has_next %}<li class="page-item"><a class="page-link" href="?{{ filtro_qs }}&page={{ pagina.next_page_number }}">Próxima</a></li>{% endif %}
+    </ul></nav>
+    {% endif %}
+</div>
+{% endblock %}
