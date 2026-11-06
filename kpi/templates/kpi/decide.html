@@ -68,7 +68,8 @@
                             <tbody id="decideTabela"></tbody>
                         </table></div></div></div>
                     <div class="col-lg-5"><div class="card border-0 shadow-sm"><div class="card-body">
-                        <h6 class="fw-bold">Pareto — parâmetros que reprovaram</h6>
+                        <h6 class="fw-bold">Pareto — parâmetros que reprovaram
+                            <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline text-primary" data-bs-toggle="modal" data-bs-target="#paretoInfoModal" title="Como este gráfico é calculado" aria-label="Como este gráfico é calculado"><i class="bi bi-info-circle"></i></button></h6>
                         <p class="text-muted small">Lentes reprovadas na medição final, por parâmetro (uma lente pode reprovar em mais de um).</p>
                         {% for it in resultado.pareto %}
                         <div class="mb-2"><div class="d-flex justify-content-between small"><span><strong>{{ it.codigo }}</strong> {{ it.nome }}</span><span>{{ it.qtd }} ({{ it.pct }}%)</span></div>
@@ -116,6 +117,41 @@
                 <div class="small text-muted mt-3">{{ total_lentes }} lente(s) na base.</div>
                 {% for i in importacoes %}<div class="small border-top pt-1 mt-1"><strong>{{ i.arquivo }}</strong><br><span class="text-muted">{{ i.lentes }} lentes · {{ i.inicio|date:'d/m' }} a {{ i.fim|date:'d/m' }} · {{ i.criado_em|date:'d/m H:i' }}</span></div>{% endfor %}
             </div></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paretoInfoModal" tabindex="-1" aria-labelledby="paretoInfoTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="paretoInfoTitulo"><i class="bi bi-info-circle me-2"></i>Como o Pareto é calculado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body small">
+                <h6 class="fw-bold">1. Origem dos dados</h6>
+                <p>A planilha semanal do DECIDE traz uma linha por medição. Na importação, guardamos quais parâmetros reprovaram: S, C, SC, AXE, PD, PDH, PDV, ADD e EP. Um parâmetro conta como reprovado quando a coluna <code>&lt;PARÂMETRO&gt;_VERDICT</code> vale <strong>2</strong>.</p>
+
+                <h6 class="fw-bold">2. Quais lentes entram</h6>
+                <p>Somente a <strong>medição final</strong> da lente (<code>Last Measure = 1</code>) quando ela está <strong>reprovada</strong> (<code>SYS_VERDICT = 2</code>). Lentes aprovadas e medições intermediárias ficam de fora.</p>
+
+                <h6 class="fw-bold">3. Filtros</h6>
+                <p>Respeita os filtros da tela: ilot, marca, índice, diâmetro, olho, operação e o intervalo De/Até. Não depende da <em>medida</em> escolhida nem do agrupamento (dia, semana ou mês): o Pareto soma o <strong>período inteiro</strong> filtrado, e não semana a semana.</p>
+
+                <h6 class="fw-bold">4. Contagem e ordenação</h6>
+                <p>Para cada lente reprovada, cada parâmetro que falhou soma +1. A lista é ordenada do maior para o menor. Parâmetros sem nenhuma falha no filtro não aparecem.</p>
+
+                <h6 class="fw-bold">5. Percentual</h6>
+                <p class="mb-1"><code>% = falhas do parâmetro ÷ total de falhas × 100</code></p>
+                <p>A base é o <strong>total de falhas</strong>, e não o número de lentes reprovadas. Como uma lente pode reprovar em mais de um parâmetro, o total de falhas pode ser maior que o de lentes reprovadas, e por isso o percentual <strong>não</strong> representa "% das lentes reprovadas". A largura da barra vermelha é proporcional a esse percentual.</p>
+
+                <div class="alert alert-light border mb-0">
+                    <strong>Exemplo:</strong> 501 falhas distribuídas entre os parâmetros. ADD com 140 falhas = 140 ÷ 501 = 27,9%.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+            </div>
         </div>
     </div>
 </div>
