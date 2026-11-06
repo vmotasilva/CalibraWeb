@@ -1,3 +1,4 @@
+import uuid
 import os
 import tempfile
 from datetime import date, time
@@ -50,6 +51,7 @@ class RendimentoHCBase(TestCase):
             "tipo_garra": self.nova.pk, "qtd_lentes": "20", "teve_retrabalho": "0",
         }
         dados.update({k: str(v) for k, v in extra.items()})
+        dados.setdefault("envio_token", uuid.uuid4().hex)
         return self.client.post(reverse("laboratorio:hc_registro_create"), dados)
 
 
@@ -492,6 +494,14 @@ class EnvioUnicoTests(RendimentoHCBase):
         self.assertRedirects(resp, reverse("laboratorio:hc_registro_create"))
         self.assertEqual(RendimentoHCRegistro.objects.count(), 1)
 
-    def test_sem_token_continua_aceitando(self):
-        self.post_registro(**{f"pm_{self.orma.pk}": 20})
+    def test_sem_token_nao_grava_e_reexibe_formulario_com_os_dados(self):
+        resp = self.post_registro(envio_token="", **{f"pm_{self.orma.pk}": 20})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 0)
+        self.assertEqual(resp.context["form"].data["qtd_lentes"], "20")
+        token = resp.context["envio_token"]
+        self.assertTrue(token)
+        self.assertContains(resp, "página estava desatualizada")
+        # reenviar com o token novo grava uma única vez
+        self.post_registro(envio_token=token, **{f"pm_{self.orma.pk}": 20})
         self.assertEqual(RendimentoHCRegistro.objects.count(), 1)

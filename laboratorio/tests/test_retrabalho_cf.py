@@ -1,3 +1,4 @@
+import uuid
 import os
 import tempfile
 from datetime import date, datetime, time
@@ -54,6 +55,7 @@ class CFBase(TestCase):
                  "tratamento": self.trat.pk, "colaborador_cf": self.gisele.pk, "colaborador_ar": self.montador.pk,
                  "necessidade_retrabalho": "0", "lote_reprovado": "0"}
         dados.update({k: str(v) for k, v in extra.items()})
+        dados.setdefault("envio_token", uuid.uuid4().hex)
         return self.client.post(reverse("laboratorio:cf_registro_create"), dados)
 
 
@@ -522,6 +524,14 @@ class EnvioUnicoTests(CFBase):
         self.post_registro(envio_token=token)
         self.assertEqual(RetrabalhoCFRegistro.objects.count(), 1)
 
-    def test_sem_token_continua_aceitando(self):
-        self.post_registro()
+    def test_sem_token_nao_grava_e_reexibe_formulario_com_os_dados(self):
+        resp = self.post_registro(envio_token="")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(RetrabalhoCFRegistro.objects.count(), 0)
+        self.assertEqual(resp.context["form"].data["total_lentes"], "100")
+        token = resp.context["envio_token"]
+        self.assertTrue(token)
+        self.assertContains(resp, "página estava desatualizada")
+        # reenviar com o token novo grava uma única vez
+        self.post_registro(envio_token=token)
         self.assertEqual(RetrabalhoCFRegistro.objects.count(), 1)
