@@ -17,17 +17,26 @@
                   data-ultima="{{ ultima_data|date:'Y-m-d' }}">
                 {% if salvo %}<input type="hidden" name="ind" value="{{ salvo.pk }}">{% endif %}
                 <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-bold text-uppercase text-muted" style="letter-spacing: .05em;"><i class="bi bi-sliders me-1"></i>Indicador</span>
+                        <a href="{% url 'kpi:decide' %}" class="btn btn-link btn-sm text-decoration-none p-0"><i class="bi bi-x-circle me-1"></i>Limpar tudo</a>
+                        <noscript><button class="btn btn-primary btn-sm">Atualizar</button></noscript>
+                    </div>
                     <div class="row g-2 align-items-end">
-                        <div class="col-md-4"><label class="form-label small fw-semibold mb-1">Medida</label>
+                        <div class="col-md-5"><label class="form-label small fw-semibold mb-1">Medida</label>
                             <select name="medida" class="form-select form-select-sm">{% for k, n in medidas.items %}<option value="{{ k }}" {% if p.medida == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
                         <div class="col-md-2"><label class="form-label small fw-semibold mb-1">Período</label>
                             <select name="periodo" class="form-select form-select-sm">{% for k, n in periodos.items %}<option value="{{ k }}" {% if p.periodo == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
                         <div class="col-md-3"><label class="form-label small fw-semibold mb-1">Separar por</label>
                             <select name="dimensao" class="form-select form-select-sm"><option value="">Total (sem separar)</option>{% for k, n in dimensoes.items %}<option value="{{ k }}" {% if p.dimensao == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
-                        <div class="col-md-3" id="decMeta"><label class="form-label small fw-semibold mb-1">Meta ({{ unidade }}){% if not sentido %} <span class="text-muted fw-normal">— só para %</span>{% endif %}</label>
+                        <div class="col-md-2" id="decMeta"><label class="form-label small fw-semibold mb-1">Meta ({{ unidade }}){% if not sentido %} <span class="text-muted fw-normal">— só para %</span>{% endif %}</label>
                             <input name="meta" value="{{ p.meta|default_if_none:'' }}" class="form-control form-control-sm" placeholder="Ex.: 5" autocomplete="off" {% if not sentido %}disabled{% endif %}></div>
+                    </div>
 
-                        <div class="col-md-4" id="decPeriodo" data-periodo="{{ p.periodo }}"><div class="row g-2">
+                    <hr class="my-3">
+                    <div class="small fw-bold text-uppercase text-muted mb-2" style="letter-spacing: .05em;"><i class="bi bi-calendar3 me-1"></i>Período analisado</div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-5" id="decPeriodo" data-periodo="{{ p.periodo }}"><div class="row g-2">
                             {% for c in ctl_periodo %}
                             <div class="col-6"><label class="form-label small fw-semibold mb-1">{{ c.rotulo }}</label>
                                 {% if periodo_opcoes is None %}
@@ -38,21 +47,29 @@
                             </div>
                             {% endfor %}
                         </div></div>
-                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Atalhos de período <span class="text-muted fw-normal">(a partir da última medição)</span></label>
+                        <div class="col-md-7"><label class="form-label small fw-semibold mb-1" title="Os atalhos contam a partir da data da última medição importada">Atalhos <span class="text-muted fw-normal">(até a última medição)</span></label>
                             <div class="d-flex flex-wrap gap-1" id="decAtalhos">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="d7">7 dias</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="d30">30 dias</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="s4">4 semanas</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="s8">8 semanas</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="s12">12 semanas</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="m3">3 meses</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="m6">6 meses</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="ano">Ano</button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="tudo">Tudo</button>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Dias">
+                                    <button type="button" class="btn btn-outline-primary" data-atalho="d7">7 dias</button>
+                                    <button type="button" class="btn btn-outline-primary" data-atalho="d30">30 dias</button>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Semanas">
+                                    <button type="button" class="btn btn-outline-primary" data-atalho="s4">4 sem.</button>
+                                    <button type="button" class="btn btn-outline-primary" data-atalho="s8">8 sem.</button>
+                                    <button type="button" class="btn btn-outline-primary" data-atalho="s12">12 sem.</button>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Meses">
+                                    <button type="button" class="btn btn-outline-primary" data-atalho="m3">3 meses</button>
+                                    <button type="button" class="btn btn-outline-primary" data-atalho="m6">6 meses</button>
+                                    <button type="button" class="btn btn-outline-primary" data-atalho="ano">Ano</button>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" data-atalho="tudo">Tudo</button>
                             </div></div>
-                        <div class="col-md-2 text-md-end"><a href="{% url 'kpi:decide' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle me-1"></i>Limpar tudo</a>
-                            <noscript><button class="btn btn-primary btn-sm">Atualizar</button></noscript></div>
+                    </div>
 
+                    <hr class="my-3">
+                    <div class="small fw-bold text-uppercase text-muted mb-2" style="letter-spacing: .05em;"><i class="bi bi-funnel me-1"></i>Filtros <span class="fw-normal text-lowercase">(marque um ou mais valores)</span></div>
+                    <div class="row g-2">
                         {% for f in filtros_ui %}
                         <div class="col-6 col-md-4 col-xl-2"><div class="dropdown dec-filtro" id="dec-f-{{ f.campo }}">
                             <label class="form-label small fw-semibold mb-1">{{ f.rotulo }}</label>
