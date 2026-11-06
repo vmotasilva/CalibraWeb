@@ -976,5 +976,53 @@ class DecideTests(TestCase):
         from kpi.models import DecideIndicador
         self.client.post(reverse('kpi:decide_indicador_salvar'), {'nome': 'Reprov', 'medida': 'reprovacao', 'periodo': 'semana', 'meta': '5', 'ilot': 'PM01'})
         ind = DecideIndicador.objects.get()
-        self.assertEqual(ind.config['ilot'], 'PM01')
+        self.assertEqual(ind.config['ilot'], ['PM01'])
         self.assertEqual(self.client.get(reverse('kpi:decide'), {'ind': ind.pk}).status_code, 200)
+
+    def test_filtro_multiplo_e_periodo_por_extensao(self):
+        import datetime
+        from kpi import decide
+        self.client.post(reverse('kpi:decide_importar'), {'arquivo': self.arquivo})
+        # vários valores no mesmo filtro
+        self.assertEqual(decide.calcular('lentes', 'dia', filtros={'ilot': ['PM01']})['resumo']['lentes'], 2)
+        self.assertEqual(decide.calcular('lentes', 'dia', filtros={'ilot': ['PM01', 'FM01']})['resumo']['lentes'], 3)
+        self.assertEqual(decide.calcular('lentes', 'dia', filtros={'ilot': 'FM01'})['resumo']['lentes'], 1)  # texto antigo
+        # semana: qualquer dia da semana de 26/10 (segunda) inclui 27/10; "Até" vai até o domingo
+        d = datetime.date
+        self.assertEqual(decide.calcular('lentes', 'semana', de=d(2026, 10, 29), ate=d(2026, 10, 29))['resumo']['lentes'], 3)
+        self.assertEqual(decide.calcular('lentes', 'semana', de=d(2026, 11, 2))['resumo']['lentes'], 0)
+        # mês
+        self.assertEqual(decide.calcular('lentes', 'mes', de=d(2026, 10, 15), ate=d(2026, 10, 15))['resumo']['lentes'], 3)
+        self.assertEqual(decide.inicio_periodo(d(2026, 10, 29), 'semana'), d(2026, 10, 26))
+        self.assertEqual(decide.fim_periodo(d(2026, 2, 10), 'mes'), d(2026, 2, 28))
+        self.assertEqual(decide.fim_periodo(d(2026, 12, 10), 'mes'), d(2026, 12, 31))
+        # De/Até invertidos são trocados
+        self.assertEqual(decide.ler_parametros({'de': '2026-10-30', 'ate': '2026-10-01'})['de'], d(2026, 10, 1))
+
+    def test_filtros_em_cascata(self):
+        from kpi import decide
+        self.client.post(reverse('kpi:decide_importar'), {'arquivo': self.arquivo})
+        self.assertEqual(decide.opcoes_filtros()['ilot'], ['FM01', 'PM01'])
+        self.assertEqual(decide.opcoes_filtros({'marca': ['G9Q']})['ilot'], ['PM01'])
+        self.assertEqual(decide.opcoes_filtros({'marca': ['G9Q']})['marca'], ['G9N', 'G9Q'])  # o próprio filtro não se restringe
+        self.assertEqual(decide.opcoes_filtros({'ilot': ['FM01']})['marca'], ['G9N'])
+        # valor selecionado sem resultado continua listado para poder ser desmarcado
+        self.assertIn('XX', decide.opcoes_filtros({'ilot': ['XX']})['ilot'])
+
+    def test_opcoes_periodo(self):
+        from kpi import decide
+        self.client.post(reverse('kpi:decide_importar'), {'arquivo': self.arquivo})
+        datas = decide.datas_com_medicao()
+        self.assertIsNone(decide.opcoes_periodo('dia', datas))
+        self.assertEqual(decide.opcoes_periodo('semana', datas), [('2026-10-26', 'S44 · 26/10/2026')])
+        self.assertEqual(decide.opcoes_periodo('mes', datas), [('2026-10-01', '10/2026')])
+
+    def test_tela_com_filtros_multiplos(self):
+        self.client.post(reverse('kpi:decide_importar'), {'arquivo': self.arquivo})
+        r = self.client.get(reverse('kpi:decide') + '?medida=reprovacao&periodo=semana&ilot=PM01&ilot=FM01&de=2026-10-28')
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, 'id="dec-f-ilot"')
+        self.assertContains(r, '2 selecionados')
+        self.assertContains(r, 'S44 · 26/10/2026')
+        self.assertContains(r, 'id="decGraficoDados"')
+

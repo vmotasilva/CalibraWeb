@@ -1375,3 +1375,16 @@ class RetrabalhoCFItem(models.Model):
 
     class Meta:
         unique_together = [("registro", "motivo")]
+
+
+class EnvioUnico(models.Model):
+    """Token de envio único dos formulários de lançamento: o `unique` garante, no banco, que o mesmo envio não gere dois registros."""
+    token = models.CharField(max_length=64, unique=True)
+    criado_em = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        verbose_name = "Token de envio único"
+        verbose_name_plural = "Tokens de envio único"
+
+    def __str__(self):
+        return self.token

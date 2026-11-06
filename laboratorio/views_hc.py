@@ -6,6 +6,7 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.http import JsonResponse
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,7 +18,7 @@ from django.views.decorators.http import require_POST
 from rh.models import Colaborador
 
 from . import hc_importacao as imp
-from . import planilhas
+from . import envio_unico, planilhas
 from . import hc_rendimento as hc
 from .models import (
     EquipeHC,
@@ -216,12 +217,18 @@ def hc_registro_detalhe(request, pk):
 def hc_registro_create(request):
     form = hc.RegistroHCForm(request.POST or None, initial={"data": timezone.localtime().replace(second=0, microsecond=0, tzinfo=None)})
     if request.method == "POST" and form.is_valid():
-        r = form.save(usuario=request.user)
+        try:
+            with transaction.atomic():
+                envio_unico.registrar(request)
+                r = form.save(usuario=request.user)
+        except envio_unico.EnvioDuplicado:
+            messages.info(request, "Este lançamento já foi registrado: o envio repetido foi ignorado.")
+            return redirect("laboratorio:hc_registro_create" if "salvar_novo" in request.POST else "laboratorio:hc_registros")
         messages.success(request, f"Lançamento registrado: {r.qtd_lentes} lentes, {r.qtd_retrabalho} retrabalho(s).")
         if "salvar_novo" in request.POST:
             return redirect("laboratorio:hc_registro_create")
         return redirect("laboratorio:hc_registros")
-    return render(request, "laboratorio/hc_registro_form.html", {"form": form, "titulo": "Novo lançamento de rendimento"})
+    return render(request, "laboratorio/hc_registro_form.html", {"form": form, "titulo": "Novo lançamento de rendimento", "envio_token": envio_unico.token_do_formulario(request)})
 
 
 @login_required

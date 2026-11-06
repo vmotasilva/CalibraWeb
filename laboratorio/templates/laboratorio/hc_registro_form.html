@@ -14,6 +14,7 @@
     </div>
 
     <form method="post" id="hcForm" novalidate autocomplete="off">
+        {% if envio_token %}<input type="hidden" name="envio_token" value="{{ envio_token }}">{% endif %}
         {% csrf_token %}
         {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
         <div class="card border-0 shadow-sm"><div class="card-body">
@@ -82,6 +83,24 @@
     if (teve) teve.addEventListener('change', alterna);
     document.getElementById('hcForm').addEventListener('input', somas);
     alterna(); somas();
+    // Evita salvar o mesmo registro várias vezes (clique duplo / Enter repetido).
+    (function () {
+        const form = document.getElementById('hcForm');
+        const botoes = form.querySelectorAll('button[type="submit"]');
+        function liberar() {
+            delete form.dataset.enviando;
+            botoes.forEach(b => { b.disabled = false; if (b.dataset.rotulo) { b.innerHTML = b.dataset.rotulo; } });
+        }
+        form.addEventListener('submit', function (e) {
+            if (form.dataset.enviando) { e.preventDefault(); return; }
+            form.dataset.enviando = '1';
+            const alvo = e.submitter;
+            if (alvo) { alvo.dataset.rotulo = alvo.innerHTML; alvo.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Salvando...'; }
+            // desabilita depois do envio ter começado, para o botão clicado (salvar_novo) ir junto no POST
+            setTimeout(() => botoes.forEach(b => { b.disabled = true; }), 0);
+        });
+        window.addEventListener('pageshow', function (ev) { if (ev.persisted) liberar(); });
+    })();
 })();
 </script>
 {% endblock %}

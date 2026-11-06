@@ -1,6 +1,4 @@
 """DECIDE (Gestão > Processos): importação da planilha do medidor de lentes e construtor de indicadores."""
-import json
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,13 +15,31 @@ def _params_de(ind):
     return c
 
 
+# (campo, rótulo, texto de "nenhum selecionado")
+FILTROS_UI = [('ilot', 'Ilot', 'Todos'), ('marca', 'Marca', 'Todas'), ('indice', 'Índice', 'Todos'),
+              ('diametro', 'Diâmetro', 'Todos'), ('olho', 'Olho', 'Ambos'), ('codigo_op', 'Operação', 'Todas')]
+ROTULOS_VALOR = {'olho': {'1': 'Direito (1)', '2': 'Esquerdo (2)'}}
+
+
+def _filtros_ui(opcoes, selecionados):
+    out = []
+    for campo, rotulo, todos in FILTROS_UI:
+        sel = selecionados.get(campo, [])
+        rot = ROTULOS_VALOR.get(campo, {})
+        itens = [{'v': v, 't': rot.get(v, v), 'sel': v in sel} for v in opcoes.get(campo, [])]
+        marcados = [i['t'] for i in itens if i['sel']]
+        resumo = todos if not marcados else (marcados[0] if len(marcados) == 1 else f'{len(marcados)} selecionados')
+        out.append({'campo': campo, 'rotulo': rotulo, 'itens': itens, 'resumo': resumo})
+    return out
+
+
 @login_required
 def decide_view(request):
     salvo = None
     dados = request.GET
     if request.GET.get('ind', '').isdigit():
         salvo = DecideIndicador.objects.filter(pk=request.GET['ind']).first()
-        if salvo:
+        if salvo and 'medida' not in request.GET:
             dados = _params_de(salvo)
     p = decide.ler_parametros(dados)
     tem_dados = DecideLente.objects.exists()
@@ -35,13 +51,22 @@ def decide_view(request):
             'rotulos': resultado['rotulos'], 'series': resultado['series'], 'unidade': unidade, 'sentido': sentido,
             'meta': float(p['meta']) if p['meta'] is not None and sentido else None, 'medida': nome_medida,
         }
+    datas = decide.datas_com_medicao() if tem_dados else []
+    periodo_opcoes = decide.opcoes_periodo(p['periodo'], datas)
+    ctl_periodo = [
+        {'nome': nome, 'rotulo': rotulo, 'vazio': vazio, 'atual': decide.inicio_periodo(p[nome], p['periodo']).isoformat() if p[nome] else ''}
+        for nome, rotulo, vazio in (('de', 'De', 'Início'), ('ate', 'Até', 'Fim'))
+    ]
+    opcoes = decide.opcoes_filtros(p['filtros'], p['de'], p['ate'], p['periodo']) if tem_dados else {}
     return render(request, 'kpi/decide.html', {
         'p': p, 'nome_medida': nome_medida, 'nome_periodo': decide.PERIODOS[p['periodo']], 'tem_dados': tem_dados, 'resultado': resultado, 'unidade': unidade, 'sentido': sentido,
-        'grafico_json': json.dumps(grafico) if grafico else 'null',
+        'grafico': grafico,
         'medidas': {k: v[0] for k, v in decide.MEDIDAS.items()},
         'periodos': decide.PERIODOS,
         'dimensoes': {k: v[0] for k, v in decide.DIMENSOES.items()},
-        'opcoes': decide.opcoes_filtros() if tem_dados else {},
+        'filtros_ui': _filtros_ui(opcoes, p['filtros']),
+        'periodo_opcoes': periodo_opcoes, 'ctl_periodo': ctl_periodo,
+        'primeira_data': datas[0] if datas else None, 'ultima_data': datas[-1] if datas else None,
         'indicadores': DecideIndicador.objects.all(),
         'salvo': salvo,
         'importacoes': DecideImportacao.objects.all()[:8],
