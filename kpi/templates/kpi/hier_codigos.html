@@ -38,6 +38,9 @@
         {% csrf_token %}
         <input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="familia" value="{{ familia }}">
         <input type="hidden" name="status" value="{{ status }}"><input type="hidden" name="page" value="{{ pagina.number }}">
+        {% if not itens %}
+        <div class="alert alert-warning">Nenhum item cadastrado ainda, por isso não há para onde vincular. Crie a árvore (Setor › Categoria › Subcategoria › Item) em <a href="{% url 'kpi:hier_cadastro' %}" class="alert-link">Cadastro</a> e volte aqui.</div>
+        {% endif %}
         <div class="card mb-3"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
             <select name="item" class="form-select" style="max-width:30rem">
                 <option value="">Vincular a qual item?</option>

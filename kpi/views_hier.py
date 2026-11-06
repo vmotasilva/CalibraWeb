@@ -278,10 +278,14 @@ def codigos_acao_view(request):
     if not ids:
         messages.warning(request, 'Marque ao menos um código.')
     elif acao == 'vincular':
-        item = get_object_or_404(HierItem, pk=_int(p.get('item')))
-        qs.update(item=item, ignorado=False)
-        afetados.add(item.pk)
-        messages.success(request, f'{len(ids)} código(s) vinculado(s) a "{item.nome}".')
+        item = HierItem.objects.filter(pk=_int(p.get('item'))).first()
+        if item is None:
+            messages.warning(request, 'Escolha o item de destino na lista "Vincular a qual item?" antes de vincular. '
+                                      'Se a lista estiver vazia, cadastre os itens em Cadastro.')
+        else:
+            qs.update(item=item, ignorado=False)
+            afetados.add(item.pk)
+            messages.success(request, f'{len(ids)} código(s) vinculado(s) a "{item.nome}".')
     elif acao == 'desvincular':
         qs.update(item=None)
         messages.success(request, f'{len(ids)} código(s) desvinculado(s).')
