@@ -460,3 +460,38 @@ class HoraRegistroHCTests(RendimentoHCBase):
         res = imp.importar(linhas, mapa)
         self.assertEqual(res["horas_preenchidas"], 1)
         self.assertEqual(RendimentoHCRegistro.objects.get().hora, time(10, 5))
+
+
+class EnvioUnicoTests(RendimentoHCBase):
+    def test_formulario_traz_token_e_envio_repetido_nao_duplica(self):
+        resp = self.client.get(reverse("laboratorio:hc_registro_create"))
+        token = resp.context["envio_token"]
+        self.assertContains(resp, f'name="envio_token" value="{token}"')
+        self.post_registro(envio_token=token, **{f"pm_{self.orma.pk}": 20})
+        resp2 = self.post_registro(envio_token=token, **{f"pm_{self.orma.pk}": 20})
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 1)
+        self.assertRedirects(resp2, reverse("laboratorio:hc_registros"))
+        self.assertTrue(any("já foi registrado" in str(m) for m in resp2.wsgi_request._messages))
+
+    def test_tokens_diferentes_geram_registros_diferentes(self):
+        self.post_registro(envio_token="a" * 20, **{f"pm_{self.orma.pk}": 20})
+        self.post_registro(envio_token="b" * 20, **{f"pm_{self.orma.pk}": 20})
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 2)
+
+    def test_erro_de_validacao_nao_consome_token(self):
+        token = "c" * 20
+        self.post_registro(envio_token=token, qtd_lentes="")  # inválido
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 0)
+        self.post_registro(envio_token=token, **{f"pm_{self.orma.pk}": 20})
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 1)
+
+    def test_salvar_e_lancar_outro_duplicado_volta_ao_formulario(self):
+        token = "d" * 20
+        self.post_registro(envio_token=token, salvar_novo=1, **{f"pm_{self.orma.pk}": 20})
+        resp = self.post_registro(envio_token=token, salvar_novo=1, **{f"pm_{self.orma.pk}": 20})
+        self.assertRedirects(resp, reverse("laboratorio:hc_registro_create"))
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 1)
+
+    def test_sem_token_continua_aceitando(self):
+        self.post_registro(**{f"pm_{self.orma.pk}": 20})
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 1)

@@ -14,6 +14,7 @@
     </div>
 
     <form method="post" id="cfForm" novalidate autocomplete="off">
+        {% if envio_token %}<input type="hidden" name="envio_token" value="{{ envio_token }}">{% endif %}
         {% csrf_token %}
         {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
         <div class="card border-0 shadow-sm"><div class="card-body">

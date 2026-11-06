@@ -498,3 +498,30 @@ class ConfiguracaoUnificadaHMCTests(CFBase):
             self.assertEqual(html.count(rotulo), 1, rotulo)
         self.assertNotIn("HC · Campos do Formulário", html)
         self.assertNotIn("Controle Final · Cadastros Base", html)
+
+
+class EnvioUnicoTests(CFBase):
+    def test_formulario_traz_token_e_envio_repetido_nao_duplica(self):
+        resp = self.client.get(reverse("laboratorio:cf_registro_create"))
+        token = resp.context["envio_token"]
+        self.assertContains(resp, f'name="envio_token" value="{token}"')
+        self.post_registro(envio_token=token)
+        resp2 = self.post_registro(envio_token=token)
+        self.assertEqual(RetrabalhoCFRegistro.objects.count(), 1)
+        self.assertRedirects(resp2, reverse("laboratorio:cf_registros"))
+
+    def test_tokens_diferentes_geram_registros_diferentes(self):
+        self.post_registro(envio_token="a" * 20)
+        self.post_registro(envio_token="b" * 20)
+        self.assertEqual(RetrabalhoCFRegistro.objects.count(), 2)
+
+    def test_erro_de_validacao_nao_consome_token(self):
+        token = "c" * 20
+        self.post_registro(envio_token=token, total_lentes="")  # inválido
+        self.assertEqual(RetrabalhoCFRegistro.objects.count(), 0)
+        self.post_registro(envio_token=token)
+        self.assertEqual(RetrabalhoCFRegistro.objects.count(), 1)
+
+    def test_sem_token_continua_aceitando(self):
+        self.post_registro()
+        self.assertEqual(RetrabalhoCFRegistro.objects.count(), 1)
