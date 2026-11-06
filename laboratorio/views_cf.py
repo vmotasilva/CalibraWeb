@@ -175,6 +175,10 @@ def cf_registro_create(request):
             with transaction.atomic():
                 envio_unico.registrar(request)
                 r = form.save(usuario=request.user)
+        except envio_unico.EnvioSemToken:
+            # Página aberta antes da proteção de envio único: nada é gravado; reexibe o formulário com os dados e um token novo.
+            messages.warning(request, "Esta página estava desatualizada. Seus dados foram mantidos: confira e clique em Salvar novamente.")
+            return render(request, "laboratorio/cf_registro_form.html", {"form": form, "titulo": "Novo lançamento de retrabalho", "envio_token": envio_unico.novo_token()})
         except envio_unico.EnvioDuplicado:
             messages.info(request, "Este lançamento já foi registrado: o envio repetido foi ignorado.")
             return redirect("laboratorio:cf_registro_create" if "salvar_novo" in request.POST else "laboratorio:cf_registros")
