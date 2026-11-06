@@ -13,7 +13,9 @@
 
     <div class="row g-3">
         <div class="col-xl-9">
-            <form method="get" class="card border-0 shadow-sm mb-3">
+            <form method="get" id="decForm" class="card border-0 shadow-sm mb-3" data-url="{% url 'kpi:decide' %}"
+                  data-ultima="{{ ultima_data|date:'Y-m-d' }}">
+                {% if salvo %}<input type="hidden" name="ind" value="{{ salvo.pk }}">{% endif %}
                 <div class="card-body">
                     <div class="row g-2 align-items-end">
                         <div class="col-md-4"><label class="form-label small fw-semibold mb-1">Medida</label>
@@ -22,28 +24,51 @@
                             <select name="periodo" class="form-select form-select-sm">{% for k, n in periodos.items %}<option value="{{ k }}" {% if p.periodo == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
                         <div class="col-md-3"><label class="form-label small fw-semibold mb-1">Separar por</label>
                             <select name="dimensao" class="form-select form-select-sm"><option value="">Total (sem separar)</option>{% for k, n in dimensoes.items %}<option value="{{ k }}" {% if p.dimensao == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
-                        <div class="col-md-3"><label class="form-label small fw-semibold mb-1">Meta ({{ unidade }}){% if not sentido %} <span class="text-muted fw-normal">— só para %</span>{% endif %}</label>
-                            <input name="meta" value="{{ p.meta|default_if_none:'' }}" class="form-control form-control-sm" placeholder="Ex.: 5" {% if not sentido %}disabled{% endif %}></div>
-                        <div class="col-md-2"><label class="form-label small fw-semibold mb-1">De</label><input type="date" name="de" value="{{ p.de|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
-                        <div class="col-md-2"><label class="form-label small fw-semibold mb-1">Até</label><input type="date" name="ate" value="{{ p.ate|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
-                        <div class="col-md-1"><label class="form-label small fw-semibold mb-1">Ilot</label>
-                            <select name="ilot" class="form-select form-select-sm"><option value="">Todos</option>{% for v in opcoes.ilot %}<option {% if p.filtros.ilot == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
-                        <div class="col-md-1"><label class="form-label small fw-semibold mb-1">Marca</label>
-                            <select name="marca" class="form-select form-select-sm"><option value="">Todas</option>{% for v in opcoes.marca %}<option {% if p.filtros.marca == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
-                        <div class="col-md-1"><label class="form-label small fw-semibold mb-1">Índice</label>
-                            <select name="indice" class="form-select form-select-sm"><option value="">Todos</option>{% for v in opcoes.indice %}<option {% if p.filtros.indice == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
-                        <div class="col-md-1"><label class="form-label small fw-semibold mb-1">Diâm.</label>
-                            <select name="diametro" class="form-select form-select-sm"><option value="">Todos</option>{% for v in opcoes.diametro %}<option {% if p.filtros.diametro == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
-                        <div class="col-md-1"><label class="form-label small fw-semibold mb-1">Olho</label>
-                            <select name="olho" class="form-select form-select-sm"><option value="">Ambos</option>{% for v in opcoes.olho %}<option {% if p.filtros.olho == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
-                        <div class="col-md-1"><label class="form-label small fw-semibold mb-1">Operação</label>
-                            <select name="codigo_op" class="form-select form-select-sm"><option value="">Todas</option>{% for v in opcoes.codigo_op %}<option {% if p.filtros.codigo_op == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
-                        <div class="col-auto ms-auto"><button class="btn btn-primary btn-sm"><i class="bi bi-bar-chart-line me-1"></i>Atualizar</button>
-                            <a href="{% url 'kpi:decide' %}" class="btn btn-outline-secondary btn-sm">Limpar</a></div>
+                        <div class="col-md-3" id="decMeta"><label class="form-label small fw-semibold mb-1">Meta ({{ unidade }}){% if not sentido %} <span class="text-muted fw-normal">— só para %</span>{% endif %}</label>
+                            <input name="meta" value="{{ p.meta|default_if_none:'' }}" class="form-control form-control-sm" placeholder="Ex.: 5" autocomplete="off" {% if not sentido %}disabled{% endif %}></div>
+
+                        <div class="col-md-4" id="decPeriodo" data-periodo="{{ p.periodo }}"><div class="row g-2">
+                            {% for c in ctl_periodo %}
+                            <div class="col-6"><label class="form-label small fw-semibold mb-1">{{ c.rotulo }}</label>
+                                {% if periodo_opcoes is None %}
+                                <input type="date" name="{{ c.nome }}" value="{{ c.atual }}" class="form-control form-control-sm" min="{{ primeira_data|date:'Y-m-d' }}" max="{{ ultima_data|date:'Y-m-d' }}">
+                                {% else %}
+                                <select name="{{ c.nome }}" class="form-select form-select-sm"><option value="">{{ c.vazio }}</option>{% for iso, rot in periodo_opcoes %}<option value="{{ iso }}" {% if iso == c.atual %}selected{% endif %}>{{ rot }}</option>{% endfor %}</select>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div></div>
+                        <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Atalhos de período <span class="text-muted fw-normal">(a partir da última medição)</span></label>
+                            <div class="d-flex flex-wrap gap-1" id="decAtalhos">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="d7">7 dias</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="d30">30 dias</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="s4">4 semanas</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="s8">8 semanas</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="s12">12 semanas</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="m3">3 meses</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="m6">6 meses</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="ano">Ano</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-atalho="tudo">Tudo</button>
+                            </div></div>
+                        <div class="col-md-2 text-md-end"><a href="{% url 'kpi:decide' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-x-circle me-1"></i>Limpar tudo</a>
+                            <noscript><button class="btn btn-primary btn-sm">Atualizar</button></noscript></div>
+
+                        {% for f in filtros_ui %}
+                        <div class="col-6 col-md-4 col-xl-2"><div class="dropdown dec-filtro" id="dec-f-{{ f.campo }}">
+                            <label class="form-label small fw-semibold mb-1">{{ f.rotulo }}</label>
+                            <button type="button" class="form-select form-select-sm text-start text-truncate" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"><span class="dec-resumo">{{ f.resumo }}</span></button>
+                            <div class="dropdown-menu p-2 shadow" style="min-width: 13rem; max-width: 320px;">
+                                <div class="d-flex justify-content-between small mb-1"><span class="text-muted">Marque um ou mais</span><button type="button" class="btn btn-link btn-sm p-0" data-limpar>Limpar</button></div>
+                                <div class="dec-lista" style="max-height: 260px; overflow: auto;">{% for i in f.itens %}<div class="form-check"><input class="form-check-input" type="checkbox" name="{{ f.campo }}" value="{{ i.v }}" id="dec-{{ f.campo }}-{{ forloop.counter }}" {% if i.sel %}checked{% endif %}><label class="form-check-label small w-100" for="dec-{{ f.campo }}-{{ forloop.counter }}">{{ i.t }}</label></div>{% empty %}<span class="text-muted small">Sem opções</span>{% endfor %}</div>
+                            </div>
+                        </div></div>
+                        {% endfor %}
                     </div>
                 </div>
             </form>
 
+            <div id="decResultados">
+            {{ grafico|json_script:"decGraficoDados" }}
             {% if not tem_dados %}
                 <div class="card border-0 shadow-sm"><div class="card-body text-center text-muted py-5">
                     <i class="bi bi-inbox fs-1"></i><p class="mb-0 mt-2">Ainda não há medições. Importe a planilha semanal do DECIDE ao lado para montar o indicador.</p></div></div>
@@ -85,7 +110,7 @@
                         {% if salvo %}<input type="hidden" name="id" value="{{ salvo.pk }}">{% endif %}
                         <input type="hidden" name="medida" value="{{ p.medida }}"><input type="hidden" name="periodo" value="{{ p.periodo }}"><input type="hidden" name="dimensao" value="{{ p.dimensao }}">
                         <input type="hidden" name="de" value="{{ p.de|date:'Y-m-d' }}"><input type="hidden" name="ate" value="{{ p.ate|date:'Y-m-d' }}"><input type="hidden" name="meta" value="{{ p.meta|default_if_none:'' }}">
-                        {% for f, v in p.filtros.items %}<input type="hidden" name="{{ f }}" value="{{ v }}">{% endfor %}
+                        {% for f, vals in p.filtros.items %}{% for v in vals %}<input type="hidden" name="{{ f }}" value="{{ v }}">{% endfor %}{% endfor %}
                         <div class="row g-2"><div class="col-md-4"><input name="nome" class="form-control form-control-sm" placeholder="Nome do indicador" maxlength="150" value="{{ salvo.nome }}" required></div>
                             <div class="col-md-6"><input name="descricao" class="form-control form-control-sm" placeholder="Descrição (opcional)" maxlength="255" value="{{ salvo.descricao }}"></div>
                             <div class="col-md-2"><button class="btn btn-success btn-sm w-100"><i class="bi bi-check2 me-1"></i>Salvar</button></div></div>
@@ -93,6 +118,7 @@
                 </form>
                 {% endif %}
             {% endif %}
+            </div>
         </div>
 
         <div class="col-xl-3">
@@ -159,46 +185,144 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-    var g = {{ grafico_json|safe }};
-    var canvas = document.getElementById('decideGrafico');
-    if (!g || !canvas) return;
-    var pct = g.unidade === '%';
+    var form = document.getElementById('decForm');
+    var grafico = null, ctrl = null, seq = 0, timer = null;
     var paleta = ['#0d6efd', '#fd7e14', '#198754', '#6f42c1', '#20c997', '#d63384', '#6c757d', '#ffc107', '#0dcaf0', '#842029'];
-    var unica = g.series.length === 1;
-    function atingiu(v) { if (g.meta === null || v === null) return null; return g.sentido === 'maior' ? v >= g.meta : v <= g.meta; }
-    var datasets = g.series.map(function (s, i) {
-        var cor = paleta[i % paleta.length];
-        var fundo = unica ? s.valores.map(function (v) { var a = atingiu(v); return a === null ? '#6c757d' : (a ? '#198754' : '#dc3545'); }) : cor;
-        return { type: 'bar', label: s.nome, data: s.valores, backgroundColor: fundo, borderRadius: 3 };
-    });
-    if (g.meta !== null) {
-        datasets.push({ type: 'line', label: 'Meta (' + g.meta + (pct ? '%' : '') + ')', data: g.rotulos.map(function () { return g.meta; }),
-                        borderColor: '#212529', borderDash: [6, 4], pointRadius: 0, borderWidth: 2, fill: false });
-    }
-    new Chart(canvas, {
-        data: { labels: g.rotulos, datasets: datasets },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { display: !unica || g.meta !== null },
-                tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + (c.parsed.y === null ? '—' : c.parsed.y.toString().replace('.', ',') + (pct && c.dataset.type !== 'line' ? '%' : '')); } } },
-            },
-            scales: { y: { beginAtZero: true, title: { display: true, text: g.medida } } },
-        },
-    });
-    var corpo = document.getElementById('decideTabela');
-    if (corpo) g.rotulos.forEach(function (r, i) {
-        var tr = document.createElement('tr');
-        var td = document.createElement('td'); td.textContent = r; tr.appendChild(td);
-        g.series.forEach(function (s) {
-            var c = document.createElement('td'); c.className = 'text-end';
-            var v = s.valores[i];
-            c.textContent = v === null ? '—' : v.toString().replace('.', ',') + (pct ? '%' : '') + ' · ' + s.lentes[i] + ' lentes';
-            var a = atingiu(v); if (a === false) c.className += ' text-danger fw-semibold';
-            tr.appendChild(c);
+
+    function desenhar() {
+        if (grafico) { grafico.destroy(); grafico = null; }
+        var dados = document.getElementById('decGraficoDados');
+        var canvas = document.getElementById('decideGrafico');
+        var g = dados ? JSON.parse(dados.textContent) : null;
+        if (!g || !canvas) return;
+        var pct = g.unidade === '%';
+        var unica = g.series.length === 1;
+        function atingiu(v) { if (g.meta === null || v === null) return null; return g.sentido === 'maior' ? v >= g.meta : v <= g.meta; }
+        var datasets = g.series.map(function (s, i) {
+            var cor = paleta[i % paleta.length];
+            var fundo = unica ? s.valores.map(function (v) { var a = atingiu(v); return a === null ? '#6c757d' : (a ? '#198754' : '#dc3545'); }) : cor;
+            return { type: 'bar', label: s.nome, data: s.valores, backgroundColor: fundo, borderRadius: 3 };
         });
-        corpo.appendChild(tr);
+        if (g.meta !== null) {
+            datasets.push({ type: 'line', label: 'Meta (' + g.meta + (pct ? '%' : '') + ')', data: g.rotulos.map(function () { return g.meta; }),
+                            borderColor: '#212529', borderDash: [6, 4], pointRadius: 0, borderWidth: 2, fill: false });
+        }
+        grafico = new Chart(canvas, {
+            data: { labels: g.rotulos, datasets: datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: !unica || g.meta !== null },
+                    tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + (c.parsed.y === null ? '\u2014' : c.parsed.y.toString().replace('.', ',') + (pct && c.dataset.type !== 'line' ? '%' : '')); } } },
+                },
+                scales: { y: { beginAtZero: true, title: { display: true, text: g.medida } } },
+            },
+        });
+        var corpo = document.getElementById('decideTabela');
+        if (corpo) g.rotulos.forEach(function (r, i) {
+            var tr = document.createElement('tr');
+            var td = document.createElement('td'); td.textContent = r; tr.appendChild(td);
+            g.series.forEach(function (s) {
+                var c = document.createElement('td'); c.className = 'text-end';
+                var v = s.valores[i];
+                c.textContent = v === null ? '\u2014' : v.toString().replace('.', ',') + (pct ? '%' : '') + ' \u00b7 ' + s.lentes[i] + ' lentes';
+                var a = atingiu(v); if (a === false) c.className += ' text-danger fw-semibold';
+                tr.appendChild(c);
+            });
+            corpo.appendChild(tr);
+        });
+    }
+
+    // ---- atualização dinâmica (sem recarregar a página)
+    function parametros(sobrepor) {
+        var q = new URLSearchParams();
+        new FormData(form).forEach(function (v, k) { if (v !== '') q.append(k, v); });
+        Object.keys(sobrepor || {}).forEach(function (k) { q.delete(k); if (sobrepor[k] !== '') q.set(k, sobrepor[k]); });
+        return q;
+    }
+
+    function trocar(seletor, doc) {
+        var atual = document.querySelector(seletor), novo = doc.querySelector(seletor);
+        if (atual && novo) atual.replaceWith(novo);
+    }
+
+    function atualizar(sobrepor) {
+        if (ctrl) ctrl.abort();
+        ctrl = new AbortController();
+        var minha = ++seq;
+        var q = parametros(sobrepor);
+        var url = form.getAttribute('data-url') + '?' + q.toString();
+        var area = document.getElementById('decResultados');
+        if (area) area.style.opacity = '0.5';
+        fetch(url, { signal: ctrl.signal, credentials: 'same-origin' })
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+            .then(function (html) {
+                if (minha !== seq) return;
+                var doc = new DOMParser().parseFromString(html, 'text/html');
+                if (!doc.getElementById('decResultados')) { window.location.href = url; return; }
+                var periodoAntes = document.getElementById('decPeriodo').getAttribute('data-periodo');
+                trocar('#decResultados', doc);
+                document.querySelectorAll('.dec-filtro').forEach(function (el) {
+                    var novo = doc.getElementById(el.id);
+                    if (!novo) return;
+                    el.querySelector('.dec-lista').innerHTML = novo.querySelector('.dec-lista').innerHTML;
+                    el.querySelector('.dec-resumo').textContent = novo.querySelector('.dec-resumo').textContent;
+                });
+                var novoPeriodo = doc.getElementById('decPeriodo');
+                if (sobrepor || (novoPeriodo && novoPeriodo.getAttribute('data-periodo') !== periodoAntes)) trocar('#decPeriodo', doc);
+                var meta = document.getElementById('decMeta'), novaMeta = doc.getElementById('decMeta');
+                if (meta && novaMeta) {
+                    var igual = meta.querySelector('input').disabled === novaMeta.querySelector('input').disabled
+                        && meta.querySelector('label').textContent === novaMeta.querySelector('label').textContent;
+                    if (!igual || !meta.contains(document.activeElement)) trocar('#decMeta', doc);
+                }
+                history.replaceState(null, '', window.location.pathname + '?' + q.toString());
+                desenhar();
+            })
+            .catch(function (e) {
+                if (e.name === 'AbortError') return;
+                var area2 = document.getElementById('decResultados');
+                if (area2) area2.style.opacity = '';
+                window.alert('N\u00e3o foi poss\u00edvel atualizar o indicador. Tente novamente.');
+            });
+    }
+
+    function agendar(ms, sobrepor) {
+        clearTimeout(timer);
+        timer = setTimeout(function () { atualizar(sobrepor); }, ms);
+    }
+
+    form.addEventListener('change', function () { agendar(150); });
+    form.addEventListener('input', function (e) { if (e.target.name === 'meta') agendar(600); });
+    form.addEventListener('submit', function (e) { e.preventDefault(); agendar(0); });
+    form.addEventListener('click', function (e) {
+        var limpar = e.target.closest('[data-limpar]');
+        if (limpar) {
+            limpar.closest('.dec-filtro').querySelectorAll('input[type=checkbox]').forEach(function (c) { c.checked = false; });
+            agendar(0);
+            return;
+        }
+        var atalho = e.target.closest('[data-atalho]');
+        if (atalho) aplicarAtalho(atalho.getAttribute('data-atalho'));
     });
+
+    // ---- atalhos de período (relativos à última medição importada)
+    function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function aplicarAtalho(chave) {
+        var ult = form.getAttribute('data-ultima');
+        if (!ult) return;
+        var p = ult.split('-'), fim = new Date(+p[0], +p[1] - 1, +p[2]), ini, periodo;
+        if (chave === 'tudo') { agendar(0, { de: '', ate: '' }); return; }
+        var m = /^([dsm])(\d+)$/.exec(chave);
+        if (chave === 'ano') { periodo = 'mes'; ini = new Date(fim.getFullYear(), 0, 1); }
+        else if (m[1] === 'd') { periodo = 'dia'; ini = new Date(fim); ini.setDate(ini.getDate() - (+m[2] - 1)); }
+        else if (m[1] === 's') { periodo = 'semana'; ini = new Date(fim); ini.setDate(ini.getDate() - ((fim.getDay() + 6) % 7) - 7 * (+m[2] - 1)); }
+        else { periodo = 'mes'; ini = new Date(fim.getFullYear(), fim.getMonth() - (+m[2] - 1), 1); }
+        form.elements['periodo'].value = periodo;
+        agendar(0, { periodo: periodo, de: iso(ini), ate: iso(fim) });
+    }
+
+    desenhar();
 })();
 </script>
 {% endblock %}

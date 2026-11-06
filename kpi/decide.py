@@ -169,27 +169,78 @@ def _zero():
     return {'lentes': 0, 'reprovadas': 0, 'reprov_1a': 0, 'remedidas': 0, 'medicoes': 0}
 
 
-def opcoes_filtros():
+def inicio_periodo(d, periodo):
+    """Primeiro dia do período (dia, segunda-feira da semana ou dia 1 do mês) que contém a data."""
+    if periodo == 'semana':
+        return d - datetime.timedelta(days=d.weekday())
+    if periodo == 'mes':
+        return d.replace(day=1)
+    return d
+
+
+def fim_periodo(d, periodo):
+    """Último dia do período que contém a data."""
+    if periodo == 'semana':
+        return inicio_periodo(d, 'semana') + datetime.timedelta(days=6)
+    if periodo == 'mes':
+        return (d.replace(day=28) + datetime.timedelta(days=4)).replace(day=1) - datetime.timedelta(days=1)
+    return d
+
+
+def _valores(v):
+    return [v] if isinstance(v, str) else list(v or [])
+
+
+def _filtrar(qs, filtros, de, ate, periodo, ignorar=None):
+    """Aplica filtros (cada um aceita vários valores) e o intervalo De/Até, estendido aos períodos inteiros."""
+    for f, v in (filtros or {}).items():
+        vals = [x for x in _valores(v) if x]
+        if vals and f in FILTROS and f != ignorar:
+            qs = qs.filter(**{f'{f}__in': vals})
+    if de:
+        qs = qs.filter(medido_em__date__gte=inicio_periodo(de, periodo))
+    if ate:
+        qs = qs.filter(medido_em__date__lte=fim_periodo(ate, periodo))
+    return qs
+
+
+def _ordem(v):
+    return (not v.isdigit(), int(v) if v.isdigit() else 0, v)
+
+
+def opcoes_filtros(filtros=None, de=None, ate=None, periodo='dia'):
+    """Opções de cada filtro em cascata: só valores que existem com os demais filtros e o intervalo aplicados."""
     from kpi.models import DecideLente
+    filtros = {f: [x for x in _valores(v) if x] for f, v in (filtros or {}).items()}
     out = {}
     for f in FILTROS:
-        vals = sorted(set(DecideLente.objects.exclude(**{f: ''}).values_list(f, flat=True)), key=lambda v: (not v.isdigit(), int(v) if v.isdigit() else 0, v))
-        out[f] = vals
+        qs = _filtrar(DecideLente.objects.all(), filtros, de, ate, periodo, ignorar=f)
+        vals = set(qs.exclude(**{f: ''}).values_list(f, flat=True).distinct()) | set(filtros.get(f, []))
+        out[f] = sorted(vals, key=_ordem)
     return out
+
+
+def datas_com_medicao():
+    """Datas (locais) que têm medição, em ordem crescente."""
+    from django.db.models.functions import TruncDate
+    from kpi.models import DecideLente
+    return sorted(set(DecideLente.objects.annotate(d=TruncDate('medido_em')).values_list('d', flat=True)) - {None})
+
+
+def opcoes_periodo(periodo, datas):
+    """Lista (data ISO do início, rótulo) dos períodos com medição; None no modo dia (usa seletor de data)."""
+    if periodo == 'dia':
+        return None
+    inicios = sorted({inicio_periodo(d, periodo) for d in datas})
+    if periodo == 'semana':
+        return [(i.isoformat(), f'S{i.isocalendar()[1]:02d} · {i:%d/%m/%Y}') for i in inicios]
+    return [(i.isoformat(), f'{i:%m/%Y}') for i in inicios]
 
 
 def calcular(medida, periodo, dimensao='', filtros=None, de=None, ate=None):
     """Devolve rótulos dos períodos, séries (uma por valor da dimensão, ou "Total"), pareto de parâmetros e resumo."""
     from kpi.models import DecideLente
-    filtros = filtros or {}
-    qs = DecideLente.objects.all()
-    for f, v in filtros.items():
-        if v and f in FILTROS:
-            qs = qs.filter(**{f: v})
-    if de:
-        qs = qs.filter(medido_em__date__gte=de)
-    if ate:
-        qs = qs.filter(medido_em__date__lte=ate)
+    qs = _filtrar(DecideLente.objects.all(), filtros, de, ate, periodo)
     campo = DIMENSOES[dimensao][1] if dimensao in DIMENSOES else None
     cols = ['medido_em', 'ultima', 'reprovada', 'reprovada_1a', 'passagens', 'falhas']
     if campo:
@@ -234,12 +285,26 @@ def calcular(medida, periodo, dimensao='', filtros=None, de=None, ate=None):
     }
 
 
+def _lista(dados, campo):
+    """Valores de um filtro: aceita QueryDict (vários valores), lista ou texto da configuração antiga."""
+    if hasattr(dados, 'getlist'):
+        brutos = dados.getlist(campo)
+    else:
+        brutos = _valores(dados.get(campo))
+    out = []
+    for v in brutos:
+        v = str(v).strip()
+        if v and v not in out:
+            out.append(v)
+    return out
+
+
 def ler_parametros(dados):
     """Normaliza os parâmetros do construtor (GET ou configuração salva)."""
     medida = dados.get('medida') if dados.get('medida') in MEDIDAS else 'reprovacao'
     periodo = dados.get('periodo') if dados.get('periodo') in PERIODOS else 'dia'
     dimensao = dados.get('dimensao') if dados.get('dimensao') in DIMENSOES else ''
-    filtros = {f: (dados.get(f) or '').strip() for f in FILTROS if (dados.get(f) or '').strip()}
+    filtros = {f: _lista(dados, f) for f in FILTROS if _lista(dados, f)}
 
     def dt(k):
         try:
@@ -252,5 +317,8 @@ def ler_parametros(dados):
         meta = Decimal(meta) if meta else None
     except Exception:
         meta = None
+    de, ate = dt('de'), dt('ate')
+    if de and ate and de > ate:
+        de, ate = ate, de
     return {'medida': medida, 'periodo': periodo, 'dimensao': dimensao, 'filtros': filtros,
-            'de': dt('de'), 'ate': dt('ate'), 'meta': meta}
+            'de': de, 'ate': ate, 'meta': meta}
