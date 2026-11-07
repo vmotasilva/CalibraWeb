@@ -179,10 +179,13 @@ def painel_view(request):
                     and (not categoria or i.subcategoria.categoria_id == categoria.pk)
                     and (not setor or i.subcategoria.categoria.setor_id == setor.pk)]
     arvore = {
-        'categorias': [{'id': c.pk, 'nome': c.nome, 'setor': c.setor_id} for c in todas_cats],
-        'subs': [{'id': s.pk, 'nome': s.nome, 'categoria': s.categoria_id, 'setor': s.categoria.setor_id} for s in todas_subs],
+        'setores': [{'id': s.pk, 'nome': s.nome} for s in setores],
+        # 'ctx' = nome do pai, mostrado ao lado da opção quando o nível acima está em "Todos".
+        'categorias': [{'id': c.pk, 'nome': c.nome, 'setor': c.setor_id, 'ctx': c.setor.nome} for c in todas_cats],
+        'subs': [{'id': s.pk, 'nome': s.nome, 'categoria': s.categoria_id, 'setor': s.categoria.setor_id,
+                  'ctx': s.categoria.nome} for s in todas_subs],
         'itens': [{'id': i.pk, 'nome': i.nome, 'sub': i.subcategoria_id, 'categoria': i.subcategoria.categoria_id,
-                   'setor': i.subcategoria.categoria.setor_id} for i in todos_itens],
+                   'setor': i.subcategoria.categoria.setor_id, 'ctx': i.subcategoria.nome} for i in todos_itens],
     }
 
     itens_qs = (HierItem.objects.filter(ativo=True, subcategoria__categoria__setor__kpi=kpi)
@@ -215,6 +218,7 @@ def painel_view(request):
     ctx.update(
         setores=setores, setor=setor, categorias=categorias, categoria=categoria, subs=subs, sub=sub,
         itens_opcoes=itens_opcoes, item=item, arvore=arvore,
+        niveis=(('setor', 'Setor'), ('categoria', 'Categoria'), ('sub', 'Subcategoria'), ('item', 'Item')),
         linhas=linhas, mes=fim, mes_valor=f'{fim:%Y-%m}', visao=visao, visoes=VISOES,
         serie=(_serie_curta(itens, visao, fim) if visao != 'mes' else _serie(itens, meses, consumos)) if itens else None,
         dentro=sum(1 for l in com_meta if l['ok']), fora=sum(1 for l in com_meta if not l['ok']),

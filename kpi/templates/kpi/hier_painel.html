@@ -27,80 +27,138 @@
 
     <form method="get" class="card card-body mb-3" id="filtros">
         <input type="hidden" name="kpi" value="{{ kpi.pk }}">
-        <div class="row g-2 align-items-end">
-            <div class="col-6 col-md-2">
-                <label class="form-label small mb-1">Setor</label>
-                <select name="setor" class="form-select" onchange="filtroMudou('setor')">
-                    <option value="">Todos</option>
-                    {% for s in setores %}<option value="{{ s.pk }}" {% if setor.pk == s.pk %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
-                </select>
+        <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
+        <input type="hidden" name="categoria" value="{{ categoria.pk|default:'' }}">
+        <input type="hidden" name="sub" value="{{ sub.pk|default:'' }}">
+        <input type="hidden" name="item" value="{{ item.pk|default:'' }}">
+        <input type="hidden" name="visao" value="{{ visao }}">
+        {% for nivel, rotulo in niveis %}
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+            <div class="small text-muted flex-shrink-0" style="width:6.5rem">{{ rotulo }}</div>
+            <div class="d-flex flex-wrap gap-1" data-chips="{{ nivel }}" role="group" aria-label="{{ rotulo }}"></div>
+        </div>
+        {% endfor %}
+        <div class="d-flex flex-wrap align-items-center gap-3 pt-2 border-top">
+            <div class="d-flex align-items-center gap-2">
+                <label class="small text-muted mb-0" for="filtro-mes">Mês</label>
+                <input type="month" id="filtro-mes" name="mes" value="{{ mes_valor }}" class="form-control form-control-sm" style="width:11rem">
             </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small mb-1">Categoria</label>
-                <select name="categoria" class="form-select" onchange="filtroMudou('categoria')">
-                    <option value="">Todas</option>
-                    {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria.pk == c.pk %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}
-                </select>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Visualização do gráfico">
+                {% for v, rotulo in visoes %}
+                <button type="button" data-visao="{{ v }}" class="btn {% if visao == v %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ rotulo }}</button>
+                {% endfor %}
             </div>
-            <div class="col-6 col-md-2">
-                <label class="form-label small mb-1">Subcategoria</label>
-                <select name="sub" class="form-select" onchange="filtroMudou('sub')">
-                    <option value="">Todas</option>
-                    {% for s in subs %}<option value="{{ s.pk }}" {% if sub.pk == s.pk %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="col-6 col-md-3">
-                <label class="form-label small mb-1">Item</label>
-                <select name="item" class="form-select" onchange="filtroMudou('item')">
-                    <option value="">Todos</option>
-                    {% for i in itens_opcoes %}<option value="{{ i.pk }}" {% if item.pk == i.pk %}selected{% endif %}>{{ i.nome }}</option>{% endfor %}
-                </select>
-            </div>
-            <div class="col-12 col-md-2">
-                <label class="form-label small mb-1">Mês</label>
-                <input type="month" name="mes" value="{{ mes_valor }}" class="form-control" onchange="this.form.submit()">
-            </div>
-            <div class="col-12">
-                <input type="hidden" name="visao" value="{{ visao }}">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Visualização do gráfico">
-                    {% for v, rotulo in visoes %}
-                    <button type="button" class="btn {% if visao == v %}btn-primary{% else %}btn-outline-primary{% endif %}"
-                            onclick="document.getElementById('filtros').visao.value='{{ v }}';document.getElementById('filtros').submit()">{{ rotulo }}</button>
-                    {% endfor %}
-                </div>
-                {% if visao != 'mes' %}<span class="text-muted small ms-2">Dia e semana usam as movimentações importadas do almoxarifado; lançamentos manuais são mensais.</span>{% endif %}
-            </div>
+            <span id="dica-visao" class="text-muted small" {% if visao == 'mes' %}hidden{% endif %}>Dia e semana usam as movimentações importadas do almoxarifado; lançamentos manuais são mensais.</span>
         </div>
     </form>
     {{ arvore|json_script:"arvore-filtros" }}
     <script>
-    function filtroMudou(nivel) {
+    (function () {
         var f = document.getElementById('filtros');
         var t = JSON.parse(document.getElementById('arvore-filtros').textContent);
-        var v = function (n) { return parseInt(f[n].value, 10) || null; };
+        var NIVEIS = ['setor', 'categoria', 'sub', 'item'];
+        var TODOS = {setor: 'Todos', categoria: 'Todas', sub: 'Todas', item: 'Todos'};
+        var pedido = 0;
+        var num = function (n) { return parseInt(f[n].value, 10) || null; };
         var achar = function (lista, id) { return lista.filter(function (x) { return x.id === id; })[0]; };
-        var setor = v('setor'), cat = v('categoria'), sub = v('sub'), item = v('item');
-        // Preenche os níveis de cima a partir do escolhido e limpa os de baixo que deixaram de combinar.
-        if (nivel === 'item' && item) { var i = achar(t.itens, item); f.sub.value = i.sub; f.categoria.value = i.categoria; f.setor.value = i.setor; }
-        if (nivel === 'sub' && sub) {
-            var s = achar(t.subs, sub); f.categoria.value = s.categoria; f.setor.value = s.setor;
-            var it = item && achar(t.itens, item); if (it && it.sub !== sub) f.item.value = '';
+
+        // Deixa a seleção coerente: o nível mais baixo escolhido define os de cima; os de baixo que não combinam saem.
+        function normalizar(nivel) {
+            var setor = num('setor'), cat = num('categoria'), sub = num('sub'), item = num('item');
+            if (nivel === 'setor' && setor) {
+                if (cat && achar(t.categorias, cat).setor !== setor) cat = null;
+                if (sub && achar(t.subs, sub).setor !== setor) sub = null;
+                if (item && achar(t.itens, item).setor !== setor) item = null;
+            } else if (nivel === 'categoria' && cat) {
+                setor = achar(t.categorias, cat).setor;
+                if (sub && achar(t.subs, sub).categoria !== cat) sub = null;
+                if (item && achar(t.itens, item).categoria !== cat) item = null;
+            } else if (nivel === 'sub' && sub) {
+                var s = achar(t.subs, sub); cat = s.categoria; setor = s.setor;
+                if (item && achar(t.itens, item).sub !== sub) item = null;
+            } else if (nivel === 'item' && item) {
+                var i = achar(t.itens, item); sub = i.sub; cat = i.categoria; setor = i.setor;
+            }
+            return {setor: setor, categoria: cat, sub: sub, item: item};
         }
-        if (nivel === 'categoria' && cat) {
-            var c = achar(t.categorias, cat); f.setor.value = c.setor;
-            var sb = sub && achar(t.subs, sub); if (sb && sb.categoria !== cat) f.sub.value = '';
-            var it2 = item && achar(t.itens, item); if (it2 && it2.categoria !== cat) f.item.value = '';
+
+        function botao(rotulo, ativo, aoClicar) {
+            var b = document.createElement('button');
+            b.type = 'button'; b.textContent = rotulo; b.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+            b.className = 'btn btn-sm ' + (ativo ? 'btn-primary' : 'btn-outline-secondary');
+            b.addEventListener('click', aoClicar);
+            return b;
         }
-        if (nivel === 'categoria' && !cat) { /* "Todas": mantém sub/item como estão (o servidor deduz) */ }
-        if (nivel === 'setor') {
-            var ct = cat && achar(t.categorias, cat); if (ct && ct.setor !== setor && setor) f.categoria.value = '';
-            var sb2 = sub && achar(t.subs, sub); if (sb2 && setor && sb2.setor !== setor) f.sub.value = '';
-            var it3 = item && achar(t.itens, item); if (it3 && setor && it3.setor !== setor) f.item.value = '';
+
+        // Um botão por opção (mais "Todos"); clicar no botão ativo volta para "Todos".
+        function chips(nivel, lista, atual, mostrarCtx) {
+            var box = f.querySelector('[data-chips="' + nivel + '"]');
+            box.innerHTML = '';
+            box.appendChild(botao(TODOS[nivel], atual === null, function () { escolher(nivel, null); }));
+            lista.forEach(function (x) {
+                box.appendChild(botao(mostrarCtx ? x.nome + ' · ' + x.ctx : x.nome, x.id === atual,
+                    function () { escolher(nivel, x.id === atual ? null : x.id); }));
+            });
         }
-        f.submit();
-    }
+
+        // Redesenha as listas conforme o que está escolhido (sem ir ao servidor).
+        function refrescar(est) {
+            NIVEIS.forEach(function (n) { f[n].value = est[n] || ''; });
+            chips('setor', t.setores, est.setor, false);
+            chips('categoria', t.categorias.filter(function (c) { return !est.setor || c.setor === est.setor; }), est.categoria, !est.setor);
+            chips('sub', t.subs.filter(function (x) { return (!est.categoria || x.categoria === est.categoria) && (!est.setor || x.setor === est.setor); }),
+                  est.sub, !est.categoria);
+            chips('item', t.itens.filter(function (x) { return (!est.sub || x.sub === est.sub) && (!est.categoria || x.categoria === est.categoria) && (!est.setor || x.setor === est.setor); }),
+                  est.item, !est.sub);
+        }
+
+        function escolher(nivel, id) {
+            f[nivel].value = id || '';
+            refrescar(normalizar(nivel));
+            carregar();
+        }
+
+        function url() {
+            var p = new URLSearchParams();
+            new FormData(f).forEach(function (v, k) { if (v !== '') p.append(k, v); });
+            return location.pathname + '?' + p.toString();
+        }
+
+        // Atualiza gráfico e tabela por baixo, sem recarregar a página.
+        function carregar() {
+            var alvo = url(), meu = ++pedido, box = document.getElementById('resultado');
+            box.style.opacity = '.5';
+            fetch(alvo, {credentials: 'same-origin', headers: {'X-Requested-With': 'fetch'}})
+                .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+                .then(function (html) {
+                    if (meu !== pedido) return;
+                    var novo = new DOMParser().parseFromString(html, 'text/html').getElementById('resultado');
+                    if (!novo) throw new Error('sem resultado');
+                    box.innerHTML = novo.innerHTML; box.style.opacity = '';
+                    history.replaceState(null, '', alvo);
+                    if (window.desenharGrafico) window.desenharGrafico();
+                })
+                .catch(function () { location.href = alvo; });
+        }
+
+        f.mes.addEventListener('change', carregar);
+        f.addEventListener('submit', function (e) { e.preventDefault(); carregar(); });
+        f.querySelectorAll('[data-visao]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                f.visao.value = b.dataset.visao;
+                f.querySelectorAll('[data-visao]').forEach(function (x) {
+                    var on = x === b; x.classList.toggle('btn-primary', on); x.classList.toggle('btn-outline-primary', !on);
+                });
+                document.getElementById('dica-visao').hidden = b.dataset.visao === 'mes';
+                carregar();
+            });
+        });
+        refrescar({setor: num('setor'), categoria: num('categoria'), sub: num('sub'), item: num('item')});
+    })();
     </script>
 
+    <div id="resultado">
+    {% if serie %}{{ serie|json_script:"dados-grafico" }}{% endif %}
     {% if not linhas %}
         <div class="alert alert-warning">Nenhum item avaliado neste filtro. Cadastre setores, categorias, subcategorias e itens em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
     {% else %}
@@ -164,33 +222,41 @@
         </div>
     </div>
     {% endif %}
+    </div>
     {% endif %}
 </div>
 
-{% if serie %}
-{{ serie|json_script:"dados-grafico" }}
+{% if kpi %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-    var d = JSON.parse(document.getElementById('dados-grafico').textContent);
-    var VERDE = '#198754', VERMELHO = '#dc3545', CINZA = '#6c757d';
-    // Meta por período (dia/semana: proporcional ao mês) ou única (mês / percentual).
-    var metas = d.metas || d.labels.map(function () { return d.meta; });
-    var temMeta = metas.some(function (m) { return m !== null && m !== undefined; });
-    var cores = d.valores.map(function (v, i) { return metas[i] == null || v === null ? CINZA : (v <= metas[i] ? VERDE : VERMELHO); });
-    var datasets = [{type: 'bar', label: d.titulo, data: d.valores, backgroundColor: cores, order: 2}];
-    if (temMeta) {
-        datasets.push({type: 'line', label: 'Meta', data: metas, stepped: !!d.metas,
-            borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1});
-    }
-    new Chart(document.getElementById('grafico'), {
-        data: {labels: d.labels, datasets: datasets},
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {legend: {display: false}},
-            scales: {y: {beginAtZero: true, title: {display: true, text: d.modo === 'percentual' ? '% da meta' : (d.unidade || '')}}}
+    var grafico = null;
+    // Desenha (ou redesenha, após uma atualização dos filtros) o gráfico com os dados em #dados-grafico.
+    window.desenharGrafico = function () {
+        if (grafico) { grafico.destroy(); grafico = null; }
+        var dados = document.getElementById('dados-grafico'), canvas = document.getElementById('grafico');
+        if (!dados || !canvas) return;
+        var d = JSON.parse(dados.textContent);
+        var VERDE = '#198754', VERMELHO = '#dc3545', CINZA = '#6c757d';
+        // Meta por período (dia/semana: proporcional ao mês) ou única (mês / percentual).
+        var metas = d.metas || d.labels.map(function () { return d.meta; });
+        var temMeta = metas.some(function (m) { return m !== null && m !== undefined; });
+        var cores = d.valores.map(function (v, i) { return metas[i] == null || v === null ? CINZA : (v <= metas[i] ? VERDE : VERMELHO); });
+        var datasets = [{type: 'bar', label: d.titulo, data: d.valores, backgroundColor: cores, order: 2}];
+        if (temMeta) {
+            datasets.push({type: 'line', label: 'Meta', data: metas, stepped: !!d.metas,
+                borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1});
         }
-    });
+        grafico = new Chart(canvas, {
+            data: {labels: d.labels, datasets: datasets},
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {legend: {display: false}},
+                scales: {y: {beginAtZero: true, title: {display: true, text: d.modo === 'percentual' ? '% da meta' : (d.unidade || '')}}}
+            }
+        });
+    };
+    window.desenharGrafico();
 })();
 </script>
 {% endif %}
