@@ -103,6 +103,34 @@ class KpiHierarquicoTests(InsumosBase):
         r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk, 'setor': self.setor.pk, 'categoria': self.cat.pk, 'sub': self.sub.pk, 'item': self.liquido.pk, 'mes': '2026-10'})
         self.assertEqual((r.context['serie']['modo'], r.context['serie']['valores'][-1], r.context['serie']['meta']), ('valor', 5.5, 4.0))
 
+    def test_filtros_independentes_deduzem_os_niveis_acima(self):
+        r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk, 'item': self.liquido.pk})
+        c = r.context
+        self.assertEqual((c['setor'], c['categoria'], c['sub'], c['item']), (self.setor, self.cat, self.sub, self.liquido))
+        # Sem nenhum filtro, todas as categorias/subcategorias/itens ficam disponíveis (nada desabilitado em cascata).
+        r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk})
+        self.assertIn(self.cat, r.context['categorias'])
+        self.assertIn(self.sub, r.context['subs'])
+        self.assertIn(self.pads, r.context['itens_opcoes'])
+        self.assertNotRegex(r.content.decode(), r'<select[^>]*disabled')
+
+    def test_visao_por_dia_e_por_semana_usa_movimentos(self):
+        cod = HierCodigo.objects.create(codigo=3989, item=self.pads)
+        HierMovimento.objects.create(codigo=cod, data=date(2026, 10, 5), quantidade=Decimal('3'), tipo='UTILIZACOES')
+        HierMovimento.objects.create(codigo=cod, data=date(2026, 10, 6), quantidade=Decimal('2'), tipo='PERDAS')
+        HierMovimento.objects.create(codigo=cod, data=date(2026, 10, 7), quantidade=Decimal('9'), tipo='DEVOLUCAO')
+        base = {'kpi': self.kpi.pk, 'item': self.pads.pk, 'mes': '2026-10'}
+        s = self.client.get(reverse('kpi:hier_painel'), {**base, 'visao': 'dia'}).context['serie']
+        self.assertEqual(len(s['labels']), 31)
+        self.assertEqual((s['valores'][4], s['valores'][5], s['valores'][6]), (3.0, 2.0, 0.0))
+        self.assertAlmostEqual(s['metas'][0], 10 / 31, places=2)
+        s = self.client.get(reverse('kpi:hier_painel'), {**base, 'visao': 'semana'}).context['serie']
+        self.assertEqual(len(s['labels']), 12)
+        self.assertIn(5.0, s['valores'])  # semana de 05/10: 3 + 2
+        s = self.client.get(reverse('kpi:hier_painel'), {**base, 'visao': 'invalida'}).context['serie']
+        self.assertEqual(len(s['labels']), 12)  # cai no mês a mês
+        self.assertEqual(s['labels'][-1], '10/2026')
+
     def test_telas_abrem(self):
         for nome in ('hier_cadastro', 'hier_importar', 'hier_codigos', 'hier_painel'):
             self.assertEqual(self.client.get(reverse(f'kpi:{nome}')).status_code, 200, nome)

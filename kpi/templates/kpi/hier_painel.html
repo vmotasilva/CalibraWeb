@@ -30,28 +30,28 @@
         <div class="row g-2 align-items-end">
             <div class="col-6 col-md-2">
                 <label class="form-label small mb-1">Setor</label>
-                <select name="setor" class="form-select" onchange="this.form.categoria.value='';this.form.sub.value='';this.form.item.value='';this.form.submit()">
+                <select name="setor" class="form-select" onchange="filtroMudou('setor')">
                     <option value="">Todos</option>
                     {% for s in setores %}<option value="{{ s.pk }}" {% if setor.pk == s.pk %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-6 col-md-3">
                 <label class="form-label small mb-1">Categoria</label>
-                <select name="categoria" class="form-select" {% if not setor %}disabled{% endif %} onchange="this.form.sub.value='';this.form.item.value='';this.form.submit()">
+                <select name="categoria" class="form-select" onchange="filtroMudou('categoria')">
                     <option value="">Todas</option>
                     {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria.pk == c.pk %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-6 col-md-2">
                 <label class="form-label small mb-1">Subcategoria</label>
-                <select name="sub" class="form-select" {% if not categoria %}disabled{% endif %} onchange="this.form.item.value='';this.form.submit()">
+                <select name="sub" class="form-select" onchange="filtroMudou('sub')">
                     <option value="">Todas</option>
                     {% for s in subs %}<option value="{{ s.pk }}" {% if sub.pk == s.pk %}selected{% endif %}>{{ s.nome }}</option>{% endfor %}
                 </select>
             </div>
             <div class="col-6 col-md-3">
                 <label class="form-label small mb-1">Item</label>
-                <select name="item" class="form-select" {% if not sub %}disabled{% endif %} onchange="this.form.submit()">
+                <select name="item" class="form-select" onchange="filtroMudou('item')">
                     <option value="">Todos</option>
                     {% for i in itens_opcoes %}<option value="{{ i.pk }}" {% if item.pk == i.pk %}selected{% endif %}>{{ i.nome }}</option>{% endfor %}
                 </select>
@@ -60,8 +60,46 @@
                 <label class="form-label small mb-1">Mês</label>
                 <input type="month" name="mes" value="{{ mes_valor }}" class="form-control" onchange="this.form.submit()">
             </div>
+            <div class="col-12">
+                <input type="hidden" name="visao" value="{{ visao }}">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Visualização do gráfico">
+                    {% for v, rotulo in visoes %}
+                    <button type="button" class="btn {% if visao == v %}btn-primary{% else %}btn-outline-primary{% endif %}"
+                            onclick="document.getElementById('filtros').visao.value='{{ v }}';document.getElementById('filtros').submit()">{{ rotulo }}</button>
+                    {% endfor %}
+                </div>
+                {% if visao != 'mes' %}<span class="text-muted small ms-2">Dia e semana usam as movimentações importadas do almoxarifado; lançamentos manuais são mensais.</span>{% endif %}
+            </div>
         </div>
     </form>
+    {{ arvore|json_script:"arvore-filtros" }}
+    <script>
+    function filtroMudou(nivel) {
+        var f = document.getElementById('filtros');
+        var t = JSON.parse(document.getElementById('arvore-filtros').textContent);
+        var v = function (n) { return parseInt(f[n].value, 10) || null; };
+        var achar = function (lista, id) { return lista.filter(function (x) { return x.id === id; })[0]; };
+        var setor = v('setor'), cat = v('categoria'), sub = v('sub'), item = v('item');
+        // Preenche os níveis de cima a partir do escolhido e limpa os de baixo que deixaram de combinar.
+        if (nivel === 'item' && item) { var i = achar(t.itens, item); f.sub.value = i.sub; f.categoria.value = i.categoria; f.setor.value = i.setor; }
+        if (nivel === 'sub' && sub) {
+            var s = achar(t.subs, sub); f.categoria.value = s.categoria; f.setor.value = s.setor;
+            var it = item && achar(t.itens, item); if (it && it.sub !== sub) f.item.value = '';
+        }
+        if (nivel === 'categoria' && cat) {
+            var c = achar(t.categorias, cat); f.setor.value = c.setor;
+            var sb = sub && achar(t.subs, sub); if (sb && sb.categoria !== cat) f.sub.value = '';
+            var it2 = item && achar(t.itens, item); if (it2 && it2.categoria !== cat) f.item.value = '';
+        }
+        if (nivel === 'categoria' && !cat) { /* "Todas": mantém sub/item como estão (o servidor deduz) */ }
+        if (nivel === 'setor') {
+            var ct = cat && achar(t.categorias, cat); if (ct && ct.setor !== setor && setor) f.categoria.value = '';
+            var sb2 = sub && achar(t.subs, sub); if (sb2 && setor && sb2.setor !== setor) f.sub.value = '';
+            var it3 = item && achar(t.itens, item); if (it3 && setor && it3.setor !== setor) f.item.value = '';
+        }
+        f.submit();
+    }
+    </script>
 
     {% if not linhas %}
         <div class="alert alert-warning">Nenhum item avaliado neste filtro. Cadastre setores, categorias, subcategorias e itens em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
@@ -69,7 +107,7 @@
     <div class="row g-3">
         <div class="col-lg-6">
             <div class="card h-100"><div class="card-body">
-                <div class="fw-semibold mb-2">{{ serie.titulo }} <span class="text-muted small">— últimos 12 meses{% if serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
+                <div class="fw-semibold mb-2">{{ serie.titulo }} <span class="text-muted small">— {{ serie.janela|default:"últimos 12 meses" }}{% if serie.meta_texto %} · {{ serie.meta_texto }}{% elif serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
                 <div style="position:relative;height:280px"><canvas id="grafico"></canvas></div>
             </div></div>
         </div>
@@ -82,6 +120,7 @@
                 <input type="hidden" name="sub" value="{{ sub.pk|default:'' }}">
                 <input type="hidden" name="item" value="{{ item.pk|default:'' }}">
                 <input type="hidden" name="mes" value="{{ mes_valor }}">
+                <input type="hidden" name="visao" value="{{ visao }}">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <span class="fw-semibold">Consumo de {{ mes|date:"m/Y" }}</span>
                     <span class="small">
@@ -135,10 +174,13 @@
 (function () {
     var d = JSON.parse(document.getElementById('dados-grafico').textContent);
     var VERDE = '#198754', VERMELHO = '#dc3545', CINZA = '#6c757d';
-    var cores = d.valores.map(function (v) { return d.meta === null || v === null ? CINZA : (v <= d.meta ? VERDE : VERMELHO); });
+    // Meta por período (dia/semana: proporcional ao mês) ou única (mês / percentual).
+    var metas = d.metas || d.labels.map(function () { return d.meta; });
+    var temMeta = metas.some(function (m) { return m !== null && m !== undefined; });
+    var cores = d.valores.map(function (v, i) { return metas[i] == null || v === null ? CINZA : (v <= metas[i] ? VERDE : VERMELHO); });
     var datasets = [{type: 'bar', label: d.titulo, data: d.valores, backgroundColor: cores, order: 2}];
-    if (d.meta !== null) {
-        datasets.push({type: 'line', label: 'Meta', data: d.labels.map(function () { return d.meta; }),
+    if (temMeta) {
+        datasets.push({type: 'line', label: 'Meta', data: metas, stepped: !!d.metas,
             borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1});
     }
     new Chart(document.getElementById('grafico'), {
