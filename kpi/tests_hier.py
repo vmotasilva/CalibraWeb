@@ -114,6 +114,18 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertIn(self.pads, r.context['itens_opcoes'])
         self.assertNotRegex(r.content.decode(), r'<select[^>]*disabled')
 
+    def test_filtros_em_botoes_e_area_de_resultado_atualizavel(self):
+        r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk, 'sub': self.sub.pk})
+        html = r.content.decode()
+        for nivel in ('setor', 'categoria', 'sub', 'item'):
+            self.assertIn(f'data-chips="{nivel}"', html)
+        self.assertNotIn('<select name="setor"', html)
+        # A área #resultado (gráfico + tabela) é o que o JS troca ao filtrar, sem recarregar a página.
+        self.assertIn('id="resultado"', html)
+        self.assertIn('id="dados-grafico"', html)
+        self.assertEqual(r.context['arvore']['setores'][0]['nome'], self.setor.nome)
+        self.assertEqual(r.context['sub'], self.sub)
+
     def test_visao_por_dia_e_por_semana_usa_movimentos(self):
         cod = HierCodigo.objects.create(codigo=3989, item=self.pads)
         HierMovimento.objects.create(codigo=cod, data=date(2026, 10, 5), quantidade=Decimal('3'), tipo='UTILIZACOES')
