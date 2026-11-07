@@ -33,13 +33,15 @@
         <input type="hidden" name="sub" value="{{ sub.pk|default:'' }}">
         <input type="hidden" name="item" value="{{ item.pk|default:'' }}">
         <input type="hidden" name="visao" value="{{ visao }}">
-        {% for nivel, rotulo in niveis %}
-        <div class="d-flex align-items-baseline gap-2 mb-2">
-            <div class="small text-muted flex-shrink-0" style="width:6.5rem">{{ rotulo }}</div>
-            <div class="d-flex flex-wrap gap-1" data-chips="{{ nivel }}" role="group" aria-label="{{ rotulo }}"></div>
-        </div>
-        {% endfor %}
-        <div class="d-flex flex-wrap align-items-center gap-3 pt-2 border-top">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-outline-primary" id="abrir-filtros" data-bs-toggle="modal" data-bs-target="#modal-filtros">
+                <i class="bi bi-funnel me-1"></i>Filtros
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="limpar-filtros" disabled>
+                <i class="bi bi-x-circle me-1"></i>Limpar filtros
+            </button>
+            <div class="d-flex flex-wrap align-items-center gap-1" id="filtros-resumo" aria-live="polite"></div>
+            <div class="vr d-none d-lg-block mx-1"></div>
             <div class="d-flex align-items-center gap-2">
                 <label class="small text-muted mb-0" for="filtro-mes">Mês</label>
                 <input type="month" id="filtro-mes" name="mes" value="{{ mes_valor }}" class="form-control form-control-sm" style="width:11rem">
@@ -49,7 +51,31 @@
                 <button type="button" data-visao="{{ v }}" class="btn {% if visao == v %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ rotulo }}</button>
                 {% endfor %}
             </div>
-            <span id="dica-visao" class="text-muted small" {% if visao == 'mes' %}hidden{% endif %}>Dia e semana usam as movimentações importadas do almoxarifado; lançamentos manuais são mensais.</span>
+        </div>
+        <div id="dica-visao" class="text-muted small mt-2" {% if visao == 'mes' %}hidden{% endif %}>Dia e semana usam as movimentações importadas do almoxarifado; lançamentos manuais são mensais.</div>
+
+        <div class="modal fade" id="modal-filtros" tabindex="-1" aria-labelledby="titulo-filtros" aria-hidden="true">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="titulo-filtros"><i class="bi bi-funnel me-2"></i>Filtros</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="small text-muted mb-3">Escolha em qualquer nível: os de cima são preenchidos e as listas se ajustam. O painel atualiza na hora.</div>
+                        {% for nivel, rotulo in niveis %}
+                        <div class="d-flex align-items-baseline gap-2 mb-2">
+                            <div class="small text-muted flex-shrink-0" style="width:6.5rem">{{ rotulo }}</div>
+                            <div class="d-flex flex-wrap gap-1" data-chips="{{ nivel }}" role="group" aria-label="{{ rotulo }}"></div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <button type="button" class="btn btn-outline-secondary" data-limpar disabled><i class="bi bi-x-circle me-1"></i>Limpar filtros</button>
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Concluído</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </form>
     {{ arvore|json_script:"arvore-filtros" }}
@@ -111,13 +137,49 @@
                   est.sub, !est.categoria);
             chips('item', t.itens.filter(function (x) { return (!est.sub || x.sub === est.sub) && (!est.categoria || x.categoria === est.categoria) && (!est.setor || x.setor === est.setor); }),
                   est.item, !est.sub);
+            resumo(est);
+            // Os botões são recriados: com o pop-up aberto, devolve o foco a ele para o Esc continuar fechando.
+            var modal = document.getElementById('modal-filtros'), ativo = document.activeElement;
+            if (modal.classList.contains('show') && (!ativo || ativo === document.body || ativo.disabled)) modal.focus();
         }
 
         function escolher(nivel, id) {
             f[nivel].value = id || '';
+            if (!id) {  // "Todos" (ou remover): limpa este nível e os de baixo
+                NIVEIS.slice(NIVEIS.indexOf(nivel)).forEach(function (n) { f[n].value = ''; });
+            }
             refrescar(normalizar(nivel));
             carregar();
         }
+
+        // Resumo do que está filtrado (cada filtro com × para remover) e estado dos botões de limpar.
+        var ROTULO = {setor: 'Setor', categoria: 'Categoria', sub: 'Subcategoria', item: 'Item'};
+        var LISTA = {setor: t.setores, categoria: t.categorias, sub: t.subs, item: t.itens};
+        function resumo(est) {
+            var box = document.getElementById('filtros-resumo'), ativos = 0;
+            box.innerHTML = '';
+            NIVEIS.forEach(function (n) {
+                if (!est[n]) return;
+                ativos++;
+                var span = document.createElement('span');
+                span.className = 'badge rounded-pill text-bg-primary d-inline-flex align-items-center gap-1';
+                span.textContent = ROTULO[n] + ': ' + achar(LISTA[n], est[n]).nome;
+                var x = document.createElement('button');
+                x.type = 'button'; x.className = 'btn-close btn-close-white'; x.style.fontSize = '.55em';
+                x.setAttribute('aria-label', 'Remover filtro de ' + ROTULO[n]);
+                x.addEventListener('click', function () { escolher(n, null); });
+                span.appendChild(x); box.appendChild(span);
+            });
+            f.querySelectorAll('#limpar-filtros, [data-limpar]').forEach(function (b) { b.disabled = !ativos; });
+            var abrir = document.getElementById('abrir-filtros');
+            abrir.classList.toggle('btn-primary', !!ativos); abrir.classList.toggle('btn-outline-primary', !ativos);
+        }
+        function limpar() {
+            NIVEIS.forEach(function (n) { f[n].value = ''; });
+            refrescar({setor: null, categoria: null, sub: null, item: null});
+            carregar();
+        }
+        f.querySelectorAll('#limpar-filtros, [data-limpar]').forEach(function (b) { b.addEventListener('click', limpar); });
 
         function url() {
             var p = new URLSearchParams();
@@ -168,6 +230,32 @@
             <div class="card h-100"><div class="card-body">
                 <div class="fw-semibold mb-2">{{ serie.titulo }} <span class="text-muted small">— {{ serie.janela|default:"últimos 12 meses" }}{% if serie.meta_texto %} · {{ serie.meta_texto }}{% elif serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
                 <div style="position:relative;height:280px"><canvas id="grafico"></canvas></div>
+                {% if serie.tabela %}
+                <div class="table-responsive mt-3" style="max-height:260px" id="tabela-dados">
+                    <table class="table table-sm small align-middle mb-0">
+                        <thead class="table-light" style="position:sticky;top:0">
+                            <tr>
+                                <th>Período</th>
+                                <th class="text-end">{% if serie.modo == 'valor' %}Consumo{% if serie.unidade %} ({{ serie.unidade }}){% endif %}{% else %}% médio da meta{% endif %}</th>
+                                <th class="text-end">Meta</th>
+                                {% if serie.modo == 'valor' %}<th class="text-end">% da meta</th>{% endif %}
+                                <th class="text-center">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for l in serie.tabela %}
+                            <tr>
+                                <td>{{ l.rotulo }}{% if l.faixa %} <span class="text-muted">{{ l.faixa }}</span>{% endif %}</td>
+                                <td class="text-end">{% if l.valor is not None %}{{ l.valor|floatformat:"-2" }}{% if serie.modo != 'valor' %}%{% endif %}{% else %}—{% endif %}</td>
+                                <td class="text-end">{% if l.meta is not None %}{{ l.meta|floatformat:"-2" }}{% if serie.modo != 'valor' %}%{% endif %}{% else %}—{% endif %}</td>
+                                {% if serie.modo == 'valor' %}<td class="text-end">{% if l.pct is not None %}{{ l.pct }}%{% else %}—{% endif %}</td>{% endif %}
+                                <td class="text-center">{% if l.ok is None %}<span class="text-muted">—</span>{% elif l.ok %}<span class="badge bg-success">Na meta</span>{% else %}<span class="badge bg-danger">Acima</span>{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
             </div></div>
         </div>
         <div class="col-lg-6">

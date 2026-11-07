@@ -120,6 +120,7 @@ def _meta_dia(item, dia):
 def _serie_curta(itens, visao, fim):
     """Série por dia ou semana. Meta proporcional = meta mensal ÷ dias do mês, somada nos dias do período."""
     buckets, rotulos, janela = _buckets(visao, fim)
+    faixas = [f'{b[0]:%d/%m/%Y}' if len(b) == 1 else f'{b[0]:%d/%m} a {b[-1]:%d/%m}' for b in buckets]
     hoje = timezone.localdate()
     diario = _consumo_diario(itens, buckets[0][0], buckets[-1][-1])
 
@@ -134,7 +135,7 @@ def _serie_curta(itens, visao, fim):
 
     if len(itens) == 1:
         i = itens[0]
-        return {'modo': 'valor', 'labels': rotulos, 'janela': janela, 'meta': None,
+        return {'modo': 'valor', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'meta': None,
                 'valores': [None if consumo(i, b) is None else round(float(consumo(i, b)), 2) for b in buckets],
                 'metas': [None if meta(i, b) is None else round(meta(i, b), 2) for b in buckets],
                 'unidade': i.unidade, 'titulo': f'Consumo ({i.unidade})' if i.unidade else 'Consumo',
@@ -143,8 +144,20 @@ def _serie_curta(itens, visao, fim):
     for b in buckets:
         pcts = [consumo(i, b) / Decimal(meta(i, b)) * 100 for i in itens if i.meta and consumo(i, b) is not None]
         valores.append(round(float(sum(pcts) / len(pcts)), 1) if pcts else None)
-    return {'modo': 'percentual', 'labels': rotulos, 'janela': janela, 'valores': valores, 'meta': 100.0, 'metas': None,
+    return {'modo': 'percentual', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'valores': valores, 'meta': 100.0, 'metas': None,
             'unidade': '%', 'titulo': '% da meta proporcional (média dos itens com meta)', 'meta_texto': 'meta 100%'}
+
+
+def _tabela(serie):
+    """Linhas da tabela de dados do gráfico (mesmos números do gráfico). Consumo: menor é melhor, então "na meta" = até a meta."""
+    metas = serie.get('metas') or [serie.get('meta')] * len(serie['labels'])
+    faixas = serie.get('faixas') or [''] * len(serie['labels'])
+    linhas = []
+    for rotulo, faixa, valor, meta in zip(serie['labels'], faixas, serie['valores'], metas):
+        ok = None if valor is None or meta is None else valor <= meta
+        pct = round(valor / meta * 100) if serie['modo'] == 'valor' and valor is not None and meta else None
+        linhas.append({'rotulo': rotulo, 'faixa': faixa, 'valor': valor, 'meta': meta, 'pct': pct, 'ok': ok})
+    return linhas
 
 
 @login_required
@@ -224,6 +237,8 @@ def painel_view(request):
         dentro=sum(1 for l in com_meta if l['ok']), fora=sum(1 for l in com_meta if not l['ok']),
         sem_lancamento=sum(1 for l in linhas if l['consumo'] is None),
     )
+    if ctx['serie']:
+        ctx['serie']['tabela'] = _tabela(ctx['serie'])
     return render(request, 'kpi/hier_painel.html', ctx)
 
 
