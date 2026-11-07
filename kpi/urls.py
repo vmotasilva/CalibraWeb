@@ -1,6 +1,6 @@
 from django.urls import path
 
-from kpi import views, views_decide, views_hier
+from kpi import views, views_decide, views_hier, views_ins
 
 app_name = 'kpi'
 
@@ -30,6 +30,12 @@ urlpatterns = [
     path('setores/importar/', views_hier.importar_view, name='hier_importar'),
     path('setores/codigos/', views_hier.codigos_view, name='hier_codigos'),
     path('setores/codigos/acao/', views_hier.codigos_acao_view, name='hier_codigos_acao'),
+    path('setores/indicadores/', views_ins.painel_view, name='ins_painel'),
+    path('setores/indicadores/novo/', views_ins.form_view, name='ins_novo'),
+    path('setores/indicadores/<int:pk>/editar/', views_ins.form_view, name='ins_editar'),
+    path('setores/indicadores/preview/', views_ins.preview_view, name='ins_preview'),
+    path('setores/indicadores/salvar/', views_ins.salvar_view, name='ins_salvar'),
+    path('setores/indicadores/<int:pk>/excluir/', views_ins.excluir_view, name='ins_excluir'),
     path('setores/cadastro/', views_hier.cadastro_view, name='hier_cadastro'),
     path('setores/cadastro/salvar/', views_hier.cadastro_salvar_view, name='hier_cadastro_salvar'),
     path('setores/cadastro/excluir/', views_hier.cadastro_excluir_view, name='hier_cadastro_excluir'),

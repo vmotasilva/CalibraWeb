@@ -1,0 +1,191 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Indicadores de insumos - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>Indicadores de insumos</h4>
+            <div class="text-muted small">Consumo de cada insumo (códigos do almoxarifado) cruzado com a produção dos KPIs principais. Verde = na meta, vermelho = fora da meta.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'kpi:hier_painel' %}" class="btn btn-outline-secondary">KPI por setor</a>
+            {% if pode_cadastrar %}<a href="{% url 'kpi:ins_novo' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo indicador</a>{% endif %}
+        </div>
+    </div>
+
+    {% if sem_indicadores %}
+        <div class="alert alert-info">Nenhum indicador de insumo cadastrado ainda.
+            {% if pode_cadastrar %}<a href="{% url 'kpi:ins_novo' %}">Montar o primeiro</a> — dá para partir dos modelos da planilha (Pad, Membrana, Fita, Polidor, Aloy, DSX...).{% endif %}</div>
+    {% else %}
+    <form method="get" class="card card-body mb-3" id="filtros">
+        <input type="hidden" name="visao" value="{{ visao }}">
+        <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+            <div class="small text-muted flex-shrink-0" style="width:6.5rem">Setor</div>
+            <div class="d-flex flex-wrap gap-1" data-chips="setor" role="group" aria-label="Setor">
+                <button type="button" data-valor="" class="btn btn-sm {% if not setor %}btn-primary{% else %}btn-outline-secondary{% endif %}">Todos</button>
+                {% for s in setores %}<button type="button" data-valor="{{ s.pk }}" class="btn btn-sm {% if setor.pk == s.pk %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ s.nome }}</button>{% endfor %}
+            </div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-3 pt-2 border-top">
+            <div class="d-flex align-items-center gap-2">
+                <label class="small text-muted mb-0" for="filtro-mes">Mês</label>
+                <input type="month" id="filtro-mes" name="mes" value="{{ mes_valor }}" class="form-control form-control-sm" style="width:11rem">
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Visualização">
+                {% for v, rotulo in visoes %}
+                <button type="button" data-visao="{{ v }}" class="btn {% if visao == v %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ rotulo }}</button>
+                {% endfor %}
+            </div>
+            <span class="text-muted small">Dia e semana usam as movimentações importadas; no mês vale o consumo do mês (o lançamento manual prevalece).</span>
+        </div>
+    </form>
+
+    <div id="resultado">
+        {% if not cards %}
+            <div class="alert alert-warning">Nenhum indicador neste setor.</div>
+        {% endif %}
+        <div class="row g-3">
+        {% for c in cards %}
+            {% with ind=c.ind s=c.serie %}
+            <div class="col-xl-4 col-md-6">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold">{{ ind.nome }}</div>
+                            <div class="text-muted small">{{ c.caminho }}</div>
+                        </div>
+                        {% if s.ultimo %}
+                            <span class="badge {% if s.ultimo.ok is None %}bg-secondary{% elif s.ultimo.ok %}bg-success{% else %}bg-danger{% endif %} fs-6 text-nowrap"
+                                  title="Último período com valor: {{ s.ultimo.rotulo }}">{{ s.ultimo.valor|floatformat:ind.casas }} {{ ind.unidade }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">sem dados</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-body pb-2">
+                        <div class="small text-muted mb-1">
+                            {{ ind.get_modo_display|truncatechars:60 }}<br>
+                            {% if ind.sentido == 'maior' %}Quanto maior, melhor{% else %}Quanto menor, melhor{% endif %}
+                            {% if c.meta is not None %} · meta {{ c.meta|floatformat:ind.casas }} {{ ind.unidade }}{% endif %}
+                            · {{ s.janela }}
+                        </div>
+                        <div style="position:relative;height:200px"><canvas data-grafico="{{ c.dom_id }}"></canvas></div>
+                        {{ c.grafico|json_script:c.dom_id }}
+                        <details class="mt-2">
+                            <summary class="small text-primary" style="cursor:pointer">Ver períodos</summary>
+                            <div class="table-responsive" style="max-height:260px">
+                                <table class="table table-sm small align-middle mb-0">
+                                    <thead><tr><th>Período</th><th class="text-end">Produção</th><th class="text-end">Consumo</th><th class="text-end">Valor</th><th class="text-end">Meta</th></tr></thead>
+                                    <tbody>
+                                    {% for l in s.linhas %}
+                                        <tr>
+                                            <td title="{{ l.ini|date:'d/m/Y' }}{% if l.ini != l.fim %} a {{ l.fim|date:'d/m/Y' }}{% endif %}">{{ l.rotulo }}</td>
+                                            <td class="text-end">{% if l.producao is not None %}{{ l.producao|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                                            <td class="text-end">{% if l.consumo is not None %}{{ l.consumo|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                                            <td class="text-end">{% if l.valor is not None %}<span class="badge {% if l.ok is None %}bg-secondary{% elif l.ok %}bg-success{% else %}bg-danger{% endif %}">{{ l.valor|floatformat:ind.casas }}</span>{% else %}—{% endif %}</td>
+                                            <td class="text-end">{% if l.meta is not None %}{{ l.meta|floatformat:ind.casas }}{% else %}—{% endif %}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between align-items-center small">
+                        <span><span class="badge bg-success">{{ s.dentro }} na meta</span> <span class="badge bg-danger">{{ s.fora }} fora</span></span>
+                        {% if pode_cadastrar %}<a href="{% url 'kpi:ins_editar' ind.pk %}" class="btn btn-sm btn-outline-primary py-0"><i class="bi bi-pencil me-1"></i>Editar</a>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+        {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if not sem_indicadores %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var f = document.getElementById('filtros'), pedido = 0, graficos = [];
+    var VERDE = '#198754', VERMELHO = '#dc3545', CINZA = '#6c757d';
+    var fmt = function (v) { return v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 4}); };
+
+    // Desenha (ou redesenha, após atualizar os filtros) o gráfico de cada indicador.
+    window.desenharGraficos = function () {
+        graficos.forEach(function (g) { g.destroy(); });
+        graficos = [];
+        document.querySelectorAll('canvas[data-grafico]').forEach(function (canvas) {
+            var d = JSON.parse(document.getElementById(canvas.dataset.grafico).textContent);
+            var maior = d.sentido === 'maior';
+            var cores = d.valores.map(function (v, i) {
+                var m = d.metas[i];
+                return v === null || m === null ? CINZA : ((maior ? v >= m : v <= m) ? VERDE : VERMELHO);
+            });
+            var datasets = [{type: 'bar', label: 'Realizado', data: d.valores, backgroundColor: cores, order: 2}];
+            if (d.metas.some(function (m) { return m !== null; })) {
+                datasets.push({type: 'line', label: 'Meta', data: d.metas, borderColor: '#212529', borderDash: [6, 4],
+                               borderWidth: 2, pointRadius: 0, stepped: true, order: 1});
+            }
+            graficos.push(new Chart(canvas, {
+                data: {labels: d.labels, datasets: datasets},
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: {display: false},
+                        tooltip: {callbacks: {
+                            title: function (it) { return d.labels[it[0].dataIndex] + ' (' + d.faixas[it[0].dataIndex] + ')'; },
+                            afterBody: function (it) {
+                                var i = it[0].dataIndex;
+                                return ['Produção: ' + fmt(d.producao[i]), 'Consumo: ' + fmt(d.consumo[i])];
+                            }
+                        }}
+                    },
+                    scales: {y: {beginAtZero: true, title: {display: !!d.unidade, text: d.unidade}}}
+                }
+            }));
+        });
+    };
+
+    // Atualiza os cards por baixo, sem recarregar a página; a URL acompanha.
+    function carregar() {
+        var p = new URLSearchParams();
+        new FormData(f).forEach(function (v, k) { if (v !== '') p.append(k, v); });
+        var alvo = location.pathname + '?' + p.toString(), meu = ++pedido, box = document.getElementById('resultado');
+        box.style.opacity = '.5';
+        fetch(alvo, {credentials: 'same-origin', headers: {'X-Requested-With': 'fetch'}})
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+            .then(function (html) {
+                if (meu !== pedido) return;
+                var novo = new DOMParser().parseFromString(html, 'text/html').getElementById('resultado');
+                if (!novo) throw new Error('sem resultado');
+                box.innerHTML = novo.innerHTML; box.style.opacity = '';
+                history.replaceState(null, '', alvo);
+                window.desenharGraficos();
+            })
+            .catch(function () { location.href = alvo; });
+    }
+
+    function marcar(botoes, ativo) {
+        botoes.forEach(function (b) {
+            var on = b === ativo;
+            b.classList.toggle('btn-primary', on);
+            b.classList.toggle(b.hasAttribute('data-visao') ? 'btn-outline-primary' : 'btn-outline-secondary', !on);
+        });
+    }
+    var chipsSetor = f.querySelectorAll('[data-chips="setor"] button'), botoesVisao = f.querySelectorAll('[data-visao]');
+    chipsSetor.forEach(function (b) {
+        b.addEventListener('click', function () { f.setor.value = b.dataset.valor; marcar(chipsSetor, b); carregar(); });
+    });
+    botoesVisao.forEach(function (b) {
+        b.addEventListener('click', function () { f.visao.value = b.dataset.visao; marcar(botoesVisao, b); carregar(); });
+    });
+    f.mes.addEventListener('change', carregar);
+    f.addEventListener('submit', function (e) { e.preventDefault(); carregar(); });
+    window.desenharGraficos();
+})();
+</script>
+{% endif %}
+{% endblock %}
