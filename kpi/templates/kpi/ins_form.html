@@ -1,0 +1,350 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}{% if novo %}Novo{% else %}Editar{% endif %} indicador de insumo - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-sliders me-2"></i>{% if novo %}Novo indicador de insumo{% else %}Editar indicador de insumo{% endif %}</h4>
+            <div class="text-muted small">Escolha o insumo, de onde vem a produção e como calcular. A prévia ao lado atualiza a cada mudança.</div>
+        </div>
+        <a href="{% url 'kpi:ins_painel' %}" class="btn btn-outline-secondary">Voltar aos indicadores</a>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-xl-5">
+            <form method="post" action="{% url 'kpi:ins_salvar' %}" id="form" class="vstack gap-3">
+                {% csrf_token %}
+                <input type="hidden" name="pk" value="{{ ind.pk|default:'' }}">
+                <input type="hidden" name="item" value="">
+                <input type="hidden" name="modo" value="">
+                <input type="hidden" name="sentido" value="">
+
+                <div class="card card-body">
+                    <label class="form-label small mb-1" for="f-nome">Nome do indicador</label>
+                    <input type="text" id="f-nome" name="nome" class="form-control" maxlength="150" required placeholder="Ex.: Pad — lentes por unidade">
+                    {% if novo %}
+                    <div class="small text-muted mt-3 mb-1">Começar de um modelo da planilha <span class="text-muted">(preenche o cálculo e a meta; ajuste à vontade)</span></div>
+                    <div class="d-flex flex-wrap gap-1" id="modelos"></div>
+                    <div class="small text-info-emphasis mt-2" id="dica-modelo" hidden></div>
+                    {% endif %}
+                </div>
+
+                <div class="card card-body">
+                    <div class="fw-semibold mb-2">1. Insumo avaliado</div>
+                    {% for nivel, rotulo in niveis %}
+                    <div class="d-flex align-items-baseline gap-2 mb-2">
+                        <div class="small text-muted flex-shrink-0" style="width:6.5rem">{{ rotulo }}</div>
+                        <div class="d-flex flex-wrap gap-1" data-chips="{{ nivel }}" role="group" aria-label="{{ rotulo }}"></div>
+                    </div>
+                    {% endfor %}
+                    <div class="small" id="resumo-item"></div>
+                    <div class="small text-muted">O consumo vem dos códigos vinculados ao item (em <a href="{% url 'kpi:hier_codigos' %}">Códigos</a>, o <em>fator</em> converte para a unidade do item, ex.: 35 m por rolo).</div>
+                </div>
+
+                <div class="card card-body" id="bloco-producao">
+                    <div class="fw-semibold mb-2">2. Produção (vem dos KPIs principais)</div>
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="form-label small mb-1" for="f-ind">KPI principal</label>
+                            <select name="producao_indicador" id="f-ind" class="form-select form-select-sm"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1" for="f-var">Variável</label>
+                            <select name="producao_variavel" id="f-var" class="form-select form-select-sm"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1" for="f-setor">Setor do KPI</label>
+                            <select name="producao_setor" id="f-setor" class="form-select form-select-sm"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1" for="f-part">Participação na produção (%)</label>
+                            <input type="text" inputmode="decimal" name="participacao" id="f-part" class="form-control form-control-sm" value="100">
+                        </div>
+                        <div class="col-md-6 small text-muted align-self-end">Ex.: Pad 70% e Membrana 30% da produção da surfaçagem.</div>
+                    </div>
+                </div>
+
+                <div class="card card-body">
+                    <div class="fw-semibold mb-2">3. Cálculo</div>
+                    <div class="btn-group btn-group-sm mb-2 flex-wrap" role="group" aria-label="Tipo de cálculo" id="chips-modo">
+                        {% for valor, rotulo in modos %}<button type="button" class="btn btn-outline-primary" data-valor="{{ valor }}">{{ rotulo|truncatechars:22 }}</button>{% endfor %}
+                    </div>
+                    <div class="small text-muted mb-2" id="explica-modo"></div>
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label small mb-1" for="f-un">Métrica</label>
+                            <input type="text" name="unidade" id="f-un" class="form-control form-control-sm" maxlength="40" placeholder="lentes/und, g/lente...">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1" for="f-mult">Multiplicador</label>
+                            <input type="text" inputmode="decimal" name="multiplicador" id="f-mult" class="form-control form-control-sm" value="1">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small mb-1" for="f-casas">Casas</label>
+                            <input type="number" min="0" max="6" name="casas" id="f-casas" class="form-control form-control-sm" value="2">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-body">
+                    <div class="fw-semibold mb-2">4. Meta</div>
+                    <div class="btn-group btn-group-sm mb-2" role="group" aria-label="Sentido da meta" id="chips-sentido">
+                        <button type="button" class="btn btn-outline-primary" data-valor="maior">Quanto maior, melhor</button>
+                        <button type="button" class="btn btn-outline-primary" data-valor="menor">Quanto menor, melhor</button>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1" for="f-meta">Meta (mensal)</label>
+                            <input type="text" inputmode="decimal" name="meta" id="f-meta" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1" for="f-meta-s">Meta semanal <span class="text-muted">(opc.)</span></label>
+                            <input type="text" inputmode="decimal" name="meta_semanal" id="f-meta-s" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1" for="f-meta-d">Meta diária <span class="text-muted">(opc.)</span></label>
+                            <input type="text" inputmode="decimal" name="meta_diaria" id="f-meta-d" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-1">Semanal/diária vazias: nos cálculos de razão vale a mesma meta; no "uso" vale a meta mensal proporcional aos dias.</div>
+                </div>
+
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="ativo" id="f-ativo" {% if ind.ativo or novo %}checked{% endif %}>
+                        <label class="form-check-label" for="f-ativo">Ativo (aparece no painel)</label>
+                    </div>
+                    <div class="d-flex gap-2">
+                        {% if pode_excluir %}<button type="submit" form="form-excluir" class="btn btn-outline-danger" onclick="return confirm('Excluir este indicador?');"><i class="bi bi-trash me-1"></i>Excluir</button>{% endif %}
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Salvar indicador</button>
+                    </div>
+                </div>
+            </form>
+            {% if pode_excluir %}<form method="post" id="form-excluir" action="{% url 'kpi:ins_excluir' ind.pk %}">{% csrf_token %}</form>{% endif %}
+        </div>
+
+        <div class="col-xl-7">
+            <div class="card position-sticky" style="top:1rem">
+                <div class="card-header d-flex flex-wrap align-items-center gap-2 justify-content-between">
+                    <span class="fw-semibold">Prévia</span>
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Visualização" id="chips-visao">
+                            {% for v, rotulo in visoes %}<button type="button" data-valor="{{ v }}" class="btn {% if v == 'mes' %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ rotulo }}</button>{% endfor %}
+                        </div>
+                        <input type="month" id="prev-mes" value="{{ mes_valor }}" class="form-control form-control-sm" style="width:10.5rem" aria-label="Mês de referência">
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning py-2 small" id="prev-erro" hidden></div>
+                    <div class="small text-muted mb-1" id="prev-janela"></div>
+                    <div style="position:relative;height:260px"><canvas id="prev-grafico"></canvas></div>
+                    <div class="table-responsive mt-3" style="max-height:280px">
+                        <table class="table table-sm small align-middle mb-0">
+                            <thead><tr><th>Período</th><th class="text-end">Produção</th><th class="text-end">Consumo</th><th class="text-end">Valor</th><th class="text-end">Meta</th></tr></thead>
+                            <tbody id="prev-linhas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ valores|json_script:"valores-ini" }}
+{{ arvore|json_script:"arvore" }}
+{{ fontes|json_script:"fontes" }}
+{{ modelos|json_script:"modelos-dados" }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var f = document.getElementById('form');
+    var ini = JSON.parse(document.getElementById('valores-ini').textContent);
+    var T = JSON.parse(document.getElementById('arvore').textContent);
+    var FONTES = JSON.parse(document.getElementById('fontes').textContent);
+    var MODELOS = JSON.parse(document.getElementById('modelos-dados').textContent);
+    var NIVEIS = ['setor', 'categoria', 'sub', 'item'];
+    var TODOS = {setor: 'Todos', categoria: 'Todas', sub: 'Todas', item: 'Todos'};
+    var EXPLICA = {
+        rendimento: 'Produção × participação ÷ consumo. Ex.: lentes produzidas ÷ pads usados = lentes por pad. Quanto maior, melhor.',
+        consumo: 'Consumo ÷ (produção × participação). Ex.: gramas de aloy ÷ lentes boas = g por lente. Quanto menor, melhor.',
+        uso: 'Só o consumo do insumo no período (não usa produção). Ex.: filtros usados na semana.'
+    };
+    var estado = {setor: null, categoria: null, sub: null, item: null};
+    var visao = 'mes', grafico = null, temporizador = null, pedido = 0;
+    var achar = function (lista, id) { return lista.filter(function (x) { return x.id === id; })[0]; };
+    var fmt = function (v, casas) { return v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-BR', {maximumFractionDigits: casas === undefined ? 4 : casas}); };
+    var norm = function (t) { return (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); };
+
+    // ── escolha do insumo por botões (Setor › Categoria › Subcategoria › Item) ──
+    function normalizar(nivel) {
+        var e = estado;
+        if (nivel === 'setor' && e.setor) {
+            if (e.categoria && achar(T.categorias, e.categoria).setor !== e.setor) e.categoria = null;
+            if (e.sub && achar(T.subs, e.sub).setor !== e.setor) e.sub = null;
+            if (e.item && achar(T.itens, e.item).setor !== e.setor) e.item = null;
+        } else if (nivel === 'categoria' && e.categoria) {
+            e.setor = achar(T.categorias, e.categoria).setor;
+            if (e.sub && achar(T.subs, e.sub).categoria !== e.categoria) e.sub = null;
+            if (e.item && achar(T.itens, e.item).categoria !== e.categoria) e.item = null;
+        } else if (nivel === 'sub' && e.sub) {
+            var s = achar(T.subs, e.sub); e.categoria = s.categoria; e.setor = s.setor;
+            if (e.item && achar(T.itens, e.item).sub !== e.sub) e.item = null;
+        } else if (nivel === 'item' && e.item) {
+            var i = achar(T.itens, e.item); e.sub = i.sub; e.categoria = i.categoria; e.setor = i.setor;
+        }
+    }
+    function botao(rotulo, ativo, aoClicar) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = rotulo; b.setAttribute('aria-pressed', ativo ? 'true' : 'false');
+        b.className = 'btn btn-sm ' + (ativo ? 'btn-primary' : 'btn-outline-secondary');
+        b.addEventListener('click', aoClicar);
+        return b;
+    }
+    function chips(nivel, lista, mostrarCtx) {
+        var box = f.querySelector('[data-chips="' + nivel + '"]');
+        box.innerHTML = '';
+        box.appendChild(botao(TODOS[nivel], estado[nivel] === null, function () { escolher(nivel, null); }));
+        lista.forEach(function (x) {
+            box.appendChild(botao(mostrarCtx ? x.nome + ' · ' + x.ctx : x.nome, x.id === estado[nivel],
+                function () { escolher(nivel, x.id === estado[nivel] ? null : x.id); }));
+        });
+    }
+    function refrescarInsumo() {
+        var e = estado;
+        chips('setor', T.setores, false);
+        chips('categoria', T.categorias.filter(function (c) { return !e.setor || c.setor === e.setor; }), !e.setor);
+        chips('sub', T.subs.filter(function (x) { return (!e.categoria || x.categoria === e.categoria) && (!e.setor || x.setor === e.setor); }), !e.categoria);
+        chips('item', T.itens.filter(function (x) { return (!e.sub || x.sub === e.sub) && (!e.categoria || x.categoria === e.categoria) && (!e.setor || x.setor === e.setor); }), !e.sub);
+        f.item.value = e.item || '';
+        var it = e.item && achar(T.itens, e.item);
+        document.getElementById('resumo-item').innerHTML = it
+            ? '<i class="bi bi-check-circle text-success"></i> Insumo: <strong>' + it.nome + '</strong> <span class="text-muted">(' + it.ctx + ')</span>'
+            : '<span class="text-danger">Escolha o item (último nível) para calcular.</span>';
+    }
+    function escolher(nivel, id) { estado[nivel] = id; normalizar(nivel); refrescarInsumo(); agendar(); }
+
+    // ── produção: KPI principal › variável › setor ──
+    function opcoes(select, itens, atual, vazio) {
+        select.innerHTML = '';
+        var o = document.createElement('option'); o.value = ''; o.textContent = vazio; select.appendChild(o);
+        itens.forEach(function (x) {
+            var op = document.createElement('option'); op.value = x.v; op.textContent = x.t;
+            if (String(x.v) === String(atual)) op.selected = true;
+            select.appendChild(op);
+        });
+    }
+    function refrescarProducao(varAtual, setorAtual) {
+        var fonte = achar(FONTES, parseInt(f.producao_indicador.value, 10));
+        opcoes(f.producao_variavel, fonte ? fonte.campos.map(function (c) { return {v: c, t: c}; }) : [], varAtual, '— valor do indicador —');
+        opcoes(f.producao_setor, fonte ? fonte.setores.map(function (s) { return {v: s.id, t: s.nome}; }) : [], setorAtual, 'Geral (sem setor)');
+        if (fonte && !f.producao_variavel.value) {  // sugere a variável de produção
+            var sug = fonte.campos.filter(function (c) { return norm(c).indexOf('produ') >= 0; })[0];
+            if (sug) f.producao_variavel.value = sug;
+        }
+    }
+    opcoes(f.producao_indicador, FONTES.map(function (x) { return {v: x.id, t: x.nome + (x.area ? ' — ' + x.area : '')}; }), ini.producao_indicador, '— escolha o KPI principal —');
+    refrescarProducao(ini.producao_variavel, ini.producao_setor);
+    f.producao_indicador.addEventListener('change', function () { refrescarProducao('', ''); agendar(); });
+
+    // ── botões de modo e de sentido ──
+    function marcar(grupo, valor) {
+        grupo.querySelectorAll('button').forEach(function (b) {
+            var on = b.dataset.valor === valor;
+            b.classList.toggle('btn-primary', on); b.classList.toggle('btn-outline-primary', !on);
+        });
+    }
+    function definirModo(m) {
+        f.modo.value = m; marcar(document.getElementById('chips-modo'), m);
+        document.getElementById('explica-modo').textContent = EXPLICA[m];
+        document.getElementById('bloco-producao').hidden = m === 'uso';
+    }
+    function definirSentido(s) { f.sentido.value = s; marcar(document.getElementById('chips-sentido'), s); }
+    document.getElementById('chips-modo').addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return;
+        definirModo(b.dataset.valor);
+        definirSentido(b.dataset.valor === 'rendimento' ? 'maior' : (b.dataset.valor === 'consumo' ? 'menor' : f.sentido.value));
+        agendar();
+    });
+    document.getElementById('chips-sentido').addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return; definirSentido(b.dataset.valor); agendar();
+    });
+
+    // ── modelos da planilha ──
+    var boxModelos = document.getElementById('modelos');
+    if (boxModelos) {
+        MODELOS.forEach(function (m) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm btn-outline-secondary'; b.textContent = m.rotulo;
+            b.addEventListener('click', function () {
+                f.nome.value = m.nome; definirModo(m.modo); definirSentido(m.sentido);
+                f.participacao.value = m.participacao; f.unidade.value = m.unidade; f.casas.value = m.casas;
+                f.meta.value = m.meta; f.meta_semanal.value = m.meta_semanal === undefined ? '' : m.meta_semanal; f.meta_diaria.value = '';
+                f.multiplicador.value = 1;
+                var d = document.getElementById('dica-modelo'); d.textContent = m.dica; d.hidden = !m.dica;
+                var cand = T.itens.filter(function (i) { return norm(i.nome).indexOf(norm(m.rotulo)) >= 0; });
+                if (cand.length === 1) { estado.item = cand[0].id; normalizar('item'); refrescarInsumo(); }
+                if (m.modo !== 'uso') { var f2 = achar(FONTES, parseInt(f.producao_indicador.value, 10)); if (f2) refrescarProducao('', f.producao_setor.value); }
+                agendar();
+            });
+            boxModelos.appendChild(b);
+        });
+    }
+
+    // ── prévia ao vivo ──
+    function params() {
+        var p = new URLSearchParams();
+        new FormData(f).forEach(function (v, k) { if (k !== 'csrfmiddlewaretoken' && k !== 'pk' && v !== '') p.append(k, v); });
+        p.set('visao', visao); p.set('mes', document.getElementById('prev-mes').value);
+        return p.toString();
+    }
+    function agendar() { clearTimeout(temporizador); temporizador = setTimeout(atualizarPrevia, 250); }
+    function atualizarPrevia() {
+        var meu = ++pedido;
+        fetch('{% url "kpi:ins_preview" %}?' + params(), {credentials: 'same-origin'})
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+            .then(function (d) { if (meu === pedido) desenhar(d); })
+            .catch(function () { desenhar({erro: 'Não foi possível atualizar a prévia.'}); });
+    }
+    function desenhar(d) {
+        var erro = document.getElementById('prev-erro');
+        erro.hidden = !d.erro; erro.textContent = d.erro || '';
+        if (grafico) { grafico.destroy(); grafico = null; }
+        var corpo = document.getElementById('prev-linhas'); corpo.innerHTML = '';
+        document.getElementById('prev-janela').textContent = d.janela ? d.janela + ' · ' + d.dentro + ' na meta, ' + d.fora + ' fora' : '';
+        if (!d.grafico) return;
+        var g = d.grafico, maior = g.sentido === 'maior';
+        var cores = g.valores.map(function (v, i) { var m = g.metas[i]; return v === null || m === null ? '#6c757d' : ((maior ? v >= m : v <= m) ? '#198754' : '#dc3545'); });
+        var ds = [{type: 'bar', label: 'Realizado', data: g.valores, backgroundColor: cores, order: 2}];
+        if (g.metas.some(function (m) { return m !== null; })) ds.push({type: 'line', label: 'Meta', data: g.metas, borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, stepped: true, order: 1});
+        grafico = new Chart(document.getElementById('prev-grafico'), {
+            data: {labels: g.labels, datasets: ds},
+            options: {responsive: true, maintainAspectRatio: false, plugins: {legend: {display: false}, tooltip: {callbacks: {
+                title: function (it) { return g.labels[it[0].dataIndex] + ' (' + g.faixas[it[0].dataIndex] + ')'; },
+                afterBody: function (it) { var i = it[0].dataIndex; return ['Produção: ' + fmt(g.producao[i]), 'Consumo: ' + fmt(g.consumo[i])]; }}}},
+                scales: {y: {beginAtZero: true, title: {display: !!g.unidade, text: g.unidade}}}}
+        });
+        d.linhas.forEach(function (l) {
+            var tr = document.createElement('tr');
+            var badge = l.valor === null ? '—' : '<span class="badge ' + (l.ok === null ? 'bg-secondary' : (l.ok ? 'bg-success' : 'bg-danger')) + '">' + fmt(l.valor) + '</span>';
+            tr.innerHTML = '<td title="' + l.faixa + '">' + l.rotulo + '</td><td class="text-end">' + fmt(l.producao) + '</td><td class="text-end">' + fmt(l.consumo) +
+                '</td><td class="text-end">' + badge + '</td><td class="text-end">' + fmt(l.meta) + '</td>';
+            corpo.appendChild(tr);
+        });
+    }
+    document.getElementById('chips-visao').addEventListener('click', function (e) {
+        var b = e.target.closest('button'); if (!b) return; visao = b.dataset.valor; marcar(this, visao); atualizarPrevia();
+    });
+    document.getElementById('prev-mes').addEventListener('change', atualizarPrevia);
+    f.addEventListener('input', agendar);
+
+    // ── estado inicial ──
+    f.nome.value = ini.nome; f.participacao.value = ini.participacao; f.multiplicador.value = ini.multiplicador;
+    f.unidade.value = ini.unidade; f.casas.value = ini.casas; f.meta.value = ini.meta;
+    f.meta_semanal.value = ini.meta_semanal; f.meta_diaria.value = ini.meta_diaria;
+    definirModo(ini.modo); definirSentido(ini.sentido);
+    if (ini.item) { estado.item = ini.item; normalizar('item'); }
+    refrescarInsumo();
+    atualizarPrevia();
+})();
+</script>
+{% endblock %}

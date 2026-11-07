@@ -412,6 +412,60 @@ class HierMovimento(models.Model):
         return f'{self.codigo_id} {self.data:%d/%m/%Y} {self.quantidade}'
 
 
+class IndicadorInsumo(models.Model):
+    """Indicador de eficiência de um insumo: cruza o consumo do item (códigos do almoxarifado) com a produção lançada
+    nos KPIs principais. Ex.: Pad = lentes produzidas × 70% ÷ pads consumidos (lentes por pad); Aloy = gramas
+    consumidos ÷ lentes produzidas. Calculado dia a dia, semana a semana e mês a mês (ver kpi.indicadores_insumo)."""
+    MODO_RENDIMENTO, MODO_CONSUMO, MODO_USO = 'rendimento', 'consumo', 'uso'
+    MODOS = [
+        (MODO_RENDIMENTO, 'Rendimento: produção ÷ consumo (ex.: lentes por unidade)'),
+        (MODO_CONSUMO, 'Consumo específico: consumo ÷ produção (ex.: gramas por lente)'),
+        (MODO_USO, 'Uso: só o consumo no período (ex.: filtros usados na semana)'),
+    ]
+
+    nome = models.CharField('Indicador', max_length=150)
+    item = models.ForeignKey(HierItem, on_delete=models.CASCADE, related_name='indicadores', verbose_name='Item (insumo)')
+    modo = models.CharField('Cálculo', max_length=10, choices=MODOS, default=MODO_RENDIMENTO)
+    producao_indicador = models.ForeignKey(
+        Indicador, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Produção: indicador de origem')
+    producao_variavel = models.CharField(
+        'Produção: variável', max_length=100, blank=True,
+        help_text='Variável do indicador de origem (ex.: Lentes produzidas). Vazia = o valor do próprio indicador.')
+    producao_setor = models.ForeignKey(
+        SetorIndicador, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Produção: setor do indicador')
+    participacao = models.DecimalField(
+        'Participação na produção (%)', max_digits=6, decimal_places=2, default=100,
+        help_text='Parte da produção atribuída a este insumo. Ex.: Pad 70% e Membrana 30% da produção da surfaçagem.')
+    multiplicador = models.DecimalField('Multiplicador do resultado', max_digits=14, decimal_places=4, default=1,
+                                        help_text='Ex.: 1000 para exibir por mil lentes.')
+    unidade = models.CharField('Métrica', max_length=40, blank=True, help_text='Ex.: lentes/und, g/lente, lentes/galão.')
+    casas = models.PositiveSmallIntegerField('Casas decimais', default=2)
+    sentido = models.CharField('Sentido da meta', max_length=5, choices=Indicador.SENTIDOS, default=Indicador.SENTIDO_MAIOR)
+    meta = models.DecimalField('Meta', max_digits=14, decimal_places=4, null=True, blank=True)
+    meta_semanal = models.DecimalField(
+        'Meta semanal', max_digits=14, decimal_places=4, null=True, blank=True,
+        help_text='Opcional. No cálculo "uso" vale a meta proporcional aos dias se vazia; nos demais vale a meta geral.')
+    meta_diaria = models.DecimalField('Meta diária', max_digits=14, decimal_places=4, null=True, blank=True,
+                                      help_text='Opcional. Mesma regra da meta semanal.')
+    ordem = models.PositiveIntegerField('Ordem', default=0)
+    ativo = models.BooleanField('Ativo', default=True)
+    criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['ordem', 'nome']
+        verbose_name = 'Indicador de insumo'
+        verbose_name_plural = 'Indicadores de insumo'
+
+    def __str__(self):
+        return self.nome
+
+    def atingiu(self, valor, meta):
+        if valor is None or meta is None:
+            return None
+        return valor >= meta if self.sentido == Indicador.SENTIDO_MAIOR else valor <= meta
+
+
 class DecideImportacao(models.Model):
     """Um envio da planilha semanal do DECIDE (medidor de lentes)."""
     arquivo = models.CharField('Arquivo', max_length=200)
