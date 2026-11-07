@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -19,7 +19,8 @@ from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
 from kpi import insumos
-from kpi.models import HierCategoria, HierCodigo, HierConsumo, HierItem, HierSetor, HierSubcategoria, KpiHierarquico
+from kpi.models import (HierCategoria, HierCodigo, HierConsumo, HierItem, HierMovimento, HierSetor, HierSubcategoria,
+                        KpiHierarquico)
 
 JANELA_MESES = 12
 LIMITE_ARQUIVO = 25 * 1024 * 1024
@@ -84,6 +85,68 @@ def _serie(itens, meses, consumos):
             'titulo': '% da meta de consumo (média dos itens com meta)'}
 
 
+VISOES = (('dia', 'Dia a dia'), ('semana', 'Semana a semana'), ('mes', 'Mês a mês'))
+JANELA_SEMANAS = 12
+
+
+def _buckets(visao, fim):
+    """Dia: os dias do mês escolhido. Semana: as últimas 12 semanas (seg–dom) até o fim do mês escolhido, ou até hoje
+    se o mês ainda não acabou. Cada bucket é a lista de dias que ele cobre."""
+    if visao == 'dia':
+        dias = [fim.replace(day=d) for d in range(1, fim.day + 1)]
+        return [[d] for d in dias], [f'{d:%d}' for d in dias], f'dias de {fim:%m/%Y}'
+    ref = min(fim, timezone.localdate())
+    ini = ref - datetime.timedelta(days=ref.weekday() + 7 * (JANELA_SEMANAS - 1))
+    buckets = [[ini + datetime.timedelta(days=7 * w + k) for k in range(7)] for w in range(JANELA_SEMANAS)]
+    return buckets, [f'{b[0]:%d/%m}' for b in buckets], f'últimas {JANELA_SEMANAS} semanas (início na segunda)'
+
+
+def _consumo_diario(itens, ini, fim):
+    """{item_id: {data: consumo}} a partir das movimentações importadas (lançamento manual só existe por mês)."""
+    total = Sum(ExpressionWrapper(F('quantidade') * F('codigo__fator'), output_field=DecimalField(max_digits=24, decimal_places=6)))
+    qs = (HierMovimento.objects.filter(codigo__item__in=itens, tipo__in=insumos.TIPOS_CONSUMO, data__range=(ini, fim))
+          .order_by().values('codigo__item_id', 'data').annotate(total=total))
+    out = {}
+    for r in qs:
+        out.setdefault(r['codigo__item_id'], {})[r['data']] = Decimal(r['total'])
+    return out
+
+
+def _meta_dia(item, dia):
+    """Meta mensal diluída pelos dias do mês (ritmo esperado de consumo por dia)."""
+    return item.meta / calendar.monthrange(dia.year, dia.month)[1] if item.meta is not None else None
+
+
+def _serie_curta(itens, visao, fim):
+    """Série por dia ou semana. Meta proporcional = meta mensal ÷ dias do mês, somada nos dias do período."""
+    buckets, rotulos, janela = _buckets(visao, fim)
+    hoje = timezone.localdate()
+    diario = _consumo_diario(itens, buckets[0][0], buckets[-1][-1])
+
+    def consumo(i, b):
+        if b[0] > hoje:
+            return None
+        return sum((diario.get(i.pk, {}).get(d, Decimal(0)) for d in b if d <= hoje), Decimal(0))
+
+    def meta(i, b):
+        metas = [_meta_dia(i, d) for d in b]
+        return None if i.meta is None else float(sum(metas))
+
+    if len(itens) == 1:
+        i = itens[0]
+        return {'modo': 'valor', 'labels': rotulos, 'janela': janela, 'meta': None,
+                'valores': [None if consumo(i, b) is None else round(float(consumo(i, b)), 2) for b in buckets],
+                'metas': [None if meta(i, b) is None else round(meta(i, b), 2) for b in buckets],
+                'unidade': i.unidade, 'titulo': f'Consumo ({i.unidade})' if i.unidade else 'Consumo',
+                'meta_texto': 'meta proporcional (meta mensal ÷ dias do mês)' if i.meta is not None else ''}
+    valores = []
+    for b in buckets:
+        pcts = [consumo(i, b) / Decimal(meta(i, b)) * 100 for i in itens if i.meta and consumo(i, b) is not None]
+        valores.append(round(float(sum(pcts) / len(pcts)), 1) if pcts else None)
+    return {'modo': 'percentual', 'labels': rotulos, 'janela': janela, 'valores': valores, 'meta': 100.0, 'metas': None,
+            'unidade': '%', 'titulo': '% da meta proporcional (média dos itens com meta)', 'meta_texto': 'meta 100%'}
+
+
 @login_required
 def painel_view(request):
     kpis = list(KpiHierarquico.objects.filter(ativo=True))
@@ -92,14 +155,35 @@ def painel_view(request):
     if not kpi:
         return render(request, 'kpi/hier_painel.html', ctx)
 
+    # Filtros independentes: todos sempre ativos; escolher um nível mais baixo preenche os de cima.
     setores = list(kpi.setores.all())
+    todas_cats = list(HierCategoria.objects.filter(setor__kpi=kpi).select_related('setor'))
+    todas_subs = list(HierSubcategoria.objects.filter(categoria__setor__kpi=kpi).select_related('categoria__setor'))
+    todos_itens = list(HierItem.objects.filter(ativo=True, subcategoria__categoria__setor__kpi=kpi)
+                       .select_related('subcategoria__categoria__setor'))
     setor = next((s for s in setores if s.pk == _int(request.GET.get('setor'))), None)
-    categorias = list(setor.categorias.all()) if setor else []
-    categoria = next((c for c in categorias if c.pk == _int(request.GET.get('categoria'))), None)
-    subs = list(categoria.subcategorias.all()) if categoria else []
-    sub = next((s for s in subs if s.pk == _int(request.GET.get('sub'))), None)
-    itens_opcoes = list(sub.itens.filter(ativo=True)) if sub else []
-    item = next((i for i in itens_opcoes if i.pk == _int(request.GET.get('item'))), None)
+    categoria = next((c for c in todas_cats if c.pk == _int(request.GET.get('categoria'))), None)
+    sub = next((s for s in todas_subs if s.pk == _int(request.GET.get('sub'))), None)
+    item = next((i for i in todos_itens if i.pk == _int(request.GET.get('item'))), None)
+    # Deduz os níveis acima a partir do mais baixo escolhido (o mais baixo prevalece).
+    if item:
+        sub = item.subcategoria
+    if sub:
+        categoria = sub.categoria
+    if categoria:
+        setor = categoria.setor
+    categorias = [c for c in todas_cats if not setor or c.setor_id == setor.pk]
+    subs = [s for s in todas_subs if (not categoria or s.categoria_id == categoria.pk)
+            and (not setor or s.categoria.setor_id == setor.pk)]
+    itens_opcoes = [i for i in todos_itens if (not sub or i.subcategoria_id == sub.pk)
+                    and (not categoria or i.subcategoria.categoria_id == categoria.pk)
+                    and (not setor or i.subcategoria.categoria.setor_id == setor.pk)]
+    arvore = {
+        'categorias': [{'id': c.pk, 'nome': c.nome, 'setor': c.setor_id} for c in todas_cats],
+        'subs': [{'id': s.pk, 'nome': s.nome, 'categoria': s.categoria_id, 'setor': s.categoria.setor_id} for s in todas_subs],
+        'itens': [{'id': i.pk, 'nome': i.nome, 'sub': i.subcategoria_id, 'categoria': i.subcategoria.categoria_id,
+                   'setor': i.subcategoria.categoria.setor_id} for i in todos_itens],
+    }
 
     itens_qs = (HierItem.objects.filter(ativo=True, subcategoria__categoria__setor__kpi=kpi)
                 .select_related('subcategoria__categoria__setor').prefetch_related('codigos'))
@@ -115,6 +199,7 @@ def painel_view(request):
                                    'subcategoria__ordem', 'ordem', 'nome'))
 
     fim = _mes_param(request.GET.get('mes'))
+    visao = request.GET.get('visao') if request.GET.get('visao') in dict(VISOES) else 'mes'
     meses = _meses_ate(fim, JANELA_MESES)
     consumos = list(HierConsumo.objects.filter(item__in=itens, periodo__in=meses))
     atual = {c.item_id: c for c in consumos if c.periodo == fim}
@@ -129,8 +214,9 @@ def painel_view(request):
     com_meta = [l for l in linhas if l['ok'] is not None]
     ctx.update(
         setores=setores, setor=setor, categorias=categorias, categoria=categoria, subs=subs, sub=sub,
-        itens_opcoes=itens_opcoes, item=item,
-        linhas=linhas, mes=fim, mes_valor=f'{fim:%Y-%m}', serie=_serie(itens, meses, consumos) if itens else None,
+        itens_opcoes=itens_opcoes, item=item, arvore=arvore,
+        linhas=linhas, mes=fim, mes_valor=f'{fim:%Y-%m}', visao=visao, visoes=VISOES,
+        serie=(_serie_curta(itens, visao, fim) if visao != 'mes' else _serie(itens, meses, consumos)) if itens else None,
         dentro=sum(1 for l in com_meta if l['ok']), fora=sum(1 for l in com_meta if not l['ok']),
         sem_lancamento=sum(1 for l in linhas if l['consumo'] is None),
     )
@@ -138,7 +224,7 @@ def painel_view(request):
 
 
 def _voltar_painel(post):
-    params = {k: post.get(k) for k in ('kpi', 'setor', 'categoria', 'sub', 'item', 'mes') if post.get(k)}
+    params = {k: post.get(k) for k in ('kpi', 'setor', 'categoria', 'sub', 'item', 'mes', 'visao') if post.get(k)}
     return redirect(reverse('kpi:hier_painel') + ('?' + urlencode(params) if params else ''))
 
 
