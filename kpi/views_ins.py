@@ -100,8 +100,16 @@ def painel_view(request):
                       'meta': s['linhas'][-1]['meta'],
                       'caminho': f'{ind.item.subcategoria.categoria.setor.nome} › {ind.item.subcategoria.categoria.nome} › '
                                  f'{ind.item.subcategoria.nome} › {ind.item.nome}'})
+    grupos = []
+    if visao:  # visão forçada: um grupo só, sem título
+        grupos = [{'titulo': '', 'cards': cards}] if cards else []
+    else:  # padrão de cada indicador: agrupa por periodicidade (diário → anual)
+        for chave, rotulo in IndicadorInsumo.PERIODICIDADES:
+            do_grupo = [c for c in cards if c['ind'].periodicidade == chave]
+            if do_grupo:
+                grupos.append({'titulo': f'Acompanhamento {rotulo.lower()}', 'cards': do_grupo})
     return render(request, 'kpi/ins_painel.html', {
-        'visao': visao, 'visoes': engine.VISOES[:3], 'mes': ref, 'mes_valor': f'{ref:%Y-%m}',
+        'grupos': grupos, 'visao': visao, 'visoes': engine.VISOES[:3], 'mes': ref, 'mes_valor': f'{ref:%Y-%m}',
         'setores': sorted(setores.values(), key=lambda s: (s.ordem, s.nome)), 'setor': setor, 'cards': cards,
         'sem_indicadores': not todos,
         'pode_cadastrar': _pode(request.user, 'kpi:ins_novo'), 'pode_excluir': _pode(request.user, 'kpi:ins_excluir'),

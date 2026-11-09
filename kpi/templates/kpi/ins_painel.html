@@ -47,8 +47,10 @@
         {% if not cards %}
             <div class="alert alert-warning">Nenhum indicador neste setor.</div>
         {% endif %}
+        {% for g in grupos %}
+        {% if g.titulo %}<h6 class="text-muted text-uppercase small fw-semibold border-bottom pb-1 mb-2 {% if not forloop.first %}mt-4{% endif %}">{{ g.titulo }} <span class="badge bg-secondary">{{ g.cards|length }}</span></h6>{% endif %}
         <div class="row g-3">
-        {% for c in cards %}
+        {% for c in g.cards %}
             {% with ind=c.ind s=c.serie %}
             <div class="col-xl-4 col-md-6">
                 <div class="card h-100">
@@ -102,6 +104,7 @@
             {% endwith %}
         {% endfor %}
         </div>
+        {% endfor %}
     </div>
     {% endif %}
 </div>
