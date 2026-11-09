@@ -19,7 +19,7 @@
         <div class="alert alert-info">Nenhum indicador de insumo cadastrado ainda.
             {% if pode_cadastrar %}<a href="{% url 'kpi:ins_novo' %}">Montar o primeiro</a> — dá para partir dos modelos da planilha (Pad, Membrana, Fita, Polidor, Aloy, DSX...).{% endif %}</div>
     {% else %}
-    <form method="get" class="card card-body mb-3" id="filtros">
+    <form method="get" class="card card-body mb-3 shadow-sm" id="filtros" style="position:sticky;top:64px;z-index:1020">
         <input type="hidden" name="visao" value="{{ visao }}">
         <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
         <div class="d-flex align-items-baseline gap-2 mb-2">

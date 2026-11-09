@@ -17,7 +17,7 @@
     {% if sem_itens %}
         <div class="alert alert-info">Nenhum item cadastrado ainda. Monte a árvore em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
     {% else %}
-    <form method="get" class="card card-body mb-3" id="filtros">
+    <form method="get" class="card card-body mb-3 shadow-sm" id="filtros" style="position:sticky;top:64px;z-index:1020">
         <input type="hidden" name="visao" value="{{ visao }}">
         <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
         <div class="d-flex align-items-baseline gap-2 mb-2">
