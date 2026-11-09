@@ -111,7 +111,7 @@ def _buckets(visao, fim):
 
 def _consumo_diario(itens, ini, fim):
     """{item_id: {data: consumo}} a partir das movimentações importadas (lançamento manual só existe por mês)."""
-    total = Sum(ExpressionWrapper(F('quantidade') * F('codigo__fator'), output_field=DecimalField(max_digits=24, decimal_places=6)))
+    total = Sum('quantidade')  # em unidades; o fator de conversão só entra nos indicadores que o pedem
     qs = (HierMovimento.objects.filter(codigo__item__in=itens, tipo__in=insumos.TIPOS_CONSUMO, data__range=(ini, fim))
           .order_by().values('codigo__item_id', 'data').annotate(total=total))
     out = {}

@@ -445,6 +445,9 @@ class IndicadorInsumo(models.Model):
         'Acompanhamento', max_length=12, choices=PERIODICIDADES, default='mes',
         help_text='De quanto em quanto tempo o indicador é acompanhado (define o período exibido e o que a meta representa).')
     item = models.ForeignKey(HierItem, on_delete=models.CASCADE, related_name='indicadores', verbose_name='Item (insumo)')
+    usar_fator = models.BooleanField(
+        'Aplicar o fator dos códigos', default=False,
+        help_text='Consumo = quantidade × fator de conversão do código (ex.: fita em metros). Desmarcado, o consumo é em unidades.')
     modo = models.CharField('Cálculo', max_length=10, choices=MODOS, default=MODO_RENDIMENTO)
     producao_indicador = models.ForeignKey(
         Indicador, null=True, blank=True, on_delete=models.SET_NULL, related_name='+', verbose_name='Produção: indicador de origem')

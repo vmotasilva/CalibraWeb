@@ -48,7 +48,7 @@
                     </div>
                     {% endfor %}
                     <div class="small" id="resumo-item"></div>
-                    <div class="small text-muted">O consumo vem dos códigos vinculados ao item (em <a href="{% url 'kpi:hier_codigos' %}">Códigos</a>, o <em>fator</em> converte para a unidade do item, ex.: 35 m por rolo).</div>
+                    <div class="small text-muted">O consumo vem dos códigos vinculados ao item (em <a href="{% url 'kpi:hier_codigos' %}">Códigos</a>, o <em>fator</em> converte as unidades, ex.: 35 m por rolo, e só é usado se você marcar a opção em "3. Cálculo").</div>
                 </div>
 
                 <div class="card card-body" id="bloco-producao">
@@ -80,6 +80,10 @@
                         {% for valor, rotulo in modos %}<button type="button" class="btn btn-outline-primary" data-valor="{{ valor }}">{{ rotulo|truncatechars:22 }}</button>{% endfor %}
                     </div>
                     <div class="small text-muted mb-2" id="explica-modo"></div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="usar_fator" id="f-fator">
+                        <label class="form-check-label small" for="f-fator">Aplicar o fator de conversão dos códigos ao consumo <span class="text-muted">(ex.: fita em metros em vez de rolos; desmarcado, o consumo é em unidades)</span></label>
+                    </div>
                     <div class="row g-2">
                         <div class="col-md-5">
                             <label class="form-label small mb-1" for="f-un">Métrica</label>
@@ -377,6 +381,7 @@
     f.nome.value = ini.nome; f.participacao.value = ini.participacao; f.multiplicador.value = ini.multiplicador;
     f.unidade.value = ini.unidade; f.casas.value = ini.casas; f.meta.value = ini.meta;
     f.meta_semanal.value = ini.meta_semanal; f.meta_diaria.value = ini.meta_diaria;
+    f.usar_fator.checked = !!ini.usar_fator;
     definirModo(ini.modo); definirSentido(ini.sentido); definirPeriodicidade(ini.periodicidade || 'mes');
     if (ini.item) { estado.item = ini.item; normalizar('item'); }
     refrescarInsumo();

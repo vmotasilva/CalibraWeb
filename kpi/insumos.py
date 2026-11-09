@@ -185,7 +185,7 @@ def recalcular(item_ids=None):
         item_ids = set(item_ids)
         movs = movs.filter(codigo__item_id__in=item_ids)
         existentes = existentes.filter(item_id__in=item_ids)
-    total = Sum(ExpressionWrapper(F('quantidade') * F('codigo__fator'), output_field=DecimalField(max_digits=24, decimal_places=6)))
+    total = Sum('quantidade')  # em unidades; o fator de conversão só entra nos indicadores que o pedem
     calculado = {}
     for linha in (movs.annotate(mes=TruncMonth('data')).order_by().values('codigo__item_id', 'mes').annotate(total=total)):
         calculado[(linha['codigo__item_id'], _fim_do_mes(linha['mes']))] = Decimal(linha['total']).quantize(Decimal('0.01'))

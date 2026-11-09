@@ -6,8 +6,8 @@ Reproduz a lógica das abas "Materiais_Semanal/Mensal_Apresentação" da planilh
   consumo     = consumo ÷ produção × participação⁻¹      (ex.: Aloy = gramas ÷ lentes boas)
   uso         = consumo no período                       (ex.: filtros usados na semana)
 
-O consumo já vem na unidade do item: o fator de conversão (35 m por rolo, 30 g por frasco...) é o `fator` do vínculo do
-código no cadastro. A produção vem de uma variável de um KPI principal (Medicao.dados), no mesmo período; se o período
+O consumo é em unidades; se o indicador marcar `usar_fator`, vale quantidade × `fator` do código (35 m por rolo, 30 g por
+frasco...), cadastrado no vínculo do código. A produção vem de uma variável de um KPI principal (Medicao.dados), no mesmo período; se o período
 não tiver valor próprio, soma os lançamentos diários dentro dele."""
 import calendar
 import datetime
@@ -156,13 +156,16 @@ def consumo_por_periodo(ind, visao, pers, hoje=None):
     """{período: consumo do item na unidade do item}. No mês vale o consumo do mês (manual prevalece sobre o importado);
     em dia e semana, a soma das movimentações. Períodos que ainda não começaram ficam None."""
     hoje = hoje or timezone.localdate()
-    total = Sum(ExpressionWrapper(F('quantidade') * F('codigo__fator'), output_field=DecimalField(max_digits=24, decimal_places=6)))
+    if ind.usar_fator:
+        total = Sum(ExpressionWrapper(F('quantidade') * F('codigo__fator'), output_field=DecimalField(max_digits=24, decimal_places=6)))
+    else:
+        total = Sum('quantidade')
     movs = (HierMovimento.objects.filter(codigo__item_id=ind.item_id, tipo__in=insumos.TIPOS_CONSUMO,
                                          data__range=(pers[0].ini, pers[-1].fim))
             .order_by().values('data').annotate(total=total))
     por_dia = {r['data']: Decimal(r['total']) for r in movs}
     mensal = {}
-    if visao in MESES_POR:
+    if visao in MESES_POR:  # o consumo mensal lançado/importado está em unidades; com fator, só vale onde não há movimentação
         mensal = {c.periodo: c.valor for c in HierConsumo.objects.filter(
             item_id=ind.item_id, periodo__in=[m for p in pers for m in meses_do_periodo(p)])}
     out = {}
@@ -170,8 +173,16 @@ def consumo_por_periodo(ind, visao, pers, hoje=None):
         if p.ini > hoje:
             out[p] = None
         elif visao in MESES_POR:  # por mês: o consumo manual do mês prevalece sobre as movimentações
-            out[p] = sum((mensal[m] if m in mensal else sum((v for d, v in por_dia.items() if m.replace(day=1) <= d <= m), Decimal(0))
-                          for m in meses_do_periodo(p)), Decimal(0))
+            partes = []
+            for m in meses_do_periodo(p):
+                do_mes = [v for d, v in por_dia.items() if m.replace(day=1) <= d <= m]
+                if ind.usar_fator and do_mes:
+                    partes.append(sum(do_mes, Decimal(0)))
+                elif m in mensal:
+                    partes.append(mensal[m])
+                else:
+                    partes.append(sum(do_mes, Decimal(0)))
+            out[p] = sum(partes, Decimal(0))
         else:
             out[p] = sum((v for d, v in por_dia.items() if p.ini <= d <= p.fim), Decimal(0))
     return out

@@ -258,7 +258,9 @@ class ImportacaoInsumosTests(InsumosBase):
         self.assertEqual(HierConsumo.objects.get(item=self.liquido).valor, Decimal('1.50'))
         cod = HierCodigo.objects.get(codigo=2906)
         self.client.post(reverse('kpi:hier_codigos_acao'), {'acao': 'fatores', 'sel': [cod.pk], f'fator_{cod.pk}': '2'})
-        self.assertEqual(HierConsumo.objects.get(item=self.liquido).valor, Decimal('3.00'))
+        cod.refresh_from_db()
+        self.assertEqual(cod.fator, 2)
+        self.assertEqual(HierConsumo.objects.get(item=self.liquido).valor, Decimal('1.50'))  # consumo segue em unidades
         self.client.post(reverse('kpi:hier_codigos_acao'), {'acao': 'desvincular', 'sel': [cod.pk]})
         self.assertFalse(HierConsumo.objects.filter(item=self.liquido).exists())
 

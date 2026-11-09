@@ -137,7 +137,7 @@ def _fontes():
 
 def _valores_de(ind):
     return {
-        'pk': ind.pk or '', 'nome': ind.nome, 'periodicidade': ind.periodicidade, 'item': ind.item_id or '', 'modo': ind.modo,
+        'pk': ind.pk or '', 'nome': ind.nome, 'periodicidade': ind.periodicidade, 'usar_fator': ind.usar_fator, 'item': ind.item_id or '', 'modo': ind.modo,
         'producao_indicador': ind.producao_indicador_id or '', 'producao_variavel': ind.producao_variavel,
         'producao_setor': ind.producao_setor_id or '', 'participacao': _txt(ind.participacao),
         'multiplicador': _txt(ind.multiplicador), 'unidade': ind.unidade, 'casas': ind.casas,
@@ -172,6 +172,7 @@ def _ler(dados, ind=None):
     else:
         ind.item = item
     ind.periodicidade = dados.get('periodicidade') if dados.get('periodicidade') in dict(IndicadorInsumo.PERIODICIDADES) else 'mes'
+    ind.usar_fator = dados.get('usar_fator') == 'on'
     ind.modo = dados.get('modo') if dados.get('modo') in dict(IndicadorInsumo.MODOS) else IndicadorInsumo.MODO_RENDIMENTO
     ind.sentido = dados.get('sentido') if dados.get('sentido') in dict(Indicador.SENTIDOS) else Indicador.SENTIDO_MAIOR
     ind.producao_indicador = Indicador.objects.filter(pk=_int(dados.get('producao_indicador'))).first()

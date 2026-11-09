@@ -93,13 +93,15 @@ class CalculoTests(InsBase):
         self.cod.fator = Decimal(35)
         self.cod.save()
         fita = IndicadorInsumo.objects.create(
-            nome='Fita', item=self.pad, modo='rendimento', producao_indicador=self.prod, producao_variavel='Lentes produzidas',
+            nome='Fita', item=self.pad, modo='rendimento', usar_fator=True, producao_indicador=self.prod, producao_variavel='Lentes produzidas',
             producao_setor=self.setor_prod, participacao=Decimal(100), meta=Decimal(9), casas=2)
         self.medicao('semanal', date(2026, 10, 19), 630)
         self.mov(date(2026, 10, 21), 2)  # 2 rolos × 35 m = 70 m
         l = self.linha('semana', 'SEM 43', fita)
         self.assertEqual(l['consumo'], Decimal(70))
         self.assertEqual(l['valor'], Decimal('9.00'))  # 630 ÷ 70
+        fita.usar_fator = False  # sem o fator, o consumo fica em unidades (rolos)
+        self.assertEqual(self.linha('semana', 'SEM 43', fita)['consumo'], Decimal(2))
 
     def test_consumo_especifico_gramas_por_lente(self):
         aloy = IndicadorInsumo.objects.create(
