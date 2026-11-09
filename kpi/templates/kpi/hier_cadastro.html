@@ -77,7 +77,8 @@
                                 <span class="badge bg-secondary">Item</span>
                                 <input name="nome" value="{{ i.nome }}" class="form-control form-control-sm" style="width:11rem" required>
                                 <input name="unidade" value="{{ i.unidade }}" class="form-control form-control-sm" style="width:4.5rem" placeholder="Unid.">
-                                <input name="meta" value="{{ i.meta|default_if_none:''|stringformat:'s'|cut:'None' }}" class="form-control form-control-sm text-end" style="width:6.5rem" placeholder="Meta ≤" inputmode="decimal">
+                                <select name="sentido" class="form-select form-select-sm" style="width:4.2rem" title="Comparação com a meta (≤ no máximo, ≥ no mínimo, &lt;, &gt;, =)" aria-label="Comparação com a meta"><option value="<="{% if i.sentido == "<=" %} selected{% endif %}>≤</option><option value=">="{% if i.sentido == ">=" %} selected{% endif %}>≥</option><option value="<"{% if i.sentido == "<" %} selected{% endif %}>&lt;</option><option value=">"{% if i.sentido == ">" %} selected{% endif %}>&gt;</option><option value="="{% if i.sentido == "=" %} selected{% endif %}>=</option></select>
+                                <input name="meta" value="{{ i.meta|default_if_none:''|stringformat:'s'|cut:'None' }}" class="form-control form-control-sm text-end" style="width:6.5rem" placeholder="Meta" inputmode="decimal">
                                 <input name="codigos" value="{% for cd in i.codigos.all %}{{ cd.codigo }}{% if not forloop.last %}, {% endif %}{% endfor %}" class="form-control form-control-sm" style="width:11rem" placeholder="Códigos (ex.: 3989, 3993)" title="Códigos do almoxarifado deste item, separados por vírgula">
                                 <div class="form-check mb-0"><input class="form-check-input" type="checkbox" name="ativo" id="ativo_i{{ i.pk }}" {% if i.ativo %}checked{% endif %}><label class="form-check-label small" for="ativo_i{{ i.pk }}">Ativo</label></div>
                                 <button class="btn btn-sm btn-outline-primary" title="Salvar"><i class="bi bi-check2"></i></button>
@@ -93,7 +94,8 @@
                             <input type="hidden" name="tipo" value="item"><input type="hidden" name="pai" value="{{ sb.pk }}">
                             <input name="nome" class="form-control form-control-sm" style="width:11rem" placeholder="Novo item (ex.: Pads)" required>
                             <input name="unidade" class="form-control form-control-sm" style="width:4.5rem" placeholder="Unid.">
-                            <input name="meta" class="form-control form-control-sm text-end" style="width:6.5rem" placeholder="Meta ≤" inputmode="decimal">
+                            <select name="sentido" class="form-select form-select-sm" style="width:4.2rem" title="Comparação com a meta (≤ no máximo, ≥ no mínimo, &lt;, &gt;, =)" aria-label="Comparação com a meta"><option value="<="{% if "<=" == "<=" %} selected{% endif %}>≤</option><option value=">="{% if "<=" == ">=" %} selected{% endif %}>≥</option><option value="<"{% if "<=" == "<" %} selected{% endif %}>&lt;</option><option value=">"{% if "<=" == ">" %} selected{% endif %}>&gt;</option><option value="="{% if "<=" == "=" %} selected{% endif %}>=</option></select>
+                            <input name="meta" class="form-control form-control-sm text-end" style="width:6.5rem" placeholder="Meta" inputmode="decimal">
                             <input name="codigos" class="form-control form-control-sm" style="width:11rem" placeholder="Códigos (ex.: 3989, 3993)">
                             <button class="btn btn-sm btn-success"><i class="bi bi-plus-lg me-1"></i>Item</button>
                         </form>

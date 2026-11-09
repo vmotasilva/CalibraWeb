@@ -2,18 +2,18 @@
 {% block title %}KPI por setor - Calibra QMS{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3">
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+<div class="container-fluid py-2">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
         <div>
             <h4 class="mb-0"><i class="bi bi-diagram-3 me-2"></i>KPI por setor{% if kpi %} — {{ kpi.nome }}{% endif %}</h4>
             <div class="text-muted small">Setor › Categoria › Subcategoria › Item. Consumo mensal com meta por item, alimentado pelos códigos do almoxarifado.</div>
         </div>
-        <div class="d-flex gap-2">
-            <a href="{% url 'kpi:painel' %}" class="btn btn-outline-secondary">Painel de indicadores</a>
-            <a href="{% url 'kpi:ins_painel' %}" class="btn btn-outline-success"><i class="bi bi-graph-up-arrow me-1"></i>Indicadores</a>
-            <a href="{% url 'kpi:hier_importar' %}" class="btn btn-outline-primary"><i class="bi bi-upload me-1"></i>Importar relatório</a>
-            <a href="{% url 'kpi:hier_codigos' %}" class="btn btn-outline-primary"><i class="bi bi-link-45deg me-1"></i>Códigos</a>
-            <a href="{% url 'kpi:hier_cadastro' %}" class="btn btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Cadastro</a>
+        <div class="d-flex flex-wrap gap-1">
+            <a href="{% url 'kpi:painel' %}" class="btn btn-sm btn-outline-secondary">Painel de indicadores</a>
+            <a href="{% url 'kpi:ins_painel' %}" class="btn btn-sm btn-outline-success"><i class="bi bi-graph-up-arrow me-1"></i>Indicadores</a>
+            <a href="{% url 'kpi:hier_importar' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-upload me-1"></i>Importar relatório</a>
+            <a href="{% url 'kpi:hier_codigos' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-link-45deg me-1"></i>Códigos</a>
+            <a href="{% url 'kpi:hier_cadastro' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil-square me-1"></i>Cadastro</a>
         </div>
     </div>
 
@@ -26,7 +26,7 @@
     </ul>
     {% endif %}
 
-    <form method="get" class="card card-body mb-3" id="filtros">
+    <form method="get" class="card card-body py-2 mb-2" id="filtros">
         <input type="hidden" name="kpi" value="{{ kpi.pk }}">
         <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
         <input type="hidden" name="categoria" value="{{ categoria.pk|default:'' }}">
@@ -34,10 +34,10 @@
         <input type="hidden" name="item" value="{{ item.pk|default:'' }}">
         <input type="hidden" name="visao" value="{{ visao }}">
         <div class="d-flex flex-wrap align-items-center gap-2">
-            <button type="button" class="btn btn-outline-primary" id="abrir-filtros" data-bs-toggle="modal" data-bs-target="#modal-filtros">
+            <button type="button" class="btn btn-sm btn-outline-primary" id="abrir-filtros" data-bs-toggle="modal" data-bs-target="#modal-filtros">
                 <i class="bi bi-funnel me-1"></i>Filtros
             </button>
-            <button type="button" class="btn btn-outline-secondary" id="limpar-filtros" disabled>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="limpar-filtros" disabled>
                 <i class="bi bi-x-circle me-1"></i>Limpar filtros
             </button>
             <div class="d-flex flex-wrap align-items-center gap-1" id="filtros-resumo" aria-live="polite"></div>
@@ -57,7 +57,7 @@
                 {% endfor %}
             </div>
         </div>
-        <div id="dica-visao" class="text-muted small mt-2" {% if visao == 'mes' %}hidden{% endif %}>Dia e semana usam as movimentações importadas do almoxarifado; lançamentos manuais são mensais.</div>
+        <div id="dica-visao" class="text-muted small mt-1" {% if visao == 'mes' %}hidden{% endif %}>Dia e semana usam as movimentações importadas do almoxarifado; lançamentos manuais são mensais.</div>
 
         <div class="modal fade" id="modal-filtros" tabindex="-1" aria-labelledby="titulo-filtros" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -242,13 +242,13 @@
     {% if not linhas %}
         <div class="alert alert-warning">Nenhum item avaliado neste filtro. Cadastre setores, categorias, subcategorias e itens em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
     {% else %}
-    <div class="row g-3">
+    <div class="row g-2">
         <div class="col-lg-7 col-xl-8">
-            <div class="card h-100"><div class="card-body">
+            <div class="card h-100"><div class="card-body py-2">
                 <div class="fw-semibold mb-2">{{ serie.titulo }} <span class="text-muted small">— {{ serie.janela|default:"últimos 12 meses" }}{% if serie.meta_texto %} · {{ serie.meta_texto }}{% elif serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
-                <div style="position:relative;height:280px"><canvas id="grafico"></canvas></div>
+                <div style="position:relative;height:clamp(240px,38vh,360px)"><canvas id="grafico"></canvas></div>
                 {% if serie.tabela %}
-                <div class="table-responsive mt-3" style="max-height:260px" id="tabela-dados">
+                <div class="table-responsive mt-3" style="max-height:clamp(160px,26vh,280px)" id="tabela-dados">
                     <table class="table table-sm small align-middle mb-0">
                         <thead class="table-light" style="position:sticky;top:0">
                             <tr>
@@ -293,7 +293,7 @@
                         {% if sem_lancamento %}<span class="badge bg-secondary">{{ sem_lancamento }} sem lançamento</span>{% endif %}
                     </span>
                 </div>
-                <div class="table-responsive" style="max-height:340px">
+                <div class="table-responsive flex-grow-1" style="max-height:60vh">
                     <table class="table table-sm align-middle mb-0">
                         <thead><tr><th>Item</th><th class="text-end">Meta</th><th style="width:7.5rem">Consumo</th><th class="text-center">%</th><th></th></tr></thead>
                         <tbody>
@@ -304,7 +304,7 @@
                                     <div class="text-muted small">{{ l.item.subcategoria.categoria.setor.nome }} › {{ l.item.subcategoria.categoria.nome }} › {{ l.item.subcategoria.nome }}</div>
                                     {% if l.codigos %}<div class="text-muted small"><i class="bi bi-upc-scan"></i> {{ l.codigos|join:", " }}</div>{% endif %}
                                 </td>
-                                <td class="text-end text-nowrap">{% if l.item.meta is not None %}≤ {{ l.item.meta|floatformat:"-2" }} {{ l.item.unidade }}{% else %}—{% endif %}</td>
+                                <td class="text-end text-nowrap">{% if l.item.meta is not None %}{{ l.item.sentido_simbolo }} {{ l.item.meta|floatformat:"-2" }} {{ l.item.unidade }}{% else %}—{% endif %}</td>
                                 <td>
                                     <div class="input-group input-group-sm">
                                         <input type="text" inputmode="decimal" name="valor_{{ l.item.pk }}" class="form-control text-end" value="{{ l.consumo|default_if_none:''|stringformat:'s'|cut:'None' }}" placeholder="—">
@@ -347,7 +347,9 @@
         // Meta por período (dia/semana: proporcional ao mês) ou única (mês / percentual).
         var metas = d.metas || d.labels.map(function () { return d.meta; });
         var temMeta = metas.some(function (m) { return m !== null && m !== undefined; });
-        var cores = d.valores.map(function (v, i) { return metas[i] == null || v === null ? CINZA : (v <= metas[i] ? VERDE : VERMELHO); });
+        var S = d.sentido || '<=';
+        var cumpre = function (v, m) { return S === '>=' ? v >= m : S === '<' ? v < m : S === '>' ? v > m : S === '=' ? v === m : v <= m; };
+        var cores = d.valores.map(function (v, i) { return metas[i] == null || v === null ? CINZA : (cumpre(v, metas[i]) ? VERDE : VERMELHO); });
         var datasets = [{type: 'bar', label: d.titulo, data: d.valores, backgroundColor: cores, order: 2}];
         if (temMeta) {
             datasets.push({type: 'line', label: 'Meta', data: metas, stepped: !!d.metas,

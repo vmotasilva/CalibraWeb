@@ -63,6 +63,12 @@ def _decimal(txt):
         return None
 
 
+def _sentido_comum(itens):
+    """Comparação da série agregada: a dos itens, se todos usam a mesma; senão, ≤."""
+    sentidos = {i.sentido for i in itens if i.meta}
+    return sentidos.pop() if len(sentidos) == 1 else '<='
+
+
 def _serie(itens, meses, consumos):
     """Um item: consumo real e a meta dele. Vários itens: média do % da meta (consumo ÷ meta), pois as unidades diferem."""
     por_item = {}
@@ -75,14 +81,14 @@ def _serie(itens, meses, consumos):
         return {'modo': 'valor', 'labels': rotulos,
                 'valores': [float(dados[m]) if m in dados else None for m in meses],
                 'meta': float(item.meta) if item.meta is not None else None,
-                'unidade': item.unidade, 'titulo': f'Consumo ({item.unidade})' if item.unidade else 'Consumo'}
+                'sentido': item.sentido, 'unidade': item.unidade, 'titulo': f'Consumo ({item.unidade})' if item.unidade else 'Consumo'}
     valores = []
     for m in meses:
         pcts = [por_item[i.pk][m] / i.meta * 100 for i in itens
                 if i.meta and i.pk in por_item and m in por_item[i.pk]]
         valores.append(round(float(sum(pcts) / len(pcts)), 1) if pcts else None)
     return {'modo': 'percentual', 'labels': rotulos, 'valores': valores, 'meta': 100.0, 'unidade': '%',
-            'titulo': '% da meta de consumo (média dos itens com meta)'}
+            'sentido': _sentido_comum(itens), 'titulo': '% da meta de consumo (média dos itens com meta)'}
 
 
 VISOES = (('dia', 'Dia a dia'), ('semana', 'Semana a semana'), ('mes', 'Mês a mês'))
@@ -140,14 +146,14 @@ def _serie_curta(itens, visao, fim):
         i = itens[0]
         return {'modo': 'valor', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'meta': None,
                 'valores': [None if consumo(i, b) is None else round(float(consumo(i, b)), 2) for b in buckets],
-                'metas': [None if meta(i, b) is None else round(meta(i, b), 2) for b in buckets],
+                'metas': [None if meta(i, b) is None else round(meta(i, b), 2) for b in buckets], 'sentido': i.sentido,
                 'unidade': i.unidade, 'titulo': f'Consumo ({i.unidade})' if i.unidade else 'Consumo',
                 'meta_texto': 'meta proporcional (meta mensal ÷ dias do mês)' if i.meta is not None else ''}
     valores = []
     for b in buckets:
         pcts = [consumo(i, b) / Decimal(meta(i, b)) * 100 for i in itens if i.meta and consumo(i, b) is not None]
         valores.append(round(float(sum(pcts) / len(pcts)), 1) if pcts else None)
-    return {'modo': 'percentual', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'valores': valores, 'meta': 100.0, 'metas': None,
+    return {'modo': 'percentual', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'valores': valores, 'meta': 100.0, 'metas': None, 'sentido': _sentido_comum(itens),
             'unidade': '%', 'titulo': '% da meta proporcional (média dos itens com meta)', 'meta_texto': 'meta 100%'}
 
 
@@ -157,7 +163,7 @@ def _tabela(serie):
     faixas = serie.get('faixas') or [''] * len(serie['labels'])
     linhas = []
     for rotulo, faixa, valor, meta in zip(serie['labels'], faixas, serie['valores'], metas):
-        ok = None if valor is None or meta is None else valor <= meta
+        ok = None if valor is None or meta is None else HierItem.compara(valor, meta, serie.get('sentido', '<='))
         pct = round(valor / meta * 100) if serie['modo'] == 'valor' and valor is not None and meta else None
         linhas.append({'rotulo': rotulo, 'faixa': faixa, 'valor': valor, 'meta': meta, 'pct': pct, 'ok': ok})
     return linhas
@@ -487,6 +493,7 @@ def cadastro_salvar_view(request):
                 messages.error(request, 'Meta inválida.')
                 return redirect('kpi:hier_cadastro')
             obj.nome, obj.unidade = nome, (p.get('unidade') or '').strip()[:20]
+            obj.sentido = p.get('sentido') if p.get('sentido') in dict(HierItem.SENTIDOS) else '<='
             obj.meta = _decimal(meta) if meta else None
         if pk and 'ativo_form' in p and hasattr(obj, 'ativo'):
             obj.ativo = p.get('ativo') == 'on'

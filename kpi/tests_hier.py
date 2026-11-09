@@ -181,6 +181,17 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertEqual(len(s['labels']), 12)  # cai no mês a mês
         self.assertEqual(s['labels'][-1], '10/2026')
 
+    def test_sentido_da_meta(self):
+        self.pads.meta = Decimal('10')
+        self.pads.sentido = '>='
+        self.pads.save()
+        self.assertIs(self.pads.atingiu(Decimal('12')), True)
+        self.assertIs(self.pads.atingiu(Decimal('8')), False)
+        self.pads.sentido = '<'
+        self.assertIs(self.pads.atingiu(Decimal('10')), False)
+        self.pads.sentido = '='
+        self.assertIs(self.pads.atingiu(Decimal('10')), True)
+
     def test_telas_abrem(self):
         for nome in ('hier_cadastro', 'hier_importar', 'hier_codigos', 'hier_painel'):
             self.assertEqual(self.client.get(reverse(f'kpi:{nome}')).status_code, 200, nome)

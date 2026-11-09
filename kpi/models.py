@@ -329,7 +329,10 @@ class HierItem(models.Model):
     subcategoria = models.ForeignKey(HierSubcategoria, on_delete=models.CASCADE, related_name='itens')
     nome = models.CharField('Item avaliado', max_length=100)
     unidade = models.CharField('Unidade', max_length=20, blank=True, help_text='Ex.: L, un, kg.')
-    meta = models.DecimalField('Meta de consumo mensal (máximo)', max_digits=14, decimal_places=2, null=True, blank=True)
+    meta = models.DecimalField('Meta de consumo mensal', max_digits=14, decimal_places=2, null=True, blank=True)
+    SENTIDOS = [('<=', '≤ (no máximo)'), ('>=', '≥ (no mínimo)'), ('<', '< (abaixo de)'), ('>', '> (acima de)'), ('=', '= (igual a)')]
+    sentido = models.CharField('Comparação com a meta', max_length=2, choices=SENTIDOS, default='<=',
+                               help_text='Como o consumo é comparado à meta para estar "na meta".')
     ordem = models.PositiveIntegerField(default=0)
     ativo = models.BooleanField('Ativo', default=True)
 
@@ -342,10 +345,19 @@ class HierItem(models.Model):
     def __str__(self):
         return f'{self.subcategoria} / {self.nome}'
 
+    @property
+    def sentido_simbolo(self):
+        return {'<=': '≤', '>=': '≥'}.get(self.sentido, self.sentido)
+
+    @staticmethod
+    def compara(valor, meta, sentido='<='):
+        """True se o valor cumpre a meta no sentido dado (<=, >=, <, > ou =)."""
+        return {'<=': valor <= meta, '>=': valor >= meta, '<': valor < meta, '>': valor > meta, '=': valor == meta}.get(sentido, valor <= meta)
+
     def atingiu(self, valor):
         if valor is None or self.meta is None:
             return None
-        return valor <= self.meta
+        return self.compara(valor, self.meta, self.sentido)
 
 
 class HierConsumo(models.Model):
