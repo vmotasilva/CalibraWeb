@@ -243,7 +243,7 @@
         <div class="alert alert-warning">Nenhum item avaliado neste filtro. Cadastre setores, categorias, subcategorias e itens em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
     {% else %}
     <div class="row g-3">
-        <div class="col-lg-6">
+        <div class="col-lg-7 col-xl-8">
             <div class="card h-100"><div class="card-body">
                 <div class="fw-semibold mb-2">{{ serie.titulo }} <span class="text-muted small">— {{ serie.janela|default:"últimos 12 meses" }}{% if serie.meta_texto %} · {{ serie.meta_texto }}{% elif serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
                 <div style="position:relative;height:280px"><canvas id="grafico"></canvas></div>
@@ -275,7 +275,7 @@
                 {% endif %}
             </div></div>
         </div>
-        <div class="col-lg-6">
+        <div class="col-lg-5 col-xl-4">
             <form method="post" action="{% url 'kpi:hier_lancar' %}" class="card h-100">
                 {% csrf_token %}
                 <input type="hidden" name="kpi" value="{{ kpi.pk }}">
