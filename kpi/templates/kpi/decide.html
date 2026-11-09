@@ -11,17 +11,38 @@
 
     {% if messages %}{% for m in messages %}<div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags|default:'info' }}{% endif %} py-2">{{ m }}</div>{% endfor %}{% endif %}
 
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#decFiltrosModal">
+            <i class="bi bi-sliders me-1"></i>Filtros <span class="badge bg-light text-primary ms-1 d-none" id="decFiltrosQtd">0</span>
+        </button>
+        <div class="dropdown">
+            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-bookmarks me-1"></i>{% if salvo %}{{ salvo.nome }}{% else %}Indicadores salvos{% endif %}</button>
+            <div class="dropdown-menu p-2 shadow" style="min-width: 16rem;">
+                {% for i in indicadores %}
+                <div class="d-flex justify-content-between align-items-center py-1 {% if salvo.pk == i.pk %}fw-semibold{% endif %}">
+                    <a href="?ind={{ i.pk }}" class="text-decoration-none me-3">{{ i.nome }}</a>
+                    {% if pode_excluir %}<form method="post" action="{% url 'kpi:decide_indicador_excluir' i.pk %}" onsubmit="return confirm('Excluir este indicador?');">{% csrf_token %}<button class="btn btn-sm btn-link text-danger p-0" title="Excluir"><i class="bi bi-trash"></i></button></form>{% endif %}
+                </div>
+                {% empty %}<span class="text-muted small">Nenhum ainda. Monte um e salve.</span>{% endfor %}
+            </div>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#decImportModal"><i class="bi bi-upload me-1"></i>Importar planilha</button>
+        <span class="text-muted small ms-auto">{{ total_lentes }} lente(s) na base</span>
+    </div>
+
     <div class="row g-3">
-        <div class="col-xl-9">
-            <form method="get" id="decForm" class="card border-0 shadow-sm mb-3" data-url="{% url 'kpi:decide' %}"
-                  data-ultima="{{ ultima_data|date:'Y-m-d' }}">
+        <div class="col-12">
+            <form method="get" id="decForm" data-url="{% url 'kpi:decide' %}" data-ultima="{{ ultima_data|date:'Y-m-d' }}">
                 {% if salvo %}<input type="hidden" name="ind" value="{{ salvo.pk }}">{% endif %}
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="small fw-bold text-uppercase text-muted" style="letter-spacing: .05em;"><i class="bi bi-sliders me-1"></i>Indicador</span>
-                        <a href="{% url 'kpi:decide' %}" class="btn btn-link btn-sm text-decoration-none p-0"><i class="bi bi-x-circle me-1"></i>Limpar tudo</a>
-                        <noscript><button class="btn btn-primary btn-sm">Atualizar</button></noscript>
+                <div class="modal fade" id="decFiltrosModal" tabindex="-1" aria-labelledby="decFiltrosTitulo" aria-hidden="true">
+                <div class="modal-dialog modal-xl"><div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="decFiltrosTitulo"><i class="bi bi-sliders me-2"></i>Indicador, período e filtros</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
                     </div>
+                    <div class="modal-body">
+                    <div class="small fw-bold text-uppercase text-muted mb-2" style="letter-spacing: .05em;"><i class="bi bi-sliders me-1"></i>Indicador</div>
+                    <noscript><button class="btn btn-primary btn-sm">Atualizar</button></noscript>
                     <div class="row g-2 align-items-end">
                         <div class="col-md-5"><label class="form-label small fw-semibold mb-1">Medida</label>
                             <select name="medida" class="form-select form-select-sm">{% for k, n in medidas.items %}<option value="{{ k }}" {% if p.medida == k %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
@@ -68,11 +89,8 @@
                     </div>
 
                     <hr class="my-3">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#decFiltrosBox" aria-expanded="false" aria-controls="decFiltrosBox">
-                        <i class="bi bi-funnel me-1"></i>Filtros <span class="badge bg-primary ms-1 d-none" id="decFiltrosQtd">0</span>
-                    </button>
-                    <span class="text-muted small ms-2">marque um ou mais valores</span>
-                    <div class="collapse mt-2" id="decFiltrosBox"><div class="row g-2">
+                    <div class="small fw-bold text-uppercase text-muted mb-2" style="letter-spacing: .05em;"><i class="bi bi-funnel me-1"></i>Filtros <span class="fw-normal text-lowercase">(marque um ou mais valores)</span></div>
+                    <div class="row g-2">
                         {% for f in filtros_ui %}
                         <div class="col-6 col-md-4 col-xl-2"><div class="dropdown dec-filtro" id="dec-f-{{ f.campo }}">
                             <label class="form-label small fw-semibold mb-1">{{ f.rotulo }}</label>
@@ -83,12 +101,19 @@
                             </div>
                         </div></div>
                         {% endfor %}
-                    </div></div>
+                    </div>
+                    </div>
+                    <div class="modal-footer justify-content-between">
+                        <a href="{% url 'kpi:decide' %}" class="btn btn-link btn-sm text-decoration-none p-0"><i class="bi bi-x-circle me-1"></i>Limpar tudo</a>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">Ver resultado</button>
+                    </div>
+                </div></div>
                 </div>
             </form>
 
             <div id="decResultados">
             {{ grafico|json_script:"decGraficoDados" }}
+            <div class="text-muted small mb-2"><i class="bi bi-info-circle me-1"></i>{{ nome_medida }} · {{ nome_periodo }} · Separar por: {{ nome_dimensao }}{% if p.de or p.ate %} · {{ p.de|date:'d/m/Y'|default:'início' }} a {{ p.ate|date:'d/m/Y'|default:'fim' }}{% endif %}</div>
             {% if not tem_dados %}
                 <div class="card border-0 shadow-sm"><div class="card-body text-center text-muted py-5">
                     <i class="bi bi-inbox fs-1"></i><p class="mb-0 mt-2">Ainda não há medições. Importe a planilha semanal do DECIDE ao lado para montar o indicador.</p></div></div>
@@ -141,22 +166,6 @@
             </div>
         </div>
 
-        <div class="col-xl-3">
-            <div class="card border-0 shadow-sm mb-3"><div class="card-body">
-                <h6 class="fw-bold"><i class="bi bi-bookmarks me-1"></i>Indicadores salvos</h6>
-                {% for i in indicadores %}
-                <div class="d-flex justify-content-between align-items-center border-bottom py-1 {% if salvo.pk == i.pk %}fw-semibold{% endif %}">
-                    <a href="?ind={{ i.pk }}" class="text-decoration-none">{{ i.nome }}</a>
-                    {% if pode_excluir %}<form method="post" action="{% url 'kpi:decide_indicador_excluir' i.pk %}" onsubmit="return confirm('Excluir este indicador?');">{% csrf_token %}<button class="btn btn-sm btn-link text-danger p-0" title="Excluir"><i class="bi bi-trash"></i></button></form>{% endif %}
-                </div>
-                {% empty %}<p class="text-muted small mb-0">Nenhum ainda. Monte um e salve.</p>{% endfor %}
-            </div></div>
-
-            <button type="button" class="btn btn-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#decImportModal">
-                <i class="bi bi-upload me-1"></i>Importar planilha do DECIDE
-            </button>
-            <div class="small text-muted mt-1 text-center">{{ total_lentes }} lente(s) na base.</div>
-        </div>
     </div>
 </div>
 

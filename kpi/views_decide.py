@@ -59,7 +59,7 @@ def decide_view(request):
     ]
     opcoes = decide.opcoes_filtros(p['filtros'], p['de'], p['ate'], p['periodo']) if tem_dados else {}
     return render(request, 'kpi/decide.html', {
-        'p': p, 'nome_medida': nome_medida, 'nome_periodo': decide.PERIODOS[p['periodo']], 'tem_dados': tem_dados, 'resultado': resultado, 'unidade': unidade, 'sentido': sentido,
+        'p': p, 'nome_medida': nome_medida, 'nome_dimensao': decide.DIMENSOES[p['dimensao']][0] if p['dimensao'] else 'Total', 'nome_periodo': decide.PERIODOS[p['periodo']], 'tem_dados': tem_dados, 'resultado': resultado, 'unidade': unidade, 'sentido': sentido,
         'grafico': grafico,
         'medidas': {k: v[0] for k, v in decide.MEDIDAS.items()},
         'periodos': decide.PERIODOS,
