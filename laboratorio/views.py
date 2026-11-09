@@ -1317,12 +1317,23 @@ def coating_painel(request):
             
             manut_map.setdefault(m['registro_id'], []).append((m['ciclo_id'], status_m))
             
-        lotes_agrupados = defaultdict(lambda: {'rids': [], 'tratamentos': set()})
+        # Agrupa registros (CC/CX) do mesmo lote. Um lote que atravessa a virada
+        # de dia (turno 2 -> turno 3) tem registros em datas de turno diferentes;
+        # nesse caso deve continuar contando como UM único lote.
+        lotes_agrupados = {}
+        ultimo_key = None
         for reg_dict in lotes_historico:
-            lote_key = (reg_dict['turno_coating__data'], reg_dict['lote'])
-            lotes_agrupados[lote_key]['rids'].append(reg_dict['id'])
+            data_reg = reg_dict['turno_coating__data']
+            lote_key = (data_reg, reg_dict['lote'])
+            if (ultimo_key is not None and ultimo_key[1] == reg_dict['lote']
+                    and data_reg is not None and ultimo_key[0] is not None
+                    and 0 <= (data_reg - ultimo_key[0]).days <= 1):
+                lote_key = ultimo_key
+            grupo = lotes_agrupados.setdefault(lote_key, {'rids': [], 'tratamentos': set()})
+            grupo['rids'].append(reg_dict['id'])
             if reg_dict['tratamento_id']:
-                lotes_agrupados[lote_key]['tratamentos'].add(reg_dict['tratamento_id'])
+                grupo['tratamentos'].add(reg_dict['tratamento_id'])
+            ultimo_key = lote_key
             
         counters = {c.id: 0 for c in ciclos}
         never_done = {c.id: True for c in ciclos}
