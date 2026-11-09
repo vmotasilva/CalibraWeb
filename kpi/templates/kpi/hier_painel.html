@@ -44,7 +44,12 @@
             <div class="vr d-none d-lg-block mx-1"></div>
             <div class="d-flex align-items-center gap-2">
                 <label class="small text-muted mb-0" for="filtro-mes">Mês</label>
-                <input type="month" id="filtro-mes" name="mes" value="{{ mes_valor }}" class="form-control form-control-sm" style="width:11rem">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Navegar entre períodos">
+                    <button type="button" class="btn btn-outline-secondary" data-mover="-1" title="Mês anterior" aria-label="Mês anterior"><i class="bi bi-chevron-left"></i></button>
+                    <input type="month" id="filtro-mes" name="mes" value="{{ mes_valor }}" class="form-control form-control-sm rounded-0" style="width:11rem">
+                    <button type="button" class="btn btn-outline-secondary" data-mover="1" title="Próximo mês" aria-label="Próximo mês"><i class="bi bi-chevron-right"></i></button>
+                    <button type="button" class="btn btn-outline-secondary" data-mover="0" title="Voltar ao mês atual">Hoje</button>
+                </div>
             </div>
             <div class="btn-group btn-group-sm" role="group" aria-label="Visualização do gráfico">
                 {% for v, rotulo in visoes %}
@@ -205,6 +210,18 @@
         }
 
         f.mes.addEventListener('change', carregar);
+        // ◀ ▶ andam um mês (o gráfico de semanas/meses acompanha); "Hoje" volta ao mês atual.
+        f.querySelectorAll('[data-mover]').forEach(function (b) {
+            b.addEventListener('click', function () {
+                var n = parseInt(b.dataset.mover, 10), hoje = new Date(), base = hoje;
+                if (n !== 0 && /^\d{4}-\d{2}$/.test(f.mes.value)) {
+                    var p = f.mes.value.split('-'); base = new Date(+p[0], +p[1] - 1, 1);
+                }
+                var d = new Date(base.getFullYear(), base.getMonth() + n, 1);
+                f.mes.value = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+                carregar();
+            });
+        });
         f.addEventListener('submit', function (e) { e.preventDefault(); carregar(); });
         f.querySelectorAll('[data-visao]').forEach(function (b) {
             b.addEventListener('click', function () {
@@ -340,7 +357,8 @@
             data: {labels: d.labels, datasets: datasets},
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: {legend: {display: false}},
+                plugins: {legend: {display: false}, tooltip: {callbacks: {
+                    title: function (it) { var i = it[0].dataIndex; return d.faixas ? d.labels[i] + ' · ' + d.faixas[i] : d.labels[i]; }}}},
                 scales: {y: {beginAtZero: true, title: {display: true, text: d.modo === 'percentual' ? '% da meta' : (d.unidade || '')}}}
             }
         });

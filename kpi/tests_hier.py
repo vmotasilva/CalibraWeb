@@ -161,7 +161,8 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertEqual((len(d), d[0]['faixa']), (31, '01/10/2026'))
         w = self.client.get(reverse('kpi:hier_painel'), {**base, 'visao': 'semana'}).context['serie']['tabela']
         self.assertEqual(len(w), 12)
-        self.assertRegex(w[-1]['faixa'], r'^\d\d/\d\d a \d\d/\d\d$')
+        self.assertRegex(w[-1]['faixa'], r'^\d\d/\d\d/\d\d a \d\d/\d\d/\d\d$')
+        self.assertRegex(w[-1]['rotulo'], r'^S\d\d$')
 
     def test_visao_por_dia_e_por_semana_usa_movimentos(self):
         cod = HierCodigo.objects.create(codigo=3989, item=self.pads)

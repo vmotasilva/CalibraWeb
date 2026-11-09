@@ -98,7 +98,9 @@ def _buckets(visao, fim):
     ref = min(fim, timezone.localdate())
     ini = ref - datetime.timedelta(days=ref.weekday() + 7 * (JANELA_SEMANAS - 1))
     buckets = [[ini + datetime.timedelta(days=7 * w + k) for k in range(7)] for w in range(JANELA_SEMANAS)]
-    return buckets, [f'{b[0]:%d/%m}' for b in buckets], f'últimas {JANELA_SEMANAS} semanas (início na segunda)'
+    sem = [b[0].isocalendar()[1] for b in buckets]
+    return (buckets, [f'S{n:02d}' for n in sem],
+            f'últimas {JANELA_SEMANAS} semanas (S{sem[0]:02d} a S{sem[-1]:02d}, de segunda a domingo)')
 
 
 def _consumo_diario(itens, ini, fim):
@@ -120,7 +122,7 @@ def _meta_dia(item, dia):
 def _serie_curta(itens, visao, fim):
     """Série por dia ou semana. Meta proporcional = meta mensal ÷ dias do mês, somada nos dias do período."""
     buckets, rotulos, janela = _buckets(visao, fim)
-    faixas = [f'{b[0]:%d/%m/%Y}' if len(b) == 1 else f'{b[0]:%d/%m} a {b[-1]:%d/%m}' for b in buckets]
+    faixas = [f'{b[0]:%d/%m/%Y}' if len(b) == 1 else f'{b[0]:%d/%m/%y} a {b[-1]:%d/%m/%y}' for b in buckets]
     hoje = timezone.localdate()
     diario = _consumo_diario(itens, buckets[0][0], buckets[-1][-1])
 
@@ -130,7 +132,8 @@ def _serie_curta(itens, visao, fim):
         return sum((diario.get(i.pk, {}).get(d, Decimal(0)) for d in b if d <= hoje), Decimal(0))
 
     def meta(i, b):
-        metas = [_meta_dia(i, d) for d in b]
+        # Período em andamento: a meta vale só até hoje, como o consumo (senão a semana atual pareceria folgada).
+        metas = [_meta_dia(i, d) for d in b if d <= hoje or b[0] > hoje]
         return None if i.meta is None else float(sum(metas))
 
     if len(itens) == 1:
