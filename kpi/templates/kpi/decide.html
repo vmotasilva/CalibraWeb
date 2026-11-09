@@ -131,22 +131,24 @@
                 </div></div>
 
                 {% if resultado.rotulos %}
-                <div class="row g-3">
-                    <div class="col-lg-7"><div class="card border-0 shadow-sm"><div class="table-responsive" style="max-height: 420px;">
-                        <table class="table table-sm table-hover align-middle mb-0 small">
-                            <thead class="table-light position-sticky top-0"><tr><th>{{ nome_periodo }}</th>{% for s in resultado.series %}<th class="text-end">{{ s.nome }}</th>{% endfor %}</tr></thead>
-                            <tbody id="decideTabela"></tbody>
-                        </table></div></div></div>
-                    <div class="col-lg-5"><div class="card border-0 shadow-sm"><div class="card-body">
-                        <h6 class="fw-bold">Pareto — parâmetros que reprovaram
-                            <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline text-primary" data-bs-toggle="modal" data-bs-target="#paretoInfoModal" title="Como este gráfico é calculado" aria-label="Como este gráfico é calculado"><i class="bi bi-info-circle"></i></button></h6>
-                        <p class="text-muted small">Lentes reprovadas na medição final, por parâmetro (uma lente pode reprovar em mais de um).</p>
-                        {% for it in resultado.pareto %}
-                        <div class="mb-2"><div class="d-flex justify-content-between small"><span><strong>{{ it.codigo }}</strong> {{ it.nome }}</span><span>{{ it.qtd }} ({{ it.pct }}%)</span></div>
-                            <div class="progress" style="height: 8px;"><div class="progress-bar bg-danger" style="width: {{ it.pct }}%"></div></div></div>
-                        {% empty %}<p class="text-muted small mb-0">Nenhuma lente reprovada no filtro.</p>{% endfor %}
-                    </div></div></div>
+                <div class="card border-0 shadow-sm mb-3"><div class="card-body">
+                    <h6 class="fw-bold">Pareto — parâmetros que reprovaram
+                        <button type="button" class="btn btn-link btn-sm p-0 ms-1 align-baseline text-primary" data-bs-toggle="modal" data-bs-target="#paretoInfoModal" title="Como este gráfico é calculado" aria-label="Como este gráfico é calculado"><i class="bi bi-info-circle"></i></button></h6>
+                    <p class="text-muted small mb-2">Lentes reprovadas na medição final, por parâmetro (uma lente pode reprovar em mais de um). A linha mostra o % acumulado.</p>
+                    {% if resultado.pareto %}<div style="position: relative; height: 300px;"><canvas id="decideParetoGrafico"></canvas></div>
+                    {% else %}<p class="text-muted small mb-0">Nenhuma lente reprovada no filtro.</p>{% endif %}
+                </div></div>
+
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap me-1"></i>{{ nome_periodo }} <span class="text-muted fw-normal small">· mais recentes primeiro</span></h6>
+                    <div class="d-flex align-items-center gap-2 small">
+                        <label for="decPorPagina" class="mb-0 text-muted">Mostrar</label>
+                        <select id="decPorPagina" class="form-select form-select-sm w-auto"><option>10</option><option>25</option><option>50</option><option>100</option><option value="0">Todos</option></select>
+                        <span id="decPagInfo" class="text-muted"></span>
+                        <div class="btn-group btn-group-sm"><button type="button" class="btn btn-outline-secondary" id="decPagAnt" aria-label="Página anterior"><i class="bi bi-chevron-left"></i></button><button type="button" class="btn btn-outline-secondary" id="decPagProx" aria-label="Próxima página"><i class="bi bi-chevron-right"></i></button></div>
+                    </div>
                 </div>
+                <div class="row g-2" id="decideCards"></div>
                 {% endif %}
 
                 {% if pode_salvar %}
@@ -229,7 +231,8 @@
 <script>
 (function () {
     var form = document.getElementById('decForm');
-    var grafico = null, ctrl = null, seq = 0, timer = null;
+    var grafico = null, graficoPareto = null, ctrl = null, seq = 0, timer = null;
+    var dadosAtuais = null, pagina = 0, porPagina = 10;
     var paleta = ['#0d6efd', '#fd7e14', '#198754', '#6f42c1', '#20c997', '#d63384', '#6c757d', '#ffc107', '#0dcaf0', '#842029'];
 
     function desenhar() {
@@ -258,23 +261,98 @@
                     legend: { display: !unica || g.meta !== null },
                     tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + (c.parsed.y === null ? '\u2014' : c.parsed.y.toString().replace('.', ',') + (pct && c.dataset.type !== 'line' ? '%' : '')); } } },
                 },
-                scales: { y: { beginAtZero: true, title: { display: true, text: g.medida } } },
+                scales: { x: { ticks: { autoSkip: false, maxRotation: 90, minRotation: 45 } }, y: { beginAtZero: true, title: { display: true, text: g.medida } } },
             },
         });
-        var corpo = document.getElementById('decideTabela');
-        if (corpo) g.rotulos.forEach(function (r, i) {
-            var tr = document.createElement('tr');
-            var td = document.createElement('td'); td.textContent = r; tr.appendChild(td);
-            g.series.forEach(function (s) {
-                var c = document.createElement('td'); c.className = 'text-end';
-                var v = s.valores[i];
-                c.textContent = v === null ? '\u2014' : v.toString().replace('.', ',') + (pct ? '%' : '') + ' \u00b7 ' + s.lentes[i] + ' lentes';
-                var a = atingiu(v); if (a === false) c.className += ' text-danger fw-semibold';
-                tr.appendChild(c);
-            });
-            corpo.appendChild(tr);
+        dadosAtuais = { g: g, pct: pct, atingiu: atingiu };
+        pagina = 0;
+        desenharPareto(g);
+        desenharCards();
+    }
+
+    function desenharPareto(g) {
+        if (graficoPareto) { graficoPareto.destroy(); graficoPareto = null; }
+        var cv = document.getElementById('decideParetoGrafico');
+        if (!cv || !g.pareto || !g.pareto.length) return;
+        var acum = 0;
+        var cumul = g.pareto.map(function (it) { acum += it.pct; return Math.min(100, Math.round(acum * 10) / 10); });
+        graficoPareto = new Chart(cv, {
+            data: {
+                labels: g.pareto.map(function (it) { return it.nome; }),
+                datasets: [
+                    { type: 'bar', label: 'Falhas', data: g.pareto.map(function (it) { return it.qtd; }), backgroundColor: '#dc3545', borderRadius: 3, yAxisID: 'y', order: 2 },
+                    { type: 'line', label: '% acumulado', data: cumul, borderColor: '#212529', backgroundColor: '#212529', pointRadius: 3, borderWidth: 2, yAxisID: 'y1', order: 1 },
+                ],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    tooltip: { callbacks: { label: function (c) {
+                        if (c.dataset.type === 'line') return '% acumulado: ' + c.parsed.y.toString().replace('.', ',') + '%';
+                        var it = g.pareto[c.dataIndex];
+                        return it.codigo + ': ' + it.qtd + ' falhas (' + it.pct.toString().replace('.', ',') + '%)';
+                    } } },
+                },
+                scales: {
+                    y: { beginAtZero: true, title: { display: true, text: 'Falhas' } },
+                    y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: function (v) { return v + '%'; } } },
+                },
+            },
         });
     }
+
+    // ---- períodos como cards, com paginação (mais recentes primeiro)
+    function desenharCards() {
+        var box = document.getElementById('decideCards');
+        if (!box || !dadosAtuais) return;
+        var g = dadosAtuais.g, pct = dadosAtuais.pct, atingiu = dadosAtuais.atingiu;
+        var sel = document.getElementById('decPorPagina');
+        sel.value = String(porPagina);
+        var total = g.rotulos.length;
+        var tam = porPagina === 0 ? total : porPagina;
+        var paginas = Math.max(1, Math.ceil(total / tam));
+        if (pagina >= paginas) pagina = paginas - 1;
+        var ini = pagina * tam, fim = Math.min(total, ini + tam);
+        box.innerHTML = '';
+        for (var n = ini; n < fim; n++) {
+            var i = total - 1 - n; // mais recente primeiro
+            var col = document.createElement('div'); col.className = 'col-6 col-md-4 col-xl-3 col-xxl-2';
+            var card = document.createElement('div'); card.className = 'card border-0 shadow-sm h-100';
+            var corpo = document.createElement('div'); corpo.className = 'card-body py-2 px-3';
+            var t = document.createElement('div'); t.className = 'fw-bold mb-1'; t.textContent = g.rotulos[i]; corpo.appendChild(t);
+            var algum = false;
+            g.series.forEach(function (s, k) {
+                var v = s.valores[i];
+                if (v === null || v === undefined) return;
+                algum = true;
+                var linha = document.createElement('div'); linha.className = 'd-flex justify-content-between align-items-baseline small gap-2';
+                var nome = document.createElement('span'); nome.className = 'text-truncate';
+                if (g.series.length > 1) {
+                    var bol = document.createElement('span'); bol.className = 'd-inline-block rounded-circle me-1';
+                    bol.style.cssText = 'width:8px;height:8px;background:' + paleta[k % paleta.length];
+                    nome.appendChild(bol);
+                    nome.appendChild(document.createTextNode(s.nome));
+                } else { nome.className += ' text-muted'; nome.textContent = s.lentes[i] + ' lentes'; }
+                var val = document.createElement('span'); val.className = 'fw-semibold text-nowrap';
+                val.textContent = v.toString().replace('.', ',') + (pct ? '%' : '') + (g.series.length > 1 ? ' \u00b7 ' + s.lentes[i] : '');
+                if (atingiu(v) === false) val.className += ' text-danger';
+                linha.appendChild(nome); linha.appendChild(val); corpo.appendChild(linha);
+            });
+            if (!algum) { var vz = document.createElement('div'); vz.className = 'text-muted small'; vz.textContent = '\u2014'; corpo.appendChild(vz); }
+            card.appendChild(corpo); col.appendChild(card); box.appendChild(col);
+        }
+        document.getElementById('decPagInfo').textContent = total ? (ini + 1) + '\u2013' + fim + ' de ' + total : '';
+        document.getElementById('decPagAnt').disabled = pagina <= 0;
+        document.getElementById('decPagProx').disabled = pagina >= paginas - 1;
+    }
+
+    document.addEventListener('change', function (e) {
+        if (e.target.id === 'decPorPagina') { porPagina = parseInt(e.target.value, 10); pagina = 0; desenharCards(); }
+    });
+    document.addEventListener('click', function (e) {
+        if (e.target.closest('#decPagAnt')) { pagina--; desenharCards(); }
+        else if (e.target.closest('#decPagProx')) { pagina++; desenharCards(); }
+    });
 
     // ---- atualização dinâmica (sem recarregar a página)
     function parametros(sobrepor) {

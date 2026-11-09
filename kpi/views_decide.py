@@ -49,7 +49,7 @@ def decide_view(request):
     if resultado:
         grafico = {
             'rotulos': resultado['rotulos'], 'series': resultado['series'], 'unidade': unidade, 'sentido': sentido,
-            'meta': float(p['meta']) if p['meta'] is not None and sentido else None, 'medida': nome_medida,
+            'pareto': resultado['pareto'], 'meta': float(p['meta']) if p['meta'] is not None and sentido else None, 'medida': nome_medida,
         }
     datas = decide.datas_com_medicao() if tem_dados else []
     periodo_opcoes = decide.opcoes_periodo(p['periodo'], datas)
