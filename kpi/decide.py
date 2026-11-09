@@ -38,6 +38,7 @@ DIMENSOES = {
     'olho': ('Olho (1 = direito, 2 = esquerdo)', 'olho'),
     'codigo_op': ('Código da operação', 'codigo_op'),
     'medidor': ('Operador (INI)', 'medidor'),
+    'motivo': ('Motivo de reprovação (parâmetro)', None),
 }
 FILTROS = ['ilot', 'marca', 'indice', 'diametro', 'olho', 'codigo_op']
 
@@ -241,6 +242,7 @@ def calcular(medida, periodo, dimensao='', filtros=None, de=None, ate=None):
     """Devolve rótulos dos períodos, séries (uma por valor da dimensão, ou "Total"), pareto de parâmetros e resumo."""
     from kpi.models import DecideLente
     qs = _filtrar(DecideLente.objects.all(), filtros, de, ate, periodo)
+    por_motivo = dimensao == 'motivo'
     campo = DIMENSOES[dimensao][1] if dimensao in DIMENSOES else None
     cols = ['medido_em', 'ultima', 'reprovada', 'reprovada_1a', 'passagens', 'falhas']
     if campo:
@@ -250,11 +252,22 @@ def calcular(medida, periodo, dimensao='', filtros=None, de=None, ate=None):
     totais = _zero()
     rotulos = {}
     falhas = defaultdict(int)
+    lentes_periodo = defaultdict(int)  # denominador do % por motivo: todas as lentes do período
     for r in qs.values(*cols):
         chave, rotulo = _chave_periodo(r['medido_em'], periodo)
         rotulos[chave] = rotulo
-        nome = (r[campo] or '(vazio)') if campo else 'Total'
-        for b in (series[nome][chave], totais):
+        if r['ultima']:
+            lentes_periodo[chave] += 1
+        if por_motivo:
+            # Uma lente reprovada conta em cada parâmetro que reprovou (pode estar em mais de um).
+            if r['ultima'] and r['reprovada']:
+                nomes = [NOMES_PARAMETROS.get(p, p) for p in filter(None, r['falhas'].split(','))] or ['(sem parâmetro)']
+            else:
+                nomes = []
+        else:
+            nomes = [(r[campo] or '(vazio)') if campo else 'Total']
+        buckets = [series[n][chave] for n in nomes] + [totais]
+        for b in buckets:
             b['medicoes'] += 1
             if r['ultima']:
                 b['lentes'] += 1
@@ -264,6 +277,10 @@ def calcular(medida, periodo, dimensao='', filtros=None, de=None, ate=None):
         if r['ultima'] and r['reprovada']:
             for p in filter(None, r['falhas'].split(',')):
                 falhas[p] += 1
+    if por_motivo:
+        for dados in series.values():
+            for k, b in dados.items():
+                b['lentes'] = lentes_periodo[k]
 
     chaves = sorted(rotulos)
     por_serie = []
