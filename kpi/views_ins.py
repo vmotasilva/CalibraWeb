@@ -82,7 +82,7 @@ def _visao(request, padrao='mes'):
 
 @login_required
 def painel_view(request):
-    visao = _visao(request)
+    visao = _visao(request, '')  # vazio = cada indicador na sua periodicidade
     ref = engine.mes_param(request.GET.get('mes'))
     todos = list(IndicadorInsumo.objects.filter(ativo=True)
                  .select_related('item__subcategoria__categoria__setor', 'producao_indicador'))
@@ -95,13 +95,13 @@ def painel_view(request):
     for ind in todos:
         if setor and ind.item.subcategoria.categoria.setor_id != setor.pk:
             continue
-        s = engine.serie(ind, visao, ref)
+        s = engine.serie(ind, visao or ind.periodicidade, ref)
         cards.append({'ind': ind, 'serie': s, 'grafico': engine.para_grafico(ind, s), 'dom_id': f'dados-ins-{ind.pk}',
                       'meta': s['linhas'][-1]['meta'],
                       'caminho': f'{ind.item.subcategoria.categoria.setor.nome} › {ind.item.subcategoria.categoria.nome} › '
                                  f'{ind.item.subcategoria.nome} › {ind.item.nome}'})
     return render(request, 'kpi/ins_painel.html', {
-        'visao': visao, 'visoes': engine.VISOES, 'mes': ref, 'mes_valor': f'{ref:%Y-%m}',
+        'visao': visao, 'visoes': engine.VISOES[:3], 'mes': ref, 'mes_valor': f'{ref:%Y-%m}',
         'setores': sorted(setores.values(), key=lambda s: (s.ordem, s.nome)), 'setor': setor, 'cards': cards,
         'sem_indicadores': not todos,
         'pode_cadastrar': _pode(request.user, 'kpi:ins_novo'), 'pode_excluir': _pode(request.user, 'kpi:ins_excluir'),
@@ -137,7 +137,7 @@ def _fontes():
 
 def _valores_de(ind):
     return {
-        'pk': ind.pk or '', 'nome': ind.nome, 'item': ind.item_id or '', 'modo': ind.modo,
+        'pk': ind.pk or '', 'nome': ind.nome, 'periodicidade': ind.periodicidade, 'item': ind.item_id or '', 'modo': ind.modo,
         'producao_indicador': ind.producao_indicador_id or '', 'producao_variavel': ind.producao_variavel,
         'producao_setor': ind.producao_setor_id or '', 'participacao': _txt(ind.participacao),
         'multiplicador': _txt(ind.multiplicador), 'unidade': ind.unidade, 'casas': ind.casas,
@@ -149,10 +149,11 @@ def _valores_de(ind):
 @login_required
 def form_view(request, pk=None):
     ind = get_object_or_404(IndicadorInsumo, pk=pk) if pk else IndicadorInsumo(
-        modo=IndicadorInsumo.MODO_RENDIMENTO, participacao=Decimal(100), multiplicador=Decimal(1), casas=2)
+        periodicidade='mes', modo=IndicadorInsumo.MODO_RENDIMENTO, participacao=Decimal(100), multiplicador=Decimal(1), casas=2)
     return render(request, 'kpi/ins_form.html', {
         'ind': ind, 'novo': not pk, 'valores': _valores_de(ind), 'arvore': _arvore(), 'fontes': _fontes(),
         'modelos': MODELOS, 'modos': IndicadorInsumo.MODOS, 'visoes': engine.VISOES,
+        'periodicidades': IndicadorInsumo.PERIODICIDADES,
         'niveis': (('setor', 'Setor'), ('categoria', 'Categoria'), ('sub', 'Subcategoria'), ('item', 'Item')),
         'mes_valor': f'{timezone.localdate():%Y-%m}',
         'pode_excluir': bool(pk) and _pode(request.user, 'kpi:ins_excluir'),
@@ -170,6 +171,7 @@ def _ler(dados, ind=None):
         erros.append('Escolha o item (insumo) que será avaliado.')
     else:
         ind.item = item
+    ind.periodicidade = dados.get('periodicidade') if dados.get('periodicidade') in dict(IndicadorInsumo.PERIODICIDADES) else 'mes'
     ind.modo = dados.get('modo') if dados.get('modo') in dict(IndicadorInsumo.MODOS) else IndicadorInsumo.MODO_RENDIMENTO
     ind.sentido = dados.get('sentido') if dados.get('sentido') in dict(Indicador.SENTIDOS) else Indicador.SENTIDO_MAIOR
     ind.producao_indicador = Indicador.objects.filter(pk=_int(dados.get('producao_indicador'))).first()
@@ -201,7 +203,7 @@ def preview_view(request):
     ind, erros = _ler(request.GET)
     if ind.item_id is None:
         return JsonResponse({'erro': 'Escolha o item (insumo) para ver a prévia.'})
-    visao = _visao(request)
+    visao = _visao(request, ind.periodicidade)
     ref = engine.mes_param(request.GET.get('mes'))
     s = engine.serie(ind, visao, ref)
     linhas = [{'rotulo': l['rotulo'], 'faixa': g, 'producao': engine._f(l['producao']), 'consumo': engine._f(l['consumo']),

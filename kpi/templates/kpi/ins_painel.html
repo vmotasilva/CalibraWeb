@@ -34,6 +34,7 @@
                 <input type="month" id="filtro-mes" name="mes" value="{{ mes_valor }}" class="form-control form-control-sm" style="width:11rem">
             </div>
             <div class="btn-group btn-group-sm" role="group" aria-label="Visualização">
+                <button type="button" data-visao="" class="btn {% if not visao %}btn-primary{% else %}btn-outline-primary{% endif %}" title="Cada indicador na sua periodicidade">Padrão do indicador</button>
                 {% for v, rotulo in visoes %}
                 <button type="button" data-visao="{{ v }}" class="btn {% if visao == v %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ rotulo }}</button>
                 {% endfor %}

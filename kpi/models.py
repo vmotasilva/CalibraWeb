@@ -435,7 +435,15 @@ class IndicadorInsumo(models.Model):
         (MODO_USO, 'Uso: só o consumo no período (ex.: filtros usados na semana)'),
     ]
 
+    PERIODICIDADES = [
+        ('dia', 'Diário'), ('semana', 'Semanal'), ('mes', 'Mensal'), ('bimestre', 'Bimestral'), ('trimestre', 'Trimestral'),
+        ('quadrimestre', 'Quadrimestral'), ('semestre', 'Semestral'), ('ano', 'Anual'),
+    ]
+
     nome = models.CharField('Indicador', max_length=150)
+    periodicidade = models.CharField(
+        'Acompanhamento', max_length=12, choices=PERIODICIDADES, default='mes',
+        help_text='De quanto em quanto tempo o indicador é acompanhado (define o período exibido e o que a meta representa).')
     item = models.ForeignKey(HierItem, on_delete=models.CASCADE, related_name='indicadores', verbose_name='Item (insumo)')
     modo = models.CharField('Cálculo', max_length=10, choices=MODOS, default=MODO_RENDIMENTO)
     producao_indicador = models.ForeignKey(

@@ -20,10 +20,15 @@ from django.utils import timezone
 from kpi import insumos
 from kpi.models import HierConsumo, HierMovimento, IndicadorInsumo, Medicao
 
-VISOES = (('dia', 'Dia a dia'), ('semana', 'Semana a semana'), ('mes', 'Mês a mês'))
-GRANULARIDADE = {'dia': 'diaria', 'semana': 'semanal', 'mes': 'mensal'}
+VISOES = (('dia', 'Dia a dia'), ('semana', 'Semana a semana'), ('mes', 'Mês a mês'), ('bimestre', 'Bimestre a bimestre'),
+          ('trimestre', 'Trimestre a trimestre'), ('quadrimestre', 'Quadrimestre a quadrimestre'),
+          ('semestre', 'Semestre a semestre'), ('ano', 'Ano a ano'))
+GRANULARIDADE = {'dia': 'diaria', 'semana': 'semanal'}
+# Visões de 1+ meses: meses por período e quantos períodos aparecem (alinhados ao calendário: jan–fev, mar–abr...).
+MESES_POR = {'mes': 1, 'bimestre': 2, 'trimestre': 3, 'quadrimestre': 4, 'semestre': 6, 'ano': 12}
+JANELA_PERIODOS = {'mes': 12, 'bimestre': 6, 'trimestre': 4, 'quadrimestre': 6, 'semestre': 4, 'ano': 3}
+SUFIXO_PERIODO = {'bimestre': 'º bim', 'trimestre': 'º tri', 'quadrimestre': 'º quad', 'semestre': 'º sem'}
 JANELA_SEMANAS = 8
-JANELA_MESES = 12
 MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 UM_DIA = datetime.timedelta(days=1)
 
@@ -66,13 +71,31 @@ def periodos(visao, ref, hoje=None):
             ini = segunda - datetime.timedelta(days=7 * i)
             out.append(Periodo(ini, ini + datetime.timedelta(days=6), f'SEM {ini.isocalendar()[1]}'))
         return out
-    out, y, m = [], ref.year, ref.month
-    for _ in range(JANELA_MESES):
-        out.append(Periodo(datetime.date(y, m, 1), datetime.date(y, m, calendar.monthrange(y, m)[1]), f'{MESES[m - 1]}/{y % 100:02d}'))
-        m -= 1
-        if m == 0:
-            y, m = y - 1, 12
-    return out[::-1]
+    n = MESES_POR[visao]
+    ini_idx = ref.year * 12 + (ref.month - 1)
+    ini_idx -= ini_idx % n  # início do período (calendário) que contém `ref`
+    out = []
+    for i in range(JANELA_PERIODOS[visao] - 1, -1, -1):
+        ya, ma = divmod(ini_idx - n * i, 12)
+        yb, mb = divmod(ini_idx - n * i + n - 1, 12)
+        ini, fim = datetime.date(ya, ma + 1, 1), datetime.date(yb, mb + 1, calendar.monthrange(yb, mb + 1)[1])
+        if n == 1:
+            rot = f'{MESES[ma]}/{ya % 100:02d}'
+        elif n == 12:
+            rot = f'{ya}'
+        else:
+            rot = f'{ma // n + 1}{SUFIXO_PERIODO[visao]}/{ya % 100:02d}'
+        out.append(Periodo(ini, fim, rot))
+    return out
+
+
+def meses_do_periodo(p):
+    """Último dia de cada mês coberto pelo período."""
+    out, y, m = [], p.ini.year, p.ini.month
+    while (y, m) <= (p.fim.year, p.fim.month):
+        out.append(datetime.date(y, m, calendar.monthrange(y, m)[1]))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    return out
 
 
 def titulo_janela(visao, pers):
@@ -80,7 +103,8 @@ def titulo_janela(visao, pers):
         return f'dias de {pers[0].ini:%m/%Y}'
     if visao == 'semana':
         return f'últimas {len(pers)} semanas (segunda a domingo)'
-    return f'últimos {len(pers)} meses'
+    n = MESES_POR[visao]
+    return f'últimos {len(pers)} ' + ('meses' if n == 1 else 'anos' if n == 12 else dict(VISOES)[visao].split(' a ')[0].lower() + 's')
 
 
 def _valor_variavel(medicao, variavel):
@@ -104,10 +128,22 @@ def producao_por_periodo(ind, visao, pers):
                                 periodo__range=(pers[0].ini, pers[-1].fim))
     mapa = {(m.granularidade, m.periodo): _valor_variavel(m, ind.producao_variavel) for m in qs}
     diarias = {d: v for (g, d), v in mapa.items() if g == 'diaria' and v is not None}
-    gran = GRANULARIDADE[visao]
     out = {}
+    if visao in MESES_POR:  # 1+ meses: soma os meses (valor mensal lançado ou, na falta, os lançamentos diários)
+        for p in pers:
+            partes = []
+            for fim_mes in meses_do_periodo(p):
+                v = mapa.get(('mensal', fim_mes))
+                if v is None:
+                    dias = [x for d, x in diarias.items() if fim_mes.replace(day=1) <= d <= fim_mes]
+                    v = sum(dias, Decimal(0)) if dias else None
+                if v is not None:
+                    partes.append(v)
+            out[p] = sum(partes, Decimal(0)) if partes else None
+        return out
+    gran = GRANULARIDADE[visao]
     for p in pers:
-        exato = mapa.get((gran, p.fim if visao == 'mes' else p.ini))
+        exato = mapa.get((gran, p.ini))
         if exato is not None:
             out[p] = exato
             continue
@@ -126,14 +162,16 @@ def consumo_por_periodo(ind, visao, pers, hoje=None):
             .order_by().values('data').annotate(total=total))
     por_dia = {r['data']: Decimal(r['total']) for r in movs}
     mensal = {}
-    if visao == 'mes':
-        mensal = {c.periodo: c.valor for c in HierConsumo.objects.filter(item_id=ind.item_id, periodo__in=[p.fim for p in pers])}
+    if visao in MESES_POR:
+        mensal = {c.periodo: c.valor for c in HierConsumo.objects.filter(
+            item_id=ind.item_id, periodo__in=[m for p in pers for m in meses_do_periodo(p)])}
     out = {}
     for p in pers:
         if p.ini > hoje:
             out[p] = None
-        elif p.fim in mensal:
-            out[p] = mensal[p.fim]
+        elif visao in MESES_POR:  # por mês: o consumo manual do mês prevalece sobre as movimentações
+            out[p] = sum((mensal[m] if m in mensal else sum((v for d, v in por_dia.items() if m.replace(day=1) <= d <= m), Decimal(0))
+                          for m in meses_do_periodo(p)), Decimal(0))
         else:
             out[p] = sum((v for d, v in por_dia.items() if p.ini <= d <= p.fim), Decimal(0))
     return out
@@ -160,8 +198,11 @@ def calcular_valor(ind, producao, consumo):
 
 
 def meta_do_periodo(ind, visao, p):
-    """Mês: meta geral. Semana/dia: a meta própria; sem ela, a meta geral (razões) ou a meta mensal proporcional aos dias (uso)."""
-    if visao == 'mes':
+    """Mês: meta geral. Vários meses: a meta geral (razões) ou a mensal × meses (uso). Semana/dia: a meta própria; sem ela,
+    a meta geral (razões) ou a meta mensal proporcional aos dias (uso)."""
+    if visao in MESES_POR:
+        if ind.modo == IndicadorInsumo.MODO_USO and ind.meta is not None:
+            return ind.meta * MESES_POR[visao]
         return ind.meta
     propria = ind.meta_semanal if visao == 'semana' else ind.meta_diaria
     if propria is not None:

@@ -51,6 +51,15 @@ class PeriodosTests(TestCase):
         d = eng.periodos('dia', date(2026, 10, 31), HOJE)
         self.assertEqual((len(d), d[0].rotulo, d[-1].rotulo), (31, '01', '31'))
 
+    def test_periodos_de_varios_meses_alinhados_ao_calendario(self):
+        t = eng.periodos('trimestre', date(2026, 11, 30), HOJE)
+        self.assertEqual((len(t), t[-1].ini, t[-1].fim, t[-1].rotulo), (4, date(2026, 10, 1), date(2026, 12, 31), '4º tri/26'))
+        b = eng.periodos('bimestre', date(2026, 10, 31), HOJE)
+        self.assertEqual((b[-1].ini, b[-1].fim, b[0].rotulo), (date(2026, 9, 1), date(2026, 10, 31), '6º bim/25'))
+        self.assertEqual(eng.periodos('ano', date(2026, 10, 31), HOJE)[-1].rotulo, '2026')
+        self.assertEqual(eng.periodos('semestre', date(2026, 10, 31), HOJE)[-1].fim, date(2026, 12, 31))
+        self.assertEqual(eng.periodos('quadrimestre', date(2026, 10, 31), HOJE)[-1].ini, date(2026, 9, 1))
+
     def test_mes_param(self):
         self.assertEqual(eng.mes_param('2026-02'), date(2026, 2, 28))
         self.assertEqual(eng.mes_param('lixo', HOJE), date(2026, 10, 31))
@@ -181,7 +190,7 @@ class TelasInsumoTests(InsBase):
         r = self.client.get(reverse('kpi:ins_painel'), {'setor': self.ind.item.subcategoria.categoria.setor_id})
         self.assertEqual([c['ind'].nome for c in r.context['cards']], ['Pad'])
         self.assertEqual(len(self.client.get(reverse('kpi:ins_painel')).context['cards']), 2)
-        self.assertEqual(self.client.get(reverse('kpi:ins_painel'), {'visao': 'lixo'}).context['visao'], 'mes')
+        self.assertEqual(self.client.get(reverse('kpi:ins_painel'), {'visao': 'lixo'}).context['visao'], '')
 
     def test_formulario_novo_e_editar_abrem(self):
         self.assertEqual(self.client.get(reverse('kpi:ins_novo')).status_code, 200)
