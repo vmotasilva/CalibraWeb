@@ -68,8 +68,11 @@
                     </div>
 
                     <hr class="my-3">
-                    <div class="small fw-bold text-uppercase text-muted mb-2" style="letter-spacing: .05em;"><i class="bi bi-funnel me-1"></i>Filtros <span class="fw-normal text-lowercase">(marque um ou mais valores)</span></div>
-                    <div class="row g-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#decFiltrosBox" aria-expanded="false" aria-controls="decFiltrosBox">
+                        <i class="bi bi-funnel me-1"></i>Filtros <span class="badge bg-primary ms-1 d-none" id="decFiltrosQtd">0</span>
+                    </button>
+                    <span class="text-muted small ms-2">marque um ou mais valores</span>
+                    <div class="collapse mt-2" id="decFiltrosBox"><div class="row g-2">
                         {% for f in filtros_ui %}
                         <div class="col-6 col-md-4 col-xl-2"><div class="dropdown dec-filtro" id="dec-f-{{ f.campo }}">
                             <label class="form-label small fw-semibold mb-1">{{ f.rotulo }}</label>
@@ -80,7 +83,7 @@
                             </div>
                         </div></div>
                         {% endfor %}
-                    </div>
+                    </div></div>
                 </div>
             </form>
 
@@ -149,17 +152,31 @@
                 {% empty %}<p class="text-muted small mb-0">Nenhum ainda. Monte um e salve.</p>{% endfor %}
             </div></div>
 
-            <div class="card border-0 shadow-sm"><div class="card-body">
-                <h6 class="fw-bold"><i class="bi bi-upload me-1"></i>Planilha do DECIDE</h6>
+            <button type="button" class="btn btn-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#decImportModal">
+                <i class="bi bi-upload me-1"></i>Importar planilha do DECIDE
+            </button>
+            <div class="small text-muted mt-1 text-center">{{ total_lentes }} lente(s) na base.</div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="decImportModal" tabindex="-1" aria-labelledby="decImportTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="decImportTitulo"><i class="bi bi-upload me-2"></i>Planilha do DECIDE</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
                 <p class="text-muted small">Envie o .xlsx semanal (aba "Dados"). Enviar de novo atualiza as medições já existentes.</p>
                 {% if pode_importar %}
                 <form method="post" action="{% url 'kpi:decide_importar' %}" enctype="multipart/form-data">{% csrf_token %}
                     <input type="file" name="arquivo" accept=".xlsx" class="form-control form-control-sm mb-2" required>
                     <button class="btn btn-primary btn-sm w-100">Importar</button>
-                </form>{% endif %}
+                </form>{% else %}<p class="small text-muted">Você não tem permissão para importar.</p>{% endif %}
                 <div class="small text-muted mt-3">{{ total_lentes }} lente(s) na base.</div>
                 {% for i in importacoes %}<div class="small border-top pt-1 mt-1"><strong>{{ i.arquivo }}</strong><br><span class="text-muted">{{ i.lentes }} lentes · {{ i.inicio|date:'d/m' }} a {{ i.fim|date:'d/m' }} · {{ i.criado_em|date:'d/m H:i' }}</span></div>{% endfor %}
-            </div></div>
+            </div>
         </div>
     </div>
 </div>
@@ -338,6 +355,18 @@
         form.elements['periodo'].value = periodo;
         agendar(0, { periodo: periodo, de: iso(ini), ate: iso(fim) });
     }
+
+    // ---- contador de filtros ativos no botão "Filtros"
+    function contarFiltros() {
+        var n = 0;
+        document.querySelectorAll('.dec-filtro').forEach(function (el) {
+            if (el.querySelector('input[type=checkbox]:checked')) n++;
+        });
+        var b = document.getElementById('decFiltrosQtd');
+        if (b) { b.textContent = n; b.classList.toggle('d-none', n === 0); }
+    }
+    form.addEventListener('change', contarFiltros);
+    contarFiltros();
 
     desenhar();
 })();
