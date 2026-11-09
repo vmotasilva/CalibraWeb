@@ -261,7 +261,7 @@
                     legend: { display: !unica || g.meta !== null },
                     tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + (c.parsed.y === null ? '\u2014' : c.parsed.y.toString().replace('.', ',') + (pct && c.dataset.type !== 'line' ? '%' : '')); } } },
                 },
-                scales: { x: { ticks: { autoSkip: false, maxRotation: 90, minRotation: 45 } }, y: { beginAtZero: true, title: { display: true, text: g.medida } } },
+                scales: { x: { stacked: !!g.empilhado, ticks: { autoSkip: false, maxRotation: 90, minRotation: 45 } }, y: { stacked: !!g.empilhado, beginAtZero: true, title: { display: true, text: g.medida } } },
             },
         });
         dadosAtuais = { g: g, pct: pct, atingiu: atingiu };
