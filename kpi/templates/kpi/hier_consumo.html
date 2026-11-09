@@ -1,0 +1,183 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Insumos - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-bar-chart-line me-2"></i>Insumos</h4>
+            <div class="text-muted small">Consumo de cada item (em unidades) com a meta. Verde = dentro da meta, vermelho = fora da meta.</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'kpi:hier_painel' %}" class="btn btn-outline-secondary">KPI por setor</a>
+            <a href="{% url 'kpi:ins_painel' %}" class="btn btn-outline-success"><i class="bi bi-graph-up-arrow me-1"></i>Indicadores</a>
+        </div>
+    </div>
+
+    {% if sem_itens %}
+        <div class="alert alert-info">Nenhum item cadastrado ainda. Monte a árvore em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
+    {% else %}
+    <form method="get" class="card card-body mb-3" id="filtros">
+        <input type="hidden" name="visao" value="{{ visao }}">
+        <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+            <div class="small text-muted flex-shrink-0" style="width:6.5rem">Setor</div>
+            <div class="d-flex flex-wrap gap-1" data-chips="setor" role="group" aria-label="Setor">
+                <button type="button" data-valor="" class="btn btn-sm {% if not setor %}btn-primary{% else %}btn-outline-secondary{% endif %}">Todos</button>
+                {% for s in setores %}<button type="button" data-valor="{{ s.pk }}" class="btn btn-sm {% if setor.pk == s.pk %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ s.nome }}</button>{% endfor %}
+            </div>
+        </div>
+        <div class="d-flex flex-wrap align-items-center gap-3 pt-2 border-top">
+            <div class="d-flex align-items-center gap-2">
+                <label class="small text-muted mb-0" for="filtro-mes">Mês</label>
+                <input type="month" id="filtro-mes" name="mes" value="{{ mes_valor }}" class="form-control form-control-sm" style="width:11rem">
+            </div>
+            <div class="btn-group btn-group-sm" role="group" aria-label="Visualização">
+                {% for v, rotulo in visoes %}
+                <button type="button" data-visao="{{ v }}" class="btn {% if visao == v %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ rotulo }}</button>
+                {% endfor %}
+            </div>
+            <span class="text-muted small">Dia e semana usam as movimentações importadas (meta mensal diluída pelos dias); no mês vale o consumo do mês (o lançamento manual prevalece).</span>
+        </div>
+    </form>
+
+    <div id="resultado">
+        {% if not grupos %}
+            <div class="alert alert-warning">Nenhum item neste setor.</div>
+        {% endif %}
+        {% for g in grupos %}
+        <h6 class="text-muted text-uppercase small fw-semibold border-bottom pb-1 mb-2 {% if not forloop.first %}mt-4{% endif %}">{{ g.setor.nome }} <span class="badge bg-secondary">{{ g.cards|length }}</span></h6>
+        <div class="row g-3">
+        {% for c in g.cards %}
+            {% with i=c.item %}
+            <div class="col-xl-4 col-md-6">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <div class="fw-semibold">{{ i.nome }}</div>
+                            <div class="text-muted small">{{ c.caminho }}</div>
+                        </div>
+                        {% if c.ultimo %}
+                            <span class="badge {% if c.ultimo.ok is None %}bg-secondary{% elif c.ultimo.ok %}bg-success{% else %}bg-danger{% endif %} fs-6 text-nowrap"
+                                  title="Último período com valor: {{ c.ultimo.rotulo }}">{{ c.ultimo.valor|floatformat:"-2" }} {{ i.unidade }}</span>
+                        {% else %}
+                            <span class="badge bg-secondary">sem dados</span>
+                        {% endif %}
+                    </div>
+                    <div class="card-body pb-2">
+                        <div class="small text-muted mb-1">
+                            Comparação: {{ i.sentido_simbolo }} meta
+                            {% if i.meta is not None %} · meta mensal {{ i.meta|floatformat:"-2" }} {{ i.unidade }}{% else %} · sem meta{% endif %}
+                            {% if c.grafico.janela %} · {{ c.grafico.janela }}{% else %} · últimos 12 meses{% endif %}
+                        </div>
+                        <div style="position:relative;height:200px"><canvas data-grafico="{{ c.dom_id }}"></canvas></div>
+                        {{ c.grafico|json_script:c.dom_id }}
+                        <details class="mt-2">
+                            <summary class="small text-primary" style="cursor:pointer">Ver períodos</summary>
+                            <div class="table-responsive" style="max-height:260px">
+                                <table class="table table-sm small align-middle mb-0">
+                                    <thead><tr><th>Período</th><th class="text-end">Consumo</th><th class="text-end">Meta</th></tr></thead>
+                                    <tbody>
+                                    {% for l in c.linhas %}
+                                        <tr>
+                                            <td title="{{ l.faixa }}">{{ l.rotulo }}</td>
+                                            <td class="text-end">{% if l.valor is not None %}<span class="badge {% if l.ok is None %}bg-secondary{% elif l.ok %}bg-success{% else %}bg-danger{% endif %}">{{ l.valor|floatformat:"-2" }}</span>{% else %}—{% endif %}</td>
+                                            <td class="text-end">{% if l.meta is not None %}{{ l.meta|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+                    <div class="card-footer small">
+                        <span class="badge bg-success">{{ c.dentro }} na meta</span> <span class="badge bg-danger">{{ c.fora }} fora</span>
+                    </div>
+                </div>
+            </div>
+            {% endwith %}
+        {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% if not sem_itens %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var f = document.getElementById('filtros'), pedido = 0, graficos = [];
+    var VERDE = '#198754', VERMELHO = '#dc3545', CINZA = '#6c757d';
+    var fmt = function (v) { return v === null || v === undefined ? '—' : Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 2}); };
+    var cumpre = function (v, m, s) {
+        return s === '>=' ? v >= m : s === '>' ? v > m : s === '<' ? v < m : s === '=' ? v === m : v <= m;
+    };
+
+    window.desenharGraficos = function () {
+        graficos.forEach(function (g) { g.destroy(); });
+        graficos = [];
+        document.querySelectorAll('canvas[data-grafico]').forEach(function (canvas) {
+            var d = JSON.parse(document.getElementById(canvas.dataset.grafico).textContent);
+            var cores = d.valores.map(function (v, i) {
+                var m = d.metas[i];
+                return v === null || m === null ? CINZA : (cumpre(v, m, d.sentido) ? VERDE : VERMELHO);
+            });
+            var datasets = [{type: 'bar', label: 'Consumo', data: d.valores, backgroundColor: cores, order: 2}];
+            if (d.metas.some(function (m) { return m !== null; })) {
+                datasets.push({type: 'line', label: 'Meta', data: d.metas, borderColor: '#212529', borderDash: [6, 4],
+                               borderWidth: 2, pointRadius: 0, stepped: true, order: 1});
+            }
+            graficos.push(new Chart(canvas, {
+                data: {labels: d.labels, datasets: datasets},
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {legend: {display: false}, tooltip: {callbacks: {
+                        title: function (it) { return d.labels[it[0].dataIndex] + ' (' + d.faixas[it[0].dataIndex] + ')'; },
+                        label: function (it) { return it.dataset.label + ': ' + fmt(it.parsed.y) + (d.unidade ? ' ' + d.unidade : ''); }
+                    }}},
+                    scales: {y: {beginAtZero: true, title: {display: !!d.unidade, text: d.unidade}}}
+                }
+            }));
+        });
+    };
+
+    function carregar() {
+        var p = new URLSearchParams();
+        new FormData(f).forEach(function (v, k) { if (v !== '') p.append(k, v); });
+        var alvo = location.pathname + '?' + p.toString(), meu = ++pedido, box = document.getElementById('resultado');
+        box.style.opacity = '.5';
+        fetch(alvo, {credentials: 'same-origin', headers: {'X-Requested-With': 'fetch'}})
+            .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+            .then(function (html) {
+                if (meu !== pedido) return;
+                var novo = new DOMParser().parseFromString(html, 'text/html').getElementById('resultado');
+                if (!novo) throw new Error('sem resultado');
+                box.innerHTML = novo.innerHTML; box.style.opacity = '';
+                history.replaceState(null, '', alvo);
+                window.desenharGraficos();
+            })
+            .catch(function () { location.href = alvo; });
+    }
+
+    function marcar(botoes, ativo) {
+        botoes.forEach(function (b) {
+            var on = b === ativo;
+            b.classList.toggle('btn-primary', on);
+            b.classList.toggle(b.hasAttribute('data-visao') ? 'btn-outline-primary' : 'btn-outline-secondary', !on);
+        });
+    }
+    var chipsSetor = f.querySelectorAll('[data-chips="setor"] button'), botoesVisao = f.querySelectorAll('[data-visao]');
+    chipsSetor.forEach(function (b) {
+        b.addEventListener('click', function () { f.setor.value = b.dataset.valor; marcar(chipsSetor, b); carregar(); });
+    });
+    botoesVisao.forEach(function (b) {
+        b.addEventListener('click', function () { f.visao.value = b.dataset.visao; marcar(botoesVisao, b); carregar(); });
+    });
+    f.mes.addEventListener('change', carregar);
+    f.addEventListener('submit', function (e) { e.preventDefault(); carregar(); });
+    window.desenharGraficos();
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -319,7 +319,7 @@ NAV_STRUCTURE = [
                 "nome": "KPI por Setor (Insumos)",
                 "perm": "core.nav_kpi_bloco_setores",
                 "funcoes": [
-                    {"nome": "Ver KPI por Setor", "view_name": "kpi:hier_painel", "perm": "core.nav_kpi_setores"},
+                    {"nome": "Ver KPI por Setor", "view_name": ["kpi:hier_painel", "kpi:hier_consumo"], "perm": "core.nav_kpi_setores"},
                     {"nome": "Lançar Consumo", "view_name": "kpi:hier_lancar", "perm": "core.nav_kpi_setores_lancar"},
                     {"nome": "Excluir Consumo", "view_name": "kpi:hier_consumo_excluir", "perm": "core.nav_kpi_setores_consumo_excluir"},
                     {

@@ -9,6 +9,7 @@
             <div class="text-muted small">Consumo de cada insumo (códigos do almoxarifado) cruzado com a produção dos KPIs principais. Verde = na meta, vermelho = fora da meta.</div>
         </div>
         <div class="d-flex gap-2">
+            <a href="{% url 'kpi:hier_consumo' %}" class="btn btn-outline-secondary">Consumo por item</a>
             <a href="{% url 'kpi:hier_painel' %}" class="btn btn-outline-secondary">KPI por setor</a>
             {% if pode_cadastrar %}<a href="{% url 'kpi:ins_novo' %}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Novo indicador</a>{% endif %}
         </div>

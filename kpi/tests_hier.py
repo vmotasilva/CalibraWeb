@@ -64,6 +64,25 @@ class InsumosBase(TestCase):
         return insumos.importar(info['registros'])
 
 
+class TelaInsumosTests(InsumosBase):
+    def test_cards_por_item_agrupados_por_setor_em_dia_semana_e_mes(self):
+        HierConsumo.objects.create(item=self.pads, periodo=date(2026, 10, 31), valor=Decimal('8'))
+        for visao in ('mes', 'semana', 'dia'):
+            r = self.client.get(reverse('kpi:hier_consumo'), {'visao': visao, 'mes': '2026-10'})
+            self.assertEqual(r.status_code, 200, visao)
+            cards = [c for g in r.context['grupos'] for c in g['cards']]
+            self.assertEqual({c['item'].nome for c in cards}, {'Pads', 'Líquido'})
+            self.assertEqual(r.context['grupos'][0]['setor'].nome, 'Surfaçagem')
+        r = self.client.get(reverse('kpi:hier_consumo'), {'visao': 'mes', 'mes': '2026-10'})
+        pads = next(c for g in r.context['grupos'] for c in g['cards'] if c['item'] == self.pads)
+        self.assertEqual((pads['ultimo']['valor'], pads['dentro'], pads['fora']), (8, 1, 0))
+        hmc = self.kpi.setores.get(nome='HMC')
+        sub_hmc = HierSubcategoria.objects.create(categoria=HierCategoria.objects.create(setor=hmc, nome='CDC'), nome='CDC')
+        HierItem.objects.create(subcategoria=sub_hmc, nome='Filtro', unidade='un')
+        r = self.client.get(reverse('kpi:hier_consumo'), {'setor': hmc.pk})
+        self.assertEqual([c['item'].nome for g in r.context['grupos'] for c in g['cards']], ['Filtro'])
+
+
 class KpiHierarquicoTests(InsumosBase):
     def test_semente_tem_os_tres_setores(self):
         self.assertEqual(set(self.kpi.setores.values_list('nome', flat=True)), {'Surfaçagem', 'HMC', 'Montagem'})

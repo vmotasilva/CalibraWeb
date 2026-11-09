@@ -251,6 +251,45 @@ def painel_view(request):
     return render(request, 'kpi/hier_painel.html', ctx)
 
 
+@login_required
+def consumo_itens_view(request):
+    """Tela de insumos: um gráfico de consumo por item, lado a lado e agrupados por setor (dia, semana ou mês)."""
+    visao = request.GET.get('visao') if request.GET.get('visao') in dict(VISOES) else 'mes'
+    fim = _mes_param(request.GET.get('mes'))
+    todos = list(HierItem.objects.filter(ativo=True).select_related('subcategoria__categoria__setor')
+                 .order_by('subcategoria__categoria__setor__ordem', 'subcategoria__categoria__ordem',
+                           'subcategoria__ordem', 'ordem', 'nome'))
+    setores = {}
+    for i in todos:
+        s = i.subcategoria.categoria.setor
+        setores[s.pk] = s
+    setor = setores.get(_int(request.GET.get('setor')))
+    itens = [i for i in todos if not setor or i.subcategoria.categoria.setor_id == setor.pk]
+    meses = _meses_ate(fim, JANELA_MESES)
+    consumos = list(HierConsumo.objects.filter(item__in=itens, periodo__in=meses)) if visao == 'mes' else []
+    grupos = []
+    for i in itens:
+        serie = _serie_curta([i], visao, fim) if visao != 'mes' else _serie([i], meses, consumos)
+        if serie.get('metas') is None:
+            serie['metas'] = [serie.get('meta')] * len(serie['labels'])
+        if not serie.get('faixas'):
+            serie['faixas'] = [f'{m:%m/%Y}' for m in meses]
+        linhas = _tabela(serie)
+        com_valor = [l for l in linhas if l['valor'] is not None]
+        sc = i.subcategoria.categoria.setor
+        card = {'item': i, 'grafico': serie, 'linhas': linhas, 'dom_id': f'dados-item-{i.pk}',
+                'ultimo': com_valor[-1] if com_valor else None,
+                'dentro': sum(1 for l in linhas if l['ok']), 'fora': sum(1 for l in linhas if l['ok'] is False),
+                'caminho': f'{i.subcategoria.categoria.nome} › {i.subcategoria.nome}'}
+        if not grupos or grupos[-1]['setor'].pk != sc.pk:
+            grupos.append({'setor': sc, 'cards': []})
+        grupos[-1]['cards'].append(card)
+    return render(request, 'kpi/hier_consumo.html', {
+        'grupos': grupos, 'visao': visao, 'visoes': VISOES, 'mes': fim, 'mes_valor': f'{fim:%Y-%m}',
+        'setores': sorted(setores.values(), key=lambda s: (s.ordem, s.nome)), 'setor': setor, 'sem_itens': not todos,
+    })
+
+
 def _voltar_painel(post):
     params = {k: post.get(k) for k in ('kpi', 'setor', 'categoria', 'sub', 'item', 'mes', 'visao') if post.get(k)}
     return redirect(reverse('kpi:hier_painel') + ('?' + urlencode(params) if params else ''))

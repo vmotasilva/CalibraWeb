@@ -25,6 +25,7 @@ urlpatterns = [
     path('colar/modelos/<int:pk>/', views.colagem_modelo_form_view, name='colagem_modelo_editar'),
     path('colar/modelos/<int:pk>/excluir/', views.colagem_modelo_excluir_view, name='colagem_modelo_excluir'),
     path('setores/', views_hier.painel_view, name='hier_painel'),
+    path('setores/insumos/', views_hier.consumo_itens_view, name='hier_consumo'),
     path('setores/lancar/', views_hier.lancar_view, name='hier_lancar'),
     path('setores/consumo/<int:item_pk>/excluir/', views_hier.consumo_excluir_view, name='hier_consumo_excluir'),
     path('setores/importar/', views_hier.importar_view, name='hier_importar'),
