@@ -126,6 +126,43 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertEqual(r.context['arvore']['setores'][0]['nome'], self.setor.nome)
         self.assertEqual(r.context['sub'], self.sub)
 
+    def test_filtros_em_popup_com_botao_de_limpar(self):
+        html = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk}).content.decode()
+        self.assertIn('data-bs-target="#modal-filtros"', html)  # botão que abre o pop-up
+        self.assertIn('id="modal-filtros"', html)
+        self.assertIn('id="limpar-filtros"', html)  # botão de limpar filtros fora do pop-up
+        self.assertIn('data-limpar', html)  # e também no rodapé do pop-up
+        # as linhas de botões ficam dentro do pop-up
+        modal = html[html.index('id="modal-filtros"'):]
+        for nivel in ('setor', 'categoria', 'sub', 'item'):
+            self.assertIn(f'data-chips="{nivel}"', modal)
+
+    def test_tabela_de_dados_do_grafico(self):
+        HierConsumo.objects.create(item=self.liquido, periodo=date(2026, 9, 30), valor=Decimal('3'))
+        HierConsumo.objects.create(item=self.liquido, periodo=date(2026, 10, 31), valor=Decimal('5.5'))
+        base = {'kpi': self.kpi.pk, 'item': self.liquido.pk, 'mes': '2026-10'}
+        s = self.client.get(reverse('kpi:hier_painel'), base).context['serie']
+        self.assertEqual(len(s['tabela']), 12)
+        set_, out = s['tabela'][-2], s['tabela'][-1]
+        self.assertEqual((set_['rotulo'], set_['valor'], set_['meta'], set_['pct'], set_['ok']), ('09/2026', 3.0, 4.0, 75, True))
+        self.assertEqual((out['valor'], out['pct'], out['ok']), (5.5, 138, False))
+        self.assertEqual(s['tabela'][0]['ok'], None)  # sem lançamento
+        r = self.client.get(reverse('kpi:hier_painel'), base)
+        self.assertContains(r, 'id="tabela-dados"')
+        self.assertContains(r, 'Acima')
+        # vários itens: tabela em % da meta (sem coluna de %)
+        r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk, 'mes': '2026-10'})
+        t = r.context['serie']['tabela']
+        self.assertEqual(r.context['serie']['modo'], 'percentual')
+        self.assertTrue(all(l['pct'] is None for l in t))
+        self.assertNotContains(r, '% da meta</th>')
+        # dia e semana: uma linha por período, com a faixa de datas
+        d = self.client.get(reverse('kpi:hier_painel'), {**base, 'visao': 'dia'}).context['serie']['tabela']
+        self.assertEqual((len(d), d[0]['faixa']), (31, '01/10/2026'))
+        w = self.client.get(reverse('kpi:hier_painel'), {**base, 'visao': 'semana'}).context['serie']['tabela']
+        self.assertEqual(len(w), 12)
+        self.assertRegex(w[-1]['faixa'], r'^\d\d/\d\d a \d\d/\d\d$')
+
     def test_visao_por_dia_e_por_semana_usa_movimentos(self):
         cod = HierCodigo.objects.create(codigo=3989, item=self.pads)
         HierMovimento.objects.create(codigo=cod, data=date(2026, 10, 5), quantidade=Decimal('3'), tipo='UTILIZACOES')

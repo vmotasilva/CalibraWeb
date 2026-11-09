@@ -170,7 +170,7 @@ class LaboratorioModuleTests(TestCase):
             nome="Controle ambiental",
             impacto=CategoriaLaboratorio.IMPACTO_MEDIO,
         )
-        abertura = timezone.now()
+        abertura = timezone.localtime(timezone.now())  # dia local: o painel filtra pelo fuso do sistema, não por UTC
         ocorrencia_encerrada = OcorrenciaLaboratorio.objects.create(
             categoria=categoria,
             assunto="Oscilacao de temperatura",
@@ -231,7 +231,7 @@ class LaboratorioModuleTests(TestCase):
             nome="Parada de maquina",
             impacto=CategoriaLaboratorio.IMPACTO_ALTO,
         )
-        abertura = timezone.now().replace(second=0, microsecond=0)
+        abertura = timezone.localtime(timezone.now()).replace(second=0, microsecond=0)  # dia local, não UTC
 
         OcorrenciaLaboratorio.objects.create(
             categoria=categoria_falta,
@@ -539,7 +539,7 @@ class LaboratorioModuleTests(TestCase):
         self.assertContains(detail_response, "Primeira anotacao gerencial registrada.")
         self.assertContains(detail_response, "Segunda anotacao com novo responsavel.")
         self.assertContains(detail_response, outro_usuario.get_full_name())
-        self.assertContains(detail_response, anotacoes[0].criado_em.strftime("%d/%m/%Y"))
+        self.assertContains(detail_response, timezone.localtime(anotacoes[0].criado_em).strftime("%d/%m/%Y"))
 
     def test_encerramento_rapido_define_data_e_duracao(self):
         abertura = timezone.now().replace(second=0, microsecond=0) - timedelta(hours=2, minutes=10)
