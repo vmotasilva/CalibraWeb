@@ -80,27 +80,69 @@ def _sem_auditorias_inativas(itens):
     return [i for i in itens if not (i.origem == "auditoria" and int(i.uid.split(":")[1]) in fora)]
 
 
-def slides_ocorrencias(user, resumo=False):
+def slides_ocorrencias(user, resumo=False, filtros=None):
     from shared import ocorrencias as central
 
+    f = filtros or {}
+    origens = set(f.get("origens") or [])
     itens = _sem_auditorias_inativas(central.listar_ocorrencias(user, "abertas"))
+    if origens:
+        itens = [i for i in itens if i.origem in origens]
+    if f.get("apenas_vencidas"):
+        itens = [i for i in itens if i.vencida]
     hoje = timezone.localdate()
     vencidas = [i for i in itens if i.vencida]
     minhas = [i for i in itens if i.envolve_usuario]
     slides = []
+    escopo = ", ".join(central.ORIGENS[o].nome for o in origens if o in central.ORIGENS) if origens else "Todos os módulos"
+
+    pessoal = f.get("abordagem") == "pessoal"
+    sem_resp = [i for i in itens if not i.responsaveis]
+    pessoas = {}  # responsável -> [em aberto, vencidas]; uma ocorrência com 2 responsáveis conta para os dois
+    for i in itens:
+        for nome in (i.responsaveis or ["Sem responsável"]):
+            c = pessoas.setdefault(nome, [0, 0])
+            c[0] += 1
+            c[1] += int(i.vencida)
+    mais_antiga = max((max((hoje - timezone.localtime(i.data_ordem).date()).days, 0) for i in itens), default=0)
+    por_origem = {}
+    for i in itens:
+        por_origem[i.origem_nome] = por_origem.get(i.origem_nome, 0) + 1
 
     tiles = [
         {"rotulo": "Em aberto", "valor": len(itens), "tom": "alerta" if itens else "ok"},
         {"rotulo": "Vencidas", "valor": len(vencidas), "tom": "critico" if vencidas else "ok"},
-        {"rotulo": "Envolvem você", "valor": len(minhas), "tom": "neutro"},
     ]
-    por_origem = {}
-    for i in itens:
-        por_origem[i.origem_nome] = por_origem.get(i.origem_nome, 0) + 1
+    if pessoal:
+        tiles.append({"rotulo": "Envolvem você", "valor": len(minhas), "tom": "neutro"})
+    else:  # global: panorama sem apontar o que é de quem está logado
+        tiles += [
+            {"rotulo": "Sem responsável", "valor": len(sem_resp), "tom": "alerta" if sem_resp else "ok"},
+            {"rotulo": "Responsáveis envolvidos", "valor": len([n for n in pessoas if n != "Sem responsável"]), "tom": "neutro"},
+            {"rotulo": "Mais antiga", "valor": f"{mais_antiga} d", "tom": "alerta" if mais_antiga > 30 else "neutro"},
+        ]
     tiles += [{"rotulo": nome, "valor": qtd, "tom": "neutro", "nota": "em aberto"}
               for nome, qtd in sorted(por_origem.items(), key=lambda kv: -kv[1])]
-    slides.append(_slide("ocorrencias", "tiles", "Ocorrências em aberto", "Todos os módulos",
-                         "bi-exclamation-triangle", itens=tiles))
+    slides.append(_slide("ocorrencias", "tiles", "Ocorrências em aberto", escopo, "bi-exclamation-triangle", itens=tiles))
+
+    if not pessoal and not resumo and pessoas:  # gráfico por pessoa (some no modo resumido, que oculta nomes)
+        ordem = sorted(pessoas.items(), key=lambda kv: (-kv[1][0], -kv[1][1], kv[0]))[:12]
+        topo = ordem[0][1][0]
+        slides.append(_slide("ocorrencias", "bars", "Ocorrências em aberto por responsável",
+                             f"{len(pessoas)} responsável(is) · vermelho = tem ocorrência vencida", "bi-people", itens=[{
+            "rotulo": nome, "pct": c[0] * 100 / topo, "tom": "critico" if c[1] else "alerta",
+            "txt": f"{c[0]}" + (f"  ({c[1]} venc.)" if c[1] else ""),
+        } for nome, c in ordem]))
+    if not pessoal and len(por_origem) > 1:
+        topo = max(por_origem.values())
+        venc_origem = {}
+        for i in vencidas:
+            venc_origem[i.origem_nome] = venc_origem.get(i.origem_nome, 0) + 1
+        slides.append(_slide("ocorrencias", "bars", "Ocorrências em aberto por módulo", "Origem das ocorrências",
+                             "bi-diagram-3", itens=[{
+            "rotulo": nome, "pct": qtd * 100 / topo, "tom": "critico" if venc_origem.get(nome) else "alerta",
+            "txt": f"{qtd}" + (f"  ({venc_origem[nome]} venc.)" if venc_origem.get(nome) else ""),
+        } for nome, qtd in sorted(por_origem.items(), key=lambda kv: -kv[1])]))
 
     prioridade = vencidas or sorted(itens, key=lambda i: i.data_ordem)
     prioridade = sorted(prioridade, key=lambda i: (i.prazo is None, i.prazo or hoje))
@@ -123,7 +165,7 @@ def slides_ocorrencias(user, resumo=False):
         slides.append(_slide("ocorrencias", "cards", titulo, f"parte {n}" if len(cards) > CARDS_POR_SLIDE else "",
                              "bi-exclamation-octagon", itens=lote))
 
-    if not resumo:
+    if not resumo and f.get("comentarios") != "nao":
         coment = []
         for i in itens:
             for p in i.plano:
@@ -141,46 +183,64 @@ def slides_ocorrencias(user, resumo=False):
 
 
 # ---------------------------------------------------------------------------
-# KPI (indicadores gerais)
+# KPI (indicadores gerais ou por setor)
 # ---------------------------------------------------------------------------
-def slides_kpi(user, resumo=False):
+def slides_kpi(user, resumo=False, filtros=None):
     from kpi.models import Indicador
     from shared.permissions import has_view_access
 
     if not has_view_access(user, "kpi:painel"):
         return []
-    linhas = []
-    for ind in Indicador.objects.filter(ativo=True).prefetch_related("medicoes"):
-        gerais = sorted((m for m in ind.medicoes.all() if m.setor_id is None and m.granularidade == "mensal"),
-                        key=lambda m: m.periodo)
-        ultima = gerais[-1] if gerais else None
-        atingiu = ind.atingiu(ultima.valor) if ultima else None
-        linhas.append((ind, gerais[-12:], ultima, atingiu))
+    f = filtros or {}
+    ids = {int(x) for x in (f.get("indicadores") or []) if str(x).isdigit()}
+    setores = set(f.get("setores") or [])
+    graficos = f.get("graficos") or "fora"
+    meses = int(f["meses"]) if str(f.get("meses") or "").isdigit() else 12
+    qs = Indicador.objects.filter(ativo=True).prefetch_related("medicoes", "setores")
+    if ids:
+        qs = qs.filter(pk__in=ids)
+
+    linhas = []  # (rótulo, indicador, série, última, meta, atingiu)
+    for ind in qs:
+        escopos = [(s, f"{ind.nome} · {s.nome}") for s in ind.setores.all() if s.nome in setores] if setores else [(None, ind.nome)]
+        for setor, rotulo in escopos:
+            sid = setor.pk if setor else None
+            meta = setor.meta_efetiva if setor else ind.meta
+            serie = sorted((m for m in ind.medicoes.all() if m.setor_id == sid and m.granularidade == "mensal"),
+                           key=lambda m: m.periodo)
+            ultima = serie[-1] if serie else None
+            linhas.append((rotulo, ind, serie[-meses:], ultima, meta, ind.atingiu(ultima.valor, meta) if ultima else None))
+    if f.get("apenas_fora"):
+        linhas = [l for l in linhas if l[5] is False]
     if not linhas:
         return []
 
-    ok = sum(1 for *_, a in linhas if a is True)
-    fora = sum(1 for *_, a in linhas if a is False)
-    slides = [_slide("kpi", "tiles", "Indicadores — situação geral", "Último mês lançado de cada indicador",
-                     "bi-speedometer2", itens=[
+    ok = sum(1 for l in linhas if l[5] is True)
+    fora = sum(1 for l in linhas if l[5] is False)
+    escopo = " + ".join(sorted(setores)) if setores else ""
+    slides = [_slide("kpi", "tiles", f"Indicadores{' — ' + escopo if escopo else ' — situação geral'}",
+                     "Último mês lançado de cada indicador", "bi-speedometer2", itens=[
         {"rotulo": "Na meta", "valor": ok, "tom": "ok"},
         {"rotulo": "Fora da meta", "valor": fora, "tom": "critico" if fora else "ok"},
         {"rotulo": "Sem dado", "valor": len(linhas) - ok - fora, "tom": "neutro"},
     ] + [{
-        "rotulo": ind.nome, "valor": f"{_fmt_num(ult.valor, 2)}{ind.unidade}" if ult else "—",
+        "rotulo": rotulo, "valor": f"{_fmt_num(ult.valor, 2)}{ind.unidade}" if ult else "—",
         "tom": "neutro" if a is None else "ok" if a else "critico",
-        "nota": f"meta {_fmt_num(ind.meta, 2)}{ind.unidade} · {ult.periodo:%m/%Y}" if ult else "sem lançamento",
-    } for ind, _s, ult, a in linhas[:18]])]
+        "nota": f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%m/%Y}" if ult else "sem lançamento",
+    } for rotulo, ind, _s, ult, meta, a in linhas[:18]])]
 
-    for ind, serie, ult, a in [l for l in linhas if l[3] is False][:6]:
-        slides.append(_slide("kpi", "chart", ind.nome, f"Fora da meta · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor",
-                             "bi-graph-down-arrow", labels=[m.periodo.strftime("%m/%Y") for m in serie],
-                             valores=[float(m.valor) for m in serie], meta=float(ind.meta), unidade=ind.unidade))
+    if graficos != "nenhum":
+        escolhidos = [l for l in linhas if (graficos == "todos" and l[2]) or l[5] is False]
+        for rotulo, ind, serie, ult, meta, a in escolhidos[:8]:
+            situacao = "Fora da meta" if a is False else "Na meta" if a else "Sem dado"
+            slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor",
+                                 "bi-graph-down-arrow" if a is False else "bi-graph-up", labels=[m.periodo.strftime("%m/%Y") for m in serie],
+                                 valores=[float(m.valor) for m in serie], meta=float(meta), unidade=ind.unidade))
     return slides
 
 
 # ---------------------------------------------------------------------------
-# Auditoria (checklists periódicos: último ciclo fechado de cada modelo)
+# Auditoria (checklists periódicos: último ciclo fechado de cada modelo/relatório)
 # ---------------------------------------------------------------------------
 def _dados_modelo(modelo):
     chave = f"telao:auditoria:v1:{modelo.pk}"
@@ -200,32 +260,39 @@ def _dados_modelo(modelo):
     return dados
 
 
-def slides_auditoria(user, resumo=False):
+def slides_auditoria(user, resumo=False, filtros=None):
     from auditoria.models import ModeloAuditoria
     from auditoria.views import _filter_modelos_para_usuario
     from shared.permissions import has_module_access
 
     if not has_module_access(user, "auditoria"):
         return []
-    modelos = list(_filter_modelos_para_usuario(user, ModeloAuditoria.objects.filter(ativo=True, arquivado=False))
-                   .order_by("nome")[:10])
+    f = filtros or {}
+    ids = {int(x) for x in (f.get("modelos") or []) if str(x).isdigit()}
+    secoes = set(f.get("secoes") or []) or {"conformidade", "evolucao", "pontos"}
+    qs = _filter_modelos_para_usuario(user, ModeloAuditoria.objects.filter(ativo=True, arquivado=False))
+    if ids:
+        qs = qs.filter(pk__in=ids)
+    modelos = list(qs.order_by("nome")[:10])
     dados = [d for d in (_dados_modelo(m) for m in modelos) if d["tem_ciclo"]]
     if not dados:
         return []
     ordenados = sorted(dados, key=lambda d: (d["pct"] is None, d["pct"] if d["pct"] is not None else 0))
-    slides = [_slide("auditoria", "bars", "Conformidade — último ciclo fechado", "% de itens conformes por auditoria",
-                     "bi-clipboard-check", itens=[{
-        "rotulo": d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]),
-        "txt": (f"{_fmt_num(d['pct'], 1)}%" if d["pct"] is not None else "—")
-               + (f"  ({'+' if d['variacao'] > 0 else ''}{_fmt_num(d['variacao'], 1)})" if d["variacao"] else ""),
-    } for d in ordenados])]
-    for d in ordenados[:4]:
+    slides = []
+    if "conformidade" in secoes:
+        slides.append(_slide("auditoria", "bars", "Conformidade — último ciclo fechado", "% de itens conformes por auditoria",
+                             "bi-clipboard-check", itens=[{
+            "rotulo": d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]),
+            "txt": (f"{_fmt_num(d['pct'], 1)}%" if d["pct"] is not None else "—")
+                   + (f"  ({'+' if d['variacao'] > 0 else ''}{_fmt_num(d['variacao'], 1)})" if d["variacao"] else ""),
+        } for d in ordenados]))
+    for d in ordenados[: (10 if ids else 4)]:
         pontos = [c for c in d["ciclos"] if c["pct"] is not None]
-        if len(pontos) > 1:
+        if "evolucao" in secoes and len(pontos) > 1:
             slides.append(_slide("auditoria", "chart", d["nome"], f"Evolução da conformidade · {d['periodo']}",
                                  "bi-graph-up", labels=[c["label"] for c in pontos],
                                  valores=[c["pct"] for c in pontos], meta=100, unidade="%"))
-        if d["criticas"]:
+        if "pontos" in secoes and d["criticas"]:
             slides.append(_slide("auditoria", "cards", f"{d['nome']} — pontos de atenção",
                                  f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)", "bi-flag",
                                  itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
@@ -238,48 +305,63 @@ def slides_auditoria(user, resumo=False):
 # Metrologia (instrumentos vencidos / a vencer)
 # ---------------------------------------------------------------------------
 def _dados_metrologia():
-    dados = cache.get("telao:metrologia:v1")
+    dados = cache.get("telao:metrologia:v2")
     if dados is None:
         from metrologia.views.views import get_metrologia_dashboard_data
 
         d = get_metrologia_dashboard_data()
-        criticos = [i for i in d["instrumentos"] if i["status_situacao"] in ("VENCIDO", "AVENCER_30")]
         dados = {
-            "kpis": d["kpis"],
-            "criticos": [{
-                "tag": i["tag"], "descricao": i["descricao"], "setor": i["setor_nome"], "venc": i["status_situacao"] == "VENCIDO",
+            "cotacoes": d["kpis"]["externo"]["cotacoes_abertas"],
+            "orcamentos": d["kpis"]["externo"]["orcamentos_pendentes"],
+            "instrumentos": [{
+                "tag": i["tag"], "descricao": i["descricao"], "setor": i["setor_nome"], "status": i["status_situacao"],
                 "data": i["data_proxima_calibracao_display"], "dias": i["dias_para_vencer"], "externo": not i["is_internal"],
-                "ocorrencia": i["has_active_occurrence"],
-            } for i in criticos[:8]],
+                "ocorrencias": i["ocorrencias_count"],
+            } for i in d["instrumentos"]],  # já vem ordenado: vencidos, a vencer, com ocorrência
         }
-        cache.set("telao:metrologia:v1", dados, 120)
+        cache.set("telao:metrologia:v2", dados, 120)
     return dados
 
 
-def slides_metrologia(user, resumo=False):
+def slides_metrologia(user, resumo=False, filtros=None):
     from shared.permissions import has_module_access
 
     if not has_module_access(user, "metrologia"):
         return []
+    f = filtros or {}
     d = _dados_metrologia()
-    k, ext = d["kpis"]["todos"], d["kpis"]["externo"]
-    slides = [_slide("metrologia", "tiles", "Metrologia — calibrações", f"{k['total_instrumentos']} instrumentos ativos",
-                     "bi-tools", itens=[
-        {"rotulo": "Vencidos", "valor": k["vencidos"], "tom": "critico" if k["vencidos"] else "ok"},
-        {"rotulo": "A vencer em 30 dias", "valor": k["avencer_30"], "tom": "alerta" if k["avencer_30"] else "ok"},
-        {"rotulo": "Em dia", "valor": k["em_dia"], "tom": "ok"},
-        {"rotulo": "Ocorrências ativas", "valor": k["ocorrencias_ativas"], "tom": "alerta" if k["ocorrencias_ativas"] else "ok"},
-        {"rotulo": "Cotações abertas", "valor": ext["cotacoes_abertas"], "tom": "neutro"},
-        {"rotulo": "Orçamentos pendentes", "valor": ext["orcamentos_pendentes"], "tom": "neutro"},
-    ])]
+    insts = d["instrumentos"]
+    setores = set(f.get("setores") or [])
+    trat = f.get("tratativa") or ""
+    if setores:
+        insts = [i for i in insts if i["setor"] in setores]
+    if trat:
+        insts = [i for i in insts if i["externo"] == (trat == "externa")]
+    filtrado = bool(setores or trat)
+    venc = sum(1 for i in insts if i["status"] == "VENCIDO")
+    a30 = sum(1 for i in insts if i["status"] == "AVENCER_30")
+    oc = sum(i["ocorrencias"] for i in insts)
+    tiles = [
+        {"rotulo": "Vencidos", "valor": venc, "tom": "critico" if venc else "ok"},
+        {"rotulo": "A vencer em 30 dias", "valor": a30, "tom": "alerta" if a30 else "ok"},
+        {"rotulo": "Em dia", "valor": len(insts) - venc - a30, "tom": "ok"},
+        {"rotulo": "Ocorrências ativas", "valor": oc, "tom": "alerta" if oc else "ok"},
+    ]
+    if not filtrado:
+        tiles += [{"rotulo": "Cotações abertas", "valor": d["cotacoes"], "tom": "neutro"},
+                  {"rotulo": "Orçamentos pendentes", "valor": d["orcamentos"], "tom": "neutro"}]
+    escopo = " · ".join(filter(None, [", ".join(sorted(setores)), {"interna": "calibração interna", "externa": "calibração externa"}.get(trat)]))
+    slides = [_slide("metrologia", "tiles", "Metrologia — calibrações", escopo or f"{len(insts)} instrumentos ativos",
+                     "bi-tools", itens=tiles)]
     cards = []
-    for i in d["criticos"]:
-        quando = f"venceu em {i['data']}" if i["venc"] else f"vence em {i['data']}"
-        tags = [i["setor"], quando, "calibração externa" if i["externo"] else "calibração interna"]
-        if i["ocorrencia"]:
+    for i in [x for x in insts if x["status"] in ("VENCIDO", "AVENCER_30")][:8]:
+        venceu = i["status"] == "VENCIDO"
+        tags = [i["setor"], f"{'venceu' if venceu else 'vence'} em {i['data']}",
+                "calibração externa" if i["externo"] else "calibração interna"]
+        if i["ocorrencias"]:
             tags.append("com ocorrência")
         cards.append({"titulo": f"{i['tag']} — {_corta(i['descricao'], 70)}", "texto": "",
-                      "tom": "critico" if i["venc"] else "alerta", "tags": tags})
+                      "tom": "critico" if venceu else "alerta", "tags": tags})
     for n, lote in enumerate(_lotes(cards, CARDS_POR_SLIDE), start=1):
         slides.append(_slide("metrologia", "cards", "Instrumentos críticos", f"parte {n}" if len(cards) > CARDS_POR_SLIDE else "",
                              "bi-exclamation-octagon", itens=lote))
@@ -287,10 +369,11 @@ def slides_metrologia(user, resumo=False):
 
 
 # ---------------------------------------------------------------------------
-# PCP (cumprimento das verificações)
+# PCP (cumprimento das verificações; um formulário = um setor)
 # ---------------------------------------------------------------------------
-def _dados_pcp():
-    dados = cache.get("telao:pcp:v1")
+def _dados_pcp(formulario_id=None, dias=30):
+    chave = f"telao:pcp:v3:{formulario_id or 0}:{dias}"
+    dados = cache.get(chave)
     if dados is None:
         import datetime
 
@@ -299,8 +382,8 @@ def _dados_pcp():
 
         hoje = timezone.localdate()
         fim = hoje - datetime.timedelta(days=1)
-        ini = fim - datetime.timedelta(days=29)
-        d = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), None, hoje)
+        ini = fim - datetime.timedelta(days=dias - 1)
+        d = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), formulario_id, hoje)
         paginas = [(l, b["titulo"]) for b in d["blocos"] for g in b["grupos"] for l in g["linhas"]
                    if l["pct"] is not None and l["devidos"] >= pend.MIN_PRAZOS_PAGINA]
         paginas.sort(key=lambda t: t[0]["pct"])
@@ -310,19 +393,22 @@ def _dados_pcp():
             "frequencias": [{"nome": f["nome"], "pct": f["pct"]} for f in d["por_frequencia"] if f["pct"] is not None],
             "piores": [{"nome": f"{t} · {l['nome']}", "pct": l["pct"]} for l, t in paginas[:6]],
         }
-        cache.set("telao:pcp:v1", dados, 120)
+        cache.set(chave, dados, 120)
     return dados
 
 
-def slides_pcp(user, resumo=False):
+def slides_pcp(user, resumo=False, filtros=None):
     from shared.permissions import has_view_access
 
     if not has_view_access(user, "pcp:dashboard"):
         return []
-    d = _dados_pcp()
+    f = filtros or {}
+    fid = f.get("formulario")
+    dias = int(f["dias"]) if str(f.get("dias") or "").isdigit() else 30
+    d = _dados_pcp(int(fid) if str(fid or "").isdigit() else None, dias)
     if not d["devidos"]:
         return []
-    sub = f"{d['ini']:%d/%m} a {d['fim']:%d/%m} (últimos 30 dias)"
+    sub = f"{d['ini']:%d/%m} a {d['fim']:%d/%m} (últimos {dias} dias)"
     slides = [_slide("pcp", "tiles", "PCP — cumprimento das verificações", sub, "bi-gear-wide-connected", itens=[
         {"rotulo": "Cumprimento", "valor": f"{_fmt_num(d['pct'], 1)}%", "tom": _tom_pct(d["pct"])},
         {"rotulo": "Devidas", "valor": d["devidos"], "tom": "neutro"},
@@ -365,7 +451,7 @@ def _dados_lab():
     return dados
 
 
-def slides_laboratorio(user, resumo=False):
+def slides_laboratorio(user, resumo=False, filtros=None):
     from shared.permissions import has_view_access
 
     if not has_view_access(user, "laboratorio:hc_dashboard"):
@@ -391,7 +477,7 @@ def slides_laboratorio(user, resumo=False):
 # ---------------------------------------------------------------------------
 # Treinamentos (planejamento)
 # ---------------------------------------------------------------------------
-def slides_treinamentos(user, resumo=False):
+def slides_treinamentos(user, resumo=False, filtros=None):
     import datetime
 
     from procedures.models import PlanejamentoTreinamento as P
@@ -399,19 +485,21 @@ def slides_treinamentos(user, resumo=False):
 
     if not has_view_access(user, "procedures:dashboard_treinamentos"):
         return []
+    f = filtros or {}
+    janela = int(f["janela"]) if str(f.get("janela") or "").isdigit() else 30
     hoje = timezone.localdate()
     abertos = P.objects.filter(status__in=("PLANEJADO", "CONFIRMADO", "ATRASADO"))
     atrasados = abertos.filter(data_prevista__lt=hoje).count()
-    proximos_qs = abertos.filter(data_prevista__gte=hoje).order_by("data_prevista")
-    proximos = list(proximos_qs[:8])
+    proximos_qs = abertos.filter(data_prevista__gte=hoje, data_prevista__lte=hoje + datetime.timedelta(days=janela)).order_by("data_prevista")
+    proximos = [] if f.get("apenas_atrasados") else list(proximos_qs[:8])
     realizados_mes = P.objects.filter(status="REALIZADO", data_realizada__year=hoje.year, data_realizada__month=hoje.month).count()
     if not (atrasados or proximos or realizados_mes):
         return []
-    slides = [_slide("treinamentos", "tiles", "Treinamentos", f"Posição em {hoje:%d/%m/%Y}", "bi-mortarboard", itens=[
-        {"rotulo": "Atrasados", "valor": atrasados, "tom": "critico" if atrasados else "ok"},
-        {"rotulo": "Próximos 30 dias", "valor": proximos_qs.filter(data_prevista__lte=hoje + datetime.timedelta(days=30)).count(), "tom": "neutro"},
-        {"rotulo": "Realizados no mês", "valor": realizados_mes, "tom": "ok"},
-    ])]
+    tiles = [{"rotulo": "Atrasados", "valor": atrasados, "tom": "critico" if atrasados else "ok"}]
+    if not f.get("apenas_atrasados"):
+        tiles += [{"rotulo": f"Próximos {janela} dias", "valor": proximos_qs.count(), "tom": "neutro"},
+                  {"rotulo": "Realizados no mês", "valor": realizados_mes, "tom": "ok"}]
+    slides = [_slide("treinamentos", "tiles", "Treinamentos", f"Posição em {hoje:%d/%m/%Y}", "bi-mortarboard", itens=tiles)]
     cards = [{"titulo": _corta(p.titulo, 100), "texto": "", "tom": "neutro",
               "tags": [f"{p.data_prevista:%d/%m/%Y}", f"em {(p.data_prevista - hoje).days} d", p.get_status_display()]
                       + ([p.local] if p.local and not resumo else [])} for p in proximos]
@@ -459,6 +547,165 @@ ROTULOS_PROVEDORES = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Cards selecionáveis de cada módulo: (id, rótulo, quais slides pertencem ao card)
+# ---------------------------------------------------------------------------
+PROVEDOR_CARDS = {
+    "ocorrencias": [
+        ("totais", "Totais de ocorrências em aberto", lambda s: s["kind"] == "tiles"),
+        ("por_responsavel", "Gráfico de ocorrências em aberto por responsável", lambda s: s["kind"] == "bars" and "responsável" in s["titulo"]),
+        ("por_modulo", "Gráfico de ocorrências em aberto por módulo", lambda s: s["kind"] == "bars" and "módulo" in s["titulo"]),
+        ("lista", "Lista de vencidas / mais antigas", lambda s: s["kind"] == "cards" and s["titulo"].startswith("Ocorrências ")),
+        ("comentarios", "Comentários recentes do plano de ação", lambda s: s["titulo"] == "Comentários recentes"),
+    ],
+    "kpi": [
+        ("situacao", "Situação dos indicadores (na meta / fora)", lambda s: s["kind"] == "tiles"),
+        ("graficos", "Gráficos de evolução com rótulos", lambda s: s["kind"] == "chart"),
+    ],
+    "auditoria": [
+        ("conformidade", "Conformidade do último ciclo (barras)", lambda s: s["kind"] == "bars"),
+        ("evolucao", "Evolução da conformidade por ciclo", lambda s: s["kind"] == "chart"),
+        ("pontos", "Pontos de atenção (não conformidades)", lambda s: s["kind"] == "cards"),
+    ],
+    "metrologia": [
+        ("totais", "Totais de calibrações (vencidos, a vencer, em dia)", lambda s: s["kind"] == "tiles"),
+        ("criticos", "Instrumentos críticos", lambda s: s["kind"] == "cards"),
+    ],
+    "pcp": [
+        ("resumo", "Cumprimento geral", lambda s: s["kind"] == "tiles"),
+        ("evolucao", "Evolução do cumprimento", lambda s: s["kind"] == "chart"),
+        ("frequencias", "Cumprimento por frequência", lambda s: s["kind"] == "bars" and "frequência" in s["titulo"]),
+        ("paginas", "Páginas com menor cumprimento", lambda s: s["kind"] == "bars" and "páginas" in s["titulo"]),
+    ],
+    "laboratorio": [
+        ("resumo", "Rendimento HC do mês", lambda s: s["kind"] == "tiles"),
+        ("grafico", "Rendimento HC por dia", lambda s: s["kind"] == "chart"),
+    ],
+    "treinamentos": [
+        ("resumo", "Atrasados / próximos / realizados", lambda s: s["kind"] == "tiles"),
+        ("proximos", "Próximos treinamentos", lambda s: s["kind"] == "cards"),
+    ],
+}
+
+
+def _opts_kpi_indicadores(user):
+    from kpi.models import Indicador
+
+    return [(str(i.pk), i.nome) for i in Indicador.objects.filter(ativo=True).order_by("ordem", "nome")]
+
+
+def _opts_kpi_setores(user):
+    from kpi.models import SetorIndicador
+
+    return [(n, n) for n in SetorIndicador.objects.order_by("nome").values_list("nome", flat=True).distinct()]
+
+
+def _opts_auditoria_modelos(user):
+    from auditoria.models import ModeloAuditoria
+    from auditoria.views import _filter_modelos_para_usuario
+
+    qs = _filter_modelos_para_usuario(user, ModeloAuditoria.objects.filter(ativo=True, arquivado=False))
+    return [(str(m.pk), m.nome) for m in qs.order_by("nome")]
+
+
+def _opts_metrologia_setores(user):
+    from organization.models import Setor
+
+    return [(n, n) for n in Setor.objects.order_by("nome").values_list("nome", flat=True)]
+
+
+def _opts_pcp_formularios(user):
+    from pcp.models import Formulario
+
+    return [("", "Todos os formulários")] + [(str(f.pk), f"{f.codigo} — {f.titulo} ({f.setor.nome})")
+                                              for f in Formulario.objects.filter(ativo=True).select_related("setor")]
+
+
+def _opts_origens(user):
+    from shared import ocorrencias as central
+
+    return [(k, o.nome) for k, o in central.ORIGENS.items()]
+
+
+# Filtros de cada módulo, espelhando os dos dashboards. tipo: multi | select | bool.
+# Multi vazio = todos; select sem valor = padrão do módulo.
+FILTROS = {
+    "ocorrencias": [
+        dict(nome="abordagem", rotulo="Abordagem", tipo="select",
+             opcoes=lambda u: [("global", "Global — panorama de todos, sem destacar o usuário logado (recomendado para TV)"),
+                               ("pessoal", "Pessoal — destaca o que envolve quem está logado")]),
+        dict(nome="origens", rotulo="Módulos de origem", tipo="multi", opcoes=_opts_origens,
+             ajuda="Vazio = todos os módulos."),
+        dict(nome="apenas_vencidas", rotulo="Somente ocorrências vencidas", tipo="bool"),
+    ],
+    "kpi": [
+        dict(nome="indicadores", rotulo="Indicadores", tipo="multi", opcoes=_opts_kpi_indicadores, ajuda="Vazio = todos."),
+        dict(nome="setores", rotulo="Setores (indicador de quebra)", tipo="multi", opcoes=_opts_kpi_setores,
+             ajuda="Mostra a meta e as medições do setor, em vez do geral. Ex.: Montagem, Surfaçagem, HMC."),
+        dict(nome="apenas_fora", rotulo="Somente indicadores fora da meta", tipo="bool"),
+        dict(nome="graficos", rotulo="Gráficos de evolução", tipo="select",
+             opcoes=lambda u: [("fora", "Só dos fora da meta"), ("todos", "De todos"), ("nenhum", "Nenhum")]),
+        dict(nome="meses", rotulo="Meses nos gráficos", tipo="select",
+             opcoes=lambda u: [("6", "6 meses"), ("12", "12 meses"), ("24", "24 meses")]),
+    ],
+    "auditoria": [
+        dict(nome="modelos", rotulo="Relatórios (auditorias)", tipo="multi", opcoes=_opts_auditoria_modelos,
+             ajuda="Sempre usa o último ciclo concluído de cada um. Vazio = todos os ativos."),
+    ],
+    "metrologia": [
+        dict(nome="setores", rotulo="Setores", tipo="multi", opcoes=_opts_metrologia_setores, ajuda="Vazio = todos."),
+        dict(nome="tratativa", rotulo="Tratativa da calibração", tipo="select",
+             opcoes=lambda u: [("", "Interna e externa"), ("interna", "Somente interna"), ("externa", "Somente externa")]),
+    ],
+    "pcp": [
+        dict(nome="formulario", rotulo="Formulário (setor)", tipo="select", opcoes=_opts_pcp_formularios),
+        dict(nome="dias", rotulo="Período analisado", tipo="select",
+             opcoes=lambda u: [("7", "7 dias"), ("14", "14 dias"), ("30", "30 dias"), ("60", "60 dias"), ("90", "90 dias")]),
+    ],
+    "laboratorio": [],
+    "treinamentos": [
+        dict(nome="janela", rotulo="Próximos treinamentos em até", tipo="select",
+             opcoes=lambda u: [("15", "15 dias"), ("30", "30 dias"), ("60", "60 dias"), ("90", "90 dias")]),
+        dict(nome="apenas_atrasados", rotulo="Somente atrasados", tipo="bool"),
+    ],
+}
+
+
+def campos_filtro(provedor: str, user) -> list[dict]:
+    """Campos de filtro do provedor para o editor: primeiro a seleção de cards, depois os filtros do módulo."""
+    campos = [dict(nome="cards", rotulo="Cards que entram na apresentação", tipo="multi",
+                   opcoes=lambda u, p=provedor: [(c[0], c[1]) for c in PROVEDOR_CARDS.get(p, [])], ajuda="Vazio = todos os cards.")]
+    campos += FILTROS.get(provedor, [])
+    saida = []
+    for c in campos:
+        try:
+            opcoes = c["opcoes"](user) if "opcoes" in c else []
+        except Exception:
+            logger.exception("Telão: opções de filtro %s.%s", provedor, c["nome"])
+            opcoes = []
+        saida.append({**c, "opcoes": opcoes})
+    return saida
+
+
+def limpar_filtros(provedor: str, get_lista, get_valor, user) -> dict:
+    """Lê os filtros enviados pelo formulário (`f_<provedor>_<campo>`), descartando o que não é opção válida."""
+    filtros = {}
+    for c in campos_filtro(provedor, user):
+        chave = f"f_{provedor}_{c['nome']}"
+        validos = {str(v) for v, _ in c["opcoes"]}
+        if c["tipo"] == "multi":
+            marcados = [v for v in get_lista(chave) if v in validos]
+            if marcados:
+                filtros[c["nome"]] = marcados
+        elif c["tipo"] == "select":
+            v = (get_valor(chave) or "").strip()
+            if v and v in validos:
+                filtros[c["nome"]] = v
+        elif c["tipo"] == "bool" and get_valor(chave) == "on":
+            filtros[c["nome"]] = True
+    return filtros
+
+
 def modelos_visiveis(user):
     """Modelos de apresentação personalizados que o usuário pode rodar."""
     from django.db.models import Q
@@ -478,27 +725,39 @@ def obter_playlist(user, chave: str) -> dict:
     if chave and chave[0] == "m" and chave[1:].isdigit():
         m = modelos_visiveis(user).filter(pk=int(chave[1:])).first()
         if m is not None:
-            itens = [(i.get("provedor"), i.get("duracao")) for i in (m.itens or []) if isinstance(i, dict)]
+            itens = [(i.get("provedor"), i.get("duracao"), i.get("filtros") or {})
+                     for i in (m.itens or []) if isinstance(i, dict)]
             return {"chave": m.chave, "nome": m.nome, "icone": m.icone or "bi-display", "itens": itens,
                     "duracao": m.duracao_padrao or DURACAO_PADRAO, "resumo": m.resumo}
     nome, icone, provedores = PLAYLISTS.get(chave, PLAYLISTS[PLAYLIST_PADRAO])
     chave = chave if chave in PLAYLISTS else PLAYLIST_PADRAO
-    return {"chave": chave, "nome": nome, "icone": icone, "itens": [(p, None) for p in provedores],
+    return {"chave": chave, "nome": nome, "icone": icone, "itens": [(p, None, {}) for p in provedores],
             "duracao": None, "resumo": False}
 
 
+def _marcar_cards(provedor, slides):
+    regras = PROVEDOR_CARDS.get(provedor, [])
+    for s in slides:
+        s["card"] = next((cid for cid, _r, pred in regras if pred(s)), "")
+
+
 def montar_playlist(user, playlist: str, resumo: bool = False) -> list[dict]:
+    """Monta os slides a cada chamada: filtros e cards do modelo valem na hora, e os dados são os atuais."""
     definicao = obter_playlist(user, playlist)
     resumo = resumo or definicao["resumo"]
     slides: list[dict] = []
-    for chave, duracao in definicao["itens"]:
+    for chave, duracao, filtros in definicao["itens"]:
         if chave not in PROVEDORES:
             continue
         try:
-            novos = PROVEDORES[chave](user, resumo=resumo)
+            novos = PROVEDORES[chave](user, resumo=resumo, filtros=filtros)
         except Exception:  # um módulo com problema não derruba a rotação
             logger.exception("Telão: provedor %s falhou", chave)
             continue
+        _marcar_cards(chave, novos)
+        escolhidos = set(filtros.get("cards") or [])
+        if escolhidos:
+            novos = [s for s in novos if s["card"] in escolhidos]
         seg = duracao or definicao["duracao"]
         if seg:
             for s in novos:

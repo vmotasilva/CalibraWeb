@@ -48,13 +48,15 @@ def playlists_para_menu(user):
 # ---------------------------------------------------------------------------
 # Gestão dos modelos
 # ---------------------------------------------------------------------------
-def _itens_do_post(post) -> list[dict]:
+def _itens_do_post(post, user) -> list[dict]:
     itens = []
     for chave in post.getlist("prov"):
         if chave not in providers.PROVEDORES or any(i["provedor"] == chave for i in itens):
             continue
         bruto = (post.get(f"dur_{chave}") or "").strip()
-        itens.append({"provedor": chave, "duracao": min(max(int(bruto), 5), 120) if bruto.isdigit() else None})
+        filtros = providers.limpar_filtros(chave, post.getlist, post.get, user)
+        itens.append({"provedor": chave, "duracao": min(max(int(bruto), 5), 120) if bruto.isdigit() else None,
+                      "filtros": filtros})
     return itens
 
 
@@ -70,7 +72,7 @@ def _ler_modelo(request, modelo):
     modelo.resumo = p.get("resumo") == "on"
     modelo.compartilhada = p.get("compartilhada") == "on"
     modelo.ativo = p.get("ativo", "on") == "on"
-    modelo.itens = _itens_do_post(p)
+    modelo.itens = _itens_do_post(p, request.user)
     erros = []
     if not modelo.nome:
         erros.append("Informe o nome da apresentação.")
@@ -121,12 +123,22 @@ def modelo_form(request, pk=None):
         for e in erros:
             messages.error(request, e)
 
-    escolhidos = {i["provedor"]: i.get("duracao") for i in (modelo.itens or []) if isinstance(i, dict)}
+    escolhidos = {i["provedor"]: i for i in (modelo.itens or []) if isinstance(i, dict)}
     # escolhidos primeiro (na ordem salva), depois os demais conteúdos disponíveis
     ordem = [k for k in escolhidos if k in providers.ROTULOS_PROVEDORES] + [
         k for k in providers.ROTULOS_PROVEDORES if k not in escolhidos]
-    linhas = [{"chave": k, "rotulo": providers.ROTULOS_PROVEDORES[k][0], "icone": providers.ROTULOS_PROVEDORES[k][1],
-               "ativo": k in escolhidos, "duracao": escolhidos.get(k) or ""} for k in ordem]
+    linhas = []
+    for k in ordem:
+        atual = (escolhidos.get(k) or {}).get("filtros") or {}
+        campos = providers.campos_filtro(k, request.user)
+        for c in campos:
+            val = atual.get(c["nome"])
+            c["sel"] = {str(v) for v in val} if c["tipo"] == "multi" and val else set()
+            c["val"] = val if c["tipo"] != "multi" else None
+            c["campo"] = f"f_{k}_{c['nome']}"
+        linhas.append({"chave": k, "rotulo": providers.ROTULOS_PROVEDORES[k][0], "icone": providers.ROTULOS_PROVEDORES[k][1],
+                       "ativo": k in escolhidos, "duracao": (escolhidos.get(k) or {}).get("duracao") or "",
+                       "campos": campos, "n_filtros": len(atual)})
     return render(request, "shared/telao_modelo_form.html", {"modelo": modelo, "linhas": linhas, "novo": not modelo.pk})
 
 

@@ -100,7 +100,7 @@ select option { color:#0f172a; }
 <script>
 (function () {
   var API = "{{ api_url }}", PLAYLIST = "{{ playlist }}", DUR_FORCADA = {{ duracao }}, RESUMO = {{ resumo|yesno:"true,false" }};
-  var REFRESH_MS = 120000, slides = [], idx = 0, rodando = true, inicio = 0, restante = 0, chart = null, raf = null, ociosoT = null, lock = null;
+  var REFRESH_MS = 60000, slides = [], idx = 0, rodando = true, inicio = 0, restante = 0, chart = null, raf = null, ociosoT = null, lock = null;
   var $ = function (id) { return document.getElementById(id); };
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }

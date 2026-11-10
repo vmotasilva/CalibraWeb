@@ -201,3 +201,128 @@ class TelaoAuditoriasInativasTests(TestCase):
         self.assertIn("Pergunta Ok", titulos)
         self.assertNotIn("Pergunta Inativa", titulos)
         self.assertNotIn("Pergunta Arquivada", titulos)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class TelaoFiltrosTests(TestCase):
+    """Cada conteúdo do modelo aceita filtros (como nos dashboards) e a seleção dos cards que vão para a apresentação."""
+
+    def setUp(self):
+        cache.clear()
+        self.admin = get_user_model().objects.create_user("adm5", password="x", is_superuser=True, is_staff=True)
+        from kpi.models import SetorIndicador
+
+        self.ind = Indicador.objects.create(nome="Perda", meta=5, sentido="menor", unidade="%")
+        self.outro = Indicador.objects.create(nome="Entrega", meta=95, sentido="maior", unidade="%")
+        self.mont = SetorIndicador.objects.create(indicador=self.ind, nome="Montagem", meta=3)
+        self.surf = SetorIndicador.objects.create(indicador=self.ind, nome="Surfaçagem", meta=8)
+        for n, v in enumerate([4, 6]):
+            Medicao.objects.create(indicador=self.ind, periodo=date(2026, n + 1, 28), valor=v, granularidade="mensal")
+            Medicao.objects.create(indicador=self.ind, setor=self.mont, periodo=date(2026, n + 1, 28), valor=v - 1, granularidade="mensal")
+            Medicao.objects.create(indicador=self.ind, setor=self.surf, periodo=date(2026, n + 1, 28), valor=v + 1, granularidade="mensal")
+            Medicao.objects.create(indicador=self.outro, periodo=date(2026, n + 1, 28), valor=96, granularidade="mensal")
+
+    def _tiles(self, slides):
+        return {i["rotulo"]: i for s in slides if s["kind"] == "tiles" for i in s["itens"]}
+
+    def test_kpi_por_setor_usa_meta_e_medicao_do_setor(self):
+        slides = providers.slides_kpi(self.admin, filtros={"setores": ["Montagem"]})
+        t = self._tiles(slides)
+        self.assertIn("Perda · Montagem", t)
+        self.assertNotIn("Perda · Surfaçagem", t)
+        self.assertNotIn("Entrega", t)  # indicador sem setor Montagem fica de fora
+        self.assertEqual(t["Perda · Montagem"]["tom"], "critico")  # 5 > meta 3 do setor
+        self.assertIn("Montagem", slides[0]["titulo"])
+
+    def test_kpi_filtro_de_indicador_e_fora_da_meta(self):
+        t = self._tiles(providers.slides_kpi(self.admin, filtros={"indicadores": [str(self.outro.pk)]}))
+        self.assertEqual(set(k for k in t if k not in ("Na meta", "Fora da meta", "Sem dado")), {"Entrega"})
+        t = self._tiles(providers.slides_kpi(self.admin, filtros={"apenas_fora": True}))
+        self.assertNotIn("Entrega", t)
+
+    def test_selecao_de_cards(self):
+        from shared.models import ModeloApresentacao
+
+        m = ModeloApresentacao.objects.create(nome="So graficos", criado_por=self.admin, itens=[
+            {"provedor": "kpi", "duracao": None, "filtros": {"cards": ["graficos"], "graficos": "todos"}}])
+        slides = providers.montar_playlist(self.admin, m.chave)
+        self.assertTrue(slides)
+        self.assertTrue(all(s["kind"] == "chart" and s["card"] == "graficos" for s in slides))
+
+    def test_alteracao_do_modelo_vale_na_proxima_chamada(self):
+        from shared.models import ModeloApresentacao
+
+        m = ModeloApresentacao.objects.create(nome="Dinamico", criado_por=self.admin, itens=[
+            {"provedor": "kpi", "duracao": None, "filtros": {"setores": ["Montagem"]}}])
+        self.assertIn("Montagem", providers.montar_playlist(self.admin, m.chave)[0]["titulo"])
+        m.itens = [{"provedor": "kpi", "duracao": None, "filtros": {"setores": ["Surfaçagem"]}}]
+        m.save()
+        self.assertIn("Surfaçagem", providers.montar_playlist(self.admin, m.chave)[0]["titulo"])
+
+    def test_formulario_salva_filtros_validos(self):
+        from shared.models import ModeloApresentacao
+
+        self.client.force_login(self.admin)
+        self.client.post(reverse("telao_modelo_novo"), {
+            "nome": "Montagem TV", "prov": ["kpi"], "duracao_padrao": "10", "ativo": "on",
+            "f_kpi_setores": ["Montagem", "Inexistente"], "f_kpi_apenas_fora": "on", "f_kpi_graficos": "todos",
+            "f_kpi_cards": ["situacao", "invalido"]})
+        item = ModeloApresentacao.objects.get(nome="Montagem TV").itens[0]
+        self.assertEqual(item["filtros"], {"cards": ["situacao"], "setores": ["Montagem"], "apenas_fora": True, "graficos": "todos"})
+        r = self.client.get(reverse("telao_modelo_editar", args=[ModeloApresentacao.objects.get().pk]))
+        self.assertContains(r, 'value="Montagem" id="f_kpi_setores_1" checked')
+
+    def test_auditoria_filtra_relatorio(self):
+        from auditoria.models import ModeloAuditoria, RegistroAuditoria
+
+        hoje = date.today()
+        ids = {}
+        for nome in ("Relatorio A", "Relatorio B"):
+            m = ModeloAuditoria.objects.create(nome=nome, objeto_auditoria="o", periodicidade="MENSAL")
+            RegistroAuditoria.objects.create(modelo=m, data_auditoria=hoje, periodo_inicio=hoje, periodo_fim=hoje, status="CONCLUIDO")
+            ids[nome] = str(m.pk)
+        texto = str(providers.slides_auditoria(self.admin, filtros={"modelos": [ids["Relatorio B"]]}))
+        self.assertIn("Relatorio B", texto)
+        self.assertNotIn("Relatorio A", texto)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class TelaoOcorrenciasAbordagemTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        U = get_user_model()
+        self.admin = U.objects.create_user("adm6", password="x", is_superuser=True, is_staff=True)
+        ana = U.objects.create_user("ana", password="x", first_name="Ana", last_name="Souza")
+        bia = U.objects.create_user("bia", password="x", first_name="Bia", last_name="Lima")
+        for assunto, resp in (("A1", ana), ("A2", ana), ("B1", bia), ("S1", None)):
+            OcorrenciaLaboratorio.objects.create(assunto=assunto, detalhamento="d", criado_por=self.admin, responsavel=resp)
+
+    def _barras(self, slides):
+        return {i["rotulo"]: i for s in slides if s["kind"] == "bars" and "responsável" in s["titulo"] for i in s["itens"]}
+
+    def test_global_lista_responsaveis_e_conta_por_pessoa(self):
+        slides = providers.slides_ocorrencias(self.admin)
+        barras = self._barras(slides)
+        self.assertEqual(barras["Ana Souza"]["txt"], "2")
+        self.assertEqual(barras["Bia Lima"]["txt"], "1")
+        self.assertEqual(barras["Sem responsável"]["txt"], "1")
+        rotulos = {i["rotulo"] for s in slides if s["kind"] == "tiles" for i in s["itens"]}
+        self.assertNotIn("Envolvem você", rotulos)
+        self.assertIn("Sem responsável", rotulos)
+
+    def test_pessoal_destaca_o_usuario_e_sem_grafico_por_pessoa(self):
+        slides = providers.slides_ocorrencias(self.admin, filtros={"abordagem": "pessoal"})
+        rotulos = {i["rotulo"] for s in slides if s["kind"] == "tiles" for i in s["itens"]}
+        self.assertIn("Envolvem você", rotulos)
+        self.assertEqual(self._barras(slides), {})
+
+    def test_resumo_nao_expoe_nomes(self):
+        self.assertEqual(self._barras(providers.slides_ocorrencias(self.admin, resumo=True)), {})
+
+    def test_card_do_grafico_pode_ser_escolhido_sozinho(self):
+        from shared.models import ModeloApresentacao
+
+        m = ModeloApresentacao.objects.create(nome="Por pessoa", criado_por=self.admin, itens=[
+            {"provedor": "ocorrencias", "duracao": None, "filtros": {"cards": ["por_responsavel"]}}])
+        slides = providers.montar_playlist(self.admin, m.chave)
+        self.assertEqual([s["card"] for s in slides], ["por_responsavel"])
