@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import contextvars
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Callable
 
 from django.core.cache import cache
@@ -106,18 +106,20 @@ def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, ico
         return []
     hoje = timezone.localdate()
     lista = sorted(lista, key=lambda t: (not t[0].vencida, t[0].prazo is None, t[0].prazo or hoje, t[0].data_ordem))
-    n_venc = sum(int(i.vencida) for i, _ in lista)
+    n_venc = sum(int(t[0].vencida) for t in lista)
     cards = []
-    for i, titulo_item in lista[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
+    for t in lista[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
+        i, titulo_item, extra = t[0], t[1], (t[2] if len(t) > 2 else [])
         dias = max((hoje - timezone.localtime(i.data_ordem).date()).days, 0)
-        tags = ([f"prazo {i.prazo:%d/%m/%Y}"] if i.prazo else []) + [f"{dias} d em aberto"]
+        tags = list(extra) + ([f"prazo {i.prazo:%d/%m/%Y}"] if i.prazo else []) + [f"{dias} d em aberto"]
         if i.responsaveis and not resumo:
             tags.append(", ".join(i.responsaveis[:2]))
         coment = []
         if mostrar_coment:
             todos = sorted(((_quando(c["quando"]), c) for p in i.plano for c in p.comentarios), key=lambda t: t[0], reverse=True)
             coment = [{"autor": c["autor"], "quando": c["quando"], "texto": _corta(c["texto"], 170)} for _, c in todos[:2]]
-        cards.append({"titulo": _corta(titulo_item, 110), "texto": "", "tom": "critico" if i.vencida else "alerta",
+        texto = "" if resumo or (i.descricao or "").strip() in ("", titulo_item) else _corta(i.descricao, 180)
+        cards.append({"titulo": _corta(titulo_item, 110), "texto": texto, "tom": "critico" if i.vencida else "alerta",
                       "tags": tags, "comentarios": coment})
     sub = f"{len(lista)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "")
     lotes = list(_lotes(cards, CARDS_POR_SLIDE))
@@ -240,6 +242,7 @@ def slides_kpi(user, resumo=False, filtros=None):
     setores = set(f.get("setores") or [])
     graficos = f.get("graficos") or "fora"
     meses = int(f["meses"]) if str(f.get("meses") or "").isdigit() else 12
+    dias = int(f["dias"]) if str(f.get("dias") or "").isdigit() else 0
     qs = Indicador.objects.filter(ativo=True).prefetch_related("medicoes", "setores")
     if ids:
         qs = qs.filter(pk__in=ids)
@@ -250,10 +253,15 @@ def slides_kpi(user, resumo=False, filtros=None):
         for setor, rotulo in escopos:
             sid = setor.pk if setor else None
             meta = setor.meta_efetiva if setor else ind.meta
-            serie = sorted((m for m in ind.medicoes.all() if m.setor_id == sid and m.granularidade == "mensal"),
-                           key=lambda m: m.periodo)
+            doIndSetor = [m for m in ind.medicoes.all() if m.setor_id == sid]
+            serie = sorted((m for m in doIndSetor if m.granularidade == "mensal"), key=lambda m: m.periodo)[-meses:]
+            if dias:  # últimos N dias: usa as medições diárias (se o indicador não tiver, mantém a série mensal)
+                diarias = sorted((m for m in doIndSetor if m.granularidade == "diaria"), key=lambda m: m.periodo)
+                if diarias:
+                    corte = diarias[-1].periodo - timedelta(days=dias - 1)
+                    serie = [m for m in diarias if m.periodo >= corte]
             ultima = serie[-1] if serie else None
-            linhas.append((rotulo, ind, serie[-meses:], ultima, meta, ind.atingiu(ultima.valor, meta) if ultima else None))
+            linhas.append((rotulo, ind, serie, ultima, meta, ind.atingiu(ultima.valor, meta) if ultima else None))
     if f.get("apenas_fora"):
         linhas = [l for l in linhas if l[5] is False]
     if not linhas:
@@ -270,7 +278,7 @@ def slides_kpi(user, resumo=False, filtros=None):
     ] + [{
         "rotulo": rotulo, "valor": f"{_fmt_num(ult.valor, 2)}{ind.unidade}" if ult else "—",
         "tom": "neutro" if a is None else "ok" if a else "critico",
-        "nota": f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%m/%Y}" if ult else "sem lançamento",
+        "nota": f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%d/%m/%Y}" if ult and ult.granularidade == "diaria" else f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%m/%Y}" if ult else "sem lançamento",
     } for rotulo, ind, _s, ult, meta, a in linhas[:18]])]
 
     # ocorrências (cards de causa/análise) de cada indicador: entram logo depois do gráfico dele
@@ -295,8 +303,8 @@ def slides_kpi(user, resumo=False, filtros=None):
         escolhidos = [l for l in linhas if (graficos == "todos" and l[2]) or l[5] is False]
         for rotulo, ind, serie, ult, meta, a in escolhidos[:8]:
             situacao = "Fora da meta" if a is False else "Na meta" if a else "Sem dado"
-            slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor",
-                                 "bi-graph-down-arrow" if a is False else "bi-graph-up", labels=[m.periodo.strftime("%m/%Y") for m in serie],
+            slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor" + (f" · últimos {dias} dias" if dias and serie and serie[-1].granularidade == "diaria" else ""),
+                                 "bi-graph-down-arrow" if a is False else "bi-graph-up", labels=[m.periodo.strftime("%d/%m" if m.granularidade == "diaria" else "%m/%Y") for m in serie],
                                  valores=[float(m.valor) for m in serie], meta=float(meta), unidade=ind.unidade))
             slides += _ocorr(rotulo, ind)
     for rotulo, ind, *_ in linhas:  # indicadores sem gráfico na apresentação, mas com ocorrência
@@ -367,13 +375,23 @@ def slides_auditoria(user, resumo=False, filtros=None):
             slides.append(_slide("auditoria", "chart", d["nome"], f"Evolução da conformidade · {d['periodo']}",
                                  "bi-graph-up", labels=[c["label"] for c in pontos],
                                  valores=[c["pct"] for c in pontos], meta=100, unidade="%"))
-        if "pontos" in secoes and d["criticas"]:
+        # o ponto de atenção que já tem ocorrência aberta aparece no detalhe dela (com NCs, texto e comentários)
+        lista_oc, ja_detalhados = [], set()
+        crit = {c["pergunta"][:90].strip(): c for c in d["criticas"]}
+        for i, resto in oc_por_modelo.get(d["nome"], []):
+            c = crit.get(resto)
+            extra = ([f"{c['ncs']} NC"] + ([f"{c['semanas']} semana(s) seguidas"] if c["semanas"] else [])) if c else []
+            if c:
+                ja_detalhados.add(resto)
+            lista_oc.append((i, resto, extra))
+        restantes = [c for c in d["criticas"] if c["pergunta"][:90].strip() not in ja_detalhados]
+        if "pontos" in secoes and restantes:
             slides.append(_slide("auditoria", "cards", f"{d['nome']} — pontos de atenção",
                                  f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)", "bi-flag",
-                                 itens=[{"titulo": _corta(c["pergunta"], CACHE_SEGUNDOS), "texto": "", "tom": "critico",
+                                 itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
                                          "tags": [f"{c['ncs']} NC", f"{c['semanas']} semana(s) seguidas"] if c["semanas"] else [f"{c['ncs']} NC"]}
-                                        for c in d["criticas"]]))
-        slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", oc_por_modelo.get(d["nome"], []), resumo, mostrar_coment)
+                                        for c in restantes]))
+        slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", lista_oc, resumo, mostrar_coment)
     return slides
 
 
@@ -978,6 +996,9 @@ FILTROS = {
         dict(nome="apenas_fora", rotulo="Somente indicadores fora da meta", tipo="bool"),
         dict(nome="graficos", rotulo="Gráficos de evolução", tipo="select",
              opcoes=lambda u: [("fora", "Só dos fora da meta"), ("todos", "De todos"), ("nenhum", "Nenhum")]),
+        dict(nome="dias", rotulo="Últimos dias (medições diárias)", tipo="select",
+             opcoes=lambda u: [(str(n), f"Últimos {n} dias") for n in (7, 15, 30, 45, 60, 90)],
+             ajuda="Mostra as medições diárias dos últimos N dias nos gráficos e na situação; sem isso, valem os meses."),
         dict(nome="meses", rotulo="Meses nos gráficos", tipo="select",
              opcoes=lambda u: [("6", "6 meses"), ("12", "12 meses"), ("24", "24 meses")]),
     ],

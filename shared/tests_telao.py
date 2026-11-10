@@ -301,6 +301,20 @@ class TelaoFiltrosTests(TestCase):
     def _tiles(self, slides):
         return {i["rotulo"]: i for s in slides if s["kind"] == "tiles" for i in s["itens"]}
 
+    def test_kpi_ultimos_dias_usa_medicoes_diarias(self):
+        from datetime import timedelta
+
+        base = date(2026, 3, 31)
+        for n in range(40):
+            Medicao.objects.create(indicador=self.ind, periodo=base - timedelta(days=n), valor=7, granularidade="diaria")
+        graf = [s for s in providers.slides_kpi(self.admin, filtros={"dias": "15", "graficos": "todos"}) if s["kind"] == "chart"]
+        perda = next(s for s in graf if s["titulo"] == "Perda")
+        self.assertEqual(len(perda["valores"]), 15)
+        self.assertEqual(perda["labels"][-1], "31/03")
+        self.assertIn("últimos 15 dias", perda["subtitulo"])
+        sem = next(s for s in providers.slides_kpi(self.admin, filtros={"graficos": "todos"}) if s["kind"] == "chart" and s["titulo"] == "Perda")
+        self.assertEqual(len(sem["valores"]), 2)  # sem o filtro, continua mensal
+
     def test_kpi_por_setor_usa_meta_e_medicao_do_setor(self):
         slides = providers.slides_kpi(self.admin, filtros={"setores": ["Montagem"]})
         t = self._tiles(slides)
