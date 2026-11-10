@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .telao import views as telao_views
 
 urlpatterns = [
     # Account / Password APIs
@@ -23,6 +24,8 @@ urlpatterns = [
     path('ocorrencias/api/usuarios/', views.api_usuarios_view, name='ocorrencias_api_usuarios'),
     path('ocorrencias/api/plano/acao/', views.api_plano_acao_view, name='ocorrencias_api_plano_acao'),
     path('ocorrencias/api/plano/<str:origem>/<int:pk>/', views.api_plano_view, name='ocorrencias_api_plano'),
+    path('telao/', telao_views.telao_view, name='telao'),
+    path('telao/api/', telao_views.telao_api, name='telao_api'),
     path('changelog/', views.changelog_view, name='changelog'),
     # path('', views.dashboard_view, name='dashboard'),
     # path('health/', views.health_check, name='health_check'),

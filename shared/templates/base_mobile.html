@@ -894,6 +894,18 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                     </a>
 
                     <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-light" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Modo apresentação">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow">
+                            <li><a class="dropdown-item" href="{% url 'telao' %}?p=geral#cheia">Geral</a></li>
+                            <li><a class="dropdown-item" href="{% url 'telao' %}?p=ocorrencias#cheia">Ocorrências</a></li>
+                            <li><a class="dropdown-item" href="{% url 'telao' %}?p=kpi#cheia">Indicadores (KPI)</a></li>
+                            <li><a class="dropdown-item" href="{% url 'telao' %}?p=auditoria#cheia">Auditorias</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="dropdown">
                         <button class="btn btn-sm btn-outline-light position-relative" type="button" id="inboxDropdownMobile" data-bs-toggle="dropdown" aria-expanded="false" title="Notificações e Pendências">
                             <i class="bi bi-bell"></i>
                             {% if nav_notifications_total and nav_notifications_total|add:0 > 0 %}

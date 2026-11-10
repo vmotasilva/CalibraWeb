@@ -1,0 +1,246 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="{% static 'shared/logo_calibraweb.svg' %}">
+<title>Apresentação — {{ playlist_nome }} | Calibra</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root { --ok:#22c55e; --alerta:#f59e0b; --critico:#ef4444; --neutro:#94a3b8; --bg:#0b1220; --card:#131c31; --linha:#243049; --txt:#e8edf7; --mut:#8fa0bf; }
+* { box-sizing:border-box; font-family:'Inter',-apple-system,"Segoe UI",Roboto,sans-serif; }
+html,body { height:100%; margin:0; background:var(--bg); color:var(--txt); overflow:hidden; }
+.bar-top { position:fixed; top:0; left:0; right:0; z-index:20; height:56px; display:flex; align-items:center; gap:14px; padding:0 20px;
+  background:linear-gradient(#0b1220ee,#0b122000); transition:opacity .3s; }
+body.ocioso .bar-top, body.ocioso .ctrl { opacity:0; pointer-events:none; }
+body.ocioso { cursor:none; }
+.bar-top .marca { font-weight:800; letter-spacing:.3px; display:flex; align-items:center; gap:8px; }
+.bar-top .marca img { height:26px; }
+.bar-top .sp { flex:1; }
+.bar-top .rel { font-variant-numeric:tabular-nums; color:var(--mut); font-weight:600; }
+select, .btn { background:#ffffff14; color:var(--txt); border:1px solid #ffffff2a; border-radius:10px; padding:6px 12px; font-size:.9rem; cursor:pointer; }
+select option { color:#0f172a; }
+.btn:hover { background:#ffffff26; }
+.palco { position:fixed; inset:0; padding:76px 4vw 5vh; display:flex; flex-direction:column; }
+.cab { display:flex; align-items:center; gap:18px; margin-bottom:3vh; }
+.cab .ic { font-size:clamp(2rem,3.6vw,3.6rem); color:var(--alerta); }
+.cab h1 { margin:0; font-size:clamp(1.8rem,3.4vw,3.4rem); font-weight:800; letter-spacing:-.5px; }
+.cab p { margin:2px 0 0; color:var(--mut); font-size:clamp(1rem,1.5vw,1.5rem); }
+.corpo { flex:1; min-height:0; display:flex; flex-direction:column; }
+.slide { animation:entra .5s ease both; flex:1; min-height:0; display:flex; flex-direction:column; }
+@keyframes entra { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion:reduce) { .slide { animation:none; } }
+
+.tiles { display:grid; gap:2vw; grid-template-columns:repeat(auto-fit,minmax(18vw,1fr)); align-content:start; }
+.tile { background:var(--card); border:1px solid var(--linha); border-radius:20px; padding:2.2vh 1.6vw; border-left:8px solid var(--neutro); }
+.tile.ok { border-left-color:var(--ok); } .tile.alerta { border-left-color:var(--alerta); } .tile.critico { border-left-color:var(--critico); }
+.tile .v { font-size:clamp(2.2rem,5vw,5.2rem); font-weight:800; line-height:1.05; }
+.tile.ok .v { color:var(--ok); } .tile.alerta .v { color:var(--alerta); } .tile.critico .v { color:var(--critico); }
+.tile .r { font-size:clamp(.9rem,1.4vw,1.5rem); font-weight:600; margin-top:.6vh; }
+.tile .n { color:var(--mut); font-size:clamp(.75rem,1vw,1.05rem); margin-top:.3vh; }
+.tiles.compacto .v { font-size:clamp(1.6rem,3vw,3.2rem); }
+
+.cards { display:grid; gap:2vh; align-content:start; }
+.card { background:var(--card); border:1px solid var(--linha); border-left:8px solid var(--alerta); border-radius:16px; padding:2vh 1.8vw; }
+.card.critico { border-left-color:var(--critico); } .card.neutro { border-left-color:var(--neutro); } .card.ok { border-left-color:var(--ok); }
+.card h3 { margin:0; font-size:clamp(1.1rem,1.9vw,2rem); font-weight:700; }
+.card .tx { margin-top:.8vh; color:#c4cee3; font-size:clamp(.95rem,1.4vw,1.5rem); line-height:1.35; }
+.tags { margin-top:1.2vh; display:flex; flex-wrap:wrap; gap:.6vw; }
+.tag { background:#ffffff12; border-radius:99px; padding:.4vh 1vw; font-size:clamp(.75rem,1vw,1.1rem); color:var(--mut); font-weight:600; }
+
+.bars { display:flex; flex-direction:column; gap:2vh; justify-content:center; flex:1; overflow:hidden; }
+.brow { display:grid; grid-template-columns:28vw 1fr 14vw; gap:1.5vw; align-items:center; }
+.brow .l { font-size:clamp(1rem,1.7vw,1.8rem); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.brow .t { height:3vh; min-height:16px; border-radius:99px; background:#ffffff14; overflow:hidden; }
+.brow .t > span { display:block; height:100%; border-radius:99px; background:var(--neutro); }
+.brow.ok .t > span { background:var(--ok); } .brow.alerta .t > span { background:var(--alerta); } .brow.critico .t > span { background:var(--critico); }
+.brow .p { font-size:clamp(1rem,1.7vw,1.8rem); font-weight:800; text-align:right; font-variant-numeric:tabular-nums; }
+
+.grafico { flex:1; min-height:0; background:var(--card); border:1px solid var(--linha); border-radius:20px; padding:2vh 2vw; position:relative; }
+.vazio { margin:auto; text-align:center; color:var(--mut); font-size:2rem; }
+
+.ctrl { position:fixed; bottom:3.2vh; right:2vw; z-index:20; display:flex; gap:8px; transition:opacity .3s; }
+.ctrl .btn { width:46px; height:46px; padding:0; border-radius:50%; font-size:1.15rem; }
+.prog { position:fixed; left:0; bottom:0; height:6px; width:100%; background:#ffffff10; z-index:25; }
+.prog > i { display:block; height:100%; width:0; background:#3b82f6; }
+.rod { position:fixed; left:4vw; bottom:1.4vh; color:var(--mut); font-size:.85rem; z-index:15; }
+.aviso { position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center; background:#0b1220e6; }
+.aviso.on { display:flex; }
+.aviso .btn { font-size:1.4rem; padding:16px 34px; background:#2563eb; border-color:#2563eb; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="bar-top">
+  <div class="marca"><img src="{% static 'shared/logo_calibraweb.svg' %}" alt=""> Calibra · {{ playlist_nome }}</div>
+  <div class="sp"></div>
+  <select id="selPlaylist" title="Playlist">
+    {% for k, nome, ic in playlists %}<option value="{{ k }}" {% if k == playlist %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+  </select>
+  <span class="rel" id="relogio"></span>
+  <button class="btn" id="btnSair" title="Sair (Esc)"><i class="bi bi-x-lg"></i> Sair</button>
+</div>
+
+<div class="palco">
+  <div class="cab"><i class="bi ic" id="cIcone"></i><div><h1 id="cTitulo"></h1><p id="cSub"></p></div></div>
+  <div class="corpo" id="corpo"></div>
+</div>
+
+<div class="ctrl">
+  <button class="btn" id="btnAnt" title="Anterior (←)"><i class="bi bi-skip-backward-fill"></i></button>
+  <button class="btn" id="btnPlay" title="Pausar/continuar (espaço)"><i class="bi bi-pause-fill"></i></button>
+  <button class="btn" id="btnProx" title="Próximo (→)"><i class="bi bi-skip-forward-fill"></i></button>
+  <button class="btn" id="btnTela" title="Tela cheia (F)"><i class="bi bi-fullscreen"></i></button>
+</div>
+<div class="rod" id="rodape"></div>
+<div class="prog"><i id="prog"></i></div>
+<div class="aviso" id="aviso"><button class="btn" id="btnIniciar"><i class="bi bi-play-fill"></i> Iniciar apresentação</button></div>
+
+<script>
+(function () {
+  var API = "{{ api_url }}", PLAYLIST = "{{ playlist }}", DUR_FORCADA = {{ duracao }}, RESUMO = {{ resumo|yesno:"true,false" }};
+  var REFRESH_MS = 120000, slides = [], idx = 0, rodando = true, inicio = 0, restante = 0, chart = null, raf = null, ociosoT = null, lock = null;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+  function tom(t) { return t || "neutro"; }
+
+  var desenho = {
+    tiles: function (s) {
+      var g = el("div", "tiles" + (s.itens.length > 8 ? " compacto" : ""));
+      s.itens.forEach(function (i) {
+        var t = el("div", "tile " + tom(i.tom));
+        t.appendChild(el("div", "v", i.valor)); t.appendChild(el("div", "r", i.rotulo));
+        if (i.nota) t.appendChild(el("div", "n", i.nota));
+        g.appendChild(t);
+      });
+      return g;
+    },
+    cards: function (s) {
+      var g = el("div", "cards");
+      s.itens.forEach(function (i) {
+        var c = el("div", "card " + tom(i.tom)); c.appendChild(el("h3", null, i.titulo));
+        if (i.texto) c.appendChild(el("div", "tx", i.texto));
+        var tg = el("div", "tags"); (i.tags || []).forEach(function (x) { if (x) tg.appendChild(el("span", "tag", x)); });
+        c.appendChild(tg); g.appendChild(c);
+      });
+      return g;
+    },
+    bars: function (s) {
+      var g = el("div", "bars");
+      s.itens.forEach(function (i) {
+        var r = el("div", "brow " + tom(i.tom)); r.appendChild(el("div", "l", i.rotulo));
+        var t = el("div", "t"), b = el("span"); b.style.width = Math.max(2, Math.min(100, i.pct)) + "%"; t.appendChild(b);
+        r.appendChild(t); r.appendChild(el("div", "p", i.txt)); g.appendChild(r);
+      });
+      return g;
+    },
+    chart: function (s) {
+      var w = el("div", "grafico"), cv = el("canvas"); w.appendChild(cv);
+      setTimeout(function () {
+        var u = s.unidade || "";
+        chart = new Chart(cv, {
+          type: "line",
+          data: { labels: s.labels, datasets: [
+            { label: "Resultado", data: s.valores, borderColor: "#60a5fa", backgroundColor: "#60a5fa33", fill: true, tension: .25, borderWidth: 4, pointRadius: 6, pointBackgroundColor: "#60a5fa" },
+            { label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#22c55e", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false }
+          ] },
+          options: { maintainAspectRatio: false, animation: { duration: 900 },
+            plugins: { legend: { labels: { color: "#c4cee3", font: { size: 18 } } },
+              tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.y + u; } } } },
+            scales: { x: { ticks: { color: "#c4cee3", font: { size: 18 } }, grid: { color: "#ffffff12" } },
+                      y: { ticks: { color: "#c4cee3", font: { size: 18 }, callback: function (v) { return v + u; } }, grid: { color: "#ffffff12" } } } }
+        });
+      }, 30);
+      return w;
+    },
+    vazio: function (s) { return el("div", "vazio", s.subtitulo); }
+  };
+
+  function mostrar(i) {
+    if (!slides.length) return;
+    idx = (i + slides.length) % slides.length;
+    var s = slides[idx];
+    if (chart) { chart.destroy(); chart = null; }
+    $("cIcone").className = "bi ic " + (s.icone || "bi-display");
+    $("cTitulo").textContent = s.titulo; $("cSub").textContent = s.kind === "vazio" ? "" : (s.subtitulo || "");
+    var sl = el("div", "slide"); sl.appendChild((desenho[s.kind] || desenho.vazio)(s));
+    var corpo = $("corpo"); corpo.innerHTML = ""; corpo.appendChild(sl);
+    $("rodape").textContent = (idx + 1) + " / " + slides.length;
+    restante = (DUR_FORCADA || s.duracao || 15) * 1000; inicio = performance.now(); agendar();
+  }
+
+  function agendar() {
+    cancelAnimationFrame(raf);
+    (function passo(t) {
+      var total = (DUR_FORCADA || (slides[idx] && slides[idx].duracao) || 15) * 1000;
+      if (rodando) {
+        var frac = Math.min((total - restante + (t - inicio)) / total, 1);
+        $("prog").style.width = (frac * 100) + "%";
+        if (t - inicio >= restante) { mostrar(idx + 1); return; }
+      }
+      raf = requestAnimationFrame(passo);
+    })(performance.now());
+  }
+
+  function alternar() {
+    if (rodando) { restante = Math.max(restante - (performance.now() - inicio), 0); rodando = false; }
+    else { inicio = performance.now(); rodando = true; }
+    $("btnPlay").innerHTML = '<i class="bi bi-' + (rodando ? "pause" : "play") + '-fill"></i>';
+  }
+
+  function carregar(manter) {
+    var qs = "?p=" + encodeURIComponent(PLAYLIST) + (RESUMO ? "&resumo=1" : "");
+    return fetch(API + qs, { credentials: "same-origin", cache: "no-store" }).then(function (r) {
+      if (r.redirected || !r.ok) throw new Error("sessão");
+      return r.json();
+    }).then(function (d) {
+      var ant = slides[idx] && slides[idx].titulo + "|" + slides[idx].provedor;
+      slides = d.slides;
+      if (!manter) { mostrar(0); return; }
+      var novo = slides.findIndex(function (s) { return s.titulo + "|" + s.provedor === ant; });
+      idx = novo >= 0 ? novo : Math.min(idx, slides.length - 1);
+      $("rodape").textContent = (idx + 1) + " / " + slides.length;
+    }).catch(function () { /* mantém os slides atuais; tenta de novo no próximo ciclo */ });
+  }
+
+  function tela() {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(function () {});
+  }
+  function manterAcesa() {
+    if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function (l) { lock = l; }).catch(function () {});
+  }
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") manterAcesa(); });
+
+  function ocioso() { document.body.classList.remove("ocioso"); clearTimeout(ociosoT); ociosoT = setTimeout(function () { document.body.classList.add("ocioso"); }, 3000); }
+  ["mousemove", "keydown", "touchstart"].forEach(function (e) { document.addEventListener(e, ocioso); });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowRight") mostrar(idx + 1);
+    else if (e.key === "ArrowLeft") mostrar(idx - 1);
+    else if (e.key === " ") { e.preventDefault(); alternar(); }
+    else if (e.key === "f" || e.key === "F") tela();
+    else if (e.key === "Escape" && !document.fullscreenElement) sair();
+  });
+  function sair() { history.length > 1 ? history.back() : (location.href = "/"); }
+  $("btnSair").onclick = sair; $("btnAnt").onclick = function () { mostrar(idx - 1); }; $("btnProx").onclick = function () { mostrar(idx + 1); };
+  $("btnPlay").onclick = alternar; $("btnTela").onclick = tela;
+  $("selPlaylist").onchange = function () { location.search = "?p=" + this.value + (RESUMO ? "&resumo=1" : ""); };
+  setInterval(function () { $("relogio").textContent = new Date().toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }, 1000);
+  setInterval(function () { carregar(true); }, REFRESH_MS);
+
+  // Chegou pelo botão ▶: tenta tela cheia direto; se o navegador exigir gesto, mostra o botão "Iniciar".
+  function partir() {
+    $("aviso").classList.remove("on"); tela(); manterAcesa(); ocioso();
+  }
+  $("btnIniciar").onclick = partir;
+  carregar(false).then(function () {
+    if (location.hash === "#cheia") { $("aviso").classList.add("on"); }
+    ocioso(); manterAcesa();
+  });
+})();
+</script>
+</body>
+</html>
