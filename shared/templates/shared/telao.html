@@ -184,16 +184,24 @@ select option { color:#0f172a; }
     vazio: function (s) { return el("div", "vazio", s.subtitulo); }
   };
 
-  function mostrar(i) {
-    if (!slides.length) return;
-    idx = (i + slides.length) % slides.length;
-    var s = slides[idx];
+  function desenhar(s) {
     if (chart) { chart.destroy(); chart = null; }
     $("cIcone").className = "bi ic " + (s.icone || "bi-display");
     $("cTitulo").textContent = s.titulo; $("cSub").textContent = s.kind === "vazio" ? "" : (s.subtitulo || "");
     var sl = el("div", "slide"); sl.appendChild((desenho[s.kind] || desenho.vazio)(s));
     var corpo = $("corpo"); corpo.innerHTML = ""; corpo.appendChild(sl);
-    $("rodape").textContent = (idx + 1) + " / " + slides.length;
+  }
+  function sig(s) { var c = Object.assign({}, s); delete c.n; return JSON.stringify(c); }
+  var atualizadoEm = "", falhas = 0;
+  function rodape() {
+    $("rodape").textContent = (idx + 1) + " / " + slides.length + (atualizadoEm ? " · atualizado às " + atualizadoEm : "") + (falhas >= 2 ? " · sem conexão, exibindo última versão" : "");
+  }
+
+  function mostrar(i) {
+    if (!slides.length) return;
+    idx = (i + slides.length) % slides.length;
+    var s = slides[idx];
+    desenhar(s); rodape();
     restante = (DUR_FORCADA || s.duracao || 15) * 1000; inicio = performance.now(); agendar();
   }
 
@@ -222,13 +230,18 @@ select option { color:#0f172a; }
       if (r.redirected || !r.ok) throw new Error("sessão");
       return r.json();
     }).then(function (d) {
-      var ant = slides[idx] && slides[idx].titulo + "|" + slides[idx].provedor;
-      slides = d.slides;
+      var atual = slides[idx], ant = atual && atual.titulo + "|" + atual.provedor + "|" + (atual.subtitulo || "");
+      var antJson = atual && sig(atual);
+      slides = d.slides; falhas = 0; atualizadoEm = d.gerado_em || "";
       if (!manter) { mostrar(0); return; }
-      var novo = slides.findIndex(function (s) { return s.titulo + "|" + s.provedor === ant; });
+      // mantém a posição: acha o mesmo slide (título/provedor); se o conteúdo mudou, redesenha sem reiniciar o tempo
+      var novo = slides.findIndex(function (s) { return s.titulo + "|" + s.provedor + "|" + (s.subtitulo || "") === ant; });
+      if (novo < 0) novo = slides.findIndex(function (s) { return atual && s.titulo === atual.titulo && s.provedor === atual.provedor; });
       idx = novo >= 0 ? novo : Math.min(idx, slides.length - 1);
-      $("rodape").textContent = (idx + 1) + " / " + slides.length;
-    }).catch(function () { /* mantém os slides atuais; tenta de novo no próximo ciclo */ });
+      var s = slides[idx];
+      if (s && sig(s) !== antJson) desenhar(s);
+      rodape();
+    }).catch(function () { falhas++; rodape(); /* mantém os slides atuais; tenta de novo no próximo ciclo */ });
   }
 
   function tela() {
@@ -256,6 +269,8 @@ select option { color:#0f172a; }
   $("selPlaylist").onchange = function () { location.search = "?p=" + this.value + (RESUMO ? "&resumo=1" : ""); };
   setInterval(function () { $("relogio").textContent = new Date().toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }, 1000);
   setInterval(function () { carregar(true); }, REFRESH_MS);
+  // ao voltar à aba (ou o aparelho acordar) atualiza na hora, sem esperar o próximo minuto
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") carregar(true); });
 
   // Chegou pelo botão ▶: tenta tela cheia direto; se o navegador exigir gesto, mostra o botão "Iniciar".
   function partir() {

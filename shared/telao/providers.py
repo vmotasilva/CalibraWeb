@@ -13,6 +13,7 @@ exceção para quem o chama (um módulo com falha apenas some da rotação).
 """
 from __future__ import annotations
 
+import contextvars
 import logging
 from datetime import datetime
 from typing import Callable
@@ -27,6 +28,15 @@ CARDS_POR_SLIDE = 4
 MAX_SLIDES_CARDS = 3
 MAX_GRUPOS_OCORRENCIAS = 8
 RESUMO_TEXTO = 110
+
+
+_SEM_CACHE = contextvars.ContextVar("telao_sem_cache", default=False)
+CACHE_SEGUNDOS = 45  # menor que o ciclo de atualização do player (60 s)
+
+
+def _cache_get(chave):
+    """Cache curto dos cálculos pesados; ignorado quando o telão pede dados frescos (sempre, via API)."""
+    return None if _SEM_CACHE.get() else cache.get(chave)
 
 
 def _slide(provedor, kind, titulo, subtitulo="", icone="bi-display", duracao=DURACAO_PADRAO, **dados):
@@ -299,7 +309,7 @@ def slides_kpi(user, resumo=False, filtros=None):
 # ---------------------------------------------------------------------------
 def _dados_modelo(modelo):
     chave = f"telao:auditoria:v1:{modelo.pk}"
-    dados = cache.get(chave)
+    dados = _cache_get(chave)
     if dados is None:
         from auditoria.apresentacao import montar_apresentacao
 
@@ -311,7 +321,7 @@ def _dados_modelo(modelo):
             "abertas": a["total_ocorrencias_abertas"], "vencidas": a["ocorrencias_vencidas"],
             "periodo": a["periodo_txt"], "tem_ciclo": a["base"] is not None,
         }
-        cache.set(chave, dados, 120)
+        cache.set(chave, dados, CACHE_SEGUNDOS)
     return dados
 
 
@@ -360,7 +370,7 @@ def slides_auditoria(user, resumo=False, filtros=None):
         if "pontos" in secoes and d["criticas"]:
             slides.append(_slide("auditoria", "cards", f"{d['nome']} — pontos de atenção",
                                  f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)", "bi-flag",
-                                 itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
+                                 itens=[{"titulo": _corta(c["pergunta"], CACHE_SEGUNDOS), "texto": "", "tom": "critico",
                                          "tags": [f"{c['ncs']} NC", f"{c['semanas']} semana(s) seguidas"] if c["semanas"] else [f"{c['ncs']} NC"]}
                                         for c in d["criticas"]]))
         slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", oc_por_modelo.get(d["nome"], []), resumo, mostrar_coment)
@@ -371,7 +381,7 @@ def slides_auditoria(user, resumo=False, filtros=None):
 # Metrologia (instrumentos vencidos / a vencer)
 # ---------------------------------------------------------------------------
 def _dados_metrologia():
-    dados = cache.get("telao:metrologia:v2")
+    dados = _cache_get("telao:metrologia:v2")
     if dados is None:
         from metrologia.views.views import get_metrologia_dashboard_data
 
@@ -385,7 +395,7 @@ def _dados_metrologia():
                 "ocorrencias": i["ocorrencias_count"],
             } for i in d["instrumentos"]],  # já vem ordenado: vencidos, a vencer, com ocorrência
         }
-        cache.set("telao:metrologia:v2", dados, 120)
+        cache.set("telao:metrologia:v2", dados, CACHE_SEGUNDOS)
     return dados
 
 
@@ -440,7 +450,7 @@ def slides_metrologia(user, resumo=False, filtros=None):
 # ---------------------------------------------------------------------------
 def _dados_pcp(formulario_id=None, dias=30):
     chave = f"telao:pcp:v3:{formulario_id or 0}:{dias}"
-    dados = cache.get(chave)
+    dados = _cache_get(chave)
     if dados is None:
         import datetime
 
@@ -460,7 +470,7 @@ def _dados_pcp(formulario_id=None, dias=30):
             "frequencias": [{"nome": f["nome"], "pct": f["pct"]} for f in d["por_frequencia"] if f["pct"] is not None],
             "piores": [{"nome": f"{t} · {l['nome']}", "pct": l["pct"]} for l, t in paginas[:6]],
         }
-        cache.set(chave, dados, 120)
+        cache.set(chave, dados, CACHE_SEGUNDOS)
     return dados
 
 
@@ -525,7 +535,7 @@ def _dados_lab(f):
     turnos = [t for t in (f.get("turnos") or []) if str(t).strip()]
     periodo = f.get("periodo") if f.get("periodo") in ("mes", "30d", "90d", "ano") else "mes"
     chave = "telao:lab:v2:" + hashlib.md5(json.dumps([periodo, sorted(turnos)]).encode()).hexdigest()
-    dados = cache.get(chave)
+    dados = _cache_get(chave)
     if dados is not None:
         return dados
     ultimo = RendimentoHCRegistro.objects.order_by("-data").values_list("data", flat=True).first()
@@ -563,7 +573,7 @@ def _dados_lab(f):
         colabs = [c for c in hc._por_colaborador(qs, prod) if c["rend"] is not None][:10]
         dados = {"vazio": False, "rotulo": rotulo, "meta": meta, "total": total, "dias": dias, "meses": meses,
                  "turnos": por_turno, "motivos": motivos, "materiais": materiais[:8], "colabs": colabs}
-    cache.set(chave, dados, 120)
+    cache.set(chave, dados, CACHE_SEGUNDOS)
     return dados
 
 
@@ -643,7 +653,7 @@ def _dados_treinamentos(f):
 
     flt = _filtros_pessoas(f)
     chave = "telao:trein:v2:" + hashlib.md5(json.dumps(flt, sort_keys=True).encode()).hexdigest()
-    dados = cache.get(chave)
+    dados = _cache_get(chave)
     if dados is not None:
         return dados
 
@@ -715,7 +725,7 @@ def _dados_treinamentos(f):
         "ult30": base.filter(data_treinamento__gte=date.today() - timedelta(days=30)).count(),
         "setor_turno": setor_turno, "lideres": lideres, "meses": meses,
     }
-    cache.set(chave, dados, 120)
+    cache.set(chave, dados, CACHE_SEGUNDOS)
     return dados
 
 
@@ -1091,8 +1101,17 @@ def _marcar_cards(provedor, slides):
         s["card"] = next((cid for cid, _r, pred in regras if pred(s)), "")
 
 
-def montar_playlist(user, playlist: str, resumo: bool = False) -> list[dict]:
-    """Monta os slides a cada chamada: filtros e cards do modelo valem na hora, e os dados são os atuais."""
+def montar_playlist(user, playlist: str, resumo: bool = False, fresco: bool = False) -> list[dict]:
+    """Monta os slides a cada chamada: filtros e cards do modelo valem na hora, e os dados são os atuais
+    (fresco=True ignora o cache dos cálculos pesados)."""
+    token = _SEM_CACHE.set(bool(fresco))
+    try:
+        return _montar_playlist(user, playlist, resumo)
+    finally:
+        _SEM_CACHE.reset(token)
+
+
+def _montar_playlist(user, playlist: str, resumo: bool = False) -> list[dict]:
     definicao = obter_playlist(user, playlist)
     resumo = resumo or definicao["resumo"]
     slides: list[dict] = []

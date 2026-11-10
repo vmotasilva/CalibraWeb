@@ -61,6 +61,25 @@ class TelaoTests(TestCase):
         self.assertNotIn("Laboratório", titulos)
         self.assertNotIn("KPI", titulos)
 
+    def test_api_sempre_traz_dados_frescos_sem_esperar_o_cache(self):
+        from laboratorio.models import RendimentoHCRegistro
+
+        def lentes():
+            for s in providers.montar_playlist(self.admin, "laboratorio", fresco=True):
+                for i in s.get("itens", []):
+                    if i.get("rotulo") == "Lentes produzidas":
+                        return i["valor"]
+
+        RendimentoHCRegistro.objects.create(data=date(2026, 3, 1), qtd_lentes=100, qtd_retrabalho=0)
+        self.assertEqual(lentes(), "100")
+        providers.montar_playlist(self.admin, "laboratorio")  # preenche o cache
+        RendimentoHCRegistro.objects.create(data=date(2026, 3, 2), qtd_lentes=50, qtd_retrabalho=0)
+        self.assertEqual([i["valor"] for s in providers.montar_playlist(self.admin, "laboratorio")
+                          for i in s.get("itens", []) if i.get("rotulo") == "Lentes produzidas"], ["100"])  # cache curto
+        self.assertEqual(lentes(), "150")  # fresco ignora o cache
+        self.client.force_login(self.admin)
+        self.assertIn("gerado_em", self.client.get(reverse("telao_api") + "?p=laboratorio").json())
+
     def test_ocorrencias_do_modulo_podem_ser_desligadas(self):
         slides = providers.slides_laboratorio(self.admin, filtros={"com_ocorrencias": "nao"})
         self.assertFalse(any(s.get("ocorr") for s in slides))

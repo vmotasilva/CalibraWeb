@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
@@ -34,8 +35,8 @@ def telao_view(request):
 @never_cache
 def telao_api(request):
     chave = (request.GET.get("p") or "").strip()
-    slides = providers.montar_playlist(request.user, chave, resumo=request.GET.get("resumo") == "1")
-    return JsonResponse({"slides": slides})
+    slides = providers.montar_playlist(request.user, chave, resumo=request.GET.get("resumo") == "1", fresco=True)
+    return JsonResponse({"slides": slides, "gerado_em": timezone.localtime().strftime("%H:%M:%S")})
 
 
 def playlists_para_menu(user):
