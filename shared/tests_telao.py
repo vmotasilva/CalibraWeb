@@ -90,6 +90,17 @@ class TelaoProvedoresTests(TestCase):
         cards = [i for s in slides if s["kind"] == "cards" for i in s["itens"]]
         self.assertEqual(cards[0]["titulo"], "Treino X")
 
+    def test_treinamentos_com_todos_os_filtros_compila(self):
+        filtros = {"setores": ["1"], "turnos": ["A"], "lideres": ["1"], "supervisores": ["1"], "gerentes": ["1"],
+                   "criticidade": ["CRITICO"], "matrizes": ["M"], "sub_areas": ["S"], "janela": "15", "apenas_atrasados": True}
+        self.assertIsInstance(providers.slides_treinamentos(self.admin, filtros=filtros), list)
+        self.assertIsInstance(providers.slides_treinamentos(self.admin, resumo=True, filtros={}), list)
+
+    def test_treinamentos_filtros_do_editor_tem_opcoes(self):
+        campos = {c["nome"]: c for c in providers.campos_filtro("treinamentos", self.admin)}
+        for nome in ("setores", "turnos", "lideres", "supervisores", "gerentes", "criticidade", "matrizes", "sub_areas"):
+            self.assertIn(nome, campos)
+
     def test_usuario_sem_acesso_nao_ve_modulo(self):
         comum = get_user_model().objects.create_user("comum", password="x")
         self.assertEqual(providers.slides_kpi(comum) + providers.slides_auditoria(comum), [])

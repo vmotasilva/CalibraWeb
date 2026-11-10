@@ -477,6 +477,107 @@ def slides_laboratorio(user, resumo=False, filtros=None):
 # ---------------------------------------------------------------------------
 # Treinamentos (planejamento)
 # ---------------------------------------------------------------------------
+def _filtros_pessoas(f):
+    """Filtros do dashboard de treinamentos que recortam por colaborador / procedimento (iguais aos da tela)."""
+    return {k: [x for x in (f.get(k) or []) if str(x).strip()] for k in
+            ("setores", "turnos", "lideres", "supervisores", "gerentes", "criticidade", "matrizes", "sub_areas")}
+
+
+def _dados_treinamentos(f):
+    import hashlib
+    import json
+    from datetime import date, timedelta
+
+    from django.db.models import Case, Count, Exists, F, IntegerField, OuterRef, Q, Subquery, Value, When
+    from django.db.models.functions import TruncMonth
+
+    from core.models import TURNOS_CHOICES
+    from procedures.models import ColaboradorPerfil, RegistroTreinamento
+    from rh.models import Colaborador
+
+    flt = _filtros_pessoas(f)
+    chave = "telao:trein:v2:" + hashlib.md5(json.dumps(flt, sort_keys=True).encode()).hexdigest()
+    dados = cache.get(chave)
+    if dados is not None:
+        return dados
+
+    base = RegistroTreinamento.objects.filter(
+        colaborador__isnull=False, colaborador__is_active=True, colaborador__afastado=False,
+        colaborador__em_ferias=False, procedimento__isnull=False, ativo=True)
+    if flt["setores"]:
+        base = base.filter(colaborador__setor_id__in=flt["setores"])
+    if flt["turnos"]:
+        base = base.filter(colaborador__turno__in=flt["turnos"])
+    if flt["lideres"]:
+        base = base.filter(Q(colaborador__lider_id__in=flt["lideres"]) | Q(colaborador__vice_lider_id__in=flt["lideres"]))
+    if flt["supervisores"]:
+        base = base.filter(colaborador__supervisor_id__in=flt["supervisores"])
+    if flt["gerentes"]:
+        base = base.filter(colaborador__gerente_id__in=flt["gerentes"])
+    if flt["criticidade"]:
+        base = base.filter(procedimento__criticidade__in=flt["criticidade"])
+    if flt["matrizes"]:
+        base = base.filter(procedimento__matriz__in=flt["matrizes"])
+    if flt["sub_areas"]:
+        base = base.filter(procedimento__sub_area__in=flt["sub_areas"])
+    # só procedimentos que fazem parte de algum perfil ativo do colaborador (como no dashboard)
+    base = base.annotate(_perfil=Exists(ColaboradorPerfil.objects.filter(
+        colaborador_id=OuterRef("colaborador_id"), ativo=True,
+        perfil__grupos__subgrupos__procedimentos=OuterRef("procedimento_id")))).filter(_perfil=True)
+
+    ultimo = RegistroTreinamento.objects.filter(
+        colaborador_id=OuterRef("colaborador_id"), procedimento_id=OuterRef("procedimento_id")).annotate(
+        valida=Case(When(data_treinamento__isnull=False, data_treinamento__gt=date(1970, 1, 1), then=Value(1)),
+                    default=Value(0), output_field=IntegerField())).order_by("-valida", "-data_treinamento", "-id").values("id")[:1]
+    vig_q = Q(data_treinamento__isnull=False) & (Q(procedimento__data_aprovacao__isnull=True)
+                                                 | Q(data_treinamento__gte=F("procedimento__data_aprovacao")))
+    pen_q = Q(data_treinamento__isnull=True) | (Q(procedimento__data_aprovacao__isnull=False)
+                                                 & Q(data_treinamento__lt=F("procedimento__data_aprovacao")))
+    unicos = base.filter(id=Subquery(ultimo))
+    total = unicos.count()
+    vig = unicos.filter(vig_q).count()
+    pend = unicos.filter(pen_q).count()
+
+    def _por(campos, nomear, limite=10):
+        linhas = []
+        for r in unicos.values(*campos).annotate(v=Count("id", filter=vig_q), p=Count("id", filter=pen_q)):
+            if r["v"] + r["p"] > 0:
+                linhas.append({"nome": nomear(r), "vig": r["v"], "pend": r["p"]})
+        linhas.sort(key=lambda x: -(x["vig"] + x["p"] if False else x["vig"] + x["pend"]))
+        return linhas[:limite]
+
+    turnos = dict(TURNOS_CHOICES)
+    setor_turno = _por(("colaborador__setor__nome", "colaborador__turno"),
+                       lambda r: f"{(r['colaborador__setor__nome'] or 'Sem setor')[:22]} - {turnos.get(r['colaborador__turno'], r['colaborador__turno'] or 'N/A')}")
+    lideres = _por(("colaborador__lider__nome_completo",),
+                   lambda r: " ".join(filter(None, [(r["colaborador__lider__nome_completo"] or "Sem líder").split()[0],
+                                                     (r["colaborador__lider__nome_completo"] or "").split()[-1] if len((r["colaborador__lider__nome_completo"] or "").split()) > 1 else ""])))
+
+    mes_ini = (date.today().replace(day=1) - timedelta(days=330)).replace(day=1)
+    por_mes = {(r["mes"].date() if hasattr(r["mes"], "date") else r["mes"]): r["n"] for r in base.filter(
+        data_treinamento__isnull=False, data_treinamento__gte=mes_ini).annotate(mes=TruncMonth("data_treinamento"))
+        .values("mes").annotate(n=Count("id"))}
+    meses, cur = [], mes_ini
+    for _ in range(12):
+        meses.append({"rotulo": cur.strftime("%m/%Y"), "n": por_mes.get(cur, 0)})
+        cur = (cur.replace(day=28) + timedelta(days=4)).replace(day=1)
+
+    dados = {
+        "total": total, "vig": vig, "pend": pend, "taxa": round(vig * 100 / total, 1) if total else None,
+        "colab": unicos.filter(vig_q).values("colaborador_id").distinct().count(),
+        "procs": unicos.filter(vig_q).values("procedimento_id").distinct().count(),
+        "ult30": base.filter(data_treinamento__gte=date.today() - timedelta(days=30)).count(),
+        "setor_turno": setor_turno, "lideres": lideres, "meses": meses,
+    }
+    cache.set(chave, dados, 120)
+    return dados
+
+
+def _bars_vigencia(linhas):
+    return [{"rotulo": x["nome"], "pct": (x["vig"] * 100 / (x["vig"] + x["pend"])), "tom": _tom_pct(x["vig"] * 100 / (x["vig"] + x["pend"])),
+             "txt": f"{_fmt_num(x['vig'] * 100 / (x['vig'] + x['pend']), 0)}%  ({x['vig']}/{x['vig'] + x['pend']})"} for x in linhas]
+
+
 def slides_treinamentos(user, resumo=False, filtros=None):
     import datetime
 
@@ -486,20 +587,56 @@ def slides_treinamentos(user, resumo=False, filtros=None):
     if not has_view_access(user, "procedures:dashboard_treinamentos"):
         return []
     f = filtros or {}
+    flt = _filtros_pessoas(f)
+    escopo = "Recorte aplicado" if any(flt.values()) else "Todos os colaboradores ativos"
+    d = _dados_treinamentos(f)
+    slides = []
+    if d["total"]:
+        slides.append(_slide("treinamentos", "tiles", "Treinamentos — vigência", escopo, "bi-mortarboard", itens=[
+            {"rotulo": "Conformidade", "valor": f"{_fmt_num(d['taxa'], 1)}%", "tom": _tom_pct(d["taxa"]), "nota": "treinamentos vigentes / total"},
+            {"rotulo": "Vigentes", "valor": d["vig"], "tom": "ok"},
+            {"rotulo": "Pendentes", "valor": d["pend"], "tom": "critico" if d["pend"] else "ok"},
+            {"rotulo": "Colaboradores treinados", "valor": d["colab"], "tom": "neutro"},
+            {"rotulo": "Procedimentos treinados", "valor": d["procs"], "tom": "neutro"},
+            {"rotulo": "Treinamentos nos últimos 30 dias", "valor": d["ult30"], "tom": "neutro"},
+        ]))
+        if d["setor_turno"]:
+            slides.append(_slide("treinamentos", "bars", "Treinamentos — vigência por setor e turno", escopo,
+                                 "bi-building", itens=_bars_vigencia(d["setor_turno"])))
+        if d["lideres"] and not resumo:
+            slides.append(_slide("treinamentos", "bars", "Treinamentos — vigência por líder", escopo,
+                                 "bi-person-badge", itens=_bars_vigencia(d["lideres"])))
+        if any(m["n"] for m in d["meses"]):
+            slides.append(_slide("treinamentos", "chart", "Treinamentos realizados por mês", "Últimos 12 meses",
+                                 "bi-calendar3", labels=[m["rotulo"] for m in d["meses"]], valores=[m["n"] for m in d["meses"]],
+                                 meta=None, unidade=""))
+
+    # Planejamento (mesmos recortes do dashboard, aplicados aos colaboradores do treinamento)
     janela = int(f["janela"]) if str(f.get("janela") or "").isdigit() else 30
     hoje = timezone.localdate()
-    abertos = P.objects.filter(status__in=("PLANEJADO", "CONFIRMADO", "ATRASADO"))
+    pq = P.objects.all()
+    for campo, vals in (("colaboradores__setor_id__in", flt["setores"]), ("colaboradores__turno__in", flt["turnos"]),
+                        ("colaboradores__supervisor_id__in", flt["supervisores"]), ("colaboradores__gerente_id__in", flt["gerentes"]),
+                        ("procedimentos__criticidade__in", flt["criticidade"]), ("procedimentos__matriz__in", flt["matrizes"]),
+                        ("procedimentos__sub_area__in", flt["sub_areas"])):
+        if vals:
+            pq = pq.filter(**{campo: vals})
+    if flt["lideres"]:
+        from django.db.models import Q
+        pq = pq.filter(Q(colaboradores__lider_id__in=flt["lideres"]) | Q(colaboradores__vice_lider_id__in=flt["lideres"]))
+    pq = pq.distinct()
+    abertos = pq.filter(status__in=("PLANEJADO", "CONFIRMADO", "ATRASADO"))
     atrasados = abertos.filter(data_prevista__lt=hoje).count()
     proximos_qs = abertos.filter(data_prevista__gte=hoje, data_prevista__lte=hoje + datetime.timedelta(days=janela)).order_by("data_prevista")
     proximos = [] if f.get("apenas_atrasados") else list(proximos_qs[:8])
-    realizados_mes = P.objects.filter(status="REALIZADO", data_realizada__year=hoje.year, data_realizada__month=hoje.month).count()
-    if not (atrasados or proximos or realizados_mes):
-        return []
-    tiles = [{"rotulo": "Atrasados", "valor": atrasados, "tom": "critico" if atrasados else "ok"}]
-    if not f.get("apenas_atrasados"):
-        tiles += [{"rotulo": f"Próximos {janela} dias", "valor": proximos_qs.count(), "tom": "neutro"},
-                  {"rotulo": "Realizados no mês", "valor": realizados_mes, "tom": "ok"}]
-    slides = [_slide("treinamentos", "tiles", "Treinamentos", f"Posição em {hoje:%d/%m/%Y}", "bi-mortarboard", itens=tiles)]
+    realizados_mes = pq.filter(status="REALIZADO", data_realizada__year=hoje.year, data_realizada__month=hoje.month).count()
+    if atrasados or proximos or realizados_mes:
+        tiles = [{"rotulo": "Atrasados", "valor": atrasados, "tom": "critico" if atrasados else "ok"}]
+        if not f.get("apenas_atrasados"):
+            tiles += [{"rotulo": f"Próximos {janela} dias", "valor": proximos_qs.count(), "tom": "neutro"},
+                      {"rotulo": "Realizados no mês", "valor": realizados_mes, "tom": "ok"}]
+        slides.append(_slide("treinamentos", "tiles", "Treinamentos — planejamento", f"Posição em {hoje:%d/%m/%Y}",
+                             "bi-calendar-check", itens=tiles))
     cards = [{"titulo": _corta(p.titulo, 100), "texto": "", "tom": "neutro",
               "tags": [f"{p.data_prevista:%d/%m/%Y}", f"em {(p.data_prevista - hoje).days} d", p.get_status_display()]
                       + ([p.local] if p.local and not resumo else [])} for p in proximos]
@@ -507,6 +644,36 @@ def slides_treinamentos(user, resumo=False, filtros=None):
         slides.append(_slide("treinamentos", "cards", "Próximos treinamentos", f"parte {n}" if len(cards) > CARDS_POR_SLIDE else "",
                              "bi-calendar-event", itens=lote))
     return slides
+
+
+def _opts_trein_setores(user):
+    from organization.models import Setor
+
+    return [(str(s.pk), s.nome) for s in Setor.objects.order_by("nome")]
+
+
+def _opts_trein_turnos(user):
+    from core.models import TURNOS_CHOICES
+
+    return list(TURNOS_CHOICES)
+
+
+def _opts_trein_pessoas(papel):
+    def _f(user):
+        from rh.models import Colaborador
+
+        ids = set(Colaborador.objects.filter(is_active=True).exclude(**{f"{papel}__isnull": True}).values_list(f"{papel}_id", flat=True))
+        return [(str(c.pk), c.nome_completo) for c in Colaborador.objects.filter(pk__in=ids, is_active=True).order_by("nome_completo")]
+    return _f
+
+
+def _opts_trein_proc(campo):
+    def _f(user):
+        from procedures.models import Procedimento
+
+        vals = Procedimento.objects.exclude(**{f"{campo}__isnull": True}).exclude(**{campo: ""}).values_list(campo, flat=True).distinct()
+        return [(v, v) for v in sorted(set(vals))]
+    return _f
 
 
 PROVEDORES: dict[str, Callable] = {
@@ -582,8 +749,12 @@ PROVEDOR_CARDS = {
         ("grafico", "Rendimento HC por dia", lambda s: s["kind"] == "chart"),
     ],
     "treinamentos": [
-        ("resumo", "Atrasados / próximos / realizados", lambda s: s["kind"] == "tiles"),
-        ("proximos", "Próximos treinamentos", lambda s: s["kind"] == "cards"),
+        ("resumo", "Vigência dos treinamentos (conformidade, vigentes, pendentes)", lambda s: s["kind"] == "tiles" and "vigência" in s["titulo"]),
+        ("setor_turno", "Vigência por setor e turno", lambda s: s["kind"] == "bars" and "setor" in s["titulo"]),
+        ("lider", "Vigência por líder", lambda s: s["kind"] == "bars" and "líder" in s["titulo"]),
+        ("mensal", "Treinamentos realizados por mês", lambda s: s["kind"] == "chart"),
+        ("planejamento", "Planejamento (atrasados, próximos, realizados)", lambda s: s["kind"] == "tiles" and "planejamento" in s["titulo"]),
+        ("proximos", "Lista dos próximos treinamentos", lambda s: s["kind"] == "cards"),
     ],
 }
 
@@ -664,9 +835,18 @@ FILTROS = {
     ],
     "laboratorio": [],
     "treinamentos": [
+        dict(nome="setores", rotulo="Setores", tipo="multi", opcoes=_opts_trein_setores, ajuda="Vazio = todos."),
+        dict(nome="turnos", rotulo="Turnos", tipo="multi", opcoes=_opts_trein_turnos),
+        dict(nome="lideres", rotulo="Líderes", tipo="multi", opcoes=_opts_trein_pessoas("lider")),
+        dict(nome="supervisores", rotulo="Supervisores", tipo="multi", opcoes=_opts_trein_pessoas("supervisor")),
+        dict(nome="gerentes", rotulo="Gerentes", tipo="multi", opcoes=_opts_trein_pessoas("gerente")),
+        dict(nome="criticidade", rotulo="Criticidade do procedimento", tipo="multi",
+             opcoes=lambda u: [("CRITICO", "Crítico"), ("NAO_CRITICO", "Não crítico")]),
+        dict(nome="matrizes", rotulo="Matrizes", tipo="multi", opcoes=_opts_trein_proc("matriz")),
+        dict(nome="sub_areas", rotulo="Sub-áreas", tipo="multi", opcoes=_opts_trein_proc("sub_area")),
         dict(nome="janela", rotulo="Próximos treinamentos em até", tipo="select",
              opcoes=lambda u: [("15", "15 dias"), ("30", "30 dias"), ("60", "60 dias"), ("90", "90 dias")]),
-        dict(nome="apenas_atrasados", rotulo="Somente atrasados", tipo="bool"),
+        dict(nome="apenas_atrasados", rotulo="Planejamento: somente atrasados", tipo="bool"),
     ],
 }
 
