@@ -99,9 +99,13 @@ Requer que a view passe "colaboradores" no contexto.
                 <form id="formRegistrarFerias" method="post">
                     {% csrf_token %}
                     <div class="row g-3">
-                        <div class="col-12" id="wrapRegMatriculaGlobal">
+                        <div class="col-md-6" id="wrapRegMatriculaGlobal">
                             <label class="form-label fw-semibold">Matrícula Global</label>
                             <input type="text" id="reg_matricula_global" class="form-control" readonly disabled>
+                        </div>
+                        <div class="col-md-6" id="wrapRegCpf">
+                            <label class="form-label fw-semibold">CPF</label>
+                            <input type="text" id="reg_cpf" class="form-control" readonly disabled>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Data de Início <span class="text-danger">*</span></label>
@@ -263,6 +267,7 @@ Requer que a view passe "colaboradores" no contexto.
         if (btnExcluir) btnExcluir.classList.add('d-none');
         // Reset form
         document.getElementById('wrapRegMatriculaGlobal').classList.add('d-none');
+        document.getElementById('wrapRegCpf').classList.add('d-none');
         ['reg_data_inicio','reg_dias_solicitados','reg_data_fim','reg_descricao'].forEach(id => {
             document.getElementById(id).value = '';
         });
@@ -297,6 +302,8 @@ Requer que a view passe "colaboradores" no contexto.
                 
                 document.getElementById('reg_matricula_global').value = data.matricula_global || '—';
                 document.getElementById('wrapRegMatriculaGlobal').classList.remove('d-none');
+                document.getElementById('reg_cpf').value = data.cpf || '—';
+                document.getElementById('wrapRegCpf').classList.remove('d-none');
                 document.getElementById('reg_data_inicio').value = data.data_inicio;
                 document.getElementById('reg_dias_solicitados').value = data.dias_solicitados;
                 document.getElementById('reg_data_fim').value = data.data_fim;
