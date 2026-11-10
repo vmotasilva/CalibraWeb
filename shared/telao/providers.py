@@ -1109,11 +1109,11 @@ def campos_filtro(provedor: str, user) -> list[dict]:
     return saida
 
 
-def limpar_filtros(provedor: str, get_lista, get_valor, user) -> dict:
-    """Lê os filtros enviados pelo formulário (`f_<provedor>_<campo>`), descartando o que não é opção válida."""
+def limpar_filtros(provedor: str, get_lista, get_valor, user, prefixo: str = "") -> dict:
+    """Lê os filtros enviados pelo formulário (`f_<provedor>_<campo>`, ou `<prefixo><campo>`), descartando o que não é opção válida."""
     filtros = {}
     for c in campos_filtro(provedor, user):
-        chave = f"f_{provedor}_{c['nome']}"
+        chave = f"{prefixo}{c['nome']}" if prefixo else f"f_{provedor}_{c['nome']}"
         validos = {str(v) for v, _ in c["opcoes"]}
         if c["tipo"] == "multi":
             marcados = [v for v in get_lista(chave) if v in validos]
@@ -1147,8 +1147,15 @@ def obter_playlist(user, chave: str) -> dict:
     if chave and chave[0] == "m" and chave[1:].isdigit():
         m = modelos_visiveis(user).filter(pk=int(chave[1:])).first()
         if m is not None:
-            itens = [(i.get("provedor"), i.get("duracao"), i.get("filtros") or {})
-                     for i in (m.itens or []) if isinstance(i, dict)]
+            itens = []
+            for i in (m.itens or []):
+                if not isinstance(i, dict):
+                    continue
+                if i.get("tipo") == "assunto":  # página montada à mão, com itens de um ou mais módulos
+                    itens.append((CHAVE_ASSUNTO, i.get("duracao"), {"titulo": i.get("titulo") or "Assunto", "icone": i.get("icone") or "",
+                                                                   "blocos": [b for b in (i.get("blocos") or []) if isinstance(b, dict)]}))
+                else:
+                    itens.append((i.get("provedor"), i.get("duracao"), i.get("filtros") or {}))
             return {"chave": m.chave, "nome": m.nome, "icone": m.icone or "bi-display", "itens": itens,
                     "duracao": m.duracao_padrao or DURACAO_PADRAO, "resumo": m.resumo}
     nome, icone, provedores = PLAYLISTS.get(chave, PLAYLISTS[PLAYLIST_PADRAO])
@@ -1157,6 +1164,8 @@ def obter_playlist(user, chave: str) -> dict:
             "duracao": None, "resumo": False}
 
 
+CHAVE_ASSUNTO = "@assunto"
+MAX_PAINEIS = 4
 ORIGENS_EMBUTIDAS = ("kpi", "auditoria", "metrologia", "pcp", "laboratorio")
 
 
@@ -1176,27 +1185,59 @@ def montar_playlist(user, playlist: str, resumo: bool = False, fresco: bool = Fa
         _SEM_CACHE.reset(token)
 
 
+def _slides_provedor(user, chave, filtros, resumo, embutidas):
+    if chave not in PROVEDORES:
+        return []
+    if chave == "ocorrencias" and embutidas:
+        filtros = {**filtros, "_embutidas": embutidas}
+    try:
+        novos = PROVEDORES[chave](user, resumo=resumo, filtros=filtros)
+    except Exception:  # um módulo com problema não derruba a rotação
+        logger.exception("Telão: provedor %s falhou", chave)
+        return []
+    _marcar_cards(chave, novos)
+    escolhidos = set(filtros.get("cards") or [])
+    if escolhidos:
+        novos = [s for s in novos if s["card"] in escolhidos]
+    return novos
+
+
+_LIMITE_PAINEL = {"cards": 3, "bars": 6, "tiles": 8}
+
+
+def _slide_assunto(user, cfg, resumo, embutidas):
+    """"One page report": uma página com os itens escolhidos (de um ou mais módulos), cada um num painel."""
+    paineis = []
+    for b in cfg.get("blocos") or []:
+        for sl in _slides_provedor(user, b.get("provedor"), b.get("filtros") or {}, resumo, embutidas):
+            lim = _LIMITE_PAINEL.get(sl["kind"])
+            if lim and len(sl.get("itens") or []) > lim:
+                sl = {**sl, "itens": sl["itens"][:lim]}
+            paineis.append(sl)
+    paineis = paineis[:MAX_PAINEIS]
+    if not paineis:
+        return []
+    return [_slide("assunto", "pagina", cfg.get("titulo") or "Assunto", "", cfg.get("icone") or "bi-layout-text-window",
+                   paineis=paineis, card="")]
+
+
 def _montar_playlist(user, playlist: str, resumo: bool = False) -> list[dict]:
     definicao = obter_playlist(user, playlist)
     resumo = resumo or definicao["resumo"]
     slides: list[dict] = []
-    embutidas = [c for c, _d, fl in definicao["itens"]
-                 if c in ORIGENS_EMBUTIDAS and fl.get("com_ocorrencias") != "nao"
+    pares = []  # (provedor, filtros) de todos os conteúdos, inclusive os de dentro dos assuntos
+    for c, _d, fl in definicao["itens"]:
+        if c == CHAVE_ASSUNTO:
+            pares += [(b.get("provedor"), b.get("filtros") or {}) for b in fl.get("blocos") or []]
+        else:
+            pares.append((c, fl))
+    embutidas = [c for c, fl in pares if c in ORIGENS_EMBUTIDAS and fl.get("com_ocorrencias") != "nao"
                  and (not fl.get("cards") or "ocorrencias" in fl["cards"])]
     for chave, duracao, filtros in definicao["itens"]:
-        if chave not in PROVEDORES:
-            continue
-        if chave == "ocorrencias" and embutidas:
-            filtros = {**filtros, "_embutidas": embutidas}
-        try:
-            novos = PROVEDORES[chave](user, resumo=resumo, filtros=filtros)
-        except Exception:  # um módulo com problema não derruba a rotação
-            logger.exception("Telão: provedor %s falhou", chave)
-            continue
-        _marcar_cards(chave, novos)
-        escolhidos = set(filtros.get("cards") or [])
-        if escolhidos:
-            novos = [s for s in novos if s["card"] in escolhidos]
+        if chave == CHAVE_ASSUNTO:
+            novos = _slide_assunto(user, filtros, resumo, embutidas)
+        else:
+            novos = _slides_provedor(user, chave, filtros, resumo, embutidas)
         seg = duracao or definicao["duracao"]
         if seg:
             for s in novos:

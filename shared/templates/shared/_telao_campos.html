@@ -1,0 +1,25 @@
+{% for c in campos %}
+<div class="{% if c.tipo == 'multi' %}col-12{% else %}col-md-6{% endif %}">
+  {% if c.tipo == 'bool' %}
+    <div class="form-check mt-md-4"><input class="form-check-input" type="checkbox" name="{{ c.campo }}" id="{{ c.campo }}" {% if c.val %}checked{% endif %}>
+      <label class="form-check-label" for="{{ c.campo }}">{{ c.rotulo }}</label></div>
+  {% elif c.tipo == 'select' %}
+    <label class="form-label small fw-bold mb-1" for="{{ c.campo }}">{{ c.rotulo }}</label>
+    <select class="form-select form-select-sm" name="{{ c.campo }}" id="{{ c.campo }}">
+      <option value="">Padrão</option>
+      {% for v, r in c.opcoes %}{% if v %}<option value="{{ v }}" {% if c.val == v %}selected{% endif %}>{{ r }}</option>{% endif %}{% endfor %}
+    </select>
+  {% else %}
+    <div class="small fw-bold mb-1">{{ c.rotulo }}</div>
+    {% if c.opcoes %}
+    <div class="border rounded p-2 d-flex flex-wrap gap-x-3" style="max-height: 160px; overflow:auto;">
+      {% for v, r in c.opcoes %}
+      <div class="form-check me-3"><input class="form-check-input" type="checkbox" name="{{ c.campo }}" value="{{ v }}" id="{{ c.campo }}_{{ forloop.counter }}" {% if v in c.sel %}checked{% endif %}>
+        <label class="form-check-label small" for="{{ c.campo }}_{{ forloop.counter }}">{{ r }}</label></div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="text-muted small">Nenhuma opção disponível.</div>{% endif %}
+    {% if c.ajuda %}<div class="form-text">{{ c.ajuda }}</div>{% endif %}
+  {% endif %}
+</div>
+{% endfor %}

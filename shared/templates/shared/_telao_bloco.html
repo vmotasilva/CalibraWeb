@@ -1,0 +1,20 @@
+{# Um item de módulo dentro de um assunto: escolhe o módulo e, em "Filtros e cards", o que dele entra na página. #}
+<div class="bloco border rounded p-2 mb-2 bg-body-tertiary" data-b="{{ j }}">
+  <input type="hidden" name="as_{{ n }}_bl" value="{{ j }}">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <i class="bi bi-box-arrow-in-right text-primary"></i>
+    <select class="form-select form-select-sm w-auto sel-prov" name="as_{{ n }}_b{{ j }}_prov">
+      {% for k, r in rotulos_prov %}<option value="{{ k }}" {% if k == prov %}selected{% endif %}>{{ r }}</option>{% endfor %}
+    </select>
+    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#fb_{{ n }}_{{ j }}"><i class="bi bi-funnel"></i> Filtros e cards</button>
+    {% if n_filtros %}<span class="badge text-bg-primary">{{ n_filtros }} filtro{{ n_filtros|pluralize }}</span>{% endif %}
+    <button type="button" class="btn btn-sm btn-outline-danger ms-auto" data-rm-bloco title="Remover item"><i class="bi bi-trash"></i></button>
+  </div>
+  <div class="collapse {% if n_filtros %}show{% endif %}" id="fb_{{ n }}_{{ j }}">
+    {% for sec in secoes %}
+    <div class="row g-3 mt-1 pt-2 border-top fp" data-prov="{{ sec.prov }}" {% if sec.prov != prov %}hidden{% endif %}>
+      {% include "shared/_telao_campos.html" with campos=sec.campos %}
+    </div>
+    {% endfor %}
+  </div>
+</div>

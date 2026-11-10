@@ -226,6 +226,32 @@ class ModeloApresentacaoTests(TestCase):
             self.assertEqual(s["duracao"], 30 if s["provedor"] == "kpi" else 9)
             self.assertIn(s["provedor"], {"kpi", "ocorrencias"})
 
+    def test_assunto_pagina_com_itens_de_varios_modulos(self):
+        from shared.models import ModeloApresentacao
+
+        Indicador.objects.create(nome="Perda", meta=5, sentido="menor", unidade="%")
+        OcorrenciaLaboratorio.objects.create(assunto="Estufa", detalhamento="detalhe", criado_por=self.dono)
+        self.client.force_login(self.dono)
+        dados = {"nome": "Com assunto", "prov": ["ocorrencias"], "duracao_padrao": "10", "ativo": "on",
+                 "as_idx": ["100"], "as_100_titulo": "Qualidade e laboratório", "as_100_dur": "25",
+                 "as_100_bl": ["100", "101"], "as_100_b100_prov": "kpi", "fa_100_100_kpi_dias": "",
+                 "fa_100_100_kpi_cards": ["situacao"], "as_100_b101_prov": "laboratorio",
+                 "ordem": ["a:100", "p:ocorrencias"]}
+        self.assertEqual(self.client.post(reverse("telao_modelo_novo"), dados).status_code, 302)
+        m = ModeloApresentacao.objects.get()
+        self.assertEqual(m.itens[0]["tipo"], "assunto")  # a ordem do formulário vale
+        self.assertEqual([b["provedor"] for b in m.itens[0]["blocos"]], ["kpi", "laboratorio"])
+        self.assertEqual(m.itens[1]["provedor"], "ocorrencias")
+        slides = providers.montar_playlist(self.dono, m.chave)
+        pag = slides[0]
+        self.assertEqual((pag["kind"], pag["titulo"], pag["duracao"]), ("pagina", "Qualidade e laboratório", 25))
+        self.assertEqual({p["provedor"] for p in pag["paineis"]}, {"kpi", "laboratorio"})
+        # o editor reabre com o assunto preenchido
+        r = self.client.get(reverse("telao_modelo_editar", args=[m.pk]))
+        self.assertContains(r, "Qualidade e laboratório")
+        self.assertEqual(self.client.get(reverse("telao_modelo_novo")).status_code, 200)
+        self.assertContains(self.client.get(reverse("telao_modelos")), "Assunto: Qualidade e laboratório")
+
     def test_visibilidade(self):
         from shared.models import ModeloApresentacao
 

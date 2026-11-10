@@ -60,6 +60,26 @@ select option { color:#0f172a; }
 .brow.ok .t > span { background:var(--ok); } .brow.alerta .t > span { background:var(--alerta); } .brow.critico .t > span { background:var(--critico); }
 .brow .p { font-size:clamp(1rem,1.7vw,1.8rem); font-weight:800; text-align:right; font-variant-numeric:tabular-nums; }
 
+.pagina { display:grid; gap:2vh 1.4vw; flex:1; min-height:0; grid-template-columns:1fr; grid-auto-rows:minmax(0,1fr); }
+.pagina.n2, .pagina.n3, .pagina.n4 { grid-template-columns:1fr 1fr; }
+.pagina.n3 .painel:first-child { grid-column:1 / -1; }
+.painel { background:#0f1729; border:1px solid var(--linha); border-radius:18px; padding:1.4vh 1.1vw; display:flex; flex-direction:column; min-height:0; overflow:hidden; }
+.painel .ph { display:flex; align-items:center; gap:.8vw; margin-bottom:1vh; }
+.painel .ph > i { font-size:clamp(1.2rem,1.9vw,2rem); color:var(--alerta); }
+.painel .ph h2 { margin:0; font-size:clamp(1rem,1.5vw,1.6rem); font-weight:800; }
+.painel .ph p { margin:0; color:var(--mut); font-size:clamp(.75rem,1vw,1.05rem); }
+.painel .tiles { gap:.9vw; grid-template-columns:repeat(auto-fit,minmax(8.5vw,1fr)); }
+.painel .tile { padding:1vh .8vw; border-radius:14px; border-left-width:6px; }
+.painel .tile .v { font-size:clamp(1.3rem,2.4vw,2.6rem); } .painel .tile .r { font-size:clamp(.75rem,1.05vw,1.15rem); } .painel .tile .n { font-size:clamp(.65rem,.85vw,.95rem); }
+.painel .cards { gap:1vh; overflow:hidden; }
+.painel .card { padding:1vh 1vw; border-radius:12px; border-left-width:6px; }
+.painel .card h3 { font-size:clamp(.85rem,1.2vw,1.3rem); } .painel .card .tx { font-size:clamp(.75rem,1vw,1.1rem); margin-top:.4vh; }
+.painel .tags { margin-top:.6vh; } .painel .tag { font-size:clamp(.65rem,.85vw,.95rem); padding:.2vh .6vw; }
+.painel .card .cm { font-size:clamp(.7rem,.95vw,1.05rem); margin-top:.5vh; padding:.3vh .6vw; }
+.painel .bars { gap:1vh; justify-content:flex-start; }
+.painel .brow { grid-template-columns:14vw 1fr 8vw; gap:.8vw; }
+.painel .brow .l, .painel .brow .p { font-size:clamp(.75rem,1.05vw,1.15rem); }
+.painel .grafico { padding:1vh 1vw; border-radius:14px; }
 .grafico { flex:1; min-height:0; background:var(--card); border:1px solid var(--linha); border-radius:20px; padding:2vh 2vw; position:relative; }
 .vazio { margin:auto; text-align:center; color:var(--mut); font-size:2rem; }
 
@@ -102,7 +122,7 @@ select option { color:#0f172a; }
 <script>
 (function () {
   var API = "{{ api_url }}", PLAYLIST = "{{ playlist }}", DUR_FORCADA = {{ duracao }}, RESUMO = {{ resumo|yesno:"true,false" }};
-  var REFRESH_MS = 60000, slides = [], idx = 0, rodando = true, inicio = 0, restante = 0, chart = null, raf = null, ociosoT = null, lock = null;
+  var REFRESH_MS = 60000, slides = [], idx = 0, rodando = true, inicio = 0, restante = 0, charts = [], raf = null, ociosoT = null, lock = null;
   var $ = function (id) { return document.getElementById(id); };
 
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
@@ -148,9 +168,9 @@ select option { color:#0f172a; }
         var u = s.unidade || "";
         var fmt = function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; };
         // Rótulos de valor em cada ponto (e o valor da meta na ponta da linha tracejada).
-        var ating = s.atingiu || null, VERDE = "#22c55e", VERM = "#ef4444";
+        var tf = s.compacto ? 12 : 18, ating = s.atingiu || null, VERDE = "#22c55e", VERM = "#ef4444";
         var rotulos = { id: "rotulos", afterDatasetsDraw: function (c) {
-          var x = c.ctx; x.save(); x.textAlign = "center"; x.font = "700 20px Inter, sans-serif";
+          var x = c.ctx; x.save(); x.textAlign = "center"; x.font = "700 " + (s.compacto ? 13 : 20) + "px Inter, sans-serif";
           c.data.datasets.forEach(function (ds, di) {
             var meta = c.getDatasetMeta(di);
             meta.data.forEach(function (pt, i) {
@@ -168,7 +188,7 @@ select option { color:#0f172a; }
           });
           x.restore();
         } };
-        chart = new Chart(cv, {
+        charts.push(new Chart(cv, {
           type: "line", plugins: [rotulos],
           data: { labels: s.labels, datasets: [
             { label: "Resultado", data: s.valores, borderColor: "#60a5fa", backgroundColor: ating ? "#ffffff0d" : "#60a5fa33", fill: true, tension: .25, borderWidth: 4, pointRadius: 7,
@@ -177,19 +197,31 @@ select option { color:#0f172a; }
             { label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#cbd5e1", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false }
           ] },
           options: { maintainAspectRatio: false, animation: { duration: 900 }, layout: { padding: { top: 24, right: 16 } },
-            plugins: { legend: { display: !ating, labels: { color: "#c4cee3", font: { size: 18 } } },
+            plugins: { legend: { display: !ating, labels: { color: "#c4cee3", font: { size: tf } } },
               tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.y + u; } } } },
-            scales: { x: { ticks: { color: "#c4cee3", font: { size: 18 } }, grid: { color: "#ffffff12" } },
-                      y: { ticks: { color: "#c4cee3", font: { size: 18 }, callback: function (v) { return v + u; } }, grid: { color: "#ffffff12" } } } }
-        });
+            scales: { x: { ticks: { color: "#c4cee3", font: { size: tf } }, grid: { color: "#ffffff12" } },
+                      y: { ticks: { color: "#c4cee3", font: { size: tf }, callback: function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; } }, grid: { color: "#ffffff12" } } } }
+        }));
       }, 30);
       return w;
+    },
+    pagina: function (s) {
+      var g = el("div", "pagina n" + s.paineis.length);
+      s.paineis.forEach(function (p) {
+        var q = el("section", "painel"), h = el("div", "ph"), t = el("div");
+        h.appendChild(el("i", "bi " + (p.icone || "bi-display"))); t.appendChild(el("h2", null, p.titulo));
+        if (p.subtitulo) t.appendChild(el("p", null, p.subtitulo));
+        h.appendChild(t); q.appendChild(h);
+        var c = Object.assign({}, p, { compacto: true });
+        q.appendChild((desenho[c.kind] || desenho.vazio)(c)); g.appendChild(q);
+      });
+      return g;
     },
     vazio: function (s) { return el("div", "vazio", s.subtitulo); }
   };
 
   function desenhar(s) {
-    if (chart) { chart.destroy(); chart = null; }
+    charts.forEach(function (c) { c.destroy(); }); charts = [];
     $("cIcone").className = "bi ic " + (s.icone || "bi-display");
     $("cTitulo").textContent = s.titulo; $("cSub").textContent = s.kind === "vazio" ? "" : (s.subtitulo || "");
     var sl = el("div", "slide"); sl.appendChild((desenho[s.kind] || desenho.vazio)(s));

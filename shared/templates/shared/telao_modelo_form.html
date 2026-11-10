@@ -24,10 +24,14 @@
       </div>
 
       <h6 class="fw-bold mt-4 mb-1">Conteúdo e ordem</h6>
-      <div class="text-muted small mb-2">Marque o que entra na apresentação e use as setas para definir a ordem. A duração é opcional (vale a duração padrão se vazia).</div>
+      <div class="text-muted small mb-2">Marque o que entra na apresentação e use as setas para definir a ordem. A duração é opcional (vale a duração padrão se vazia).
+        Para juntar vários itens numa só tela, crie um <b>assunto</b>: uma página montada por você, com itens de um ou mais módulos.</div>
       <ul class="list-group" id="listaItens">
         {% for l in linhas %}
-        <li class="list-group-item">
+        {% if l.assunto %}
+          {% include "shared/_telao_assunto.html" with a=l n=l.n %}
+        {% else %}
+        <li class="list-group-item" data-p="{{ l.chave }}">
           <div class="d-flex align-items-center gap-3 flex-wrap">
             <input class="form-check-input mt-0" type="checkbox" name="prov" value="{{ l.chave }}" id="p_{{ l.chave }}" {% if l.ativo %}checked{% endif %}>
             <label class="flex-grow-1 mb-0 fw-semibold" for="p_{{ l.chave }}"><i class="bi {{ l.icone }} me-2 text-primary"></i>{{ l.rotulo }}
@@ -44,36 +48,14 @@
           </div>
           <div class="collapse {% if l.n_filtros %}show{% endif %}" id="flt_{{ l.chave }}">
             <div class="row g-3 mt-1 pt-2 border-top">
-              {% for c in l.campos %}
-              <div class="{% if c.tipo == 'multi' %}col-12{% else %}col-md-6{% endif %}">
-                {% if c.tipo == 'bool' %}
-                  <div class="form-check mt-md-4"><input class="form-check-input" type="checkbox" name="{{ c.campo }}" id="{{ c.campo }}" {% if c.val %}checked{% endif %}>
-                    <label class="form-check-label" for="{{ c.campo }}">{{ c.rotulo }}</label></div>
-                {% elif c.tipo == 'select' %}
-                  <label class="form-label small fw-bold mb-1" for="{{ c.campo }}">{{ c.rotulo }}</label>
-                  <select class="form-select form-select-sm" name="{{ c.campo }}" id="{{ c.campo }}">
-                    <option value="">Padrão</option>
-                    {% for v, r in c.opcoes %}{% if v %}<option value="{{ v }}" {% if c.val == v %}selected{% endif %}>{{ r }}</option>{% endif %}{% endfor %}
-                  </select>
-                {% else %}
-                  <div class="small fw-bold mb-1">{{ c.rotulo }}</div>
-                  {% if c.opcoes %}
-                  <div class="border rounded p-2 d-flex flex-wrap gap-x-3" style="max-height: 160px; overflow:auto;">
-                    {% for v, r in c.opcoes %}
-                    <div class="form-check me-3"><input class="form-check-input" type="checkbox" name="{{ c.campo }}" value="{{ v }}" id="{{ c.campo }}_{{ forloop.counter }}" {% if v in c.sel %}checked{% endif %}>
-                      <label class="form-check-label small" for="{{ c.campo }}_{{ forloop.counter }}">{{ r }}</label></div>
-                    {% endfor %}
-                  </div>
-                  {% else %}<div class="text-muted small">Nenhuma opção disponível.</div>{% endif %}
-                  {% if c.ajuda %}<div class="form-text">{{ c.ajuda }}</div>{% endif %}
-                {% endif %}
-              </div>
-              {% endfor %}
+              {% include "shared/_telao_campos.html" with campos=l.campos %}
             </div>
           </div>
         </li>
+        {% endif %}
         {% endfor %}
       </ul>
+      <button type="button" class="btn btn-outline-success btn-sm mt-2" id="btnNovoAssunto"><i class="bi bi-layout-text-window me-1"></i>Novo assunto (página com itens de vários módulos)</button>
 
       <div class="row g-3 mt-2">
         <div class="col-md-4">
@@ -97,12 +79,49 @@
     </div>
   </form>
 </div>
+<template id="tplAssunto">{% include "shared/_telao_assunto.html" with a=None n="@A@" %}</template>
+<template id="tplBloco">{% include "shared/_telao_bloco.html" with n="@A@" j="@B@" prov="ocorrencias" n_filtros=0 secoes=modelo_bloco.secoes %}</template>
 <script>
-document.getElementById('listaItens').addEventListener('click', function (e) {
-  var b = e.target.closest('[data-mover]'); if (!b) return;
-  var li = b.closest('li'), d = parseInt(b.dataset.mover, 10);
-  if (d < 0 && li.previousElementSibling) li.parentNode.insertBefore(li, li.previousElementSibling);
-  if (d > 0 && li.nextElementSibling) li.parentNode.insertBefore(li.nextElementSibling, li);
-});
+(function () {
+  var lista = document.getElementById('listaItens'), proxA = {{ n_assuntos }} + 100, proxB = 100;
+  function clonar(id, a, b) {
+    var h = document.getElementById(id).innerHTML.split('@A@').join(a).split('@B@').join(b);
+    var t = document.createElement('div'); t.innerHTML = h.trim(); return t.firstElementChild;
+  }
+  function mostrarSecao(bloco) {
+    var v = bloco.querySelector('.sel-prov').value;
+    bloco.querySelectorAll('.fp').forEach(function (d) { d.hidden = d.dataset.prov !== v; });
+  }
+  function novoBloco(assuntoLi) {
+    var a = assuntoLi.dataset.a, b = proxB++, el = clonar('tplBloco', a, b);
+    assuntoLi.querySelector('.blocos').appendChild(el); mostrarSecao(el);
+  }
+  lista.addEventListener('click', function (e) {
+    var m = e.target.closest('[data-mover]');
+    if (m) {
+      var li = m.closest('#listaItens > li'), d = parseInt(m.dataset.mover, 10);
+      if (d < 0 && li.previousElementSibling) li.parentNode.insertBefore(li, li.previousElementSibling);
+      if (d > 0 && li.nextElementSibling) li.parentNode.insertBefore(li.nextElementSibling, li);
+      return;
+    }
+    var nb = e.target.closest('[data-add-bloco]'); if (nb) { novoBloco(nb.closest('li')); return; }
+    var rb = e.target.closest('[data-rm-bloco]'); if (rb) { rb.closest('.bloco').remove(); return; }
+    var ra = e.target.closest('[data-rm-assunto]'); if (ra) { ra.closest('#listaItens > li').remove(); }
+  });
+  lista.addEventListener('change', function (e) { if (e.target.classList.contains('sel-prov')) mostrarSecao(e.target.closest('.bloco')); });
+  document.getElementById('btnNovoAssunto').addEventListener('click', function () {
+    var a = proxA++, li = clonar('tplAssunto', a, 0);
+    lista.appendChild(li); novoBloco(li); li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  // a ordem final (itens fixos e assuntos juntos) segue a posição na tela
+  lista.closest('form').addEventListener('submit', function () {
+    this.querySelectorAll('input[name=ordem]').forEach(function (i) { i.remove(); });
+    var f = this;
+    lista.querySelectorAll(':scope > li').forEach(function (li) {
+      var i = document.createElement('input'); i.type = 'hidden'; i.name = 'ordem';
+      i.value = li.dataset.a ? 'a:' + li.dataset.a : 'p:' + li.dataset.p; f.appendChild(i);
+    });
+  });
+})();
 </script>
 {% endblock %}
