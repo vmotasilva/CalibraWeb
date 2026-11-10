@@ -45,6 +45,26 @@ class TelaoTests(TestCase):
         self.assertEqual(slides[0]["itens"][0]["comentarios"], [])
         self.assertIn("1 em aberto", slides[0]["subtitulo"])
 
+    def test_ocorrencias_embutidas_no_modulo_e_sem_duplicar(self):
+        from kpi.models import AnaliseCausa, AnaliseItem
+
+        ind = Indicador.objects.get(nome="Perda")
+        reg = AnaliseCausa.objects.create(indicador=ind, granularidade="mensal", periodo=date(2026, 2, 28))
+        AnaliseItem.objects.create(registro=reg, tipo=AnaliseItem.TIPO_OCORRENCIA, acao="Revisar processo")
+        slides = providers.montar_playlist(self.admin, "geral")
+        titulos = [s["titulo"] for s in slides]
+        i = titulos.index("Perda")
+        self.assertEqual(titulos[i + 1], "Perda — ocorrências")  # logo depois do gráfico do indicador
+        self.assertIn("02/2026", slides[i + 1]["itens"][0]["titulo"])
+        self.assertEqual(titulos.count("Laboratório — ocorrências"), 1)
+        # o provedor global não repete, no fim, as listas das origens já embutidas
+        self.assertNotIn("Laboratório", titulos)
+        self.assertNotIn("KPI", titulos)
+
+    def test_ocorrencias_do_modulo_podem_ser_desligadas(self):
+        slides = providers.slides_laboratorio(self.admin, filtros={"com_ocorrencias": "nao"})
+        self.assertFalse(any(s.get("ocorr") for s in slides))
+
     def test_playlist_invalida_cai_no_padrao(self):
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get(reverse("telao_api") + "?p=xyz").status_code, 200)

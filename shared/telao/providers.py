@@ -81,6 +81,60 @@ def _sem_auditorias_inativas(itens):
     return [i for i in itens if not (i.origem == "auditoria" and int(i.uid.split(":")[1]) in fora)]
 
 
+def _itens_ocorrencias(user, origem, f):
+    """Ocorrências em aberto de uma origem, para embutir no slide do próprio módulo (vazio se desligado no modelo)."""
+    from shared import ocorrencias as central
+
+    if f.get("com_ocorrencias") == "nao":
+        return []
+    return _sem_auditorias_inativas(central.listar_ocorrencias(user, "abertas", origem))
+
+
+def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, icone=None):
+    """Slides de ocorrências de uma sessão: lista = [(item, título curto)]; cada card traz prazo, dias em aberto e comentários."""
+    if not lista:
+        return []
+    hoje = timezone.localdate()
+    lista = sorted(lista, key=lambda t: (not t[0].vencida, t[0].prazo is None, t[0].prazo or hoje, t[0].data_ordem))
+    n_venc = sum(int(i.vencida) for i, _ in lista)
+    cards = []
+    for i, titulo_item in lista[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
+        dias = max((hoje - timezone.localtime(i.data_ordem).date()).days, 0)
+        tags = ([f"prazo {i.prazo:%d/%m/%Y}"] if i.prazo else []) + [f"{dias} d em aberto"]
+        if i.responsaveis and not resumo:
+            tags.append(", ".join(i.responsaveis[:2]))
+        coment = []
+        if mostrar_coment:
+            todos = sorted(((_quando(c["quando"]), c) for p in i.plano for c in p.comentarios), key=lambda t: t[0], reverse=True)
+            coment = [{"autor": c["autor"], "quando": c["quando"], "texto": _corta(c["texto"], 170)} for _, c in todos[:2]]
+        cards.append({"titulo": _corta(titulo_item, 110), "texto": "", "tom": "critico" if i.vencida else "alerta",
+                      "tags": tags, "comentarios": coment})
+    sub = f"{len(lista)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "")
+    lotes = list(_lotes(cards, CARDS_POR_SLIDE))
+    return [_slide(provedor, "cards", nome, sub + (f" · parte {n}/{len(lotes)}" if len(lotes) > 1 else ""),
+                   icone or lista[0][0].icon or "bi-exclamation-octagon", grupo=True, ocorr=True, itens=lote)
+            for n, lote in enumerate(lotes, start=1)]
+
+
+def _slides_ocorrencias_modulo(user, origem, nome, resumo, f):
+    itens = _itens_ocorrencias(user, origem, f)
+    return _slides_lista_ocorrencias(origem, f"{nome} — ocorrências", [(i, i.titulo) for i in itens],
+                                     resumo, not resumo and f.get("comentarios") != "nao")
+
+
+def _com_ocorrencias(origem, nome):
+    """Decorador: depois dos slides do módulo, vêm as ocorrências em aberto dele (e seus comentários)."""
+    def deco(fn):
+        import functools
+
+        @functools.wraps(fn)
+        def _w(user, resumo=False, filtros=None):
+            f = filtros or {}
+            return list(fn(user, resumo=resumo, filtros=filtros)) + _slides_ocorrencias_modulo(user, origem, nome, resumo, f)
+        return _w
+    return deco
+
+
 def slides_ocorrencias(user, resumo=False, filtros=None):
     from shared import ocorrencias as central
 
@@ -145,35 +199,20 @@ def slides_ocorrencias(user, resumo=False, filtros=None):
             "txt": f"{qtd}" + (f"  ({venc_origem[nome]} venc.)" if venc_origem.get(nome) else ""),
         } for nome, qtd in sorted(por_origem.items(), key=lambda kv: -kv[1])]))
 
-    # Uma "sessão" por slide: o módulo de origem (na Auditoria, o modelo/relatório); abaixo, as ocorrências e, se marcado, seus comentários
+    # Origens cujo módulo já está na apresentação mostram as próprias ocorrências junto de seus indicadores
+    embutidas = set(f.get("_embutidas") or [])
     mostrar_coment = not resumo and f.get("comentarios") != "nao"
     grupos = {}
     for i in itens:
+        if i.origem in embutidas:
+            continue
         grupo, titulo_item = i.origem_nome, i.titulo
         if i.origem == "auditoria" and " — " in i.titulo:
             grupo, titulo_item = (x.strip() for x in i.titulo.split(" — ", 1))
         grupos.setdefault(grupo, []).append((i, titulo_item))
     ordem = sorted(grupos.items(), key=lambda kv: (-sum(int(i.vencida) for i, _ in kv[1]), -len(kv[1]), kv[0]))
     for nome, lista in ordem[:MAX_GRUPOS_OCORRENCIAS]:
-        lista.sort(key=lambda t: (not t[0].vencida, t[0].prazo is None, t[0].prazo or hoje, t[0].data_ordem))
-        n_venc = sum(int(i.vencida) for i, _ in lista)
-        cards = []
-        for i, titulo_item in lista[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
-            dias = max((hoje - timezone.localtime(i.data_ordem).date()).days, 0)
-            tags = ([f"prazo {i.prazo:%d/%m/%Y}"] if i.prazo else []) + [f"{dias} d em aberto"]
-            if i.responsaveis and not resumo:
-                tags.append(", ".join(i.responsaveis[:2]))
-            coment = []
-            if mostrar_coment:
-                todos = sorted(((_quando(c["quando"]), c) for p in i.plano for c in p.comentarios), key=lambda t: t[0], reverse=True)
-                coment = [{"autor": c["autor"], "quando": c["quando"], "texto": _corta(c["texto"], 170)} for _, c in todos[:2]]
-            cards.append({"titulo": _corta(titulo_item, 110), "texto": "", "tom": "critico" if i.vencida else "alerta",
-                          "tags": tags, "comentarios": coment})
-        sub = f"{len(lista)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "")
-        lotes = list(_lotes(cards, CARDS_POR_SLIDE))
-        for n, lote in enumerate(lotes, start=1):
-            slides.append(_slide("ocorrencias", "cards", nome, sub + (f" · parte {n}/{len(lotes)}" if len(lotes) > 1 else ""),
-                                 lista[0][0].icon or "bi-exclamation-octagon", grupo=True, itens=lote))
+        slides += _slides_lista_ocorrencias("ocorrencias", nome, lista, resumo, mostrar_coment)
     return slides
 
 
@@ -224,6 +263,24 @@ def slides_kpi(user, resumo=False, filtros=None):
         "nota": f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%m/%Y}" if ult else "sem lançamento",
     } for rotulo, ind, _s, ult, meta, a in linhas[:18]])]
 
+    # ocorrências (cards de causa/análise) de cada indicador: entram logo depois do gráfico dele
+    import re
+
+    oc_por_ind = {}
+    for i in _itens_ocorrencias(user, "kpi", f):
+        m = re.search(r"ind=(\d+)", i.url_origem or "")
+        resto = i.titulo.split(" — ", 1)[-1]
+        if m and (not setores or any(f"· {x}" in resto for x in setores)):
+            oc_por_ind.setdefault(int(m.group(1)), []).append((i, resto))
+    mostrar_coment = not resumo and f.get("comentarios") != "nao"
+    emitidos = set()
+
+    def _ocorr(rotulo, ind):
+        if ind.pk in oc_por_ind and ind.pk not in emitidos:
+            emitidos.add(ind.pk)
+            return _slides_lista_ocorrencias("kpi", f"{rotulo} — ocorrências", oc_por_ind[ind.pk], resumo, mostrar_coment)
+        return []
+
     if graficos != "nenhum":
         escolhidos = [l for l in linhas if (graficos == "todos" and l[2]) or l[5] is False]
         for rotulo, ind, serie, ult, meta, a in escolhidos[:8]:
@@ -231,6 +288,9 @@ def slides_kpi(user, resumo=False, filtros=None):
             slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor",
                                  "bi-graph-down-arrow" if a is False else "bi-graph-up", labels=[m.periodo.strftime("%m/%Y") for m in serie],
                                  valores=[float(m.valor) for m in serie], meta=float(meta), unidade=ind.unidade))
+            slides += _ocorr(rotulo, ind)
+    for rotulo, ind, *_ in linhas:  # indicadores sem gráfico na apresentação, mas com ocorrência
+        slides += _ocorr(rotulo, ind)
     return slides
 
 
@@ -281,8 +341,18 @@ def slides_auditoria(user, resumo=False, filtros=None):
             "txt": (f"{_fmt_num(d['pct'], 1)}%" if d["pct"] is not None else "—")
                    + (f"  ({'+' if d['variacao'] > 0 else ''}{_fmt_num(d['variacao'], 1)})" if d["variacao"] else ""),
         } for d in ordenados]))
-    for d in ordenados[: (10 if ids else 4)]:
+    oc_por_modelo = {}
+    for i in _itens_ocorrencias(user, "auditoria", f):
+        if " — " in i.titulo:
+            nome_m, resto = (x.strip() for x in i.titulo.split(" — ", 1))
+            oc_por_modelo.setdefault(nome_m, []).append((i, resto))
+    mostrar_coment = not resumo and f.get("comentarios") != "nao"
+    limite = 10 if ids else 4
+    for n_mod, d in enumerate(ordenados):
         pontos = [c for c in d["ciclos"] if c["pct"] is not None]
+        if n_mod >= limite:  # além do limite de gráficos, só as ocorrências da auditoria
+            slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", oc_por_modelo.get(d["nome"], []), resumo, mostrar_coment)
+            continue
         if "evolucao" in secoes and len(pontos) > 1:
             slides.append(_slide("auditoria", "chart", d["nome"], f"Evolução da conformidade · {d['periodo']}",
                                  "bi-graph-up", labels=[c["label"] for c in pontos],
@@ -293,6 +363,7 @@ def slides_auditoria(user, resumo=False, filtros=None):
                                  itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
                                          "tags": [f"{c['ncs']} NC", f"{c['semanas']} semana(s) seguidas"] if c["semanas"] else [f"{c['ncs']} NC"]}
                                         for c in d["criticas"]]))
+        slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", oc_por_modelo.get(d["nome"], []), resumo, mostrar_coment)
     return slides
 
 
@@ -318,6 +389,7 @@ def _dados_metrologia():
     return dados
 
 
+@_com_ocorrencias("metrologia", "Metrologia")
 def slides_metrologia(user, resumo=False, filtros=None):
     from shared.permissions import has_module_access
 
@@ -392,6 +464,7 @@ def _dados_pcp(formulario_id=None, dias=30):
     return dados
 
 
+@_com_ocorrencias("pcp", "PCP")
 def slides_pcp(user, resumo=False, filtros=None):
     from shared.permissions import has_view_access
 
@@ -498,6 +571,7 @@ def _tom_rend(v, meta):
     return "neutro" if v is None else "ok" if v >= meta else "critico"
 
 
+@_com_ocorrencias("laboratorio", "Laboratório")
 def slides_laboratorio(user, resumo=False, filtros=None):
     from shared.permissions import has_view_access
 
@@ -933,6 +1007,17 @@ FILTROS = {
 }
 
 
+_CAMPOS_OCORRENCIAS = [
+    dict(nome="com_ocorrencias", rotulo="Ocorrências do módulo na sequência", tipo="select",
+         opcoes=lambda u: [("sim", "Mostrar (e seus comentários)"), ("nao", "Não mostrar")]),
+    dict(nome="comentarios", rotulo="Comentários do plano de ação", tipo="select",
+         opcoes=lambda u: [("sim", "Mostrar sob cada ocorrência"), ("nao", "Não mostrar")]),
+]
+for _k in ("kpi", "auditoria", "metrologia", "pcp", "laboratorio"):
+    FILTROS[_k] = list(FILTROS.get(_k, [])) + _CAMPOS_OCORRENCIAS
+    PROVEDOR_CARDS[_k] = [("ocorrencias", "Ocorrências do módulo e comentários (na sequência)", lambda s: bool(s.get("ocorr")))] + list(PROVEDOR_CARDS.get(_k, []))
+
+
 def campos_filtro(provedor: str, user) -> list[dict]:
     """Campos de filtro do provedor para o editor: primeiro a seleção de cards, depois os filtros do módulo."""
     campos = [dict(nome="cards", rotulo="Cards que entram na apresentação", tipo="multi",
@@ -997,6 +1082,9 @@ def obter_playlist(user, chave: str) -> dict:
             "duracao": None, "resumo": False}
 
 
+ORIGENS_EMBUTIDAS = ("kpi", "auditoria", "metrologia", "pcp", "laboratorio")
+
+
 def _marcar_cards(provedor, slides):
     regras = PROVEDOR_CARDS.get(provedor, [])
     for s in slides:
@@ -1008,9 +1096,14 @@ def montar_playlist(user, playlist: str, resumo: bool = False) -> list[dict]:
     definicao = obter_playlist(user, playlist)
     resumo = resumo or definicao["resumo"]
     slides: list[dict] = []
+    embutidas = [c for c, _d, fl in definicao["itens"]
+                 if c in ORIGENS_EMBUTIDAS and fl.get("com_ocorrencias") != "nao"
+                 and (not fl.get("cards") or "ocorrencias" in fl["cards"])]
     for chave, duracao, filtros in definicao["itens"]:
         if chave not in PROVEDORES:
             continue
+        if chave == "ocorrencias" and embutidas:
+            filtros = {**filtros, "_embutidas": embutidas}
         try:
             novos = PROVEDORES[chave](user, resumo=resumo, filtros=filtros)
         except Exception:  # um módulo com problema não derruba a rotação
