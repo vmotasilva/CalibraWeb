@@ -161,3 +161,43 @@ class ModeloApresentacaoTests(TestCase):
         self.assertContains(self.client.get(reverse("telao_modelos")), "Minha TV")
         self.assertEqual(self.client.get(reverse("telao_modelo_novo") + "?base=geral").status_code, 200)
         self.assertContains(self.client.get(reverse("telao") + "?p=m999"), "Calibra")
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class TelaoAuditoriasInativasTests(TestCase):
+    """Auditorias inativadas ou arquivadas não entram no telão (nem os slides, nem as ocorrências)."""
+
+    def setUp(self):
+        cache.clear()
+        self.admin = get_user_model().objects.create_user("adm4", password="x", is_superuser=True, is_staff=True)
+
+    def _modelo(self, nome, **extra):
+        from auditoria.models import ModeloAuditoria, RegistroAuditoria
+
+        m = ModeloAuditoria.objects.create(nome=nome, objeto_auditoria="o", periodicidade="MENSAL", **extra)
+        hoje = date.today()
+        RegistroAuditoria.objects.create(modelo=m, data_auditoria=hoje, periodo_inicio=hoje, periodo_fim=hoje, status="CONCLUIDO")
+        return m
+
+    def test_slides_ignoram_inativas_e_arquivadas(self):
+        self._modelo("Ativa")
+        self._modelo("Inativa", ativo=False)
+        self._modelo("Arquivada", arquivado=True)
+        slides = providers.slides_auditoria(self.admin)
+        texto = str(slides)
+        self.assertIn("Ativa", texto)
+        self.assertNotIn("Inativa", texto)
+        self.assertNotIn("Arquivada", texto)
+
+    def test_ocorrencias_de_modelo_inativo_ou_arquivado_ficam_de_fora(self):
+        from auditoria.models import ComentarioRespostaAuditoria, PerguntaAuditoria
+
+        for nome, extra in (("Ok", {}), ("Inativa", {"ativo": False}), ("Arquivada", {"arquivado": True})):
+            m = self._modelo(nome, **extra)
+            p = PerguntaAuditoria.objects.create(modelo=m, pergunta=f"Pergunta {nome}")
+            ComentarioRespostaAuditoria.objects.create(pergunta=p, texto=f"texto {nome}", requer_tratativa=True, autor=self.admin)
+        itens = providers._sem_auditorias_inativas(__import__("shared.ocorrencias", fromlist=["x"]).listar_ocorrencias(self.admin, "abertas"))
+        titulos = " ".join(i.titulo for i in itens)
+        self.assertIn("Pergunta Ok", titulos)
+        self.assertNotIn("Pergunta Inativa", titulos)
+        self.assertNotIn("Pergunta Arquivada", titulos)

@@ -66,10 +66,24 @@ def _quando(txt):
         return datetime.min
 
 
+def _sem_auditorias_inativas(itens):
+    """Tira do telão as ocorrências de auditorias (modelos) inativadas ou arquivadas; a Central continua mostrando todas."""
+    from django.db.models import Q
+
+    from auditoria.models import ComentarioRespostaAuditoria
+
+    ids = [int(i.uid.split(":")[1]) for i in itens if i.origem == "auditoria"]
+    if not ids:
+        return itens
+    fora = set(ComentarioRespostaAuditoria.objects.filter(pk__in=ids).filter(
+        Q(pergunta__modelo__ativo=False) | Q(pergunta__modelo__arquivado=True)).values_list("pk", flat=True))
+    return [i for i in itens if not (i.origem == "auditoria" and int(i.uid.split(":")[1]) in fora)]
+
+
 def slides_ocorrencias(user, resumo=False):
     from shared import ocorrencias as central
 
-    itens = central.listar_ocorrencias(user, "abertas")
+    itens = _sem_auditorias_inativas(central.listar_ocorrencias(user, "abertas"))
     hoje = timezone.localdate()
     vencidas = [i for i in itens if i.vencida]
     minhas = [i for i in itens if i.envolve_usuario]
@@ -193,7 +207,8 @@ def slides_auditoria(user, resumo=False):
 
     if not has_module_access(user, "auditoria"):
         return []
-    modelos = list(_filter_modelos_para_usuario(user, ModeloAuditoria.objects.all()).order_by("nome")[:10])
+    modelos = list(_filter_modelos_para_usuario(user, ModeloAuditoria.objects.filter(ativo=True, arquivado=False))
+                   .order_by("nome")[:10])
     dados = [d for d in (_dados_modelo(m) for m in modelos) if d["tem_ciclo"]]
     if not dados:
         return []

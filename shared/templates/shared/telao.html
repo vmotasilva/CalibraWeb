@@ -140,13 +140,33 @@ select option { color:#0f172a; }
       var w = el("div", "grafico"), cv = el("canvas"); w.appendChild(cv);
       setTimeout(function () {
         var u = s.unidade || "";
+        var fmt = function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; };
+        // Rótulos de valor em cada ponto (e o valor da meta na ponta da linha tracejada).
+        var rotulos = { id: "rotulos", afterDatasetsDraw: function (c) {
+          var x = c.ctx; x.save(); x.textAlign = "center"; x.font = "700 20px Inter, sans-serif";
+          c.data.datasets.forEach(function (ds, di) {
+            var meta = c.getDatasetMeta(di);
+            meta.data.forEach(function (pt, i) {
+              if (di === 1 && i !== meta.data.length - 1) return;           // meta: só no último ponto
+              var v = ds.data[i]; if (v == null) return;
+              var abaixo = di === 1 || pt.y < c.chartArea.top + 34;
+              x.fillStyle = di === 1 ? "#22c55e" : "#ffffff";
+              x.textBaseline = abaixo ? "top" : "bottom";
+              var tx = (di === 1 ? "Meta " : "") + fmt(v);
+              var px = Math.min(Math.max(pt.x, c.chartArea.left + 30), c.chartArea.right - 40);
+              x.lineWidth = 5; x.strokeStyle = "#131c31"; x.strokeText(tx, px, pt.y + (abaixo ? 12 : -12));
+              x.fillText(tx, px, pt.y + (abaixo ? 12 : -12));
+            });
+          });
+          x.restore();
+        } };
         chart = new Chart(cv, {
-          type: "line",
+          type: "line", plugins: [rotulos],
           data: { labels: s.labels, datasets: [
             { label: "Resultado", data: s.valores, borderColor: "#60a5fa", backgroundColor: "#60a5fa33", fill: true, tension: .25, borderWidth: 4, pointRadius: 6, pointBackgroundColor: "#60a5fa" },
             { label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#22c55e", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false }
           ] },
-          options: { maintainAspectRatio: false, animation: { duration: 900 },
+          options: { maintainAspectRatio: false, animation: { duration: 900 }, layout: { padding: { top: 24, right: 16 } },
             plugins: { legend: { labels: { color: "#c4cee3", font: { size: 18 } } },
               tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.y + u; } } } },
             scales: { x: { ticks: { color: "#c4cee3", font: { size: 18 } }, grid: { color: "#ffffff12" } },
