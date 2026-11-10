@@ -76,7 +76,7 @@ select option { color:#0f172a; }
   <div class="marca"><img src="{% static 'shared/logo_calibraweb.svg' %}" alt=""> Calibra · {{ playlist_nome }}</div>
   <div class="sp"></div>
   <select id="selPlaylist" title="Playlist">
-    {% for k, nome, ic in playlists %}<option value="{{ k }}" {% if k == playlist %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+    {% for k, nome, ic, pers in playlists %}<option value="{{ k }}" {% if k == playlist %}selected{% endif %}>{% if pers %}★ {% endif %}{{ nome }}</option>{% endfor %}
   </select>
   <span class="rel" id="relogio"></span>
   <button class="btn" id="btnSair" title="Sair (Esc)"><i class="bi bi-x-lg"></i> Sair</button>

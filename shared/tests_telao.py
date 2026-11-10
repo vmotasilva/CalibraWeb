@@ -93,3 +93,71 @@ class TelaoProvedoresTests(TestCase):
     def test_usuario_sem_acesso_nao_ve_modulo(self):
         comum = get_user_model().objects.create_user("comum", password="x")
         self.assertEqual(providers.slides_kpi(comum) + providers.slides_auditoria(comum), [])
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class ModeloApresentacaoTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        U = get_user_model()
+        self.dono = U.objects.create_user("dono", password="x", is_superuser=True, is_staff=True)
+        self.outro = U.objects.create_user("outro2", password="x")
+        self.admin2 = U.objects.create_user("adm3", password="x", is_superuser=True, is_staff=True)
+
+    def _criar(self, client, **extra):
+        dados = {"nome": "Chão de fábrica", "prov": ["kpi", "ocorrencias"], "dur_kpi": "30", "dur_ocorrencias": "",
+                 "duracao_padrao": "10", "ativo": "on", **extra}
+        return client.post(reverse("telao_modelo_novo"), dados)
+
+    def test_criar_respeita_ordem_e_duracao(self):
+        from shared.models import ModeloApresentacao
+
+        self.client.force_login(self.dono)
+        self.assertEqual(self._criar(self.client).status_code, 302)
+        m = ModeloApresentacao.objects.get()
+        self.assertEqual([i["provedor"] for i in m.itens], ["kpi", "ocorrencias"])
+        self.assertEqual(m.itens[0]["duracao"], 30)
+        self.assertIsNone(m.itens[1]["duracao"])
+
+    def test_validacao(self):
+        from shared.models import ModeloApresentacao
+
+        self.client.force_login(self.dono)
+        self.client.post(reverse("telao_modelo_novo"), {"nome": "", "prov": ["kpi"]})
+        self.client.post(reverse("telao_modelo_novo"), {"nome": "X", "prov": ["inexistente"]})
+        self.assertEqual(ModeloApresentacao.objects.count(), 0)
+
+    def test_playlist_personalizada_usa_duracoes(self):
+        from shared.models import ModeloApresentacao
+
+        m = ModeloApresentacao.objects.create(
+            nome="M", criado_por=self.dono, duracao_padrao=9,
+            itens=[{"provedor": "kpi", "duracao": 30}, {"provedor": "ocorrencias", "duracao": None}, {"provedor": "nao_existe"}])
+        slides = providers.montar_playlist(self.dono, m.chave)
+        self.assertTrue(slides)
+        for s in slides:
+            self.assertEqual(s["duracao"], 30 if s["provedor"] == "kpi" else 9)
+            self.assertIn(s["provedor"], {"kpi", "ocorrencias"})
+
+    def test_visibilidade(self):
+        from shared.models import ModeloApresentacao
+
+        priv = ModeloApresentacao.objects.create(nome="Privada", criado_por=self.dono, itens=[{"provedor": "kpi"}])
+        pub = ModeloApresentacao.objects.create(nome="Pública", criado_por=self.dono, compartilhada=True, itens=[{"provedor": "kpi"}])
+        self.client.force_login(self.outro)
+        nomes = [m.nome for m in providers.modelos_visiveis(self.outro)]
+        self.assertEqual(nomes, ["Pública"])
+        # chave de modelo invisível cai no padrão, sem erro
+        self.assertEqual(self.client.get(reverse("telao") + f"?p={priv.chave}").status_code, 200)
+        self.assertEqual(self.client.get(reverse("telao_modelo_editar", args=[pub.pk])).status_code, 403)
+        self.assertEqual(self.client.post(reverse("telao_modelo_excluir", args=[pub.pk])).status_code, 403)
+        self.assertTrue(pub.editavel_por(self.admin2))
+
+    def test_telas_e_menu(self):
+        from shared.models import ModeloApresentacao
+
+        ModeloApresentacao.objects.create(nome="Minha TV", criado_por=self.dono, itens=[{"provedor": "kpi"}])
+        self.client.force_login(self.dono)
+        self.assertContains(self.client.get(reverse("telao_modelos")), "Minha TV")
+        self.assertEqual(self.client.get(reverse("telao_modelo_novo") + "?base=geral").status_code, 200)
+        self.assertContains(self.client.get(reverse("telao") + "?p=m999"), "Calibra")

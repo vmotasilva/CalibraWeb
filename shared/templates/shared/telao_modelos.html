@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block title %}Modelos de apresentação &mdash; CalibraWEB{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+      <h3 class="mb-0"><i class="bi bi-display me-2"></i>Modelos de apresentação</h3>
+      <div class="text-muted small">Monte sequências de slides para rodar em loop em uma TV ou tela de acompanhamento.</div>
+    </div>
+    <a href="{% url 'telao_modelo_novo' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Novo modelo</a>
+  </div>
+
+  <h6 class="text-uppercase text-muted mt-4">Meus modelos e compartilhados</h6>
+  {% if modelos %}
+  <div class="row g-3">
+    {% for m in modelos %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card h-100 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start">
+            <h5 class="card-title mb-1"><i class="bi {{ m.icone }} me-2 text-primary"></i>{{ m.nome }}</h5>
+            {% if m.compartilhada %}<span class="badge text-bg-info">Compartilhada</span>{% endif %}
+          </div>
+          {% if m.descricao %}<p class="text-muted small mb-2">{{ m.descricao }}</p>{% endif %}
+          <div class="small mb-2">{% for r in m.rotulos %}<span class="badge text-bg-light border me-1">{{ r }}</span>{% endfor %}</div>
+          <div class="small text-muted">{{ m.duracao_padrao }} s por slide{% if m.resumo %} · resumido{% endif %}
+            · por {{ m.criado_por.get_full_name|default:m.criado_por.username|default:"—" }}</div>
+        </div>
+        <div class="card-footer bg-transparent d-flex flex-wrap gap-2">
+          <a href="{% url 'telao' %}?p={{ m.chave }}#cheia" class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Apresentar</a>
+          <a href="{% url 'telao_modelo_novo' %}?base={{ m.chave }}" class="btn btn-sm btn-outline-secondary" title="Criar uma cópia"><i class="bi bi-files"></i></a>
+          {% if m.pode_editar %}
+          <a href="{% url 'telao_modelo_editar' m.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
+          <form method="post" action="{% url 'telao_modelo_excluir' m.pk %}" class="ms-auto" onsubmit="return confirm('Excluir esta apresentação?');">
+            {% csrf_token %}<button class="btn btn-sm btn-outline-danger" title="Excluir"><i class="bi bi-trash"></i></button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="alert alert-light border">Você ainda não criou nenhum modelo. Use <strong>Novo modelo</strong> ou copie um dos padrões abaixo.</div>
+  {% endif %}
+
+  <h6 class="text-uppercase text-muted mt-4">Modelos padrão</h6>
+  <div class="row g-3">
+    {% for k, nome, icone, rotulos in padroes %}
+    <div class="col-md-6 col-xl-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <h6 class="mb-2"><i class="bi {{ icone }} me-2 text-secondary"></i>{{ nome }}</h6>
+          <div class="small">{% for r in rotulos %}<span class="badge text-bg-light border me-1">{{ r }}</span>{% endfor %}</div>
+        </div>
+        <div class="card-footer bg-transparent d-flex gap-2">
+          <a href="{% url 'telao' %}?p={{ k }}#cheia" class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Apresentar</a>
+          <a href="{% url 'telao_modelo_novo' %}?base={{ k }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-files"></i> Copiar e personalizar</a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

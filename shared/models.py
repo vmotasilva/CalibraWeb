@@ -69,3 +69,45 @@ class ComentarioAcao(models.Model):
 
     def __str__(self):
         return f"{self.acao_id}: {self.texto[:40]}"
+
+
+class ModeloApresentacao(models.Model):
+    """Modelo de apresentação (playlist do telão) criado pelos usuários: quais módulos entram, em que ordem e por quanto tempo.
+
+    `itens` é uma lista ordenada de {"provedor": "<chave em shared.telao.providers.PROVEDORES>", "duracao": segundos ou null}.
+    Os modelos padrão (Geral, Qualidade...) ficam no código; estes são os personalizados.
+    """
+    nome = models.CharField("Nome", max_length=100)
+    descricao = models.CharField("Descrição", max_length=200, blank=True)
+    icone = models.CharField("Ícone", max_length=40, default="bi-display", help_text="Classe do Bootstrap Icons.")
+    itens = models.JSONField("Conteúdo", default=list, blank=True)
+    duracao_padrao = models.PositiveSmallIntegerField("Segundos por slide", default=15)
+    resumo = models.BooleanField("Modo resumido", default=False,
+                                 help_text="Oculta descrições e nomes de responsáveis (para telas em locais públicos).")
+    compartilhada = models.BooleanField("Compartilhada", default=False,
+                                        help_text="Aparece no menu de todos os usuários (cada um vê só o que tem permissão).")
+    ativo = models.BooleanField("Ativo", default=True)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    criado_em = models.DateTimeField(default=timezone.now)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["nome", "id"]
+        verbose_name = "Modelo de apresentação"
+        verbose_name_plural = "Modelos de apresentação"
+
+    def __str__(self):
+        return self.nome
+
+    @property
+    def chave(self) -> str:
+        return f"m{self.pk}"
+
+    def visivel_para(self, user) -> bool:
+        if not getattr(user, "is_authenticated", False) or not self.ativo:
+            return False
+        return bool(self.compartilhada or self.criado_por_id == user.pk or user.is_staff or user.is_superuser)
+
+    def editavel_por(self, user) -> bool:
+        return bool(getattr(user, "is_authenticated", False)
+                    and (self.criado_por_id == user.pk or user.is_staff or user.is_superuser))

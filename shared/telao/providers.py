@@ -432,17 +432,65 @@ PLAYLISTS = {
 }
 PLAYLIST_PADRAO = "geral"
 
+# Rótulos dos provedores (usados no editor de modelos).
+ROTULOS_PROVEDORES = {
+    "ocorrencias": ("Ocorrências", "bi-exclamation-triangle"),
+    "kpi": ("Indicadores (KPI)", "bi-speedometer2"),
+    "auditoria": ("Auditorias", "bi-clipboard-check"),
+    "metrologia": ("Metrologia", "bi-tools"),
+    "pcp": ("PCP", "bi-gear-wide-connected"),
+    "laboratorio": ("Laboratório", "bi-droplet-half"),
+    "treinamentos": ("Treinamentos", "bi-mortarboard"),
+}
+
+
+def modelos_visiveis(user):
+    """Modelos de apresentação personalizados que o usuário pode rodar."""
+    from django.db.models import Q
+
+    from shared.models import ModeloApresentacao
+
+    if not getattr(user, "is_authenticated", False):
+        return ModeloApresentacao.objects.none()
+    qs = ModeloApresentacao.objects.filter(ativo=True)
+    if user.is_staff or user.is_superuser:
+        return qs
+    return qs.filter(Q(compartilhada=True) | Q(criado_por=user))
+
+
+def obter_playlist(user, chave: str) -> dict:
+    """Resolve a chave ("geral", "kpi"... ou "m<id>") para a definição da playlist; chave inválida cai no padrão."""
+    if chave and chave[0] == "m" and chave[1:].isdigit():
+        m = modelos_visiveis(user).filter(pk=int(chave[1:])).first()
+        if m is not None:
+            itens = [(i.get("provedor"), i.get("duracao")) for i in (m.itens or []) if isinstance(i, dict)]
+            return {"chave": m.chave, "nome": m.nome, "icone": m.icone or "bi-display", "itens": itens,
+                    "duracao": m.duracao_padrao or DURACAO_PADRAO, "resumo": m.resumo}
+    nome, icone, provedores = PLAYLISTS.get(chave, PLAYLISTS[PLAYLIST_PADRAO])
+    chave = chave if chave in PLAYLISTS else PLAYLIST_PADRAO
+    return {"chave": chave, "nome": nome, "icone": icone, "itens": [(p, None) for p in provedores],
+            "duracao": None, "resumo": False}
+
 
 def montar_playlist(user, playlist: str, resumo: bool = False) -> list[dict]:
-    nome, _icone, provedores = PLAYLISTS.get(playlist, PLAYLISTS[PLAYLIST_PADRAO])
+    definicao = obter_playlist(user, playlist)
+    resumo = resumo or definicao["resumo"]
     slides: list[dict] = []
-    for chave in provedores:
+    for chave, duracao in definicao["itens"]:
+        if chave not in PROVEDORES:
+            continue
         try:
-            slides.extend(PROVEDORES[chave](user, resumo=resumo))
+            novos = PROVEDORES[chave](user, resumo=resumo)
         except Exception:  # um módulo com problema não derruba a rotação
             logger.exception("Telão: provedor %s falhou", chave)
+            continue
+        seg = duracao or definicao["duracao"]
+        if seg:
+            for s in novos:
+                s["duracao"] = int(seg)
+        slides.extend(novos)
     if not slides:
-        slides.append(_slide("geral", "vazio", "Nada para exibir", "Sem dados ou sem permissão nesta playlist.",
+        slides.append(_slide("geral", "vazio", "Nada para exibir", "Sem dados ou sem permissão nesta apresentação.",
                              "bi-inbox"))
     for n, s in enumerate(slides, start=1):
         s["n"] = n

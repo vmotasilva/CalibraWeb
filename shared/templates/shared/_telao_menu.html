@@ -10,3 +10,10 @@
 <li><a class="dropdown-item" href="{% url 'telao' %}?p=pcp#cheia"><i class="bi bi-clipboard-data me-2"></i>PCP</a></li>
 <li><a class="dropdown-item" href="{% url 'telao' %}?p=laboratorio#cheia"><i class="bi bi-droplet-half me-2"></i>Laboratório</a></li>
 <li><a class="dropdown-item" href="{% url 'telao' %}?p=treinamentos#cheia"><i class="bi bi-mortarboard me-2"></i>Treinamentos</a></li>
+{% if personalizados %}
+<li><hr class="dropdown-divider"></li>
+<li><h6 class="dropdown-header">Meus modelos</h6></li>
+{% for m in personalizados %}<li><a class="dropdown-item" href="{% url 'telao' %}?p={{ m.chave }}#cheia"><i class="bi {{ m.icone }} me-2"></i>{{ m.nome }}</a></li>{% endfor %}
+{% endif %}
+<li><hr class="dropdown-divider"></li>
+<li><a class="dropdown-item" href="{% url 'telao_modelos' %}"><i class="bi bi-sliders me-2"></i>Gerenciar modelos…</a></li>
