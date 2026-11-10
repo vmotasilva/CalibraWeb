@@ -1,0 +1,27 @@
+{# Detalhe do assunto (lado direito): título, itens de módulos e o que cada um mostra. #}
+<div class="detalhe" id="da_{{ n }}" data-a="{{ n }}" hidden>
+  <div class="d-flex align-items-center gap-2 mb-1">
+    <i class="bi bi-layout-text-window text-success fs-3"></i>
+    <h5 class="mb-0">Assunto — página única</h5>
+  </div>
+  <p class="text-muted small">Junta, numa só tela, itens de um ou mais módulos (até 4 painéis). Dê um título e adicione os itens abaixo.</p>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label small fw-bold mb-1">Título do assunto</label>
+      <input class="form-control" name="as_{{ n }}_titulo" maxlength="100" placeholder="Ex.: Quebras — Montagem" value="{{ a.titulo }}">
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small fw-bold mb-1">Ícone <span class="fw-normal text-muted">(opcional)</span></label>
+      <input class="form-control" name="as_{{ n }}_icone" maxlength="40" placeholder="bi-layout-text-window" value="{{ a.icone }}">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-bold mb-1">Segundos</label>
+      <input type="number" min="5" max="120" class="form-control" name="as_{{ n }}_dur" value="{{ a.duracao }}" placeholder="padrão">
+    </div>
+  </div>
+  <h6 class="fw-bold mt-4 mb-2">Itens da página</h6>
+  <div class="blocos">
+    {% for b in a.blocos %}{% include "shared/_telao_bloco.html" with n=n j=b.j prov=b.prov n_filtros=b.n_filtros secoes=b.secoes %}{% endfor %}
+  </div>
+  <button type="button" class="btn btn-success btn-sm" data-add-bloco><i class="bi bi-plus-circle me-1"></i>Adicionar item de um módulo</button>
+</div>

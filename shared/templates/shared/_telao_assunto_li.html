@@ -1,0 +1,16 @@
+{# Linha do assunto na sequência (lado esquerdo do construtor). #}
+<li class="item list-group-item" data-a="{{ n }}" data-alvo="da_{{ n }}">
+  <input type="hidden" name="as_idx" value="{{ n }}">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-layout-text-window text-success fs-5"></i>
+    <div class="flex-grow-1 text-truncate">
+      <div class="nome fw-semibold text-truncate">{% if a.titulo %}{{ a.titulo }}{% else %}Novo assunto{% endif %}</div>
+      <div class="small text-muted"><span class="n-itens">{{ a.blocos|length }} item(ns)</span> · página única</div>
+    </div>
+    <div class="btn-group btn-group-sm">
+      <button type="button" class="btn btn-outline-secondary" data-mover="-1" title="Subir"><i class="bi bi-arrow-up"></i></button>
+      <button type="button" class="btn btn-outline-secondary" data-mover="1" title="Descer"><i class="bi bi-arrow-down"></i></button>
+      <button type="button" class="btn btn-outline-danger" data-rm-assunto title="Remover assunto"><i class="bi bi-trash"></i></button>
+    </div>
+  </div>
+</li>

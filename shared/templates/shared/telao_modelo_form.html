@@ -3,7 +3,7 @@
 {% block title %}{% if novo %}Novo modelo{% else %}Editar modelo{% endif %} de apresentação &mdash; CalibraWEB{% endblock %}
 
 {% block content %}
-<div class="container py-3" style="max-width: 860px;">
+<div class="container py-3" style="max-width: 1180px;">
   <h3 class="mb-3"><i class="bi bi-display me-2"></i>{% if novo %}Novo modelo de apresentação{% else %}Editar modelo de apresentação{% endif %}</h3>
   <form method="post" class="card shadow-sm">
     {% csrf_token %}
@@ -23,39 +23,59 @@
         </div>
       </div>
 
-      <h6 class="fw-bold mt-4 mb-1">Conteúdo e ordem</h6>
-      <div class="text-muted small mb-2">Marque o que entra na apresentação e use as setas para definir a ordem. A duração é opcional (vale a duração padrão se vazia).
-        Para juntar vários itens numa só tela, crie um <b>assunto</b>: uma página montada por você, com itens de um ou mais módulos.</div>
-      <ul class="list-group" id="listaItens">
-        {% for l in linhas %}
-        {% if l.assunto %}
-          {% include "shared/_telao_assunto.html" with a=l n=l.n %}
-        {% else %}
-        <li class="list-group-item" data-p="{{ l.chave }}">
-          <div class="d-flex align-items-center gap-3 flex-wrap">
-            <input class="form-check-input mt-0" type="checkbox" name="prov" value="{{ l.chave }}" id="p_{{ l.chave }}" {% if l.ativo %}checked{% endif %}>
-            <label class="flex-grow-1 mb-0 fw-semibold" for="p_{{ l.chave }}"><i class="bi {{ l.icone }} me-2 text-primary"></i>{{ l.rotulo }}
-              {% if l.n_filtros %}<span class="badge text-bg-primary ms-1">{{ l.n_filtros }} filtro{{ l.n_filtros|pluralize }}</span>{% endif %}</label>
-            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#flt_{{ l.chave }}"><i class="bi bi-funnel"></i> Filtros e cards</button>
-            <div class="input-group input-group-sm" style="width: 150px;">
-              <input type="number" min="5" max="120" class="form-control" name="dur_{{ l.chave }}" value="{{ l.duracao }}" placeholder="padrão" aria-label="Segundos por slide">
-              <span class="input-group-text">s</span>
+      <h6 class="fw-bold mt-4 mb-1">Montagem da apresentação</h6>
+      <div class="text-muted small mb-2">À esquerda, a <b>sequência</b> que vai rodar: use o botão liga/desliga para incluir cada conteúdo e as setas para ordenar. Clique em um item para ajustar o que ele mostra (à direita).
+        Para juntar vários módulos numa só tela, crie um <b>assunto</b>.</div>
+      <div class="construtor">
+        <div class="coluna-lista">
+          <ul class="list-group" id="listaItens">
+            {% for l in linhas %}
+            {% if l.assunto %}
+              {% include "shared/_telao_assunto_li.html" with a=l n=l.n %}
+            {% else %}
+            <li class="item list-group-item {% if not l.ativo %}off{% endif %}" data-p="{{ l.chave }}" data-alvo="d_{{ l.chave }}">
+              <div class="d-flex align-items-center gap-2">
+                <div class="form-check form-switch m-0" title="Incluir na apresentação">
+                  <input class="form-check-input" type="checkbox" role="switch" name="prov" value="{{ l.chave }}" id="p_{{ l.chave }}" {% if l.ativo %}checked{% endif %}>
+                </div>
+                <i class="bi {{ l.icone }} text-primary fs-5"></i>
+                <div class="flex-grow-1 text-truncate">
+                  <div class="nome fw-semibold text-truncate">{{ l.rotulo }}</div>
+                  <div class="small text-muted">{% if l.n_filtros %}{{ l.n_filtros }} filtro{{ l.n_filtros|pluralize }}{% else %}todos os dados{% endif %}</div>
+                </div>
+                <div class="btn-group btn-group-sm">
+                  <button type="button" class="btn btn-outline-secondary" data-mover="-1" title="Subir"><i class="bi bi-arrow-up"></i></button>
+                  <button type="button" class="btn btn-outline-secondary" data-mover="1" title="Descer"><i class="bi bi-arrow-down"></i></button>
+                </div>
+              </div>
+            </li>
+            {% endif %}
+            {% endfor %}
+          </ul>
+          <button type="button" class="btn btn-success btn-sm mt-2 w-100" id="btnNovoAssunto"><i class="bi bi-layout-text-window me-1"></i>Novo assunto (página com itens de vários módulos)</button>
+        </div>
+        <div class="coluna-detalhe" id="painelDetalhe">
+          <div class="text-muted text-center py-5" id="detalheVazio"><i class="bi bi-hand-index fs-2 d-block mb-2"></i>Selecione um item da sequência para ajustar o que ele mostra.</div>
+          {% for l in linhas %}
+          {% if l.assunto %}
+            {% include "shared/_telao_assunto_det.html" with a=l n=l.n %}
+          {% else %}
+          <div class="detalhe" id="d_{{ l.chave }}" hidden>
+            <div class="d-flex align-items-center gap-2 mb-2"><i class="bi {{ l.icone }} text-primary fs-3"></i><h5 class="mb-0">{{ l.rotulo }}</h5></div>
+            <div class="row g-3 mb-2">
+              <div class="col-md-4">
+                <label class="form-label small fw-bold mb-1" for="dur_{{ l.chave }}">Segundos por slide</label>
+                <input type="number" min="5" max="120" class="form-control form-control-sm" id="dur_{{ l.chave }}" name="dur_{{ l.chave }}" value="{{ l.duracao }}" placeholder="padrão do modelo">
+              </div>
             </div>
-            <div class="btn-group btn-group-sm">
-              <button type="button" class="btn btn-outline-secondary" data-mover="-1" title="Subir"><i class="bi bi-arrow-up"></i></button>
-              <button type="button" class="btn btn-outline-secondary" data-mover="1" title="Descer"><i class="bi bi-arrow-down"></i></button>
-            </div>
-          </div>
-          <div class="collapse {% if l.n_filtros %}show{% endif %}" id="flt_{{ l.chave }}">
-            <div class="row g-3 mt-1 pt-2 border-top">
+            <div class="row g-3 border-top pt-2">
               {% include "shared/_telao_campos.html" with campos=l.campos %}
             </div>
           </div>
-        </li>
-        {% endif %}
-        {% endfor %}
-      </ul>
-      <button type="button" class="btn btn-outline-success btn-sm mt-2" id="btnNovoAssunto"><i class="bi bi-layout-text-window me-1"></i>Novo assunto (página com itens de vários módulos)</button>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
 
       <div class="row g-3 mt-2">
         <div class="col-md-4">
@@ -79,49 +99,88 @@
     </div>
   </form>
 </div>
-<template id="tplAssunto">{% include "shared/_telao_assunto.html" with a=None n="@A@" %}</template>
+<template id="tplAssuntoLi">{% include "shared/_telao_assunto_li.html" with a=None n="@A@" %}</template>
+<template id="tplAssuntoDet">{% include "shared/_telao_assunto_det.html" with a=None n="@A@" %}</template>
 <template id="tplBloco">{% include "shared/_telao_bloco.html" with n="@A@" j="@B@" prov="ocorrencias" n_filtros=0 secoes=modelo_bloco.secoes %}</template>
+<style>
+  .construtor { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 1rem; align-items: start; }
+  .coluna-lista { position: sticky; top: 70px; }
+  .coluna-detalhe { border: 1px solid var(--bs-border-color); border-radius: .5rem; padding: 1rem 1.1rem; min-height: 320px; background: var(--bs-body-bg); }
+  #listaItens .item { cursor: pointer; border-left: 4px solid transparent; }
+  #listaItens .item:hover { background: var(--bs-tertiary-bg); }
+  #listaItens .item.sel { background: var(--bs-primary-bg-subtle); border-left-color: var(--bs-primary); }
+  #listaItens .item.off .nome, #listaItens .item.off > div > i { opacity: .5; }
+  @media (max-width: 991px) { .construtor { grid-template-columns: 1fr; } .coluna-lista { position: static; } }
+</style>
 <script>
 (function () {
-  var lista = document.getElementById('listaItens'), proxA = {{ n_assuntos }} + 100, proxB = 100;
-  function clonar(id, a, b) {
+  var lista = document.getElementById('listaItens'), pane = document.getElementById('painelDetalhe'),
+      vazio = document.getElementById('detalheVazio'), form = lista.closest('form'),
+      proxA = {{ n_assuntos }} + 100, proxB = 100;
+  function tpl(id, a, b) {
     var h = document.getElementById(id).innerHTML.split('@A@').join(a).split('@B@').join(b);
     var t = document.createElement('div'); t.innerHTML = h.trim(); return t.firstElementChild;
+  }
+  function itens() { return Array.prototype.slice.call(lista.children); }
+  function selecionar(li) {
+    itens().forEach(function (x) { x.classList.toggle('sel', x === li); });
+    pane.querySelectorAll('.detalhe').forEach(function (d) { d.hidden = !li || d.id !== li.dataset.alvo; });
+    vazio.hidden = !!li;
   }
   function mostrarSecao(bloco) {
     var v = bloco.querySelector('.sel-prov').value;
     bloco.querySelectorAll('.fp').forEach(function (d) { d.hidden = d.dataset.prov !== v; });
   }
-  function novoBloco(assuntoLi) {
-    var a = assuntoLi.dataset.a, b = proxB++, el = clonar('tplBloco', a, b);
-    assuntoLi.querySelector('.blocos').appendChild(el); mostrarSecao(el);
+  function contar(a) {
+    var det = document.getElementById('da_' + a), li = lista.querySelector('li[data-a="' + a + '"]');
+    if (det && li) li.querySelector('.n-itens').textContent = det.querySelectorAll('.bloco').length + ' item(ns)';
+  }
+  function novoBloco(det) {
+    var a = det.dataset.a, el = tpl('tplBloco', a, proxB++);
+    det.querySelector('.blocos').appendChild(el); mostrarSecao(el); contar(a);
   }
   lista.addEventListener('click', function (e) {
+    var li = e.target.closest('#listaItens > li'); if (!li) return;
     var m = e.target.closest('[data-mover]');
     if (m) {
-      var li = m.closest('#listaItens > li'), d = parseInt(m.dataset.mover, 10);
-      if (d < 0 && li.previousElementSibling) li.parentNode.insertBefore(li, li.previousElementSibling);
-      if (d > 0 && li.nextElementSibling) li.parentNode.insertBefore(li.nextElementSibling, li);
-      return;
+      var d = parseInt(m.dataset.mover, 10);
+      if (d < 0 && li.previousElementSibling) lista.insertBefore(li, li.previousElementSibling);
+      if (d > 0 && li.nextElementSibling) lista.insertBefore(li.nextElementSibling, li);
     }
-    var nb = e.target.closest('[data-add-bloco]'); if (nb) { novoBloco(nb.closest('li')); return; }
-    var rb = e.target.closest('[data-rm-bloco]'); if (rb) { rb.closest('.bloco').remove(); return; }
-    var ra = e.target.closest('[data-rm-assunto]'); if (ra) { ra.closest('#listaItens > li').remove(); }
+    if (e.target.closest('[data-rm-assunto]')) {
+      var det = document.getElementById(li.dataset.alvo); li.remove(); if (det) det.remove(); selecionar(null); return;
+    }
+    selecionar(li);
   });
-  lista.addEventListener('change', function (e) { if (e.target.classList.contains('sel-prov')) mostrarSecao(e.target.closest('.bloco')); });
+  lista.addEventListener('change', function (e) {
+    if (e.target.name === 'prov') e.target.closest('li').classList.toggle('off', !e.target.checked);
+  });
+  pane.addEventListener('click', function (e) {
+    var nb = e.target.closest('[data-add-bloco]'); if (nb) { novoBloco(nb.closest('.detalhe')); return; }
+    var rb = e.target.closest('[data-rm-bloco]');
+    if (rb) { var det = rb.closest('.detalhe'); rb.closest('.bloco').remove(); contar(det.dataset.a); }
+  });
+  pane.addEventListener('change', function (e) { if (e.target.classList.contains('sel-prov')) mostrarSecao(e.target.closest('.bloco')); });
+  pane.addEventListener('input', function (e) {
+    var m = /^as_(\d+)_titulo$/.exec(e.target.name || ''); if (!m) return;
+    var li = lista.querySelector('li[data-a="' + m[1] + '"]');
+    if (li) li.querySelector('.nome').textContent = e.target.value.trim() || 'Novo assunto';
+  });
   document.getElementById('btnNovoAssunto').addEventListener('click', function () {
-    var a = proxA++, li = clonar('tplAssunto', a, 0);
-    lista.appendChild(li); novoBloco(li); li.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    var a = proxA++, li = tpl('tplAssuntoLi', a, 0), det = tpl('tplAssuntoDet', a, 0);
+    lista.appendChild(li); pane.appendChild(det); novoBloco(det); selecionar(li);
+    det.querySelector('input[name$="_titulo"]').focus();
   });
-  // a ordem final (itens fixos e assuntos juntos) segue a posição na tela
-  lista.closest('form').addEventListener('submit', function () {
-    this.querySelectorAll('input[name=ordem]').forEach(function (i) { i.remove(); });
-    var f = this;
-    lista.querySelectorAll(':scope > li').forEach(function (li) {
+  // a ordem final (conteúdos fixos e assuntos juntos) segue a posição na lista
+  form.addEventListener('submit', function () {
+    form.querySelectorAll('input[name=ordem]').forEach(function (i) { i.remove(); });
+    itens().forEach(function (li) {
       var i = document.createElement('input'); i.type = 'hidden'; i.name = 'ordem';
-      i.value = li.dataset.a ? 'a:' + li.dataset.a : 'p:' + li.dataset.p; f.appendChild(i);
+      i.value = li.dataset.a ? 'a:' + li.dataset.a : 'p:' + li.dataset.p; form.appendChild(i);
     });
   });
+  var primeiro = lista.querySelector('li.item:not(.off)') || lista.firstElementChild;
+  selecionar(primeiro);
 })();
 </script>
 {% endblock %}
