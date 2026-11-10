@@ -80,6 +80,17 @@ class TelaoTests(TestCase):
         self.client.force_login(self.admin)
         self.assertIn("gerado_em", self.client.get(reverse("telao_api") + "?p=laboratorio").json())
 
+    def test_ocorrencias_do_modulo_agrupadas_por_responsavel_e_texto(self):
+        resp = get_user_model().objects.create_user("resp1", first_name="Ana", last_name="Souza")
+        for assunto in ("Estufa 1", "Estufa 2"):
+            OcorrenciaLaboratorio.objects.create(assunto=assunto, detalhamento="Manutenção preventiva", criado_por=self.admin, responsavel=resp)
+        slides = [s for s in providers.slides_laboratorio(self.admin) if s.get("ocorr")]
+        cards = [c for s in slides for c in s["itens"]]
+        ana = [c for c in cards if c["titulo"].startswith("Ana")]
+        self.assertEqual(len(ana), 1)  # mesmo texto -> um card só
+        self.assertEqual(ana[0]["texto"], "Manutenção preventiva")
+        self.assertTrue({"Estufa 1", "Estufa 2"} <= set(ana[0]["tags"]))
+
     def test_ocorrencias_do_modulo_podem_ser_desligadas(self):
         slides = providers.slides_laboratorio(self.admin, filtros={"com_ocorrencias": "nao"})
         self.assertFalse(any(s.get("ocorr") for s in slides))
@@ -315,6 +326,14 @@ class TelaoFiltrosTests(TestCase):
         self.assertIn("últimos 15 dias", perda["subtitulo"])
         sem = next(s for s in providers.slides_kpi(self.admin, filtros={"graficos": "todos"}) if s["kind"] == "chart" and s["titulo"] == "Perda")
         self.assertEqual(len(sem["valores"]), 2)  # sem o filtro, continua mensal
+
+    def test_kpi_sem_mes_mostra_ultima_medicao_preenchida(self):
+        ind = Indicador.objects.create(nome="Retorno", meta=3, sentido="menor", unidade="%")
+        Medicao.objects.create(indicador=ind, periodo=date(2026, 11, 5), valor=2, granularidade="semanal")
+        Medicao.objects.create(indicador=ind, periodo=date(2026, 11, 9), valor=4, granularidade="diaria")
+        tiles = self._tiles(providers.slides_kpi(self.admin))
+        self.assertEqual(tiles["Retorno"]["valor"], "4,00%")
+        self.assertIn("09/11/2026", tiles["Retorno"]["nota"])
 
     def test_kpi_por_setor_usa_meta_e_medicao_do_setor(self):
         slides = providers.slides_kpi(self.admin, filtros={"setores": ["Montagem"]})

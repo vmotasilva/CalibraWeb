@@ -128,8 +128,45 @@ def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, ico
             for n, lote in enumerate(lotes, start=1)]
 
 
+def _tag_equipamento(titulo):
+    """'Avaria/Dano: VI-01 (HMC)' -> 'VI-01 · Avaria/Dano' (só código e tipo); outros formatos ficam como estão."""
+    import re
+
+    m = re.match(r"^(.+?):\s*(.+?)(?:\s*\([^)]*\))?$", titulo or "")
+    return f"{m.group(2)} · {m.group(1)}" if m else (titulo or "")
+
+
+def _slides_por_responsavel(provedor, nome, itens, mostrar_coment):
+    """Um card por responsável e texto: quando várias ocorrências têm o mesmo texto, listam-se só código e tipo."""
+    hoje = timezone.localdate()
+    grupos = {}
+    for i in itens:
+        resp = ", ".join(i.responsaveis[:2]) or "Sem responsável"
+        grupos.setdefault((resp, (i.descricao or "").strip()), []).append(i)
+    ordem = sorted(grupos.items(), key=lambda kv: (kv[0][0] == "Sem responsável", -sum(int(i.vencida) for i in kv[1]), -len(kv[1]), kv[0][0]))
+    cards = []
+    for (resp, texto), lista in ordem[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
+        dias = max(max((hoje - timezone.localtime(i.data_ordem).date()).days, 0) for i in lista)
+        coment = []
+        if mostrar_coment:
+            todos = sorted(((_quando(c["quando"]), c) for i in lista for p in i.plano for c in p.comentarios), key=lambda t: t[0], reverse=True)
+            coment = [{"autor": c["autor"], "quando": c["quando"], "texto": _corta(c["texto"], 170)} for _, c in todos[:2]]
+        cards.append({"titulo": resp, "texto": _corta(texto, 200), "tom": "critico" if any(i.vencida for i in lista) else "alerta",
+                      "tags": [_tag_equipamento(i.titulo) for i in lista[:12]] + ([f"+{len(lista) - 12}"] if len(lista) > 12 else [])
+                              + [f"mais antiga {dias} d"],
+                      "comentarios": coment})
+    n_venc = sum(int(i.vencida) for i in itens)
+    sub = f"{len(itens)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "") + " · por responsável"
+    lotes = list(_lotes(cards, CARDS_POR_SLIDE))
+    return [_slide(provedor, "cards", f"{nome} — ocorrências", sub + (f" · parte {n}/{len(lotes)}" if len(lotes) > 1 else ""),
+                   itens[0].icon or "bi-exclamation-octagon", grupo=True, ocorr=True, itens=lote)
+            for n, lote in enumerate(lotes, start=1)]
+
+
 def _slides_ocorrencias_modulo(user, origem, nome, resumo, f):
     itens = _itens_ocorrencias(user, origem, f)
+    if itens and not resumo and origem in ("metrologia", "pcp", "laboratorio"):
+        return _slides_por_responsavel(origem, nome, itens, f.get("comentarios") != "nao")
     return _slides_lista_ocorrencias(origem, f"{nome} — ocorrências", [(i, i.titulo) for i in itens],
                                      resumo, not resumo and f.get("comentarios") != "nao")
 
@@ -255,6 +292,9 @@ def slides_kpi(user, resumo=False, filtros=None):
             meta = setor.meta_efetiva if setor else ind.meta
             doIndSetor = [m for m in ind.medicoes.all() if m.setor_id == sid]
             serie = sorted((m for m in doIndSetor if m.granularidade == "mensal"), key=lambda m: m.periodo)[-meses:]
+            if not serie and doIndSetor:  # sem mês lançado: mostra o que foi preenchido por último (dia ou semana)
+                g = max(doIndSetor, key=lambda m: m.periodo).granularidade
+                serie = sorted((m for m in doIndSetor if m.granularidade == g), key=lambda m: m.periodo)[-30:]
             if dias:  # últimos N dias: usa as medições diárias (se o indicador não tiver, mantém a série mensal)
                 diarias = sorted((m for m in doIndSetor if m.granularidade == "diaria"), key=lambda m: m.periodo)
                 if diarias:
@@ -278,7 +318,7 @@ def slides_kpi(user, resumo=False, filtros=None):
     ] + [{
         "rotulo": rotulo, "valor": f"{_fmt_num(ult.valor, 2)}{ind.unidade}" if ult else "—",
         "tom": "neutro" if a is None else "ok" if a else "critico",
-        "nota": f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%d/%m/%Y}" if ult and ult.granularidade == "diaria" else f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%m/%Y}" if ult else "sem lançamento",
+        "nota": f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%d/%m/%Y}" if ult and ult.granularidade != "mensal" else f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%m/%Y}" if ult else "sem lançamento",
     } for rotulo, ind, _s, ult, meta, a in linhas[:18]])]
 
     # ocorrências (cards de causa/análise) de cada indicador: entram logo depois do gráfico dele
@@ -303,8 +343,9 @@ def slides_kpi(user, resumo=False, filtros=None):
         escolhidos = [l for l in linhas if (graficos == "todos" and l[2]) or l[5] is False]
         for rotulo, ind, serie, ult, meta, a in escolhidos[:8]:
             situacao = "Fora da meta" if a is False else "Na meta" if a else "Sem dado"
-            slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor" + (f" · últimos {dias} dias" if dias and serie and serie[-1].granularidade == "diaria" else ""),
-                                 "bi-graph-down-arrow" if a is False else "bi-graph-up", labels=[m.periodo.strftime("%d/%m" if m.granularidade == "diaria" else "%m/%Y") for m in serie],
+            slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor" + (f" · últimos {dias} dias" if dias and serie and serie[-1].granularidade == "diaria" else "")
+                                 + (" · última medição lançada" if serie and serie[-1].granularidade != "mensal" and not dias else ""),
+                                 "bi-graph-down-arrow" if a is False else "bi-graph-up", labels=[m.periodo.strftime("%m/%Y" if m.granularidade == "mensal" else "%d/%m") for m in serie],
                                  valores=[float(m.valor) for m in serie], meta=float(meta), unidade=ind.unidade,
                                  atingiu=[bool(ind.atingiu(m.valor, meta)) for m in serie]))
             slides += _ocorr(rotulo, ind)
