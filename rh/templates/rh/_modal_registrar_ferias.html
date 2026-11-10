@@ -99,6 +99,10 @@ Requer que a view passe "colaboradores" no contexto.
                 <form id="formRegistrarFerias" method="post">
                     {% csrf_token %}
                     <div class="row g-3">
+                        <div class="col-12" id="wrapRegMatriculaGlobal">
+                            <label class="form-label fw-semibold">Matrícula Global</label>
+                            <input type="text" id="reg_matricula_global" class="form-control" readonly disabled>
+                        </div>
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Data de Início <span class="text-danger">*</span></label>
                             <input type="date" id="reg_data_inicio" name="data_inicio" class="form-control" required>
@@ -258,6 +262,7 @@ Requer que a view passe "colaboradores" no contexto.
         const btnExcluir = document.getElementById('btnExcluirFerias');
         if (btnExcluir) btnExcluir.classList.add('d-none');
         // Reset form
+        document.getElementById('wrapRegMatriculaGlobal').classList.add('d-none');
         ['reg_data_inicio','reg_dias_solicitados','reg_data_fim','reg_descricao'].forEach(id => {
             document.getElementById(id).value = '';
         });
@@ -290,6 +295,8 @@ Requer que a view passe "colaboradores" no contexto.
                     btnExcluir.innerHTML = '<i class="bi bi-trash me-1"></i> Excluir Férias';
                 }
                 
+                document.getElementById('reg_matricula_global').value = data.matricula_global || '—';
+                document.getElementById('wrapRegMatriculaGlobal').classList.remove('d-none');
                 document.getElementById('reg_data_inicio').value = data.data_inicio;
                 document.getElementById('reg_dias_solicitados').value = data.dias_solicitados;
                 document.getElementById('reg_data_fim').value = data.data_fim;

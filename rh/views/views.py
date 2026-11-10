@@ -1991,6 +1991,7 @@ def api_ferias_detail(request, ferias_id):
         'id': ferias.id,
         'colaborador': ferias.colaborador.nome_completo,
         'colab_id': ferias.colaborador.id,
+        'matricula_global': ferias.colaborador.matricula_global or '',
         'setor': ferias.colaborador.setor.nome if ferias.colaborador.setor else '—',
         'turno': ferias.colaborador.turno or '—',
         'lider': ferias.colaborador.lider.nome_abreviado if ferias.colaborador.lider else None,
