@@ -319,7 +319,9 @@
             var col = document.createElement('div'); col.className = 'col-6 col-md-4 col-xl-3 col-xxl-2';
             var card = document.createElement('div'); card.className = 'card border-0 shadow-sm h-100';
             var corpo = document.createElement('div'); corpo.className = 'card-body py-2 px-3';
-            var t = document.createElement('div'); t.className = 'fw-bold mb-1'; t.textContent = g.rotulos[i]; corpo.appendChild(t);
+            var t = document.createElement('div'); t.className = 'fw-bold mb-1'; t.textContent = g.rotulos[i];
+            if (g.total_lentes) { var tl = document.createElement('span'); tl.className = 'text-muted fw-normal small ms-1'; tl.textContent = '· ' + g.total_lentes[i] + ' lentes'; t.appendChild(tl); }
+            corpo.appendChild(t);
             var algum = false;
             g.series.forEach(function (s, k) {
                 var v = s.valores[i];

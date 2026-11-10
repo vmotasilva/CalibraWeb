@@ -166,6 +166,14 @@ def _valor(medida, b):
     return round(b[chave] * 100 / b['lentes'], 2)
 
 
+def _numerador(medida, b):
+    """Contagem de lentes que compõe o percentual (None quando a medida já é uma contagem)."""
+    chave = {'reprovacao': 'reprovadas', 'remedicao': 'remedidas'}.get(medida)
+    if medida == 'aprovacao_1a':
+        return b['lentes'] - b['reprov_1a']
+    return b[chave] if chave else None
+
+
 def _zero():
     return {'lentes': 0, 'reprovadas': 0, 'reprov_1a': 0, 'remedidas': 0, 'medicoes': 0}
 
@@ -292,12 +300,15 @@ def calcular(medida, periodo, dimensao='', filtros=None, de=None, ate=None):
             'valores': [_valor(medida, dados.get(k, vazio)) for k in chaves],
             'lentes': [dados[k]['lentes'] if k in dados else 0 for k in chaves],
             'reprovadas': [dados[k]['reprovadas'] if k in dados else 0 for k in chaves],
+            'contagem': [_numerador(medida, dados.get(k, vazio)) for k in chaves],
         })
     total_falhas = sum(falhas.values())
     pareto = [{'codigo': p, 'nome': NOMES_PARAMETROS[p], 'qtd': q, 'pct': round(q * 100 / total_falhas, 1)}
               for p, q in sorted(falhas.items(), key=lambda x: -x[1])]
     return {
         'rotulos': [rotulos[k] for k in chaves], 'series': por_serie, 'pareto': pareto,
+        # Por motivo, o denominador é o mesmo em todas as linhas: mostra-se uma vez só, no título do card.
+        'total_lentes': [lentes_periodo[k] for k in chaves] if por_motivo else None,
         'resumo': {**totais, 'valor': _valor(medida, totais)},
     }
 
