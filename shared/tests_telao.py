@@ -310,6 +310,7 @@ class TelaoFiltrosTests(TestCase):
         graf = [s for s in providers.slides_kpi(self.admin, filtros={"dias": "15", "graficos": "todos"}) if s["kind"] == "chart"]
         perda = next(s for s in graf if s["titulo"] == "Perda")
         self.assertEqual(len(perda["valores"]), 15)
+        self.assertEqual(perda["atingiu"], [False] * 15)  # 7 > meta 5 (menor é melhor)
         self.assertEqual(perda["labels"][-1], "31/03")
         self.assertIn("últimos 15 dias", perda["subtitulo"])
         sem = next(s for s in providers.slides_kpi(self.admin, filtros={"graficos": "todos"}) if s["kind"] == "chart" and s["titulo"] == "Perda")

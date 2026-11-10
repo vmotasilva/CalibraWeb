@@ -148,6 +148,7 @@ select option { color:#0f172a; }
         var u = s.unidade || "";
         var fmt = function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; };
         // Rótulos de valor em cada ponto (e o valor da meta na ponta da linha tracejada).
+        var ating = s.atingiu || null, VERDE = "#22c55e", VERM = "#ef4444";
         var rotulos = { id: "rotulos", afterDatasetsDraw: function (c) {
           var x = c.ctx; x.save(); x.textAlign = "center"; x.font = "700 20px Inter, sans-serif";
           c.data.datasets.forEach(function (ds, di) {
@@ -156,7 +157,8 @@ select option { color:#0f172a; }
               if (di === 1 && i !== meta.data.length - 1) return;           // meta: só no último ponto
               var v = ds.data[i]; if (v == null) return;
               var abaixo = di === 1 || pt.y < c.chartArea.top + 34;
-              x.fillStyle = di === 1 ? "#22c55e" : "#ffffff";
+              x.fillStyle = di === 1 ? "#cbd5e1" : "#ffffff";
+              if (di === 0 && ating) x.fillStyle = ating[i] ? "#4ade80" : "#f87171";
               x.textBaseline = abaixo ? "top" : "bottom";
               var tx = (di === 1 ? "Meta " : "") + fmt(v);
               var px = Math.min(Math.max(pt.x, c.chartArea.left + 30), c.chartArea.right - 40);
@@ -169,11 +171,13 @@ select option { color:#0f172a; }
         chart = new Chart(cv, {
           type: "line", plugins: [rotulos],
           data: { labels: s.labels, datasets: [
-            { label: "Resultado", data: s.valores, borderColor: "#60a5fa", backgroundColor: "#60a5fa33", fill: true, tension: .25, borderWidth: 4, pointRadius: 6, pointBackgroundColor: "#60a5fa" },
-            { label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#22c55e", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false }
+            { label: "Resultado", data: s.valores, borderColor: "#60a5fa", backgroundColor: ating ? "#ffffff0d" : "#60a5fa33", fill: true, tension: .25, borderWidth: 4, pointRadius: 7,
+              pointBackgroundColor: ating ? ating.map(function (a) { return a ? VERDE : VERM; }) : "#60a5fa",
+              segment: ating ? { borderColor: function (c) { return ating[c.p1DataIndex] ? VERDE : VERM; } } : {} },
+            { label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#cbd5e1", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false }
           ] },
           options: { maintainAspectRatio: false, animation: { duration: 900 }, layout: { padding: { top: 24, right: 16 } },
-            plugins: { legend: { labels: { color: "#c4cee3", font: { size: 18 } } },
+            plugins: { legend: { display: !ating, labels: { color: "#c4cee3", font: { size: 18 } } },
               tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.y + u; } } } },
             scales: { x: { ticks: { color: "#c4cee3", font: { size: 18 } }, grid: { color: "#ffffff12" } },
                       y: { ticks: { color: "#c4cee3", font: { size: 18 }, callback: function (v) { return v + u; } }, grid: { color: "#ffffff12" } } } }

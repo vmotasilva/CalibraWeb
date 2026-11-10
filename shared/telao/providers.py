@@ -305,7 +305,8 @@ def slides_kpi(user, resumo=False, filtros=None):
             situacao = "Fora da meta" if a is False else "Na meta" if a else "Sem dado"
             slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor" + (f" · últimos {dias} dias" if dias and serie and serie[-1].granularidade == "diaria" else ""),
                                  "bi-graph-down-arrow" if a is False else "bi-graph-up", labels=[m.periodo.strftime("%d/%m" if m.granularidade == "diaria" else "%m/%Y") for m in serie],
-                                 valores=[float(m.valor) for m in serie], meta=float(meta), unidade=ind.unidade))
+                                 valores=[float(m.valor) for m in serie], meta=float(meta), unidade=ind.unidade,
+                                 atingiu=[bool(ind.atingiu(m.valor, meta)) for m in serie]))
             slides += _ocorr(rotulo, ind)
     for rotulo, ind, *_ in linhas:  # indicadores sem gráfico na apresentação, mas com ocorrência
         slides += _ocorr(rotulo, ind)
@@ -621,10 +622,12 @@ def slides_laboratorio(user, resumo=False, filtros=None):
     ])]
     if len(d["dias"]) > 1:
         slides.append(_slide("laboratorio", "chart", "Laboratório — rendimento HC por dia", sub, "bi-graph-up",
-                             labels=[x["rotulo"] for x in d["dias"]], valores=[x["rend"] for x in d["dias"]], meta=meta, unidade="%"))
+                             labels=[x["rotulo"] for x in d["dias"]], valores=[x["rend"] for x in d["dias"]], meta=meta, unidade="%",
+                             atingiu=[x["rend"] >= meta for x in d["dias"]]))
     if len(d["meses"]) > 1:
         slides.append(_slide("laboratorio", "chart", "Laboratório — rendimento HC por mês", sub, "bi-bar-chart",
-                             labels=[x["rotulo"] for x in d["meses"]], valores=[x["rend"] for x in d["meses"]], meta=meta, unidade="%"))
+                             labels=[x["rotulo"] for x in d["meses"]], valores=[x["rend"] for x in d["meses"]], meta=meta, unidade="%",
+                             atingiu=[x["rend"] >= meta for x in d["meses"]]))
 
     def _bars(lista, nome="nome"):
         return [{"rotulo": x[nome], "pct": x["rend"], "tom": _tom_rend(x["rend"], meta), "txt": f"{_fmt_num(x['rend'], 1)}%"} for x in lista]
