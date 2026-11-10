@@ -69,26 +69,61 @@ def _sentido_comum(itens):
     return sentidos.pop() if len(sentidos) == 1 else '<='
 
 
+GRAFICOS = (('unica', 'Barra única', 'bi-bar-chart'), ('multiplas', 'Múltiplas barras', 'bi-bar-chart-steps'),
+            ('empilhadas', 'Empilhadas', 'bi-layers'))
+
+
+def _multi(dados, tipo, n):
+    """Uma série por item. Se todos os itens usam a mesma unidade, mostra o consumo real; senão (kg x UN...) mostra o
+    % da meta de cada um, que é comparável. Empilhadas: soma dos itens (e da meta) em cada período."""
+    mesma_un = len({x['unidade'] for x in dados}) == 1
+    series = []
+    for x in dados:
+        if mesma_un:
+            vals = x['valores']
+        elif any(m for m in x['metas']):
+            vals = [None if v is None or not m else round(v / m * 100, 1) for v, m in zip(x['valores'], x['metas'])]
+        else:
+            continue
+        if any(v is not None for v in vals):
+            series.append({'nome': x['nome'], 'valores': vals})
+    if mesma_un:
+        metas = None
+        if tipo == 'empilhadas':
+            somas = [sum(x['metas'][k] or 0 for x in dados) for k in range(n)]
+            metas = [round(v, 2) if v else None for v in somas]
+    else:
+        metas = [100.0 * (len(series) if tipo == 'empilhadas' else 1)] * n
+    return {'tipo': tipo, 'series': series, 'metas': metas, 'modo': 'valor' if mesma_un else 'percentual',
+            'unidade': (dados[0]['unidade'] if mesma_un else '%'),
+            'aviso': '' if mesma_un else 'Unidades diferentes entre os itens: cada barra mostra o % da meta do item'
+                                         + (' (a soma dos % é a altura da pilha).' if tipo == 'empilhadas' else '.')}
+
+
 def _serie(itens, meses, consumos):
     """Um item: consumo real e a meta dele. Vários itens: média do % da meta (consumo ÷ meta), pois as unidades diferem."""
     por_item = {}
     for c in consumos:
         por_item.setdefault(c.item_id, {})[c.periodo] = c.valor
     rotulos = [f'{m:%m/%Y}' for m in meses]
+    matriz = [{'nome': i.nome, 'unidade': i.unidade,
+               'valores': [float(por_item[i.pk][m]) if m in por_item.get(i.pk, {}) else None for m in meses],
+               'metas': [float(i.meta) if i.meta is not None else None] * len(meses)} for i in itens]
     if len(itens) == 1:
         item = itens[0]
         dados = por_item.get(item.pk, {})
         return {'modo': 'valor', 'labels': rotulos,
                 'valores': [float(dados[m]) if m in dados else None for m in meses],
                 'meta': float(item.meta) if item.meta is not None else None,
-                'sentido': item.sentido, 'unidade': item.unidade, 'titulo': f'Consumo ({item.unidade})' if item.unidade else 'Consumo'}
+                'sentido': item.sentido, 'unidade': item.unidade, 'titulo': f'Consumo ({item.unidade})' if item.unidade else 'Consumo',
+                '_itens': matriz}
     valores = []
     for m in meses:
         pcts = [por_item[i.pk][m] / i.meta * 100 for i in itens
                 if i.meta and i.pk in por_item and m in por_item[i.pk]]
         valores.append(round(float(sum(pcts) / len(pcts)), 1) if pcts else None)
     return {'modo': 'percentual', 'labels': rotulos, 'valores': valores, 'meta': 100.0, 'unidade': '%',
-            'sentido': _sentido_comum(itens), 'titulo': '% da meta de consumo (média dos itens com meta)'}
+            'sentido': _sentido_comum(itens), 'titulo': '% da meta de consumo (média dos itens com meta)', '_itens': matriz}
 
 
 VISOES = (('dia', 'Dia a dia'), ('semana', 'Semana a semana'), ('mes', 'Mês a mês'))
@@ -142,9 +177,12 @@ def _serie_curta(itens, visao, fim):
         metas = [_meta_dia(i, d) for d in b if d <= hoje or b[0] > hoje]
         return None if i.meta is None else float(sum(metas))
 
+    matriz = [{'nome': i.nome, 'unidade': i.unidade,
+               'valores': [None if consumo(i, b) is None else float(consumo(i, b)) for b in buckets],
+               'metas': [meta(i, b) for b in buckets]} for i in itens]
     if len(itens) == 1:
         i = itens[0]
-        return {'modo': 'valor', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'meta': None,
+        return {'_itens': matriz, 'modo': 'valor', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'meta': None,
                 'valores': [None if consumo(i, b) is None else round(float(consumo(i, b)), 2) for b in buckets],
                 'metas': [None if meta(i, b) is None else round(meta(i, b), 2) for b in buckets], 'sentido': i.sentido,
                 'unidade': i.unidade, 'titulo': f'Consumo ({i.unidade})' if i.unidade else 'Consumo',
@@ -154,7 +192,7 @@ def _serie_curta(itens, visao, fim):
         pcts = [consumo(i, b) / Decimal(meta(i, b)) * 100 for i in itens if i.meta and consumo(i, b) is not None]
         valores.append(round(float(sum(pcts) / len(pcts)), 1) if pcts else None)
     return {'modo': 'percentual', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'valores': valores, 'meta': 100.0, 'metas': None, 'sentido': _sentido_comum(itens),
-            'unidade': '%', 'titulo': '% da meta proporcional (média dos itens com meta)', 'meta_texto': 'meta 100%'}
+            'unidade': '%', 'titulo': '% da meta proporcional (média dos itens com meta)', 'meta_texto': 'meta 100%', '_itens': matriz}
 
 
 def _tabela(serie):
@@ -246,8 +284,15 @@ def painel_view(request):
         dentro=sum(1 for l in com_meta if l['ok']), fora=sum(1 for l in com_meta if not l['ok']),
         sem_lancamento=sum(1 for l in linhas if l['consumo'] is None),
     )
+    grafico = request.GET.get('grafico') if request.GET.get('grafico') in dict((g[0], 1) for g in GRAFICOS) else 'unica'
+    ctx.update(grafico=grafico, graficos=GRAFICOS, atualizado_ate=HierMovimento.objects.aggregate(m=Max('data'))['m'],
+               total_itens=len(linhas))
     if ctx['serie']:
+        matriz = ctx['serie'].pop('_itens')
         ctx['serie']['tabela'] = _tabela(ctx['serie'])
+        ctx['varios'] = len(itens) > 1
+        if len(itens) > 1 and grafico != 'unica':
+            ctx['serie']['multi'] = _multi(matriz, grafico, len(ctx['serie']['labels']))
     return render(request, 'kpi/hier_painel.html', ctx)
 
 
@@ -270,6 +315,7 @@ def consumo_itens_view(request):
     grupos = []
     for i in itens:
         serie = _serie_curta([i], visao, fim) if visao != 'mes' else _serie([i], meses, consumos)
+        serie.pop('_itens', None)
         if serie.get('metas') is None:
             serie['metas'] = [serie.get('meta')] * len(serie['labels'])
         if not serie.get('faixas'):
@@ -291,7 +337,7 @@ def consumo_itens_view(request):
 
 
 def _voltar_painel(post):
-    params = {k: post.get(k) for k in ('kpi', 'setor', 'categoria', 'sub', 'item', 'mes', 'visao') if post.get(k)}
+    params = {k: post.get(k) for k in ('kpi', 'setor', 'categoria', 'sub', 'item', 'mes', 'visao', 'grafico') if post.get(k)}
     return redirect(reverse('kpi:hier_painel') + ('?' + urlencode(params) if params else ''))
 
 

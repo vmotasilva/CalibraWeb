@@ -34,6 +34,7 @@
         <input type="hidden" name="sub" value="{{ sub.pk|default:'' }}">
         <input type="hidden" name="item" value="{{ item.pk|default:'' }}">
         <input type="hidden" name="visao" value="{{ visao }}">
+        <input type="hidden" name="grafico" value="{{ grafico }}">
         <div class="d-flex flex-wrap align-items-center gap-2">
             <button type="button" class="btn btn-sm btn-outline-primary" id="abrir-filtros" data-bs-toggle="modal" data-bs-target="#modal-filtros">
                 <i class="bi bi-funnel me-1"></i>Filtros
@@ -234,6 +235,12 @@
                 carregar();
             });
         });
+        document.getElementById('resultado').addEventListener('click', function (e) {
+            var b = e.target.closest('[data-grafico]');
+            if (!b) return;
+            f.grafico.value = b.dataset.grafico;
+            carregar();
+        });
         refrescar({setor: num('setor'), categoria: num('categoria'), sub: num('sub'), item: num('item')});
     })();
     </script>
@@ -243,13 +250,44 @@
     {% if not linhas %}
         <div class="alert alert-warning">Nenhum item avaliado neste filtro. Cadastre setores, categorias, subcategorias e itens em <a href="{% url 'kpi:hier_cadastro' %}">Cadastro</a>.</div>
     {% else %}
+    <div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-2 mb-2">
+        <div class="col"><div class="card h-100"><div class="card-body py-2">
+            <div class="small text-muted">Itens avaliados</div><div class="fs-4 fw-semibold lh-1">{{ total_itens }}</div></div></div></div>
+        <div class="col"><div class="card h-100 border-success"><div class="card-body py-2">
+            <div class="small text-muted">Na meta em {{ mes|date:"m/Y" }}</div><div class="fs-4 fw-semibold lh-1 text-success">{{ dentro }}</div></div></div></div>
+        <div class="col"><div class="card h-100 border-danger"><div class="card-body py-2">
+            <div class="small text-muted">Acima da meta</div><div class="fs-4 fw-semibold lh-1 text-danger">{{ fora }}</div></div></div></div>
+        <div class="col"><div class="card h-100"><div class="card-body py-2">
+            <div class="small text-muted">Sem lançamento</div><div class="fs-4 fw-semibold lh-1">{{ sem_lancamento }}</div></div></div></div>
+        <div class="col"><div class="card h-100"><div class="card-body py-2">
+            <div class="small text-muted">Dados do almoxarifado até</div>
+            <div class="fs-5 fw-semibold lh-1">{% if atualizado_ate %}{{ atualizado_ate|date:"d/m/Y" }}{% else %}—{% endif %}</div></div></div></div>
+    </div>
+
     <div class="row g-2">
-        <div class="col-lg-7 col-xl-8">
+        <div class="{% if serie.tabela and not varios %}col-xl-7{% else %}col-12{% endif %}">
             <div class="card h-100"><div class="card-body py-2">
-                <div class="fw-semibold mb-2">{{ serie.titulo }} <span class="text-muted small">— {{ serie.janela|default:"últimos 12 meses" }}{% if serie.meta_texto %} · {{ serie.meta_texto }}{% elif serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
-                <div style="position:relative;height:clamp(240px,38vh,360px)"><canvas id="grafico"></canvas></div>
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                    <div class="fw-semibold">{{ serie.titulo }} <span class="text-muted small">— {{ serie.janela|default:"últimos 12 meses" }}{% if serie.meta_texto %} · {{ serie.meta_texto }}{% elif serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
+                    {% if varios %}
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de gráfico">
+                        {% for g, rotulo, icone in graficos %}
+                        <button type="button" data-grafico="{{ g }}" class="btn {% if grafico == g %}btn-secondary{% else %}btn-outline-secondary{% endif %}"><i class="bi {{ icone }} me-1"></i>{{ rotulo }}</button>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% if serie.multi.aviso %}<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>{{ serie.multi.aviso }}</div>{% endif %}
+                <div style="position:relative;height:clamp(300px,50vh,480px)"><canvas id="grafico"></canvas></div>
+            </div></div>
+        </div>
+        {% if serie.tabela and not varios %}
+        <div class="col-xl-5">
+            <div class="card h-100">
+                <div class="card-header py-2 fw-semibold">Dados do gráfico</div>
+                <div class="card-body p-0">
                 {% if serie.tabela %}
-                <div class="table-responsive mt-3" style="max-height:clamp(160px,26vh,280px)" id="tabela-dados">
+                <div class="table-responsive" style="max-height:clamp(300px,52vh,520px)" id="tabela-dados">
                     <table class="table table-sm small align-middle mb-0">
                         <thead class="table-light" style="position:sticky;top:0">
                             <tr>
@@ -274,10 +312,15 @@
                     </table>
                 </div>
                 {% endif %}
-            </div></div>
+                </div>
+            </div>
         </div>
-        <div class="col-lg-5 col-xl-4">
-            <form method="post" action="{% url 'kpi:hier_lancar' %}" class="card h-100">
+        {% endif %}
+    </div>
+
+    <details class="card mt-2" id="detalhe-mes">
+        <summary class="card-body py-2 fw-semibold" style="cursor:pointer"><i class="bi bi-list-check me-1"></i>Consumo por item em {{ mes|date:"m/Y" }} e lançamento manual</summary>
+            <form method="post" action="{% url 'kpi:hier_lancar' %}" class="card-body p-0 border-top">
                 {% csrf_token %}
                 <input type="hidden" name="kpi" value="{{ kpi.pk }}">
                 <input type="hidden" name="setor" value="{{ setor.pk|default:'' }}">
@@ -286,15 +329,8 @@
                 <input type="hidden" name="item" value="{{ item.pk|default:'' }}">
                 <input type="hidden" name="mes" value="{{ mes_valor }}">
                 <input type="hidden" name="visao" value="{{ visao }}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="fw-semibold">Consumo de {{ mes|date:"m/Y" }}</span>
-                    <span class="small">
-                        <span class="badge bg-success">{{ dentro }} na meta</span>
-                        <span class="badge bg-danger">{{ fora }} acima</span>
-                        {% if sem_lancamento %}<span class="badge bg-secondary">{{ sem_lancamento }} sem lançamento</span>{% endif %}
-                    </span>
-                </div>
-                <div class="table-responsive flex-grow-1" style="max-height:60vh">
+                <input type="hidden" name="grafico" value="{{ grafico }}">
+                <div class="table-responsive flex-grow-1" style="max-height:50vh">
                     <table class="table table-sm align-middle mb-0">
                         <thead><tr><th>Item</th><th class="text-end">Meta</th><th style="width:7.5rem">Consumo</th><th class="text-center">%</th><th></th></tr></thead>
                         <tbody>
@@ -326,8 +362,7 @@
                 </div>
                 <div class="card-footer text-end"><button class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Salvar consumo do mês</button></div>
             </form>
-        </div>
-    </div>
+    </details>
     {% endif %}
     </div>
     {% endif %}
@@ -351,18 +386,33 @@
         var S = d.sentido || '<=';
         var cumpre = function (v, m) { return S === '>=' ? v >= m : S === '<' ? v < m : S === '>' ? v > m : S === '=' ? v === m : v <= m; };
         var cores = d.valores.map(function (v, i) { return metas[i] == null || v === null ? CINZA : (cumpre(v, metas[i]) ? VERDE : VERMELHO); });
-        var datasets = [{type: 'bar', label: d.titulo, data: d.valores, backgroundColor: cores, order: 2}];
-        if (temMeta) {
-            datasets.push({type: 'line', label: 'Meta', data: metas, stepped: !!d.metas,
+        var datasets;
+        var PALETA = ['#0d6efd', '#fd7e14', '#198754', '#6f42c1', '#d63384', '#20c997', '#ffc107', '#0dcaf0', '#6610f2', '#795548', '#adb5bd', '#dc3545'];
+        var multi = d.multi && d.multi.series.length ? d.multi : null;
+        var empilha = !!multi && multi.tipo === 'empilhadas';
+        if (multi) {
+            metas = multi.metas || d.labels.map(function () { return null; });
+            temMeta = metas.some(function (m) { return m !== null && m !== undefined; });
+            datasets = multi.series.map(function (s, k) {
+                return {type: 'bar', label: s.nome, data: s.valores, backgroundColor: PALETA[k % PALETA.length], stack: empilha ? 'pilha' : undefined, order: 2};
+            });
+            if (temMeta) datasets.push({type: 'line', label: empilha ? 'Meta somada' : 'Meta', data: metas, stepped: !!d.metas,
                 borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1});
+        } else {
+            datasets = [{type: 'bar', label: d.titulo, data: d.valores, backgroundColor: cores, order: 2}];
+            if (temMeta) {
+                datasets.push({type: 'line', label: 'Meta', data: metas, stepped: !!d.metas,
+                    borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1});
+            }
         }
+        var unidadeY = multi ? multi.unidade : (d.modo === 'percentual' ? '% da meta' : (d.unidade || ''));
         grafico = new Chart(canvas, {
             data: {labels: d.labels, datasets: datasets},
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: {legend: {display: false}, tooltip: {callbacks: {
+                plugins: {legend: {display: !!multi, position: 'bottom'}, tooltip: {callbacks: {
                     title: function (it) { var i = it[0].dataIndex; return d.faixas ? d.labels[i] + ' · ' + d.faixas[i] : d.labels[i]; }}}},
-                scales: {y: {beginAtZero: true, title: {display: true, text: d.modo === 'percentual' ? '% da meta' : (d.unidade || '')}}}
+                scales: {x: {stacked: empilha}, y: {stacked: empilha, beginAtZero: true, title: {display: true, text: unidadeY}}}
             }
         });
     };
