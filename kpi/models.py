@@ -424,6 +424,26 @@ class HierMovimento(models.Model):
         return f'{self.codigo_id} {self.data:%d/%m/%Y} {self.quantidade}'
 
 
+class HierImportacao(models.Model):
+    """Registro de cada relatório de movimentação enviado: arquivo, período que ele cobre e o que entrou."""
+    arquivo = models.CharField('Arquivo', max_length=200)
+    inicio = models.DateField('Início do período', null=True, blank=True)
+    fim = models.DateField('Fim do período', null=True, blank=True)
+    lidas = models.PositiveIntegerField('Movimentações lidas', default=0)
+    adicionadas = models.PositiveIntegerField('Novas', default=0)
+    ja_existiam = models.PositiveIntegerField('Já existentes', default=0)
+    criado_por = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    criado_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-criado_em', '-pk']
+        verbose_name = 'Importação de insumos'
+        verbose_name_plural = 'Importações de insumos'
+
+    def __str__(self):
+        return self.arquivo
+
+
 class IndicadorInsumo(models.Model):
     """Indicador de eficiência de um insumo: cruza o consumo do item (códigos do almoxarifado) com a produção lançada
     nos KPIs principais. Ex.: Pad = lentes produzidas × 70% ÷ pads consumidos (lentes por pad); Aloy = gramas

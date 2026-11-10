@@ -11,7 +11,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.db import IntegrityError, transaction
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Max, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -19,7 +19,7 @@ from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
 from kpi import insumos
-from kpi.models import (HierCategoria, HierCodigo, HierConsumo, HierItem, HierMovimento, HierSetor, HierSubcategoria,
+from kpi.models import (HierCategoria, HierCodigo, HierConsumo, HierImportacao, HierItem, HierMovimento, HierSetor, HierSubcategoria,
                         KpiHierarquico)
 
 JANELA_MESES = 12
@@ -359,10 +359,16 @@ def importar_view(request):
                 resumo = insumos.importar(lido['registros'])
                 resumo.update(ignoradas=lido['ignoradas'], estornos=lido['estornos'])
                 ctx['resumo'] = resumo
+                HierImportacao.objects.create(
+                    arquivo=arq.name[:200], inicio=resumo['inicio'], fim=resumo['fim'], lidas=resumo['lidas'],
+                    adicionadas=resumo['adicionadas'], ja_existiam=resumo['ja_existiam'],
+                    criado_por=request.user if request.user.is_authenticated else None)
                 ctx['pendentes'] = HierCodigo.objects.filter(item__isnull=True, ignorado=False).count()
                 messages.success(request, f'Importação concluída: {resumo["adicionadas"]} movimentação(ões) nova(s).')
             except insumos.ErroImportacao as e:
                 messages.error(request, str(e))
+    ctx['atualizado_ate'] = HierMovimento.objects.aggregate(m=Max('data'))['m']
+    ctx['importacoes'] = HierImportacao.objects.select_related('criado_por')[:30]
     return render(request, 'kpi/hier_importar.html', ctx)
 
 

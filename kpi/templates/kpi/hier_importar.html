@@ -11,6 +11,14 @@
         </div>
     </div>
 
+    <div class="alert {% if atualizado_ate %}alert-info{% else %}alert-warning{% endif %} d-flex align-items-center gap-2 py-2">
+        <i class="bi bi-calendar-check fs-5"></i>
+        <div>
+            {% if atualizado_ate %}Dados atualizados até <strong>{{ atualizado_ate|date:"d/m/Y" }}</strong> (última saída registrada).
+            {% else %}Nenhuma movimentação importada ainda.{% endif %}
+        </div>
+    </div>
+
     <div class="card mb-3"><div class="card-body">
         <p class="small text-muted mb-3">
             Envie o relatório <strong>Consulta Movimento em Estoque</strong> (saídas) do almoxarifado, em <code>.xls</code> ou <code>.xlsx</code>,
@@ -41,6 +49,28 @@
             </li>
             {% endif %}
         </ul>
+    </div>
+    {% endif %}
+
+    {% if importacoes %}
+    <div class="card mt-3"><div class="card-header">Importações realizadas</div>
+        <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0 small align-middle">
+            <thead><tr><th>Enviado em</th><th>Arquivo</th><th>Período coberto</th><th class="text-end">Lidas</th><th class="text-end">Novas</th><th>Por</th></tr></thead>
+            <tbody>
+            {% for i in importacoes %}
+                <tr>
+                    <td class="text-nowrap">{{ i.criado_em|date:"d/m/Y H:i" }}</td>
+                    <td class="text-break">{{ i.arquivo }}</td>
+                    <td class="text-nowrap">{{ i.inicio|date:"d/m/Y" }} a {{ i.fim|date:"d/m/Y" }}</td>
+                    <td class="text-end">{{ i.lidas }}</td>
+                    <td class="text-end">{{ i.adicionadas }}</td>
+                    <td>{{ i.criado_por.get_username|default:"—" }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
     </div>
     {% endif %}
 </div>
