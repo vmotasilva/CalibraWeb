@@ -38,6 +38,13 @@ class TelaoTests(TestCase):
         self.assertTrue(cards)
         self.assertTrue(all(c["texto"] == "" for c in cards))
 
+    def test_ocorrencias_agrupadas_por_sessao(self):
+        slides = [s for s in providers.slides_ocorrencias(self.admin) if s.get("grupo")]
+        self.assertEqual(len(slides), 1)
+        self.assertEqual(slides[0]["titulo"], "Laboratório")
+        self.assertEqual(slides[0]["itens"][0]["comentarios"], [])
+        self.assertIn("1 em aberto", slides[0]["subtitulo"])
+
     def test_playlist_invalida_cai_no_padrao(self):
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get(reverse("telao_api") + "?p=xyz").status_code, 200)

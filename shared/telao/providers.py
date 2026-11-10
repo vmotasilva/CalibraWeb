@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 DURACAO_PADRAO = 15  # segundos por slide
 CARDS_POR_SLIDE = 4
 MAX_SLIDES_CARDS = 3
+MAX_GRUPOS_OCORRENCIAS = 8
 RESUMO_TEXTO = 110
 
 
@@ -144,41 +145,35 @@ def slides_ocorrencias(user, resumo=False, filtros=None):
             "txt": f"{qtd}" + (f"  ({venc_origem[nome]} venc.)" if venc_origem.get(nome) else ""),
         } for nome, qtd in sorted(por_origem.items(), key=lambda kv: -kv[1])]))
 
-    prioridade = vencidas or sorted(itens, key=lambda i: i.data_ordem)
-    prioridade = sorted(prioridade, key=lambda i: (i.prazo is None, i.prazo or hoje))
-    titulo = "Ocorrências vencidas" if vencidas else "Ocorrências mais antigas"
-    cards = []
-    for i in prioridade[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
-        tags = [i.origem_nome]
-        if i.prazo:
-            tags.append(f"prazo {i.prazo:%d/%m/%Y}")
-        if i.responsaveis and not resumo:
-            tags.append(", ".join(i.responsaveis[:2]))
-        dias = max((hoje - timezone.localtime(i.data_ordem).date()).days, 0)
-        tags.append(f"{dias} d em aberto")
-        cards.append({
-            "titulo": _corta(i.titulo, 100),
-            "texto": "" if resumo else _corta(i.descricao, 220),
-            "tom": "critico" if i.vencida else "alerta", "tags": tags,
-        })
-    for n, lote in enumerate(_lotes(cards, CARDS_POR_SLIDE), start=1):
-        slides.append(_slide("ocorrencias", "cards", titulo, f"parte {n}" if len(cards) > CARDS_POR_SLIDE else "",
-                             "bi-exclamation-octagon", itens=lote))
-
-    if not resumo and f.get("comentarios") != "nao":
-        coment = []
-        for i in itens:
-            for p in i.plano:
-                for c in p.comentarios:
-                    coment.append((_quando(c["quando"]), i, p, c))
-        coment.sort(key=lambda t: t[0], reverse=True)
-        cards = [{
-            "titulo": _corta(i.titulo, 90), "texto": _corta(c["texto"], 240), "tom": "neutro",
-            "tags": [c["autor"], c["quando"], f"ação: {_corta(p.descricao, 40)}"],
-        } for _, i, p, c in coment[:CARDS_POR_SLIDE]]
-        if cards:
-            slides.append(_slide("ocorrencias", "cards", "Comentários recentes", "Plano de ação das ocorrências",
-                                 "bi-chat-left-text", itens=cards))
+    # Uma "sessão" por slide: o módulo de origem (na Auditoria, o modelo/relatório); abaixo, as ocorrências e, se marcado, seus comentários
+    mostrar_coment = not resumo and f.get("comentarios") != "nao"
+    grupos = {}
+    for i in itens:
+        grupo, titulo_item = i.origem_nome, i.titulo
+        if i.origem == "auditoria" and " — " in i.titulo:
+            grupo, titulo_item = (x.strip() for x in i.titulo.split(" — ", 1))
+        grupos.setdefault(grupo, []).append((i, titulo_item))
+    ordem = sorted(grupos.items(), key=lambda kv: (-sum(int(i.vencida) for i, _ in kv[1]), -len(kv[1]), kv[0]))
+    for nome, lista in ordem[:MAX_GRUPOS_OCORRENCIAS]:
+        lista.sort(key=lambda t: (not t[0].vencida, t[0].prazo is None, t[0].prazo or hoje, t[0].data_ordem))
+        n_venc = sum(int(i.vencida) for i, _ in lista)
+        cards = []
+        for i, titulo_item in lista[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
+            dias = max((hoje - timezone.localtime(i.data_ordem).date()).days, 0)
+            tags = ([f"prazo {i.prazo:%d/%m/%Y}"] if i.prazo else []) + [f"{dias} d em aberto"]
+            if i.responsaveis and not resumo:
+                tags.append(", ".join(i.responsaveis[:2]))
+            coment = []
+            if mostrar_coment:
+                todos = sorted(((_quando(c["quando"]), c) for p in i.plano for c in p.comentarios), key=lambda t: t[0], reverse=True)
+                coment = [{"autor": c["autor"], "quando": c["quando"], "texto": _corta(c["texto"], 170)} for _, c in todos[:2]]
+            cards.append({"titulo": _corta(titulo_item, 110), "texto": "", "tom": "critico" if i.vencida else "alerta",
+                          "tags": tags, "comentarios": coment})
+        sub = f"{len(lista)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "")
+        lotes = list(_lotes(cards, CARDS_POR_SLIDE))
+        for n, lote in enumerate(lotes, start=1):
+            slides.append(_slide("ocorrencias", "cards", nome, sub + (f" · parte {n}/{len(lotes)}" if len(lotes) > 1 else ""),
+                                 lista[0][0].icon or "bi-exclamation-octagon", grupo=True, itens=lote))
     return slides
 
 
@@ -799,8 +794,7 @@ PROVEDOR_CARDS = {
         ("totais", "Totais de ocorrências em aberto", lambda s: s["kind"] == "tiles"),
         ("por_responsavel", "Gráfico de ocorrências em aberto por responsável", lambda s: s["kind"] == "bars" and "responsável" in s["titulo"]),
         ("por_modulo", "Gráfico de ocorrências em aberto por módulo", lambda s: s["kind"] == "bars" and "módulo" in s["titulo"]),
-        ("lista", "Lista de vencidas / mais antigas", lambda s: s["kind"] == "cards" and s["titulo"].startswith("Ocorrências ")),
-        ("comentarios", "Comentários recentes do plano de ação", lambda s: s["titulo"] == "Comentários recentes"),
+        ("lista", "Ocorrências por sessão (módulo / relatório de auditoria), com comentários", lambda s: bool(s.get("grupo"))),
     ],
     "kpi": [
         ("situacao", "Situação dos indicadores (na meta / fora)", lambda s: s["kind"] == "tiles"),
@@ -890,6 +884,8 @@ FILTROS = {
         dict(nome="origens", rotulo="Módulos de origem", tipo="multi", opcoes=_opts_origens,
              ajuda="Vazio = todos os módulos."),
         dict(nome="apenas_vencidas", rotulo="Somente ocorrências vencidas", tipo="bool"),
+        dict(nome="comentarios", rotulo="Comentários do plano de ação", tipo="select",
+             opcoes=lambda u: [("sim", "Mostrar sob cada ocorrência"), ("nao", "Não mostrar")]),
     ],
     "kpi": [
         dict(nome="indicadores", rotulo="Indicadores", tipo="multi", opcoes=_opts_kpi_indicadores, ajuda="Vazio = todos."),
