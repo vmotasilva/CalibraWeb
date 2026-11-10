@@ -51,3 +51,45 @@ class TelaoTests(TestCase):
         finally:
             providers.PROVEDORES["kpi"] = original
         self.assertEqual(slides[0]["kind"], "vazio")
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class TelaoProvedoresTests(TestCase):
+    """Cada provedor roda direto (sem o amortecedor de erros) e devolve slides válidos, mesmo sem dados."""
+
+    def setUp(self):
+        cache.clear()
+        self.admin = get_user_model().objects.create_user("adm2", password="x", is_superuser=True, is_staff=True)
+
+    def test_provedores_sem_dados(self):
+        for chave, fn in providers.PROVEDORES.items():
+            with self.subTest(provedor=chave):
+                slides = fn(self.admin)
+                self.assertIsInstance(slides, list)
+                for s in slides:
+                    self.assertIn(s["kind"], {"tiles", "cards", "bars", "chart"})
+
+    def test_todas_as_playlists_montam(self):
+        for chave in providers.PLAYLISTS:
+            with self.subTest(playlist=chave):
+                self.assertTrue(providers.montar_playlist(self.admin, chave))
+
+    def test_metrologia_mostra_totais_mesmo_vazio(self):
+        slides = providers.slides_metrologia(self.admin)
+        self.assertEqual(slides[0]["kind"], "tiles")
+
+    def test_treinamentos_planejado_aparece(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from procedures.models import PlanejamentoTreinamento
+
+        PlanejamentoTreinamento.objects.create(titulo="Treino X", data_prevista=timezone.localdate() + timedelta(days=3))
+        slides = providers.slides_treinamentos(self.admin)
+        cards = [i for s in slides if s["kind"] == "cards" for i in s["itens"]]
+        self.assertEqual(cards[0]["titulo"], "Treino X")
+
+    def test_usuario_sem_acesso_nao_ve_modulo(self):
+        comum = get_user_model().objects.create_user("comum", password="x")
+        self.assertEqual(providers.slides_kpi(comum) + providers.slides_auditoria(comum), [])

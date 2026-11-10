@@ -219,18 +219,216 @@ def slides_auditoria(user, resumo=False):
     return slides
 
 
+# ---------------------------------------------------------------------------
+# Metrologia (instrumentos vencidos / a vencer)
+# ---------------------------------------------------------------------------
+def _dados_metrologia():
+    dados = cache.get("telao:metrologia:v1")
+    if dados is None:
+        from metrologia.views.views import get_metrologia_dashboard_data
+
+        d = get_metrologia_dashboard_data()
+        criticos = [i for i in d["instrumentos"] if i["status_situacao"] in ("VENCIDO", "AVENCER_30")]
+        dados = {
+            "kpis": d["kpis"],
+            "criticos": [{
+                "tag": i["tag"], "descricao": i["descricao"], "setor": i["setor_nome"], "venc": i["status_situacao"] == "VENCIDO",
+                "data": i["data_proxima_calibracao_display"], "dias": i["dias_para_vencer"], "externo": not i["is_internal"],
+                "ocorrencia": i["has_active_occurrence"],
+            } for i in criticos[:8]],
+        }
+        cache.set("telao:metrologia:v1", dados, 120)
+    return dados
+
+
+def slides_metrologia(user, resumo=False):
+    from shared.permissions import has_module_access
+
+    if not has_module_access(user, "metrologia"):
+        return []
+    d = _dados_metrologia()
+    k, ext = d["kpis"]["todos"], d["kpis"]["externo"]
+    slides = [_slide("metrologia", "tiles", "Metrologia — calibrações", f"{k['total_instrumentos']} instrumentos ativos",
+                     "bi-tools", itens=[
+        {"rotulo": "Vencidos", "valor": k["vencidos"], "tom": "critico" if k["vencidos"] else "ok"},
+        {"rotulo": "A vencer em 30 dias", "valor": k["avencer_30"], "tom": "alerta" if k["avencer_30"] else "ok"},
+        {"rotulo": "Em dia", "valor": k["em_dia"], "tom": "ok"},
+        {"rotulo": "Ocorrências ativas", "valor": k["ocorrencias_ativas"], "tom": "alerta" if k["ocorrencias_ativas"] else "ok"},
+        {"rotulo": "Cotações abertas", "valor": ext["cotacoes_abertas"], "tom": "neutro"},
+        {"rotulo": "Orçamentos pendentes", "valor": ext["orcamentos_pendentes"], "tom": "neutro"},
+    ])]
+    cards = []
+    for i in d["criticos"]:
+        quando = f"venceu em {i['data']}" if i["venc"] else f"vence em {i['data']}"
+        tags = [i["setor"], quando, "calibração externa" if i["externo"] else "calibração interna"]
+        if i["ocorrencia"]:
+            tags.append("com ocorrência")
+        cards.append({"titulo": f"{i['tag']} — {_corta(i['descricao'], 70)}", "texto": "",
+                      "tom": "critico" if i["venc"] else "alerta", "tags": tags})
+    for n, lote in enumerate(_lotes(cards, CARDS_POR_SLIDE), start=1):
+        slides.append(_slide("metrologia", "cards", "Instrumentos críticos", f"parte {n}" if len(cards) > CARDS_POR_SLIDE else "",
+                             "bi-exclamation-octagon", itens=lote))
+    return slides
+
+
+# ---------------------------------------------------------------------------
+# PCP (cumprimento das verificações)
+# ---------------------------------------------------------------------------
+def _dados_pcp():
+    dados = cache.get("telao:pcp:v1")
+    if dados is None:
+        import datetime
+
+        from pcp import pendencias as pend
+        from pcp.models import Turno
+
+        hoje = timezone.localdate()
+        fim = hoje - datetime.timedelta(days=1)
+        ini = fim - datetime.timedelta(days=29)
+        d = pend.dashboard(ini, fim, list(Turno.objects.filter(ativo=True)), None, hoje)
+        paginas = [(l, b["titulo"]) for b in d["blocos"] for g in b["grupos"] for l in g["linhas"]
+                   if l["pct"] is not None and l["devidos"] >= pend.MIN_PRAZOS_PAGINA]
+        paginas.sort(key=lambda t: t[0]["pct"])
+        dados = {
+            "ini": ini, "fim": fim, "pct": d["pct"], "devidos": d["devidos"], "feitos": d["feitos"], "atrasados": d["atrasados"],
+            "evolucao": [{"rotulo": e["rotulo"], "pct": e["pct"]} for e in d["evolucao"] if e["pct"] is not None],
+            "frequencias": [{"nome": f["nome"], "pct": f["pct"]} for f in d["por_frequencia"] if f["pct"] is not None],
+            "piores": [{"nome": f"{t} · {l['nome']}", "pct": l["pct"]} for l, t in paginas[:6]],
+        }
+        cache.set("telao:pcp:v1", dados, 120)
+    return dados
+
+
+def slides_pcp(user, resumo=False):
+    from shared.permissions import has_view_access
+
+    if not has_view_access(user, "pcp:dashboard"):
+        return []
+    d = _dados_pcp()
+    if not d["devidos"]:
+        return []
+    sub = f"{d['ini']:%d/%m} a {d['fim']:%d/%m} (últimos 30 dias)"
+    slides = [_slide("pcp", "tiles", "PCP — cumprimento das verificações", sub, "bi-gear-wide-connected", itens=[
+        {"rotulo": "Cumprimento", "valor": f"{_fmt_num(d['pct'], 1)}%", "tom": _tom_pct(d["pct"])},
+        {"rotulo": "Devidas", "valor": d["devidos"], "tom": "neutro"},
+        {"rotulo": "Feitas", "valor": d["feitos"], "tom": "ok"},
+        {"rotulo": "Em atraso", "valor": d["atrasados"], "tom": "critico" if d["atrasados"] else "ok"},
+    ])]
+    if len(d["evolucao"]) > 1:
+        slides.append(_slide("pcp", "chart", "PCP — evolução do cumprimento", sub, "bi-graph-up",
+                             labels=[e["rotulo"] for e in d["evolucao"]], valores=[e["pct"] for e in d["evolucao"]],
+                             meta=100, unidade="%"))
+    for titulo, lista, icone in (("PCP — cumprimento por frequência", d["frequencias"], "bi-calendar-check"),
+                                 ("PCP — páginas com menor cumprimento", d["piores"], "bi-flag")):
+        if lista:
+            slides.append(_slide("pcp", "bars", titulo, sub, icone, itens=[
+                {"rotulo": x["nome"], "pct": x["pct"], "tom": _tom_pct(x["pct"]), "txt": f"{_fmt_num(x['pct'], 1)}%"} for x in lista]))
+    return slides
+
+
+# ---------------------------------------------------------------------------
+# Laboratório (rendimento HC, mês do último lançamento)
+# ---------------------------------------------------------------------------
+def _dados_lab():
+    dados = cache.get("telao:lab:v1")
+    if dados is None:
+        import calendar
+
+        from laboratorio import hc_rendimento as hc
+        from laboratorio.models import RendimentoHCRegistro
+
+        ultimo = RendimentoHCRegistro.objects.order_by("-data").values_list("data", flat=True).first()
+        if ultimo is None:
+            dados = {"vazio": True}
+        else:
+            ini = ultimo.replace(day=1)
+            fim = ini.replace(day=calendar.monthrange(ini.year, ini.month)[1])
+            c = hc.consolidado(ini, fim)
+            dados = {"vazio": False, "mes": f"{ini:%m/%Y}", "meta": c["meta"], "total": c["total"],
+                     "dias": [{"rotulo": f"{l['data']:%d/%m}", "rend": l["rendimento"]} for l in c["linhas"] if l["rendimento"] is not None]}
+        cache.set("telao:lab:v1", dados, 120)
+    return dados
+
+
+def slides_laboratorio(user, resumo=False):
+    from shared.permissions import has_view_access
+
+    if not has_view_access(user, "laboratorio:hc_dashboard"):
+        return []
+    d = _dados_lab()
+    if d["vazio"]:
+        return []
+    t, meta = d["total"], d["meta"]
+    tom_rend = "neutro" if t["rendimento"] is None else "ok" if t["rendimento"] >= meta else "critico"
+    slides = [_slide("laboratorio", "tiles", "Laboratório — rendimento HC", f"Mês {d['mes']} · meta {_fmt_num(meta, 1)}%",
+                     "bi-droplet-half", itens=[
+        {"rotulo": "Rendimento", "valor": f"{_fmt_num(t['rendimento'], 1)}%", "tom": tom_rend, "nota": f"meta {_fmt_num(meta, 1)}%"},
+        {"rotulo": "Retrabalho", "valor": f"{_fmt_num(t['pct_retrabalho'], 1)}%", "tom": "neutro"},
+        {"rotulo": "Lentes produzidas", "valor": _fmt_num(t["produzidas"], 0), "tom": "neutro"},
+        {"rotulo": "Lentes em retrabalho", "valor": _fmt_num(t["retrabalho"], 0), "tom": "alerta" if t["retrabalho"] else "ok"},
+    ])]
+    if len(d["dias"]) > 1:
+        slides.append(_slide("laboratorio", "chart", "Laboratório — rendimento HC por dia", f"Mês {d['mes']}", "bi-graph-up",
+                             labels=[x["rotulo"] for x in d["dias"]], valores=[x["rend"] for x in d["dias"]], meta=meta, unidade="%"))
+    return slides
+
+
+# ---------------------------------------------------------------------------
+# Treinamentos (planejamento)
+# ---------------------------------------------------------------------------
+def slides_treinamentos(user, resumo=False):
+    import datetime
+
+    from procedures.models import PlanejamentoTreinamento as P
+    from shared.permissions import has_view_access
+
+    if not has_view_access(user, "procedures:dashboard_treinamentos"):
+        return []
+    hoje = timezone.localdate()
+    abertos = P.objects.filter(status__in=("PLANEJADO", "CONFIRMADO", "ATRASADO"))
+    atrasados = abertos.filter(data_prevista__lt=hoje).count()
+    proximos_qs = abertos.filter(data_prevista__gte=hoje).order_by("data_prevista")
+    proximos = list(proximos_qs[:8])
+    realizados_mes = P.objects.filter(status="REALIZADO", data_realizada__year=hoje.year, data_realizada__month=hoje.month).count()
+    if not (atrasados or proximos or realizados_mes):
+        return []
+    slides = [_slide("treinamentos", "tiles", "Treinamentos", f"Posição em {hoje:%d/%m/%Y}", "bi-mortarboard", itens=[
+        {"rotulo": "Atrasados", "valor": atrasados, "tom": "critico" if atrasados else "ok"},
+        {"rotulo": "Próximos 30 dias", "valor": proximos_qs.filter(data_prevista__lte=hoje + datetime.timedelta(days=30)).count(), "tom": "neutro"},
+        {"rotulo": "Realizados no mês", "valor": realizados_mes, "tom": "ok"},
+    ])]
+    cards = [{"titulo": _corta(p.titulo, 100), "texto": "", "tom": "neutro",
+              "tags": [f"{p.data_prevista:%d/%m/%Y}", f"em {(p.data_prevista - hoje).days} d", p.get_status_display()]
+                      + ([p.local] if p.local and not resumo else [])} for p in proximos]
+    for n, lote in enumerate(_lotes(cards, CARDS_POR_SLIDE), start=1):
+        slides.append(_slide("treinamentos", "cards", "Próximos treinamentos", f"parte {n}" if len(cards) > CARDS_POR_SLIDE else "",
+                             "bi-calendar-event", itens=lote))
+    return slides
+
+
 PROVEDORES: dict[str, Callable] = {
     "ocorrencias": slides_ocorrencias,
     "kpi": slides_kpi,
     "auditoria": slides_auditoria,
+    "metrologia": slides_metrologia,
+    "pcp": slides_pcp,
+    "laboratorio": slides_laboratorio,
+    "treinamentos": slides_treinamentos,
 }
 
 # Playlists (modelos de apresentação): nome -> provedores em ordem de rotação.
 PLAYLISTS = {
-    "geral": ("Geral", "bi-grid-1x2", ("ocorrencias", "kpi", "auditoria")),
+    "geral": ("Geral", "bi-grid-1x2",
+              ("ocorrencias", "kpi", "auditoria", "metrologia", "pcp", "laboratorio", "treinamentos")),
     "ocorrencias": ("Ocorrências", "bi-exclamation-triangle", ("ocorrencias",)),
     "kpi": ("Indicadores (KPI)", "bi-speedometer2", ("kpi",)),
     "auditoria": ("Auditorias", "bi-clipboard-check", ("auditoria",)),
+    "qualidade": ("Qualidade", "bi-patch-check", ("auditoria", "kpi", "metrologia", "treinamentos")),
+    "producao": ("Produção", "bi-gear-wide-connected", ("pcp", "laboratorio")),
+    "metrologia": ("Metrologia", "bi-tools", ("metrologia",)),
+    "pcp": ("PCP", "bi-clipboard-data", ("pcp",)),
+    "laboratorio": ("Laboratório", "bi-droplet-half", ("laboratorio",)),
+    "treinamentos": ("Treinamentos", "bi-mortarboard", ("treinamentos",)),
 }
 PLAYLIST_PADRAO = "geral"
 

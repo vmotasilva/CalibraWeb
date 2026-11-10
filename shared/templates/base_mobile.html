@@ -898,10 +898,7 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                             <i class="bi bi-play-fill"></i>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow">
-                            <li><a class="dropdown-item" href="{% url 'telao' %}?p=geral#cheia">Geral</a></li>
-                            <li><a class="dropdown-item" href="{% url 'telao' %}?p=ocorrencias#cheia">Ocorrências</a></li>
-                            <li><a class="dropdown-item" href="{% url 'telao' %}?p=kpi#cheia">Indicadores (KPI)</a></li>
-                            <li><a class="dropdown-item" href="{% url 'telao' %}?p=auditoria#cheia">Auditorias</a></li>
+                            {% include "shared/_telao_menu.html" %}
                         </ul>
                     </div>
 

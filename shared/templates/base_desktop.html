@@ -920,11 +920,7 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                         <i class="bi bi-play-fill"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li><h6 class="dropdown-header">Modo apresentação</h6></li>
-                        <li><a class="dropdown-item" href="{% url 'telao' %}?p=geral#cheia"><i class="bi bi-grid-1x2 me-2"></i>Geral</a></li>
-                        <li><a class="dropdown-item" href="{% url 'telao' %}?p=ocorrencias#cheia"><i class="bi bi-exclamation-triangle me-2"></i>Ocorrências</a></li>
-                        <li><a class="dropdown-item" href="{% url 'telao' %}?p=kpi#cheia"><i class="bi bi-speedometer2 me-2"></i>Indicadores (KPI)</a></li>
-                        <li><a class="dropdown-item" href="{% url 'telao' %}?p=auditoria#cheia"><i class="bi bi-clipboard-check me-2"></i>Auditorias</a></li>
+                        {% include "shared/_telao_menu.html" %}
                     </ul>
                 </div>
 
