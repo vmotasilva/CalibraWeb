@@ -430,25 +430,77 @@ def slides_pcp(user, resumo=False, filtros=None):
 # ---------------------------------------------------------------------------
 # Laboratório (rendimento HC, mês do último lançamento)
 # ---------------------------------------------------------------------------
-def _dados_lab():
-    dados = cache.get("telao:lab:v1")
-    if dados is None:
-        import calendar
+def _periodo_lab(ultimo, periodo):
+    import calendar
+    from datetime import timedelta
 
-        from laboratorio import hc_rendimento as hc
-        from laboratorio.models import RendimentoHCRegistro
+    if periodo == "30d":
+        return ultimo - timedelta(days=29), ultimo, "Últimos 30 dias"
+    if periodo == "90d":
+        return ultimo - timedelta(days=89), ultimo, "Últimos 90 dias"
+    if periodo == "ano":
+        return ultimo.replace(month=1, day=1), ultimo.replace(month=12, day=31), f"Ano {ultimo.year}"
+    ini = ultimo.replace(day=1)
+    return ini, ini.replace(day=calendar.monthrange(ini.year, ini.month)[1]), f"Mês {ini:%m/%Y}"
 
-        ultimo = RendimentoHCRegistro.objects.order_by("-data").values_list("data", flat=True).first()
-        if ultimo is None:
-            dados = {"vazio": True}
-        else:
-            ini = ultimo.replace(day=1)
-            fim = ini.replace(day=calendar.monthrange(ini.year, ini.month)[1])
-            c = hc.consolidado(ini, fim)
-            dados = {"vazio": False, "mes": f"{ini:%m/%Y}", "meta": c["meta"], "total": c["total"],
-                     "dias": [{"rotulo": f"{l['data']:%d/%m}", "rend": l["rendimento"]} for l in c["linhas"] if l["rendimento"] is not None]}
-        cache.set("telao:lab:v1", dados, 120)
+
+def _dados_lab(f):
+    import hashlib
+    import json
+    from collections import defaultdict
+
+    from django.db.models import Sum
+
+    from laboratorio import hc_rendimento as hc
+    from laboratorio.models import HCCadastro, RendimentoHCItem, RendimentoHCRegistro
+
+    turnos = [t for t in (f.get("turnos") or []) if str(t).strip()]
+    periodo = f.get("periodo") if f.get("periodo") in ("mes", "30d", "90d", "ano") else "mes"
+    chave = "telao:lab:v2:" + hashlib.md5(json.dumps([periodo, sorted(turnos)]).encode()).hexdigest()
+    dados = cache.get(chave)
+    if dados is not None:
+        return dados
+    ultimo = RendimentoHCRegistro.objects.order_by("-data").values_list("data", flat=True).first()
+    if ultimo is None:
+        dados = {"vazio": True}
+    else:
+        ini, fim, rotulo = _periodo_lab(ultimo, periodo)
+        qs = hc._base(ini, fim)
+        if turnos:
+            qs = qs.filter(turno_nome__in=turnos)
+        meta = hc.meta()
+        total = hc._linha_passos(qs.aggregate(**hc._agg_passos()))
+        prod = total["produzidas"]
+        dias = [{"rotulo": f"{r['data']:%d/%m}", "rend": hc.rend(hc._n(r["prod"]), hc._n(r["ret"]))}
+                for r in qs.values("data").annotate(prod=Sum("qtd_lentes"), ret=Sum("qtd_retrabalho")).order_by("data")]
+        dias = [d for d in dias if d["rend"] is not None]
+        meses = []
+        if periodo == "ano":
+            nomes = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"]
+            por_mes = {r["data__month"]: r for r in qs.values("data__month").annotate(prod=Sum("qtd_lentes"), ret=Sum("qtd_retrabalho"))}
+            meses = [{"rotulo": nomes[m - 1], "rend": hc.rend(hc._n(por_mes[m]["prod"]), hc._n(por_mes[m]["ret"]))}
+                     for m in range(1, 13) if m in por_mes and hc.rend(hc._n(por_mes[m]["prod"]), hc._n(por_mes[m]["ret"])) is not None]
+        por_turno = [g for g in hc._por_grupo(qs, "turno_nome", "Sem turno", prod) if g["rend"] is not None]
+        itens = RendimentoHCItem.objects.filter(registro__in=qs)
+        motivos = sorted(({"nome": c.nome, "qtd": q, "pct": hc.pct(q, prod)} for c, q in
+                          hc._soma_por_cadastro(itens, RendimentoHCItem.RET_MOTIVO, HCCadastro.TIPO_MOTIVO) if q),
+                         key=lambda x: -x["qtd"])[:8]
+        prod_mat = {c.pk: q for c, q in hc._soma_por_cadastro(itens, RendimentoHCItem.PROD_MATERIAL, HCCadastro.TIPO_MATERIAL)}
+        materiais = []
+        for c, ret in hc._soma_por_cadastro(itens, RendimentoHCItem.RET_MATERIAL, HCCadastro.TIPO_MATERIAL):
+            p = hc._n(prod_mat.get(c.pk))
+            if p:
+                materiais.append({"nome": c.nome, "prod": p, "rend": hc.rend(p, ret)})
+        materiais.sort(key=lambda x: -x["prod"])
+        colabs = [c for c in hc._por_colaborador(qs, prod) if c["rend"] is not None][:10]
+        dados = {"vazio": False, "rotulo": rotulo, "meta": meta, "total": total, "dias": dias, "meses": meses,
+                 "turnos": por_turno, "motivos": motivos, "materiais": materiais[:8], "colabs": colabs}
+    cache.set(chave, dados, 120)
     return dados
+
+
+def _tom_rend(v, meta):
+    return "neutro" if v is None else "ok" if v >= meta else "critico"
 
 
 def slides_laboratorio(user, resumo=False, filtros=None):
@@ -456,22 +508,47 @@ def slides_laboratorio(user, resumo=False, filtros=None):
 
     if not has_view_access(user, "laboratorio:hc_dashboard"):
         return []
-    d = _dados_lab()
+    f = filtros or {}
+    d = _dados_lab(f)
     if d["vazio"]:
         return []
-    t, meta = d["total"], d["meta"]
-    tom_rend = "neutro" if t["rendimento"] is None else "ok" if t["rendimento"] >= meta else "critico"
-    slides = [_slide("laboratorio", "tiles", "Laboratório — rendimento HC", f"Mês {d['mes']} · meta {_fmt_num(meta, 1)}%",
-                     "bi-droplet-half", itens=[
-        {"rotulo": "Rendimento", "valor": f"{_fmt_num(t['rendimento'], 1)}%", "tom": tom_rend, "nota": f"meta {_fmt_num(meta, 1)}%"},
+    t, meta, sub = d["total"], d["meta"], d["rotulo"]
+    if not t["produzidas"]:
+        return []
+    ic = "bi-droplet-half"
+    slides = [_slide("laboratorio", "tiles", "Laboratório — rendimento HC", f"{sub} · meta {_fmt_num(meta, 1)}%", ic, itens=[
+        {"rotulo": "Rendimento", "valor": f"{_fmt_num(t['rendimento'], 1)}%", "tom": _tom_rend(t["rendimento"], meta), "nota": f"meta {_fmt_num(meta, 1)}%"},
         {"rotulo": "Retrabalho", "valor": f"{_fmt_num(t['pct_retrabalho'], 1)}%", "tom": "neutro"},
         {"rotulo": "Lentes produzidas", "valor": _fmt_num(t["produzidas"], 0), "tom": "neutro"},
         {"rotulo": "Lentes em retrabalho", "valor": _fmt_num(t["retrabalho"], 0), "tom": "alerta" if t["retrabalho"] else "ok"},
     ])]
     if len(d["dias"]) > 1:
-        slides.append(_slide("laboratorio", "chart", "Laboratório — rendimento HC por dia", f"Mês {d['mes']}", "bi-graph-up",
+        slides.append(_slide("laboratorio", "chart", "Laboratório — rendimento HC por dia", sub, "bi-graph-up",
                              labels=[x["rotulo"] for x in d["dias"]], valores=[x["rend"] for x in d["dias"]], meta=meta, unidade="%"))
+    if len(d["meses"]) > 1:
+        slides.append(_slide("laboratorio", "chart", "Laboratório — rendimento HC por mês", sub, "bi-bar-chart",
+                             labels=[x["rotulo"] for x in d["meses"]], valores=[x["rend"] for x in d["meses"]], meta=meta, unidade="%"))
+
+    def _bars(lista, nome="nome"):
+        return [{"rotulo": x[nome], "pct": x["rend"], "tom": _tom_rend(x["rend"], meta), "txt": f"{_fmt_num(x['rend'], 1)}%"} for x in lista]
+    if d["turnos"]:
+        slides.append(_slide("laboratorio", "bars", "Laboratório — rendimento por turno", sub, "bi-clock", itens=_bars(d["turnos"])))
+    if d["motivos"]:
+        slides.append(_slide("laboratorio", "bars", "Laboratório — retrabalho por motivo", f"{sub} · % sobre lentes produzidas",
+                             "bi-exclamation-triangle", itens=[
+            {"rotulo": m["nome"], "pct": min(m["pct"] or 0, 100), "tom": "alerta", "txt": f"{_fmt_num(m['qtd'], 0)} ({_fmt_num(m['pct'], 1)}%)"}
+            for m in d["motivos"]]))
+    if d["materiais"]:
+        slides.append(_slide("laboratorio", "bars", "Laboratório — rendimento por material", sub, "bi-layers", itens=_bars(d["materiais"])))
+    if d["colabs"] and not resumo:
+        slides.append(_slide("laboratorio", "bars", "Laboratório — rendimento por colaborador", sub, "bi-people", itens=_bars(d["colabs"])))
     return slides
+
+
+def _opts_lab_turnos(user):
+    from laboratorio.models import RendimentoHCRegistro
+
+    return [(t, t) for t in sorted(set(RendimentoHCRegistro.objects.exclude(turno_nome="").values_list("turno_nome", flat=True).distinct()))]
 
 
 # ---------------------------------------------------------------------------
@@ -745,8 +822,13 @@ PROVEDOR_CARDS = {
         ("paginas", "Páginas com menor cumprimento", lambda s: s["kind"] == "bars" and "páginas" in s["titulo"]),
     ],
     "laboratorio": [
-        ("resumo", "Rendimento HC do mês", lambda s: s["kind"] == "tiles"),
-        ("grafico", "Rendimento HC por dia", lambda s: s["kind"] == "chart"),
+        ("resumo", "Rendimento HC (rendimento, retrabalho, lentes)", lambda s: s["kind"] == "tiles"),
+        ("dia", "Rendimento por dia", lambda s: s["kind"] == "chart" and "por dia" in s["titulo"]),
+        ("mes", "Rendimento por mês (período Ano)", lambda s: s["kind"] == "chart" and "por mês" in s["titulo"]),
+        ("turno", "Rendimento por turno", lambda s: s["kind"] == "bars" and "turno" in s["titulo"]),
+        ("motivo", "Retrabalho por motivo", lambda s: s["kind"] == "bars" and "motivo" in s["titulo"]),
+        ("material", "Rendimento por material", lambda s: s["kind"] == "bars" and "material" in s["titulo"]),
+        ("colaborador", "Rendimento por colaborador", lambda s: s["kind"] == "bars" and "colaborador" in s["titulo"]),
     ],
     "treinamentos": [
         ("resumo", "Vigência dos treinamentos (conformidade, vigentes, pendentes)", lambda s: s["kind"] == "tiles" and "vigência" in s["titulo"]),
@@ -833,7 +915,11 @@ FILTROS = {
         dict(nome="dias", rotulo="Período analisado", tipo="select",
              opcoes=lambda u: [("7", "7 dias"), ("14", "14 dias"), ("30", "30 dias"), ("60", "60 dias"), ("90", "90 dias")]),
     ],
-    "laboratorio": [],
+    "laboratorio": [
+        dict(nome="periodo", rotulo="Período (a partir do último lançamento)", tipo="select",
+             opcoes=lambda u: [("mes", "Mês do último lançamento"), ("30d", "Últimos 30 dias"), ("90d", "Últimos 90 dias"), ("ano", "Ano do último lançamento")]),
+        dict(nome="turnos", rotulo="Turnos", tipo="multi", opcoes=_opts_lab_turnos, ajuda="Vazio = todos."),
+    ],
     "treinamentos": [
         dict(nome="setores", rotulo="Setores", tipo="multi", opcoes=_opts_trein_setores, ajuda="Vazio = todos."),
         dict(nome="turnos", rotulo="Turnos", tipo="multi", opcoes=_opts_trein_turnos),

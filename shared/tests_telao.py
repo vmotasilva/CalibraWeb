@@ -101,6 +101,25 @@ class TelaoProvedoresTests(TestCase):
         for nome in ("setores", "turnos", "lideres", "supervisores", "gerentes", "criticidade", "matrizes", "sub_areas"):
             self.assertIn(nome, campos)
 
+    def test_laboratorio_filtra_turno_periodo_e_cards(self):
+        from laboratorio.models import HCCadastro, RendimentoHCItem, RendimentoHCRegistro
+
+        motivo = HCCadastro.objects.create(tipo=HCCadastro.TIPO_MOTIVO, nome="Bolha")
+        mat = HCCadastro.objects.create(tipo=HCCadastro.TIPO_MATERIAL, nome="Policarbonato")
+        for dia, turno, ret in ((1, "T1", 5), (2, "T1", 0), (3, "T2", 20)):
+            r = RendimentoHCRegistro.objects.create(data=date(2026, 3, dia), turno_nome=turno, qtd_lentes=100, qtd_retrabalho=ret)
+            RendimentoHCItem.objects.create(registro=r, tipo=RendimentoHCItem.RET_MOTIVO, cadastro=motivo, quantidade=ret)
+            RendimentoHCItem.objects.create(registro=r, tipo=RendimentoHCItem.PROD_MATERIAL, cadastro=mat, quantidade=100)
+            RendimentoHCItem.objects.create(registro=r, tipo=RendimentoHCItem.RET_MATERIAL, cadastro=mat, quantidade=ret)
+        todos = providers.slides_laboratorio(self.admin)
+        titulos = {s["titulo"] for s in todos}
+        self.assertIn("Laboratório — rendimento por turno", titulos)
+        self.assertIn("Laboratório — retrabalho por motivo", titulos)
+        t1 = providers.slides_laboratorio(self.admin, filtros={"turnos": ["T1"]})
+        tiles = {i["rotulo"]: i["valor"] for s in t1 if s["kind"] == "tiles" for i in s["itens"]}
+        self.assertEqual(tiles["Lentes produzidas"], "200")
+        self.assertEqual(providers.slides_laboratorio(self.admin, filtros={"periodo": "ano"})[0]["kind"], "tiles")
+
     def test_usuario_sem_acesso_nao_ve_modulo(self):
         comum = get_user_model().objects.create_user("comum", password="x")
         self.assertEqual(providers.slides_kpi(comum) + providers.slides_auditoria(comum), [])
