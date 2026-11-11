@@ -278,7 +278,7 @@
     var b = it._box, p = it.pos; if (!b) return;
     b.style.left = p.x + "%"; b.style.top = p.y + "%"; b.style.width = p.w + "%"; b.style.height = p.h + "%";
   }
-  function minimoPct(it) { var i = cardInfo[it.card_id], m = i ? i.card.tam_min : [2, 1]; return { w: m[0] / COL * 100, h: m[1] / LIN * 100 }; }
+  function minimoPct(it) { var i = cardInfo[it.card_id], m = i ? i.card.tam_min : it.el ? [1, 1] : [2, 1]; return { w: m[0] / COL * 100, h: m[1] / LIN * 100 }; }
   function renderLivre(c, s) {
     var frame = el("div", "tl tl-frame ed-frame ed-livre" + classeTema());
     s.itens.forEach(function (it) {
@@ -359,8 +359,14 @@
     var info = cardInfo[it.card_id], rot = info ? info.card.rotulo : it.card_id;
     return TelaoCards.painel({ titulo: rot, icone: "bi-hourglass-split", kind: "vazio", subtitulo: msg }, true);
   }
+  // Elementos soltos (título, subtítulo, texto, imagem) não dependem de dados: o editor os desenha sozinho.
+  var ROTULO_EL = { titulo: "Título", subtitulo: "Subtítulo", texto: "Texto", imagem: "Imagem" };
+  var PADRAO_EL = { titulo: { tam: 3.4, negrito: true, cor: "padrao", vertical: "meio" }, subtitulo: { tam: 2.2, negrito: false, cor: "suave", vertical: "meio" },
+                    texto: { tam: 1.8, negrito: false, cor: "padrao", vertical: "topo" }, imagem: { tam: 2, negrito: false, cor: "padrao", vertical: "meio" } };
+  function elConteudo(it) { return Object.assign({ kind: "elemento", titulo: "", icone: "", moldura: it.visual.moldura === "com" }, it.el); }
   function preencher(it) {
     if (!it._el) return;
+    if (it.el) it._conteudo = elConteudo(it);
     it._el.innerHTML = "";
     it._el.appendChild(it._conteudo ? TelaoCards.painel(it._conteudo, it.visual.titulo !== false, it.visual.moldura === "sem", it.visual.subtitulo !== false) : placeholder(it, it._carregando ? "Carregando…" : "Sem dados no momento"));
   }
@@ -404,11 +410,13 @@
     var s = atual(), meu = ++reqPrevia;
     if (s.origem === "manual") {
       if (!s.itens.length) return;
+      if (!s.itens.some(function (i) { return !i.el; })) { s.itens.forEach(preencher); return; }
       s.itens.forEach(function (i) { i._carregando = true; });
-      post(D.urls.previa, { slide: limpo(s), resumo: !!estado.modelo.resumo }).then(function (r) {
+      var env = limpo(s); env.itens.forEach(function (i) { if (i.el && i.el.url) i.el.url = ""; });   // a imagem não precisa ir ao servidor na prévia
+      post(D.urls.previa, { slide: env, resumo: !!estado.modelo.resumo }).then(function (r) {
         if (meu !== reqPrevia || !r.ok) return;
         TelaoCards.destruir();
-        s.itens.forEach(function (it, k) { it._carregando = false; it._conteudo = (r.dados.itens || [])[k] || null; preencher(it); });
+        s.itens.forEach(function (it, k) { it._carregando = false; if (!it.el) it._conteudo = (r.dados.itens || [])[k] || null; preencher(it); });
       });
     } else {
       s._carregando = true; post(D.urls.previa, { slide: limpo(s), resumo: !!estado.modelo.resumo }).then(function (r) {
@@ -424,6 +432,18 @@
     alerta(null);
     var it = { _id: novoId(), card_id: id, pos: vaga, visual: { titulo: true, max_itens: null } };
     s.itens.push(it); estado.itemSel = it._id; sujar(); renderLista(); renderCentro(); renderDireita();
+  }
+  var TAM_EL = { titulo: [12, 1], subtitulo: [8, 1], texto: [6, 2], imagem: [4, 3] };
+  function adicionarElemento(tipo) {
+    var s = atual(); if (s.origem !== "manual") return;
+    var t = TAM_EL[tipo], livre = modo(s) === "livre", vaga = livre ? acharVagaLivre(s, t, [1, 1]) : acharVaga(s, t, [1, 1]);
+    if (!vaga) { alerta("Não há espaço livre neste slide. Reduza ou remova algum item, ou use outro slide.", "warning"); return; }
+    alerta(null);
+    var el0 = Object.assign({ tipo: tipo, alinhar: tipo === "titulo" ? "centro" : "esq" }, PADRAO_EL[tipo]);
+    el0.texto = tipo === "imagem" ? undefined : ""; if (tipo === "imagem") { el0.url = ""; el0.ajuste = "contem"; el0.alt = ""; delete el0.texto; }
+    var it = { _id: novoId(), card_id: "", el: el0, pos: vaga, visual: { titulo: true, max_itens: null } };
+    s.itens.push(it); estado.itemSel = it._id; sujar(); renderLista(); renderCentro(); renderDireita();
+    if (tipo !== "imagem") setTimeout(function () { var c = document.getElementById("edElTexto"); if (c) c.focus(); }, 50);
   }
   // Procura um espaço livre para o card, do tamanho padrão e, se não couber, encolhendo até o tamanho mínimo.
   function acharVaga(s, padrao, minimo) {
@@ -535,7 +555,78 @@
     add.addEventListener("change", function () { if (!add.value) return; s.blocos.push({ provedor: add.value, filtros: {} }); mudou(); renderDireita(); });
     body.appendChild(add); card.appendChild(body); return card;
   }
+  // Redimensiona a imagem escolhida (lado maior 1280 px) e a devolve como data URI pequeno o bastante para ir junto da apresentação.
+  function lerImagem(arquivo, pronto) {
+    var leitor = new FileReader();
+    leitor.onerror = function () { pronto(null); };
+    leitor.onload = function () {
+      var im = new Image();
+      im.onerror = function () { pronto(null); };
+      im.onload = function () {
+        var k = Math.min(1, 1280 / Math.max(im.width, im.height)), cv = document.createElement("canvas");
+        cv.width = Math.max(1, Math.round(im.width * k)); cv.height = Math.max(1, Math.round(im.height * k));
+        var cx = cv.getContext("2d"), png = arquivo.type === "image/png" || arquivo.type === "image/gif" || arquivo.type === "image/webp";
+        cx.drawImage(im, 0, 0, cv.width, cv.height);
+        var saida = png ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", .85);
+        for (var q = .8; saida.length > 580000 && q > .3; q -= .1) saida = cv.toDataURL("image/jpeg", q);   // grande demais: vira JPEG mais comprimido
+        if (saida.length > 580000) { var c2 = document.createElement("canvas"); c2.width = Math.round(cv.width / 2); c2.height = Math.round(cv.height / 2); c2.getContext("2d").drawImage(cv, 0, 0, c2.width, c2.height); saida = c2.toDataURL("image/jpeg", .7); }
+        pronto(saida.length > 580000 ? null : saida);
+      };
+      im.src = leitor.result;
+    };
+    leitor.readAsDataURL(arquivo);
+  }
+  function propriedadesElemento(s, it) {
+    var e = it.el, card = el("div", "card shadow-sm mb-3 border-primary"), b = el("div", "card-body");
+    b.appendChild(el("div", "small text-muted", "Elemento do slide"));
+    b.appendChild(el("div", "fw-bold mb-2", ROTULO_EL[e.tipo] || "Elemento"));
+    function grupo(rotulo, ctl) { var g = el("div", "mb-2"); g.appendChild(el("label", "form-label small fw-bold mb-1", rotulo)); g.appendChild(ctl); b.appendChild(g); return g; }
+    function select(opcoes, valor, aoMudar) {
+      var sl = el("select", "form-select form-select-sm"); opcoes.forEach(function (o) { sl.appendChild(new Option(o[1], o[0])); }); sl.value = valor;
+      sl.addEventListener("change", function () { aoMudar(sl.value); sujar(); preencher(it); }); return sl;
+    }
+    if (e.tipo === "imagem") {
+      var arq = el("input", "form-control form-control-sm"); arq.type = "file"; arq.accept = "image/png,image/jpeg,image/webp,image/gif";
+      var aviso = el("div", "small text-muted mt-1", "A imagem é reduzida automaticamente (até 1280 px) e salva junto da apresentação.");
+      var gArq = grupo("Imagem", arq); gArq.appendChild(aviso);
+      arq.addEventListener("change", function () {
+        var f = arq.files && arq.files[0]; if (!f) return; aviso.textContent = "Processando…";
+        lerImagem(f, function (url) {
+          if (!url) { aviso.textContent = "Não foi possível usar esse arquivo: escolha uma imagem menor ou outro formato."; aviso.className = "small text-danger mt-1"; return; }
+          e.url = url; aviso.className = "small text-success mt-1"; aviso.textContent = "Imagem carregada."; sujar(); preencher(it);
+        });
+      });
+      var url = el("input", "form-control form-control-sm"); url.type = "url"; url.placeholder = "ou cole um endereço https://…"; url.value = /^https:/.test(e.url || "") ? e.url : "";
+      url.addEventListener("input", function () { e.url = url.value.trim(); sujar(); preencher(it); }); grupo("Endereço da imagem", url);
+      grupo("Ajuste no quadro", select([["contem", "Mostrar inteira"], ["cobre", "Preencher o quadro (pode cortar)"]], e.ajuste || "contem", function (v) { e.ajuste = v; }));
+      var alt = el("input", "form-control form-control-sm"); alt.maxLength = 200; alt.value = e.alt || ""; alt.placeholder = "Descrição (acessibilidade)";
+      alt.addEventListener("input", function () { e.alt = alt.value; sujar(); }); grupo("Descrição", alt);
+      var rmI = el("button", "btn btn-outline-secondary btn-sm mb-2"); rmI.type = "button"; rmI.innerHTML = '<i class="bi bi-x-circle me-1"></i>Tirar a imagem';
+      rmI.addEventListener("click", function () { e.url = ""; sujar(); preencher(it); renderDireita(); }); b.appendChild(rmI);
+      grupo("Alinhamento horizontal", select([["esq", "Esquerda"], ["centro", "Centro"], ["dir", "Direita"]], e.alinhar || "esq", function (v) { e.alinhar = v; }));
+    } else {
+      var tx = el("textarea", "form-control form-control-sm"); tx.id = "edElTexto"; tx.rows = e.tipo === "texto" ? 5 : 2; tx.maxLength = 2000; tx.value = e.texto || "";
+      tx.placeholder = ROTULO_EL[e.tipo] + " do slide…"; tx.addEventListener("input", function () { e.texto = tx.value; sujar(); preencher(it); }); grupo("Texto", tx);
+      var tam = el("input", "form-control form-control-sm"); tam.type = "number"; tam.min = 0.5; tam.max = 15; tam.step = 0.1; tam.value = e.tam;
+      tam.addEventListener("input", function () { var v = parseFloat(tam.value); if (isNaN(v)) return; e.tam = Math.min(15, Math.max(0.5, v)); sujar(); preencher(it); });
+      grupo("Tamanho da fonte (% da largura do slide)", tam);
+      grupo("Alinhamento horizontal", select([["esq", "Esquerda"], ["centro", "Centro"], ["dir", "Direita"]], e.alinhar || "esq", function (v) { e.alinhar = v; }));
+      grupo("Alinhamento vertical", select([["topo", "Topo"], ["meio", "Meio"], ["base", "Base"]], e.vertical || "meio", function (v) { e.vertical = v; }));
+      grupo("Cor", select([["padrao", "Padrão do tema"], ["suave", "Suave"], ["destaque", "Destaque"]], e.cor || "padrao", function (v) { e.cor = v; }));
+      var fn = el("div", "form-check mb-2"), n = el("input", "form-check-input"); n.type = "checkbox"; n.id = "edElNeg"; n.checked = !!e.negrito;
+      n.addEventListener("change", function () { e.negrito = n.checked; sujar(); preencher(it); });
+      fn.appendChild(n); fn.appendChild(Object.assign(el("label", "form-check-label small", "Negrito"), { htmlFor: "edElNeg" })); b.appendChild(fn);
+    }
+    var fm = el("div", "form-check mb-2"), mo = el("input", "form-check-input"); mo.type = "checkbox"; mo.id = "edElMol"; mo.checked = it.visual.moldura === "com";
+    mo.addEventListener("change", function () { if (mo.checked) it.visual.moldura = "com"; else delete it.visual.moldura; sujar(); preencher(it); });
+    fm.appendChild(mo); fm.appendChild(Object.assign(el("label", "form-check-label small", "Mostrar moldura (fundo e borda)"), { htmlFor: "edElMol" })); b.appendChild(fm);
+    var gpos = blocoPosicao(s, it); if (gpos) b.appendChild(gpos);
+    var rm = el("button", "btn btn-outline-danger btn-sm w-100"); rm.type = "button"; rm.innerHTML = '<i class="bi bi-trash me-1"></i>Remover elemento do slide';
+    rm.addEventListener("click", function () { removerItem(it._id); }); b.appendChild(rm);
+    card.appendChild(b); return card;
+  }
   function propriedades(s, it) {
+    if (it.el) return propriedadesElemento(s, it);
     var info = cardInfo[it.card_id], card = el("div", "card shadow-sm mb-3 border-primary"), b = el("div", "card-body");
     b.appendChild(el("div", "small text-muted", info ? info.modulo.rotulo + " › " + info.secao.rotulo : ""));
     b.appendChild(el("div", "fw-bold mb-2", info ? info.card.rotulo : it.card_id));
@@ -560,7 +651,7 @@
         sel.innerHTML = ""; sel.appendChild(new Option("Primeiro disponível", ""));
         if (info.card.forma === "cards") sel.appendChild(new Option("Todas, concentradas em um só card", "*"));
         lista.forEach(function (x) { sel.appendChild(new Option(x, x)); });
-        var ref = (it.params || {}).ref || ""; if (ref && ref !== "*" && lista.indexOf(ref) < 0) sel.appendChild(new Option(ref + " (indisponível agora)", ref)); sel.value = ref;
+        var ref = (it.params || {}).ref || ""; if (ref && ref !== "*" && !lista.some(function (x) { return x === ref || x.indexOf(ref + " \u00b7 ") === 0; })) sel.appendChild(new Option(ref + " (indisponível agora)", ref)); sel.value = lista.indexOf(ref) >= 0 || ref === "*" ? ref : (lista.filter(function (x) { return x.indexOf(ref + " \u00b7 ") === 0; })[0] || ref);
       });
       sel.addEventListener("change", function () { if (sel.value) it.params = { ref: sel.value }; else delete it.params; sujar(); atualizarPrevia(); });
     }
@@ -574,7 +665,14 @@
     if (flt.children.length) {   // quais dados entram: indicadores, setores...
       var df = el("details", "mb-2"); df.appendChild(el("summary", "small fw-bold", "Filtros dos dados")); flt.className = "mt-2"; df.appendChild(flt); b.appendChild(df);
     }
-    if (modo(s) === "livre") {
+    var gpos = blocoPosicao(s, it); if (gpos) b.appendChild(gpos);
+    var rm = el("button", "btn btn-outline-danger btn-sm w-100"); rm.type = "button"; rm.innerHTML = '<i class="bi bi-trash me-1"></i>Remover card do slide';
+    rm.addEventListener("click", function () { removerItem(it._id); }); b.appendChild(rm);
+    card.appendChild(b); return card;
+  }
+  function blocoPosicao(s, it) {
+    if (modo(s) !== "livre") return null;
+    {
       var gp = el("div", "mb-2"); gp.appendChild(el("div", "small fw-bold mb-1", "Posição e tamanho (% do slide)"));
       var lin = el("div", "d-flex gap-1");
       [["x", "X"], ["y", "Y"], ["w", "Larg."], ["h", "Alt."]].forEach(function (k) {
@@ -593,11 +691,8 @@
       var fr = el("button", "btn btn-outline-secondary btn-sm flex-fill"); fr.type = "button"; fr.innerHTML = '<i class="bi bi-layer-forward me-1"></i>Para frente';
       var tr = el("button", "btn btn-outline-secondary btn-sm flex-fill"); tr.type = "button"; tr.innerHTML = '<i class="bi bi-layer-backward me-1"></i>Para trás';
       fr.addEventListener("click", function () { camada(s, it, 1); }); tr.addEventListener("click", function () { camada(s, it, -1); });
-      cam.appendChild(fr); cam.appendChild(tr); gp.appendChild(cam); b.appendChild(gp);
+      cam.appendChild(fr); cam.appendChild(tr); gp.appendChild(cam); return gp;
     }
-    var rm = el("button", "btn btn-outline-danger btn-sm w-100"); rm.type = "button"; rm.innerHTML = '<i class="bi bi-trash me-1"></i>Remover card do slide';
-    rm.addEventListener("click", function () { removerItem(it._id); }); b.appendChild(rm);
-    card.appendChild(b); return card;
   }
   function camada(s, it, d) {
     var i = s.itens.indexOf(it), j = i + d; if (j < 0 || j >= s.itens.length) return;
@@ -610,6 +705,13 @@
   }
   function paleta() {
     var card = el("div", "card shadow-sm ed-pal"), b = el("div", "card-body");
+    b.appendChild(el("div", "small fw-bold text-uppercase text-muted mb-2", "Adicionar texto ou imagem"));
+    var linhaEl = el("div", "d-flex flex-wrap gap-1 mb-3");
+    [["titulo", "bi-type-h1", "Título"], ["subtitulo", "bi-type-h2", "Subtítulo"], ["texto", "bi-text-paragraph", "Texto"], ["imagem", "bi-image", "Imagem"]].forEach(function (k) {
+      var bt = el("button", "btn btn-outline-primary btn-sm"); bt.type = "button"; bt.innerHTML = '<i class="bi ' + k[1] + ' me-1"></i>' + k[2];
+      bt.addEventListener("click", function () { adicionarElemento(k[0]); }); linhaEl.appendChild(bt);
+    });
+    b.appendChild(linhaEl);
     b.appendChild(el("div", "small fw-bold text-uppercase text-muted mb-2", "Adicionar card ao slide"));
     D.catalogo.forEach(function (m) {
       var det = el("details", "mb-1"); var sm = el("summary"); sm.innerHTML = '<i class="bi ' + m.icone + ' me-2 text-primary"></i>' + m.rotulo; det.appendChild(sm);

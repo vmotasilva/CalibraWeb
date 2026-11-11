@@ -61,3 +61,15 @@
 .tl.claro { --ok:#16a34a; --alerta:#d97706; --critico:#dc2626; --neutro:#64748b; --bg:#eef2f7; --card:#f4f6fa; --linha:#d5dde9; --txt:#0f172a; --mut:#5b6b85;
   --txt2:#334155; --tag:#0f172a0f; --trilho:#0f172a14; --painel:#ffffff; --grade:#0f172a14; --metac:#475569; --rotulo:#0f172a; --okt:#15803d; --crit-t:#b91c1c;
   --btn:#0f172a0d; --btnb:#0f172a26; --btnh:#0f172a1a; --prog:#0f172a14; --guia:#0f172a12; }
+/* Elementos soltos (título, subtítulo, texto, imagem): a fonte é em % da largura do slide (--tam) */
+.tl .painel.elemento { padding:.4cqh .5cqw; }
+.tl .elem { width:100%; height:100%; display:flex; flex-direction:column; overflow:hidden; font-size:calc(var(--tam, 2) * 1cqw); line-height:1.2; color:var(--txt); }
+.tl .elem .t { width:100%; white-space:pre-wrap; overflow-wrap:anywhere; }
+.tl .elem.v-topo { justify-content:flex-start; } .tl .elem.v-meio { justify-content:center; } .tl .elem.v-base { justify-content:flex-end; }
+.tl .elem.al-esq { text-align:left; } .tl .elem.al-centro { text-align:center; } .tl .elem.al-dir { text-align:right; }
+.tl .elem.neg .t { font-weight:800; }
+.tl .elem.c-suave { color:var(--mut); } .tl .elem.c-destaque { color:var(--alerta); }
+.tl .elem img { width:100%; height:100%; display:block; object-fit:contain; border-radius:.4em; }
+.tl .elem.cobre img { object-fit:cover; }
+.tl .elem.img.al-esq img { object-position:left center; } .tl .elem.img.al-dir img { object-position:right center; }
+.tl .elem .sem-img { margin:auto; color:var(--mut); font-size:.55em; text-align:center; opacity:.8; }

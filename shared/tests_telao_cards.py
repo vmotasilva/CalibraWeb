@@ -162,6 +162,22 @@ class KpiGraficoConfiguravelTests(TestCase):
         Medicao.objects.filter(setor__isnull=False).delete()
         self.assertEqual(self._grafico(tipo_grafico="empilhadas")["tipo"], "barras")
 
+    def test_filtro_de_setor_no_card_do_slide_manual(self):
+        """Com setor marcado o título vira 'Indicador · Setor', mas o card salvo (ref = 'Quebras') continua achando o gráfico e os motivos."""
+        from kpi.models import Motivo
+        from shared.telao import layout
+
+        hmc, mont = self.setores
+        Motivo.objects.create(indicador=self.ind, setor=hmc, granularidade="diaria", data=date(2026, 4, 1), descricao="Risco", quantidade=3)
+        Motivo.objects.create(indicador=self.ind, setor=mont, granularidade="diaria", data=date(2026, 4, 1), descricao="Trinca", quantidade=7)
+        filtros = {"setores": ["HMC"]}
+        g = layout.resolver_item(self.admin, {"card_id": "kpi.graficos", "params": {"ref": "Quebras"}, "filtros": filtros}, False, [], {})
+        self.assertIsNotNone(g)
+        self.assertEqual(g["titulo"], "Quebras · HMC")
+        m = layout.resolver_item(self.admin, {"card_id": "kpi.motivos", "params": {"ref": "Quebras"}, "filtros": filtros}, False, [], {})
+        self.assertIsNotNone(m)
+        self.assertEqual([i["rotulo"] for i in m["itens"]], ["1. Risco"])  # só os motivos do setor marcado
+
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class MotivosConfiguraveisTests(TestCase):

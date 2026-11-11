@@ -9,7 +9,8 @@ Configuração salva (`ModeloApresentacao.slides`, lista de):
   automático: {"origem": "auto", "duracao", "provedor", "filtros": {..., "layout": "2x2"}}
               {"origem": "auto", "tipo": "assunto", "titulo", "icone", "blocos": [{"provedor", "filtros"}]}
   manual:     {"origem": "manual", "duracao", "titulo", "icone", "layout": {"modo": ...},
-               "itens": [{"card_id", "params": {"ref": <título da instância>}, "filtros", "pos", "visual"}]}
+               "itens": [{"card_id", "params": {"ref": <título da instância>}, "filtros", "pos", "visual"}
+                         ou, para título/subtítulo/texto/imagem soltos: {"card_id": "", "el": {...}, "pos", "visual"}]}
 Os dados são sempre os atuais: o slide automático é remontado a cada execução; o manual só guarda a posição dos cards.
 """
 import json
@@ -126,8 +127,49 @@ def _concentrar(provedor: str, slides: list[dict]) -> dict:
     return {**base[0], "titulo": f"Ocorrências — {rotulo}", "subtitulo": sub, "itens": itens}
 
 
+# Elementos soltos do slide (independentes dos cards): título, subtítulo, texto e imagem.
+TIPOS_ELEMENTO = ("titulo", "subtitulo", "texto", "imagem")
+_PADRAO_ELEMENTO = {  # tamanho da fonte (% da largura do slide), negrito, cor, alinhamento vertical
+    "titulo": (3.4, True, "padrao", "meio"), "subtitulo": (2.2, False, "suave", "meio"),
+    "texto": (1.8, False, "padrao", "topo"), "imagem": (2.0, False, "padrao", "meio"),
+}
+_RE_IMAGEM_DADOS = re.compile(r"^data:image/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$")
+MAX_IMAGEM = 600_000  # caracteres (a imagem já vai reduzida pelo editor)
+
+
+def _url_imagem(v) -> str:
+    """Só imagem enviada pelo editor (data URI raster) ou endereço https: nada de svg, http ou scripts."""
+    v = v.strip() if isinstance(v, str) else ""
+    if v.startswith("https://") and len(v) <= 500 and not re.search(r"\s", v):
+        return v
+    if len(v) <= MAX_IMAGEM and _RE_IMAGEM_DADOS.match(v):
+        return v
+    return ""
+
+
+def limpar_elemento(raw) -> dict | None:
+    if not isinstance(raw, dict) or raw.get("tipo") not in TIPOS_ELEMENTO:
+        return None
+    tipo = raw["tipo"]
+    tam, neg, cor, vert = _PADRAO_ELEMENTO[tipo]
+    saida = {"tipo": tipo, "tam": _decimal(raw.get("tam"), 0.5, 15, tam),
+             "negrito": raw["negrito"] if isinstance(raw.get("negrito"), bool) else neg,
+             "cor": raw.get("cor") if raw.get("cor") in ("padrao", "suave", "destaque") else cor,
+             "alinhar": raw.get("alinhar") if raw.get("alinhar") in ("esq", "centro", "dir") else "esq",
+             "vertical": raw.get("vertical") if raw.get("vertical") in ("topo", "meio", "base") else vert}
+    if tipo == "imagem":
+        saida.update({"url": _url_imagem(raw.get("url")), "ajuste": "cobre" if raw.get("ajuste") == "cobre" else "contem",
+                      "alt": str(raw.get("alt") or "")[:200]})
+    else:
+        saida["texto"] = str(raw.get("texto") or "")[:2000]
+    return saida
+
+
 def resolver_item(user, item: dict, resumo: bool, embutidas: list, memo: dict) -> dict | None:
     """Conteúdo atual do card (e da instância, se houver) ou None se não há dado/permissão."""
+    if isinstance(item.get("el"), dict):  # elemento solto: não depende de dado nenhum
+        return {"kind": "elemento", **item["el"], "titulo": "", "icone": "",
+                "moldura": (item.get("visual") or {}).get("moldura") == "com"}
     cid = item.get("card_id") or ""
     if cid not in cards.CARDS:
         return None
@@ -137,7 +179,8 @@ def resolver_item(user, item: dict, resumo: bool, embutidas: list, memo: dict) -
     if ref == "*" and cards.CARDS[cid][2] and slides and slides[0].get("kind") == "cards":  # todas as instâncias num só card
         return aplicar_visual(_concentrar(provedor, slides), item.get("visual"))
     if ref:
-        slides = [s for s in slides if s.get("titulo") == ref]
+        # com filtro de setor o título vira "Indicador · Setor": o nome salvo (só o indicador) continua valendo
+        slides = [s for s in slides if s.get("titulo") == ref or str(s.get("titulo") or "").startswith(ref + " · ")]
     juntos = juntar_partes(slides)
     return aplicar_visual(juntos[0], item.get("visual")) if juntos else None
 
@@ -156,7 +199,7 @@ def montar_manual(user, cfg: dict, resumo: bool, embutidas: list, memo: dict, du
     for it in cfg.get("itens") or []:
         conteudo = resolver_item(user, it, resumo, embutidas, memo)
         if conteudo:
-            itens.append({"card_id": it["card_id"], "pos": it.get("pos") or {}, "visual": it.get("visual") or {}, "conteudo": conteudo})
+            itens.append({"card_id": it.get("card_id") or "", "pos": it.get("pos") or {}, "visual": it.get("visual") or {}, "conteudo": conteudo})
     if not itens:
         return []
     lay = cfg.get("layout") or {}
@@ -329,6 +372,13 @@ def _icone(v) -> str:
 def limpar_item(it, modo: str, user, colunas: int = cards.COLUNAS, linhas: int = cards.LINHAS) -> dict | None:
     from . import providers
 
+    if isinstance(it, dict) and "el" in it:  # título, subtítulo, texto ou imagem soltos
+        el = limpar_elemento(it.get("el"))
+        if not el:
+            return None
+        visual = it.get("visual") if isinstance(it.get("visual"), dict) else {}
+        return {"card_id": "", "el": el, "pos": limpar_pos(it.get("pos"), modo, colunas, linhas),
+                "visual": {"titulo": True, "max_itens": None, **({"moldura": "com"} if visual.get("moldura") == "com" else {})}}
     if not isinstance(it, dict) or it.get("card_id") not in cards.CARDS:
         return None
     provedor = it["card_id"].split(".", 1)[0]

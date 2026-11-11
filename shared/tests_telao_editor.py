@@ -145,6 +145,39 @@ class EditorTests(TestCase):
         self.assertEqual(s[0]["visual"].get("moldura"), "sem")
         self.assertNotIn("moldura", s[1]["visual"])
 
+    def test_elementos_soltos_titulo_texto_imagem(self):
+        png = "data:image/png;base64,iVBORw0KGgo="
+        itens = [
+            {"card_id": "", "el": {"tipo": "titulo", "texto": "Resultado do mês", "tam": 99, "alinhar": "centro", "cor": "xx"}, "pos": {"x": 0, "y": 0, "w": 12, "h": 1}},
+            {"card_id": "", "el": {"tipo": "texto", "texto": "x" * 3000, "negrito": True}, "pos": {"x": 0, "y": 1, "w": 6, "h": 2}, "visual": {"moldura": "com"}},
+            {"card_id": "", "el": {"tipo": "imagem", "url": png, "ajuste": "cobre"}, "pos": {"x": 6, "y": 1, "w": 6, "h": 2}},
+            {"card_id": "", "el": {"tipo": "imagem", "url": "javascript:alert(1)"}, "pos": {"x": 0, "y": 3, "w": 2, "h": 1}},
+            {"card_id": "", "el": {"tipo": "imagem", "url": "http://inseguro/x.png"}, "pos": {"x": 2, "y": 3, "w": 2, "h": 1}},
+            {"card_id": "", "el": {"tipo": "imagem", "url": "data:image/svg+xml;base64,PHN2Zz48L3N2Zz4="}, "pos": {"x": 4, "y": 3, "w": 2, "h": 1}},
+            {"card_id": "", "el": {"tipo": "qualquer", "texto": "?"}, "pos": {"x": 6, "y": 3, "w": 2, "h": 1}},
+        ]
+        r = self._post("telao_editor_salvar", {"nome": "E", "slides": [{"origem": "manual", "itens": itens}]})
+        salvo = ModeloApresentacao.objects.get(pk=r.json()["id"]).slides[0]["itens"]
+        self.assertEqual(len(salvo), 6)  # o tipo desconhecido cai
+        titulo, texto, img, ruim_js, ruim_http, ruim_svg = salvo
+        self.assertEqual((titulo["el"]["tam"], titulo["el"]["alinhar"], titulo["el"]["cor"], titulo["el"]["negrito"]), (15, "centro", "padrao", True))
+        self.assertEqual(len(texto["el"]["texto"]), 2000)
+        self.assertEqual(texto["visual"].get("moldura"), "com")
+        self.assertEqual((img["el"]["url"], img["el"]["ajuste"]), (png, "cobre"))
+        self.assertEqual([x["el"]["url"] for x in (ruim_js, ruim_http, ruim_svg)], ["", "", ""])
+        conteudo = layout.montar_manual(self.admin, {"origem": "manual", "titulo": "E", "itens": salvo}, False, [], {})[0]["itens"]
+        self.assertEqual([c["conteudo"]["kind"] for c in conteudo], ["elemento"] * 6)
+        self.assertEqual(conteudo[0]["conteudo"]["texto"], "Resultado do mês")
+        self.assertTrue(conteudo[1]["conteudo"]["moldura"])
+        self.assertFalse(conteudo[0]["conteudo"]["moldura"])
+
+    def test_previa_alinha_elementos_e_cards(self):
+        slide = {"origem": "manual", "itens": [{"card_id": "", "el": {"tipo": "subtitulo", "texto": "Olá"}, "pos": {"x": 0, "y": 0, "w": 4, "h": 1}},
+                                                {"card_id": "kpi.situacao", "pos": {"x": 4, "y": 0, "w": 4, "h": 2}}]}
+        r = self._post("telao_editor_previa", {"slide": slide}).json()
+        self.assertEqual(r["itens"][0]["texto"], "Olá")
+        self.assertIsNotNone(r["itens"][1])
+
     def test_salvar_assunto_com_blocos_editados(self):
         slide = {"origem": "auto", "tipo": "assunto", "titulo": "A", "blocos": [{"provedor": "kpi", "filtros": {}}, {"provedor": "zzz"}, {"provedor": "pcp", "filtros": {}}]}
         r = self._post("telao_editor_salvar", {"nome": "A", "slides": [slide]})

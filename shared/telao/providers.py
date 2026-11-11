@@ -368,7 +368,7 @@ def slides_kpi(user, resumo=False, filtros=None):
             slides += _ocorr(rotulo, ind)
     if f.get("_motivos") or "motivos" in (f.get("cards") or []):  # só quando o card é pedido: não muda a Apresentação Geral
         for rotulo, ind, *_ in linhas[:8]:
-            slides += _slide_motivos(ind, rotulo, f)
+            slides += _slide_motivos(ind, rotulo, f, setor_de.get(rotulo) if setores else False)
     for rotulo, ind, *_ in linhas:  # indicadores sem gráfico na apresentação, mas com ocorrência
         slides += _ocorr(rotulo, ind)
     return slides
@@ -434,13 +434,14 @@ def _periodo_motivos(m_data_gran, f, gran):
     return {d for d in datas if d >= corte}, (f"últimos {n} dias" if gran == "diaria" else f"últimas {n} semanas")
 
 
-def _slide_motivos(ind, rotulo, f):
+def _slide_motivos(ind, rotulo, f, setor_id=False):
     """Top principais motivos de um indicador (a mesma tabela do Painel de Indicadores), como barras.
     Período (diário/semanal/mensal) e janela de tempo como nos gráficos; sem período escolhido, usa o mais detalhado
     que o indicador tem (ex.: retorno de clientes só lança motivos por mês). Configurável: o que mostrar
     (quantidade, percentual ou ambos), barra de preenchimento e prioridade ao texto."""
     exibir = f.get("motivos_exibir") if f.get("motivos_exibir") in ("quantidade", "percentual") else "ambos"
-    todos = list(ind.motivos.all())  # visão geral: motivos de todos os setores
+    # sem filtro de setor: motivos de todos os setores; com filtro, só os do setor do card
+    todos = [m for m in ind.motivos.all() if setor_id is False or m.setor_id == setor_id]
     gran = f.get("serie") if f.get("serie") in _GRANULARIDADES_GRAFICO else next(
         (g for g in _GRANULARIDADES_GRAFICO if any(m.granularidade == g for m in todos)), None)
     do_gran = [m for m in todos if m.granularidade == gran]

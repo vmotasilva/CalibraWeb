@@ -125,7 +125,20 @@ window.TelaoCards = (function () {
   };
 
   // Um card = o desenho da sua forma (tiles/cards/bars/chart) dentro de um container que dá a escala (fonte base) a todo o conteúdo.
+  // Elemento solto do slide: título, subtítulo, texto ou imagem (sem dados; fonte em % da largura do slide).
+  function elemento(p) {
+    var q = el("section", "painel elemento" + (p.moldura ? "" : " sem-moldura")), imagem = p.tipo === "imagem";
+    var d = el("div", "elem al-" + (p.alinhar || "esq") + " v-" + (p.vertical || "meio") + " c-" + (p.cor || "padrao") + (p.negrito ? " neg" : "") + (imagem ? " img" : "") + (p.ajuste === "cobre" ? " cobre" : ""));
+    d.style.setProperty("--tam", p.tam || 2);
+    if (imagem) {
+      if (/^(https:\/\/|data:image\/(png|jpeg|webp|gif);base64,)/.test(p.url || "")) { var im = el("img"); im.src = p.url; im.alt = p.alt || ""; d.appendChild(im); }
+      else d.appendChild(el("div", "sem-img", "Imagem não escolhida"));
+    } else d.appendChild(el("div", "t", p.texto || ""));
+    q.appendChild(d); return q;
+  }
+
   function painel(p, comTitulo, semMoldura, comSubtitulo) {   // título e subtítulo se ocultam separadamente
+    if (p.kind === "elemento") return elemento(p);
     var q = el("section", "painel" + (semMoldura ? " sem-moldura" : ""));
     var mostraT = comTitulo !== false, mostraS = comSubtitulo !== false && !!p.subtitulo;
     if (mostraT || mostraS) {
