@@ -117,6 +117,15 @@ class EditorTests(TestCase):
         self.assertEqual(s["itens"][0]["pos"], {"x": 10.5, "y": 30.0, "w": 47.0, "h": 43.0})
         self.assertEqual(s["itens"][1]["pos"], {"x": 90.0, "y": 90.0, "w": 10.0, "h": 10.0}, "limitado à borda do slide")
 
+    def test_salvar_grade_com_colunas_e_linhas_escolhidas(self):
+        slide = {"origem": "manual", "titulo": "G", "layout": {"modo": "grade", "colunas": 6, "linhas": 3}, "itens": [
+            {"card_id": "kpi.situacao", "pos": {"x": 4, "y": 2, "w": 9, "h": 9}}]}
+        r = self._post("telao_editor_salvar", {"nome": "G", "slides": [slide, {"origem": "manual", "layout": {"colunas": 99, "linhas": 0}}]})
+        s = ModeloApresentacao.objects.get(pk=r.json()["id"]).slides
+        self.assertEqual(s[0]["layout"], {"modo": "grade", "colunas": 6, "linhas": 3})
+        self.assertEqual(s[0]["itens"][0]["pos"], {"x": 4, "y": 2, "w": 2, "h": 1}, "cabe na grade escolhida")
+        self.assertEqual((s[1]["layout"]["colunas"], s[1]["layout"]["linhas"]), (24, 1), "limites 1-24 e 1-16")
+
     def test_salvar_moldura_do_card(self):
         itens = [{"card_id": "kpi.situacao", "visual": {"moldura": "sem"}}, {"card_id": "kpi.graficos", "visual": {"moldura": "qualquer"}}]
         r = self._post("telao_editor_salvar", {"nome": "M", "slides": [{"origem": "manual", "itens": itens}]})

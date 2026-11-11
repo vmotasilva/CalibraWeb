@@ -34,11 +34,11 @@ window.TelaoCards = (function () {
       return g;
     },
     bars: function (s) {
-      var g = el("div", "bars");
+      var g = el("div", "bars" + (s.sem_barra ? " sem-barra" : "") + (s.texto_prioritario ? " texto-prio" : ""));
       s.itens.forEach(function (i) {
         var r = el("div", "brow " + tom(i.tom)); r.appendChild(el("div", "l", i.rotulo));
-        var t = el("div", "t"), b = el("span"); b.style.width = Math.max(2, Math.min(100, i.pct)) + "%"; t.appendChild(b);
-        r.appendChild(t); r.appendChild(el("div", "p", i.txt)); g.appendChild(r);
+        if (!s.sem_barra) { var t = el("div", "t"), b = el("span"); b.style.width = Math.max(2, Math.min(100, i.pct)) + "%"; t.appendChild(b); r.appendChild(t); }
+        r.appendChild(el("div", "p", i.txt)); g.appendChild(r);
       });
       return g;
     },
@@ -116,7 +116,7 @@ window.TelaoCards = (function () {
         var p = i.pos || {}, caixa = el("div", "gi");
         caixa.style.left = (livre ? p.x : p.x / cols * 100) + "%"; caixa.style.top = (livre ? p.y : p.y / rows * 100) + "%";
         caixa.style.width = (livre ? p.w : p.w / cols * 100) + "%"; caixa.style.height = (livre ? p.h : p.h / rows * 100) + "%";
-        caixa.appendChild(painel(i.conteudo, !i.visual || i.visual.titulo !== false, !!i.visual && i.visual.moldura === "sem")); g.appendChild(caixa);
+        caixa.appendChild(painel(i.conteudo, !i.visual || i.visual.titulo !== false, !!i.visual && i.visual.moldura === "sem", !i.visual || i.visual.subtitulo !== false)); g.appendChild(caixa);
       });
       return g;
     },
@@ -124,12 +124,14 @@ window.TelaoCards = (function () {
   };
 
   // Um card = o desenho da sua forma (tiles/cards/bars/chart) dentro de um container que dá a escala (fonte base) a todo o conteúdo.
-  function painel(p, comTitulo, semMoldura) {
+  function painel(p, comTitulo, semMoldura, comSubtitulo) {   // título e subtítulo se ocultam separadamente
     var q = el("section", "painel" + (semMoldura ? " sem-moldura" : ""));
-    if (comTitulo) {
+    var mostraT = comTitulo !== false, mostraS = comSubtitulo !== false && !!p.subtitulo;
+    if (mostraT || mostraS) {
       var h = el("div", "ph"), t = el("div");
-      h.appendChild(el("i", "bi " + (p.icone || "bi-display"))); t.appendChild(el("h2", null, p.titulo));
-      if (p.subtitulo) t.appendChild(el("p", null, p.subtitulo));
+      h.appendChild(el("i", "bi " + (p.icone || "bi-display")));
+      if (mostraT) t.appendChild(el("h2", null, p.titulo));
+      if (mostraS) t.appendChild(el("p", null, p.subtitulo));
       h.appendChild(t); q.appendChild(h);
     }
     q.appendChild(card(p));

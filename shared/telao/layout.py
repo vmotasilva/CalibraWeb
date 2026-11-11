@@ -236,9 +236,10 @@ def previa(user, cfg, resumo: bool = False) -> dict:
     memo: dict = {}
     if isinstance(cfg, dict) and cfg.get("origem") == "manual":
         modo = "livre" if (cfg.get("layout") or {}).get("modo") == "livre" else "grade"
+        colunas, linhas = dimensoes(cfg.get("layout"))
         saida = []
         for bruto in (cfg.get("itens") or [])[:MAX_ITENS_SLIDE]:
-            item = limpar_item(bruto, modo, user)
+            item = limpar_item(bruto, modo, user, colunas, linhas)
             saida.append(resolver_item(user, item, resumo, [], memo) if item else None)
         return {"itens": saida}
     limpo = limpar_slide(cfg, user)
@@ -262,14 +263,20 @@ def _decimal(v, minimo, maximo, padrao):
         return padrao
 
 
-def limpar_pos(pos, modo: str) -> dict:
+def dimensoes(lay) -> tuple[int, int]:
+    """Colunas x linhas da grade de um slide manual (o usuário escolhe; padrão COLUNAS x LINHAS)."""
+    lay = lay if isinstance(lay, dict) else {}
+    return _inteiro(lay.get("colunas"), 1, 24, cards.COLUNAS), _inteiro(lay.get("linhas"), 1, 16, cards.LINHAS)
+
+
+def limpar_pos(pos, modo: str, colunas: int = cards.COLUNAS, linhas: int = cards.LINHAS) -> dict:
     pos = pos if isinstance(pos, dict) else {}
     if modo == "livre":
         x, y = _decimal(pos.get("x"), 0, 99, 0), _decimal(pos.get("y"), 0, 99, 0)
         return {"x": x, "y": y, "w": _decimal(pos.get("w"), 1, 100 - x, min(50, 100 - x)), "h": _decimal(pos.get("h"), 1, 100 - y, min(50, 100 - y))}
-    x, y = _inteiro(pos.get("x"), 0, cards.COLUNAS - 1, 0), _inteiro(pos.get("y"), 0, cards.LINHAS - 1, 0)
-    return {"x": x, "y": y, "w": _inteiro(pos.get("w"), 1, cards.COLUNAS - x, min(6, cards.COLUNAS - x)),
-            "h": _inteiro(pos.get("h"), 1, cards.LINHAS - y, min(4, cards.LINHAS - y))}
+    x, y = _inteiro(pos.get("x"), 0, colunas - 1, 0), _inteiro(pos.get("y"), 0, linhas - 1, 0)
+    return {"x": x, "y": y, "w": _inteiro(pos.get("w"), 1, colunas - x, min(6, colunas - x)),
+            "h": _inteiro(pos.get("h"), 1, linhas - y, min(4, linhas - y))}
 
 
 def limpar_filtros_dict(provedor: str, bruto, user) -> dict:
@@ -298,7 +305,7 @@ def _icone(v) -> str:
     return v if v.startswith("bi-") and len(v) <= 40 else ""
 
 
-def limpar_item(it, modo: str, user) -> dict | None:
+def limpar_item(it, modo: str, user, colunas: int = cards.COLUNAS, linhas: int = cards.LINHAS) -> dict | None:
     from . import providers
 
     if not isinstance(it, dict) or it.get("card_id") not in cards.CARDS:
@@ -306,11 +313,13 @@ def limpar_item(it, modo: str, user) -> dict | None:
     provedor = it["card_id"].split(".", 1)[0]
     visual = it.get("visual") if isinstance(it.get("visual"), dict) else {}
     params = it.get("params") if isinstance(it.get("params"), dict) else {}
-    saida = {"card_id": it["card_id"], "pos": limpar_pos(it.get("pos"), modo),
+    saida = {"card_id": it["card_id"], "pos": limpar_pos(it.get("pos"), modo, colunas, linhas),
              "visual": {"titulo": visual.get("titulo") is not False,
                         "max_itens": _inteiro(visual.get("max_itens"), 1, 50, None) if visual.get("max_itens") else None}}
     if visual.get("moldura") == "sem":  # sem fundo/borda do card
         saida["visual"]["moldura"] = "sem"
+    if visual.get("subtitulo") is False:  # o título e o subtítulo do card se ocultam separadamente
+        saida["visual"]["subtitulo"] = False
     if params.get("ref"):
         saida["params"] = {"ref": str(params["ref"])[:200]}
     filtros = limpar_filtros_dict(provedor, it.get("filtros"), user)
@@ -330,9 +339,10 @@ def limpar_slide(cfg, user) -> dict | None:
     if cfg.get("origem") == "manual":
         lay = cfg.get("layout") if isinstance(cfg.get("layout"), dict) else {}
         modo = "livre" if lay.get("modo") == "livre" else "grade"
-        itens = [i for i in (limpar_item(x, modo, user) for x in (cfg.get("itens") or [])[:MAX_ITENS_SLIDE]) if i]
+        colunas, linhas = dimensoes(lay)
+        itens = [i for i in (limpar_item(x, modo, user, colunas, linhas) for x in (cfg.get("itens") or [])[:MAX_ITENS_SLIDE]) if i]
         return {"origem": "manual", "duracao": duracao, "titulo": str(cfg.get("titulo") or "Slide").strip()[:100] or "Slide",
-                "icone": _icone(cfg.get("icone")), "layout": {"modo": modo, "colunas": cards.COLUNAS, "linhas": cards.LINHAS}, "itens": itens}
+                "icone": _icone(cfg.get("icone")), "layout": {"modo": modo, "colunas": colunas, "linhas": linhas}, "itens": itens}
     if cfg.get("tipo") == "assunto":
         blocos = [{"provedor": b["provedor"], "filtros": limpar_filtros_dict(b["provedor"], b.get("filtros"), user)}
                   for b in (cfg.get("blocos") or [])[:MAX_BLOCOS] if isinstance(b, dict) and b.get("provedor") in providers.PROVEDORES]

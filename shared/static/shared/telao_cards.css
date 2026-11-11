@@ -51,3 +51,7 @@
 .tl .vazio { margin:auto; text-align:center; color:var(--mut); font-size:2rem; }
 .tl .painel.sem-moldura { background:transparent; border-color:transparent; }
 .tl .tsep { grid-column:1 / -1; height:1px; background:var(--linha); margin:.5em 0; }
+.tl .bars.sem-barra .brow { grid-template-columns:minmax(0,1fr) auto; }
+.tl .bars.texto-prio .brow { grid-template-columns:minmax(0,58%) minmax(2em,1fr) auto; align-items:start; }
+.tl .bars.texto-prio.sem-barra .brow { grid-template-columns:minmax(0,1fr) auto; }
+.tl .bars.texto-prio .brow .l { white-space:normal; overflow:visible; text-overflow:clip; line-height:1.15; }

@@ -25,6 +25,9 @@
 
   function novoManual() { return prep({ origem: "manual", titulo: "Novo slide", duracao: null, layout: { modo: "grade", colunas: COL, linhas: LIN }, itens: [] }); }
   function atual() { return estado.slides[estado.sel]; }
+  function cols(s) { return (s.layout && s.layout.colunas) || COL; }
+  function lins(s) { return (s.layout && s.layout.linhas) || LIN; }
+  function esc(s, t) { return [Math.max(1, Math.round(t[0] * cols(s) / COL)), Math.max(1, Math.round(t[1] * lins(s) / LIN))]; }   // tamanho do card em células desta grade
   // Histórico (desfazer/refazer): foto do conjunto de slides depois de cada mudança (agrupa mudanças em sequência).
   var hist = [], hi = -1, tHist = null, restaurando = false;
   var SO_EDITOR = { _id: 1, _el: 1, _box: 1, _conteudo: 1, _carregando: 1, _previa: 1, _dentro: 1, _uid: 1 };
@@ -180,6 +183,18 @@
       var sel = el("select", "form-select form-select-sm"); sel.appendChild(new Option("Grade (encaixa)", "grade"));
       sel.appendChild(new Option("Livre (qualquer posição)", "livre")); sel.value = modo(s); sel.addEventListener("change", function () { converter(s, sel.value); });
       m.appendChild(sel); b.appendChild(m);
+      if (modo(s) === "grade") {   // a grade pode ser redefinida: quantidade de caixas na horizontal e na vertical
+        [["Colunas", "colunas", 24], ["Linhas", "linhas", 16]].forEach(function (k) {
+          var g = el("div"); g.appendChild(el("label", "form-label small fw-bold mb-1", k[0]));
+          var n = el("input", "form-control form-control-sm"); n.type = "number"; n.min = 1; n.max = k[2]; n.style.width = "75px"; n.value = k[1] === "colunas" ? cols(s) : lins(s);
+          n.title = "Quantidade de caixas da grade na " + (k[1] === "colunas" ? "horizontal" : "vertical") + " (1 a " + k[2] + ")";
+          n.addEventListener("change", function () {
+            var v = Math.min(k[2], Math.max(1, parseInt(n.value, 10) || 1)); n.value = v;
+            redefinirGrade(s, k[1] === "colunas" ? v : cols(s), k[1] === "linhas" ? v : lins(s));
+          });
+          g.appendChild(n); b.appendChild(g);
+        });
+      }
     } else {
       var p = el("button", "btn btn-primary btn-sm"); p.type = "button"; p.innerHTML = '<i class="bi bi-pencil-square me-1"></i>Personalizar';
       p.title = "Transforma em slide manual, com os cards na disposição atual, para você ajustar"; p.addEventListener("click", personalizar); b.appendChild(p);
@@ -191,18 +206,37 @@
     return b;
   }
   function modo(s) { return (s.layout && s.layout.modo === "livre") ? "livre" : "grade"; }
+  // O GridStack só traz CSS pronto para 12 colunas (e 2 a 11 no extra): para qualquer outra quantidade, gera as regras aqui.
+  function cssColunas(n) {
+    var st = $("edGsCss"); if (!st) { st = el("style"); st.id = "edGsCss"; document.head.appendChild(st); }
+    if (n === 12) { st.textContent = ""; return; }
+    var pc = function (v) { return (Math.round(v * 1000) / 1000) + "%"; }, r = ".gs-" + n + ">.grid-stack-item", css = r + "{width:" + pc(100 / n) + "}";
+    for (var i = 1; i < n; i++) css += r + '[gs-x="' + i + '"]{left:' + pc(100 * i / n) + "}";
+    for (var j = 2; j <= n; j++) css += r + '[gs-w="' + j + '"]{width:' + pc(100 * j / n) + "}";
+    st.textContent = css;
+  }
+  // Muda a quantidade de colunas/linhas da grade: os cards mantêm a posição e o tamanho proporcionais.
+  function redefinirGrade(s, c, l) {
+    var oc = cols(s), ol = lins(s); if (c === oc && l === ol) return;
+    s.layout = s.layout || { modo: "grade" }; s.layout.colunas = c; s.layout.linhas = l;
+    s.itens.forEach(function (i) {
+      var p = i.pos, x = Math.min(c - 1, Math.round(p.x * c / oc)), y = Math.min(l - 1, Math.round(p.y * l / ol));
+      i.pos = { x: x, y: y, w: Math.min(c - x, Math.max(1, Math.round(p.w * c / oc))), h: Math.min(l - y, Math.max(1, Math.round(p.h * l / ol))) };
+    });
+    sujar(); renderCentro(); renderDireita();
+  }
   function arred(v) { return Math.round(v * 100) / 100; }
   function converter(s, novo) {
     if (modo(s) === novo) return;
     if (!confirm(novo === "livre" ? "Passar para posicionamento livre? Os cards mantêm o lugar atual e passam a poder ficar em qualquer posição (e sobrepostos)."
                                   : "Passar para a grade? As posições serão arredondadas para as células e podem se sobrepor.")) { renderCentro(); return; }
-    s.layout = s.layout || { colunas: COL, linhas: LIN }; s.layout.modo = novo;
+    s.layout = s.layout || { colunas: COL, linhas: LIN }; var C = cols(s), L = lins(s); s.layout.modo = novo;
     s.itens.forEach(function (i) {
       var p = i.pos;
-      if (novo === "livre") i.pos = { x: arred(p.x / COL * 100), y: arred(p.y / LIN * 100), w: arred(p.w / COL * 100), h: arred(p.h / LIN * 100) };
+      if (novo === "livre") i.pos = { x: arred(p.x / C * 100), y: arred(p.y / L * 100), w: arred(p.w / C * 100), h: arred(p.h / L * 100) };
       else {
-        var x = Math.min(COL - 1, Math.max(0, Math.round(p.x / 100 * COL))), y = Math.min(LIN - 1, Math.max(0, Math.round(p.y / 100 * LIN)));
-        i.pos = { x: x, y: y, w: Math.min(COL - x, Math.max(1, Math.round(p.w / 100 * COL))), h: Math.min(LIN - y, Math.max(1, Math.round(p.h / 100 * LIN))) };
+        var x = Math.min(C - 1, Math.max(0, Math.round(p.x / 100 * C))), y = Math.min(L - 1, Math.max(0, Math.round(p.y / 100 * L)));
+        i.pos = { x: x, y: y, w: Math.min(C - x, Math.max(1, Math.round(p.w / 100 * C))), h: Math.min(L - y, Math.max(1, Math.round(p.h / 100 * L))) };
       }
     });
     sujar(); renderCentro(); renderDireita();
@@ -305,14 +339,14 @@
   function preencher(it) {
     if (!it._el) return;
     it._el.innerHTML = "";
-    it._el.appendChild(it._conteudo ? TelaoCards.painel(it._conteudo, it.visual.titulo !== false, it.visual.moldura === "sem") : placeholder(it, it._carregando ? "Carregando…" : "Sem dados no momento"));
+    it._el.appendChild(it._conteudo ? TelaoCards.painel(it._conteudo, it.visual.titulo !== false, it.visual.moldura === "sem", it.visual.subtitulo !== false) : placeholder(it, it._carregando ? "Carregando…" : "Sem dados no momento"));
   }
   function renderManual(c, s) {
     var frame = el("div", "tl tl-frame ed-frame"), g = el("div", "grid-stack"); frame.appendChild(g);
     s.itens.forEach(function (it) {
       var w = el("div", "grid-stack-item"), conteudo = el("div", "grid-stack-item-content"), info = cardInfo[it.card_id];
       w.setAttribute("gs-id", it._id); w.setAttribute("gs-x", it.pos.x); w.setAttribute("gs-y", it.pos.y); w.setAttribute("gs-w", it.pos.w); w.setAttribute("gs-h", it.pos.h);
-      if (info) { w.setAttribute("gs-min-w", info.card.tam_min[0]); w.setAttribute("gs-min-h", info.card.tam_min[1]); }
+      if (info) { var mn = esc(s, info.card.tam_min); w.setAttribute("gs-min-w", mn[0]); w.setAttribute("gs-min-h", mn[1]); }
       if (it._id === estado.itemSel) w.classList.add("sel");
       w.appendChild(conteudo); it._el = conteudo; g.appendChild(w);
     });
@@ -321,10 +355,12 @@
       var v = el("div", "text-center text-muted small mt-2", "Slide vazio: escolha cards na paleta à direita (Módulo → Seção → Card), depois arraste e redimensione aqui.");
       c.appendChild(v);
     }
-    var opcoes = { column: COL, maxRow: LIN, cellHeight: 60, margin: 3, float: true, animate: false, disableOneColumnMode: true, resizable: { handles: "e,se,s,sw,w" } };
+    frame.style.backgroundSize = "calc(100% / " + cols(s) + ") calc(100% / " + lins(s) + ")";
+    cssColunas(cols(s));
+    var opcoes = { column: cols(s), maxRow: lins(s), cellHeight: 60, margin: 3, float: true, animate: false, disableOneColumnMode: true, resizable: { handles: "e,se,s,sw,w" } };
     try { grade = GridStack.init(opcoes, g); }
     catch (e) { delete opcoes.maxRow; grade = GridStack.init(opcoes, g); }   // slide salvo com cards sobrepostos: abre mesmo assim
-    var ajustar = function () { if (grade) grade.cellHeight(Math.max(20, Math.floor(frame.clientHeight / LIN))); };
+    var ajustar = function () { if (grade) grade.cellHeight(Math.max(10, Math.floor(frame.clientHeight / lins(s)))); };
     ajustar(); if (window.ResizeObserver) new ResizeObserver(ajustar).observe(frame);
     grade.on("change", function () {
       grade.engine.nodes.forEach(function (n) {
@@ -368,11 +404,14 @@
   }
   // Procura um espaço livre para o card, do tamanho padrão e, se não couber, encolhendo até o tamanho mínimo.
   function acharVaga(s, padrao, minimo) {
+    padrao = esc(s, padrao); minimo = esc(s, minimo); minimo = [Math.min(minimo[0], padrao[0]), Math.min(minimo[1], padrao[1])];
+    var C = cols(s), L = lins(s);
+    padrao = [Math.min(padrao[0], C), Math.min(padrao[1], L)]; minimo = [Math.min(minimo[0], C), Math.min(minimo[1], L)];
     function livre(x, y, w, h) {
       return !s.itens.some(function (i) { var p = i.pos; return x < p.x + p.w && x + w > p.x && y < p.y + p.h && y + h > p.y; });
     }
     for (var h = padrao[1]; h >= minimo[1]; h--) for (var w = padrao[0]; w >= minimo[0]; w--)
-      for (var y = 0; y + h <= LIN; y++) for (var x = 0; x + w <= COL; x++) if (livre(x, y, w, h)) return { x: x, y: y, w: w, h: h };
+      for (var y = 0; y + h <= L; y++) for (var x = 0; x + w <= C; x++) if (livre(x, y, w, h)) return { x: x, y: y, w: w, h: h };
     return null;
   }
   // Posição livre: procura um lugar vazio (passos de 2,5%); se não houver, cascateia sobre os cards existentes.
@@ -480,6 +519,9 @@
     var f = el("div", "form-check mb-2"), t = el("input", "form-check-input"); t.type = "checkbox"; t.id = "edVisTit"; t.checked = it.visual.titulo !== false;
     t.addEventListener("change", function () { it.visual.titulo = t.checked; sujar(); preencher(it); });
     f.appendChild(t); f.appendChild(Object.assign(el("label", "form-check-label small", "Mostrar o título do card"), { htmlFor: "edVisTit" })); b.appendChild(f);
+    var fs = el("div", "form-check mb-2"), ts = el("input", "form-check-input"); ts.type = "checkbox"; ts.id = "edVisSub"; ts.checked = it.visual.subtitulo !== false;
+    ts.addEventListener("change", function () { if (ts.checked) delete it.visual.subtitulo; else it.visual.subtitulo = false; sujar(); preencher(it); });
+    fs.appendChild(ts); fs.appendChild(Object.assign(el("label", "form-check-label small", "Mostrar o subtítulo do card"), { htmlFor: "edVisSub" })); b.appendChild(fs);
     var fm0 = el("div", "form-check mb-2"), mo = el("input", "form-check-input"); mo.type = "checkbox"; mo.id = "edVisMol"; mo.checked = it.visual.moldura !== "sem";
     mo.addEventListener("change", function () { if (mo.checked) delete it.visual.moldura; else it.visual.moldura = "sem"; sujar(); preencher(it); });
     fm0.appendChild(mo); fm0.appendChild(Object.assign(el("label", "form-check-label small", "Mostrar a moldura (fundo e borda do card)"), { htmlFor: "edVisMol" })); b.appendChild(fm0);

@@ -368,7 +368,7 @@ def slides_kpi(user, resumo=False, filtros=None):
             slides += _ocorr(rotulo, ind)
     if f.get("_motivos") or "motivos" in (f.get("cards") or []):  # só quando o card é pedido: não muda a Apresentação Geral
         for rotulo, ind, *_ in linhas[:8]:
-            slides += _slide_motivos(ind, rotulo, f.get("motivos_periodo"))
+            slides += _slide_motivos(ind, rotulo, f)
     for rotulo, ind, *_ in linhas:  # indicadores sem gráfico na apresentação, mas com ocorrência
         slides += _ocorr(rotulo, ind)
     return slides
@@ -419,9 +419,12 @@ _PERIODOS_MOTIVOS = {"dia": "Último dia lançado", "semana": "Última semana la
                      "30": "Últimos 30 dias", "60": "Últimos 60 dias", "90": "Últimos 90 dias"}
 
 
-def _slide_motivos(ind, rotulo, periodo):
-    """Top principais motivos de um indicador (a mesma tabela do Painel de Indicadores), como barras."""
+def _slide_motivos(ind, rotulo, f):
+    """Top principais motivos de um indicador (a mesma tabela do Painel de Indicadores), como barras.
+    Configurável: o que mostrar (quantidade, percentual ou ambos), barra de preenchimento e prioridade ao texto."""
+    periodo = f.get("motivos_periodo")
     periodo = periodo if periodo in _PERIODOS_MOTIVOS else "90"
+    exibir = f.get("motivos_exibir") if f.get("motivos_exibir") in ("quantidade", "percentual") else "ambos"
     todos = list(ind.motivos.all())  # visão geral: motivos de todos os setores
     gran = {"dia": "diaria", "semana": "semanal", "mes": "mensal"}.get(periodo, "diaria")
     do_gran = [m for m in todos if m.granularidade == gran]
@@ -443,8 +446,16 @@ def _slide_motivos(ind, rotulo, periodo):
     def qtd(v):
         return _fmt_num(v, 0 if v == int(v) else 2)
 
-    return [_slide("kpi", "bars", rotulo, f"Top principais motivos · {_PERIODOS_MOTIVOS[periodo]}", "bi-list-ol", itens=[{
-        "rotulo": f"{n}. {nome}", "pct": float(v / maior * 100), "tom": "neutro", "txt": f"{qtd(v)} · {_fmt_num(v / total * 100, 0)}%",
+    def texto(v):
+        if exibir == "quantidade":
+            return qtd(v)
+        if exibir == "percentual":
+            return f"{_fmt_num(v / total * 100, 1)}%"
+        return f"{qtd(v)} · {_fmt_num(v / total * 100, 0)}%"
+
+    return [_slide("kpi", "bars", rotulo, f"Top principais motivos · {_PERIODOS_MOTIVOS[periodo]}", "bi-list-ol",
+                   sem_barra=bool(f.get("motivos_sem_barra")), texto_prioritario=bool(f.get("motivos_texto")), itens=[{
+        "rotulo": f"{n}. {nome}", "pct": float(v / maior * 100), "tom": "neutro", "txt": texto(v),
     } for n, (nome, v) in enumerate(top, 1)])]
 
 
@@ -1115,7 +1126,7 @@ CAMPOS_CONFIG = {
         "serie": ["kpi.graficos"], "tipo_grafico": ["kpi.graficos"], "janela": ["kpi.graficos"], "ultimos": ["kpi.graficos"],
         "dias": ["kpi.graficos", "kpi.situacao"], "meses": ["kpi.graficos"], "graficos": ["kpi.graficos"],
         "ocultar_na_meta": ["kpi.situacao"], "ocultar_fora": ["kpi.situacao"], "ocultar_sem_dado": ["kpi.situacao"],
-        "motivos_periodo": ["kpi.motivos"],
+        "motivos_periodo": ["kpi.motivos"], "motivos_exibir": ["kpi.motivos"], "motivos_sem_barra": ["kpi.motivos"], "motivos_texto": ["kpi.motivos"],
     },
     "ocorrencias": {"comentarios": ["ocorrencias.lista"]},
 }
@@ -1139,6 +1150,10 @@ FILTROS = {
         dict(nome="ocultar_fora", rotulo="Ocultar “Fora da meta” na situação geral", tipo="bool"),
         dict(nome="ocultar_sem_dado", rotulo="Ocultar “Sem dado” na situação geral", tipo="bool"),
         dict(nome="apenas_fora", rotulo="Somente indicadores fora da meta", tipo="bool"),
+        dict(nome="motivos_exibir", rotulo="Motivos — informação exibida", tipo="select",
+             opcoes=lambda u: [("ambos", "Quantidade e percentual"), ("quantidade", "Somente a quantidade"), ("percentual", "Somente o percentual")]),
+        dict(nome="motivos_sem_barra", rotulo="Motivos — ocultar a barra de preenchimento", tipo="bool"),
+        dict(nome="motivos_texto", rotulo="Motivos — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
         dict(nome="motivos_periodo", rotulo="Período do Top principais motivos", tipo="select",
              opcoes=lambda u: list(_PERIODOS_MOTIVOS.items()),
              ajuda="Padrão: últimos 90 dias (acumulado). Usa os motivos lançados no Painel de Indicadores."),

@@ -161,3 +161,38 @@ class KpiGraficoConfiguravelTests(TestCase):
     def test_empilhado_sem_setores_vira_barras(self):
         Medicao.objects.filter(setor__isnull=False).delete()
         self.assertEqual(self._grafico(tipo_grafico="empilhadas")["tipo"], "barras")
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class MotivosConfiguraveisTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        from kpi.models import Motivo
+
+        self.admin = get_user_model().objects.create_user("adm_mot_cfg", password="x", is_superuser=True, is_staff=True)
+        ind = Indicador.objects.create(nome="Quebras", meta=5, sentido="menor", unidade="%")
+        Medicao.objects.create(indicador=ind, periodo=date(2026, 1, 31), valor=8, granularidade="mensal")
+        for desc, q in (("Risco de garra", 9), ("Laser trincado", 3)):
+            Motivo.objects.create(indicador=ind, granularidade="diaria", data=date(2026, 3, 1), descricao=desc, quantidade=q)
+
+    def _slide(self, **f):
+        return providers._slides_provedor(self.admin, "kpi", {"cards": ["motivos"], **f}, False, [])[0]
+
+    def test_informacao_exibida(self):
+        self.assertEqual(self._slide()["itens"][0]["txt"], "9 · 75%")
+        self.assertEqual(self._slide(motivos_exibir="quantidade")["itens"][0]["txt"], "9")
+        self.assertEqual(self._slide(motivos_exibir="percentual")["itens"][0]["txt"], "75,0%")
+
+    def test_barra_e_prioridade_do_texto(self):
+        s = self._slide()
+        self.assertEqual((s["sem_barra"], s["texto_prioritario"]), (False, False))
+        s = self._slide(motivos_sem_barra=True, motivos_texto=True)
+        self.assertEqual((s["sem_barra"], s["texto_prioritario"]), (True, True))
+
+    def test_subtitulo_do_card_oculta_separado_do_titulo(self):
+        from shared.telao import layout
+
+        v = layout.limpar_item({"card_id": "kpi.motivos", "visual": {"titulo": True, "subtitulo": False}}, "grade", self.admin)["visual"]
+        self.assertEqual((v["titulo"], v["subtitulo"]), (True, False))
+        v = layout.limpar_item({"card_id": "kpi.motivos", "visual": {}}, "grade", self.admin)["visual"]
+        self.assertNotIn("subtitulo", v)
