@@ -31,7 +31,7 @@ def _campos_json(user) -> dict:
 
 def _modelo_json(m: ModeloApresentacao) -> dict:
     return {"id": m.pk, "nome": m.nome, "descricao": m.descricao, "icone": m.icone or "bi-display",
-            "duracao_padrao": m.duracao_padrao, "resumo": m.resumo, "compartilhada": m.compartilhada, "ativo": m.ativo}
+            "duracao_padrao": m.duracao_padrao, "resumo": m.resumo, "tema": m.tema or "escuro", "compartilhada": m.compartilhada, "ativo": m.ativo}
 
 
 @login_required
@@ -52,7 +52,7 @@ def editor(request, pk=None):
             origem = providers.modelos_visiveis(request.user).filter(pk=int(base[1:])).first()
             if origem:
                 modelo.nome, modelo.icone, modelo.descricao = f"{origem.nome} (cópia)", origem.icone, origem.descricao
-                modelo.duracao_padrao, modelo.resumo = origem.duracao_padrao, origem.resumo
+                modelo.duracao_padrao, modelo.resumo, modelo.tema = origem.duracao_padrao, origem.resumo, origem.tema
                 slides = layout.slides_do_modelo(origem)
     dados = {
         "modelo": _modelo_json(modelo), "slides": slides, "catalogo": cards.catalogo(), "campos": _campos_json(request.user),
@@ -97,6 +97,7 @@ def editor_salvar(request):
     except (TypeError, ValueError):
         modelo.duracao_padrao = 15
     modelo.resumo = bool(dados.get("resumo"))
+    modelo.tema = "claro" if dados.get("tema") == "claro" else "escuro"
     modelo.compartilhada = bool(dados.get("compartilhada"))
     modelo.ativo = dados.get("ativo", True) is not False
     modelo.slides = layout.limpar_slides(dados.get("slides"), request.user)

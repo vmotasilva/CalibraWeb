@@ -99,7 +99,7 @@ class KpiSituacaoEMotivosTests(TestCase):
         self.assertEqual(s["itens"][0]["pct"], 100)  # barra proporcional ao maior
 
     def test_periodo_dos_motivos(self):
-        s = providers._slides_provedor(self.admin, "kpi", {"cards": ["motivos"], "motivos_periodo": "dia"}, False, [])[0]
+        s = providers._slides_provedor(self.admin, "kpi", {"cards": ["motivos"], "serie": "diaria", "ultimos": "1"}, False, [])[0]
         self.assertEqual([i["rotulo"] for i in s["itens"]], ["1. risco de garra", "2. Batida"])  # só o último dia lançado
 
     def test_card_de_motivos_no_slide_manual(self):
@@ -196,3 +196,52 @@ class MotivosConfiguraveisTests(TestCase):
         self.assertEqual((v["titulo"], v["subtitulo"]), (True, False))
         v = layout.limpar_item({"card_id": "kpi.motivos", "visual": {}}, "grade", self.admin)["visual"]
         self.assertNotIn("subtitulo", v)
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class MotivosPeriodoEOcorrenciasTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.admin = get_user_model().objects.create_user("adm_mot_per", password="x", is_superuser=True, is_staff=True)
+
+    def _ind(self, nome, motivos):
+        from kpi.models import Motivo
+
+        ind = Indicador.objects.create(nome=nome, meta=1, sentido="menor", unidade="%")
+        Medicao.objects.create(indicador=ind, periodo=date(2026, 1, 31), valor=2, granularidade="mensal")
+        for gran, data, desc, q in motivos:
+            Motivo.objects.create(indicador=ind, granularidade=gran, data=data, descricao=desc, quantidade=q)
+        return ind
+
+    def _slides(self, **f):
+        return providers._slides_provedor(self.admin, "kpi", {"cards": ["motivos"], **f}, False, [])
+
+    def test_indicador_so_com_motivos_mensais_aparece(self):
+        """Ex.: retorno de clientes lança motivos só por mês (não há motivos diários)."""
+        self._ind("Retorno", [("mensal", date(2026, 9, 30), "Erro", 5), ("mensal", date(2026, 10, 31), "Falha", 7), ("mensal", date(2026, 10, 31), "Erro", 1)])
+        s = self._slides()[0]
+        self.assertEqual(s["titulo"], "Retorno")
+        self.assertEqual([i["rotulo"] for i in s["itens"]], ["1. Falha", "2. Erro"])  # só o último mês
+        self.assertIn("último mês", s["subtitulo"])
+        s = self._slides(ultimos="2")[0]
+        self.assertEqual(s["itens"][0]["txt"].split(" ")[0], "7")
+        self.assertEqual({i["rotulo"] for i in s["itens"]}, {"1. Falha", "2. Erro"})  # erro: 5 + 1 = 6
+
+    def test_janela_ultima_competencia_dos_motivos(self):
+        self._ind("Q", [("diaria", date(2026, 9, 29), "Antigo", 50), ("diaria", date(2026, 10, 1), "A", 3), ("diaria", date(2026, 10, 20), "B", 2)])
+        s = self._slides(serie="diaria", janela="competencia")[0]
+        self.assertEqual([i["rotulo"] for i in s["itens"]], ["1. A", "2. B"])
+        self.assertIn("competência 10/2026", s["subtitulo"])
+
+    def test_concentrar_ocorrencias_de_varios_indicadores(self):
+        from shared.telao import layout
+
+        def sl(nome, itens):
+            return {"card_id": "kpi.ocorrencias", "kind": "cards", "titulo": f"{nome} — ocorrências", "subtitulo": "", "itens": itens}
+
+        slides = [sl("Quebras", [{"titulo": "a", "tom": "alerta", "tags": ["prazo"]}]), sl("Perda", [{"titulo": "b", "tom": "critico", "tags": []}])]
+        c = layout._concentrar("kpi", slides)
+        self.assertEqual([i["titulo"] for i in c["itens"]], ["b", "a"], "vencidas primeiro")
+        self.assertEqual(c["itens"][1]["tags"], ["Quebras", "prazo"])
+        self.assertEqual(c["titulo"], "Ocorrências — Indicadores (KPI)")
+        self.assertIn("1 vencida", c["subtitulo"])

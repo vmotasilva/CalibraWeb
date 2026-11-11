@@ -28,6 +28,7 @@ def telao_view(request):
         "api_url": reverse("telao_api"),
         "duracao": duracao,
         "resumo": request.GET.get("resumo") == "1" or definicao["resumo"],
+        "tema": request.GET.get("tema") if request.GET.get("tema") in ("claro", "escuro") else definicao.get("tema", "escuro"),
     })
 
 

@@ -49,6 +49,7 @@ window.TelaoCards = (function () {
         var u = s.unidade || "";
         var fmt = function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; };
         // Rótulos de valor em cada ponto (e o valor da meta na ponta da linha tracejada).
+        var cs = getComputedStyle(w), V = function (n, d) { return (cs.getPropertyValue(n) || "").trim() || d; };   // cores do tema (escuro/claro)
         var base = function () { return parseFloat(getComputedStyle(w).fontSize) || 18; };   // fonte base do container (.cxi)
         var tf = Math.round(base() * .65), ating = s.atingiu || null, VERDE = "#22c55e", VERM = "#ef4444";
         var rotulos = { id: "rotulos", afterDatasetsDraw: function (c) {
@@ -60,19 +61,19 @@ window.TelaoCards = (function () {
               if (ehMeta && i !== meta.data.length - 1) return;               // meta: só no último ponto
               var v = ds.data[i]; if (v == null) return;
               var abaixo = ehMeta || pt.y < c.chartArea.top + 34;
-              x.fillStyle = ehMeta ? "#cbd5e1" : "#ffffff";
-              if (!ehMeta && ating) x.fillStyle = ating[i] ? "#4ade80" : "#f87171";
+              x.fillStyle = ehMeta ? V("--metac", "#cbd5e1") : V("--rotulo", "#ffffff");
+              if (!ehMeta && ating) x.fillStyle = ating[i] ? V("--okt", "#4ade80") : V("--crit-t", "#f87171");
               x.textBaseline = abaixo ? "top" : "bottom";
               var tx = (ehMeta ? "Meta " : "") + fmt(v);
               var px = Math.min(Math.max(pt.x, c.chartArea.left + 30), c.chartArea.right - 40);
-              x.lineWidth = 5; x.strokeStyle = "#131c31"; x.strokeText(tx, px, pt.y + (abaixo ? 12 : -12));
+              x.lineWidth = 5; x.strokeStyle = V("--card", "#131c31"); x.strokeText(tx, px, pt.y + (abaixo ? 12 : -12));
               x.fillText(tx, px, pt.y + (abaixo ? 12 : -12));
             });
           });
           x.restore();
         } };
         var tipo = s.tipo || "linha", PALETA = ["#60a5fa", "#f59e0b", "#a78bfa", "#2dd4bf", "#f472b6", "#84cc16", "#fb923c", "#38bdf8"], datasets;
-        var linhaMeta = { type: "line", label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#cbd5e1", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false, ehMeta: true, order: 0 };
+        var linhaMeta = { type: "line", label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: V("--metac", "#cbd5e1"), borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false, ehMeta: true, order: 0 };
         if (tipo === "empilhadas" && s.series) {
           datasets = s.series.map(function (se, k) { return { type: "bar", label: se.nome, data: se.valores, backgroundColor: PALETA[k % PALETA.length], empilhada: true, stack: "s", order: 1 }; });
         } else if (tipo === "barras") {
@@ -89,10 +90,10 @@ window.TelaoCards = (function () {
           type: tipo === "linha" ? "line" : "bar", plugins: [rotulos],
           data: { labels: s.labels, datasets: datasets },
           options: { maintainAspectRatio: false, animation: { duration: 900 }, layout: { padding: { top: 24, right: 16 } },
-            plugins: { legend: { display: !ating || empil, labels: { color: "#c4cee3", font: { size: tf } } },
+            plugins: { legend: { display: !ating || empil, labels: { color: V("--txt2", "#c4cee3"), font: { size: tf } } },
               tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.y + u; } } } },
-            scales: { x: { stacked: empil, ticks: { color: "#c4cee3", font: { size: tf } }, grid: { color: "#ffffff12" } },
-                      y: { stacked: empil, ticks: { color: "#c4cee3", font: { size: tf }, callback: function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; } }, grid: { color: "#ffffff12" } } } }
+            scales: { x: { stacked: empil, ticks: { color: V("--txt2", "#c4cee3"), font: { size: tf } }, grid: { color: V("--grade", "#ffffff12") } },
+                      y: { stacked: empil, ticks: { color: V("--txt2", "#c4cee3"), font: { size: tf }, callback: function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; } }, grid: { color: V("--grade", "#ffffff12") } } } }
         });
         charts.push(grafico);
         // se o card mudar de tamanho (ex.: editor), as fontes acompanham

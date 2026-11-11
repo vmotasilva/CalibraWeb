@@ -126,6 +126,18 @@ class EditorTests(TestCase):
         self.assertEqual(s[0]["itens"][0]["pos"], {"x": 4, "y": 2, "w": 2, "h": 1}, "cabe na grade escolhida")
         self.assertEqual((s[1]["layout"]["colunas"], s[1]["layout"]["linhas"]), (24, 1), "limites 1-24 e 1-16")
 
+    def test_tema_do_slide_e_salvo_e_chega_ao_player(self):
+        r = self._post("telao_editor_salvar", {"nome": "Claro", "tema": "claro", "slides": [{"origem": "auto", "provedor": "kpi"}]})
+        m = ModeloApresentacao.objects.get(pk=r.json()["id"])
+        self.assertEqual(m.tema, "claro")
+        self.assertEqual(self.client.get(reverse("telao_editor", args=[m.pk])).context["dados"]["modelo"]["tema"], "claro")
+        self.assertContains(self.client.get(reverse("telao") + f"?p={m.chave}"), 'class="tl claro"')
+        self.assertNotContains(self.client.get(reverse("telao") + f"?p={m.chave}&tema=escuro"), 'class="tl claro"')
+        self.assertContains(self.client.get(reverse("telao") + "?p=geral&tema=claro"), 'class="tl claro"')
+        r = self._post("telao_editor_salvar", {"id": m.pk, "nome": "Claro", "tema": "xyz", "slides": [{"origem": "auto", "provedor": "kpi"}]})
+        m.refresh_from_db()
+        self.assertEqual(m.tema, "escuro")
+
     def test_salvar_moldura_do_card(self):
         itens = [{"card_id": "kpi.situacao", "visual": {"moldura": "sem"}}, {"card_id": "kpi.graficos", "visual": {"moldura": "qualquer"}}]
         r = self._post("telao_editor_salvar", {"nome": "M", "slides": [{"origem": "manual", "itens": itens}]})

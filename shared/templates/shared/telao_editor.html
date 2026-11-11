@@ -19,8 +19,8 @@
   .ed-slide .ti small { color:#6c757d; }
   .ed-slide .ac { display:flex; gap:2px; }
   .ed-slide .ac button { padding:0 5px; line-height:1.4; }
-  .ed-frame { position:relative; width:100%; aspect-ratio:2.1 / 1; background:#0b1220; border-radius:10px; overflow:hidden;
-    background-image:linear-gradient(to right,#ffffff0d 1px,transparent 1px),linear-gradient(to bottom,#ffffff0d 1px,transparent 1px);
+  .ed-frame { position:relative; width:100%; aspect-ratio:2.1 / 1; background-color:var(--bg); border-radius:10px; overflow:hidden;
+    background-image:linear-gradient(to right,var(--guia) 1px,transparent 1px),linear-gradient(to bottom,var(--guia) 1px,transparent 1px);
     background-size:calc(100% / 12) calc(100% / 8); }
   .ed-frame .grid-stack { position:absolute; inset:0; }
   .ed-frame .grid-stack-item-content { overflow:hidden; border-radius:1.4cqw; }
@@ -40,7 +40,7 @@
   .ed-guia { position:absolute; display:none; background:#f43f5e; z-index:5; pointer-events:none; }
   .ed-guia-v { top:0; bottom:0; width:1px; } .ed-guia-h { left:0; right:0; height:1px; }
   .ed-auto .ed-auto-in { position:absolute; inset:2.5% 3%; display:flex; flex-direction:column; }
-  .ed-auto .ed-auto-t { color:#e8edf7; font-weight:800; font-size:clamp(12px,2.2cqw,30px); margin-bottom:1.5cqh; }
+  .ed-auto .ed-auto-t { color:var(--txt); font-weight:800; font-size:clamp(12px,2.2cqw,30px); margin-bottom:1.5cqh; }
   .ed-pal summary { cursor:pointer; font-weight:600; }
   .ed-pal .sec { font-size:.72rem; text-transform:uppercase; color:#6c757d; margin:6px 0 2px; }
   .ed-pal .btn-card { display:block; width:100%; text-align:left; font-size:.82rem; padding:3px 8px; margin-bottom:3px; }
@@ -76,6 +76,8 @@
           <input class="form-control form-control-sm" id="edNome" maxlength="100"></div>
         <div class="col-md-4"><label class="form-label small fw-bold mb-1" for="edDescricao">Descrição</label>
           <input class="form-control form-control-sm" id="edDescricao" maxlength="200"></div>
+        <div class="col-md-2"><label class="form-label small fw-bold mb-1" for="edTema">Tema dos slides</label>
+          <select class="form-select form-select-sm" id="edTema"><option value="escuro">Escuro</option><option value="claro">Claro</option></select></div>
         <div class="col-md-2"><label class="form-label small fw-bold mb-1" for="edIcone">Ícone <span class="text-muted fw-normal">(bi-…)</span></label>
           <input class="form-control form-control-sm" id="edIcone" maxlength="40" placeholder="bi-display"></div>
         <div class="col-md-1"><label class="form-label small fw-bold mb-1" for="edDuracao">Seg./slide</label>

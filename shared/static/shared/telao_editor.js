@@ -63,13 +63,14 @@
   function lerConfig() {
     var m = estado.modelo;
     $("edNome").value = m.nome || ""; $("edDescricao").value = m.descricao || ""; $("edIcone").value = m.icone || "";
-    $("edDuracao").value = m.duracao_padrao || 15; $("edResumo").checked = !!m.resumo; $("edCompartilhada").checked = !!m.compartilhada; $("edAtivo").checked = m.ativo !== false;
+    $("edTema").value = m.tema === "claro" ? "claro" : "escuro"; $("edDuracao").value = m.duracao_padrao || 15; $("edResumo").checked = !!m.resumo; $("edCompartilhada").checked = !!m.compartilhada; $("edAtivo").checked = m.ativo !== false;
     link();
   }
   function link() { var b = $("edApresentar"); if (estado.modelo.id) { b.href = D.urls.player + "?p=m" + estado.modelo.id + "#cheia"; b.classList.remove("d-none"); } }
   [["edNome", "nome"], ["edDescricao", "descricao"], ["edIcone", "icone"], ["edDuracao", "duracao_padrao"]].forEach(function (p) {
     $(p[0]).addEventListener("input", function () { estado.modelo[p[1]] = this.value; sujar(); });
   });
+  $("edTema").addEventListener("change", function () { estado.modelo.tema = this.value; sujar(); renderCentro(); });
   [["edResumo", "resumo"], ["edCompartilhada", "compartilhada"], ["edAtivo", "ativo"]].forEach(function (p) {
     $(p[0]).addEventListener("change", function () { estado.modelo[p[1]] = this.checked; sujar(); if (p[1] === "resumo") atualizarPrevia(); });
   });
@@ -183,6 +184,10 @@
       var sel = el("select", "form-select form-select-sm"); sel.appendChild(new Option("Grade (encaixa)", "grade"));
       sel.appendChild(new Option("Livre (qualquer posição)", "livre")); sel.value = modo(s); sel.addEventListener("change", function () { converter(s, sel.value); });
       m.appendChild(sel); b.appendChild(m);
+      var dist = el("div"); dist.appendChild(el("label", "form-label small fw-bold mb-1", "\u00a0"));
+      var bd = el("button", "btn btn-outline-secondary btn-sm d-block"); bd.type = "button"; bd.innerHTML = '<i class="bi bi-grid-3x3-gap me-1"></i>Distribuir pelo slide';
+      bd.title = "Reorganiza todos os cards para ocupar o slide inteiro, de forma equilibrada"; bd.addEventListener("click", function () { distribuir(s); });
+      dist.appendChild(bd); b.appendChild(dist);
       if (modo(s) === "grade") {   // a grade pode ser redefinida: quantidade de caixas na horizontal e na vertical
         [["Colunas", "colunas", 24], ["Linhas", "linhas", 16]].forEach(function (k) {
           var g = el("div"); g.appendChild(el("label", "form-label small fw-bold mb-1", k[0]));
@@ -205,6 +210,7 @@
     }
     return b;
   }
+  function classeTema() { return estado.modelo.tema === "claro" ? " claro" : ""; }
   function modo(s) { return (s.layout && s.layout.modo === "livre") ? "livre" : "grade"; }
   // O GridStack só traz CSS pronto para 12 colunas (e 2 a 11 no extra): para qualquer outra quantidade, gera as regras aqui.
   function cssColunas(n) {
@@ -223,6 +229,23 @@
       var p = i.pos, x = Math.min(c - 1, Math.round(p.x * c / oc)), y = Math.min(l - 1, Math.round(p.y * l / ol));
       i.pos = { x: x, y: y, w: Math.min(c - x, Math.max(1, Math.round(p.w * c / oc))), h: Math.min(l - y, Math.max(1, Math.round(p.h * l / ol))) };
     });
+    sujar(); renderCentro(); renderDireita();
+  }
+  // Espalha os cards pelo slide inteiro: linhas equilibradas, cada card ocupando sua parte (na grade, em células; no livre, em %).
+  function distribuir(s) {
+    var n = s.itens.length; if (!n) return;
+    var R = n <= 3 ? 1 : n <= 8 ? 2 : 3, k = 0, livre = modo(s) === "livre", C = cols(s), L = lins(s), g = 1.5;
+    for (var r = 0; r < R; r++) {
+      var qtd = Math.floor(n / R) + (r < n % R ? 1 : 0);
+      for (var i = 0; i < qtd; i++, k++) {
+        if (livre) s.itens[k].pos = { x: arred(i * 100 / qtd + g / 2), y: arred(r * 100 / R + g / 2), w: arred(100 / qtd - g), h: arred(100 / R - g) };
+        else {
+          var x0 = Math.round(i * C / qtd), x1 = Math.max(x0 + 1, Math.round((i + 1) * C / qtd)), y0 = Math.round(r * L / R), y1 = Math.max(y0 + 1, Math.round((r + 1) * L / R));
+          x0 = Math.min(x0, C - 1); y0 = Math.min(y0, L - 1);
+          s.itens[k].pos = { x: x0, y: y0, w: Math.min(C, x1) - x0, h: Math.min(L, y1) - y0 };
+        }
+      }
+    }
     sujar(); renderCentro(); renderDireita();
   }
   function arred(v) { return Math.round(v * 100) / 100; }
@@ -257,7 +280,7 @@
   }
   function minimoPct(it) { var i = cardInfo[it.card_id], m = i ? i.card.tam_min : [2, 1]; return { w: m[0] / COL * 100, h: m[1] / LIN * 100 }; }
   function renderLivre(c, s) {
-    var frame = el("div", "tl tl-frame ed-frame ed-livre");
+    var frame = el("div", "tl tl-frame ed-frame ed-livre" + classeTema());
     s.itens.forEach(function (it) {
       var box = el("div", "ed-livre-item" + (it._id === estado.itemSel ? " sel" : "")), conteudo = el("div", "ed-livre-content");
       box.setAttribute("gs-id", it._id); box.appendChild(conteudo);
@@ -342,7 +365,7 @@
     it._el.appendChild(it._conteudo ? TelaoCards.painel(it._conteudo, it.visual.titulo !== false, it.visual.moldura === "sem", it.visual.subtitulo !== false) : placeholder(it, it._carregando ? "Carregando…" : "Sem dados no momento"));
   }
   function renderManual(c, s) {
-    var frame = el("div", "tl tl-frame ed-frame"), g = el("div", "grid-stack"); frame.appendChild(g);
+    var frame = el("div", "tl tl-frame ed-frame" + classeTema()), g = el("div", "grid-stack"); frame.appendChild(g);
     s.itens.forEach(function (it) {
       var w = el("div", "grid-stack-item"), conteudo = el("div", "grid-stack-item-content"), info = cardInfo[it.card_id];
       w.setAttribute("gs-id", it._id); w.setAttribute("gs-x", it.pos.x); w.setAttribute("gs-y", it.pos.y); w.setAttribute("gs-w", it.pos.w); w.setAttribute("gs-h", it.pos.h);
@@ -432,7 +455,7 @@
 
   // --- automático: prévia
   function renderAuto(c, s) {
-    var frame = el("div", "tl tl-frame ed-frame ed-auto"), dentro = el("div", "ed-auto-in"); frame.appendChild(dentro); c.appendChild(frame);
+    var frame = el("div", "tl tl-frame ed-frame ed-auto" + classeTema()), dentro = el("div", "ed-auto-in"); frame.appendChild(dentro); c.appendChild(frame);
     var legenda = el("div", "text-center text-muted small mt-2"); legenda.id = "edLegendaAuto"; c.appendChild(legenda);
     if (s.tipo === "assunto") c.appendChild(el("div", "alert alert-light border small mt-2 mb-0", "Assunto com blocos de vários módulos: ajuste os blocos à direita. Use Personalizar para posicionar os cards livremente."));
     s._dentro = dentro; renderPreviaAuto(); if (!s._previa) atualizarPrevia();
@@ -535,8 +558,9 @@
       var sel = el("select", "form-select form-select-sm"); sel.appendChild(new Option("Carregando…", "")); gi.appendChild(sel); b.appendChild(gi);
       instancias(it).then(function (lista) {
         sel.innerHTML = ""; sel.appendChild(new Option("Primeiro disponível", ""));
+        if (info.card.forma === "cards") sel.appendChild(new Option("Todas, concentradas em um só card", "*"));
         lista.forEach(function (x) { sel.appendChild(new Option(x, x)); });
-        var ref = (it.params || {}).ref || ""; if (ref && lista.indexOf(ref) < 0) sel.appendChild(new Option(ref + " (indisponível agora)", ref)); sel.value = ref;
+        var ref = (it.params || {}).ref || ""; if (ref && ref !== "*" && lista.indexOf(ref) < 0) sel.appendChild(new Option(ref + " (indisponível agora)", ref)); sel.value = ref;
       });
       sel.addEventListener("change", function () { if (sel.value) it.params = { ref: sel.value }; else delete it.params; sujar(); atualizarPrevia(); });
     }
@@ -605,7 +629,7 @@
   // ---------------------------------------------------------------- salvar
   function salvar() {
     alerta(null); var m = estado.modelo, bt = $("edSalvar"); bt.disabled = true;
-    post(D.urls.salvar, { id: m.id, nome: m.nome, descricao: m.descricao, icone: m.icone, duracao_padrao: m.duracao_padrao, resumo: m.resumo,
+    post(D.urls.salvar, { id: m.id, nome: m.nome, descricao: m.descricao, icone: m.icone, duracao_padrao: m.duracao_padrao, resumo: m.resumo, tema: m.tema,
                           compartilhada: m.compartilhada, ativo: m.ativo !== false, slides: limpo(estado.slides) }).then(function (r) {
       bt.disabled = false;
       if (!r.ok) { alerta(r.dados.erros || r.dados.erro || "Não foi possível salvar."); return; }

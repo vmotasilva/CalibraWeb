@@ -23,6 +23,8 @@ LAYOUTS = {
     "2": ("Dois cards lado a lado", 2, [(0, 0, 6, 8), (6, 0, 6, 8)]),
     "1+2": ("Um em cima e dois embaixo", 3, [(0, 0, 12, 4), (0, 4, 6, 4), (6, 4, 6, 4)]),
     "2x2": ("Quatro cards (2 x 2)", 4, [(0, 0, 6, 4), (6, 0, 6, 4), (0, 4, 6, 4), (6, 4, 6, 4)]),
+    "3": ("Três cards lado a lado", 3, [(0, 0, 4, 8), (4, 0, 4, 8), (8, 0, 4, 8)]),
+    "3x2": ("Seis cards espalhados (3 x 2)", 6, [(0, 0, 4, 4), (4, 0, 4, 4), (8, 0, 4, 4), (0, 4, 4, 4), (4, 4, 4, 4), (8, 4, 4, 4)]),
 }
 AUTO = "auto"  # escolhe a disposição pela quantidade de cards de cada slide
 _AUTO_POR_QTD = {1: "1", 2: "2", 3: "1+2", 4: "2x2"}
@@ -107,6 +109,23 @@ def _slides_do_modulo(user, provedor, filtros, resumo, embutidas, memo):
     return memo[chave]
 
 
+def _concentrar(provedor: str, slides: list[dict]) -> dict:
+    """Junta as listas de todas as instâncias de um card (ex.: ocorrências de cada indicador) em um só card,
+    com vencidas primeiro e o nome da instância como etiqueta de cada item."""
+    from . import providers
+
+    base = juntar_partes(slides)
+    itens = []
+    for s in base:
+        nome = (s.get("titulo") or "").split(" — ocorrências")[0]
+        itens += [{**i, "tags": [nome] + list(i.get("tags") or [])} for i in s.get("itens") or []]
+    itens.sort(key=lambda i: i.get("tom") != "critico")  # estável: mantém a ordem dentro de cada grupo
+    rotulo = providers.ROTULOS_PROVEDORES.get(provedor, (provedor,))[0]
+    venc = sum(1 for i in itens if i.get("tom") == "critico")
+    sub = f"{len(itens)} em aberto" + (f" · {venc} vencida{'s' if venc != 1 else ''}" if venc else "")
+    return {**base[0], "titulo": f"Ocorrências — {rotulo}", "subtitulo": sub, "itens": itens}
+
+
 def resolver_item(user, item: dict, resumo: bool, embutidas: list, memo: dict) -> dict | None:
     """Conteúdo atual do card (e da instância, se houver) ou None se não há dado/permissão."""
     cid = item.get("card_id") or ""
@@ -115,6 +134,8 @@ def resolver_item(user, item: dict, resumo: bool, embutidas: list, memo: dict) -
     provedor = cid.split(".", 1)[0]
     slides = [s for s in _slides_do_modulo(user, provedor, item.get("filtros"), resumo, embutidas, memo) if s.get("card_id") == cid]
     ref = (item.get("params") or {}).get("ref")
+    if ref == "*" and cards.CARDS[cid][2] and slides and slides[0].get("kind") == "cards":  # todas as instâncias num só card
+        return aplicar_visual(_concentrar(provedor, slides), item.get("visual"))
     if ref:
         slides = [s for s in slides if s.get("titulo") == ref]
     juntos = juntar_partes(slides)

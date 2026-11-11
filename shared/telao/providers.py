@@ -415,24 +415,39 @@ def _empilhado_por_setor(ind, gran, f):
             "totais": [round(sum(s["valores"][i] or 0 for s in series), 2) for i in range(len(ref))]}
 
 
-_PERIODOS_MOTIVOS = {"dia": "Último dia lançado", "semana": "Última semana lançada", "mes": "Último mês lançado",
-                     "30": "Últimos 30 dias", "60": "Últimos 60 dias", "90": "Últimos 90 dias"}
+_PADRAO_MOTIVOS = {"diaria": 90, "semanal": 4, "mensal": 1}  # dias / semanas / meses, quando o card não define "últimos N"
+
+
+def _periodo_motivos(m_data_gran, f, gran):
+    """Datas (de uma granularidade) que entram no Top motivos: última competência (mês) ou os últimos N dias/semanas/meses."""
+    datas = sorted(set(m_data_gran))
+    ultimo = datas[-1]
+    if f.get("janela") == "competencia":
+        escolhidas = {d for d in datas if (d.year, d.month) == (ultimo.year, ultimo.month)}
+        return escolhidas, f"competência {ultimo:%m/%Y}"
+    n = int(f["ultimos"]) if str(f.get("ultimos") or "").isdigit() and int(f["ultimos"]) > 0 else _PADRAO_MOTIVOS[gran]
+    if gran == "mensal":
+        meses = sorted({(d.year, d.month) for d in datas})[-n:]
+        return {d for d in datas if (d.year, d.month) in meses}, ("último mês" if n == 1 else f"últimos {n} meses")
+    dias = n if gran == "diaria" else n * 7
+    corte = ultimo - timedelta(days=dias - 1)
+    return {d for d in datas if d >= corte}, (f"últimos {n} dias" if gran == "diaria" else f"últimas {n} semanas")
 
 
 def _slide_motivos(ind, rotulo, f):
     """Top principais motivos de um indicador (a mesma tabela do Painel de Indicadores), como barras.
-    Configurável: o que mostrar (quantidade, percentual ou ambos), barra de preenchimento e prioridade ao texto."""
-    periodo = f.get("motivos_periodo")
-    periodo = periodo if periodo in _PERIODOS_MOTIVOS else "90"
+    Período (diário/semanal/mensal) e janela de tempo como nos gráficos; sem período escolhido, usa o mais detalhado
+    que o indicador tem (ex.: retorno de clientes só lança motivos por mês). Configurável: o que mostrar
+    (quantidade, percentual ou ambos), barra de preenchimento e prioridade ao texto."""
     exibir = f.get("motivos_exibir") if f.get("motivos_exibir") in ("quantidade", "percentual") else "ambos"
     todos = list(ind.motivos.all())  # visão geral: motivos de todos os setores
-    gran = {"dia": "diaria", "semana": "semanal", "mes": "mensal"}.get(periodo, "diaria")
+    gran = f.get("serie") if f.get("serie") in _GRANULARIDADES_GRAFICO else next(
+        (g for g in _GRANULARIDADES_GRAFICO if any(m.granularidade == g for m in todos)), None)
     do_gran = [m for m in todos if m.granularidade == gran]
     if not do_gran:
         return []
-    ultimo = max(m.data for m in do_gran)
-    itens = [m for m in do_gran if m.data == ultimo] if periodo in ("dia", "semana", "mes") \
-        else [m for m in do_gran if m.data >= ultimo - timedelta(days=int(periodo) - 1)]
+    datas, descricao = _periodo_motivos([m.data for m in do_gran], f, gran)
+    itens = [m for m in do_gran if m.data in datas]
     soma_por = {}
     for m in itens:
         a = soma_por.setdefault(m.descricao.strip().lower(), [m.descricao.strip(), 0])
@@ -453,7 +468,7 @@ def _slide_motivos(ind, rotulo, f):
             return f"{_fmt_num(v / total * 100, 1)}%"
         return f"{qtd(v)} · {_fmt_num(v / total * 100, 0)}%"
 
-    return [_slide("kpi", "bars", rotulo, f"Top principais motivos · {_PERIODOS_MOTIVOS[periodo]}", "bi-list-ol",
+    return [_slide("kpi", "bars", rotulo, f"Top principais motivos · {descricao}", "bi-list-ol",
                    sem_barra=bool(f.get("motivos_sem_barra")), texto_prioritario=bool(f.get("motivos_texto")), itens=[{
         "rotulo": f"{n}. {nome}", "pct": float(v / maior * 100), "tom": "neutro", "txt": texto(v),
     } for n, (nome, v) in enumerate(top, 1)])]
@@ -1123,10 +1138,11 @@ def _opts_origens(user):
 # módulo -> campo -> cards a que se aplicam (no editor, o resto aparece só em "Filtros").
 CAMPOS_CONFIG = {
     "kpi": {
-        "serie": ["kpi.graficos"], "tipo_grafico": ["kpi.graficos"], "janela": ["kpi.graficos"], "ultimos": ["kpi.graficos"],
+        "serie": ["kpi.graficos", "kpi.motivos"], "tipo_grafico": ["kpi.graficos"], "janela": ["kpi.graficos", "kpi.motivos"],
+        "ultimos": ["kpi.graficos", "kpi.motivos"],
         "dias": ["kpi.graficos", "kpi.situacao"], "meses": ["kpi.graficos"], "graficos": ["kpi.graficos"],
         "ocultar_na_meta": ["kpi.situacao"], "ocultar_fora": ["kpi.situacao"], "ocultar_sem_dado": ["kpi.situacao"],
-        "motivos_periodo": ["kpi.motivos"], "motivos_exibir": ["kpi.motivos"], "motivos_sem_barra": ["kpi.motivos"], "motivos_texto": ["kpi.motivos"],
+        "motivos_exibir": ["kpi.motivos"], "motivos_sem_barra": ["kpi.motivos"], "motivos_texto": ["kpi.motivos"],
     },
     "ocorrencias": {"comentarios": ["ocorrencias.lista"]},
 }
@@ -1154,18 +1170,15 @@ FILTROS = {
              opcoes=lambda u: [("ambos", "Quantidade e percentual"), ("quantidade", "Somente a quantidade"), ("percentual", "Somente o percentual")]),
         dict(nome="motivos_sem_barra", rotulo="Motivos — ocultar a barra de preenchimento", tipo="bool"),
         dict(nome="motivos_texto", rotulo="Motivos — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
-        dict(nome="motivos_periodo", rotulo="Período do Top principais motivos", tipo="select",
-             opcoes=lambda u: list(_PERIODOS_MOTIVOS.items()),
-             ajuda="Padrão: últimos 90 dias (acumulado). Usa os motivos lançados no Painel de Indicadores."),
-        dict(nome="serie", rotulo="Gráfico — período das medições", tipo="select",
+        dict(nome="serie", rotulo="Período (diário, semanal ou mensal)", tipo="select",
              opcoes=lambda u: [("diaria", "Diário"), ("semanal", "Semanal"), ("mensal", "Mensal")],
-             ajuda="Padrão: mensal (ou o último lançado). Vale para os cards de gráfico."),
+             ajuda="Gráficos: padrão mensal (ou o último lançado). Principais motivos: padrão o mais detalhado lançado."),
         dict(nome="tipo_grafico", rotulo="Gráfico — tipo", tipo="select",
              opcoes=lambda u: [("linha", "Linha pontilhada"), ("barras", "Barras"), ("empilhadas", "Barras empilhadas (por setor)")]),
-        dict(nome="janela", rotulo="Gráfico — janela de tempo", tipo="select",
+        dict(nome="janela", rotulo="Janela de tempo", tipo="select",
              opcoes=lambda u: [("ultimos", "Últimos N períodos"), ("competencia", "Dentro da última competência (mês)")]),
-        dict(nome="ultimos", rotulo="Gráfico — quantos períodos (últimos N)", tipo="select",
-             opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 20, 24, 26, 30, 45, 52, 60, 90)],
+        dict(nome="ultimos", rotulo="Quantos períodos (últimos N)", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 20, 24, 26, 30, 45, 52, 60, 90)],
              ajuda="N dias, semanas ou meses, conforme o período escolhido. Ignorado na última competência."),
         dict(nome="graficos", rotulo="Gráficos de evolução", tipo="select",
              opcoes=lambda u: [("fora", "Só dos fora da meta"), ("todos", "De todos"), ("nenhum", "Nenhum")]),
@@ -1292,11 +1305,11 @@ def obter_playlist(user, chave: str) -> dict:
                 else:
                     itens.append((i.get("provedor"), i.get("duracao"), i.get("filtros") or {}))
             return {"chave": m.chave, "nome": m.nome, "icone": m.icone or "bi-display", "itens": itens,
-                    "duracao": m.duracao_padrao or DURACAO_PADRAO, "resumo": m.resumo}
+                    "duracao": m.duracao_padrao or DURACAO_PADRAO, "resumo": m.resumo, "tema": m.tema}
     nome, icone, provedores = PLAYLISTS.get(chave, PLAYLISTS[PLAYLIST_PADRAO])
     chave = chave if chave in PLAYLISTS else PLAYLIST_PADRAO
     return {"chave": chave, "nome": nome, "icone": icone, "itens": [(p, None, {}) for p in provedores],
-            "duracao": None, "resumo": False}
+            "duracao": None, "resumo": False, "tema": "escuro"}
 
 
 CHAVE_ASSUNTO = "@assunto"

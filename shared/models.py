@@ -86,6 +86,8 @@ class ModeloApresentacao(models.Model):
     duracao_padrao = models.PositiveSmallIntegerField("Segundos por slide", default=15)
     resumo = models.BooleanField("Modo resumido", default=False,
                                  help_text="Oculta descrições e nomes de responsáveis (para telas em locais públicos).")
+    TEMAS = [("escuro", "Escuro"), ("claro", "Claro")]
+    tema = models.CharField("Tema dos slides", max_length=10, choices=TEMAS, default="escuro")
     compartilhada = models.BooleanField("Compartilhada", default=False,
                                         help_text="Aparece no menu de todos os usuários (cada um vê só o que tem permissão).")
     ativo = models.BooleanField("Ativo", default=True)
