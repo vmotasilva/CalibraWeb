@@ -97,6 +97,18 @@ class EditorTests(TestCase):
         self.assertEqual((m.nome, len(m.slides)), ("Outro", 1))
         self.assertEqual(ModeloApresentacao.objects.count(), 1)
 
+    def test_salvar_posicao_livre_mantem_percentuais_e_ordem(self):
+        slide = {"origem": "manual", "titulo": "L", "layout": {"modo": "livre"}, "itens": [
+            {"card_id": "kpi.situacao", "pos": {"x": 10.5, "y": 30, "w": 47, "h": 43}},
+            {"card_id": "kpi.graficos", "pos": {"x": 90, "y": 90, "w": 50, "h": 50}}]}
+        r = self._post("telao_editor_salvar", {"nome": "Livre", "slides": [slide]})
+        self.assertEqual(r.status_code, 200, r.content)
+        s = ModeloApresentacao.objects.get(pk=r.json()["id"]).slides[0]
+        self.assertEqual(s["layout"]["modo"], "livre")
+        self.assertEqual([i["card_id"] for i in s["itens"]], ["kpi.situacao", "kpi.graficos"], "a ordem define quem fica por cima")
+        self.assertEqual(s["itens"][0]["pos"], {"x": 10.5, "y": 30.0, "w": 47.0, "h": 43.0})
+        self.assertEqual(s["itens"][1]["pos"], {"x": 90.0, "y": 90.0, "w": 10.0, "h": 10.0}, "limitado à borda do slide")
+
     def test_salvar_substitui_o_formato_antigo(self):
         m = ModeloApresentacao.objects.create(nome="L", criado_por=self.admin, itens=[{"provedor": "kpi"}])
         slides = layout.slides_do_modelo(m)

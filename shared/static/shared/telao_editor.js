@@ -155,7 +155,8 @@
     if (s.origem === "manual") {
       var m = el("div"); m.appendChild(el("label", "form-label small fw-bold mb-1", "Posicionamento"));
       var sel = el("select", "form-select form-select-sm"); sel.appendChild(new Option("Grade (encaixa)", "grade"));
-      var lv = new Option("Livre (em breve)", "livre"); lv.disabled = true; sel.appendChild(lv); sel.value = "grade"; m.appendChild(sel); b.appendChild(m);
+      sel.appendChild(new Option("Livre (qualquer posição)", "livre")); sel.value = modo(s); sel.addEventListener("change", function () { converter(s, sel.value); });
+      m.appendChild(sel); b.appendChild(m);
     } else {
       var p = el("button", "btn btn-primary btn-sm"); p.type = "button"; p.innerHTML = '<i class="bi bi-pencil-square me-1"></i>Personalizar';
       p.title = "Transforma em slide manual, com os cards na disposição atual, para você ajustar"; p.addEventListener("click", personalizar); b.appendChild(p);
@@ -166,12 +167,80 @@
     }
     return b;
   }
+  function modo(s) { return (s.layout && s.layout.modo === "livre") ? "livre" : "grade"; }
+  function arred(v) { return Math.round(v * 100) / 100; }
+  function converter(s, novo) {
+    if (modo(s) === novo) return;
+    if (!confirm(novo === "livre" ? "Passar para posicionamento livre? Os cards mantêm o lugar atual e passam a poder ficar em qualquer posição (e sobrepostos)."
+                                  : "Passar para a grade? As posições serão arredondadas para as células e podem se sobrepor.")) { renderCentro(); return; }
+    s.layout = s.layout || { colunas: COL, linhas: LIN }; s.layout.modo = novo;
+    s.itens.forEach(function (i) {
+      var p = i.pos;
+      if (novo === "livre") i.pos = { x: arred(p.x / COL * 100), y: arred(p.y / LIN * 100), w: arred(p.w / COL * 100), h: arred(p.h / LIN * 100) };
+      else {
+        var x = Math.min(COL - 1, Math.max(0, Math.round(p.x / 100 * COL))), y = Math.min(LIN - 1, Math.max(0, Math.round(p.y / 100 * LIN)));
+        i.pos = { x: x, y: y, w: Math.min(COL - x, Math.max(1, Math.round(p.w / 100 * COL))), h: Math.min(LIN - y, Math.max(1, Math.round(p.h / 100 * LIN))) };
+      }
+    });
+    sujar(); renderCentro(); renderDireita();
+  }
   function destruirGrade() { if (grade) { try { grade.destroy(false); } catch (e) {} grade = null; } TelaoCards.destruir(); }
 
   function renderCentro() {
     var c = $("edCentro"), s = atual(); destruirGrade(); c.innerHTML = "";
     c.appendChild(barraSlide(s));
-    if (s.origem === "manual") renderManual(c, s); else renderAuto(c, s);
+    if (s.origem === "manual") { if (modo(s) === "livre") renderLivre(c, s); else renderManual(c, s); } else renderAuto(c, s);
+  }
+
+  // --- manual: posição livre (arrastar e redimensionar em % do slide, com ímã de 1%; Alt desliga o ímã)
+  var ALCAS = ["n", "s", "e", "w", "ne", "nw", "se", "sw"];
+  function estilo(it) {
+    var b = it._box, p = it.pos; if (!b) return;
+    b.style.left = p.x + "%"; b.style.top = p.y + "%"; b.style.width = p.w + "%"; b.style.height = p.h + "%";
+  }
+  function minimoPct(it) { var i = cardInfo[it.card_id], m = i ? i.card.tam_min : [2, 1]; return { w: m[0] / COL * 100, h: m[1] / LIN * 100 }; }
+  function renderLivre(c, s) {
+    var frame = el("div", "tl tl-frame ed-frame ed-livre");
+    s.itens.forEach(function (it) {
+      var box = el("div", "ed-livre-item" + (it._id === estado.itemSel ? " sel" : "")), conteudo = el("div", "ed-livre-content");
+      box.setAttribute("gs-id", it._id); box.appendChild(conteudo);
+      ALCAS.forEach(function (a) { var h = el("div", "ed-h ed-h-" + a); h.setAttribute("data-h", a); box.appendChild(h); });
+      it._box = box; it._el = conteudo; estilo(it); frame.appendChild(box);
+      box.addEventListener("pointerdown", function (e) { iniciarArraste(e, s, it, frame); });
+    });
+    frame.addEventListener("pointerdown", function (e) { if (e.target === frame) selecionarItem(null); });
+    c.appendChild(frame);
+    c.appendChild(el("div", "text-center text-muted small mt-2", s.itens.length
+      ? "Arraste para mover, use as alças para redimensionar (Alt = sem ímã). Os cards mais abaixo na lista ficam por cima."
+      : "Slide vazio: escolha cards na paleta à direita e posicione onde quiser."));
+    s.itens.forEach(preencher); atualizarPrevia();
+  }
+  function iniciarArraste(e, s, it, frame) {
+    if (e.button !== 0) return;
+    var alca = e.target.getAttribute && e.target.getAttribute("data-h");
+    selecionarItem(it._id);
+    var r = frame.getBoundingClientRect(), p0 = { x: it.pos.x, y: it.pos.y, w: it.pos.w, h: it.pos.h }, x0 = e.clientX, y0 = e.clientY, mn = minimoPct(it), moveu = false;
+    var box = it._box; try { box.setPointerCapture(e.pointerId); } catch (x) {}
+    function passo(v, alt) { return alt ? arred(v) : Math.round(v); }
+    function mover(ev) {
+      var dx = (ev.clientX - x0) / r.width * 100, dy = (ev.clientY - y0) / r.height * 100, a = ev.altKey, n = { x: p0.x, y: p0.y, w: p0.w, h: p0.h };
+      if (!alca) { n.x = Math.min(100 - p0.w, Math.max(0, passo(p0.x + dx, a))); n.y = Math.min(100 - p0.h, Math.max(0, passo(p0.y + dy, a))); }
+      else {
+        var dE = alca.indexOf("e") >= 0, dW = alca.indexOf("w") >= 0, dN = alca.indexOf("n") >= 0, dS = alca.indexOf("s") >= 0;
+        if (dE) n.w = Math.min(100 - p0.x, Math.max(mn.w, passo(p0.x + p0.w + dx, a) - p0.x));
+        if (dW) { var nx = Math.min(p0.x + p0.w - mn.w, Math.max(0, passo(p0.x + dx, a))); n.x = nx; n.w = p0.x + p0.w - nx; }
+        if (dS) n.h = Math.min(100 - p0.y, Math.max(mn.h, passo(p0.y + p0.h + dy, a) - p0.y));
+        if (dN) { var ny = Math.min(p0.y + p0.h - mn.h, Math.max(0, passo(p0.y + dy, a))); n.y = ny; n.h = p0.y + p0.h - ny; }
+      }
+      n.x = arred(n.x); n.y = arred(n.y); n.w = arred(n.w); n.h = arred(n.h);
+      if (n.x !== it.pos.x || n.y !== it.pos.y || n.w !== it.pos.w || n.h !== it.pos.h) { it.pos = n; moveu = true; estilo(it); }
+    }
+    function fim() {
+      box.removeEventListener("pointermove", mover); box.removeEventListener("pointerup", fim); box.removeEventListener("pointercancel", fim);
+      if (moveu) { sujar(); renderDireita(); }
+    }
+    box.addEventListener("pointermove", mover); box.addEventListener("pointerup", fim); box.addEventListener("pointercancel", fim);
+    e.preventDefault();
   }
 
   // --- manual: grade
@@ -215,7 +284,7 @@
   function selecionarItem(id) {
     if (estado.itemSel === id) return;
     estado.itemSel = id;
-    document.querySelectorAll("#edCentro .grid-stack-item").forEach(function (w) { w.classList.toggle("sel", w.getAttribute("gs-id") === id); });
+    document.querySelectorAll("#edCentro .grid-stack-item, #edCentro .ed-livre-item").forEach(function (w) { w.classList.toggle("sel", w.getAttribute("gs-id") === id); });
     renderDireita();
   }
   function atualizarPrevia() {
@@ -237,7 +306,7 @@
   }
   function adicionarCard(id) {
     var s = atual(), info = cardInfo[id]; if (s.origem !== "manual" || !info) return;
-    var vaga = acharVaga(s, info.card.tam_padrao, info.card.tam_min);
+    var livre = modo(s) === "livre", vaga = livre ? acharVagaLivre(s, info.card.tam_padrao, info.card.tam_min) : acharVaga(s, info.card.tam_padrao, info.card.tam_min);
     if (!vaga) { alerta("Não há espaço livre neste slide para esse card. Reduza ou remova algum card, ou use outro slide.", "warning"); return; }
     alerta(null);
     var it = { _id: novoId(), card_id: id, pos: vaga, visual: { titulo: true, max_itens: null } };
@@ -251,6 +320,18 @@
     for (var h = padrao[1]; h >= minimo[1]; h--) for (var w = padrao[0]; w >= minimo[0]; w--)
       for (var y = 0; y + h <= LIN; y++) for (var x = 0; x + w <= COL; x++) if (livre(x, y, w, h)) return { x: x, y: y, w: w, h: h };
     return null;
+  }
+  // Posição livre: procura um lugar vazio (passos de 2,5%); se não houver, cascateia sobre os cards existentes.
+  function acharVagaLivre(s, padrao, minimo) {
+    function livre(x, y, w, h) {
+      return !s.itens.some(function (i) { var p = i.pos; return x < p.x + p.w - .01 && x + w > p.x + .01 && y < p.y + p.h - .01 && y + h > p.y + .01; });
+    }
+    for (var h = padrao[1]; h >= minimo[1]; h--) for (var w = padrao[0]; w >= minimo[0]; w--) {
+      var pw = w / COL * 100, ph = h / LIN * 100;
+      for (var y = 0; y + ph <= 100.01; y += 2.5) for (var x = 0; x + pw <= 100.01; x += 2.5) if (livre(x, y, pw, ph)) return { x: arred(x), y: arred(y), w: arred(pw), h: arred(ph) };
+    }
+    var d = (s.itens.length * 3) % 30, w2 = padrao[0] / COL * 100, h2 = padrao[1] / LIN * 100;
+    return { x: arred(Math.min(d, 100 - w2)), y: arred(Math.min(d, 100 - h2)), w: arred(w2), h: arred(h2) };
   }
   function removerItem(id) {
     var s = atual(); s.itens = s.itens.filter(function (i) { return i._id !== id; }); estado.itemSel = null; sujar(); renderLista(); renderCentro(); renderDireita();
@@ -339,9 +420,34 @@
       it.filtros = it.filtros || {};
       var fm = formFiltros(prov, it.filtros, ["cards", "layout"], function () { sujar(); delete instCache[it.card_id]; depois(atualizarPrevia); }); fm.className = "mt-2"; det.appendChild(fm); b.appendChild(det);
     }
+    if (modo(s) === "livre") {
+      var gp = el("div", "mb-2"); gp.appendChild(el("div", "small fw-bold mb-1", "Posição e tamanho (% do slide)"));
+      var lin = el("div", "d-flex gap-1");
+      [["x", "X"], ["y", "Y"], ["w", "Larg."], ["h", "Alt."]].forEach(function (k) {
+        var col = el("div", "flex-fill"), rt = el("div", "text-muted", k[1]); rt.style.fontSize = ".7rem"; col.appendChild(rt);
+        var n = el("input", "form-control form-control-sm px-1"); n.type = "number"; n.step = "0.5"; n.min = 0; n.max = 100; n.value = it.pos[k[0]]; n.setAttribute("data-k", k[0]);
+        n.addEventListener("input", function () {
+          var v = parseFloat(n.value); if (isNaN(v)) return; var p = it.pos, mn = minimoPct(it);
+          if (k[0] === "x") p.x = Math.min(Math.max(v, 0), 100 - p.w); else if (k[0] === "y") p.y = Math.min(Math.max(v, 0), 100 - p.h);
+          else if (k[0] === "w") p.w = Math.min(Math.max(v, mn.w), 100 - p.x); else p.h = Math.min(Math.max(v, mn.h), 100 - p.y);
+          estilo(it); sujar();
+        });
+        col.appendChild(n); lin.appendChild(col);
+      });
+      gp.appendChild(lin);
+      var cam = el("div", "d-flex gap-1 mt-2");
+      var fr = el("button", "btn btn-outline-secondary btn-sm flex-fill"); fr.type = "button"; fr.innerHTML = '<i class="bi bi-layer-forward me-1"></i>Para frente';
+      var tr = el("button", "btn btn-outline-secondary btn-sm flex-fill"); tr.type = "button"; tr.innerHTML = '<i class="bi bi-layer-backward me-1"></i>Para trás';
+      fr.addEventListener("click", function () { camada(s, it, 1); }); tr.addEventListener("click", function () { camada(s, it, -1); });
+      cam.appendChild(fr); cam.appendChild(tr); gp.appendChild(cam); b.appendChild(gp);
+    }
     var rm = el("button", "btn btn-outline-danger btn-sm w-100"); rm.type = "button"; rm.innerHTML = '<i class="bi bi-trash me-1"></i>Remover card do slide';
     rm.addEventListener("click", function () { removerItem(it._id); }); b.appendChild(rm);
     card.appendChild(b); return card;
+  }
+  function camada(s, it, d) {
+    var i = s.itens.indexOf(it), j = i + d; if (j < 0 || j >= s.itens.length) return;
+    s.itens.splice(i, 1); s.itens.splice(j, 0, it); sujar(); renderCentro(); renderDireita();
   }
   function instancias(it) {
     var chave = it.card_id; if (instCache[chave]) return instCache[chave];
