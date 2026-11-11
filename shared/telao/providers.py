@@ -453,7 +453,9 @@ def _slide_motivos(ind, rotulo, f, setor_id=False):
     for m in itens:
         a = soma_por.setdefault(m.descricao.strip().lower(), [m.descricao.strip(), 0])
         a[1] += m.quantidade
-    top = sorted(soma_por.values(), key=lambda a: a[1], reverse=True)[:10]
+    limite = int(f["motivos_qtd"]) if str(f.get("motivos_qtd") or "").isdigit() and 1 <= int(f["motivos_qtd"]) <= 40 else 10
+    colunas = int(f["motivos_colunas"]) if str(f.get("motivos_colunas") or "") in ("2", "3", "4") else 1
+    top = sorted(soma_por.values(), key=lambda a: a[1], reverse=True)[:limite]
     total = sum(a[1] for a in soma_por.values())
     if not top or not total:
         return []
@@ -470,7 +472,7 @@ def _slide_motivos(ind, rotulo, f, setor_id=False):
         return f"{qtd(v)} · {_fmt_num(v / total * 100, 0)}%"
 
     return [_slide("kpi", "bars", rotulo, f"Top principais motivos · {descricao}", "bi-list-ol",
-                   sem_barra=bool(f.get("motivos_sem_barra")), texto_prioritario=bool(f.get("motivos_texto")), itens=[{
+                   sem_barra=bool(f.get("motivos_sem_barra")), texto_prioritario=bool(f.get("motivos_texto")), colunas=colunas, itens=[{
         "rotulo": f"{n}. {nome}", "pct": float(v / maior * 100), "tom": "neutro", "txt": texto(v),
     } for n, (nome, v) in enumerate(top, 1)])]
 
@@ -1144,6 +1146,7 @@ CAMPOS_CONFIG = {
         "dias": ["kpi.graficos", "kpi.situacao"], "meses": ["kpi.graficos"], "graficos": ["kpi.graficos"],
         "ocultar_na_meta": ["kpi.situacao"], "ocultar_fora": ["kpi.situacao"], "ocultar_sem_dado": ["kpi.situacao"],
         "motivos_exibir": ["kpi.motivos"], "motivos_sem_barra": ["kpi.motivos"], "motivos_texto": ["kpi.motivos"],
+        "motivos_qtd": ["kpi.motivos"], "motivos_colunas": ["kpi.motivos"],
     },
     "ocorrencias": {"comentarios": ["ocorrencias.lista"]},
 }
@@ -1169,6 +1172,10 @@ FILTROS = {
         dict(nome="apenas_fora", rotulo="Somente indicadores fora da meta", tipo="bool"),
         dict(nome="motivos_exibir", rotulo="Motivos — informação exibida", tipo="select",
              opcoes=lambda u: [("ambos", "Quantidade e percentual"), ("quantidade", "Somente a quantidade"), ("percentual", "Somente o percentual")]),
+        dict(nome="motivos_qtd", rotulo="Motivos — quantos mostrar (padrão 10)", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 8, 10, 12, 15, 20, 30)]),
+        dict(nome="motivos_colunas", rotulo="Motivos — dividir em colunas", tipo="select",
+             opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
         dict(nome="motivos_sem_barra", rotulo="Motivos — ocultar a barra de preenchimento", tipo="bool"),
         dict(nome="motivos_texto", rotulo="Motivos — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
         dict(nome="serie", rotulo="Período (diário, semanal ou mensal)", tipo="select",

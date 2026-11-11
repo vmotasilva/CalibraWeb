@@ -73,3 +73,5 @@
 .tl .elem.cobre img { object-fit:cover; }
 .tl .elem.img.al-esq img { object-position:left center; } .tl .elem.img.al-dir img { object-position:right center; }
 .tl .elem .sem-img { margin:auto; color:var(--mut); font-size:.55em; text-align:center; opacity:.8; }
+/* Principais motivos em colunas: preenche coluna por coluna (1-5 na primeira, 6-10 na segunda...) */
+.tl .bars.multi { display:grid; grid-auto-flow:column; grid-template-columns:repeat(var(--nc), minmax(0,1fr)); grid-template-rows:repeat(var(--nl), max-content); column-gap:2.2em; row-gap:.9em; align-content:start; }

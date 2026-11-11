@@ -784,6 +784,15 @@
         h.addEventListener("pointermove", mv); h.addEventListener("pointerup", up);
       });
     });
+    [["edSalvar2", "edSalvar"], ["edDesfazer2", "edDesfazer"], ["edRefazer2", "edRefazer"]].forEach(function (k) { $(k[0]).addEventListener("click", function () { $(k[1]).click(); }); });
+    var area = $("edArea"), bt = $("edBtnTela");
+    if (!area.requestFullscreen) bt.hidden = true;
+    bt.addEventListener("click", function () { if (document.fullscreenElement) document.exitFullscreen(); else area.requestFullscreen().catch(function () {}); });
+    document.addEventListener("fullscreenchange", function () {
+      var on = !!document.fullscreenElement;
+      bt.innerHTML = on ? '<i class="bi bi-fullscreen-exit me-1"></i>Sair da tela cheia' : '<i class="bi bi-arrows-fullscreen me-1"></i>Tela cheia';
+      if (on) { $("edGrade").classList.add("recolhido"); $("edBtnSlides").classList.remove("active"); } window.dispatchEvent(new Event("resize"));
+    });
     $("edCentro").addEventListener("dblclick", function (e) { if (e.target.closest(".grid-stack-item, .ed-livre-item") && !$("edBtnConfig").disabled) abrirPop("cfg", true); });
     var grade = $("edGrade");
     function recolher(v) { grade.classList.toggle("recolhido", v); $("edBtnSlides").classList.toggle("active", !v); guardar("edSlidesRecolhido", v ? "1" : "0"); window.dispatchEvent(new Event("resize")); }

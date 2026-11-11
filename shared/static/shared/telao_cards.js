@@ -34,7 +34,8 @@ window.TelaoCards = (function () {
       return g;
     },
     bars: function (s) {
-      var g = el("div", "bars" + (s.sem_barra ? " sem-barra" : "") + (s.texto_prioritario ? " texto-prio" : ""));
+      var g = el("div", "bars" + (s.sem_barra ? " sem-barra" : "") + (s.texto_prioritario ? " texto-prio" : "") + (s.colunas > 1 ? " multi" : ""));
+      if (s.colunas > 1) { g.style.setProperty("--nc", s.colunas); g.style.setProperty("--nl", Math.ceil(s.itens.length / s.colunas)); }
       s.itens.forEach(function (i) {
         var r = el("div", "brow " + tom(i.tom)); r.appendChild(el("div", "l", i.rotulo));
         if (!s.sem_barra) { var t = el("div", "t"), b = el("span"); b.style.width = Math.max(2, Math.min(100, i.pct)) + "%"; t.appendChild(b); r.appendChild(t); }

@@ -194,6 +194,13 @@ class MotivosConfiguraveisTests(TestCase):
     def _slide(self, **f):
         return providers._slides_provedor(self.admin, "kpi", {"cards": ["motivos"], **f}, False, [])[0]
 
+    def test_limite_e_colunas(self):
+        s = self._slide(motivos_qtd="1", motivos_colunas="3")
+        self.assertEqual((len(s["itens"]), s["colunas"], s["itens"][0]["txt"]), (1, 3, "9 · 75%"))  # o percentual segue sobre o total
+        self.assertEqual(len(self._slide()["itens"]), 2)
+        self.assertEqual(self._slide()["colunas"], 1)
+        self.assertEqual(self._slide(motivos_colunas="9", motivos_qtd="x")["colunas"], 1)
+
     def test_informacao_exibida(self):
         self.assertEqual(self._slide()["itens"][0]["txt"], "9 · 75%")
         self.assertEqual(self._slide(motivos_exibir="quantidade")["itens"][0]["txt"], "9")
