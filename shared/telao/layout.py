@@ -57,10 +57,10 @@ def juntar_partes(slides: list[dict]) -> list[dict]:
     return [por_chave[c] for c in ordem]
 
 
-def _slide_de_layout(provedor, titulo, icone, itens, modo="grade"):
+def _slide_de_layout(provedor, titulo, icone, itens, modo="grade", colunas=cards.COLUNAS, linhas=cards.LINHAS):
     from . import providers
 
-    return providers._slide(provedor, "layout", titulo, "", icone, layout={"modo": modo, "colunas": cards.COLUNAS, "linhas": cards.LINHAS},
+    return providers._slide(provedor, "layout", titulo, "", icone, layout={"modo": modo, "colunas": colunas, "linhas": linhas},
                             itens=itens, card="", card_id="")
 
 
@@ -203,8 +203,9 @@ def montar_manual(user, cfg: dict, resumo: bool, embutidas: list, memo: dict, du
     if not itens:
         return []
     lay = cfg.get("layout") or {}
+    colunas, linhas = dimensoes(lay)  # a grade que o usuário definiu no editor (padrão 12 x 8)
     slide = _slide_de_layout("layout", cfg.get("titulo") or "Slide", cfg.get("icone") or "bi-layout-text-window", itens,
-                             modo="livre" if lay.get("modo") == "livre" else "grade")
+                             modo="livre" if lay.get("modo") == "livre" else "grade", colunas=colunas, linhas=linhas)
     if cfg.get("duracao") or duracao_padrao:
         slide["duracao"] = int(cfg.get("duracao") or duracao_padrao)
     return [slide]

@@ -171,6 +171,13 @@ class EditorTests(TestCase):
         self.assertTrue(conteudo[1]["conteudo"]["moldura"])
         self.assertFalse(conteudo[0]["conteudo"]["moldura"])
 
+    def test_player_usa_colunas_e_linhas_salvas(self):
+        slide = {"origem": "manual", "titulo": "G", "layout": {"modo": "grade", "colunas": 10, "linhas": 12},
+                 "itens": [{"card_id": "", "el": {"tipo": "titulo", "texto": "x"}, "pos": {"x": 0, "y": 11, "w": 10, "h": 1}}]}
+        s = layout.montar_manual(self.admin, slide, False, [], {})[0]
+        self.assertEqual((s["layout"]["colunas"], s["layout"]["linhas"]), (10, 12))
+        self.assertEqual(layout.montar_manual(self.admin, {**slide, "layout": {"modo": "grade"}}, False, [], {})[0]["layout"]["linhas"], 8)
+
     def test_previa_alinha_elementos_e_cards(self):
         slide = {"origem": "manual", "itens": [{"card_id": "", "el": {"tipo": "subtitulo", "texto": "Olá"}, "pos": {"x": 0, "y": 0, "w": 4, "h": 1}},
                                                 {"card_id": "kpi.situacao", "pos": {"x": 4, "y": 0, "w": 4, "h": 2}}]}
