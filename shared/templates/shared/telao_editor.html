@@ -37,6 +37,8 @@
   .ed-h-e { right:-6px; top:calc(50% - 6px); cursor:ew-resize; } .ed-h-w { left:-6px; top:calc(50% - 6px); cursor:ew-resize; }
   .ed-h-ne { top:-6px; right:-6px; cursor:nesw-resize; } .ed-h-sw { bottom:-6px; left:-6px; cursor:nesw-resize; }
   .ed-h-nw { top:-6px; left:-6px; cursor:nwse-resize; } .ed-h-se { bottom:-6px; right:-6px; cursor:nwse-resize; }
+  .ed-guia { position:absolute; display:none; background:#f43f5e; z-index:5; pointer-events:none; }
+  .ed-guia-v { top:0; bottom:0; width:1px; } .ed-guia-h { left:0; right:0; height:1px; }
   .ed-auto .ed-auto-in { position:absolute; inset:2.5% 3%; display:flex; flex-direction:column; }
   .ed-auto .ed-auto-t { color:#e8edf7; font-weight:800; font-size:clamp(12px,2.2cqw,30px); margin-bottom:1.5cqh; }
   .ed-pal summary { cursor:pointer; font-weight:600; }
@@ -58,6 +60,8 @@
     <h4 class="mb-0"><i class="bi bi-display me-2"></i>{% if novo %}Nova apresentação{% else %}Editar apresentação{% endif %}</h4>
     <div class="d-flex gap-2">
       <a href="{% url 'telao_modelos' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
+      <button type="button" id="edDesfazer" class="btn btn-outline-secondary btn-sm" title="Desfazer (Ctrl+Z)" disabled><i class="bi bi-arrow-counterclockwise"></i></button>
+      <button type="button" id="edRefazer" class="btn btn-outline-secondary btn-sm" title="Refazer (Ctrl+Y)" disabled><i class="bi bi-arrow-clockwise"></i></button>
       <a href="#" id="edApresentar" class="btn btn-success btn-sm {% if novo %}d-none{% endif %}" target="_blank"><i class="bi bi-play-fill"></i> Apresentar</a>
       <button type="button" id="edSalvar" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar</button>
     </div>

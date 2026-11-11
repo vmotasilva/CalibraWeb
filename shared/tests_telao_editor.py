@@ -109,6 +109,19 @@ class EditorTests(TestCase):
         self.assertEqual(s["itens"][0]["pos"], {"x": 10.5, "y": 30.0, "w": 47.0, "h": 43.0})
         self.assertEqual(s["itens"][1]["pos"], {"x": 90.0, "y": 90.0, "w": 10.0, "h": 10.0}, "limitado à borda do slide")
 
+    def test_salvar_moldura_do_card(self):
+        itens = [{"card_id": "kpi.situacao", "visual": {"moldura": "sem"}}, {"card_id": "kpi.graficos", "visual": {"moldura": "qualquer"}}]
+        r = self._post("telao_editor_salvar", {"nome": "M", "slides": [{"origem": "manual", "itens": itens}]})
+        s = ModeloApresentacao.objects.get(pk=r.json()["id"]).slides[0]["itens"]
+        self.assertEqual(s[0]["visual"].get("moldura"), "sem")
+        self.assertNotIn("moldura", s[1]["visual"])
+
+    def test_salvar_assunto_com_blocos_editados(self):
+        slide = {"origem": "auto", "tipo": "assunto", "titulo": "A", "blocos": [{"provedor": "kpi", "filtros": {}}, {"provedor": "zzz"}, {"provedor": "pcp", "filtros": {}}]}
+        r = self._post("telao_editor_salvar", {"nome": "A", "slides": [slide]})
+        s = ModeloApresentacao.objects.get(pk=r.json()["id"]).slides[0]
+        self.assertEqual([b["provedor"] for b in s["blocos"]], ["kpi", "pcp"])
+
     def test_salvar_substitui_o_formato_antigo(self):
         m = ModeloApresentacao.objects.create(nome="L", criado_por=self.admin, itens=[{"provedor": "kpi"}])
         slides = layout.slides_do_modelo(m)

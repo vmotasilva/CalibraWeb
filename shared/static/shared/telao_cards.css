@@ -49,3 +49,4 @@
 .tl .grade-slide { position:relative; flex:1; min-height:0; }
 .tl .gi { position:absolute; padding:.8cqh .6cqw; }
 .tl .vazio { margin:auto; text-align:center; color:var(--mut); font-size:2rem; }
+.tl .painel.sem-moldura { background:transparent; border-color:transparent; }

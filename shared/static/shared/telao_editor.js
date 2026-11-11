@@ -25,7 +25,24 @@
 
   function novoManual() { return prep({ origem: "manual", titulo: "Novo slide", duracao: null, layout: { modo: "grade", colunas: COL, linhas: LIN }, itens: [] }); }
   function atual() { return estado.slides[estado.sel]; }
-  function sujar() { estado.sujo = true; }
+  // Histórico (desfazer/refazer): foto do conjunto de slides depois de cada mudança (agrupa mudanças em sequência).
+  var hist = [], hi = -1, tHist = null, restaurando = false;
+  var SO_EDITOR = { _id: 1, _el: 1, _box: 1, _conteudo: 1, _carregando: 1, _previa: 1, _dentro: 1, _uid: 1 };
+  function foto() { return JSON.stringify(estado.slides, function (k, v) { return SO_EDITOR[k] ? undefined : v; }); }
+  function gravarFoto() {
+    clearTimeout(tHist); tHist = null; var f = foto(); if (hist[hi] === f) return;
+    hist = hist.slice(0, hi + 1); hist.push(f); if (hist.length > 60) hist.shift(); hi = hist.length - 1; botoesHist();
+  }
+  function sujar() { estado.sujo = true; if (restaurando) return; clearTimeout(tHist); tHist = setTimeout(gravarFoto, 400); }
+  function botoesHist() { var u = $("edDesfazer"), r = $("edRefazer"); if (u) u.disabled = hi <= 0 && !tHist; if (r) r.disabled = hi >= hist.length - 1; }
+  function irHist(d) {
+    if (tHist) gravarFoto();
+    var j = hi + d; if (j < 0 || j >= hist.length) return;
+    hi = j; restaurando = true; estado.slides = JSON.parse(hist[hi]).map(prep);
+    if (!estado.slides.length) estado.slides.push(novoManual());
+    estado.sel = Math.min(estado.sel, estado.slides.length - 1); estado.itemSel = null; estado.sujo = true; restaurando = false;
+    botoesHist(); render();
+  }
   function limpo(o) { return JSON.parse(JSON.stringify(o, function (k, v) { return k.charAt(0) === "_" ? undefined : v; })); }
   function csrf() { var i = document.querySelector("#edCsrf input[name=csrfmiddlewaretoken]"); return i ? i.value : ""; }
   function post(url, corpo) {
@@ -215,12 +232,27 @@
       : "Slide vazio: escolha cards na paleta à direita e posicione onde quiser."));
     s.itens.forEach(preencher); atualizarPrevia();
   }
+  function alvosEixo(s, it, eixo) {
+    var a = [0, 50, 100];
+    s.itens.forEach(function (o) {
+      if (o === it) return; var p = o.pos;
+      if (eixo === "x") a.push(p.x, p.x + p.w, p.x + p.w / 2); else a.push(p.y, p.y + p.h, p.y + p.h / 2);
+    });
+    return a;
+  }
+  function ima(vals, alvos, lim) {
+    var best = null;
+    vals.forEach(function (v) { alvos.forEach(function (a) { var d = a - v; if (Math.abs(d) <= lim && (!best || Math.abs(d) < Math.abs(best.d))) best = { d: d, g: a }; }); });
+    return best;
+  }
   function iniciarArraste(e, s, it, frame) {
     if (e.button !== 0) return;
     var alca = e.target.getAttribute && e.target.getAttribute("data-h");
     selecionarItem(it._id);
     var r = frame.getBoundingClientRect(), p0 = { x: it.pos.x, y: it.pos.y, w: it.pos.w, h: it.pos.h }, x0 = e.clientX, y0 = e.clientY, mn = minimoPct(it), moveu = false;
     var box = it._box; try { box.setPointerCapture(e.pointerId); } catch (x) {}
+    var gv = el("div", "ed-guia ed-guia-v"), gh = el("div", "ed-guia ed-guia-h"), AX = alvosEixo(s, it, "x"), AY = alvosEixo(s, it, "y"), LIM = 1.2;
+    frame.appendChild(gv); frame.appendChild(gh);
     function passo(v, alt) { return alt ? arred(v) : Math.round(v); }
     function mover(ev) {
       var dx = (ev.clientX - x0) / r.width * 100, dy = (ev.clientY - y0) / r.height * 100, a = ev.altKey, n = { x: p0.x, y: p0.y, w: p0.w, h: p0.h };
@@ -232,11 +264,27 @@
         if (dS) n.h = Math.min(100 - p0.y, Math.max(mn.h, passo(p0.y + p0.h + dy, a) - p0.y));
         if (dN) { var ny = Math.min(p0.y + p0.h - mn.h, Math.max(0, passo(p0.y + dy, a))); n.y = ny; n.h = p0.y + p0.h - ny; }
       }
+      var guiaX = null, guiaY = null;
+      if (!a) {   // ímã nas bordas/centro dos outros cards e do slide
+        if (!alca) {
+          var mx = ima([n.x, n.x + n.w, n.x + n.w / 2], AX, LIM), my = ima([n.y, n.y + n.h, n.y + n.h / 2], AY, LIM);
+          if (mx) { n.x = Math.min(100 - n.w, Math.max(0, n.x + mx.d)); guiaX = mx.g; }
+          if (my) { n.y = Math.min(100 - n.h, Math.max(0, n.y + my.d)); guiaY = my.g; }
+        } else {
+          if (alca.indexOf("e") >= 0) { var ie = ima([n.x + n.w], AX, LIM); if (ie) { n.w = Math.min(100 - n.x, Math.max(mn.w, n.w + ie.d)); guiaX = ie.g; } }
+          if (alca.indexOf("w") >= 0) { var iw = ima([n.x], AX, LIM); if (iw) { var nx2 = Math.min(p0.x + p0.w - mn.w, Math.max(0, n.x + iw.d)); n.w += n.x - nx2; n.x = nx2; guiaX = iw.g; } }
+          if (alca.indexOf("s") >= 0) { var is = ima([n.y + n.h], AY, LIM); if (is) { n.h = Math.min(100 - n.y, Math.max(mn.h, n.h + is.d)); guiaY = is.g; } }
+          if (alca.indexOf("n") >= 0) { var inn = ima([n.y], AY, LIM); if (inn) { var ny2 = Math.min(p0.y + p0.h - mn.h, Math.max(0, n.y + inn.d)); n.h += n.y - ny2; n.y = ny2; guiaY = inn.g; } }
+        }
+      }
+      gv.style.display = guiaX === null ? "none" : "block"; if (guiaX !== null) gv.style.left = guiaX + "%";
+      gh.style.display = guiaY === null ? "none" : "block"; if (guiaY !== null) gh.style.top = guiaY + "%";
       n.x = arred(n.x); n.y = arred(n.y); n.w = arred(n.w); n.h = arred(n.h);
       if (n.x !== it.pos.x || n.y !== it.pos.y || n.w !== it.pos.w || n.h !== it.pos.h) { it.pos = n; moveu = true; estilo(it); }
     }
     function fim() {
       box.removeEventListener("pointermove", mover); box.removeEventListener("pointerup", fim); box.removeEventListener("pointercancel", fim);
+      gv.remove(); gh.remove();
       if (moveu) { sujar(); renderDireita(); }
     }
     box.addEventListener("pointermove", mover); box.addEventListener("pointerup", fim); box.addEventListener("pointercancel", fim);
@@ -251,7 +299,7 @@
   function preencher(it) {
     if (!it._el) return;
     it._el.innerHTML = "";
-    it._el.appendChild(it._conteudo ? TelaoCards.painel(it._conteudo, it.visual.titulo !== false) : placeholder(it, it._carregando ? "Carregando…" : "Sem dados no momento"));
+    it._el.appendChild(it._conteudo ? TelaoCards.painel(it._conteudo, it.visual.titulo !== false, it.visual.moldura === "sem") : placeholder(it, it._carregando ? "Carregando…" : "Sem dados no momento"));
   }
   function renderManual(c, s) {
     var frame = el("div", "tl tl-frame ed-frame"), g = el("div", "grid-stack"); frame.appendChild(g);
@@ -341,7 +389,7 @@
   function renderAuto(c, s) {
     var frame = el("div", "tl tl-frame ed-frame ed-auto"), dentro = el("div", "ed-auto-in"); frame.appendChild(dentro); c.appendChild(frame);
     var legenda = el("div", "text-center text-muted small mt-2"); legenda.id = "edLegendaAuto"; c.appendChild(legenda);
-    if (s.tipo === "assunto") c.appendChild(el("div", "alert alert-light border small mt-2 mb-0", "Assunto com itens de vários módulos. Use Personalizar para posicionar os cards livremente."));
+    if (s.tipo === "assunto") c.appendChild(el("div", "alert alert-light border small mt-2 mb-0", "Assunto com blocos de vários módulos: ajuste os blocos à direita. Use Personalizar para posicionar os cards livremente."));
     s._dentro = dentro; renderPreviaAuto(); if (!s._previa) atualizarPrevia();
   }
   function renderPreviaAuto() {
@@ -383,7 +431,7 @@
       if (it) d.appendChild(propriedades(s, it));
       d.appendChild(paleta());
     } else if (s.tipo === "assunto") {
-      d.appendChild(el("div", "text-muted small", "Os filtros dos blocos do assunto são mantidos. Para ajustar cards e posições, use Personalizar."));
+      d.appendChild(blocosAssunto(s));
     } else {
       var card = el("div", "card shadow-sm"), body = el("div", "card-body");
       body.appendChild(el("div", "small fw-bold text-uppercase text-muted mb-2", "Regras do módulo"));
@@ -392,6 +440,29 @@
       card.appendChild(body); d.appendChild(card);
     }
   }
+  function blocosAssunto(s) {
+    var card = el("div", "card shadow-sm"), body = el("div", "card-body");
+    body.appendChild(el("div", "small fw-bold text-uppercase text-muted mb-2", "Blocos do assunto"));
+    s.blocos = s.blocos || [];
+    function mudou() { sujar(); s._previa = null; autoIdx = 0; depois(atualizarPrevia); }
+    s.blocos.forEach(function (bl, i) {
+      var linha = el("div", "border rounded p-2 mb-2"), topo = el("div", "d-flex align-items-center gap-1");
+      topo.appendChild(Object.assign(el("div", "flex-grow-1 fw-semibold small"), { innerHTML: '<i class="bi ' + (D.rotulos[bl.provedor] || [0, "bi-display"])[1] + ' me-1"></i>' + (D.rotulos[bl.provedor] || [bl.provedor])[0] }));
+      topo.appendChild(btn("bi-arrow-up", "Subir", function () { if (i > 0) { s.blocos.splice(i - 1, 0, s.blocos.splice(i, 1)[0]); mudou(); renderDireita(); } }));
+      topo.appendChild(btn("bi-arrow-down", "Descer", function () { if (i < s.blocos.length - 1) { s.blocos.splice(i + 1, 0, s.blocos.splice(i, 1)[0]); mudou(); renderDireita(); } }));
+      topo.appendChild(btn("bi-trash", "Remover bloco", function () { if (s.blocos.length < 2) { alerta("O assunto precisa de ao menos um bloco.", "warning"); return; } s.blocos.splice(i, 1); mudou(); renderDireita(); }, "text-danger"));
+      linha.appendChild(topo);
+      if ((D.campos[bl.provedor] || []).length) {
+        var det = el("details", "mt-1"); det.appendChild(el("summary", "small", "Filtros")); bl.filtros = bl.filtros || {};
+        var f = formFiltros(bl.provedor, bl.filtros, ["layout"], mudou); f.className = "mt-2"; det.appendChild(f); linha.appendChild(det);
+      }
+      body.appendChild(linha);
+    });
+    var add = el("select", "form-select form-select-sm"); add.appendChild(new Option("+ Adicionar bloco…", ""));
+    Object.keys(D.rotulos).forEach(function (k) { add.appendChild(new Option(D.rotulos[k][0], k)); });
+    add.addEventListener("change", function () { if (!add.value) return; s.blocos.push({ provedor: add.value, filtros: {} }); mudou(); renderDireita(); });
+    body.appendChild(add); card.appendChild(body); return card;
+  }
   function propriedades(s, it) {
     var info = cardInfo[it.card_id], card = el("div", "card shadow-sm mb-3 border-primary"), b = el("div", "card-body");
     b.appendChild(el("div", "small text-muted", info ? info.modulo.rotulo + " › " + info.secao.rotulo : ""));
@@ -399,6 +470,9 @@
     var f = el("div", "form-check mb-2"), t = el("input", "form-check-input"); t.type = "checkbox"; t.id = "edVisTit"; t.checked = it.visual.titulo !== false;
     t.addEventListener("change", function () { it.visual.titulo = t.checked; sujar(); preencher(it); });
     f.appendChild(t); f.appendChild(Object.assign(el("label", "form-check-label small", "Mostrar o título do card"), { htmlFor: "edVisTit" })); b.appendChild(f);
+    var fm0 = el("div", "form-check mb-2"), mo = el("input", "form-check-input"); mo.type = "checkbox"; mo.id = "edVisMol"; mo.checked = it.visual.moldura !== "sem";
+    mo.addEventListener("change", function () { if (mo.checked) delete it.visual.moldura; else it.visual.moldura = "sem"; sujar(); preencher(it); });
+    fm0.appendChild(mo); fm0.appendChild(Object.assign(el("label", "form-check-label small", "Mostrar a moldura (fundo e borda do card)"), { htmlFor: "edVisMol" })); b.appendChild(fm0);
     if (info && ["tiles", "cards", "bars"].indexOf(info.card.forma) >= 0) {
       var g = el("div", "mb-2"); g.appendChild(el("label", "form-label small fw-bold mb-1", "Máximo de itens"));
       var n = el("input", "form-control form-control-sm"); n.type = "number"; n.min = 1; n.max = 50; n.placeholder = "todos"; n.value = it.visual.max_itens || "";
@@ -486,9 +560,14 @@
   $("edSalvar").addEventListener("click", salvar);
   window.addEventListener("beforeunload", function (e) { if (estado.sujo) { e.preventDefault(); e.returnValue = ""; } });
   document.addEventListener("keydown", function (e) {
+    var campo = /INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || "");
     if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); salvar(); }
+    else if ((e.ctrlKey || e.metaKey) && !campo && (e.key === "z" || e.key === "Z")) { e.preventDefault(); irHist(e.shiftKey ? 1 : -1); }
+    else if ((e.ctrlKey || e.metaKey) && !campo && (e.key === "y" || e.key === "Y")) { e.preventDefault(); irHist(1); }
     else if (e.key === "Delete" && estado.itemSel && !/INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || "")) removerItem(estado.itemSel);
   });
 
-  lerConfig(); render();
+  lerConfig(); render(); gravarFoto(); botoesHist();
+  $("edDesfazer").addEventListener("click", function () { irHist(-1); });
+  $("edRefazer").addEventListener("click", function () { irHist(1); });
 })();

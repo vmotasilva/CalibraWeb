@@ -103,7 +103,7 @@ window.TelaoCards = (function () {
         var p = i.pos || {}, caixa = el("div", "gi");
         caixa.style.left = (livre ? p.x : p.x / cols * 100) + "%"; caixa.style.top = (livre ? p.y : p.y / rows * 100) + "%";
         caixa.style.width = (livre ? p.w : p.w / cols * 100) + "%"; caixa.style.height = (livre ? p.h : p.h / rows * 100) + "%";
-        caixa.appendChild(painel(i.conteudo, !i.visual || i.visual.titulo !== false)); g.appendChild(caixa);
+        caixa.appendChild(painel(i.conteudo, !i.visual || i.visual.titulo !== false, !!i.visual && i.visual.moldura === "sem")); g.appendChild(caixa);
       });
       return g;
     },
@@ -111,8 +111,8 @@ window.TelaoCards = (function () {
   };
 
   // Um card = o desenho da sua forma (tiles/cards/bars/chart) dentro de um container que dá a escala (fonte base) a todo o conteúdo.
-  function painel(p, comTitulo) {
-    var q = el("section", "painel");
+  function painel(p, comTitulo, semMoldura) {
+    var q = el("section", "painel" + (semMoldura ? " sem-moldura" : ""));
     if (comTitulo) {
       var h = el("div", "ph"), t = el("div");
       h.appendChild(el("i", "bi " + (p.icone || "bi-display"))); t.appendChild(el("h2", null, p.titulo));

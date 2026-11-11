@@ -308,6 +308,8 @@ def limpar_item(it, modo: str, user) -> dict | None:
     saida = {"card_id": it["card_id"], "pos": limpar_pos(it.get("pos"), modo),
              "visual": {"titulo": visual.get("titulo") is not False,
                         "max_itens": _inteiro(visual.get("max_itens"), 1, 50, None) if visual.get("max_itens") else None}}
+    if visual.get("moldura") == "sem":  # sem fundo/borda do card
+        saida["visual"]["moldura"] = "sem"
     if params.get("ref"):
         saida["params"] = {"ref": str(params["ref"])[:200]}
     filtros = limpar_filtros_dict(provedor, it.get("filtros"), user)
