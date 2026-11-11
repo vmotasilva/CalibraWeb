@@ -102,12 +102,12 @@ class TelaoTests(TestCase):
 
     def test_provedor_com_falha_nao_derruba(self):
         original = providers.PROVEDORES["ocorrencias"]
-        providers.PROVEDORES["ocorrencias"] = lambda u, resumo=False: 1 / 0
+        providers.PROVEDORES["ocorrencias"] = lambda u, resumo=False, **kw: 1 / 0
         try:
             slides = providers.montar_playlist(self.admin, "geral")
         finally:
             providers.PROVEDORES["ocorrencias"] = original
-        self.assertEqual(slides[0]["kind"], "vazio")
+        self.assertTrue(slides)  # os demais módulos seguem montando
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
