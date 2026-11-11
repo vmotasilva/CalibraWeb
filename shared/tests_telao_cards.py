@@ -109,3 +109,55 @@ class KpiSituacaoEMotivosTests(TestCase):
         conteudo = layout.resolver_item(self.admin, item, False, [], {})
         self.assertEqual(conteudo["kind"], "bars")
         self.assertEqual(layout.instancias(self.admin, "kpi.motivos"), ["Quebras"])
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class KpiGraficoConfiguravelTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        from kpi.models import SetorIndicador
+
+        self.admin = get_user_model().objects.create_user("adm_kpi_graf", password="x", is_superuser=True, is_staff=True)
+        self.ind = Indicador.objects.create(nome="Quebras", meta=5, sentido="menor", unidade="%")
+        self.setores = [SetorIndicador.objects.create(indicador=self.ind, nome=n, meta=5) for n in ("HMC", "Montagem")]
+        for k in range(1, 5):  # 4 meses
+            Medicao.objects.create(indicador=self.ind, periodo=date(2026, k, 28), valor=4 + k, granularidade="mensal")
+        for d in range(1, 11):  # 10 dias de março e 5 de abril
+            Medicao.objects.create(indicador=self.ind, periodo=date(2026, 3, d), valor=d, granularidade="diaria")
+        for d in range(1, 6):
+            Medicao.objects.create(indicador=self.ind, periodo=date(2026, 4, d), valor=10 + d, granularidade="diaria")
+        for s in self.setores:
+            for k in (1, 2, 3):
+                Medicao.objects.create(indicador=self.ind, setor=s, periodo=date(2026, k, 28), valor=2, granularidade="mensal")
+
+    def _grafico(self, **filtros):
+        s = providers._slides_provedor(self.admin, "kpi", {"cards": ["graficos"], "graficos": "todos", **filtros}, False, [])
+        return [x for x in s if x["titulo"] == "Quebras"][0]
+
+    def test_padrao_continua_sendo_linha_mensal(self):
+        g = self._grafico()
+        self.assertEqual((g["tipo"], g["labels"][-1]), ("linha", "04/2026"))
+
+    def test_periodo_diario_ultimos_n(self):
+        g = self._grafico(serie="diaria", ultimos="3")
+        self.assertEqual(g["labels"], ["03/04", "04/04", "05/04"])
+        self.assertIn("diário", g["subtitulo"])
+
+    def test_dentro_da_ultima_competencia(self):
+        g = self._grafico(serie="diaria", janela="competencia")
+        self.assertEqual(g["labels"], ["01/04", "02/04", "03/04", "04/04", "05/04"])  # só abril, o último mês com dado
+        self.assertIn("última competência", g["subtitulo"])
+
+    def test_tipo_barras(self):
+        g = self._grafico(tipo_grafico="barras", serie="mensal", ultimos="2")
+        self.assertEqual((g["tipo"], len(g["labels"]), len(g["atingiu"])), ("barras", 2, 2))
+
+    def test_barras_empilhadas_por_setor(self):
+        g = self._grafico(tipo_grafico="empilhadas", serie="mensal")
+        self.assertEqual(g["tipo"], "empilhadas")
+        self.assertEqual(sorted(s["nome"] for s in g["series"]), ["HMC", "Montagem"])
+        self.assertEqual(g["valores"], [4.0, 4.0, 4.0])  # 2 + 2 por mês
+
+    def test_empilhado_sem_setores_vira_barras(self):
+        Medicao.objects.filter(setor__isnull=False).delete()
+        self.assertEqual(self._grafico(tipo_grafico="empilhadas")["tipo"], "barras")

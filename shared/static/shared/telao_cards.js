@@ -54,15 +54,16 @@ window.TelaoCards = (function () {
         var rotulos = { id: "rotulos", afterDatasetsDraw: function (c) {
           var x = c.ctx; x.save(); x.textAlign = "center"; x.font = "700 " + Math.round(base() * .75) + "px Inter, sans-serif";
           c.data.datasets.forEach(function (ds, di) {
-            var meta = c.getDatasetMeta(di);
+            if (ds.empilhada) return;                                         // fatias empilhadas: valores só na dica
+            var meta = c.getDatasetMeta(di), ehMeta = !!ds.ehMeta;
             meta.data.forEach(function (pt, i) {
-              if (di === 1 && i !== meta.data.length - 1) return;           // meta: só no último ponto
+              if (ehMeta && i !== meta.data.length - 1) return;               // meta: só no último ponto
               var v = ds.data[i]; if (v == null) return;
-              var abaixo = di === 1 || pt.y < c.chartArea.top + 34;
-              x.fillStyle = di === 1 ? "#cbd5e1" : "#ffffff";
-              if (di === 0 && ating) x.fillStyle = ating[i] ? "#4ade80" : "#f87171";
+              var abaixo = ehMeta || pt.y < c.chartArea.top + 34;
+              x.fillStyle = ehMeta ? "#cbd5e1" : "#ffffff";
+              if (!ehMeta && ating) x.fillStyle = ating[i] ? "#4ade80" : "#f87171";
               x.textBaseline = abaixo ? "top" : "bottom";
-              var tx = (di === 1 ? "Meta " : "") + fmt(v);
+              var tx = (ehMeta ? "Meta " : "") + fmt(v);
               var px = Math.min(Math.max(pt.x, c.chartArea.left + 30), c.chartArea.right - 40);
               x.lineWidth = 5; x.strokeStyle = "#131c31"; x.strokeText(tx, px, pt.y + (abaixo ? 12 : -12));
               x.fillText(tx, px, pt.y + (abaixo ? 12 : -12));
@@ -70,19 +71,28 @@ window.TelaoCards = (function () {
           });
           x.restore();
         } };
+        var tipo = s.tipo || "linha", PALETA = ["#60a5fa", "#f59e0b", "#a78bfa", "#2dd4bf", "#f472b6", "#84cc16", "#fb923c", "#38bdf8"], datasets;
+        var linhaMeta = { type: "line", label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#cbd5e1", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false, ehMeta: true, order: 0 };
+        if (tipo === "empilhadas" && s.series) {
+          datasets = s.series.map(function (se, k) { return { type: "bar", label: se.nome, data: se.valores, backgroundColor: PALETA[k % PALETA.length], empilhada: true, stack: "s", order: 1 }; });
+        } else if (tipo === "barras") {
+          datasets = [{ type: "bar", label: "Resultado", data: s.valores, order: 1, borderRadius: 4,
+            backgroundColor: ating ? ating.map(function (a) { return a ? VERDE : VERM; }) : "#60a5fa" }];
+        } else {
+          datasets = [{ label: "Resultado", data: s.valores, borderColor: "#60a5fa", backgroundColor: ating ? "#ffffff0d" : "#60a5fa33", fill: true, tension: .25, borderWidth: 4, pointRadius: 7,
+            pointBackgroundColor: ating ? ating.map(function (a) { return a ? VERDE : VERM; }) : "#60a5fa",
+            segment: ating ? { borderColor: function (c) { return ating[c.p1DataIndex] ? VERDE : VERM; } } : {} }];
+        }
+        datasets.push(linhaMeta);
+        var empil = tipo === "empilhadas" && !!s.series;
         var grafico = new Chart(cv, {
-          type: "line", plugins: [rotulos],
-          data: { labels: s.labels, datasets: [
-            { label: "Resultado", data: s.valores, borderColor: "#60a5fa", backgroundColor: ating ? "#ffffff0d" : "#60a5fa33", fill: true, tension: .25, borderWidth: 4, pointRadius: 7,
-              pointBackgroundColor: ating ? ating.map(function (a) { return a ? VERDE : VERM; }) : "#60a5fa",
-              segment: ating ? { borderColor: function (c) { return ating[c.p1DataIndex] ? VERDE : VERM; } } : {} },
-            { label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#cbd5e1", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false }
-          ] },
+          type: tipo === "linha" ? "line" : "bar", plugins: [rotulos],
+          data: { labels: s.labels, datasets: datasets },
           options: { maintainAspectRatio: false, animation: { duration: 900 }, layout: { padding: { top: 24, right: 16 } },
-            plugins: { legend: { display: !ating, labels: { color: "#c4cee3", font: { size: tf } } },
+            plugins: { legend: { display: !ating || empil, labels: { color: "#c4cee3", font: { size: tf } } },
               tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.y + u; } } } },
-            scales: { x: { ticks: { color: "#c4cee3", font: { size: tf } }, grid: { color: "#ffffff12" } },
-                      y: { ticks: { color: "#c4cee3", font: { size: tf }, callback: function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; } }, grid: { color: "#ffffff12" } } } }
+            scales: { x: { stacked: empil, ticks: { color: "#c4cee3", font: { size: tf } }, grid: { color: "#ffffff12" } },
+                      y: { stacked: empil, ticks: { color: "#c4cee3", font: { size: tf }, callback: function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; } }, grid: { color: "#ffffff12" } } } }
         });
         charts.push(grafico);
         // se o card mudar de tamanho (ex.: editor), as fontes acompanham

@@ -285,6 +285,7 @@ def slides_kpi(user, resumo=False, filtros=None):
         qs = qs.filter(pk__in=ids)
 
     linhas = []  # (rótulo, indicador, série, última, meta, atingiu)
+    setor_de = {}  # rótulo -> id do setor (None = geral), para remontar a série do gráfico
     for ind in qs:
         escopos = [(s, f"{ind.nome} · {s.nome}") for s in ind.setores.all() if s.nome in setores] if setores else [(None, ind.nome)]
         for setor, rotulo in escopos:
@@ -301,6 +302,7 @@ def slides_kpi(user, resumo=False, filtros=None):
                     corte = diarias[-1].periodo - timedelta(days=dias - 1)
                     serie = [m for m in diarias if m.periodo >= corte]
             ultima = serie[-1] if serie else None
+            setor_de[rotulo] = sid
             linhas.append((rotulo, ind, serie, ultima, meta, ind.atingiu(ultima.valor, meta) if ultima else None))
     if f.get("apenas_fora"):
         linhas = [l for l in linhas if l[5] is False]
@@ -345,11 +347,24 @@ def slides_kpi(user, resumo=False, filtros=None):
         escolhidos = [l for l in linhas if (graficos == "todos" and l[2]) or l[5] is False]
         for rotulo, ind, serie, ult, meta, a in escolhidos[:8]:
             situacao = "Fora da meta" if a is False else "Na meta" if a else "Sem dado"
-            slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor" + (f" · últimos {dias} dias" if dias and serie and serie[-1].granularidade == "diaria" else "")
-                                 + (" · última medição lançada" if serie and serie[-1].granularidade != "mensal" and not dias else ""),
-                                 "bi-graph-down-arrow" if a is False else "bi-graph-up", labels=[m.periodo.strftime("%m/%Y" if m.granularidade == "mensal" else "%d/%m") for m in serie],
-                                 valores=[float(m.valor) for m in serie], meta=float(meta), unidade=ind.unidade,
-                                 atingiu=[bool(ind.atingiu(m.valor, meta)) for m in serie]))
+            extra, empilhado = {}, None
+            if f.get("serie") in _GRANULARIDADES_GRAFICO:  # período, janela e tipo escolhidos no card
+                serie = _janela(sorted((m for m in ind.medicoes.all() if m.setor_id == setor_de.get(rotulo) and m.granularidade == f["serie"]),
+                                       key=lambda m: m.periodo), f, f["serie"])
+            if f.get("tipo_grafico") == "empilhadas":
+                empilhado = _empilhado_por_setor(ind, f.get("serie") or "mensal", f)
+            if empilhado:
+                extra = dict(tipo="empilhadas", labels=empilhado["labels"], series=empilhado["series"], valores=empilhado["totais"], atingiu=None)
+            else:
+                extra = dict(tipo="barras" if f.get("tipo_grafico") in ("barras", "empilhadas") else "linha",
+                             labels=[_rotulo_periodo(m) for m in serie], valores=[float(m.valor) for m in serie],
+                             atingiu=[bool(ind.atingiu(m.valor, meta)) for m in serie])
+            gran_txt = {"diaria": "diário", "semanal": "semanal", "mensal": "mensal"}.get(f.get("serie"), "")
+            janela_txt = "última competência" if gran_txt and f.get("janela") == "competencia" else ""
+            slides.append(_slide("kpi", "chart", rotulo, f"{situacao} · {'maior' if ind.sentido == 'maior' else 'menor'} é melhor" + (f" · {gran_txt}" if gran_txt else "") + (f" · {janela_txt}" if janela_txt else "")
+                                 + (f" · últimos {dias} dias" if dias and not gran_txt and serie and serie[-1].granularidade == "diaria" else "")
+                                 + (" · última medição lançada" if serie and serie[-1].granularidade != "mensal" and not dias and not gran_txt else ""),
+                                 "bi-graph-down-arrow" if a is False else "bi-graph-up", meta=float(meta), unidade=ind.unidade, **extra))
             slides += _ocorr(rotulo, ind)
     if f.get("_motivos") or "motivos" in (f.get("cards") or []):  # só quando o card é pedido: não muda a Apresentação Geral
         for rotulo, ind, *_ in linhas[:8]:
@@ -357,6 +372,47 @@ def slides_kpi(user, resumo=False, filtros=None):
     for rotulo, ind, *_ in linhas:  # indicadores sem gráfico na apresentação, mas com ocorrência
         slides += _ocorr(rotulo, ind)
     return slides
+
+
+_GRANULARIDADES_GRAFICO = ("diaria", "semanal", "mensal")
+_PADRAO_ULTIMOS = {"diaria": 30, "semanal": 12, "mensal": 12}
+
+
+def _rotulo_periodo(m):
+    if m.granularidade == "mensal":
+        return m.periodo.strftime("%m/%Y")
+    if m.granularidade == "semanal":
+        return f"S{m.periodo.isocalendar()[1]} ({m.periodo:%d/%m})"
+    return m.periodo.strftime("%d/%m")
+
+
+def _janela(lista, f, gran):
+    """Recorta a série (ordenada por período): 'competencia' = só o último mês com dado; senão, os últimos N períodos."""
+    if not lista:
+        return []
+    if f.get("janela") == "competencia":
+        u = lista[-1].periodo
+        return [m for m in lista if (m.periodo.year, m.periodo.month) == (u.year, u.month)]
+    n = int(f["ultimos"]) if str(f.get("ultimos") or "").isdigit() and int(f["ultimos"]) > 0 else _PADRAO_ULTIMOS[gran]
+    return lista[-n:]
+
+
+def _empilhado_por_setor(ind, gran, f):
+    """Barras empilhadas: uma fatia por setor do indicador (None se o indicador não tem medições por setor)."""
+    nomes = {s.pk: s.nome for s in ind.setores.all()}
+    meds = [m for m in ind.medicoes.all() if m.setor_id in nomes and m.granularidade == gran]
+    if not meds:
+        return None
+    datas = sorted({m.periodo for m in meds})
+    ref = [type("P", (), {"periodo": d, "granularidade": gran})() for d in datas]
+    ref = _janela(ref, f, gran)
+    if not ref:
+        return None
+    por = {(m.setor_id, m.periodo): float(m.valor) for m in meds}
+    series = [{"nome": nome, "valores": [por.get((pk, r.periodo)) for r in ref]} for pk, nome in nomes.items()
+              if any(por.get((pk, r.periodo)) is not None for r in ref)]
+    return {"labels": [_rotulo_periodo(r) for r in ref], "series": series,
+            "totais": [round(sum(s["valores"][i] or 0 for s in series), 2) for i in range(len(ref))]}
 
 
 _PERIODOS_MOTIVOS = {"dia": "Último dia lançado", "semana": "Última semana lançada", "mes": "Último mês lançado",
@@ -1074,6 +1130,16 @@ FILTROS = {
         dict(nome="motivos_periodo", rotulo="Período do Top principais motivos", tipo="select",
              opcoes=lambda u: list(_PERIODOS_MOTIVOS.items()),
              ajuda="Padrão: últimos 90 dias (acumulado). Usa os motivos lançados no Painel de Indicadores."),
+        dict(nome="serie", rotulo="Gráfico — período das medições", tipo="select",
+             opcoes=lambda u: [("diaria", "Diário"), ("semanal", "Semanal"), ("mensal", "Mensal")],
+             ajuda="Padrão: mensal (ou o último lançado). Vale para os cards de gráfico."),
+        dict(nome="tipo_grafico", rotulo="Gráfico — tipo", tipo="select",
+             opcoes=lambda u: [("linha", "Linha pontilhada"), ("barras", "Barras"), ("empilhadas", "Barras empilhadas (por setor)")]),
+        dict(nome="janela", rotulo="Gráfico — janela de tempo", tipo="select",
+             opcoes=lambda u: [("ultimos", "Últimos N períodos"), ("competencia", "Dentro da última competência (mês)")]),
+        dict(nome="ultimos", rotulo="Gráfico — quantos períodos (últimos N)", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 7, 8, 10, 12, 14, 15, 20, 24, 26, 30, 45, 52, 60, 90)],
+             ajuda="N dias, semanas ou meses, conforme o período escolhido. Ignorado na última competência."),
         dict(nome="graficos", rotulo="Gráficos de evolução", tipo="select",
              opcoes=lambda u: [("fora", "Só dos fora da meta"), ("todos", "De todos"), ("nenhum", "Nenhum")]),
         dict(nome="dias", rotulo="Últimos dias (medições diárias)", tipo="select",
