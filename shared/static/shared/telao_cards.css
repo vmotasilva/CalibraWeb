@@ -1,0 +1,51 @@
+/* Cards do Modo Apresentação — usado pelo player (telao.html) e pelo editor visual (telao_editor.html).
+   Tudo fica sob .tl (escopo) para não colidir com o Bootstrap, e as medidas são relativas ao container:
+   .cx dá a escala (fonte base) a cada card; .tl-frame dá a escala aos painéis e cabeçalhos. */
+.tl { --ok:#22c55e; --alerta:#f59e0b; --critico:#ef4444; --neutro:#94a3b8; --bg:#0b1220; --card:#131c31; --linha:#243049; --txt:#e8edf7; --mut:#8fa0bf;
+  font-family:'Inter',-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--txt); }
+.tl *, .tl *::before, .tl *::after { box-sizing:border-box; font-family:inherit; }
+.tl .tl-frame { container-type:size; }
+
+.tl .cx { container-type:size; flex:1; min-height:0; min-width:0; overflow:hidden; }
+.tl .cxi { height:100%; display:flex; flex-direction:column; font-size:clamp(10px, min(calc(7px + .8cqw + .4cqh), 14cqh), 30px); }
+
+.tl .tiles { display:grid; gap:.9em; grid-template-columns:repeat(auto-fit,minmax(min(10em,100%),1fr)); align-content:start; }
+.tl .tile { background:var(--card); border:1px solid var(--linha); border-radius:.7em; padding:.8em 1.1em; border-left:.3em solid var(--neutro); }
+.tl .tile.ok { border-left-color:var(--ok); } .tl .tile.alerta { border-left-color:var(--alerta); } .tl .tile.critico { border-left-color:var(--critico); }
+.tl .tile .v { font-size:2.8em; font-weight:800; line-height:1.05; }
+.tl .tile.ok .v { color:var(--ok); } .tl .tile.alerta .v { color:var(--alerta); } .tl .tile.critico .v { color:var(--critico); }
+.tl .tile .r { font-size:1em; font-weight:600; margin-top:.3em; }
+.tl .tile .n { color:var(--mut); font-size:.72em; margin-top:.2em; }
+.tl .tiles.compacto .v { font-size:1.9em; }
+
+.tl .tcards { display:grid; gap:.8em; align-content:start; }
+.tl .tcard { background:var(--card); border:1px solid var(--linha); border-left:.3em solid var(--alerta); border-radius:.6em; padding:.8em 1.1em; }
+.tl .tcard.critico { border-left-color:var(--critico); } .tl .tcard.neutro { border-left-color:var(--neutro); } .tl .tcard.ok { border-left-color:var(--ok); }
+.tl .tcard h3 { margin:0; font-size:1.3em; font-weight:700; }
+.tl .tcard .tx { margin-top:.4em; color:#c4cee3; font-size:1em; line-height:1.35; }
+.tl .tcard .cm { margin-top:.5em; padding:.3em .7em; border-left:3px solid var(--linha); color:#c4cee3; font-size:.85em; line-height:1.3; }
+.tl .tcard .cm b { color:var(--mut); font-weight:600; }
+.tl .ttags { margin-top:.6em; display:flex; flex-wrap:wrap; gap:.5em; }
+.tl .ttag { background:#ffffff12; border-radius:99px; padding:.2em .7em; font-size:.75em; color:var(--mut); font-weight:600; }
+
+.tl .bars { display:flex; flex-direction:column; gap:.9em; justify-content:center; flex:1; overflow:hidden; }
+.tl .brow { display:grid; grid-template-columns:minmax(0,30%) 1fr minmax(5.5em,18%); gap:.8em; align-items:center; }
+.tl .brow .l { font-size:1.15em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tl .brow .t { height:1em; border-radius:99px; background:#ffffff14; overflow:hidden; }
+.tl .brow .t > span { display:block; height:100%; border-radius:99px; background:var(--neutro); }
+.tl .brow.ok .t > span { background:var(--ok); } .tl .brow.alerta .t > span { background:var(--alerta); } .tl .brow.critico .t > span { background:var(--critico); }
+.tl .brow .p { font-size:1.15em; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+.tl .pagina { display:grid; gap:2cqh 1.4cqw; flex:1; min-height:0; grid-template-columns:1fr; grid-auto-rows:minmax(0,1fr); }
+.tl .pagina.n2, .tl .pagina.n3, .tl .pagina.n4 { grid-template-columns:1fr 1fr; }
+.tl .pagina.n3 .painel:first-child { grid-column:1 / -1; }
+.tl .painel { background:#0f1729; border:1px solid var(--linha); border-radius:1.4cqw; padding:1.4cqh 1.1cqw; display:flex; flex-direction:column; min-height:0; height:100%; overflow:hidden; }
+.tl .painel .ph { display:flex; align-items:center; gap:.8cqw; margin-bottom:1cqh; }
+.tl .painel .ph > i { font-size:clamp(11px,2.1cqw,34px); color:var(--alerta); }
+.tl .painel .ph h2 { margin:0; font-size:clamp(10px,1.7cqw,28px); font-weight:800; }
+.tl .painel .ph p { margin:0; color:var(--mut); font-size:clamp(8px,1cqw,17px); }
+.tl .painel .bars { justify-content:flex-start; }
+.tl .grafico { flex:1; min-height:0; background:var(--card); border:1px solid var(--linha); border-radius:.7em; padding:.6em .8em; position:relative; }
+.tl .grade-slide { position:relative; flex:1; min-height:0; }
+.tl .gi { position:absolute; padding:.8cqh .6cqw; }
+.tl .vazio { margin:auto; text-align:center; color:var(--mut); font-size:2rem; }

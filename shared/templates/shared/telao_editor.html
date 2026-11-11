@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{% if novo %}Nova apresentação{% else %}Editar apresentação{% endif %} &mdash; CalibraWEB{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'shared/telao_cards.css' %}">
+<style>
+  .ed-grid { display:grid; grid-template-columns:260px minmax(0,1fr) 340px; gap:14px; align-items:start; }
+  @media (max-width: 1200px) { .ed-grid { grid-template-columns:220px minmax(0,1fr); } .ed-direita { grid-column:1 / -1; } }
+  .ed-lista { list-style:none; margin:0; padding:0; }
+  .ed-slide { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--bs-border-color); border-radius:8px; margin-bottom:6px; cursor:pointer; background:var(--bs-body-bg); }
+  .ed-slide.ativo { border-color:#0d6efd; background:#e7f1ff; }
+  .ed-slide .n { width:22px; text-align:center; font-weight:700; color:#6c757d; }
+  .ed-slide .ti { flex:1; min-width:0; }
+  .ed-slide .ti b { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.9rem; }
+  .ed-slide .ti small { color:#6c757d; }
+  .ed-slide .ac { display:flex; gap:2px; }
+  .ed-slide .ac button { padding:0 5px; line-height:1.4; }
+  .ed-frame { position:relative; width:100%; aspect-ratio:2.1 / 1; background:#0b1220; border-radius:10px; overflow:hidden;
+    background-image:linear-gradient(to right,#ffffff0d 1px,transparent 1px),linear-gradient(to bottom,#ffffff0d 1px,transparent 1px);
+    background-size:calc(100% / 12) calc(100% / 8); }
+  .ed-frame .grid-stack { position:absolute; inset:0; }
+  .ed-frame .grid-stack-item-content { overflow:hidden; border-radius:1.4cqw; }
+  .ed-frame .grid-stack-item.sel > .grid-stack-item-content { outline:3px solid #3b82f6; outline-offset:-3px; }
+  .ed-frame .grid-stack-item > .ui-resizable-handle { opacity:.85; }
+  .ed-frame .painel { cursor:move; }
+  .ed-auto .ed-auto-in { position:absolute; inset:2.5% 3%; display:flex; flex-direction:column; }
+  .ed-auto .ed-auto-t { color:#e8edf7; font-weight:800; font-size:clamp(12px,2.2cqw,30px); margin-bottom:1.5cqh; }
+  .ed-pal summary { cursor:pointer; font-weight:600; }
+  .ed-pal .sec { font-size:.72rem; text-transform:uppercase; color:#6c757d; margin:6px 0 2px; }
+  .ed-pal .btn-card { display:block; width:100%; text-align:left; font-size:.82rem; padding:3px 8px; margin-bottom:3px; }
+  .ed-camp { margin-bottom:8px; }
+  .ed-camp .multi { max-height:130px; overflow:auto; border:1px solid var(--bs-border-color); border-radius:6px; padding:4px 8px; }
+  .ed-tools { display:flex; flex-wrap:wrap; gap:8px; align-items:end; margin-bottom:8px; }
+</style>
+{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <h4 class="mb-0"><i class="bi bi-display me-2"></i>{% if novo %}Nova apresentação{% else %}Editar apresentação{% endif %}</h4>
+    <div class="d-flex gap-2">
+      <a href="{% url 'telao_modelos' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Voltar</a>
+      <a href="#" id="edApresentar" class="btn btn-success btn-sm {% if novo %}d-none{% endif %}" target="_blank"><i class="bi bi-play-fill"></i> Apresentar</a>
+      <button type="button" id="edSalvar" class="btn btn-primary btn-sm"><i class="bi bi-save me-1"></i>Salvar</button>
+    </div>
+  </div>
+  <div id="edAlerta"></div>
+
+  <details class="card shadow-sm mb-3" {% if novo %}open{% endif %}>
+    <summary class="card-header py-2 fw-semibold" style="cursor:pointer;">Configurações da apresentação</summary>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-5"><label class="form-label small fw-bold mb-1" for="edNome">Nome</label>
+          <input class="form-control form-control-sm" id="edNome" maxlength="100"></div>
+        <div class="col-md-4"><label class="form-label small fw-bold mb-1" for="edDescricao">Descrição</label>
+          <input class="form-control form-control-sm" id="edDescricao" maxlength="200"></div>
+        <div class="col-md-2"><label class="form-label small fw-bold mb-1" for="edIcone">Ícone <span class="text-muted fw-normal">(bi-…)</span></label>
+          <input class="form-control form-control-sm" id="edIcone" maxlength="40" placeholder="bi-display"></div>
+        <div class="col-md-1"><label class="form-label small fw-bold mb-1" for="edDuracao">Seg./slide</label>
+          <input type="number" min="5" max="120" class="form-control form-control-sm" id="edDuracao"></div>
+        <div class="col-12 d-flex flex-wrap gap-4">
+          <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="edResumo"><label class="form-check-label small" for="edResumo">Modo resumido (oculta descrições e nomes)</label></div>
+          <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="edCompartilhada"><label class="form-check-label small" for="edCompartilhada">Compartilhada com todos</label></div>
+          <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="edAtivo"><label class="form-check-label small" for="edAtivo">Ativa</label></div>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <div class="ed-grid">
+    <aside>
+      <div class="small fw-bold text-uppercase text-muted mb-2">Slides</div>
+      <ul class="ed-lista" id="edLista"></ul>
+      <div class="d-grid gap-2 mt-2">
+        <button type="button" class="btn btn-outline-primary btn-sm" id="edNovoManual"><i class="bi bi-layout-wtf me-1"></i>Slide manual</button>
+        <div class="dropdown d-grid">
+          <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-magic me-1"></i>Slide automático</button>
+          <ul class="dropdown-menu" id="edMenuAuto"></ul>
+        </div>
+      </div>
+      <div class="form-text mt-2">Automático: o sistema monta os cards do módulo a cada execução. Manual: você escolhe e posiciona cada card.</div>
+    </aside>
+    <main id="edCentro"></main>
+    <aside class="ed-direita" id="edDireita"></aside>
+  </div>
+</div>
+<form id="edCsrf" hidden>{% csrf_token %}</form>
+{{ dados|json_script:"edDados" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.1/dist/gridstack-all.js"></script>
+<script src="{% static 'shared/telao_cards.js' %}"></script>
+<script src="{% static 'shared/telao_editor.js' %}"></script>
+{% endblock %}

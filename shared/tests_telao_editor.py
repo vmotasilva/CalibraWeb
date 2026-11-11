@@ -1,0 +1,154 @@
+import json
+from datetime import date
+
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.test import TestCase, override_settings
+from django.urls import reverse
+
+from kpi.models import Indicador, Medicao
+from shared.models import ModeloApresentacao
+from shared.telao import cards, layout
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class EditorTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        U = get_user_model()
+        self.dono = U.objects.create_user("dono_ed", password="x", is_staff=False)
+        self.outro = U.objects.create_user("outro_ed", password="x")
+        self.admin = U.objects.create_user("adm_ed", password="x", is_superuser=True, is_staff=True)
+        for nome in ("Perda", "Retrabalho"):
+            ind = Indicador.objects.create(nome=nome, meta=5, sentido="menor", unidade="%")
+            Medicao.objects.create(indicador=ind, periodo=date(2026, 1, 31), valor=8, granularidade="mensal")
+        self.client.force_login(self.admin)
+
+    def _post(self, nome, corpo):
+        return self.client.post(reverse(nome), json.dumps(corpo), content_type="application/json")
+
+    # ---- página
+    def test_exige_login(self):
+        self.client.logout()
+        for nome in ("telao_editor_novo", "telao_editor_instancias"):
+            self.assertEqual(self.client.get(reverse(nome)).status_code, 302)
+        for nome in ("telao_editor_salvar", "telao_editor_previa", "telao_editor_personalizar"):
+            self.assertEqual(self.client.post(reverse(nome), "{}", content_type="application/json").status_code, 302)
+
+    def test_pagina_novo_traz_catalogo_e_slides_da_geral(self):
+        r = self.client.get(reverse("telao_editor_novo"))
+        self.assertEqual(r.status_code, 200)
+        dados = r.context["dados"]
+        self.assertEqual(len(dados["catalogo"]), 7)
+        self.assertEqual([s["provedor"] for s in dados["slides"]][:2], ["ocorrencias", "kpi"])
+        self.assertEqual(dados["grade"], {"colunas": cards.COLUNAS, "linhas": cards.LINHAS})
+        self.assertIn("layout", [c["nome"] for c in dados["campos"]["kpi"]])
+        self.assertContains(r, 'id="edDados"')
+
+    def test_pagina_de_modelo_antigo_converte_para_slides_automaticos(self):
+        m = ModeloApresentacao.objects.create(nome="Antigo", criado_por=self.admin, itens=[
+            {"provedor": "kpi", "duracao": 20, "filtros": {"cards": ["situacao"]}},
+            {"tipo": "assunto", "titulo": "A", "blocos": [{"provedor": "pcp", "filtros": {}}]}])
+        dados = self.client.get(reverse("telao_editor", args=[m.pk])).context["dados"]
+        self.assertEqual([(s["origem"], s.get("provedor") or s.get("tipo")) for s in dados["slides"]], [("auto", "kpi"), ("auto", "assunto")])
+        self.assertEqual(dados["slides"][0]["duracao"], 20)
+
+    def test_copia_de_modelo(self):
+        m = ModeloApresentacao.objects.create(nome="Base", criado_por=self.admin, compartilhada=True, slides=[
+            {"origem": "manual", "titulo": "X", "itens": []}])
+        dados = self.client.get(reverse("telao_editor_novo") + f"?base={m.chave}").context["dados"]
+        self.assertEqual(dados["modelo"]["nome"], "Base (cópia)")
+        self.assertEqual(dados["slides"][0]["titulo"], "X")
+        self.assertIsNone(dados["modelo"]["id"])
+
+    def test_so_o_dono_ou_admin_edita(self):
+        m = ModeloApresentacao.objects.create(nome="D", criado_por=self.dono, compartilhada=True, slides=[{"origem": "manual", "titulo": "X"}])
+        self.client.force_login(self.outro)
+        self.assertEqual(self.client.get(reverse("telao_editor", args=[m.pk])).status_code, 403)
+        r = self._post("telao_editor_salvar", {"id": m.pk, "nome": "Hack", "slides": [{"origem": "manual"}]})
+        self.assertEqual(r.status_code, 403)
+        m.refresh_from_db()
+        self.assertEqual(m.nome, "D")
+        self.client.force_login(self.dono)
+        self.assertEqual(self.client.get(reverse("telao_editor", args=[m.pk])).status_code, 200)
+
+    def test_formulario_antigo_redireciona_para_o_editor_quando_ha_slides(self):
+        m = ModeloApresentacao.objects.create(nome="N", criado_por=self.admin, slides=[{"origem": "manual", "titulo": "X"}])
+        r = self.client.get(reverse("telao_modelo_editar", args=[m.pk]))
+        self.assertRedirects(r, reverse("telao_editor", args=[m.pk]))
+        legado = ModeloApresentacao.objects.create(nome="L", criado_por=self.admin, itens=[{"provedor": "kpi"}])
+        self.assertEqual(self.client.get(reverse("telao_modelo_editar", args=[legado.pk])).status_code, 200)
+
+    # ---- salvar
+    def test_salvar_cria_e_edita(self):
+        corpo = {"id": None, "nome": "  Minha  ", "descricao": "d", "icone": "bi-star", "duracao_padrao": 999, "resumo": True, "compartilhada": True,
+                 "slides": [{"origem": "auto", "provedor": "kpi", "filtros": {"layout": "2"}},
+                            {"origem": "manual", "titulo": "M", "itens": [{"card_id": "kpi.situacao", "pos": {"x": 0, "y": 0, "w": 12, "h": 2}}, {"card_id": "x.y"}]}]}
+        r = self._post("telao_editor_salvar", corpo)
+        self.assertEqual(r.status_code, 200, r.content)
+        m = ModeloApresentacao.objects.get(pk=r.json()["id"])
+        self.assertEqual((m.nome, m.icone, m.duracao_padrao, m.resumo, m.compartilhada, m.criado_por), ("Minha", "bi-star", 120, True, True, self.admin))
+        self.assertEqual([s["origem"] for s in m.slides], ["auto", "manual"])
+        self.assertEqual(len(m.slides[1]["itens"]), 1, "card inexistente descartado")
+        self.assertEqual(m.itens, [])
+        corpo.update(id=m.pk, nome="Outro", slides=[m.slides[1]])
+        self.assertEqual(self._post("telao_editor_salvar", corpo).status_code, 200)
+        m.refresh_from_db()
+        self.assertEqual((m.nome, len(m.slides)), ("Outro", 1))
+        self.assertEqual(ModeloApresentacao.objects.count(), 1)
+
+    def test_salvar_substitui_o_formato_antigo(self):
+        m = ModeloApresentacao.objects.create(nome="L", criado_por=self.admin, itens=[{"provedor": "kpi"}])
+        slides = layout.slides_do_modelo(m)
+        self.assertEqual(self._post("telao_editor_salvar", {"id": m.pk, "nome": "L", "slides": slides}).status_code, 200)
+        m.refresh_from_db()
+        self.assertEqual((m.itens, [s["provedor"] for s in m.slides]), ([], ["kpi"]))
+
+    def test_salvar_valida(self):
+        r = self._post("telao_editor_salvar", {"nome": "", "slides": []})
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(len(r.json()["erros"]), 2)
+        self.assertEqual(self.client.post(reverse("telao_editor_salvar"), "não é json", content_type="application/json").status_code, 400)
+        self.assertEqual(ModeloApresentacao.objects.count(), 0)
+
+    # ---- apoio
+    def test_previa_manual_alinhada_aos_itens(self):
+        slide = {"origem": "manual", "itens": [
+            {"card_id": "kpi.situacao", "pos": {}}, {"card_id": "nao.existe"}, {"card_id": "kpi.graficos", "params": {"ref": "Perda"}},
+            {"card_id": "pcp.paginas"}]}
+        itens = self._post("telao_editor_previa", {"slide": slide}).json()["itens"]
+        self.assertEqual(len(itens), 4)
+        self.assertEqual(itens[0]["kind"], "tiles")
+        self.assertIsNone(itens[1])
+        self.assertEqual(itens[2]["titulo"], "Perda")
+        self.assertIsNone(itens[3], "sem dado")
+
+    def test_previa_automatica(self):
+        r = self._post("telao_editor_previa", {"slide": {"origem": "auto", "provedor": "kpi", "filtros": {"cards": ["graficos"], "layout": "2"}}}).json()
+        self.assertEqual([s["kind"] for s in r["slides"]], ["layout"])
+        self.assertEqual(self._post("telao_editor_previa", {"slide": {"origem": "auto", "provedor": "zzz"}}).json(), {"slides": []})
+        self.assertEqual(self._post("telao_editor_previa", {}).json(), {"slides": []})
+
+    def test_instancias(self):
+        r = self.client.get(reverse("telao_editor_instancias") + "?card_id=kpi.graficos").json()
+        self.assertEqual(sorted(r["instancias"]), ["Perda", "Retrabalho"])
+        self.assertEqual(self.client.get(reverse("telao_editor_instancias") + "?card_id=x").json(), {"instancias": []})
+
+    def test_personalizar(self):
+        r = self._post("telao_editor_personalizar", {"slide": {"origem": "auto", "provedor": "kpi", "filtros": {"cards": ["situacao", "graficos"]}}})
+        self.assertEqual(r.status_code, 200)
+        manual = r.json()["slides"][0]
+        self.assertEqual(manual["origem"], "manual")
+        self.assertEqual([i["card_id"] for i in manual["itens"]], ["kpi.situacao", "kpi.graficos", "kpi.graficos"])
+        self.assertEqual(self._post("telao_editor_personalizar", {"slide": {"origem": "auto", "provedor": "pcp"}}).status_code, 409)
+        self.assertEqual(self._post("telao_editor_personalizar", {"slide": {"origem": "auto", "provedor": "zzz"}}).status_code, 400)
+
+    # ---- lista
+    def test_lista_resume_slides(self):
+        ModeloApresentacao.objects.create(nome="S", criado_por=self.admin, slides=[
+            {"origem": "auto", "provedor": "kpi"}, {"origem": "manual", "titulo": "Fechamento"}, {"origem": "auto", "tipo": "assunto", "titulo": "A", "blocos": []}])
+        r = self.client.get(reverse("telao_modelos"))
+        self.assertContains(r, "Indicadores (KPI)")
+        self.assertContains(r, "Slide: Fechamento")
+        self.assertContains(r, "Assunto: A")
+        self.assertContains(r, reverse("telao_editor_novo"))

@@ -202,6 +202,49 @@ def materializar(user, cfg: dict, resumo: bool = False) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Editor visual: conversão do formato antigo, prévia por card
+# ---------------------------------------------------------------------------
+def legado_para_slides(itens) -> list[dict]:
+    """Conteúdos do formato antigo (`ModeloApresentacao.itens`) como slides automáticos equivalentes."""
+    saida = []
+    for i in itens or []:
+        if not isinstance(i, dict):
+            continue
+        if i.get("tipo") == "assunto":
+            saida.append({"origem": "auto", "tipo": "assunto", "duracao": i.get("duracao"), "titulo": i.get("titulo") or "Assunto",
+                          "icone": i.get("icone") or "", "blocos": [b for b in i.get("blocos") or [] if isinstance(b, dict)]})
+        elif i.get("provedor"):
+            saida.append({"origem": "auto", "duracao": i.get("duracao"), "provedor": i["provedor"], "filtros": i.get("filtros") or {}})
+    return saida
+
+
+def slides_do_modelo(modelo) -> list[dict]:
+    """Slides do modelo: os salvos ou, se o modelo ainda é do formato antigo, a conversão dos seus conteúdos."""
+    return list(modelo.slides) if modelo.slides else legado_para_slides(modelo.itens)
+
+
+def slides_da_geral() -> list[dict]:
+    from . import providers
+
+    return [{"origem": "auto", "provedor": p, "filtros": {}} for p in providers.PLAYLISTS[providers.PLAYLIST_PADRAO][2]]
+
+
+def previa(user, cfg, resumo: bool = False) -> dict:
+    """Conteúdo atual de um slide para o editor. Manual: {"itens": [conteúdo ou None, ...]} alinhado aos itens enviados
+    (None = sem dado ou sem permissão). Automático: {"slides": [...]} com o que o gerador monta hoje (até 6)."""
+    memo: dict = {}
+    if isinstance(cfg, dict) and cfg.get("origem") == "manual":
+        modo = "livre" if (cfg.get("layout") or {}).get("modo") == "livre" else "grade"
+        saida = []
+        for bruto in (cfg.get("itens") or [])[:MAX_ITENS_SLIDE]:
+            item = limpar_item(bruto, modo, user)
+            saida.append(resolver_item(user, item, resumo, [], memo) if item else None)
+        return {"itens": saida}
+    limpo = limpar_slide(cfg, user)
+    return {"slides": montar_slide(user, limpo, resumo, [], memo)[:6] if limpo else []}
+
+
+# ---------------------------------------------------------------------------
 # Sanitização (entrada vinda do editor)
 # ---------------------------------------------------------------------------
 def _inteiro(v, minimo, maximo, padrao):

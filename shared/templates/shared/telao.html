@@ -8,6 +8,7 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="{% static 'shared/telao_cards.css' %}">
 <style>
 :root { --ok:#22c55e; --alerta:#f59e0b; --critico:#ef4444; --neutro:#94a3b8; --bg:#0b1220; --card:#131c31; --linha:#243049; --txt:#e8edf7; --mut:#8fa0bf; }
 * { box-sizing:border-box; font-family:'Inter',-apple-system,"Segoe UI",Roboto,sans-serif; }
@@ -28,57 +29,10 @@ select option { color:#0f172a; }
 .cab .ic { font-size:clamp(2rem,3.6vw,3.6rem); color:var(--alerta); }
 .cab h1 { margin:0; font-size:clamp(1.8rem,3.4vw,3.4rem); font-weight:800; letter-spacing:-.5px; }
 .cab p { margin:2px 0 0; color:var(--mut); font-size:clamp(1rem,1.5vw,1.5rem); }
-.corpo { flex:1; min-height:0; display:flex; flex-direction:column; }
+.corpo { flex:1; min-height:0; display:flex; flex-direction:column; container-type:size; }
 .slide { animation:entra .5s ease both; flex:1; min-height:0; display:flex; flex-direction:column; }
 @keyframes entra { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
 @media (prefers-reduced-motion:reduce) { .slide { animation:none; } }
-
-/* Cards adaptáveis: cada card vive num container (.cx) e todas as medidas internas são em em,
-   com a fonte base calculada a partir do tamanho do próprio container — serve de tela cheia a uma célula pequena. */
-.cx { container-type:size; flex:1; min-height:0; min-width:0; overflow:hidden; }
-.cxi { height:100%; display:flex; flex-direction:column; font-size:clamp(10px, min(calc(7px + .8cqw + .4cqh), 14cqh), 30px); }
-
-.tiles { display:grid; gap:.9em; grid-template-columns:repeat(auto-fit,minmax(min(10em,100%),1fr)); align-content:start; }
-.tile { background:var(--card); border:1px solid var(--linha); border-radius:.7em; padding:.8em 1.1em; border-left:.3em solid var(--neutro); }
-.tile.ok { border-left-color:var(--ok); } .tile.alerta { border-left-color:var(--alerta); } .tile.critico { border-left-color:var(--critico); }
-.tile .v { font-size:2.8em; font-weight:800; line-height:1.05; }
-.tile.ok .v { color:var(--ok); } .tile.alerta .v { color:var(--alerta); } .tile.critico .v { color:var(--critico); }
-.tile .r { font-size:1em; font-weight:600; margin-top:.3em; }
-.tile .n { color:var(--mut); font-size:.72em; margin-top:.2em; }
-.tiles.compacto .v { font-size:1.9em; }
-
-.cards { display:grid; gap:.8em; align-content:start; }
-.card { background:var(--card); border:1px solid var(--linha); border-left:.3em solid var(--alerta); border-radius:.6em; padding:.8em 1.1em; }
-.card.critico { border-left-color:var(--critico); } .card.neutro { border-left-color:var(--neutro); } .card.ok { border-left-color:var(--ok); }
-.card h3 { margin:0; font-size:1.3em; font-weight:700; }
-.card .tx { margin-top:.4em; color:#c4cee3; font-size:1em; line-height:1.35; }
-.card .cm { margin-top:.5em; padding:.3em .7em; border-left:3px solid var(--linha); color:#c4cee3; font-size:.85em; line-height:1.3; }
-.card .cm b { color:var(--mut); font-weight:600; }
-.tags { margin-top:.6em; display:flex; flex-wrap:wrap; gap:.5em; }
-.tag { background:#ffffff12; border-radius:99px; padding:.2em .7em; font-size:.75em; color:var(--mut); font-weight:600; }
-
-.bars { display:flex; flex-direction:column; gap:.9em; justify-content:center; flex:1; overflow:hidden; }
-.brow { display:grid; grid-template-columns:minmax(0,30%) 1fr minmax(5.5em,18%); gap:.8em; align-items:center; }
-.brow .l { font-size:1.15em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.brow .t { height:1em; border-radius:99px; background:#ffffff14; overflow:hidden; }
-.brow .t > span { display:block; height:100%; border-radius:99px; background:var(--neutro); }
-.brow.ok .t > span { background:var(--ok); } .brow.alerta .t > span { background:var(--alerta); } .brow.critico .t > span { background:var(--critico); }
-.brow .p { font-size:1.15em; font-weight:800; text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
-
-.pagina { display:grid; gap:2vh 1.4vw; flex:1; min-height:0; grid-template-columns:1fr; grid-auto-rows:minmax(0,1fr); }
-.pagina.n2, .pagina.n3, .pagina.n4 { grid-template-columns:1fr 1fr; }
-.pagina.n3 .painel:first-child { grid-column:1 / -1; }
-.painel { background:#0f1729; border:1px solid var(--linha); border-radius:18px; padding:1.4vh 1.1vw; display:flex; flex-direction:column; min-height:0; overflow:hidden; }
-.painel .ph { display:flex; align-items:center; gap:.8vw; margin-bottom:1vh; }
-.painel .ph > i { font-size:clamp(1.2rem,1.9vw,2rem); color:var(--alerta); }
-.painel .ph h2 { margin:0; font-size:clamp(1rem,1.5vw,1.6rem); font-weight:800; }
-.painel .ph p { margin:0; color:var(--mut); font-size:clamp(.75rem,1vw,1.05rem); }
-.painel .bars { justify-content:flex-start; }
-.grafico { flex:1; min-height:0; background:var(--card); border:1px solid var(--linha); border-radius:.7em; padding:.6em .8em; position:relative; }
-.grade-slide { position:relative; flex:1; min-height:0; }
-.gi { position:absolute; padding:.8vh .6vw; }
-.gi .painel { height:100%; }
-.vazio { margin:auto; text-align:center; color:var(--mut); font-size:2rem; }
 
 .ctrl { position:fixed; bottom:3.2vh; right:2vw; z-index:20; display:flex; gap:8px; transition:opacity .3s; }
 .ctrl .btn { width:46px; height:46px; padding:0; border-radius:50%; font-size:1.15rem; }
@@ -90,7 +44,7 @@ select option { color:#0f172a; }
 .aviso .btn { font-size:1.4rem; padding:16px 34px; background:#2563eb; border-color:#2563eb; font-weight:700; }
 </style>
 </head>
-<body>
+<body class="tl">
 <div class="bar-top">
   <div class="marca"><img src="{% static 'shared/logo_calibraweb.svg' %}" alt=""> Calibra · {{ playlist_nome }}</div>
   <div class="sp"></div>
@@ -116,143 +70,19 @@ select option { color:#0f172a; }
 <div class="prog"><i id="prog"></i></div>
 <div class="aviso" id="aviso"><button class="btn" id="btnIniciar"><i class="bi bi-play-fill"></i> Iniciar apresentação</button></div>
 
+<script src="{% static 'shared/telao_cards.js' %}"></script>
 <script>
 (function () {
   var API = "{{ api_url }}", PLAYLIST = "{{ playlist }}", DUR_FORCADA = {{ duracao }}, RESUMO = {{ resumo|yesno:"true,false" }};
-  var REFRESH_MS = 60000, slides = [], idx = 0, rodando = true, inicio = 0, restante = 0, charts = [], raf = null, ociosoT = null, lock = null;
+  var REFRESH_MS = 60000, slides = [], idx = 0, rodando = true, inicio = 0, restante = 0, raf = null, ociosoT = null, lock = null;
   var $ = function (id) { return document.getElementById(id); };
 
-  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
-  function tom(t) { return t || "neutro"; }
-
-  var desenho = {
-    tiles: function (s) {
-      var g = el("div", "tiles" + (s.itens.length > 8 ? " compacto" : ""));
-      s.itens.forEach(function (i) {
-        var t = el("div", "tile " + tom(i.tom));
-        t.appendChild(el("div", "v", i.valor)); t.appendChild(el("div", "r", i.rotulo));
-        if (i.nota) t.appendChild(el("div", "n", i.nota));
-        g.appendChild(t);
-      });
-      return g;
-    },
-    cards: function (s) {
-      var g = el("div", "cards");
-      s.itens.forEach(function (i) {
-        var c = el("div", "card " + tom(i.tom)); c.appendChild(el("h3", null, i.titulo));
-        if (i.texto) c.appendChild(el("div", "tx", i.texto));
-        var tg = el("div", "tags"); (i.tags || []).forEach(function (x) { if (x) tg.appendChild(el("span", "tag", x)); });
-        c.appendChild(tg);
-        (i.comentarios || []).forEach(function (m) {
-          var q = el("div", "cm"); q.appendChild(el("b", null, m.autor + " · " + m.quando)); q.appendChild(el("span", null, " " + m.texto)); c.appendChild(q);
-        });
-        g.appendChild(c);
-      });
-      return g;
-    },
-    bars: function (s) {
-      var g = el("div", "bars");
-      s.itens.forEach(function (i) {
-        var r = el("div", "brow " + tom(i.tom)); r.appendChild(el("div", "l", i.rotulo));
-        var t = el("div", "t"), b = el("span"); b.style.width = Math.max(2, Math.min(100, i.pct)) + "%"; t.appendChild(b);
-        r.appendChild(t); r.appendChild(el("div", "p", i.txt)); g.appendChild(r);
-      });
-      return g;
-    },
-    chart: function (s) {
-      var w = el("div", "grafico"), cv = el("canvas"); w.appendChild(cv);
-      setTimeout(function () {
-        var u = s.unidade || "";
-        var fmt = function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; };
-        // Rótulos de valor em cada ponto (e o valor da meta na ponta da linha tracejada).
-        var base = function () { return parseFloat(getComputedStyle(w).fontSize) || 18; };   // fonte base do container (.cxi)
-        var tf = Math.round(base() * .65), ating = s.atingiu || null, VERDE = "#22c55e", VERM = "#ef4444";
-        var rotulos = { id: "rotulos", afterDatasetsDraw: function (c) {
-          var x = c.ctx; x.save(); x.textAlign = "center"; x.font = "700 " + Math.round(base() * .75) + "px Inter, sans-serif";
-          c.data.datasets.forEach(function (ds, di) {
-            var meta = c.getDatasetMeta(di);
-            meta.data.forEach(function (pt, i) {
-              if (di === 1 && i !== meta.data.length - 1) return;           // meta: só no último ponto
-              var v = ds.data[i]; if (v == null) return;
-              var abaixo = di === 1 || pt.y < c.chartArea.top + 34;
-              x.fillStyle = di === 1 ? "#cbd5e1" : "#ffffff";
-              if (di === 0 && ating) x.fillStyle = ating[i] ? "#4ade80" : "#f87171";
-              x.textBaseline = abaixo ? "top" : "bottom";
-              var tx = (di === 1 ? "Meta " : "") + fmt(v);
-              var px = Math.min(Math.max(pt.x, c.chartArea.left + 30), c.chartArea.right - 40);
-              x.lineWidth = 5; x.strokeStyle = "#131c31"; x.strokeText(tx, px, pt.y + (abaixo ? 12 : -12));
-              x.fillText(tx, px, pt.y + (abaixo ? 12 : -12));
-            });
-          });
-          x.restore();
-        } };
-        var grafico = new Chart(cv, {
-          type: "line", plugins: [rotulos],
-          data: { labels: s.labels, datasets: [
-            { label: "Resultado", data: s.valores, borderColor: "#60a5fa", backgroundColor: ating ? "#ffffff0d" : "#60a5fa33", fill: true, tension: .25, borderWidth: 4, pointRadius: 7,
-              pointBackgroundColor: ating ? ating.map(function (a) { return a ? VERDE : VERM; }) : "#60a5fa",
-              segment: ating ? { borderColor: function (c) { return ating[c.p1DataIndex] ? VERDE : VERM; } } : {} },
-            { label: "Meta", data: s.labels.map(function () { return s.meta; }), borderColor: "#cbd5e1", borderDash: [10, 8], borderWidth: 3, pointRadius: 0, fill: false }
-          ] },
-          options: { maintainAspectRatio: false, animation: { duration: 900 }, layout: { padding: { top: 24, right: 16 } },
-            plugins: { legend: { display: !ating, labels: { color: "#c4cee3", font: { size: tf } } },
-              tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + c.parsed.y + u; } } } },
-            scales: { x: { ticks: { color: "#c4cee3", font: { size: tf } }, grid: { color: "#ffffff12" } },
-                      y: { ticks: { color: "#c4cee3", font: { size: tf }, callback: function (v) { return Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + u; } }, grid: { color: "#ffffff12" } } } }
-        });
-        charts.push(grafico);
-        // se o card mudar de tamanho (ex.: editor), as fontes acompanham
-        if (window.ResizeObserver) new ResizeObserver(function () {
-          var o = grafico.options, f = Math.round(base() * .65);
-          o.plugins.legend.labels.font.size = f; o.scales.x.ticks.font.size = f; o.scales.y.ticks.font.size = f; grafico.update("none");
-        }).observe(w);
-      }, 30);
-      return w;
-    },
-    pagina: function (s) {
-      var g = el("div", "pagina n" + s.paineis.length);
-      s.paineis.forEach(function (p) { g.appendChild(painel(p, true)); });
-      return g;
-    },
-    // Vários cards posicionados: na grade a posição é em células (x/colunas...), na livre já é em % do slide.
-    layout: function (s) {
-      var L = s.layout || {}, cols = L.colunas || 12, rows = L.linhas || 8, livre = L.modo === "livre";
-      var g = el("div", "grade-slide");
-      s.itens.forEach(function (i) {
-        var p = i.pos || {}, caixa = el("div", "gi");
-        caixa.style.left = (livre ? p.x : p.x / cols * 100) + "%"; caixa.style.top = (livre ? p.y : p.y / rows * 100) + "%";
-        caixa.style.width = (livre ? p.w : p.w / cols * 100) + "%"; caixa.style.height = (livre ? p.h : p.h / rows * 100) + "%";
-        caixa.appendChild(painel(i.conteudo, !i.visual || i.visual.titulo !== false)); g.appendChild(caixa);
-      });
-      return g;
-    },
-    vazio: function (s) { return el("div", "vazio", s.subtitulo); }
-  };
-
-  // Um card = o desenho da sua forma (tiles/cards/bars/chart) dentro de um container que dá a escala (fonte base) a todo o conteúdo.
-  function painel(p, comTitulo) {
-    var q = el("section", "painel");
-    if (comTitulo) {
-      var h = el("div", "ph"), t = el("div");
-      h.appendChild(el("i", "bi " + (p.icone || "bi-display"))); t.appendChild(el("h2", null, p.titulo));
-      if (p.subtitulo) t.appendChild(el("p", null, p.subtitulo));
-      h.appendChild(t); q.appendChild(h);
-    }
-    q.appendChild(card(p));
-    return q;
-  }
-
-  function card(s) {
-    var cx = el("div", "cx"), cxi = el("div", "cxi");
-    cxi.appendChild((desenho[s.kind] || desenho.vazio)(s)); cx.appendChild(cxi);
-    return cx;
-  }
-
+  var el = TelaoCards.el;
   function desenhar(s) {
-    charts.forEach(function (c) { c.destroy(); }); charts = [];
+    TelaoCards.destruir();
     $("cIcone").className = "bi ic " + (s.icone || "bi-display");
     $("cTitulo").textContent = s.titulo; $("cSub").textContent = s.kind === "vazio" ? "" : (s.subtitulo || "");
-    var sl = el("div", "slide"); sl.appendChild(s.kind === "pagina" || s.kind === "layout" || s.kind === "vazio" ? (desenho[s.kind])(s) : card(s));
+    var sl = el("div", "slide"); sl.appendChild(TelaoCards.slide(s));
     var corpo = $("corpo"); corpo.innerHTML = ""; corpo.appendChild(sl);
   }
   function sig(s) { var c = Object.assign({}, s); delete c.n; return JSON.stringify(c); }

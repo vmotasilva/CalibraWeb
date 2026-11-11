@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .telao import editor as telao_editor
 from .telao import views as telao_views
 
 urlpatterns = [
@@ -31,6 +32,12 @@ urlpatterns = [
     path('telao/modelos/<int:pk>/', telao_views.modelo_form, name='telao_modelo_editar'),
     path('telao/modelos/<int:pk>/excluir/', telao_views.modelo_excluir, name='telao_modelo_excluir'),
     path('telao/modelos/<int:pk>/favoritar/', telao_views.modelo_favoritar, name='telao_modelo_favoritar'),
+    path('telao/editor/novo/', telao_editor.editor, name='telao_editor_novo'),
+    path('telao/editor/<int:pk>/', telao_editor.editor, name='telao_editor'),
+    path('telao/editor/salvar/', telao_editor.editor_salvar, name='telao_editor_salvar'),
+    path('telao/editor/previa/', telao_editor.editor_previa, name='telao_editor_previa'),
+    path('telao/editor/instancias/', telao_editor.editor_instancias, name='telao_editor_instancias'),
+    path('telao/editor/personalizar/', telao_editor.editor_personalizar, name='telao_editor_personalizar'),
     path('changelog/', views.changelog_view, name='changelog'),
     # path('', views.dashboard_view, name='dashboard'),
     # path('health/', views.health_check, name='health_check'),

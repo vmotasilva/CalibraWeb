@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 
 from shared.models import FavoritoApresentacao, ModeloApresentacao
 
-from . import providers
+from . import layout, providers
 
 
 @login_required
@@ -115,6 +115,19 @@ def _ler_modelo(request, modelo):
     return erros
 
 
+def _rotulos_modelo(m) -> list[str]:
+    """Resumo do conteúdo de um modelo para a lista: um rótulo por slide (ou por conteúdo, no formato antigo)."""
+    rotulos = []
+    for s in layout.slides_do_modelo(m):
+        if s.get("origem") == "manual":
+            rotulos.append(f"Slide: {s.get('titulo') or '—'}")
+        elif s.get("tipo") == "assunto":
+            rotulos.append(f"Assunto: {s.get('titulo') or '—'}")
+        elif s.get("provedor") in providers.ROTULOS_PROVEDORES:
+            rotulos.append(providers.ROTULOS_PROVEDORES[s["provedor"]][0])
+    return rotulos
+
+
 @login_required
 def modelos_lista(request):
     modelos = list(providers.modelos_visiveis(request.user).select_related("criado_por"))
@@ -122,9 +135,7 @@ def modelos_lista(request):
     for m in modelos:
         m.favorito = m.pk in favoritos
         m.pode_editar = m.editavel_por(request.user)
-        m.rotulos = [providers.ROTULOS_PROVEDORES[i["provedor"]][0] if i.get("provedor") in providers.ROTULOS_PROVEDORES
-                     else f"Assunto: {i.get('titulo') or '—'}" for i in m.itens
-                     if isinstance(i, dict) and (i.get("provedor") in providers.ROTULOS_PROVEDORES or i.get("tipo") == "assunto")]
+        m.rotulos = _rotulos_modelo(m)
     return render(request, "shared/telao_modelos.html", {
         "modelos": modelos,
         "geral_rotulos": [providers.ROTULOS_PROVEDORES[p][0] for p in providers.PLAYLISTS["geral"][2]],
@@ -149,6 +160,8 @@ def modelo_form(request, pk=None):
         modelo = get_object_or_404(ModeloApresentacao, pk=pk)
         if not modelo.editavel_por(request.user):
             return HttpResponseForbidden("Apenas quem criou a apresentação (ou um administrador) pode editá-la.")
+        if modelo.slides:  # já está no formato de slides: só o editor visual preserva
+            return redirect("telao_editor", pk=modelo.pk)
     else:
         modelo = ModeloApresentacao(criado_por=request.user)
         base = (request.GET.get("base") or "").strip()  # copia um modelo padrão ou outro personalizado
