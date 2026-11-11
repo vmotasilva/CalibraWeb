@@ -8,8 +8,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'shared/telao_cards.css' %}">
 <style>
-  .ed-grid { display:grid; grid-template-columns:260px minmax(0,1fr) 340px; gap:14px; align-items:start; }
-  @media (max-width: 1200px) { .ed-grid { grid-template-columns:220px minmax(0,1fr); } .ed-direita { grid-column:1 / -1; } }
+  .ed-grid { display:grid; grid-template-columns:240px minmax(0,1fr); gap:14px; align-items:start; }
+  .ed-grid.recolhido { grid-template-columns:minmax(0,1fr); }
+  .ed-grid.recolhido > aside { display:none; }
+  @media (max-width: 900px) { .ed-grid { grid-template-columns:minmax(0,1fr); } }
+  .ed-barra { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+  .ed-barra .btn.active { background:#0d6efd; color:#fff; border-color:#0d6efd; }
+  /* O palco segue a proporção da tela de exibição (--prop) e cabe na altura da janela */
+  #edCentro { --prop:2.2; }
+  .ed-pop { position:fixed; top:90px; right:20px; width:370px; max-width:calc(100vw - 24px); max-height:calc(100vh - 110px); display:flex; flex-direction:column;
+    background:var(--bs-body-bg); border:1px solid var(--bs-border-color); border-radius:10px; box-shadow:0 10px 34px #0000004d; z-index:1050; }
+  .ed-pop[hidden] { display:none; }
+  .ed-pop-h { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px; border-bottom:1px solid var(--bs-border-color); cursor:move; font-weight:700; font-size:.9rem; user-select:none; touch-action:none; }
+  .ed-pop-b { overflow:auto; padding:10px; }
+  .ed-pop-b > .card { border:0 !important; box-shadow:none !important; margin-bottom:0 !important; }
+  .ed-pop-b > .card > .card-body { padding:0; }
   .ed-lista { list-style:none; margin:0; padding:0; }
   .ed-slide { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--bs-border-color); border-radius:8px; margin-bottom:6px; cursor:pointer; background:var(--bs-body-bg); }
   .ed-slide.ativo { border-color:#0d6efd; background:#e7f1ff; }
@@ -19,7 +32,7 @@
   .ed-slide .ti small { color:#6c757d; }
   .ed-slide .ac { display:flex; gap:2px; }
   .ed-slide .ac button { padding:0 5px; line-height:1.4; }
-  .ed-frame { position:relative; width:100%; aspect-ratio:2.1 / 1; background-color:var(--bg); border-radius:10px; overflow:hidden;
+  .ed-frame { position:relative; width:min(100%, calc((100vh - 250px) * var(--prop, 2.2))); margin:0 auto; aspect-ratio:var(--prop, 2.2) / 1; background-color:var(--bg); border-radius:10px; overflow:hidden;
     background-image:linear-gradient(to right,var(--guia) 1px,transparent 1px),linear-gradient(to bottom,var(--guia) 1px,transparent 1px);
     background-size:calc(100% / 12) calc(100% / 8); }
   .ed-frame .grid-stack { position:absolute; inset:0; }
@@ -91,7 +104,20 @@
     </div>
   </details>
 
-  <div class="ed-grid">
+  <div class="ed-barra">
+    <button type="button" class="btn btn-outline-secondary btn-sm active" id="edBtnSlides" title="Mostrar ou recolher a lista de slides"><i class="bi bi-layout-sidebar-inset me-1"></i>Slides</button>
+    <button type="button" class="btn btn-outline-primary btn-sm" id="edBtnPaleta"><i class="bi bi-plus-square me-1"></i>Adicionar card ou texto</button>
+    <button type="button" class="btn btn-outline-primary btn-sm" id="edBtnConfig"><i class="bi bi-sliders me-1"></i>Configurações</button>
+    <div class="ms-auto d-flex align-items-center gap-2">
+      <label class="small fw-bold mb-0" for="edProp" title="A área do slide no editor usa a mesma proporção da tela em que será exibido">Proporção da tela</label>
+      <select class="form-select form-select-sm w-auto" id="edProp">
+        <option value="auto">Desta tela (automático)</option><option value="1.7778">16:9</option><option value="1.6">16:10</option>
+        <option value="2.3333">21:9</option><option value="1.3333">4:3</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="ed-grid" id="edGrade">
     <aside>
       <div class="small fw-bold text-uppercase text-muted mb-2">Slides</div>
       <ul class="ed-lista" id="edLista"></ul>
@@ -105,8 +131,15 @@
       <div class="form-text mt-2">Automático: o sistema monta os cards do módulo a cada execução. Manual: você escolhe e posiciona cada card.</div>
     </aside>
     <main id="edCentro"></main>
-    <aside class="ed-direita" id="edDireita"></aside>
   </div>
+</div>
+<div class="ed-pop" id="edPopPal" hidden style="right:20px">
+  <div class="ed-pop-h"><span><i class="bi bi-plus-square me-2"></i>Adicionar ao slide</span><button type="button" class="btn-close" data-fecha aria-label="Fechar"></button></div>
+  <div class="ed-pop-b" id="edPalBody"></div>
+</div>
+<div class="ed-pop" id="edPopCfg" hidden style="right:410px">
+  <div class="ed-pop-h"><span id="edCfgTitulo"><i class="bi bi-sliders me-2"></i>Configurações</span><button type="button" class="btn-close" data-fecha aria-label="Fechar"></button></div>
+  <div class="ed-pop-b" id="edPropBody"></div>
 </div>
 <form id="edCsrf" hidden>{% csrf_token %}</form>
 {{ dados|json_script:"edDados" }}

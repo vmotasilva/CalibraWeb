@@ -431,7 +431,7 @@
     if (!vaga) { alerta("Não há espaço livre neste slide para esse card. Reduza ou remova algum card, ou use outro slide.", "warning"); return; }
     alerta(null);
     var it = { _id: novoId(), card_id: id, pos: vaga, visual: { titulo: true, max_itens: null } };
-    s.itens.push(it); estado.itemSel = it._id; sujar(); renderLista(); renderCentro(); renderDireita();
+    s.itens.push(it); estado.itemSel = it._id; sujar(); renderLista(); renderCentro(); renderDireita(); abrirPop("pal", false);
   }
   var TAM_EL = { titulo: [12, 1], subtitulo: [8, 1], texto: [6, 2], imagem: [4, 3] };
   function adicionarElemento(tipo) {
@@ -442,7 +442,7 @@
     var el0 = Object.assign({ tipo: tipo, alinhar: tipo === "titulo" ? "centro" : "esq" }, PADRAO_EL[tipo]);
     el0.texto = tipo === "imagem" ? undefined : ""; if (tipo === "imagem") { el0.url = ""; el0.ajuste = "contem"; el0.alt = ""; delete el0.texto; }
     var it = { _id: novoId(), card_id: "", el: el0, pos: vaga, visual: { titulo: true, max_itens: null } };
-    s.itens.push(it); estado.itemSel = it._id; sujar(); renderLista(); renderCentro(); renderDireita();
+    s.itens.push(it); estado.itemSel = it._id; sujar(); renderLista(); renderCentro(); renderDireita(); abrirPop("pal", false); abrirPop("cfg", true);
     if (tipo !== "imagem") setTimeout(function () { var c = document.getElementById("edElTexto"); if (c) c.focus(); }, 50);
   }
   // Procura um espaço livre para o card, do tamanho padrão e, se não couber, encolhendo até o tamanho mínimo.
@@ -513,11 +513,12 @@
 
   // ---------------------------------------------------------------- direita
   function renderDireita() {
-    var d = $("edDireita"); d.innerHTML = ""; var s = atual();
+    var d = $("edPropBody"); d.innerHTML = ""; var s = atual();
+    var sel = s.origem === "manual" ? s.itens.filter(function (i) { return i._id === estado.itemSel; })[0] : null;
+    estadoBotoes(s, sel);
     if (s.origem === "manual") {
-      var it = s.itens.filter(function (i) { return i._id === estado.itemSel; })[0];
-      if (it) d.appendChild(propriedades(s, it));
-      d.appendChild(paleta());
+      if (sel) d.appendChild(propriedades(s, sel));
+      else d.appendChild(el("div", "text-muted small", "Clique em um card ou item do slide para configurá-lo."));
     } else if (s.tipo === "assunto") {
       d.appendChild(blocosAssunto(s));
     } else {
@@ -749,7 +750,54 @@
     else if (e.key === "Delete" && estado.itemSel && !/INPUT|SELECT|TEXTAREA/.test((e.target || {}).tagName || "")) removerItem(estado.itemSel);
   });
 
-  lerConfig(); render(); gravarFoto(); botoesHist();
+  // ---------------------------------------------------------------- painéis flutuantes, slides recolhível, proporção da tela
+  var zPop = 0;
+  function pop(id) { return $(id === "pal" ? "edPopPal" : "edPopCfg"); }
+  function abrirPop(id, abrir) {
+    var p = pop(id); p.hidden = !abrir; if (abrir) p.style.zIndex = 1050 + (++zPop);
+    $("edBtnPaleta").classList.toggle("active", !pop("pal").hidden); $("edBtnConfig").classList.toggle("active", !pop("cfg").hidden);
+  }
+  function estadoBotoes(s, sel) {
+    var manual = s.origem === "manual";
+    $("edBtnPaleta").disabled = !manual; if (!manual) abrirPop("pal", false);
+    $("edBtnConfig").disabled = manual && !sel;
+    $("edBtnConfig").lastChild.textContent = manual ? (sel && sel.el ? "Configurar item" : "Configurar card") : "Configurações do slide";
+    $("edCfgTitulo").innerHTML = '<i class="bi bi-sliders me-2"></i>' + (manual ? (sel && sel.el ? "Item do slide" : "Card do slide") : "Configurações do slide");
+    if ($("edBtnConfig").disabled) abrirPop("cfg", false);
+  }
+  function guardar(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lembrado(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function iniciarPaineis() {
+    $("edPalBody").appendChild(paleta());
+    $("edBtnPaleta").addEventListener("click", function () { abrirPop("pal", pop("pal").hidden); });
+    $("edBtnConfig").addEventListener("click", function () { abrirPop("cfg", pop("cfg").hidden); });
+    document.querySelectorAll(".ed-pop").forEach(function (p) {
+      var h = p.querySelector(".ed-pop-h");
+      p.querySelector("[data-fecha]").addEventListener("click", function () { p.hidden = true; abrirPop(p.id === "edPopPal" ? "pal" : "cfg", false); });
+      p.addEventListener("pointerdown", function () { p.style.zIndex = 1050 + (++zPop); });
+      h.addEventListener("pointerdown", function (e) {   // arrastar pelo cabeçalho
+        if (e.target.closest("button")) return;
+        var r = p.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+        p.style.left = r.left + "px"; p.style.top = r.top + "px"; p.style.right = "auto"; try { h.setPointerCapture(e.pointerId); } catch (x) {}
+        function mv(ev) { p.style.left = Math.max(0, Math.min(innerWidth - 120, ev.clientX - dx)) + "px"; p.style.top = Math.max(0, Math.min(innerHeight - 40, ev.clientY - dy)) + "px"; }
+        function up() { h.removeEventListener("pointermove", mv); h.removeEventListener("pointerup", up); }
+        h.addEventListener("pointermove", mv); h.addEventListener("pointerup", up);
+      });
+    });
+    $("edCentro").addEventListener("dblclick", function (e) { if (e.target.closest(".grid-stack-item, .ed-livre-item") && !$("edBtnConfig").disabled) abrirPop("cfg", true); });
+    var grade = $("edGrade");
+    function recolher(v) { grade.classList.toggle("recolhido", v); $("edBtnSlides").classList.toggle("active", !v); guardar("edSlidesRecolhido", v ? "1" : "0"); window.dispatchEvent(new Event("resize")); }
+    $("edBtnSlides").addEventListener("click", function () { recolher(!grade.classList.contains("recolhido")); });
+    recolher(lembrado("edSlidesRecolhido") === "1");
+    // Proporção do slide: a área útil do player (tela menos o cabeçalho e as margens) ou uma proporção escolhida
+    function automatica() { var W = screen.width, H = screen.height; if (W < 600 || H < 400) { W = innerWidth; H = innerHeight; } var h = H - 76 - .08 * H - .06 * W; return Math.max(1, Math.min(3, .92 * W / h)); }
+    var sp = $("edProp"); if (lembrado("edProporcao")) sp.value = lembrado("edProporcao"); if (!sp.value) sp.value = "auto";
+    function definirProp() { $("edCentro").style.setProperty("--prop", sp.value === "auto" ? automatica().toFixed(4) : sp.value); }
+    sp.addEventListener("change", function () { definirProp(); guardar("edProporcao", sp.value); window.dispatchEvent(new Event("resize")); });
+    window.addEventListener("resize", definirProp); definirProp();
+  }
+
+  iniciarPaineis(); lerConfig(); render(); gravarFoto(); botoesHist();
   $("edDesfazer").addEventListener("click", function () { irHist(-1); });
   $("edRefazer").addEventListener("click", function () { irHist(1); });
 })();
