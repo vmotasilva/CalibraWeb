@@ -45,6 +45,14 @@ class EditorTests(TestCase):
         self.assertIn("layout", [c["nome"] for c in dados["campos"]["kpi"]])
         self.assertContains(r, 'id="edDados"')
 
+    def test_campos_separam_configuracao_de_filtro(self):
+        campos = {c["nome"]: c for c in self.client.get(reverse("telao_editor_novo")).context["dados"]["campos"]["kpi"]}
+        self.assertFalse(campos["indicadores"]["config"])
+        self.assertFalse(campos["setores"]["config"])
+        self.assertEqual((campos["tipo_grafico"]["config"], campos["tipo_grafico"]["cards"]), (True, ["kpi.graficos"]))
+        self.assertEqual(campos["ocultar_fora"]["cards"], ["kpi.situacao"])
+        self.assertEqual(campos["comentarios"]["cards"], ["kpi.ocorrencias"])
+
     def test_pagina_de_modelo_antigo_converte_para_slides_automaticos(self):
         m = ModeloApresentacao.objects.create(nome="Antigo", criado_por=self.admin, itens=[
             {"provedor": "kpi", "duracao": 20, "filtros": {"cards": ["situacao"]}},

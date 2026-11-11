@@ -1108,6 +1108,18 @@ def _opts_origens(user):
 
 # Filtros de cada módulo, espelhando os dos dashboards. tipo: multi | select | bool.
 # Multi vazio = todos; select sem valor = padrão do módulo.
+# Campos que configuram COMO o card é mostrado (período, tipo de gráfico...), e não QUAIS dados entram.
+# módulo -> campo -> cards a que se aplicam (no editor, o resto aparece só em "Filtros").
+CAMPOS_CONFIG = {
+    "kpi": {
+        "serie": ["kpi.graficos"], "tipo_grafico": ["kpi.graficos"], "janela": ["kpi.graficos"], "ultimos": ["kpi.graficos"],
+        "dias": ["kpi.graficos", "kpi.situacao"], "meses": ["kpi.graficos"], "graficos": ["kpi.graficos"],
+        "ocultar_na_meta": ["kpi.situacao"], "ocultar_fora": ["kpi.situacao"], "ocultar_sem_dado": ["kpi.situacao"],
+        "motivos_periodo": ["kpi.motivos"],
+    },
+    "ocorrencias": {"comentarios": ["ocorrencias.lista"]},
+}
+
 FILTROS = {
     "ocorrencias": [
         dict(nome="abordagem", rotulo="Abordagem", tipo="select",
@@ -1193,6 +1205,7 @@ _CAMPOS_OCORRENCIAS = [
 for _k in ("kpi", "auditoria", "metrologia", "pcp", "laboratorio"):
     FILTROS[_k] = list(FILTROS.get(_k, [])) + _CAMPOS_OCORRENCIAS
     PROVEDOR_CARDS[_k] = [("ocorrencias", "Ocorrências do módulo e comentários (na sequência)", lambda s: bool(s.get("ocorr")))] + list(PROVEDOR_CARDS.get(_k, []))
+    CAMPOS_CONFIG.setdefault(_k, {}).update({"com_ocorrencias": [f"{_k}.ocorrencias"], "comentarios": [f"{_k}.ocorrencias"]})
 
 
 def campos_filtro(provedor: str, user) -> list[dict]:

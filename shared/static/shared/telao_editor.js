@@ -147,9 +147,15 @@
     }
     return w;
   }
-  function formFiltros(provedor, filtros, excluir, onChange) {
+  // grupo: "config" (como o card é mostrado), "filtro" (quais dados entram) ou ausente (todos). cardId limita as configurações ao card.
+  function formFiltros(provedor, filtros, excluir, onChange, grupo, cardId) {
     var f = el("div");
-    (D.campos[provedor] || []).forEach(function (c) { if (excluir.indexOf(c.nome) < 0) f.appendChild(campoEl(c, filtros, onChange)); });
+    (D.campos[provedor] || []).forEach(function (c) {
+      if (excluir.indexOf(c.nome) >= 0) return;
+      if (grupo === "config" && (!c.config || (cardId && c.cards.indexOf(cardId) < 0))) return;
+      if (grupo === "filtro" && c.config) return;
+      f.appendChild(campoEl(c, filtros, onChange));
+    });
     return f;
   }
   function depois(fn, ms) { clearTimeout(temporizador); temporizador = setTimeout(fn, ms || 350); }
@@ -436,7 +442,11 @@
       var card = el("div", "card shadow-sm"), body = el("div", "card-body");
       body.appendChild(el("div", "small fw-bold text-uppercase text-muted mb-2", "Regras do módulo"));
       s.filtros = s.filtros || {};
-      body.appendChild(formFiltros(s.provedor, s.filtros, [], function () { sujar(); s._previa = null; autoIdx = 0; depois(atualizarPrevia); }));
+      var mudou = function () { sujar(); s._previa = null; autoIdx = 0; depois(atualizarPrevia); };
+      var cfg = formFiltros(s.provedor, s.filtros, [], mudou, "config");
+      if (cfg.children.length) { body.appendChild(el("div", "small fw-bold mb-1", "Configurações de exibição")); body.appendChild(cfg); }
+      var flt = formFiltros(s.provedor, s.filtros, [], mudou, "filtro");
+      if (flt.children.length) { body.appendChild(el("div", "small fw-bold mt-3 mb-1", "Filtros dos dados")); body.appendChild(flt); }
       card.appendChild(body); d.appendChild(card);
     }
   }
@@ -488,11 +498,15 @@
       });
       sel.addEventListener("change", function () { if (sel.value) it.params = { ref: sel.value }; else delete it.params; sujar(); atualizarPrevia(); });
     }
-    var prov = it.card_id.split(".")[0], campos = (D.campos[prov] || []).filter(function (c) { return c.nome !== "cards" && c.nome !== "layout"; });
-    if (campos.length) {
-      var det = el("details", "mb-2"); det.open = it.card_id === "kpi.situacao" || it.card_id === "kpi.graficos"; det.appendChild(el("summary", "small fw-bold", "Filtros do módulo"));
-      it.filtros = it.filtros || {};
-      var fm = formFiltros(prov, it.filtros, ["cards", "layout"], function () { sujar(); delete instCache[it.card_id]; depois(atualizarPrevia); }); fm.className = "mt-2"; det.appendChild(fm); b.appendChild(det);
+    var prov = it.card_id.split(".")[0]; it.filtros = it.filtros || {};
+    var aoMudar = function () { sujar(); delete instCache[it.card_id]; depois(atualizarPrevia); };
+    var cfg = formFiltros(prov, it.filtros, ["cards", "layout"], aoMudar, "config", it.card_id);
+    if (cfg.children.length) {   // como o card é mostrado: período, tipo de gráfico, o que exibir
+      var dc = el("details", "mb-2"); dc.open = true; dc.appendChild(el("summary", "small fw-bold", "Configurações do card")); cfg.className = "mt-2"; dc.appendChild(cfg); b.appendChild(dc);
+    }
+    var flt = formFiltros(prov, it.filtros, ["cards", "layout"], aoMudar, "filtro", it.card_id);
+    if (flt.children.length) {   // quais dados entram: indicadores, setores...
+      var df = el("details", "mb-2"); df.appendChild(el("summary", "small fw-bold", "Filtros dos dados")); flt.className = "mt-2"; df.appendChild(flt); b.appendChild(df);
     }
     if (modo(s) === "livre") {
       var gp = el("div", "mb-2"); gp.appendChild(el("div", "small fw-bold mb-1", "Posição e tamanho (% do slide)"));

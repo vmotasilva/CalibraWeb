@@ -21,9 +21,12 @@ MAX_JSON = 400_000  # bytes aceitos em uma gravação
 
 def _campos_json(user) -> dict:
     """Campos de filtro de cada módulo (para montar os formulários do editor)."""
-    return {k: [{"nome": c["nome"], "rotulo": c["rotulo"], "tipo": c["tipo"], "ajuda": c.get("ajuda", ""),
-                 "opcoes": [[str(v), r] for v, r in c["opcoes"]]} for c in providers.campos_filtro(k, user)]
-            for k in providers.ROTULOS_PROVEDORES}
+    def um(k, c):
+        cards_cfg = providers.CAMPOS_CONFIG.get(k, {}).get(c["nome"])
+        return {"nome": c["nome"], "rotulo": c["rotulo"], "tipo": c["tipo"], "ajuda": c.get("ajuda", ""),
+                "opcoes": [[str(v), r] for v, r in c["opcoes"]], "config": cards_cfg is not None, "cards": cards_cfg or []}
+
+    return {k: [um(k, c) for c in providers.campos_filtro(k, user)] for k in providers.ROTULOS_PROVEDORES}
 
 
 def _modelo_json(m: ModeloApresentacao) -> dict:
