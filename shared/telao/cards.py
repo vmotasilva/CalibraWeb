@@ -38,6 +38,7 @@ CARDS = {
     "kpi.ocorrencias": ("ocorrencias", "cards", "indicador"),
     "kpi.situacao": ("resumo", "tiles", None),
     "kpi.graficos": ("graficos", "chart", "indicador"),
+    "kpi.motivos": ("listas", "bars", "indicador"),
 
     "auditoria.ocorrencias": ("ocorrencias", "cards", None),
     "auditoria.conformidade": ("graficos", "bars", None),

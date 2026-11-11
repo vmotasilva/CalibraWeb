@@ -100,6 +100,7 @@ def _slides_do_modulo(user, provedor, filtros, resumo, embutidas, memo):
     base = {k: v for k, v in (filtros or {}).items() if k not in ("cards", "layout")}
     if provedor == "kpi":  # card escolhido à mão aparece sempre (o padrão do módulo é só os indicadores fora da meta)
         base.setdefault("graficos", "todos")
+        base.setdefault("_motivos", True)
     chave = (provedor, json.dumps(base, sort_keys=True, default=str))
     if chave not in memo:  # um módulo é calculado uma vez, mesmo com vários cards dele no slide
         memo[chave] = providers._slides_provedor(user, provedor, base, resumo, embutidas)

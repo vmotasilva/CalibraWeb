@@ -280,7 +280,7 @@ def slides_kpi(user, resumo=False, filtros=None):
     graficos = f.get("graficos") or "fora"
     meses = int(f["meses"]) if str(f.get("meses") or "").isdigit() else 12
     dias = int(f["dias"]) if str(f.get("dias") or "").isdigit() else 0
-    qs = Indicador.objects.filter(ativo=True).prefetch_related("medicoes", "setores")
+    qs = Indicador.objects.filter(ativo=True).prefetch_related("medicoes", "setores", "motivos")
     if ids:
         qs = qs.filter(pk__in=ids)
 
@@ -310,16 +310,18 @@ def slides_kpi(user, resumo=False, filtros=None):
     ok = sum(1 for l in linhas if l[5] is True)
     fora = sum(1 for l in linhas if l[5] is False)
     escopo = " + ".join(sorted(setores)) if setores else ""
-    slides = [_slide("kpi", "tiles", f"Indicadores{' — ' + escopo if escopo else ' — situação geral'}",
-                     "Último mês lançado de cada indicador", "bi-speedometer2", itens=[
-        {"rotulo": "Na meta", "valor": ok, "tom": "ok"},
-        {"rotulo": "Fora da meta", "valor": fora, "tom": "critico" if fora else "ok"},
-        {"rotulo": "Sem dado", "valor": len(linhas) - ok - fora, "tom": "neutro"},
-    ] + [{
+    # situação geral (cada contador pode ser ocultado) e, separados por um traço, os indicadores
+    situacao = [("ocultar_na_meta", {"rotulo": "Na meta", "valor": ok, "tom": "ok"}),
+                ("ocultar_fora", {"rotulo": "Fora da meta", "valor": fora, "tom": "critico" if fora else "ok"}),
+                ("ocultar_sem_dado", {"rotulo": "Sem dado", "valor": len(linhas) - ok - fora, "tom": "neutro"})]
+    itens_situacao = [{**i, "grupo": "situacao"} for chave, i in situacao if not f.get(chave)]
+    itens_indicadores = [{
         "rotulo": rotulo, "valor": f"{_fmt_num(ult.valor, 2)}{ind.unidade}" if ult else "—",
-        "tom": "neutro" if a is None else "ok" if a else "critico",
+        "tom": "neutro" if a is None else "ok" if a else "critico", "grupo": "indicador",
         "nota": f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%d/%m/%Y}" if ult and ult.granularidade != "mensal" else f"meta {_fmt_num(meta, 2)}{ind.unidade} · {ult.periodo:%m/%Y}" if ult else "sem lançamento",
-    } for rotulo, ind, _s, ult, meta, a in linhas[:18]])]
+    } for rotulo, ind, _s, ult, meta, a in linhas[:18]]
+    slides = [_slide("kpi", "tiles", f"Indicadores{' — ' + escopo if escopo else ' — situação geral'}",
+                     "Último mês lançado de cada indicador", "bi-speedometer2", itens=itens_situacao + itens_indicadores)]
 
     # ocorrências (cards de causa/análise) de cada indicador: entram logo depois do gráfico dele
     import re
@@ -349,9 +351,45 @@ def slides_kpi(user, resumo=False, filtros=None):
                                  valores=[float(m.valor) for m in serie], meta=float(meta), unidade=ind.unidade,
                                  atingiu=[bool(ind.atingiu(m.valor, meta)) for m in serie]))
             slides += _ocorr(rotulo, ind)
+    if f.get("_motivos") or "motivos" in (f.get("cards") or []):  # só quando o card é pedido: não muda a Apresentação Geral
+        for rotulo, ind, *_ in linhas[:8]:
+            slides += _slide_motivos(ind, rotulo, f.get("motivos_periodo"))
     for rotulo, ind, *_ in linhas:  # indicadores sem gráfico na apresentação, mas com ocorrência
         slides += _ocorr(rotulo, ind)
     return slides
+
+
+_PERIODOS_MOTIVOS = {"dia": "Último dia lançado", "semana": "Última semana lançada", "mes": "Último mês lançado",
+                     "30": "Últimos 30 dias", "60": "Últimos 60 dias", "90": "Últimos 90 dias"}
+
+
+def _slide_motivos(ind, rotulo, periodo):
+    """Top principais motivos de um indicador (a mesma tabela do Painel de Indicadores), como barras."""
+    periodo = periodo if periodo in _PERIODOS_MOTIVOS else "90"
+    todos = list(ind.motivos.all())  # visão geral: motivos de todos os setores
+    gran = {"dia": "diaria", "semana": "semanal", "mes": "mensal"}.get(periodo, "diaria")
+    do_gran = [m for m in todos if m.granularidade == gran]
+    if not do_gran:
+        return []
+    ultimo = max(m.data for m in do_gran)
+    itens = [m for m in do_gran if m.data == ultimo] if periodo in ("dia", "semana", "mes") \
+        else [m for m in do_gran if m.data >= ultimo - timedelta(days=int(periodo) - 1)]
+    soma_por = {}
+    for m in itens:
+        a = soma_por.setdefault(m.descricao.strip().lower(), [m.descricao.strip(), 0])
+        a[1] += m.quantidade
+    top = sorted(soma_por.values(), key=lambda a: a[1], reverse=True)[:10]
+    total = sum(a[1] for a in soma_por.values())
+    if not top or not total:
+        return []
+    maior = top[0][1]
+
+    def qtd(v):
+        return _fmt_num(v, 0 if v == int(v) else 2)
+
+    return [_slide("kpi", "bars", rotulo, f"Top principais motivos · {_PERIODOS_MOTIVOS[periodo]}", "bi-list-ol", itens=[{
+        "rotulo": f"{n}. {nome}", "pct": float(v / maior * 100), "tom": "neutro", "txt": f"{qtd(v)} · {_fmt_num(v / total * 100, 0)}%",
+    } for n, (nome, v) in enumerate(top, 1)])]
 
 
 # ---------------------------------------------------------------------------
@@ -936,6 +974,7 @@ PROVEDOR_CARDS = {
     "kpi": [
         ("situacao", "Situação dos indicadores (na meta / fora)", lambda s: s["kind"] == "tiles"),
         ("graficos", "Gráficos de evolução com rótulos", lambda s: s["kind"] == "chart"),
+        ("motivos", "Top principais motivos (por indicador)", lambda s: s["kind"] == "bars"),
     ],
     "auditoria": [
         ("conformidade", "Conformidade do último ciclo (barras)", lambda s: s["kind"] == "bars"),
@@ -1028,7 +1067,13 @@ FILTROS = {
         dict(nome="indicadores", rotulo="Indicadores", tipo="multi", opcoes=_opts_kpi_indicadores, ajuda="Vazio = todos."),
         dict(nome="setores", rotulo="Setores (indicador de quebra)", tipo="multi", opcoes=_opts_kpi_setores,
              ajuda="Mostra a meta e as medições do setor, em vez do geral. Ex.: Montagem, Surfaçagem, HMC."),
+        dict(nome="ocultar_na_meta", rotulo="Ocultar “Na meta” na situação geral", tipo="bool"),
+        dict(nome="ocultar_fora", rotulo="Ocultar “Fora da meta” na situação geral", tipo="bool"),
+        dict(nome="ocultar_sem_dado", rotulo="Ocultar “Sem dado” na situação geral", tipo="bool"),
         dict(nome="apenas_fora", rotulo="Somente indicadores fora da meta", tipo="bool"),
+        dict(nome="motivos_periodo", rotulo="Período do Top principais motivos", tipo="select",
+             opcoes=lambda u: list(_PERIODOS_MOTIVOS.items()),
+             ajuda="Padrão: últimos 90 dias (acumulado). Usa os motivos lançados no Painel de Indicadores."),
         dict(nome="graficos", rotulo="Gráficos de evolução", tipo="select",
              opcoes=lambda u: [("fora", "Só dos fora da meta"), ("todos", "De todos"), ("nenhum", "Nenhum")]),
         dict(nome="dias", rotulo="Últimos dias (medições diárias)", tipo="select",

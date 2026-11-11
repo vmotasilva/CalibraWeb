@@ -8,7 +8,10 @@ window.TelaoCards = (function () {
   var desenho = {
     tiles: function (s) {
       var g = el("div", "tiles" + (s.itens.length > 8 ? " compacto" : ""));
+      var anterior = null;
       s.itens.forEach(function (i) {
+        if (anterior && i.grupo && i.grupo !== anterior) g.appendChild(el("div", "tsep"));   // quebra entre a situação geral e os indicadores
+        if (i.grupo) anterior = i.grupo;
         var t = el("div", "tile " + tom(i.tom));
         t.appendChild(el("div", "v", i.valor)); t.appendChild(el("div", "r", i.rotulo));
         if (i.nota) t.appendChild(el("div", "n", i.nota));

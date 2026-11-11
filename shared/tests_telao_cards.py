@@ -63,3 +63,49 @@ class CardIdNosSlidesTests(TestCase):
                 if s["card_id"]:
                     with self.subTest(card=s["card_id"], titulo=s["titulo"]):
                         self.assertEqual(cards.CARDS[s["card_id"]][1], s["kind"])
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class KpiSituacaoEMotivosTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        from kpi.models import Motivo
+
+        self.admin = get_user_model().objects.create_user("adm_kpi_cards", password="x", is_superuser=True, is_staff=True)
+        self.ind = Indicador.objects.create(nome="Quebras", meta=5, sentido="menor", unidade="%")
+        Medicao.objects.create(indicador=self.ind, periodo=date(2026, 1, 31), valor=8, granularidade="mensal")
+        for dia, desc, q in ((1, "Risco de garra", 9), (1, "Laser trincado", 3), (2, "risco de garra", 2), (2, "Batida", 1)):
+            Motivo.objects.create(indicador=self.ind, granularidade="diaria", data=date(2026, 3, dia), descricao=desc, quantidade=q)
+
+    def _tiles(self, filtros):
+        return [s for s in providers.slides_kpi(self.admin, filtros=filtros) if s["kind"] == "tiles"][0]["itens"]
+
+    def test_tiles_separam_situacao_geral_dos_indicadores(self):
+        itens = self._tiles({})
+        self.assertEqual([i["grupo"] for i in itens], ["situacao"] * 3 + ["indicador"])
+        self.assertEqual([i["rotulo"] for i in itens][:3], ["Na meta", "Fora da meta", "Sem dado"])
+
+    def test_cada_item_da_situacao_geral_pode_ser_ocultado(self):
+        self.assertEqual([i["rotulo"] for i in self._tiles({"ocultar_na_meta": True, "ocultar_sem_dado": True})], ["Fora da meta", "Quebras"])
+        todos = self._tiles({"ocultar_na_meta": True, "ocultar_fora": True, "ocultar_sem_dado": True})
+        self.assertEqual([i["rotulo"] for i in todos], ["Quebras"])
+
+    def test_card_de_motivos_so_aparece_quando_pedido(self):
+        self.assertFalse([s for s in providers.slides_kpi(self.admin, filtros={}) if s["kind"] == "bars"])
+        s = [s for s in providers._slides_provedor(self.admin, "kpi", {"cards": ["motivos"]}, False, [])][0]
+        self.assertEqual((s["card_id"], s["kind"], s["titulo"]), ("kpi.motivos", "bars", "Quebras"))
+        self.assertEqual([i["rotulo"] for i in s["itens"]], ["1. risco de garra", "2. Laser trincado", "3. Batida"])
+        self.assertEqual(s["itens"][0]["txt"], "11 · 73%")  # soma de "Risco de garra" nos dois dias / total de 15
+        self.assertEqual(s["itens"][0]["pct"], 100)  # barra proporcional ao maior
+
+    def test_periodo_dos_motivos(self):
+        s = providers._slides_provedor(self.admin, "kpi", {"cards": ["motivos"], "motivos_periodo": "dia"}, False, [])[0]
+        self.assertEqual([i["rotulo"] for i in s["itens"]], ["1. risco de garra", "2. Batida"])  # só o último dia lançado
+
+    def test_card_de_motivos_no_slide_manual(self):
+        from shared.telao import layout
+
+        item = layout.limpar_item({"card_id": "kpi.motivos", "params": {"ref": "Quebras"}}, "grade", self.admin)
+        conteudo = layout.resolver_item(self.admin, item, False, [], {})
+        self.assertEqual(conteudo["kind"], "bars")
+        self.assertEqual(layout.instancias(self.admin, "kpi.motivos"), ["Quebras"])

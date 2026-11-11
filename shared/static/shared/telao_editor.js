@@ -490,7 +490,7 @@
     }
     var prov = it.card_id.split(".")[0], campos = (D.campos[prov] || []).filter(function (c) { return c.nome !== "cards" && c.nome !== "layout"; });
     if (campos.length) {
-      var det = el("details", "mb-2"); det.appendChild(el("summary", "small fw-bold", "Filtros do módulo"));
+      var det = el("details", "mb-2"); det.open = it.card_id === "kpi.situacao"; det.appendChild(el("summary", "small fw-bold", "Filtros do módulo"));
       it.filtros = it.filtros || {};
       var fm = formFiltros(prov, it.filtros, ["cards", "layout"], function () { sujar(); delete instCache[it.card_id]; depois(atualizarPrevia); }); fm.className = "mt-2"; det.appendChild(fm); b.appendChild(det);
     }
