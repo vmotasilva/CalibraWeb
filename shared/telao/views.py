@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
-from shared.models import ModeloApresentacao
+from shared.models import FavoritoApresentacao, ModeloApresentacao
 
 from . import providers
 
@@ -118,15 +118,29 @@ def _ler_modelo(request, modelo):
 @login_required
 def modelos_lista(request):
     modelos = list(providers.modelos_visiveis(request.user).select_related("criado_por"))
+    favoritos = set(FavoritoApresentacao.objects.filter(usuario=request.user).values_list("modelo_id", flat=True))
     for m in modelos:
+        m.favorito = m.pk in favoritos
         m.pode_editar = m.editavel_por(request.user)
         m.rotulos = [providers.ROTULOS_PROVEDORES[i["provedor"]][0] if i.get("provedor") in providers.ROTULOS_PROVEDORES
                      else f"Assunto: {i.get('titulo') or '—'}" for i in m.itens
                      if isinstance(i, dict) and (i.get("provedor") in providers.ROTULOS_PROVEDORES or i.get("tipo") == "assunto")]
     return render(request, "shared/telao_modelos.html", {
         "modelos": modelos,
-        "padroes": [(k, v[0], v[1], [providers.ROTULOS_PROVEDORES[p][0] for p in v[2]]) for k, v in providers.PLAYLISTS.items()],
+        "geral_rotulos": [providers.ROTULOS_PROVEDORES[p][0] for p in providers.PLAYLISTS["geral"][2]],
     })
+
+
+@login_required
+@require_POST
+def modelo_favoritar(request, pk):
+    """Liga/desliga a apresentação no acesso rápido do menu do usuário."""
+    modelo = get_object_or_404(providers.modelos_visiveis(request.user), pk=pk)
+    fav, criado = FavoritoApresentacao.objects.get_or_create(usuario=request.user, modelo=modelo)
+    if not criado:
+        fav.delete()
+    messages.success(request, f"“{modelo.nome}” {'adicionada ao' if criado else 'removida do'} acesso rápido.")
+    return redirect("telao_modelos")
 
 
 @login_required

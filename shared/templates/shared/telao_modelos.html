@@ -30,6 +30,9 @@
         </div>
         <div class="card-footer bg-transparent d-flex flex-wrap gap-2">
           <a href="{% url 'telao' %}?p={{ m.chave }}#cheia" class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Apresentar</a>
+          <form method="post" action="{% url 'telao_modelo_favoritar' m.pk %}">
+            {% csrf_token %}<button class="btn btn-sm {% if m.favorito %}btn-warning{% else %}btn-outline-warning{% endif %}" title="{% if m.favorito %}Remover do acesso rápido{% else %}Adicionar ao acesso rápido{% endif %}"><i class="bi {% if m.favorito %}bi-star-fill{% else %}bi-star{% endif %}"></i></button>
+          </form>
           <a href="{% url 'telao_modelo_novo' %}?base={{ m.chave }}" class="btn btn-sm btn-outline-secondary" title="Criar uma cópia"><i class="bi bi-files"></i></a>
           {% if m.pode_editar %}
           <a href="{% url 'telao_modelo_editar' m.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
@@ -43,25 +46,23 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="alert alert-light border">Você ainda não criou nenhum modelo. Use <strong>Novo modelo</strong> ou copie um dos padrões abaixo.</div>
+  <div class="alert alert-light border">Você ainda não criou nenhum modelo. Use <strong>Novo modelo</strong> ou copie a Apresentação Geral abaixo.</div>
   {% endif %}
 
-  <h6 class="text-uppercase text-muted mt-4">Modelos padrão</h6>
+  <h6 class="text-uppercase text-muted mt-4">Disponível para todos</h6>
   <div class="row g-3">
-    {% for k, nome, icone, rotulos in padroes %}
     <div class="col-md-6 col-xl-4">
       <div class="card h-100">
         <div class="card-body">
-          <h6 class="mb-2"><i class="bi {{ icone }} me-2 text-secondary"></i>{{ nome }}</h6>
-          <div class="small">{% for r in rotulos %}<span class="badge text-bg-light border me-1">{{ r }}</span>{% endfor %}</div>
+          <h6 class="mb-2"><i class="bi bi-grid-1x2 me-2 text-secondary"></i>Apresentação Geral</h6>
+          <div class="small">{% for r in geral_rotulos %}<span class="badge text-bg-light border me-1">{{ r }}</span>{% endfor %}</div>
         </div>
         <div class="card-footer bg-transparent d-flex gap-2">
-          <a href="{% url 'telao' %}?p={{ k }}#cheia" class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Apresentar</a>
-          <a href="{% url 'telao_modelo_novo' %}?base={{ k }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-files"></i> Copiar e personalizar</a>
+          <a href="{% url 'telao' %}?p=geral#cheia" class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Apresentar</a>
+          <a href="{% url 'telao_modelo_novo' %}?base=geral" class="btn btn-sm btn-outline-secondary"><i class="bi bi-files"></i> Copiar e personalizar</a>
         </div>
       </div>
     </div>
-    {% endfor %}
   </div>
 </div>
 {% endblock %}

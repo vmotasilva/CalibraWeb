@@ -30,6 +30,7 @@ urlpatterns = [
     path('telao/modelos/novo/', telao_views.modelo_form, name='telao_modelo_novo'),
     path('telao/modelos/<int:pk>/', telao_views.modelo_form, name='telao_modelo_editar'),
     path('telao/modelos/<int:pk>/excluir/', telao_views.modelo_excluir, name='telao_modelo_excluir'),
+    path('telao/modelos/<int:pk>/favoritar/', telao_views.modelo_favoritar, name='telao_modelo_favoritar'),
     path('changelog/', views.changelog_view, name='changelog'),
     # path('', views.dashboard_view, name='dashboard'),
     # path('health/', views.health_check, name='health_check'),

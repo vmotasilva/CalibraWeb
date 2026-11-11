@@ -904,19 +904,10 @@ PROVEDORES: dict[str, Callable] = {
     "treinamentos": slides_treinamentos,
 }
 
-# Playlists (modelos de apresentação): nome -> provedores em ordem de rotação.
+# Única playlist fixa no código (disponível para todos); as demais são modelos criados pelos usuários.
 PLAYLISTS = {
-    "geral": ("Geral", "bi-grid-1x2",
+    "geral": ("Apresentação Geral", "bi-grid-1x2",
               ("ocorrencias", "kpi", "auditoria", "metrologia", "pcp", "laboratorio", "treinamentos")),
-    "ocorrencias": ("Ocorrências", "bi-exclamation-triangle", ("ocorrencias",)),
-    "kpi": ("Indicadores (KPI)", "bi-speedometer2", ("kpi",)),
-    "auditoria": ("Auditorias", "bi-clipboard-check", ("auditoria",)),
-    "qualidade": ("Qualidade", "bi-patch-check", ("auditoria", "kpi", "metrologia", "treinamentos")),
-    "producao": ("Produção", "bi-gear-wide-connected", ("pcp", "laboratorio")),
-    "metrologia": ("Metrologia", "bi-tools", ("metrologia",)),
-    "pcp": ("PCP", "bi-clipboard-data", ("pcp",)),
-    "laboratorio": ("Laboratório", "bi-droplet-half", ("laboratorio",)),
-    "treinamentos": ("Treinamentos", "bi-mortarboard", ("treinamentos",)),
 }
 PLAYLIST_PADRAO = "geral"
 
@@ -1173,6 +1164,7 @@ def _marcar_cards(provedor, slides):
     regras = PROVEDOR_CARDS.get(provedor, [])
     for s in slides:
         s["card"] = next((cid for cid, _r, pred in regras if pred(s)), "")
+        s["card_id"] = f"{provedor}.{s['card']}" if s["card"] else ""  # id estável do catálogo (shared.telao.cards)
 
 
 def montar_playlist(user, playlist: str, resumo: bool = False, fresco: bool = False) -> list[dict]:

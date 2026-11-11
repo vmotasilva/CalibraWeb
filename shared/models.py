@@ -111,3 +111,16 @@ class ModeloApresentacao(models.Model):
     def editavel_por(self, user) -> bool:
         return bool(getattr(user, "is_authenticated", False)
                     and (self.criado_por_id == user.pk or user.is_staff or user.is_superuser))
+
+
+class FavoritoApresentacao(models.Model):
+    """Apresentação marcada pelo usuário para o acesso rápido do menu (chave "m<id>" de um ModeloApresentacao)."""
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    modelo = models.ForeignKey(ModeloApresentacao, on_delete=models.CASCADE, related_name="favoritos")
+    criado_em = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = [("usuario", "modelo")]
+        ordering = ["criado_em", "id"]
+        verbose_name = "Favorito de apresentação"
+        verbose_name_plural = "Favoritos de apresentação"

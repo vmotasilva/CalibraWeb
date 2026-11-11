@@ -101,12 +101,12 @@ class TelaoTests(TestCase):
         self.assertEqual(self.client.get(reverse("telao") + "?p=xyz").status_code, 200)
 
     def test_provedor_com_falha_nao_derruba(self):
-        original = providers.PROVEDORES["kpi"]
-        providers.PROVEDORES["kpi"] = lambda u, resumo=False: 1 / 0
+        original = providers.PROVEDORES["ocorrencias"]
+        providers.PROVEDORES["ocorrencias"] = lambda u, resumo=False: 1 / 0
         try:
-            slides = providers.montar_playlist(self.admin, "kpi")
+            slides = providers.montar_playlist(self.admin, "geral")
         finally:
-            providers.PROVEDORES["kpi"] = original
+            providers.PROVEDORES["ocorrencias"] = original
         self.assertEqual(slides[0]["kind"], "vazio")
 
 
