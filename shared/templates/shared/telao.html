@@ -36,7 +36,7 @@ select option { color:#0f172a; }
 /* Cards adaptáveis: cada card vive num container (.cx) e todas as medidas internas são em em,
    com a fonte base calculada a partir do tamanho do próprio container — serve de tela cheia a uma célula pequena. */
 .cx { container-type:size; flex:1; min-height:0; min-width:0; overflow:hidden; }
-.cxi { height:100%; display:flex; flex-direction:column; font-size:clamp(10px, calc(7px + .8cqw + .4cqh), 30px); }
+.cxi { height:100%; display:flex; flex-direction:column; font-size:clamp(10px, min(calc(7px + .8cqw + .4cqh), 14cqh), 30px); }
 
 .tiles { display:grid; gap:.9em; grid-template-columns:repeat(auto-fit,minmax(min(10em,100%),1fr)); align-content:start; }
 .tile { background:var(--card); border:1px solid var(--linha); border-radius:.7em; padding:.8em 1.1em; border-left:.3em solid var(--neutro); }
@@ -75,6 +75,9 @@ select option { color:#0f172a; }
 .painel .ph p { margin:0; color:var(--mut); font-size:clamp(.75rem,1vw,1.05rem); }
 .painel .bars { justify-content:flex-start; }
 .grafico { flex:1; min-height:0; background:var(--card); border:1px solid var(--linha); border-radius:.7em; padding:.6em .8em; position:relative; }
+.grade-slide { position:relative; flex:1; min-height:0; }
+.gi { position:absolute; padding:.8vh .6vw; }
+.gi .painel { height:100%; }
 .vazio { margin:auto; text-align:center; color:var(--mut); font-size:2rem; }
 
 .ctrl { position:fixed; bottom:3.2vh; right:2vw; z-index:20; display:flex; gap:8px; transition:opacity .3s; }
@@ -208,12 +211,18 @@ select option { color:#0f172a; }
     },
     pagina: function (s) {
       var g = el("div", "pagina n" + s.paineis.length);
-      s.paineis.forEach(function (p) {
-        var q = el("section", "painel"), h = el("div", "ph"), t = el("div");
-        h.appendChild(el("i", "bi " + (p.icone || "bi-display"))); t.appendChild(el("h2", null, p.titulo));
-        if (p.subtitulo) t.appendChild(el("p", null, p.subtitulo));
-        h.appendChild(t); q.appendChild(h);
-        q.appendChild(card(p)); g.appendChild(q);
+      s.paineis.forEach(function (p) { g.appendChild(painel(p, true)); });
+      return g;
+    },
+    // Vários cards posicionados: na grade a posição é em células (x/colunas...), na livre já é em % do slide.
+    layout: function (s) {
+      var L = s.layout || {}, cols = L.colunas || 12, rows = L.linhas || 8, livre = L.modo === "livre";
+      var g = el("div", "grade-slide");
+      s.itens.forEach(function (i) {
+        var p = i.pos || {}, caixa = el("div", "gi");
+        caixa.style.left = (livre ? p.x : p.x / cols * 100) + "%"; caixa.style.top = (livre ? p.y : p.y / rows * 100) + "%";
+        caixa.style.width = (livre ? p.w : p.w / cols * 100) + "%"; caixa.style.height = (livre ? p.h : p.h / rows * 100) + "%";
+        caixa.appendChild(painel(i.conteudo, !i.visual || i.visual.titulo !== false)); g.appendChild(caixa);
       });
       return g;
     },
@@ -221,6 +230,18 @@ select option { color:#0f172a; }
   };
 
   // Um card = o desenho da sua forma (tiles/cards/bars/chart) dentro de um container que dá a escala (fonte base) a todo o conteúdo.
+  function painel(p, comTitulo) {
+    var q = el("section", "painel");
+    if (comTitulo) {
+      var h = el("div", "ph"), t = el("div");
+      h.appendChild(el("i", "bi " + (p.icone || "bi-display"))); t.appendChild(el("h2", null, p.titulo));
+      if (p.subtitulo) t.appendChild(el("p", null, p.subtitulo));
+      h.appendChild(t); q.appendChild(h);
+    }
+    q.appendChild(card(p));
+    return q;
+  }
+
   function card(s) {
     var cx = el("div", "cx"), cxi = el("div", "cxi");
     cxi.appendChild((desenho[s.kind] || desenho.vazio)(s)); cx.appendChild(cxi);
@@ -231,7 +252,7 @@ select option { color:#0f172a; }
     charts.forEach(function (c) { c.destroy(); }); charts = [];
     $("cIcone").className = "bi ic " + (s.icone || "bi-display");
     $("cTitulo").textContent = s.titulo; $("cSub").textContent = s.kind === "vazio" ? "" : (s.subtitulo || "");
-    var sl = el("div", "slide"); sl.appendChild(s.kind === "pagina" || s.kind === "vazio" ? (desenho[s.kind])(s) : card(s));
+    var sl = el("div", "slide"); sl.appendChild(s.kind === "pagina" || s.kind === "layout" || s.kind === "vazio" ? (desenho[s.kind])(s) : card(s));
     var corpo = $("corpo"); corpo.innerHTML = ""; corpo.appendChild(sl);
   }
   function sig(s) { var c = Object.assign({}, s); delete c.n; return JSON.stringify(c); }

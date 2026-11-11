@@ -81,6 +81,8 @@ class ModeloApresentacao(models.Model):
     descricao = models.CharField("Descrição", max_length=200, blank=True)
     icone = models.CharField("Ícone", max_length=40, default="bi-display", help_text="Classe do Bootstrap Icons.")
     itens = models.JSONField("Conteúdo", default=list, blank=True)
+    slides = models.JSONField("Slides", default=list, blank=True,
+                              help_text="Formato com slides automáticos e manuais (ver shared.telao.layout). Se preenchido, vale no lugar de `itens`.")
     duracao_padrao = models.PositiveSmallIntegerField("Segundos por slide", default=15)
     resumo = models.BooleanField("Modo resumido", default=False,
                                  help_text="Oculta descrições e nomes de responsáveis (para telas em locais públicos).")

@@ -1086,8 +1086,11 @@ for _k in ("kpi", "auditoria", "metrologia", "pcp", "laboratorio"):
 
 def campos_filtro(provedor: str, user) -> list[dict]:
     """Campos de filtro do provedor para o editor: primeiro a seleção de cards, depois os filtros do módulo."""
+    from . import layout
+
     campos = [dict(nome="cards", rotulo="Cards que entram na apresentação", tipo="multi",
-                   opcoes=lambda u, p=provedor: [(c[0], c[1]) for c in PROVEDOR_CARDS.get(p, [])], ajuda="Vazio = todos os cards.")]
+                   opcoes=lambda u, p=provedor: [(c[0], c[1]) for c in PROVEDOR_CARDS.get(p, [])], ajuda="Vazio = todos os cards."),
+              dict(nome="layout", rotulo="Disposição dos cards nos slides", tipo="select", opcoes=lambda u: layout.OPCOES_LAYOUT)]
     campos += FILTROS.get(provedor, [])
     saida = []
     for c in campos:
@@ -1139,7 +1142,9 @@ def obter_playlist(user, chave: str) -> dict:
         m = modelos_visiveis(user).filter(pk=int(chave[1:])).first()
         if m is not None:
             itens = []
-            for i in (m.itens or []):
+            if m.slides:  # modelo no formato de slides: tem precedência sobre a lista antiga de conteúdos
+                itens = [(CHAVE_SLIDE, c.get("duracao"), c) for c in m.slides if isinstance(c, dict)]
+            for i in ([] if m.slides else (m.itens or [])):
                 if not isinstance(i, dict):
                     continue
                 if i.get("tipo") == "assunto":  # página montada à mão, com itens de um ou mais módulos
@@ -1156,6 +1161,7 @@ def obter_playlist(user, chave: str) -> dict:
 
 
 CHAVE_ASSUNTO = "@assunto"
+CHAVE_SLIDE = "@slide"  # slide da configuração `ModeloApresentacao.slides` (automático ou manual; ver shared.telao.layout)
 MAX_PAINEIS = 4
 ORIGENS_EMBUTIDAS = ("kpi", "auditoria", "metrologia", "pcp", "laboratorio")
 
@@ -1191,6 +1197,10 @@ def _slides_provedor(user, chave, filtros, resumo, embutidas):
     escolhidos = set(filtros.get("cards") or [])
     if escolhidos:
         novos = [s for s in novos if s["card"] in escolhidos]
+    from . import layout
+
+    if filtros.get("layout") in layout.LAYOUTS or filtros.get("layout") == layout.AUTO:  # vários cards por slide, na disposição escolhida
+        novos = layout.compor(novos, chave, filtros["layout"])
     return novos
 
 
@@ -1201,7 +1211,8 @@ def _slide_assunto(user, cfg, resumo, embutidas):
     """"One page report": uma página com os itens escolhidos (de um ou mais módulos), cada um num painel."""
     paineis = []
     for b in cfg.get("blocos") or []:
-        for sl in _slides_provedor(user, b.get("provedor"), b.get("filtros") or {}, resumo, embutidas):
+        for sl in _slides_provedor(user, b.get("provedor"), {k: v for k, v in (b.get("filtros") or {}).items() if k != "layout"},
+                                   resumo, embutidas):
             lim = _LIMITE_PAINEL.get(sl["kind"])
             if lim and len(sl.get("itens") or []) > lim:
                 sl = {**sl, "itens": sl["itens"][:lim]}
@@ -1217,16 +1228,23 @@ def _montar_playlist(user, playlist: str, resumo: bool = False) -> list[dict]:
     definicao = obter_playlist(user, playlist)
     resumo = resumo or definicao["resumo"]
     slides: list[dict] = []
-    pares = []  # (provedor, filtros) de todos os conteúdos, inclusive os de dentro dos assuntos
+    from . import layout
+
+    memo: dict = {}  # cálculos dos módulos reaproveitados entre os cards dos slides manuais
+    pares = []  # (provedor, filtros) de todos os conteúdos, inclusive os de dentro dos assuntos e dos slides
     for c, _d, fl in definicao["itens"]:
-        if c == CHAVE_ASSUNTO:
+        if c == CHAVE_SLIDE:
+            pares += layout.pares_do_slide(fl)
+        elif c == CHAVE_ASSUNTO:
             pares += [(b.get("provedor"), b.get("filtros") or {}) for b in fl.get("blocos") or []]
         else:
             pares.append((c, fl))
     embutidas = [c for c, fl in pares if c in ORIGENS_EMBUTIDAS and fl.get("com_ocorrencias") != "nao"
                  and (not fl.get("cards") or "ocorrencias" in fl["cards"])]
     for chave, duracao, filtros in definicao["itens"]:
-        if chave == CHAVE_ASSUNTO:
+        if chave == CHAVE_SLIDE:
+            novos = layout.montar_slide(user, filtros, resumo, embutidas, memo)
+        elif chave == CHAVE_ASSUNTO:
             novos = _slide_assunto(user, filtros, resumo, embutidas)
         else:
             novos = _slides_provedor(user, chave, filtros, resumo, embutidas)

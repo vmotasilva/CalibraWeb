@@ -10,7 +10,7 @@ percentuais do slide (x/COLUNAS, y/LINHAS).
 from . import providers
 
 COLUNAS = 12
-LINHAS = 7
+LINHAS = 8
 
 SECOES = [
     ("resumo", "Resumo"),
