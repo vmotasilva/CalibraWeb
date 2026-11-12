@@ -111,6 +111,14 @@ def _col_barras(v):
     return int(v) if v in ("2", "3", "4") else "auto" if v == "auto" else 1
 
 
+def _texto_ocorrencia(i):
+    """Texto do card: a última ação do plano (em aberto; senão a última concluída), ou o texto da ocorrência se não houver ação."""
+    ativas = [p for p in i.plano if p.status == "ABERTA"] or [p for p in i.plano if p.status == "CONCLUIDA"]
+    if ativas and (ativas[-1].descricao or "").strip():
+        return ativas[-1].descricao.strip()
+    return (i.descricao or "").strip()
+
+
 def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, icone=None, colunas=1):
     """Slides de ocorrências de uma sessão: lista = [(item, título curto)]; cada card traz prazo, dias em aberto e comentários."""
     if not lista:
@@ -130,7 +138,8 @@ def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, ico
         if mostrar_coment:
             todos = sorted(((_quando(c["quando"]), c) for p in i.plano for c in p.comentarios), key=lambda t: t[0], reverse=True)
             coment = [{"autor": c["autor"], "quando": c["quando"], "texto": _corta(c["texto"], 170)} for _, c in todos[:2]]
-        texto = "" if resumo or (i.descricao or "").strip() in ("", titulo_item) else _corta(i.descricao, 180)
+        txt = _texto_ocorrencia(i)
+        texto = "" if resumo or txt in ("", titulo_item) else _corta(txt, 180)
         cards.append({"titulo": _corta(titulo_item, 110), "texto": texto, "tom": "critico" if i.vencida else "alerta",
                       "tags": tags, "comentarios": coment})
     sub = f"{len(lista)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "")
@@ -154,7 +163,7 @@ def _slides_por_responsavel(provedor, nome, itens, mostrar_coment, colunas=1):
     grupos = {}
     for i in itens:
         resp = ", ".join(i.responsaveis[:2]) or "Sem responsável"
-        grupos.setdefault((resp, (i.descricao or "").strip()), []).append(i)
+        grupos.setdefault((resp, _texto_ocorrencia(i)), []).append(i)
     ordem = sorted(grupos.items(), key=lambda kv: (kv[0][0] == "Sem responsável", -sum(int(i.vencida) for i in kv[1]), -len(kv[1]), kv[0][0]))
     cards = []
     por_slide = CARDS_POR_SLIDE * (3 if colunas == "auto" else colunas)
