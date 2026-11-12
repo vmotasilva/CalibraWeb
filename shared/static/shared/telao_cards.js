@@ -7,7 +7,7 @@ window.TelaoCards = (function () {
 
   // Lista de cards que não cabe na altura: tenta reduzir a fonte (até 70%) e, se ainda assim sobrar, divide em páginas
   // que se alternam dentro do card (cada página com o máximo de cards que cabe), com o indicador "pág. 1/N".
-  function encaixar(g) {
+  function encaixar(g, auto) {
     var timer = null;
     function paginas(cx, itens, k) {   // quantos cards cabem por página, em ordem
       g.style.fontSize = k + "em";
@@ -24,12 +24,22 @@ window.TelaoCards = (function () {
       }
       return pgs;
     }
+    function colunas(c) { g.classList.toggle("multi", c > 1); g.style.setProperty("--nc", c); }
     function ajustar() {
       var cx = g.closest(".cx"); if (!cx || !g.isConnected) return;
       clearInterval(timer);
       var itens = [].slice.call(g.children), old = cx.querySelector(".tpag"); if (old) old.remove();
-      var pgs = null, usado = 1;
-      [1, .85, .7].some(function (k) { pgs = paginas(cx, itens, k); usado = k; return pgs.length === 1; });
+      var pgs = null, usado = 1, nc = [1];
+      if (auto) nc = [1, 2, 3, 4];   // automático: o menor número de colunas que cabe na maior fonte; senão, o que gera menos páginas
+      var melhor = null;
+      [1, .85, .7].some(function (k) {
+        return nc.some(function (c) {
+          colunas(c); var p = paginas(cx, itens, k);
+          if (!melhor || p.length < melhor.p.length) melhor = { p: p, k: k, c: c };
+          return p.length === 1;
+        });
+      });
+      pgs = melhor.p; usado = melhor.k; colunas(melhor.c);
       g.style.fontSize = usado + "em";
       if (pgs.length <= 1) { itens.forEach(function (c) { c.style.display = ""; }); return; }
       var ind = el("div", "tpag"), atual = 0;
@@ -52,6 +62,20 @@ window.TelaoCards = (function () {
     }, 30);
   }
 
+  // Barras em colunas automáticas: o menor número de colunas (1 a 4) em que todas as linhas cabem na altura do card.
+  function barrasAuto(g, n) {
+    function ajustar() {
+      if (!g.isConnected) return;
+      for (var c = 1; c <= 4; c++) {
+        g.classList.toggle("multi", c > 1); g.style.setProperty("--nc", c); g.style.setProperty("--nl", Math.ceil(n / c));
+        if (g.scrollHeight <= g.clientHeight + 1) break;
+      }
+    }
+    setTimeout(function () {
+      ajustar(); var cx = g.closest(".cx"); if (cx && window.ResizeObserver) new ResizeObserver(ajustar).observe(cx);
+    }, 30);
+  }
+
   var desenho = {
     tiles: function (s) {
       var g = el("div", "tiles" + (s.itens.length > 8 ? " compacto" : ""));
@@ -67,7 +91,7 @@ window.TelaoCards = (function () {
       return g;
     },
     cards: function (s) {
-      var g = el("div", "tcards" + (s.colunas > 1 ? " multi" : ""));
+      var auto = s.colunas === "auto", g = el("div", "tcards" + (s.colunas > 1 ? " multi" : ""));
       if (s.colunas > 1) g.style.setProperty("--nc", s.colunas);
       s.itens.forEach(function (i) {
         var c = el("div", "tcard " + tom(i.tom)); c.appendChild(el("h3", null, i.titulo));
@@ -79,11 +103,12 @@ window.TelaoCards = (function () {
         });
         g.appendChild(c);
       });
-      encaixar(g);
+      encaixar(g, auto);
       return g;
     },
     bars: function (s) {
       var g = el("div", "bars" + (s.sem_barra ? " sem-barra" : "") + (s.texto_prioritario ? " texto-prio" : "") + (s.colunas > 1 ? " multi" : ""));
+      if (s.colunas === "auto") barrasAuto(g, s.itens.length);
       if (s.colunas > 1) { g.style.setProperty("--nc", s.colunas); g.style.setProperty("--nl", Math.ceil(s.itens.length / s.colunas)); }
       s.itens.forEach(function (i) {
         var r = el("div", "brow " + tom(i.tom)); r.appendChild(el("div", "l", i.rotulo));

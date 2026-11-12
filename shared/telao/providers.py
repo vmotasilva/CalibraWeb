@@ -102,8 +102,13 @@ def _itens_ocorrencias(user, origem, f):
 
 def _colunas_cards(f):
     """Em quantas colunas os cards de ocorrência são divididos (configuração do card; padrão 1)."""
-    v = str((f or {}).get("oc_colunas") or "")
-    return int(v) if v in ("2", "3", "4") else 1
+    return _col_barras((f or {}).get("oc_colunas"))
+
+
+def _col_barras(v):
+    """Número de colunas (2 a 4), "auto" (o player escolhe pelo tamanho do card) ou 1."""
+    v = str(v or "")
+    return int(v) if v in ("2", "3", "4") else "auto" if v == "auto" else 1
 
 
 def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, icone=None, colunas=1):
@@ -114,7 +119,7 @@ def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, ico
     lista = sorted(lista, key=lambda t: (not t[0].vencida, t[0].prazo is None, t[0].prazo or hoje, t[0].data_ordem))
     n_venc = sum(int(t[0].vencida) for t in lista)
     cards = []
-    por_slide = CARDS_POR_SLIDE * colunas
+    por_slide = CARDS_POR_SLIDE * (3 if colunas == "auto" else colunas)
     for t in lista[: por_slide * MAX_SLIDES_CARDS]:
         i, titulo_item, extra = t[0], t[1], (t[2] if len(t) > 2 else [])
         dias = max((hoje - timezone.localtime(i.data_ordem).date()).days, 0)
@@ -152,7 +157,7 @@ def _slides_por_responsavel(provedor, nome, itens, mostrar_coment, colunas=1):
         grupos.setdefault((resp, (i.descricao or "").strip()), []).append(i)
     ordem = sorted(grupos.items(), key=lambda kv: (kv[0][0] == "Sem responsável", -sum(int(i.vencida) for i in kv[1]), -len(kv[1]), kv[0][0]))
     cards = []
-    por_slide = CARDS_POR_SLIDE * colunas
+    por_slide = CARDS_POR_SLIDE * (3 if colunas == "auto" else colunas)
     for (resp, texto), lista in ordem[: por_slide * MAX_SLIDES_CARDS]:
         dias = max(max((hoje - timezone.localtime(i.data_ordem).date()).days, 0) for i in lista)
         coment = []
@@ -462,7 +467,7 @@ def _slide_motivos(ind, rotulo, f, setor_id=False):
         a = soma_por.setdefault(m.descricao.strip().lower(), [m.descricao.strip(), 0])
         a[1] += m.quantidade
     limite = int(f["motivos_qtd"]) if str(f.get("motivos_qtd") or "").isdigit() and 1 <= int(f["motivos_qtd"]) <= 40 else 10
-    colunas = int(f["motivos_colunas"]) if str(f.get("motivos_colunas") or "") in ("2", "3", "4") else 1
+    colunas = _col_barras(f.get("motivos_colunas"))
     top = sorted(soma_por.values(), key=lambda a: a[1], reverse=True)[:limite]
     total = sum(a[1] for a in soma_por.values())
     if not top or not total:
@@ -528,7 +533,7 @@ def slides_auditoria(user, resumo=False, filtros=None):
     # configuração dos cards (como nos de KPI): gráfico de evolução e tabela de conformidade
     n_ciclos = int(f["ultimos"]) if str(f.get("ultimos") or "").isdigit() and int(f["ultimos"]) > 1 else 8
     tipo_graf = "barras" if f.get("tipo_grafico") == "barras" else "linha"
-    conf_colunas = int(f["conf_colunas"]) if str(f.get("conf_colunas") or "") in ("2", "3", "4") else 1
+    conf_colunas = _col_barras(f.get("conf_colunas"))
     conf_qtd = int(f["conf_qtd"]) if str(f.get("conf_qtd") or "").isdigit() and 1 <= int(f["conf_qtd"]) <= 40 else None
     if "conformidade" in secoes:
         sem_barra, exibir = bool(f.get("conf_sem_barra")), f.get("conf_exibir")
@@ -715,7 +720,7 @@ def _slides_pcp_dados(d, dias, f, sufixo):
                              labels=[e["rotulo"] for e in evolucao], valores=[e["pct"] for e in evolucao],
                              meta=100, unidade="%"))
     qtd = int(f["barras_qtd"]) if str(f.get("barras_qtd") or "").isdigit() and 1 <= int(f["barras_qtd"]) <= 40 else None
-    colunas = int(f["barras_colunas"]) if str(f.get("barras_colunas") or "") in ("2", "3", "4") else 1
+    colunas = _col_barras(f.get("barras_colunas"))
     for titulo, lista, icone, padrao in ((f"PCP — cumprimento por frequência{sufixo}", d["frequencias"], "bi-calendar-check", None),
                                          (f"PCP — páginas com menor cumprimento{sufixo}", d["piores"], "bi-flag", 6)):
         lista = lista[:qtd or padrao]
@@ -1211,7 +1216,7 @@ FILTROS = {
         dict(nome="comentarios", rotulo="Comentários do plano de ação", tipo="select",
              opcoes=lambda u: [("sim", "Mostrar sob cada ocorrência"), ("nao", "Não mostrar")]),
         dict(nome="oc_colunas", rotulo="Ocorrências — dividir em colunas", tipo="select",
-             opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
+             opcoes=lambda u: [("auto", "Automático (ajusta ao tamanho)"), ("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
     ],
     "kpi": [
         dict(nome="indicadores", rotulo="Indicadores", tipo="multi", opcoes=_opts_kpi_indicadores, ajuda="Vazio = todos."),
@@ -1226,7 +1231,7 @@ FILTROS = {
         dict(nome="motivos_qtd", rotulo="Motivos — quantos mostrar (padrão 10)", tipo="select",
              opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 8, 10, 12, 15, 20, 30)]),
         dict(nome="motivos_colunas", rotulo="Motivos — dividir em colunas", tipo="select",
-             opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
+             opcoes=lambda u: [("auto", "Automático (ajusta ao tamanho)"), ("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
         dict(nome="motivos_sem_barra", rotulo="Motivos — ocultar a barra de preenchimento", tipo="bool"),
         dict(nome="motivos_texto", rotulo="Motivos — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
         dict(nome="serie", rotulo="Período (diário, semanal ou mensal)", tipo="select",
@@ -1259,7 +1264,7 @@ FILTROS = {
         dict(nome="conf_qtd", rotulo="Conformidade — quantas auditorias mostrar", tipo="select",
              opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 8, 10)]),
         dict(nome="conf_colunas", rotulo="Conformidade — dividir em colunas", tipo="select",
-             opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
+             opcoes=lambda u: [("auto", "Automático (ajusta ao tamanho)"), ("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
         dict(nome="conf_sem_barra", rotulo="Conformidade — ocultar a barra de preenchimento", tipo="bool"),
         dict(nome="conf_texto", rotulo="Conformidade — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
     ],
@@ -1279,7 +1284,7 @@ FILTROS = {
         dict(nome="barras_qtd", rotulo="Barras — quantas linhas mostrar", tipo="select",
              opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 8, 10, 12, 15, 20, 30)]),
         dict(nome="barras_colunas", rotulo="Barras — dividir em colunas", tipo="select",
-             opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
+             opcoes=lambda u: [("auto", "Automático (ajusta ao tamanho)"), ("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
         dict(nome="barras_sem_barra", rotulo="Barras — ocultar a barra de preenchimento", tipo="bool"),
         dict(nome="barras_texto", rotulo="Barras — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
     ],
@@ -1311,7 +1316,7 @@ _CAMPOS_OCORRENCIAS = [
     dict(nome="comentarios", rotulo="Comentários do plano de ação", tipo="select",
          opcoes=lambda u: [("sim", "Mostrar sob cada ocorrência"), ("nao", "Não mostrar")]),
     dict(nome="oc_colunas", rotulo="Ocorrências — dividir em colunas", tipo="select",
-         opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
+         opcoes=lambda u: [("auto", "Automático (ajusta ao tamanho)"), ("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
 ]
 for _k in ("kpi", "auditoria", "metrologia", "pcp", "laboratorio"):
     FILTROS[_k] = list(FILTROS.get(_k, [])) + _CAMPOS_OCORRENCIAS
