@@ -1,0 +1,36 @@
+{# Cotação simplificada: cria uma solicitação com os instrumentos marcados (.row-select) #}
+<form id="formCotarMassa" method="post" action="{% url 'metrologia:solicitacao_create' %}" class="d-none">
+    {% csrf_token %}
+    <input type="hidden" name="instrumentos_ids" id="cotarIdsInput" value="">
+</form>
+<script>
+(function () {
+    function idsSelecionados() {
+        var s = new Set();
+        document.querySelectorAll('.row-select:checked').forEach(function (cb) { s.add(cb.value); });
+        return Array.from(s);
+    }
+    function atualizarBotoesCotar() {
+        var n = idsSelecionados().length;
+        document.querySelectorAll('.btn-cotar-massa').forEach(function (b) {
+            b.disabled = (n === 0);
+            var c = b.querySelector('.cotar-count');
+            if (c) c.textContent = n > 0 ? '(' + n + ')' : '';
+        });
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.matches && e.target.matches('.row-select, #selectAll, #selectAllCheckbox')) {
+            setTimeout(atualizarBotoesCotar, 0);
+        }
+    });
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest ? e.target.closest('.btn-cotar-massa') : null;
+        if (!b || b.disabled) return;
+        var ids = idsSelecionados();
+        if (!ids.length) return;
+        document.getElementById('cotarIdsInput').value = ids.join(',');
+        document.getElementById('formCotarMassa').submit();
+    });
+    document.addEventListener('DOMContentLoaded', atualizarBotoesCotar);
+})();
+</script>

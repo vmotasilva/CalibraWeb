@@ -385,6 +385,11 @@
                 </ul>
             </div>
 
+            <!-- Botão Cotar selecionados -->
+            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm d-inline-flex align-items-center gap-1 btn-cotar-massa" disabled title="Criar cotação com os instrumentos selecionados">
+                <i class="bi bi-cash-coin"></i> <span class="d-none d-sm-inline">Cotar</span> <span class="cotar-count"></span>
+            </button>
+
             <!-- Botão Registrar Histórico em Massa -->
             <button type="button" id="btn-historico-massa" class="btn btn-success btn-sm shadow-sm d-inline-flex align-items-center gap-1 btn-historico-massa-trigger" disabled data-bs-toggle="modal" data-bs-target="#modalNovoHistoricoMassa" title="Registrar Histórico">
                 <i class="bi bi-calendar-plus"></i> <span class="d-none d-sm-inline">Registrar Histórico</span>
@@ -652,6 +657,7 @@
                 data-periodo="{{ item.periodo|default:'' }}"
                 data-resultado="{{ item.resultado_ultima_calibracao|default:'' }}"
                 data-ocorrencia="{% if item.has_active_occurrence %}COM_ABERTA{% else %}SEM_ABERTA{% endif %}"
+                        data-em-cotacao="{% if item.em_cotacao %}SIM{% else %}NAO{% endif %}"
                 data-situacao="{{ item.situacao_detalhada }}">
                 
                 <div class="card-body p-3">
@@ -704,7 +710,11 @@
 
                     <!-- Linha 4: Botões de Ação -->
                     <div class="d-flex gap-1.5">
-                        {% if not item.is_internal %}
+                        {% if item.em_cotacao %}
+                            <a href="{% url 'metrologia:solicitacao_detail' item.cotacao_id %}" class="btn btn-sm btn-warning flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;" title="Acompanhar {{ item.cotacao_numero }}">
+                                <i class="bi bi-hourglass-split me-1"></i> Em cotação
+                            </a>
+                        {% elif not item.is_internal %}
                             <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" class="btn btn-sm btn-outline-primary flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;">
                                 <i class="bi bi-cash-coin me-1"></i> Cotar
                             </a>
@@ -761,6 +771,7 @@
                         data-periodo="{{ item.periodo|default:'' }}"
                         data-resultado="{{ item.resultado_ultima_calibracao|default:'' }}"
                         data-ocorrencia="{% if item.has_active_occurrence %}COM_ABERTA{% else %}SEM_ABERTA{% endif %}"
+                        data-em-cotacao="{% if item.em_cotacao %}SIM{% else %}NAO{% endif %}"
                         data-situacao="{{ item.situacao_detalhada }}">
                         
                         <!-- CHECKBOX DE SELEÇÃO -->
@@ -906,7 +917,14 @@
                         <!-- AÇÕES RÁPIDAS -->
                         <td class="text-end pe-3 py-2.5">
                             <div class="d-inline-flex align-items-center gap-1">
-                                {% if not item.is_internal %}
+                                {% if item.em_cotacao %}
+                                    <a href="{% url 'metrologia:solicitacao_detail' item.cotacao_id %}"
+                                       class="btn btn-xs btn-warning rounded-pill px-2.5 py-1 fw-semibold"
+                                       style="font-size: 0.75rem;"
+                                       title="Acompanhar {{ item.cotacao_numero }}">
+                                        <i class="bi bi-hourglass-split me-1"></i> Em cotação
+                                    </a>
+                                {% elif not item.is_internal %}
                                     <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" 
                                        class="btn btn-xs btn-outline-primary rounded-pill px-2.5 py-1 fw-semibold" 
                                        style="font-size: 0.75rem;"
@@ -1188,6 +1206,26 @@
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="SEM_ABERTA" data-cat="ocorrencia">
                                         <label class="form-check-label small text-success fw-bold">Sem Ocorrência Aberta</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 9. EM COTAÇÃO -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">EM COTAÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="SIM" data-cat="cotacao">
+                                        <label class="form-check-label small fw-bold text-warning">Sim</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="NAO" data-cat="cotacao">
+                                        <label class="form-check-label small fw-bold">Não</label>
                                     </div>
                                 </div>
                             </div>
@@ -1687,6 +1725,7 @@
             setor: [],
             resultado: [],
             ocorrencia: [],
+            cotacao: [],
         };
 
         document.querySelectorAll('.filter-avancado-cb:checked').forEach(cb => {
@@ -1734,6 +1773,7 @@
             const periodo = row.getAttribute('data-periodo') || '';
             const resultado = row.getAttribute('data-resultado') || '';
             const ocorrencia = row.getAttribute('data-ocorrencia') || '';
+            const emCotacao = row.getAttribute('data-em-cotacao') || 'NAO';
             const situacao = row.getAttribute('data-situacao') || '';
 
             // 1. Checar Aba
@@ -1770,6 +1810,7 @@
             if (activeFilters.setor.length && !activeFilters.setor.includes(setorId)) return;
             if (activeFilters.resultado.length && !activeFilters.resultado.includes(resultado)) return;
             if (activeFilters.ocorrencia.length && !activeFilters.ocorrencia.includes(ocorrencia)) return;
+            if (activeFilters.cotacao.length && !activeFilters.cotacao.includes(emCotacao)) return;
 
             filteredIndexes.push(idx);
         });
@@ -2128,4 +2169,5 @@
     });
 </script>
 
+{% include 'metrologia/_cotar_selecionados.html' %}
 {% endblock %}

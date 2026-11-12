@@ -148,6 +148,7 @@ def modulo_metrologia_view(request):
         'alerta_90d': alerta_90d,
         'alerta_120d': alerta_120d,
         'historico_form': HistoricoCalibracaoForm(),
+        'em_cotacao_ids': set(__import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).instrumentos_em_cotacao().keys()),
     }
     return render(request, 'metrologia/dashboard.html', context)
 

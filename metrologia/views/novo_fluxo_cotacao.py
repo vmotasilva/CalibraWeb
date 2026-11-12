@@ -13,6 +13,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Q, Prefetch
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
@@ -36,50 +37,125 @@ from metrologia.forms import (
 
 @login_required
 def solicitacao_list(request):
-    """Lista todas as solicitações de cotação"""
-    solicitacoes = SolicitacaoCotacao.objects.all().prefetch_related(
-        'itens',
-        'cotacoes_fornecedores',
-        'atendimentos'
+    """Acompanhamento enxuto das cotações (criadas a partir das telas de calibração)."""
+    qs = SolicitacaoCotacao.objects.select_related('responsavel').prefetch_related(
+        'itens__instrumento', 'cotacoes_fornecedores__fornecedor', 'atendimentos'
     )
-    
-    # Cobrança do home: prazo vencido (não concluída/cancelada)
+
     cobranca = (request.GET.get('cobranca') or '').strip().lower()
     if cobranca == 'prazo_vencido':
         hoje = timezone.localdate()
-        solicitacoes = solicitacoes.exclude(status__in=["CONCLUIDA", "CANCELADA"]).filter(
+        qs = qs.exclude(status__in=STATUS_COTACAO_ENCERRADA).filter(
             data_solicitacao_orcamento__isnull=False,
             data_solicitacao_orcamento__lte=hoje,
         )
 
-    # Filtros
+    # Abas: em andamento (padrão) / encerradas / todas
+    aba = (request.GET.get('aba') or 'abertas').lower()
+    total_abertas = SolicitacaoCotacao.objects.exclude(status__in=STATUS_COTACAO_ENCERRADA).count()
+    total_encerradas = SolicitacaoCotacao.objects.filter(status__in=STATUS_COTACAO_ENCERRADA).count()
+    if aba == 'abertas':
+        qs = qs.exclude(status__in=STATUS_COTACAO_ENCERRADA)
+    elif aba == 'encerradas':
+        qs = qs.filter(status__in=STATUS_COTACAO_ENCERRADA)
+
     status = request.GET.get('status')
     if status:
-        solicitacoes = solicitacoes.filter(status=status)
+        qs = qs.filter(status=status)
+
+    busca = (request.GET.get('q') or '').strip()
+    if busca:
+        qs = qs.filter(
+            Q(numero__icontains=busca)
+            | Q(itens__instrumento__tag__icontains=busca)
+            | Q(itens__instrumento__descricao__icontains=busca)
+            | Q(cotacoes_fornecedores__fornecedor__empresa__icontains=busca)
+        ).distinct()
 
     context = {
-        'solicitacoes': solicitacoes,
+        'solicitacoes': qs,
         'status_choices': SolicitacaoCotacao._meta.get_field('status').choices,
         'status': status,
         'cobranca': cobranca,
+        'aba': aba,
+        'busca': busca,
+        'total_abertas': total_abertas,
+        'total_encerradas': total_encerradas,
+        'total_geral': total_abertas + total_encerradas,
     }
     return render(request, 'metrologia/novo_fluxo/solicitacao_list.html', context)
 
 
+STATUS_COTACAO_ENCERRADA = ("CONCLUIDA", "CANCELADA")
+
+
+def instrumentos_em_cotacao():
+    """Mapa {instrumento_id: (solicitacao_id, numero)} dos instrumentos que
+    possuem alguma solicitação de cotação em aberto (não concluída/cancelada)."""
+    itens = (
+        ItemSolicitacaoCotacao.objects
+        .exclude(solicitacao__status__in=STATUS_COTACAO_ENCERRADA)
+        .select_related("solicitacao")
+        .order_by("solicitacao__data_criacao")
+    )
+    return {i.instrumento_id: (i.solicitacao_id, i.solicitacao.numero) for i in itens}
+
+
 @login_required
 def solicitacao_create(request):
-    """Cria uma nova solicitação de cotação - ETAPA 1"""
-    # Criar a solicitação automaticamente com valores defaults
+    """Cria uma solicitação de cotação já com os instrumentos selecionados.
+
+    - POST ``instrumentos_ids`` (lista separada por vírgula ou múltiplos campos)
+    - GET ``instrumento_id`` (atalho do botão "Cotar" de uma linha)
+    As cotações são conduzidas a partir das telas de calibração; sem instrumentos
+    o usuário é devolvido à tela de instrumentos.
+    """
+    ids = []
+    if request.method == 'POST':
+        for raw in request.POST.getlist('instrumentos_ids'):
+            ids.extend(p.strip() for p in raw.split(',') if p.strip())
+    elif request.GET.get('instrumento_id'):
+        ids = [request.GET['instrumento_id']]
+    ids = [int(i) for i in dict.fromkeys(ids) if str(i).isdigit()]
+
+    if not ids:
+        messages.info(request, "Selecione os instrumentos na tela de calibrações e clique em Cotar.")
+        return redirect('modulo_metrologia')
+
+    instrumentos = list(Instrumento.objects.filter(id__in=ids).order_by('tag'))
+    ja_em_cotacao = instrumentos_em_cotacao()
+    novos = [i for i in instrumentos if i.id not in ja_em_cotacao]
+    repetidos = [i for i in instrumentos if i.id in ja_em_cotacao]
+
+    if repetidos:
+        tags = ", ".join(i.tag for i in repetidos)
+        messages.warning(request, f"Já em cotação (ignorados): {tags}.")
+    if not novos:
+        # Leva ao acompanhamento da cotação já aberta do primeiro instrumento
+        sol_id = ja_em_cotacao[repetidos[0].id][0] if repetidos else None
+        if sol_id:
+            return redirect('metrologia:solicitacao_detail', pk=sol_id)
+        return redirect('modulo_metrologia')
+
     try:
-        solicitacao = SolicitacaoCotacao.objects.create(
-            responsavel=request.user,
-            dias_vencimento=30,
+        with transaction.atomic():
+            solicitacao = SolicitacaoCotacao.objects.create(
+                responsavel=request.user,
+                dias_vencimento=30,
+                data_solicitacao_orcamento=timezone.localdate(),
+            )
+            for inst in novos:
+                ItemSolicitacaoCotacao.objects.create(solicitacao=solicitacao, instrumento=inst)
+            solicitacao.atualizar_status_automatico()
+        messages.success(
+            request,
+            f"Cotação {solicitacao.numero} criada com {len(novos)} instrumento(s). "
+            "Registre abaixo as propostas dos fornecedores."
         )
-        messages.success(request, f"Solicitação {solicitacao.numero} criada com sucesso!")
         return redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
     except Exception as e:
-        messages.error(request, f"Erro ao criar solicitação: {str(e)}")
-        return redirect('metrologia:solicitacao_list')
+        messages.error(request, f"Erro ao criar cotação: {str(e)}")
+        return redirect('modulo_metrologia')
 
 
 @login_required
