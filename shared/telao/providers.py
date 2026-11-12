@@ -494,7 +494,7 @@ def _slide_motivos(ind, rotulo, f, setor_id=False):
 # Auditoria (checklists periódicos: último ciclo fechado de cada modelo/relatório)
 # ---------------------------------------------------------------------------
 def _dados_modelo(modelo):
-    chave = f"telao:auditoria:v3:{modelo.pk}"
+    chave = f"telao:auditoria:v4:{modelo.pk}"
     dados = _cache_get(chave)
     if dados is None:
         from auditoria.apresentacao import montar_apresentacao
@@ -505,7 +505,7 @@ def _dados_modelo(modelo):
             "ciclos": [{"label": c["label"], "pct": c["pct"]} for c in a["ciclos"]],
             "criticas": [{"pergunta": c["pergunta"], "ncs": c["ncs"], "semanas": c["semanas"]} for c in a["criticas"]],
             "abertas": a["total_ocorrencias_abertas"], "vencidas": a["ocorrencias_vencidas"],
-            "periodo": a["periodo_txt"], "tem_ciclo": a["base"] is not None,
+            "periodo": a["periodo_txt"], "periodo_curto": a["ciclos"][-1]["periodo"] if a["ciclos"] else "", "tem_ciclo": a["base"] is not None,
         }
         cache.set(chave, dados, CACHE_SEGUNDOS)
     return dados
@@ -546,7 +546,7 @@ def slides_auditoria(user, resumo=False, filtros=None):
 
         slides.append(_slide("auditoria", "bars", "Conformidade — último ciclo fechado", "% de itens conformes por auditoria",
                              "bi-clipboard-check", sem_barra=sem_barra, texto_prioritario=bool(f.get("conf_texto")), colunas=conf_colunas, itens=[{
-            "rotulo": f"{d['nome']} ({d['periodo']})" if d["periodo"] else d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]), "txt": _txt_conf(d),
+            "rotulo": f"{d['nome']} ({d['periodo_curto']})" if d["periodo_curto"] else d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]), "txt": _txt_conf(d),
         } for d in ordenados[:conf_qtd]]))
     oc_por_modelo = {}
     for i in _itens_ocorrencias(user, "auditoria", f):
