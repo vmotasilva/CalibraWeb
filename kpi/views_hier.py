@@ -74,30 +74,36 @@ GRAFICOS = (('unica', 'Barra única', 'bi-bar-chart'), ('multiplas', 'Múltiplas
 
 
 def _multi(dados, tipo, n):
-    """Uma série por item. Se todos os itens usam a mesma unidade, mostra o consumo real; senão (kg x UN...) mostra o
-    % da meta de cada um, que é comparável. Empilhadas: soma dos itens (e da meta) em cada período."""
-    mesma_un = len({x['unidade'] for x in dados}) == 1
-    series = []
-    for x in dados:
+    """Uma série por item com consumo no período. Se esses itens usam a mesma unidade, mostra o consumo real; senão
+    (kg x UN...) mostra o % da meta de cada um, que é comparável (itens sem meta ficam de fora, e o aviso diz quais).
+    Empilhadas: soma dos itens (e da meta) em cada período."""
+    com_dados = [x for x in dados if any(v is not None for v in x['valores'])]
+    mesma_un = len({x['unidade'] for x in com_dados}) <= 1
+    series, fora = [], []
+    for x in com_dados:
         if mesma_un:
             vals = x['valores']
         elif any(m for m in x['metas']):
             vals = [None if v is None or not m else round(v / m * 100, 1) for v, m in zip(x['valores'], x['metas'])]
         else:
+            fora.append(x['nome'])
             continue
-        if any(v is not None for v in vals):
-            series.append({'nome': x['nome'], 'valores': vals})
+        series.append({'nome': x['nome'], 'valores': vals})
     if mesma_un:
         metas = None
         if tipo == 'empilhadas':
-            somas = [sum(x['metas'][k] or 0 for x in dados) for k in range(n)]
+            somas = [sum(x['metas'][k] or 0 for x in com_dados) for k in range(n)]
             metas = [round(v, 2) if v else None for v in somas]
     else:
         metas = [100.0 * (len(series) if tipo == 'empilhadas' else 1)] * n
+    aviso = ''
+    if not mesma_un:
+        aviso = 'Unidades diferentes entre os itens: cada barra mostra o % da meta do item'                 + (' (a soma dos % é a altura da pilha).' if tipo == 'empilhadas' else '.')
+        if fora:
+            aviso += f' Sem meta cadastrada (não aparecem): {", ".join(fora)}.'
     return {'tipo': tipo, 'series': series, 'metas': metas, 'modo': 'valor' if mesma_un else 'percentual',
-            'unidade': (dados[0]['unidade'] if mesma_un else '%'),
-            'aviso': '' if mesma_un else 'Unidades diferentes entre os itens: cada barra mostra o % da meta do item'
-                                         + (' (a soma dos % é a altura da pilha).' if tipo == 'empilhadas' else '.')}
+            'unidade': (com_dados[0]['unidade'] if mesma_un and com_dados else '' if mesma_un else '%'),
+            'aviso': aviso}
 
 
 def _serie(itens, meses, consumos):
