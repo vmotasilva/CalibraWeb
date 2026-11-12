@@ -336,7 +336,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                {% for l in x.serie.linhas %}
+                                {% for l in x.serie.linhas reversed %}
                                     <tr>
                                         <td>{{ l.rotulo }}</td>
                                         {% if x.ind.modo != 'uso' %}<td class="text-end">{% if l.producao is not None %}{{ l.producao|floatformat:"-2" }}{% else %}—{% endif %}</td>{% endif %}
