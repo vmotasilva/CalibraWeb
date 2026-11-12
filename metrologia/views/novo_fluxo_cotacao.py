@@ -181,6 +181,7 @@ def solicitacao_detail(request, pk):
         'itens': itens,
         'cotacoes': cotacoes,
         'atendimentos': atendimentos,
+        'locais_atendimento': {a.item_cotacao.local_atendimento for a in atendimentos},
         'instrumentos_disponiveis': instrumentos_disponiveis,
         'hoje': hoje,
         'dias_30': dias_30,

@@ -47,3 +47,11 @@ class CotacaoRapidaTests(TestCase):
         r = self.client.get("/dashboard/")
         self.assertEqual(r.status_code, 200)
         self.assertContains(r, 'data-cat="cotacao"')
+
+    def test_detalhe_renderiza_enxuto(self):
+        self.client.post(reverse("metrologia:solicitacao_create"), {"instrumentos_ids": str(self.a.id)})
+        sol = SolicitacaoCotacao.objects.get()
+        r = self.client.get(reverse("metrologia:solicitacao_detail", args=[sol.id]))
+        self.assertContains(r, "Propostas dos fornecedores")
+        self.assertContains(r, "btn-concluir")
+        self.assertNotContains(r, "Planejamento de Atendimentos")
