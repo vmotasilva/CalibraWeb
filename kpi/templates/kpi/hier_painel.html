@@ -279,7 +279,8 @@
                     </div>
                     {% endif %}
                 </div>
-                {% if varios and itens_sem_meta %}<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>{{ itens_sem_meta }} {% if itens_sem_meta == 1 %}item sem meta não entra{% else %}itens sem meta não entram{% endif %} na média de % da meta (cadastre a meta em Cadastro).</div>{% endif %}
+                {% if varios and itens_sem_meta and grafico == 'unica' %}<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>{{ itens_sem_meta }} {% if itens_sem_meta == 1 %}item sem meta não entra{% else %}itens sem meta não entram{% endif %} na média de % da meta (cadastre a meta em Cadastro).</div>{% endif %}
+                {% if serie.multi.unidades|length > 1 %}<div class="d-flex flex-wrap align-items-center gap-1 mb-1" id="un-botoes"><span class="small text-muted me-1">Unidade:</span></div>{% endif %}
                 {% if serie.multi.aviso %}<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>{{ serie.multi.aviso }}</div>{% endif %}
                 <div style="position:relative;height:clamp(300px,50vh,480px)"><canvas id="grafico"></canvas></div>
             </div></div>
@@ -416,7 +417,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-    var grafico = null;
+    var grafico = null, unidadeEscolhida = null;
     // Desenha (ou redesenha, após uma atualização dos filtros) o gráfico com os dados em #dados-grafico.
     window.desenharGrafico = function () {
         if (grafico) { grafico.destroy(); grafico = null; }
@@ -435,9 +436,20 @@
         var multi = d.multi && d.multi.series.length ? d.multi : null;
         var empilha = !!multi && multi.tipo === 'empilhadas';
         if (multi) {
-            metas = multi.metas || d.labels.map(function () { return null; });
+            // Uma unidade por vez (a mais usada abre primeiro); a escolha é mantida ao atualizar os filtros.
+            var un = multi.unidades.indexOf(unidadeEscolhida) >= 0 ? unidadeEscolhida : multi.unidades[0];
+            unidadeEscolhida = un;
+            var box = document.getElementById('un-botoes');
+            if (box) multi.unidades.forEach(function (u) {
+                var b = document.createElement('button');
+                b.type = 'button'; b.textContent = u || 'sem unidade';
+                b.className = 'btn btn-sm ' + (u === un ? 'btn-primary' : 'btn-outline-primary');
+                b.addEventListener('click', function () { unidadeEscolhida = u; window.desenharGrafico(); });
+                box.appendChild(b);
+            });
+            metas = (multi.metas && multi.metas[un]) || d.labels.map(function () { return null; });
             temMeta = metas.some(function (m) { return m !== null && m !== undefined; });
-            datasets = multi.series.map(function (s, k) {
+            datasets = multi.series.filter(function (s) { return s.unidade === un; }).map(function (s, k) {
                 return {type: 'bar', label: s.nome, data: s.valores, backgroundColor: PALETA[k % PALETA.length], stack: empilha ? 'pilha' : undefined, order: 2};
             });
             if (temMeta) datasets.push({type: 'line', label: empilha ? 'Meta somada' : 'Meta', data: metas, stepped: !!d.metas,
@@ -450,7 +462,7 @@
             }
         }
         var semanal = !!d.faixas && /^últimas/.test(d.janela || '');
-        var unidadeY = multi ? multi.unidade : (d.modo === 'percentual' ? '% da meta' : (d.unidade || ''));
+        var unidadeY = multi ? un : (d.modo === 'percentual' ? '% da meta' : (d.unidade || ''));
         grafico = new Chart(canvas, {
             data: {labels: d.labels, datasets: datasets},
             options: {

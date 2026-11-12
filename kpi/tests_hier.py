@@ -135,6 +135,15 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertNotContains(r, 'Inativo')
         self.assertNotContains(r, '<th class="text-end">% da meta</th>')
 
+    def test_multiplas_barras_mostram_todos_os_itens_com_consumo_real(self):
+        url = reverse('kpi:hier_lancar')
+        self.client.post(url, {'mes': '2026-10', f'valor_{self.pads.pk}': '8', f'valor_{self.liquido.pk}': '5'})
+        HierItem.objects.filter(pk=self.pads.pk).update(meta=None)
+        r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk, 'grafico': 'multiplas', 'mes': '2026-10'})
+        multi = r.context['serie']['multi']
+        self.assertEqual({x['nome'] for x in multi['series']}, {self.pads.nome, self.liquido.nome})
+        self.assertEqual(multi['tipo'], 'multiplas')
+
     def test_reajustar_meta_pelo_grid_de_consumo(self):
         url = reverse('kpi:hier_lancar')
         self.client.post(url, {'mes': '2026-10', f'meta_{self.liquido.pk}': '7,5'})

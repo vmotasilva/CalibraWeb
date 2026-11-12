@@ -74,36 +74,29 @@ GRAFICOS = (('unica', 'Barra única', 'bi-bar-chart'), ('multiplas', 'Múltiplas
 
 
 def _multi(dados, tipo, n):
-    """Uma série por item com consumo no período. Se esses itens usam a mesma unidade, mostra o consumo real; senão
-    (kg x UN...) mostra o % da meta de cada um, que é comparável (itens sem meta ficam de fora, e o aviso diz quais).
-    Empilhadas: soma dos itens (e da meta) em cada período."""
+    """Uma série por item com consumo no período, sempre com o consumo real. Unidades diferentes não se comparam nem se
+    somam: o painel mostra uma unidade por vez (as mais usadas primeiro). Empilhadas: a meta aparece só quando todos os itens da unidade têm meta similar (ver abaixo)."""
     com_dados = [x for x in dados if any(v is not None for v in x['valores'])]
-    mesma_un = len({x['unidade'] for x in com_dados}) <= 1
-    series, fora = [], []
+    series = [{'nome': x['nome'], 'unidade': x['unidade'], 'valores': x['valores']} for x in com_dados]
+    contagem = {}
     for x in com_dados:
-        if mesma_un:
-            vals = x['valores']
-        elif any(m for m in x['metas']):
-            vals = [None if v is None or not m else round(v / m * 100, 1) for v, m in zip(x['valores'], x['metas'])]
-        else:
-            fora.append(x['nome'])
+        contagem[x['unidade']] = contagem.get(x['unidade'], 0) + 1
+    unidades = sorted(contagem, key=lambda u: (-contagem[u], u))
+    # Meta só quando faz sentido: barras múltiplas, se todos os itens da unidade têm a mesma meta; empilhadas, se todos
+    # têm meta (vale a soma). Fora disso o gráfico mostra apenas o consumo.
+    metas = {}
+    for u in unidades:
+        do_un = [x for x in com_dados if x['unidade'] == u]
+        if not all(any(m for m in x['metas']) for x in do_un):
             continue
-        series.append({'nome': x['nome'], 'valores': vals})
-    if mesma_un:
-        metas = None
         if tipo == 'empilhadas':
-            somas = [sum(x['metas'][k] or 0 for x in com_dados) for k in range(n)]
-            metas = [round(v, 2) if v else None for v in somas]
-    else:
-        metas = [100.0 * (len(series) if tipo == 'empilhadas' else 1)] * n
-    aviso = ''
-    if not mesma_un:
-        aviso = 'Unidades diferentes entre os itens: cada barra mostra o % da meta do item'                 + (' (a soma dos % é a altura da pilha).' if tipo == 'empilhadas' else '.')
-        if fora:
-            aviso += f' Sem meta cadastrada (não aparecem): {", ".join(fora)}.'
-    return {'tipo': tipo, 'series': series, 'metas': metas, 'modo': 'valor' if mesma_un else 'percentual',
-            'unidade': (com_dados[0]['unidade'] if mesma_un and com_dados else '' if mesma_un else '%'),
-            'aviso': aviso}
+            somas = [sum(x['metas'][k] or 0 for x in do_un) for k in range(n)]
+            metas[u] = [round(v, 2) if v else None for v in somas]
+        elif all(x['metas'] == do_un[0]['metas'] for x in do_un):
+            metas[u] = do_un[0]['metas']
+    aviso = ('Itens em unidades diferentes não se comparam nem se somam: escolha a unidade ao lado.'
+             if len(unidades) > 1 else '')
+    return {'tipo': tipo, 'series': series, 'unidades': unidades, 'metas': metas, 'aviso': aviso}
 
 
 def _serie(itens, meses, consumos):
