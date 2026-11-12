@@ -163,6 +163,21 @@ class ImportarRegistrosForm(_BootstrapMixin, forms.Form):
         return arq
 
 
+class ImportarDiarioForm(_BootstrapMixin, forms.Form):
+    """Envio de UMA planilha por vez (a tela envia as planilhas escolhidas em sequência)."""
+    arquivo = forms.FileField(label='Planilha (.xlsx)', widget=forms.ClearableFileInput(attrs={'accept': '.xlsx'}))
+    desde = forms.DateField(label='Reimportar desde', required=False, widget=forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+                            help_text='Em branco: o ano inteiro.')
+    atualizar = forms.BooleanField(label='Atualizar valores alterados na planilha', required=False, initial=True)
+    simular = forms.BooleanField(label='Apenas simular (não grava nada)', required=False)
+
+    def clean_arquivo(self):
+        arq = self.cleaned_data['arquivo']
+        if not arq.name.lower().endswith('.xlsx'):
+            raise forms.ValidationError('Envie um arquivo .xlsx.')
+        return arq
+
+
 class TemplatePaginaForm(_BootstrapMixin, forms.Form):
     TAMANHO_MAXIMO = 3 * 1024 * 1024  # o arquivo é guardado em Base64 no banco e o envio na nuvem é limitado
 

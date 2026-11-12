@@ -1,0 +1,87 @@
+{% extends base_template|default:"base.html" %}
+{% block title %}Importação diária - PCP - Calibra QMS{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 900px;">
+    <h4 class="mb-3"><i class="bi bi-arrow-repeat me-2"></i>Importação diária do PCP</h4>
+    <div class="alert alert-info py-2 small">
+        Envie as planilhas em uso (FOR.080, FOR.081, FOR.107, FOR.149... — pode escolher várias de uma vez). O sistema <strong>só alimenta os lançamentos</strong>
+        (data e turno) nas páginas e itens que já existem: estrutura, tipos, vigência e limites <strong>não são alterados</strong>. O formulário e a revisão vêm do nome do arquivo.
+        Células vazias nunca apagam nada. Ao final, cada formulário mostra <strong>o que foi preenchido e o que ficou sem preenchimento</strong> no período.
+    </div>
+
+    <form id="form-diario" class="card card-body mb-3" onsubmit="return false;">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label" for="arquivos">Planilhas (.xlsx)</label>
+                <input type="file" id="arquivos" class="form-control" accept=".xlsx" multiple>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label" for="{{ form.desde.id_for_label }}">{{ form.desde.label }}</label>
+                {{ form.desde }}
+                <div class="form-text">Janela reimportada (padrão: últimos 14 dias). {{ form.desde.help_text }}</div>
+            </div>
+            <div class="col-md-8 d-flex flex-column justify-content-end gap-1">
+                <div class="form-check">{{ form.atualizar }} <label class="form-check-label" for="{{ form.atualizar.id_for_label }}">{{ form.atualizar.label }}</label></div>
+                <div class="form-check">{{ form.simular }} <label class="form-check-label" for="{{ form.simular.id_for_label }}">{{ form.simular.label }}</label></div>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-3">
+            <button type="button" class="btn btn-primary" id="btn-importar"><i class="bi bi-upload me-1"></i>Importar</button>
+            <a href="{% url 'pcp:formularios' %}" class="btn btn-outline-secondary">Voltar</a>
+        </div>
+        <div id="status" class="small mt-2 text-muted" role="status"></div>
+    </form>
+    <div id="resultados"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+(function () {
+    // O envio na nuvem é limitado (~4,5 MB): planilhas grandes têm só as células vazias (sem valor) removidas no navegador.
+    var LIMITE_DIRETO = 3 * 1024 * 1024, LIMITE_ENVIO = 4 * 1024 * 1024, VAZIA = /<c r="[A-Z]+\d+"[^>]*\/>/g;
+    var form = document.getElementById('form-diario'), input = document.getElementById('arquivos');
+    var btn = document.getElementById('btn-importar'), status = document.getElementById('status'), saida = document.getElementById('resultados');
+    function msg(t, erro) { status.className = 'small mt-2 ' + (erro ? 'text-danger' : 'text-muted'); status.textContent = t; }
+    function cartaoErro(nome, texto) {
+        var d = document.createElement('div'); d.className = 'card mb-3 border-danger';
+        d.innerHTML = '<div class="card-header bg-danger text-white"></div><div class="card-body text-danger"></div>';
+        d.children[0].textContent = nome; d.children[1].textContent = texto; saida.appendChild(d);
+    }
+    async function reduzir(f, rotulo) {
+        if (f.size <= LIMITE_DIRETO || typeof JSZip === 'undefined') return f;
+        var zip = await JSZip.loadAsync(f);
+        var abas = Object.keys(zip.files).filter(function (n) { return /^xl\/worksheets\/[^\/]+\.xml$/.test(n); });
+        for (var i = 0; i < abas.length; i++) {
+            msg(rotulo + ': reduzindo a planilha (' + (i + 1) + ' de ' + abas.length + ')...');
+            zip.file(abas[i], (await zip.file(abas[i]).async('string')).replace(VAZIA, ''));
+            await new Promise(function (r) { setTimeout(r, 0); });
+        }
+        msg(rotulo + ': compactando...');
+        var blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+        if (blob.size > LIMITE_ENVIO) throw new Error('mesmo reduzida, a planilha tem ' + (blob.size / 1048576).toFixed(1) + ' MB e passa do limite de envio. Use o comando importar_pcp_diario no computador.');
+        return new File([blob], f.name, { type: f.type });
+    }
+    btn.addEventListener('click', async function () {
+        var arquivos = Array.prototype.slice.call(input.files || []);
+        if (!arquivos.length) { msg('Escolha ao menos uma planilha.', true); return; }
+        btn.disabled = true; saida.innerHTML = '';
+        for (var k = 0; k < arquivos.length; k++) {
+            var f = arquivos[k], rotulo = f.name + ' (' + (k + 1) + ' de ' + arquivos.length + ')';
+            try {
+                var arq = await reduzir(f, rotulo);
+                var fd = new FormData(form);
+                fd.set('arquivo', arq, f.name);
+                msg(rotulo + ': enviando e importando (pode levar alguns minutos)...');
+                var r = await fetch(window.location.href, { method: 'POST', body: fd, credentials: 'same-origin' });
+                var html = await r.text();
+                if (!r.ok) throw new Error('o servidor respondeu ' + r.status + (r.status === 504 || r.status === 502 ? ' (tempo esgotado: use uma janela menor em "Reimportar desde" ou o comando importar_pcp_diario)' : ''));
+                saida.insertAdjacentHTML('beforeend', html);
+            } catch (e) { cartaoErro(f.name, 'Falhou: ' + e.message); }
+        }
+        msg('Concluído.'); btn.disabled = false;
+    });
+})();
+</script>
+{% endblock %}

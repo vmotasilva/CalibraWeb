@@ -19,6 +19,7 @@ MAX_LINHAS = 700
 MAX_COLUNAS = 14
 
 RE_NOME_ARQUIVO = re.compile(r'(FOR\.\d+)\.(R\d+)\s*-\s*(.+?)\s*\.xlsx?$', re.I)
+RE_NOME_ARQUIVO_LIVRE = re.compile(r'(FOR\.\d+)\.(R\d+)[\s_\-]*(.*?)\s*\.xlsx?$', re.I)  # ex.: FOR.149.r02_Formulário_SPIN.xlsx
 RE_FAIXA = re.compile(r'^\s*(-?\d+(?:[.,]\d+)?)\s*(?:-|–|a|até)\s*(-?\d+(?:[.,]\d+)?)\s*(.*)$', re.I)
 RE_MAIS_MENOS = re.compile(r'^\s*(-?\d+(?:[.,]\d+)?)\s*([^\d±+]{0,10}?)\s*(?:±|\+\s*/\s*-)\s*(\d+(?:[.,]\d+)?)\s*(.{0,20})$')
 RE_NUM = re.compile(r'^\s*-?\d+(?:[.,]\d+)?\s*$')
@@ -52,10 +53,14 @@ def _dec(s):
 
 def parse_arquivo(nome):
     """'FOR.080.R15 - Formulário Surfaçagem - PCP ... .xlsx' -> (codigo, revisao, titulo)."""
-    m = RE_NOME_ARQUIVO.search(nome or '')
+    nome = re.split(r'[\\/]', nome or '')[-1]
+    m = RE_NOME_ARQUIVO.search(nome)
+    if m:
+        return m.group(1).upper(), m.group(2).upper(), m.group(3).strip()
+    m = RE_NOME_ARQUIVO_LIVRE.search(nome)
     if not m:
         return None
-    return m.group(1).upper(), m.group(2).upper(), m.group(3).strip()
+    return m.group(1).upper(), m.group(2).upper(), m.group(3).replace('_', ' ').strip()
 
 
 def parse_faixa(texto):

@@ -1,0 +1,59 @@
+<div class="card mb-3 {% if erro %}border-danger{% elif resumo.simulado %}border-warning{% else %}border-success{% endif %}">
+    {% if erro %}
+        <div class="card-header bg-danger text-white"><i class="bi bi-x-octagon me-1"></i>{{ nome }}</div>
+        <div class="card-body text-danger">{{ erro }}</div>
+    {% else %}
+        <div class="card-header {% if resumo.simulado %}bg-warning text-dark{% else %}bg-success text-white{% endif %} d-flex flex-wrap justify-content-between gap-2">
+            <span><strong>{{ resumo.versao }}</strong> · {{ resumo.versao.formulario.titulo }}{% if resumo.simulado %} — simulação, nada foi gravado{% endif %}</span>
+            <span class="small">{{ nome }}</span>
+        </div>
+        <div class="card-body">
+            <div class="row text-center mb-3 g-2">
+                <div class="col-6 col-md"><div class="fs-4 fw-semibold">{{ resumo.respostas_novas }}</div><div class="small text-muted">lançamentos novos</div></div>
+                <div class="col-6 col-md"><div class="fs-4 fw-semibold">{{ resumo.respostas_atualizadas }}</div><div class="small text-muted">atualizados</div></div>
+                <div class="col-6 col-md"><div class="fs-4 fw-semibold">{{ resumo.respostas_existentes }}</div><div class="small text-muted">já estavam no sistema</div></div>
+                <div class="col-6 col-md"><div class="fs-4 fw-semibold {% if resumo.fora_do_limite %}text-danger{% endif %}">{{ resumo.fora_do_limite }}</div><div class="small text-muted">fora do limite</div></div>
+            </div>
+            <div class="small text-muted mb-2">
+                {% if resumo.primeira_data %}Lançamentos de {{ resumo.primeira_data|date:"d/m/Y" }} a {{ resumo.ultima_data|date:"d/m/Y" }}{% else %}Nenhum lançamento no período{% endif %}
+                (a partir de {{ resumo.desde|date:"d/m/Y" }}).
+                {% if resumo.futuros %}{{ resumo.futuros }} com data futura ignorados.{% endif %}
+            </div>
+            {% if resumo.status_marcados %}<div class="small mb-2">Turnos marcados pela planilha:
+                {% if resumo.status_marcados.manutencao %}<strong>{{ resumo.status_marcados.manutencao }}</strong> em manutenção{% endif %}
+                {% if resumo.status_marcados.parada %}<strong>{{ resumo.status_marcados.parada }}</strong> com a máquina parada{% endif %} (itens dispensados).</div>{% endif %}
+            {% if resumo.sem_pagina %}<div class="alert alert-warning py-2 small">Abas sem página no sistema (a estrutura não é alterada aqui): {{ resumo.sem_pagina|join:", " }}.</div>{% endif %}
+            {% if resumo.linhas_sem_item %}<div class="alert alert-warning py-2 small">{{ resumo.linhas_sem_item }} linha(s) da planilha sem item correspondente na revisão {{ resumo.versao.revisao }}; a estrutura mudou?</div>{% endif %}
+            {% if resumo.nao_reconhecidos %}<div class="alert alert-warning py-2 small">{{ resumo.nao_reconhecidos|length }} valor(es) fora das opções da lista do item foram gravados sem avaliar conformidade.
+                Vincule-os em <a href="{% url 'pcp:valores' resumo.versao.formulario_id %}">Valores não reconhecidos</a>.</div>{% endif %}
+
+            {% if avaliacao %}
+                <hr>
+                <h6 class="mb-2"><i class="bi bi-clipboard2-pulse me-1"></i>Preenchimento de {{ avaliacao.desde|date:"d/m" }} a {{ avaliacao.ate|date:"d/m" }} (prazos encerrados)</h6>
+                {% if avaliacao.devidos %}
+                    <div class="d-flex align-items-center gap-3 mb-2">
+                        <div class="progress flex-grow-1" style="height: 1.1rem;"><div class="progress-bar {% if avaliacao.pct >= 90 %}bg-success{% elif avaliacao.pct >= 70 %}bg-warning{% else %}bg-danger{% endif %}" style="width: {{ avaliacao.pct }}%">{{ avaliacao.pct }}%</div></div>
+                        <span class="small text-nowrap">{{ avaliacao.feitos }} de {{ avaliacao.devidos }} feitos · <strong class="{% if avaliacao.pendentes %}text-danger{% endif %}">{{ avaliacao.pendentes }} sem preenchimento</strong></span>
+                    </div>
+                    <div class="small text-muted mb-2">{{ avaliacao.paginas_completas }} página(s) completa(s){% if avaliacao.paginas_com_pendencia %} · {{ avaliacao.paginas_com_pendencia|length }} com pendência{% endif %}.
+                        <a href="{% url 'pcp:atrasos' %}">Ver atrasos</a></div>
+                    {% if avaliacao.paginas_com_pendencia %}
+                        <div class="table-responsive" style="max-height: 18rem; overflow:auto">
+                        <table class="table table-sm align-middle mb-2">
+                            <thead><tr><th>Página</th><th>Grupo</th><th class="text-end">Feitos</th><th class="text-end">Sem preenchimento</th><th class="text-end">%</th></tr></thead>
+                            <tbody>{% for p in avaliacao.paginas_com_pendencia %}
+                                <tr><td><a href="{% url 'pcp:pagina_detalhe' p.pagina_id %}">{{ p.nome }}</a></td><td class="small text-muted">{{ p.grupo }}</td>
+                                    <td class="text-end">{{ p.feitos }}/{{ p.devidos }}</td><td class="text-end text-danger">{{ p.atrasados }}</td><td class="text-end">{{ p.pct }}%</td></tr>
+                            {% endfor %}</tbody>
+                        </table></div>
+                    {% endif %}
+                    {% if avaliacao.itens_pendentes %}
+                        <details class="small"><summary>Itens com mais pendências ({{ avaliacao.itens_pendentes_total }} no total)</summary>
+                            <ul class="mb-0 mt-1">{% for i in avaliacao.itens_pendentes %}<li><strong>{{ i.pagina }}</strong> · {{ i.item }} {{ i.descricao }} — {{ i.atrasados }} de {{ i.devidos }} sem preenchimento ({{ i.frequencia }})</li>{% endfor %}</ul>
+                        </details>
+                    {% endif %}
+                {% else %}<div class="small text-muted">Nenhuma verificação com prazo encerrado no período para avaliar.</div>{% endif %}
+            {% endif %}
+        </div>
+    {% endif %}
+</div>

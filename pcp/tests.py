@@ -2864,3 +2864,46 @@ class PadraoEscopoDaMaquinaTests(PendenciasBase):
     def test_aplicar_a_vem_com_todos_os_turnos_do_dia_selecionado(self):
         r = self.client.get(reverse('pcp:preencher_pagina', args=[self.pag.pk]) + f'?data=2026-10-22&turno={self.t1.pk}')
         self.assertContains(r, '<option value="dia" selected>Todos os turnos do dia</option>')
+
+
+class ImportacaoDiariaTests(RegistrosTests):
+    def test_nome_de_arquivo_com_sublinhados(self):
+        self.assertEqual(parse_arquivo('FOR.149.r02_Formulário_SPIN_-_Português_-_Lab_Geral.xlsx'),
+                         ('FOR.149', 'R02', 'Formulário SPIN - Português - Lab Geral'))
+        self.assertEqual(parse_arquivo('C:\pasta\FOR.080.R15 - Formulário Surfaçagem.xlsx')[:2], ('FOR.080', 'R15'))
+
+    def test_desde_ignora_datas_anteriores(self):
+        self.estrutura()
+        r = self.registros(desde=date(2026, 1, 6))
+        self.assertFalse(Verificacao.objects.filter(data=date(2026, 1, 5)).exists())
+        self.assertTrue(Verificacao.objects.filter(data=date(2026, 1, 6)).exists())
+        self.assertEqual(r['primeira_data'], date(2026, 1, 6))
+
+    def test_atualizar_corrige_valor_alterado_na_planilha(self):
+        self.estrutura()
+        self.registros()
+        resp = Resposta.objects.get(verificacao__data=date(2026, 1, 5), verificacao__turno__sigla='T1', campo__item='A-1')
+        Resposta.objects.filter(pk=resp.pk).update(valor='Nok', conforme=False)
+        r = self.registros()  # padrão: nunca sobrescreve
+        resp.refresh_from_db()
+        self.assertEqual((resp.valor, r['respostas_atualizadas']), ('Nok', 0))
+        r = self.registros(atualizar=True)
+        resp.refresh_from_db()
+        self.assertEqual((resp.valor, resp.conforme, r['respostas_atualizadas'], r['respostas_novas']), ('Ok', True, 1, 0))
+
+    def test_tela_importa_so_lancamentos_e_avalia_preenchimento(self):
+        self.estrutura()
+        campos = Campo.objects.count()
+        arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', _planilha_registros().read())
+        self.assertEqual(self.client.get(reverse('pcp:importar_diario')).status_code, 200)
+        r = self.client.post(reverse('pcp:importar_diario'), {'arquivo': arq, 'desde': '2026-01-01', 'atualizar': 'on'})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context['resumo']['respostas_novas'], 8)
+        self.assertIsNotNone(r.context['avaliacao'])
+        self.assertEqual(Campo.objects.count(), campos)  # a estrutura não muda
+        self.assertContains(r, 'Preenchimento de 01/01')
+
+    def test_tela_sem_formulario_cadastrado_avisa(self):
+        arq = SimpleUploadedFile('FOR.999.R03 - Teste.xlsx', _planilha_registros().read())
+        r = self.client.post(reverse('pcp:importar_diario'), {'arquivo': arq})
+        self.assertContains(r, 'Importe a estrutura antes')

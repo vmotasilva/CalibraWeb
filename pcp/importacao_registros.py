@@ -72,10 +72,12 @@ def _normalizar(campo, valor, opcoes):
 
 
 def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, revisao=None, simular=False,
-                       rastreio_desde_primeiro=False, hoje=None, ajustar_tipos=False):
+                       rastreio_desde_primeiro=False, hoje=None, ajustar_tipos=False, desde=None, atualizar=False):
     """Importa os lançamentos do ano. Retorna um resumo (dict). Com `simular`, nada é gravado.
 
-    Lançamentos em datas posteriores a `hoje` (padrão: o dia de hoje) são ignorados e contados em `futuros`."""
+    Lançamentos em datas posteriores a `hoje` (padrão: o dia de hoje) são ignorados e contados em `futuros`.
+    `desde`: só considera lançamentos a partir dessa data (importação diária incremental).
+    `atualizar`: respostas já existentes cujo valor mudou na planilha são atualizadas (padrão: nunca sobrescreve)."""
     hoje = hoje or datetime.date.today()
     nome_arquivo = nome_arquivo or (arquivo if isinstance(arquivo, str) else getattr(arquivo, 'name', ''))
     detectado = parse_arquivo(nome_arquivo)
@@ -107,7 +109,7 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
 
     resumo = {'versao': versao, 'ano': ano, 'abas': [], 'sem_pagina': [], 'ocultas': [], 'ignoradas': [], 'linhas_sem_item': 0,
               'verificacoes_novas': 0, 'respostas_novas': 0, 'respostas_existentes': 0, 'fora_do_limite': 0, 'primeira_data': None,
-              'vigencia_ajustada': None, 'futuros': 0, 'nao_reconhecidos': [], 'numericos_em_listas': 0, 'status_marcados': {}, 'tipos_ajustados': []}
+              'vigencia_ajustada': None, 'futuros': 0, 'respostas_atualizadas': 0, 'desde': desde, 'nao_reconhecidos': [], 'numericos_em_listas': 0, 'status_marcados': {}, 'tipos_ajustados': []}
     wb = openpyxl.load_workbook(arquivo, read_only=True, data_only=True)
     lancamentos = []  # (pagina, data, turno, campo, valor)
     status_por_slot = defaultdict(Counter)  # (pagina, data, turno) -> {'manutencao': n, 'parada': n}
@@ -150,6 +152,8 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
                 for coluna, data, turno in colunas:
                     valor = _txt(completa[coluna]) if coluna < len(completa) else ''
                     if _chave(valor) in ignorar or valor.startswith('#'):
+                        continue
+                    if desde and data < desde:
                         continue
                     if data > hoje:
                         resumo['futuros'] += 1
@@ -206,17 +210,21 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
             for k in range(0, len(ids), 500):
                 Verificacao.objects.filter(pk__in=ids[k:k + 500]).update(status=estado, motivo='Importado da planilha')
         resumo['status_marcados'] = {e: len(ids) for e, ids in por_estado.items()}
-        existentes = set(Resposta.objects.filter(verificacao__pagina_id__in=paginas_ids, verificacao__data__year=ano)
-                         .values_list('verificacao_id', 'campo_id'))
+        filtro_resp = Resposta.objects.filter(verificacao__pagina_id__in=paginas_ids, verificacao__data__year=ano)
+        if desde:
+            filtro_resp = filtro_resp.filter(verificacao__data__gte=desde)
+        existentes = {(r.verificacao_id, r.campo_id): r for r in filtro_resp} if atualizar else             {k: None for k in filtro_resp.values_list('verificacao_id', 'campo_id')}
+        a_atualizar = []
         nao_reconhecidos, detalhe = Counter(), defaultdict(dict)
         totais_item = Counter(l[3].pk for l in lancamentos)
         novas = []
         for pagina, data, turno, campo, valor in lancamentos:
             v = verificacoes[(pagina.pk, data, turno.pk)]
-            if (v.pk, campo.pk) in existentes:
+            anterior = existentes.get((v.pk, campo.pk))
+            if (v.pk, campo.pk) in existentes and not atualizar:
                 resumo['respostas_existentes'] += 1
                 continue
-            existentes.add((v.pk, campo.pk))
+            existentes[(v.pk, campo.pk)] = anterior if anterior is not None else True  # repetição na mesma célula: vale a primeira
             if campo.tipo == campo.LISTA:
                 conforme = conforme_por_lista.get(campo.lista_id, {}).get(valor)
                 k = _chave(valor)
@@ -231,11 +239,23 @@ def importar_registros(arquivo, nome_arquivo=None, ano=2026, formulario=None, re
                     detalhe[(campo.lista_id, valor)][campo.pk] = detalhe[(campo.lista_id, valor)].get(campo.pk, 0) + 1
             else:
                 conforme = campo.avaliar(valor)
+            if anterior is True:  # já tratada nesta importação
+                continue
+            if anterior is not None:
+                if anterior.valor != valor or anterior.conforme != conforme:
+                    anterior.valor, anterior.conforme = valor, conforme
+                    a_atualizar.append(anterior)
+                else:
+                    resumo['respostas_existentes'] += 1
+                continue
             resumo['fora_do_limite'] += int(conforme is False)
             novas.append(Resposta(verificacao=v, campo=campo, valor=valor, conforme=conforme))
         resumo['nao_reconhecidos'], resumo['numericos_em_listas'] = equivalencias.montar_linhas(nao_reconhecidos, detalhe, totais_item)
         Resposta.objects.bulk_create(novas, batch_size=2000)
         resumo['respostas_novas'] = len(novas)
+        if a_atualizar:
+            Resposta.objects.bulk_update(a_atualizar, ['valor', 'conforme'], batch_size=500)
+        resumo['respostas_atualizadas'] = len(a_atualizar)
         if rastreio_desde_primeiro and resumo['primeira_data']:
             # o rastreio de atrasos começa na primeira vigência do formulário: recua-a até o primeiro registro importado
             primeira = min((v.vigencia for v in formulario.versoes.all() if v.vigencia), default=None)

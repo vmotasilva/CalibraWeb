@@ -8,6 +8,7 @@ urlpatterns = [
     path('', views.formularios, name='formularios'),
     path('formularios/importar/', views.importar, name='importar'),
     path('formularios/importar-registros/', views.importar_registros_view, name='importar_registros'),
+    path('formularios/importar-diario/', views.importar_diario_view, name='importar_diario'),
     path('formularios/novo/', views.formulario_novo, name='formulario_novo'),
     path('formularios/<int:pk>/', views.formulario_detalhe, name='formulario_detalhe'),
     path('formularios/<int:pk>/excluir/', views.formulario_excluir, name='formulario_excluir'),

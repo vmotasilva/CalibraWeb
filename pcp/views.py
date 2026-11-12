@@ -16,7 +16,7 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.views.decorators.http import require_POST
 
-from pcp.forms import (TemplatePaginaForm, CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
+from pcp.forms import (TemplatePaginaForm, CampoForm, PaginaOrganizacaoForm, ImportarPlanilhaForm, ImportarRegistrosForm, ImportarDiarioForm, FormularioForm, FrequenciaForm, ListaOpcoesForm, NovaRevisaoForm,
                        PaginaForm, TurnoForm)
 from pcp import exportacao
 from pcp import templates_xlsx
@@ -27,6 +27,7 @@ from pcp import tipos as tipos_mod
 from pcp.tipos import aplicar_ajuste
 from pcp.importacao import importar_planilha
 from pcp.importacao_registros import importar_registros
+from pcp import importacao_diaria
 from pcp.models import (TemplatePagina, SEM_GRUPO, AjusteCampo, AjusteVinculo, Campo, Formulario, FormularioVersao, Frequencia, GrupoPagina, ListaOpcoes, Ocorrencia,
                         Pagina, Resposta, Turno, Verificacao)
 
@@ -791,6 +792,32 @@ def importar_registros_view(request):
                 messages.success(request, f'{resumo["respostas_novas"]} respostas importadas em {resumo["versao"]}.')
                 form = ImportarRegistrosForm()
     return render(request, 'pcp/importar_registros.html', {'form': form, 'resumo': resumo})
+
+
+@login_required
+def importar_diario_view(request):
+    """Importação diária: recebe as planilhas em uso (uma por requisição), grava só os lançamentos e avalia o preenchimento."""
+    hoje = timezone.localdate()
+    if request.method == 'POST':
+        form = ImportarDiarioForm(request.POST, request.FILES)
+        nome = request.FILES['arquivo'].name if 'arquivo' in request.FILES else ''
+        ctx = {'nome': nome}
+        if not form.is_valid():
+            ctx['erro'] = ' '.join(e for erros in form.errors.values() for e in erros)
+        else:
+            d = form.cleaned_data
+            desde = d['desde'] or datetime.date(hoje.year, 1, 1)
+            try:
+                ctx['resumo'], ctx['avaliacao'] = importacao_diaria.importar_diario(
+                    d['arquivo'], nome_arquivo=nome, ano=desde.year if d['desde'] else hoje.year, desde=desde,
+                    atualizar=d['atualizar'], simular=d['simular'], hoje=hoje)
+            except ValueError as e:
+                ctx['erro'] = str(e)
+            except Exception:  # planilha corrompida ou fora do padrão
+                ctx['erro'] = 'Não foi possível ler a planilha. Confira se é um .xlsx válido no padrão dos formulários de PCP.'
+        return render(request, 'pcp/_importar_diario_resultado.html', ctx)
+    form = ImportarDiarioForm(initial={'desde': importacao_diaria.desde_padrao(hoje), 'atualizar': True})
+    return render(request, 'pcp/importar_diario.html', {'form': form})
 
 
 # --------------------------------------------------------------------------------------
