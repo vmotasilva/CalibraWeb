@@ -416,7 +416,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
-    var grafico = null;
+    var grafico = null, ocultos = {};  // itens desmarcados na legenda (lembrados ao atualizar filtros/mês)
     // Desenha (ou redesenha, após uma atualização dos filtros) o gráfico com os dados em #dados-grafico.
     window.desenharGrafico = function () {
         if (grafico) { grafico.destroy(); grafico = null; }
@@ -438,7 +438,7 @@
             metas = multi.metas || d.labels.map(function () { return null; });
             temMeta = metas.some(function (m) { return m !== null && m !== undefined; });
             datasets = multi.series.map(function (s, k) {
-                return {type: 'bar', label: s.nome, data: s.valores, backgroundColor: PALETA[k % PALETA.length], stack: empilha ? 'pilha' : undefined, order: 2};
+                return {type: 'bar', label: s.nome, data: s.valores, backgroundColor: PALETA[k % PALETA.length], stack: empilha ? 'pilha' : undefined, order: 2, hidden: !!ocultos[s.nome]};
             });
             if (temMeta) datasets.push({type: 'line', label: empilha ? 'Meta somada' : 'Meta', data: metas, stepped: !!d.metas,
                 borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1});
@@ -455,7 +455,12 @@
             data: {labels: d.labels, datasets: datasets},
             options: {
                 responsive: true, maintainAspectRatio: false,
-                plugins: {legend: {display: !!multi, position: 'bottom'}, tooltip: {callbacks: {
+                plugins: {legend: {display: !!multi, position: 'bottom', onClick: function (e, item, legend) {
+                    // Clique na legenda mostra/esconde o item; o eixo e as pilhas se ajustam sozinhos.
+                    Chart.defaults.plugins.legend.onClick.call(this, e, item, legend);
+                    var ds = legend.chart.data.datasets[item.datasetIndex];
+                    if (ds.type === 'bar') ocultos[ds.label] = !legend.chart.isDatasetVisible(item.datasetIndex);
+                }}, tooltip: {callbacks: {
                     title: function (it) { var i = it[0].dataIndex; return d.faixas ? d.labels[i] + ' · ' + d.faixas[i] : d.labels[i]; }}}},
                 scales: {x: {stacked: empilha, ticks: semanal ? {autoSkip: false, maxRotation: 0, callback: function (v, i) {
                     // Semanas: o período logo abaixo do número da semana.
