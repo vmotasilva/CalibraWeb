@@ -128,6 +128,11 @@
                                 {% if oc.registro_id %}
                                 <a href="{% url 'auditoria:registro_detail' oc.registro_id %}" class="btn btn-sm btn-outline-primary">Registro</a>
                                 {% endif %}
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-editar-ocorrencia"
+                                        data-action="{% url 'auditoria:ocorrencia_editar' oc.id %}"
+                                        data-texto="{{ oc.texto }}">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </button>
                                 <button type="button" class="btn btn-sm btn-success btn-resolver-ocorrencia"
                                         data-action="{% url 'auditoria:ocorrencia_resolver' oc.id %}"
                                         data-texto="{{ oc.texto|truncatechars:200 }}">
@@ -164,6 +169,28 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-success">Marcar como resolvida</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditarOcorrencia" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="post" class="modal-content" id="form-editar-ocorrencia">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'auditoria:modulo' %}#ocorrencias-em-aberto">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar ocorrência</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label" for="editar-ocorrencia-texto">Texto da ocorrência</label>
+                    <textarea class="form-control" id="editar-ocorrencia-texto" name="texto" rows="6" maxlength="8000" required></textarea>
+                    <div class="form-text">Somente o autor ou um administrador pode alterar o texto.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
                 </div>
             </form>
         </div>
@@ -216,6 +243,17 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('resolver-ocorrencia-texto').textContent = btn.getAttribute('data-texto') || '';
             document.getElementById('resolver-ocorrencia-resolucao').value = '';
             modal.show();
+        });
+    });
+
+    const modalEditarEl = document.getElementById('modalEditarOcorrencia');
+    const modalEditar = bootstrap.Modal.getOrCreateInstance(modalEditarEl);
+    const formEditar = document.getElementById('form-editar-ocorrencia');
+    document.querySelectorAll('.btn-editar-ocorrencia').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            formEditar.setAttribute('action', btn.getAttribute('data-action'));
+            document.getElementById('editar-ocorrencia-texto').value = btn.getAttribute('data-texto') || '';
+            modalEditar.show();
         });
     });
 });
