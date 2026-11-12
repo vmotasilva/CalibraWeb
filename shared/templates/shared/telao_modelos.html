@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Modelos de apresentação &mdash; CalibraWEB{% endblock %}
+{% block title %}Apresentações &mdash; CalibraWEB{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-3">
   <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
-      <h3 class="mb-0"><i class="bi bi-display me-2"></i>Modelos de apresentação</h3>
+      <h3 class="mb-0"><i class="bi bi-display me-2"></i>Apresentações</h3>
       <div class="text-muted small">Monte sequências de slides para rodar em loop em uma TV ou tela de acompanhamento.</div>
     </div>
-    <a href="{% url 'telao_editor_novo' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Novo modelo</a>
+    <a href="{% url 'telao_editor_novo' %}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nova apresentação</a>
   </div>
 
-  <h6 class="text-uppercase text-muted mt-4">Meus modelos e compartilhados</h6>
+  <h6 class="text-uppercase text-muted mt-4">Minhas apresentações e compartilhadas</h6>
   {% if modelos %}
   <div class="row g-3">
     {% for m in modelos %}
@@ -33,7 +33,7 @@
           <form method="post" action="{% url 'telao_modelo_favoritar' m.pk %}">
             {% csrf_token %}<button class="btn btn-sm {% if m.favorito %}btn-warning{% else %}btn-outline-warning{% endif %}" title="{% if m.favorito %}Remover do acesso rápido{% else %}Adicionar ao acesso rápido{% endif %}"><i class="bi {% if m.favorito %}bi-star-fill{% else %}bi-star{% endif %}"></i></button>
           </form>
-          <a href="{% url 'telao_editor_novo' %}?base={{ m.chave }}" class="btn btn-sm btn-outline-secondary" title="Criar uma cópia"><i class="bi bi-files"></i></a>
+          <a href="{% url 'telao_editor_novo' %}?base={{ m.chave }}" class="btn btn-sm btn-outline-secondary" title="Duplicar esta apresentação"><i class="bi bi-files"></i></a>
           {% if m.pode_editar %}
           <a href="{% url 'telao_editor' m.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
           <form method="post" action="{% url 'telao_modelo_excluir' m.pk %}" class="ms-auto" onsubmit="return confirm('Excluir esta apresentação?');">
@@ -46,23 +46,8 @@
     {% endfor %}
   </div>
   {% else %}
-  <div class="alert alert-light border">Você ainda não criou nenhum modelo. Use <strong>Novo modelo</strong> ou copie a Apresentação Geral abaixo.</div>
+  <div class="alert alert-light border">Você ainda não criou nenhuma apresentação. Use <strong>Nova apresentação</strong> para montar a primeira do zero.</div>
   {% endif %}
 
-  <h6 class="text-uppercase text-muted mt-4">Disponível para todos</h6>
-  <div class="row g-3">
-    <div class="col-md-6 col-xl-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <h6 class="mb-2"><i class="bi bi-grid-1x2 me-2 text-secondary"></i>Apresentação Geral</h6>
-          <div class="small">{% for r in geral_rotulos %}<span class="badge text-bg-light border me-1">{{ r }}</span>{% endfor %}</div>
-        </div>
-        <div class="card-footer bg-transparent d-flex gap-2">
-          <a href="{% url 'telao' %}?p=geral#cheia" class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Apresentar</a>
-          <a href="{% url 'telao_editor_novo' %}?base=geral" class="btn btn-sm btn-outline-secondary"><i class="bi bi-files"></i> Copiar e personalizar</a>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 {% endblock %}

@@ -35,12 +35,12 @@ class EditorTests(TestCase):
         for nome in ("telao_editor_salvar", "telao_editor_previa", "telao_editor_personalizar"):
             self.assertEqual(self.client.post(reverse(nome), "{}", content_type="application/json").status_code, 302)
 
-    def test_pagina_novo_traz_catalogo_e_slides_da_geral(self):
+    def test_pagina_novo_comeca_do_zero_com_catalogo(self):
         r = self.client.get(reverse("telao_editor_novo"))
         self.assertEqual(r.status_code, 200)
         dados = r.context["dados"]
         self.assertEqual(len(dados["catalogo"]), 7)
-        self.assertEqual([s["provedor"] for s in dados["slides"]][:2], ["ocorrencias", "kpi"])
+        self.assertEqual(dados["slides"], [])  # sem modelo pronto: o editor abre com um slide manual em branco
         self.assertEqual(dados["grade"], {"colunas": cards.COLUNAS, "linhas": cards.LINHAS})
         self.assertIn("layout", [c["nome"] for c in dados["campos"]["kpi"]])
         self.assertContains(r, 'id="edDados"')

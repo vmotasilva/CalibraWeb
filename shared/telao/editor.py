@@ -44,11 +44,9 @@ def editor(request, pk=None):
         slides = layout.slides_do_modelo(modelo)
     else:
         modelo = ModeloApresentacao(criado_por=request.user, nome="", icone="bi-display")
-        slides = layout.slides_da_geral()
-        base = (request.GET.get("base") or "").strip()  # copia a Apresentação Geral ou outro modelo
-        if base == providers.PLAYLIST_PADRAO:
-            modelo.nome, modelo.icone = f"{providers.PLAYLISTS[base][0]} (cópia)", providers.PLAYLISTS[base][1]
-        elif base[:1] == "m" and base[1:].isdigit():
+        slides = []  # a apresentação nova começa do zero (o editor abre com um slide manual em branco)
+        base = (request.GET.get("base") or "").strip()  # duplicar uma apresentação existente
+        if base[:1] == "m" and base[1:].isdigit():
             origem = providers.modelos_visiveis(request.user).filter(pk=int(base[1:])).first()
             if origem:
                 modelo.nome, modelo.icone, modelo.descricao = f"{origem.nome} (cópia)", origem.icone, origem.descricao

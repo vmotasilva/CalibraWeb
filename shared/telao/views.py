@@ -137,10 +137,7 @@ def modelos_lista(request):
         m.favorito = m.pk in favoritos
         m.pode_editar = m.editavel_por(request.user)
         m.rotulos = _rotulos_modelo(m)
-    return render(request, "shared/telao_modelos.html", {
-        "modelos": modelos,
-        "geral_rotulos": [providers.ROTULOS_PROVEDORES[p][0] for p in providers.PLAYLISTS["geral"][2]],
-    })
+    return render(request, "shared/telao_modelos.html", {"modelos": modelos})
 
 
 @login_required
