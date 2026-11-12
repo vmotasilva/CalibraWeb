@@ -35,6 +35,8 @@
         <input type="hidden" name="item" value="{{ item.pk|default:'' }}">
         <input type="hidden" name="visao" value="{{ visao }}">
         <input type="hidden" name="grafico" value="{{ grafico }}">
+        <input type="hidden" name="ivisao" value="{{ request.GET.ivisao }}">
+        <input type="hidden" name="aba" value="{{ request.GET.aba }}">
         <div class="d-flex flex-wrap align-items-center gap-2">
             <button type="button" class="btn btn-sm btn-outline-primary" id="abrir-filtros" data-bs-toggle="modal" data-bs-target="#modal-filtros">
                 <i class="bi bi-funnel me-1"></i>Filtros
@@ -236,6 +238,14 @@
             });
         });
         // #resultado ainda não existe quando este script roda (vem abaixo): delega no document.
+        // Visão própria dos indicadores (dia, semana, mês, bimestre...): recarrega mantendo a aba aberta.
+        document.addEventListener('click', function (e) {
+            var v = e.target.closest('[data-ivisao]');
+            if (!v) return;
+            f.ivisao.value = v.dataset.ivisao; f.aba.value = v.dataset.ind;
+            carregar();
+        });
+        document.addEventListener('shown.bs.tab', function (e) { if (f.aba && e.target.dataset) f.aba.value = e.target.dataset.aba || ''; });
         document.addEventListener('click', function (e) {
             var b = e.target.closest('[data-grafico]');
             if (!b) return;
@@ -290,14 +300,14 @@
                 <div class="card-header py-2 fw-semibold">Dados do gráfico</div>
                 {% if indicadores_item %}
                 <ul class="nav nav-tabs px-2 pt-2 flex-nowrap overflow-auto" role="tablist">
-                    <li class="nav-item" role="presentation"><button type="button" class="nav-link active text-nowrap" data-bs-toggle="tab" data-bs-target="#aba-consumo" role="tab">Consumo</button></li>
+                    <li class="nav-item" role="presentation"><button type="button" class="nav-link {% if not aba %}active{% endif %} text-nowrap" data-aba="" data-bs-toggle="tab" data-bs-target="#aba-consumo" role="tab">Consumo</button></li>
                     {% for x in indicadores_item %}
-                    <li class="nav-item" role="presentation"><button type="button" class="nav-link text-nowrap" data-bs-toggle="tab" data-bs-target="#aba-ind-{{ x.ind.pk }}" role="tab">{{ x.ind.nome }}</button></li>
+                    <li class="nav-item" role="presentation"><button type="button" class="nav-link {% if aba == x.ind.pk %}active{% endif %} text-nowrap" data-aba="{{ x.ind.pk }}" data-bs-toggle="tab" data-bs-target="#aba-ind-{{ x.ind.pk }}" role="tab">{{ x.ind.nome }}</button></li>
                     {% endfor %}
                 </ul>
                 {% endif %}
                 <div class="card-body p-0 tab-content">
-                    <div class="tab-pane fade show active" id="aba-consumo" role="tabpanel">
+                    <div class="tab-pane fade {% if not aba %}show active{% endif %}" id="aba-consumo" role="tabpanel">
                         <div class="table-responsive" style="max-height:clamp(300px,52vh,520px)" id="tabela-dados">
                             <table class="table table-sm small align-middle mb-0">
                                 <thead class="table-light" style="position:sticky;top:0">
@@ -315,7 +325,12 @@
                         </div>
                     </div>
                     {% for x in indicadores_item %}
-                    <div class="tab-pane fade" id="aba-ind-{{ x.ind.pk }}" role="tabpanel">
+                    <div class="tab-pane fade {% if aba == x.ind.pk %}show active{% endif %}" id="aba-ind-{{ x.ind.pk }}" role="tabpanel">
+                        <div class="px-3 pt-2 d-flex flex-wrap gap-1">
+                            <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Visão do indicador">
+                                {% for v, rotulo in ivisoes %}<button type="button" data-ivisao="{{ v }}" data-ind="{{ x.ind.pk }}" class="btn {% if ivisao == v %}btn-primary{% else %}btn-outline-primary{% endif %}">{{ rotulo }}</button>{% endfor %}
+                            </div>
+                        </div>
                         <div class="px-3 py-2 small text-muted border-bottom">
                             {{ x.ind.get_modo_display|truncatechars:60 }}
                             {% if x.ind.producao_indicador %}· produção: {{ x.ind.producao_indicador.nome }}{% if x.ind.producao_variavel %} ({{ x.ind.producao_variavel }}){% endif %}{% endif %}

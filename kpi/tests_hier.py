@@ -134,6 +134,11 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertContains(r, 'Uso do líquido')
         self.assertNotContains(r, 'Inativo')
         self.assertNotContains(r, '<th class="text-end">% da meta</th>')
+        r = self.client.get(reverse('kpi:hier_painel'), {**base, 'ivisao': 'trimestre'})
+        self.assertEqual(r.context['ivisao'], 'trimestre')
+        self.assertEqual(len(r.context['indicadores_item'][0]['serie']['linhas']), 4)
+        r = self.client.get(reverse('kpi:hier_painel'), {**base, 'ivisao': 'xx', 'visao': 'semana'})
+        self.assertEqual(r.context['ivisao'], 'semana')
 
     def test_multiplas_barras_mostram_todos_os_itens_com_consumo_real(self):
         url = reverse('kpi:hier_lancar')

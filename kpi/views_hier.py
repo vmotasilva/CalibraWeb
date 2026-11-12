@@ -291,8 +291,10 @@ def painel_view(request):
         ctx['varios'] = len(itens) > 1
         if len(itens) == 1:
             # Indicadores de insumo ativos deste item (um por aba); a lista é dinâmica: nenhum, um ou vários.
+            ivisao = request.GET.get('ivisao') if request.GET.get('ivisao') in dict(indicadores_insumo.VISOES) else visao
+            ctx.update(ivisao=ivisao, ivisoes=IndicadorInsumo.PERIODICIDADES, aba=_int(request.GET.get('aba')))
             ctx['indicadores_item'] = [
-                {'ind': ind, 'serie': indicadores_insumo.serie(ind, visao, fim)}
+                {'ind': ind, 'serie': indicadores_insumo.serie(ind, ivisao, fim)}
                 for ind in IndicadorInsumo.objects.filter(item=itens[0], ativo=True)
                 .select_related('producao_indicador', 'producao_setor')]
         if len(itens) > 1 and grafico != 'unica':
