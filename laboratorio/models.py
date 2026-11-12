@@ -1041,10 +1041,12 @@ class HCCadastro(models.Model):
     TIPO_GARRA = "GARRA"
     TIPO_MATERIAL = "MATERIAL"
     TIPO_MOTIVO = "MOTIVO"
+    TIPO_PARADA = "PARADA"
     TIPO_CHOICES = [
         (TIPO_GARRA, "Tipo de garra"),
         (TIPO_MATERIAL, "Material"),
         (TIPO_MOTIVO, "Motivo de retrabalho"),
+        (TIPO_PARADA, "Tipo de parada de máquina"),
     ]
     PASSO_CHOICES = [
         (1, "1º passo (lente nova)"),
@@ -1160,7 +1162,24 @@ class RendimentoHCRegistro(models.Model):
 
     ORIGEM_FORM = "FORM"
     ORIGEM_IMPORT = "IMPORT"
+    LANC_GARRA = "GARRA"
+    LANC_PARADA = "PARADA"
+    LANC_CHOICES = [(LANC_GARRA, "Lançamento de garra"), (LANC_PARADA, "Parada de máquina")]
 
+    tipo_lancamento = models.CharField(
+        max_length=6, choices=LANC_CHOICES, default=LANC_GARRA, db_index=True,
+        help_text="Parada de máquina não entra nos cálculos de rendimento (0 lentes, 0 retrabalho); é contabilizada à parte.",
+    )
+    categoria_parada = models.ForeignKey(
+        "HCCadastro", on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+        limit_choices_to={"tipo": "PARADA"}, verbose_name="Tipo de parada",
+    )
+    maquina = models.ForeignKey("maquinas.Maquina", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    duracao_minutos = models.PositiveIntegerField(null=True, blank=True, help_text="Duração da parada, em minutos.")
+    ocorrencia = models.ForeignKey(
+        "OcorrenciaLaboratorio", on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+        help_text="Ocorrência gerada a partir desta parada (ação do líder).",
+    )
     data = models.DateField(db_index=True)
     hora = models.TimeField(null=True, blank=True, help_text="Hora do lançamento/inspeção (vazia em registros antigos).")
     turno = models.ForeignKey(RegraTurnoCoating, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
@@ -1195,6 +1214,10 @@ class RendimentoHCRegistro(models.Model):
     @property
     def colaborador_display(self):
         return self.colaborador.nome_completo if self.colaborador_id else self.colaborador_nome
+
+    @property
+    def eh_parada(self):
+        return self.tipo_lancamento == self.LANC_PARADA
 
 
 class RendimentoHCItem(models.Model):

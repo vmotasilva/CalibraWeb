@@ -1673,6 +1673,7 @@ NAV_STRUCTURE = [
                     {"nome": "Novo Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_create", "perm": "core.nav_laboratorio_hc_registro_create"},
                     {"nome": "Editar Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_update", "perm": "core.nav_laboratorio_hc_registro_update"},
                     {"nome": "Excluir Lançamento de Rendimento", "view_name": "laboratorio:hc_registro_delete", "perm": "core.nav_laboratorio_hc_registro_delete"},
+                    {"nome": "Gerar Ocorrência a partir de Parada de Máquina (líder)", "view_name": "laboratorio:hc_parada_ocorrencia", "perm": "core.nav_laboratorio_hc_parada_ocorrencia"},
                     {"nome": "Importar Planilha de Rendimento HC", "view_name": ["laboratorio:hc_importar", "laboratorio:hc_importar_preview", "laboratorio:hc_modelo"], "perm": "core.nav_laboratorio_hc_importar"},
                     {"nome": "Exportar Registros de Rendimento HC (planilha)", "view_name": "laboratorio:hc_exportar", "perm": "core.nav_laboratorio_hc_exportar"},
                 ],

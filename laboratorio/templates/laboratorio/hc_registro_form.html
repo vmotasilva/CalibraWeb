@@ -19,9 +19,25 @@
         {% if form.non_field_errors %}<div class="alert alert-danger py-2">{{ form.non_field_errors|join:" " }}</div>{% endif %}
         <div class="card border-0 shadow-sm"><div class="card-body">
             <div class="row g-3">
+                <div class="col-12 col-md-6">
+                    <label class="form-label fw-semibold" for="{{ form.tipo_lancamento.id_for_label }}">{{ form.tipo_lancamento.label }}</label>
+                    {{ form.tipo_lancamento }}
+                    <div class="form-text">Use <strong>Parada de máquina</strong> para sinalizar que a máquina parou: não entra no rendimento, é contabilizada à parte.</div>
+                </div>
+                <div class="col-12 col-md-6 hc-so-parada">&nbsp;</div>
+                <div class="col-12 hc-so-parada"><div class="border rounded p-3 border-warning bg-warning bg-opacity-10"><div class="row g-3">
+                    {% for f in form.campos_parada %}
+                    <div class="col-12 col-md-{% if forloop.last %}12{% else %}6{% endif %}">
+                        <label class="form-label fw-semibold" for="{{ f.id_for_label }}">{{ f.label }}{% if f.field.required %} <span class="text-danger">*</span>{% endif %}</label>
+                        {{ f }}
+                        {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}
+                        {% for e in f.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                    </div>
+                    {% endfor %}
+                </div></div></div>
                 {% for bloco in form.blocos %}
                     {% if bloco.grupo %}
-                    <div class="col-12 hc-bloco {% if bloco.so_retrabalho %}hc-so-retrabalho{% endif %}" data-prefixo="{{ bloco.campo.chave }}">
+                    <div class="col-12 hc-bloco hc-so-garra {% if bloco.so_retrabalho %}hc-so-retrabalho{% endif %}" data-prefixo="{{ bloco.campo.chave }}">
                         <div class="border rounded p-3 bg-light">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 class="fw-bold mb-0">{{ bloco.campo.rotulo }}</h6>
@@ -41,7 +57,7 @@
                     </div>
                     {% else %}
                         {% with f=bloco.campos.0 %}
-                        <div class="{% if bloco.campo.tipo == 'TEXTO_LONGO' or f.name == 'observacoes' %}col-12{% else %}col-12 col-md-6{% endif %}">
+                        <div class="{% if bloco.campo.tipo == 'TEXTO_LONGO' or f.name == 'observacoes' %}col-12{% else %}col-12 col-md-6{% endif %}{% if bloco.so_garra %} hc-so-garra{% endif %}">
                             <label class="form-label fw-semibold" for="{{ f.id_for_label }}">{{ f.label }}{% if f.field.required %} <span class="text-danger">*</span>{% endif %}</label>
                             {{ f }}
                             {% if f.help_text %}<div class="form-text">{{ f.help_text }}</div>{% endif %}
@@ -65,10 +81,15 @@
     const teve = document.getElementById('id_teve_retrabalho');
     const blocos = document.querySelectorAll('.hc-so-retrabalho');
     const qtd = document.getElementById('id_qtd_lentes');
+    const tipoLanc = document.getElementById('id_tipo_lancamento');
     function alterna() {
-        const sim = teve && teve.value === '1';
+        const parada = tipoLanc && tipoLanc.value === 'PARADA';
+        const sim = teve && teve.value === '1' && !parada;
+        document.querySelectorAll('.hc-so-garra').forEach(b => { b.style.display = parada ? 'none' : ''; });
+        document.querySelectorAll('.hc-so-parada').forEach(b => { b.style.display = parada ? '' : 'none'; });
         blocos.forEach(b => { b.style.display = sim ? '' : 'none'; });
     }
+    if (tipoLanc) tipoLanc.addEventListener('change', alterna);
     const prefixos = {producao_materiais: 'pm_', retrabalho_materiais: 'rm_', retrabalho_motivos: 'rt_'};
     function somas() {
         document.querySelectorAll('.hc-soma').forEach(el => {

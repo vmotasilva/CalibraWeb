@@ -159,7 +159,7 @@ def hc_dia_hora(request):
 # --------------------------------------------------------------------------- registros
 def _filtrar_registros(request):
     """Queryset de registros conforme os filtros da tela (usado na listagem e na exportação)."""
-    qs = RendimentoHCRegistro.objects.select_related("colaborador", "turno", "tipo_garra", "tratamento")
+    qs = RendimentoHCRegistro.objects.select_related("colaborador", "turno", "tipo_garra", "tratamento", "categoria_parada", "maquina")
     ini, fim = _data(request.GET.get("inicio"), None), _data(request.GET.get("fim"), None)
     if ini:
         qs = qs.filter(data__gte=ini)
@@ -190,9 +190,19 @@ def hc_registros(request):
 @login_required
 def hc_registro_detalhe(request, pk):
     """Conteúdo do pop-up de um lançamento (somente leitura, com editar/excluir)."""
-    r = get_object_or_404(RendimentoHCRegistro.objects.select_related("colaborador", "turno", "tipo_garra", "tratamento", "usuario"), pk=pk)
+    r = get_object_or_404(RendimentoHCRegistro.objects.select_related(
+        "colaborador", "turno", "tipo_garra", "tratamento", "usuario", "maquina", "categoria_parada", "ocorrencia"), pk=pk)
     rot = {c.chave: c.rotulo for c in HCCampoFormulario.objects.all()}
     sim_nao = lambda v: "Sim" if v else "Não"
+    if r.eh_parada:
+        campos = [
+            (rot.get("data", "Data"), r.data.strftime("%d/%m/%Y") + (r.hora.strftime(" %H:%M") if r.hora else "")), (rot.get("turno", "Turno"), r.turno_nome or "–"),
+            (rot.get("colaborador", "Colaborador"), r.colaborador_display or "–"),
+            ("Máquina parada", str(r.maquina) if r.maquina_id else "–"),
+            ("Tipo de parada", r.categoria_parada.nome if r.categoria_parada_id else "–"),
+            ("Duração", f"{r.duracao_minutos} min" if r.duracao_minutos else "Em aberto / não informada"),
+        ]
+        return render(request, "laboratorio/_hc_registro_detalhe.html", {"r": r, "campos": campos, "grupos": [], "extras": []})
     campos = [
         (rot.get("data", "Data"), r.data.strftime("%d/%m/%Y") + (r.hora.strftime(" %H:%M") if r.hora else "")), (rot.get("turno", "Turno"), r.turno_nome or "–"),
         (rot.get("colaborador", "Colaborador"), r.colaborador_display or "–"), (rot.get("numero_garra", "Número da Garra"), r.numero_garra or "–"),
@@ -244,6 +254,20 @@ def hc_registro_update(request, pk):
         messages.success(request, "Lançamento atualizado.")
         return redirect("laboratorio:hc_registros")
     return render(request, "laboratorio/hc_registro_form.html", {"form": form, "titulo": "Editar lançamento", "registro": registro})
+
+
+@login_required
+@require_POST
+def hc_parada_ocorrencia(request, pk):
+    """Ação do líder: transforma a parada de máquina em ocorrência do laboratório."""
+    registro = get_object_or_404(RendimentoHCRegistro.objects.select_related("maquina", "categoria_parada", "colaborador", "ocorrencia"), pk=pk)
+    try:
+        oc, criada = hc.gerar_ocorrencia_parada(registro, request.user)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("laboratorio:hc_registros")
+    messages.success(request, "Ocorrência gerada a partir da parada." if criada else "Esta parada já virou ocorrência.")
+    return redirect("laboratorio:ocorrencia_detail", pk=oc.pk)
 
 
 @login_required
@@ -539,4 +563,4 @@ def hc_modelo(request):
 def hc_exportar(request):
     """Exporta os registros (respeitando os filtros da tela) no formato do importador."""
     qs, _turno, _busca = _filtrar_registros(request)
-    return planilhas.exportar("hc", qs)
+    return planilhas.exportar("hc", qs.filter(tipo_lancamento=RendimentoHCRegistro.LANC_GARRA))  # parada não é linha da planilha

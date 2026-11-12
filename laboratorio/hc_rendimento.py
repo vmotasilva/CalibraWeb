@@ -10,13 +10,16 @@ from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
+from maquinas.models import Maquina
 from rh.models import Colaborador
 
 from .models import (
+    CategoriaLaboratorio,
     EquipeCoating,
     EquipeHC,
     HCCadastro,
     HCCampoFormulario,
+    OcorrenciaLaboratorio,
     RegraTurnoCoating,
     RendimentoHCConfig,
     RendimentoHCItem,
@@ -52,6 +55,16 @@ MOTIVOS_PADRAO = [
     "Ponto Poly Blue / Blue Cut",
     "Outros",
 ]
+PARADAS_PADRAO = [
+    "Manutenção corretiva",
+    "Manutenção preventiva",
+    "Falta de material / insumo",
+    "Falha de utilidades (energia, ar, vácuo)",
+    "Setup / troca de produto",
+    "Falta de colaborador",
+    "Limpeza / higienização",
+    "Outros",
+]
 # chave, rótulo, tipo, obrigatório, visível
 CAMPOS_PADRAO = [
     ("data", "Data", "DATA", True, True),
@@ -77,12 +90,45 @@ def garantir_padroes():
         HCCadastro.objects.get_or_create(tipo=HCCadastro.TIPO_MATERIAL, nome=nome, defaults={"ordem": i})
     for i, nome in enumerate(MOTIVOS_PADRAO):
         HCCadastro.objects.get_or_create(tipo=HCCadastro.TIPO_MOTIVO, nome=nome, defaults={"ordem": i})
+    for i, nome in enumerate(PARADAS_PADRAO):
+        HCCadastro.objects.get_or_create(tipo=HCCadastro.TIPO_PARADA, nome=nome, defaults={"ordem": i})
     for i, (chave, rotulo, tipo, obrig, visivel) in enumerate(CAMPOS_PADRAO):
         HCCampoFormulario.objects.get_or_create(
             chave=chave,
             defaults={"rotulo": rotulo, "tipo": tipo, "obrigatorio": obrig, "visivel": visivel, "ordem": i * 10, "sistema": True},
         )
     RendimentoHCConfig.get()
+
+
+def gerar_ocorrencia_parada(registro, usuario=None):
+    """Ação do líder: transforma uma parada de máquina do HC em Ocorrência do Laboratório (uma só por parada)."""
+    if not registro.eh_parada:
+        raise ValueError("Só é possível gerar ocorrência a partir de uma parada de máquina.")
+    if registro.ocorrencia_id:
+        return registro.ocorrencia, False
+    categoria = next((c for c in CategoriaLaboratorio.objects.filter(ativo=True) if c.exige_maquina and
+                      c.nome_normalizado.startswith("parada de maquina")), None)
+    if categoria is None:
+        categoria, _ = CategoriaLaboratorio.objects.get_or_create(
+            nome="Parada de Máquina", defaults={"impacto": CategoriaLaboratorio.IMPACTO_MEDIO,
+                                                 "descricao": "Parada de máquina sinalizada no Rendimento HC."})
+    abertura = timezone.make_aware(datetime.combine(registro.data, registro.hora or time()))
+    tipo = registro.categoria_parada.nome if registro.categoria_parada_id else "sem tipo informado"
+    minutos = registro.duracao_minutos
+    detalhe = [f"Parada de máquina sinalizada no Rendimento HC ({tipo})."]
+    if registro.observacoes:
+        detalhe.append(registro.observacoes)
+    with transaction.atomic():
+        oc = OcorrenciaLaboratorio.objects.create(
+            categoria=categoria, assunto=f"Parada de máquina - {tipo}"[:200], maquina=registro.maquina,
+            colaborador=registro.colaborador, detalhamento="\n".join(detalhe), impacto=categoria.impacto,
+            responsavel=usuario, criado_por=usuario, data_abertura=abertura,
+            data_encerramento=abertura + timedelta(minutes=minutos) if minutos else None,
+            horas_indisponibilidade=(Decimal(minutos) / 60).quantize(Decimal("0.01")) if minutos else None,
+        )
+        registro.ocorrencia = oc
+        registro.save(update_fields=["ocorrencia"])
+    return oc, True
 
 
 def campo_data_hora(rotulo):
@@ -113,6 +159,10 @@ def colaboradores_hc():
     return qs.order_by("nome_completo")
 
 
+# Campos que só fazem sentido no lançamento de garra (somem quando o lançamento é "Parada de máquina").
+CHAVES_SO_GARRA = ("numero_garra", "tipo_garra", "tratamento", "qtd_lentes", "producao_materiais",
+                   "teve_retrabalho", "retrabalho_materiais", "retrabalho_motivos")
+
 _PREFIXOS_BLOCO = {"producao_materiais": "pm_", "retrabalho_materiais": "rm_", "retrabalho_motivos": "rt_"}
 _TIPO_POR_PREFIXO = {
     "pm_": RendimentoHCItem.PROD_MATERIAL,
@@ -128,6 +178,13 @@ class RegistroHCForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.instance = instance
         garantir_padroes()
+        if self.is_bound:
+            self.parada = self.data.get("tipo_lancamento") == RendimentoHCRegistro.LANC_PARADA
+        else:
+            self.parada = bool(instance is not None and instance.eh_parada)
+        self.fields["tipo_lancamento"] = forms.ChoiceField(
+            label="Tipo de lançamento", required=False, choices=RendimentoHCRegistro.LANC_CHOICES,
+            initial=RendimentoHCRegistro.LANC_GARRA, widget=forms.Select(attrs={"class": "form-select"}))
         self.campos = [c for c in HCCampoFormulario.objects.all()
                        if c.visivel or c.chave in HCCampoFormulario.CHAVES_OBRIGATORIAS]
         self.materiais = list(HCCadastro.objects.filter(tipo=HCCadastro.TIPO_MATERIAL, ativo=True))
@@ -135,8 +192,28 @@ class RegistroHCForm(forms.Form):
         self.blocos = []
         for campo in self.campos:
             self._montar(campo)
+        self._montar_parada()
+        if self.parada:  # parada de máquina: nada de produção/retrabalho é exigido
+            for nome, campo in self.fields.items():
+                if nome in CHAVES_SO_GARRA or nome[:3] in _TIPO_POR_PREFIXO:
+                    campo.required = False
         if instance is not None and not self.is_bound:
             self._carregar(instance)
+
+    def _montar_parada(self):
+        """Campos do lançamento de parada de máquina (obrigatórios só quando o tipo é 'Parada de máquina')."""
+        sel = {"class": "form-select"}
+        self.fields["categoria_parada"] = forms.ModelChoiceField(
+            label="Tipo de parada", required=self.parada,
+            queryset=HCCadastro.objects.filter(tipo=HCCadastro.TIPO_PARADA, ativo=True), widget=forms.Select(attrs=sel))
+        self.fields["maquina"] = forms.ModelChoiceField(
+            label="Máquina parada", required=self.parada,
+            queryset=Maquina.objects.filter(status=True).order_by("codigo"), widget=forms.Select(attrs=sel))
+        self.fields["duracao_minutos"] = forms.IntegerField(
+            label="Duração da parada (minutos)", required=False, min_value=1,
+            help_text="Opcional: deixe em branco se a máquina ainda está parada.",
+            widget=forms.NumberInput(attrs={"class": "form-control", "min": 1, "inputmode": "numeric"}))
+        self.campos_parada = [self["categoria_parada"], self["maquina"], self["duracao_minutos"]]
 
     @staticmethod
     def _num(label):
@@ -171,13 +248,14 @@ class RegistroHCForm(forms.Form):
             for m in (self.motivos if pref == "rt_" else self.materiais):
                 self.fields[f"{pref}{m.pk}"] = self._num(m.nome)
             campos = [self[n] for n in self.fields if n.startswith(pref)]
-            self.blocos.append({"campo": c, "grupo": True, "campos": campos, "so_retrabalho": k != "producao_materiais"})
+            self.blocos.append({"campo": c, "grupo": True, "campos": campos, "so_retrabalho": k != "producao_materiais", "so_garra": True})
             return
         else:
             self.fields[f"x_{k}"] = self._campo_extra(c, sel, txt)
         nome = f"x_{k}" if f"x_{k}" in self.fields else k
         self.fields[nome].help_text = c.ajuda
-        self.blocos.append({"campo": c, "grupo": False, "campos": [self[nome]], "so_retrabalho": False})
+        self.blocos.append({"campo": c, "grupo": False, "campos": [self[nome]], "so_retrabalho": False,
+                            "so_garra": k in CHAVES_SO_GARRA})
 
     @staticmethod
     def _campo_extra(c, sel, txt):
@@ -199,6 +277,8 @@ class RegistroHCForm(forms.Form):
             "data": datetime.combine(r.data, r.hora or time()), "turno": r.turno_id, "colaborador": r.colaborador_id, "numero_garra": r.numero_garra,
             "tipo_garra": r.tipo_garra_id, "tratamento": r.tratamento_id, "qtd_lentes": r.qtd_lentes,
             "teve_retrabalho": "1" if r.teve_retrabalho else "0", "observacoes": r.observacoes,
+            "tipo_lancamento": r.tipo_lancamento, "categoria_parada": r.categoria_parada_id, "maquina": r.maquina_id,
+            "duracao_minutos": r.duracao_minutos,
         }
         for item in r.itens.all():
             ini[f"{item.tipo.lower()}_{item.cadastro_id}"] = item.quantidade
@@ -215,6 +295,9 @@ class RegistroHCForm(forms.Form):
     def clean(self):
         dados = super().clean()
         if self.errors:
+            return dados
+        if self.parada:
+            dados["_total_retrabalho"] = 0
             return dados
         qtd = dados.get("qtd_lentes") or 0
         if dados.get("teve_retrabalho") == "1":
@@ -238,17 +321,26 @@ class RegistroHCForm(forms.Form):
     def save(self, usuario=None):
         d = self.cleaned_data
         r = self.instance or RendimentoHCRegistro(origem=RendimentoHCRegistro.ORIGEM_FORM, usuario=usuario)
+        r.tipo_lancamento = d.get("tipo_lancamento") or RendimentoHCRegistro.LANC_GARRA
+        parada = r.eh_parada
         r.data, r.hora = separar_data_hora(d["data"])
         r.turno = d.get("turno")
         r.turno_nome = r.turno.nome if r.turno else ""
         r.colaborador = d.get("colaborador")
         r.colaborador_nome = r.colaborador.nome_completo if r.colaborador else ""
-        r.numero_garra = d.get("numero_garra") or ""
-        r.tipo_garra = d.get("tipo_garra")
-        r.tratamento = d.get("tratamento")
-        r.qtd_lentes = d["qtd_lentes"]
-        r.teve_retrabalho = d.get("teve_retrabalho") == "1"
-        r.qtd_retrabalho = d["_total_retrabalho"]
+        r.categoria_parada = d.get("categoria_parada") if parada else None
+        r.maquina = d.get("maquina") if parada else None
+        r.duracao_minutos = d.get("duracao_minutos") if parada else None
+        if parada:  # não entra no rendimento: sem lentes, sem retrabalho, sem garra
+            r.numero_garra, r.tipo_garra, r.tratamento = "", None, None
+            r.qtd_lentes, r.teve_retrabalho, r.qtd_retrabalho = 0, False, 0
+        else:
+            r.numero_garra = d.get("numero_garra") or ""
+            r.tipo_garra = d.get("tipo_garra")
+            r.tratamento = d.get("tratamento")
+            r.qtd_lentes = d["qtd_lentes"]
+            r.teve_retrabalho = d.get("teve_retrabalho") == "1"
+            r.qtd_retrabalho = d["_total_retrabalho"]
         r.observacoes = d.get("observacoes") or ""
         extras = dict(r.extras or {})
         for nome in self.fields:
@@ -261,6 +353,8 @@ class RegistroHCForm(forms.Form):
         itens = []
         for nome in self.fields:
             pref = nome[:3]
+            if parada:
+                break
             if pref in _TIPO_POR_PREFIXO:
                 tipo = _TIPO_POR_PREFIXO[pref]
                 q = d.get(nome) or 0
@@ -285,8 +379,25 @@ def _n(v):
     return v or 0
 
 
+def _garras():
+    """Só lançamentos de garra: a parada de máquina fica fora do rendimento (é contabilizada à parte)."""
+    return RendimentoHCRegistro.objects.filter(tipo_lancamento=RendimentoHCRegistro.LANC_GARRA)
+
+
 def _base(inicio, fim):
-    return RendimentoHCRegistro.objects.filter(data__gte=inicio, data__lte=fim)
+    return _garras().filter(data__gte=inicio, data__lte=fim)
+
+
+def paradas(inicio, fim):
+    """Resumo das paradas de máquina do período: total, minutos parados e quebra por tipo de parada."""
+    qs = RendimentoHCRegistro.objects.filter(tipo_lancamento=RendimentoHCRegistro.LANC_PARADA, data__gte=inicio, data__lte=fim)
+    por_tipo = defaultdict(lambda: [0, 0])
+    for r in qs.values("categoria_parada__nome").annotate(n=Count("id"), m=Sum("duracao_minutos")):
+        acc = por_tipo[r["categoria_parada__nome"] or "Sem tipo"]
+        acc[0] += r["n"]
+        acc[1] += _n(r["m"])
+    linhas = sorted(({"nome": n, "qtd": q, "minutos": m} for n, (q, m) in por_tipo.items()), key=lambda x: -x["minutos"])
+    return {"total": sum(l["qtd"] for l in linhas), "minutos": sum(l["minutos"] for l in linhas), "linhas": linhas}
 
 
 def _agg_passos():
@@ -345,7 +456,7 @@ def por_hora(dia):
     """Mesmos indicadores do consolidado (1º/2º passo e geral), por hora de lançamento no dia."""
     chaves = ("prod", "ret", "p1", "r1", "p2", "r2")
     acc = defaultdict(lambda: dict.fromkeys(chaves, 0))
-    for r in RendimentoHCRegistro.objects.filter(data=dia).select_related("tipo_garra"):
+    for r in _garras().filter(data=dia).select_related("tipo_garra"):
         a = acc[hora_registro(r)]
         a["prod"] += r.qtd_lentes
         a["ret"] += r.qtd_retrabalho
@@ -363,7 +474,7 @@ def por_hora(dia):
     if sem_hora:
         sem_hora["rotulo"] = "Sem horário"
     total = _linha_passos({k: sum(a[k] for a in acc.values()) for k in chaves})
-    return {"linhas": linhas, "sem_hora": sem_hora, "total": total, "meta": meta(), "dia": dia}
+    return {"linhas": linhas, "sem_hora": sem_hora, "total": total, "meta": meta(), "dia": dia, "paradas": paradas(dia, dia)}
 
 
 def _soma_por_cadastro(itens_qs, tipo_item, tipo_cadastro):
@@ -418,7 +529,7 @@ def analise_diaria(dia):
         "total": total, "motivos": motivos, "materiais": _tabela_material(dia, dia),
         "turnos": _por_grupo(qs, "turno_nome", "Sem turno", prod),
         "garras": _por_grupo(qs, "tipo_garra__nome", "Sem tipo", prod),
-        "colaboradores": _por_colaborador(qs, prod), "meta": meta(),
+        "colaboradores": _por_colaborador(qs, prod), "meta": meta(), "paradas": paradas(dia, dia),
     }
 
 
@@ -488,7 +599,7 @@ def analise_colaborador(chave, inicio, fim):
 
 def retrabalho_ano(ano):
     """Aba Retrabalho x Ano: uma linha por mês."""
-    qs = RendimentoHCRegistro.objects.filter(data__year=ano)
+    qs = _garras().filter(data__year=ano)
     por_mes = {r["data__month"]: r for r in qs.values("data__month").annotate(**_agg_passos())}
     nomes = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"]
     linhas = []

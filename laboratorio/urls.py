@@ -135,6 +135,7 @@ urlpatterns = [
     path("hc/registros/<int:pk>/detalhe/", views_hc.hc_registro_detalhe, name="hc_registro_detalhe"),
     path("hc/registros/<int:pk>/editar/", views_hc.hc_registro_update, name="hc_registro_update"),
     path("hc/registros/<int:pk>/excluir/", views_hc.hc_registro_delete, name="hc_registro_delete"),
+    path("hc/registros/<int:pk>/gerar-ocorrencia/", views_hc.hc_parada_ocorrencia, name="hc_parada_ocorrencia"),
     path("hc/config/campos/", views_hc.hc_config_campos, name="hc_config_campos"),
     path("hc/config/campos/salvar/", views_hc.hc_campo_save, name="hc_campo_save"),
     path("hc/config/campos/<int:pk>/mover/", views_hc.hc_campo_mover, name="hc_campo_mover"),

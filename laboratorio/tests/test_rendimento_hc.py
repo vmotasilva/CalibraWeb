@@ -505,3 +505,91 @@ class EnvioUnicoTests(RendimentoHCBase):
         # reenviar com o token novo grava uma única vez
         self.post_registro(envio_token=token, **{f"pm_{self.orma.pk}": 20})
         self.assertEqual(RendimentoHCRegistro.objects.count(), 1)
+
+
+class ParadaMaquinaTests(RendimentoHCBase):
+    def setUp(self):
+        super().setUp()
+        from maquinas.models import Maquina
+
+        self.maquina = Maquina.objects.create(codigo="HC-01", fabricante="Coater", status=True)
+        self.tipo_parada = HCCadastro.objects.get(tipo="PARADA", nome="Manutenção corretiva")
+
+    def post_parada(self, **extra):
+        dados = {"tipo_lancamento": "PARADA", "data": "2026-10-05T10:30", "turno": self.turno1.pk, "colaborador": self.ana.pk,
+                 "categoria_parada": self.tipo_parada.pk, "maquina": self.maquina.pk, "duracao_minutos": "45"}
+        dados.update({k: str(v) for k, v in extra.items()})
+        dados.setdefault("envio_token", uuid.uuid4().hex)
+        return self.client.post(reverse("laboratorio:hc_registro_create"), dados)
+
+    def test_parada_nao_exige_producao_e_zera_lentes(self):
+        self.assertRedirects(self.post_parada(), reverse("laboratorio:hc_registros"))
+        r = RendimentoHCRegistro.objects.get()
+        self.assertTrue(r.eh_parada)
+        self.assertEqual((r.qtd_lentes, r.qtd_retrabalho, r.teve_retrabalho, r.duracao_minutos), (0, 0, False, 45))
+        self.assertEqual((r.maquina, r.categoria_parada), (self.maquina, self.tipo_parada))
+
+    def test_parada_exige_tipo_e_maquina(self):
+        resp = self.post_parada(categoria_parada="", maquina="")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 0)
+
+    def test_garra_continua_exigindo_producao(self):
+        resp = self.post_registro(qtd_lentes="")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(RendimentoHCRegistro.objects.count(), 0)
+
+    def test_parada_fica_fora_do_rendimento(self):
+        self.post_registro(qtd_lentes=100, teve_retrabalho=1, **{f"rt_{self.risco.pk}": 5})
+        dia = date(2026, 10, 5)
+        antes = hc.consolidado(dia, dia)["total"]
+        horas_antes = hc.por_hora(dia)
+        self.post_parada()
+        self.assertEqual(hc.consolidado(dia, dia)["total"], antes)
+        depois = hc.por_hora(dia)
+        self.assertEqual(depois["total"], horas_antes["total"])
+        self.assertEqual([l["hora"] for l in depois["linhas"]], [l["hora"] for l in horas_antes["linhas"]])  # a parada não cria hora "zerada"
+        diaria = hc.analise_diaria(dia)
+        self.assertEqual(diaria["garras"][0]["nome"], "Lente Nova")
+        self.assertEqual(len(diaria["garras"]), 1)  # nenhuma linha "Sem tipo" criada pela parada
+        self.assertEqual(diaria["paradas"]["total"], 1)
+        self.assertEqual(diaria["paradas"]["minutos"], 45)
+        self.assertEqual(hc.retrabalho_ano(2026)["total"]["produzidas"], 100)
+
+    def test_lider_gera_ocorrencia_uma_unica_vez(self):
+        from laboratorio.models import OcorrenciaLaboratorio
+
+        self.post_parada(observacoes="Bomba de vácuo")
+        r = RendimentoHCRegistro.objects.get()
+        url = reverse("laboratorio:hc_parada_ocorrencia", args=[r.pk])
+        resp = self.client.post(url)
+        r.refresh_from_db()
+        oc = OcorrenciaLaboratorio.objects.get()
+        self.assertRedirects(resp, reverse("laboratorio:ocorrencia_detail", args=[oc.pk]))
+        self.assertEqual((r.ocorrencia, oc.maquina), (oc, self.maquina))
+        self.assertTrue(oc.categoria.exige_maquina)
+        self.assertEqual(float(oc.horas_indisponibilidade), 0.75)
+        self.client.post(url)
+        self.assertEqual(OcorrenciaLaboratorio.objects.count(), 1)
+
+    def test_ocorrencia_so_para_parada(self):
+        self.post_registro()
+        r = RendimentoHCRegistro.objects.get()
+        self.client.post(reverse("laboratorio:hc_parada_ocorrencia", args=[r.pk]))
+        r.refresh_from_db()
+        self.assertIsNone(r.ocorrencia)
+
+    def test_telas_com_parada_abrem(self):
+        self.post_parada()
+        r = RendimentoHCRegistro.objects.get()
+        for nome, args in (("hc_registros", []), ("hc_registro_detalhe", [r.pk]), ("hc_registro_update", [r.pk]),
+                           ("hc_dia_hora", []), ("hc_registro_create", [])):
+            self.assertEqual(self.client.get(reverse(f"laboratorio:{nome}", args=args), {"data": "2026-10-05"}).status_code, 200, nome)
+        self.assertContains(self.client.get(reverse("laboratorio:hc_registro_detalhe", args=[r.pk])), "Gerar ocorrência")
+        self.assertEqual(self.client.get(reverse("laboratorio:hc_dashboard"), {"aba": "diaria", "data": "2026-10-05"}).status_code, 200)
+
+    def test_exportacao_ignora_parada(self):
+        self.post_parada()
+        self.post_registro()
+        resp = self.client.get(reverse("laboratorio:hc_exportar"))
+        self.assertEqual(resp.status_code, 200)

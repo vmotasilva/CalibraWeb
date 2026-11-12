@@ -482,6 +482,7 @@ class NavigationPermission(models.Model):
             ("nav_laboratorio_hc_registro_create", "NAV: Laboratorio / HC / Novo Lancamento de Rendimento"),
             ("nav_laboratorio_hc_registro_update", "NAV: Laboratorio / HC / Editar Lancamento de Rendimento"),
             ("nav_laboratorio_hc_registro_delete", "NAV: Laboratorio / HC / Excluir Lancamento de Rendimento"),
+            ("nav_laboratorio_hc_parada_ocorrencia", "NAV: Laboratorio / HC / Gerar Ocorrencia a partir de Parada de Maquina (lider)"),
             ("nav_laboratorio_hc_importar", "NAV: Laboratorio / HC / Importar Planilha de Rendimento"),
             ("nav_laboratorio_hc_exportar", "NAV: Laboratorio / HC / Exportar Registros em Planilha"),
             ("nav_laboratorio_hc_campos_bloco", "NAV: Laboratorio / Bloco HC: Campos do Formulario"),

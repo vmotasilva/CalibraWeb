@@ -97,7 +97,8 @@
 
     {# ---------------- ABA: Análise Diária ---------------- #}
     {% if aba == 'diaria' %}
-    <div class="row g-3">
+    {% include 'laboratorio/_hc_paradas.html' with paradas=dados.paradas %}
+    <div class="row g-3 mt-0">
         <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-header bg-white fw-bold">Motivos de retrabalho</div>
             <div class="table-responsive"><table class="table table-sm mb-0 small"><thead class="table-light"><tr><th>Motivo</th><th class="text-end">Quant.</th><th class="text-end">% s/ produção</th></tr></thead><tbody>
             {% for m in dados.motivos %}<tr><td>{{ m.nome }}</td><td class="text-end">{{ m.qtd }}</td><td class="text-end">{{ m.pct|pc }}</td></tr>{% endfor %}

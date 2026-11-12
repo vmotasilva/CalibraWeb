@@ -1,0 +1,8 @@
+{% if paradas.total %}
+<div class="card border-0 shadow-sm mt-3"><div class="card-header bg-white fw-bold"><i class="bi bi-pause-circle text-warning me-1"></i>Paradas de máquina
+    <span class="badge bg-warning text-dark ms-1">{{ paradas.total }}</span>
+    <span class="small fw-normal text-muted ms-2">{{ paradas.minutos }} min parados · fora do cálculo de rendimento</span></div>
+    <div class="table-responsive"><table class="table table-sm mb-0 small"><thead class="table-light"><tr><th>Tipo de parada</th><th class="text-end">Paradas</th><th class="text-end">Minutos</th></tr></thead><tbody>
+    {% for l in paradas.linhas %}<tr><td>{{ l.nome }}</td><td class="text-end">{{ l.qtd }}</td><td class="text-end">{{ l.minutos }}</td></tr>{% endfor %}
+    </tbody></table></div></div>
+{% endif %}
