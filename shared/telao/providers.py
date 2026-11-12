@@ -998,15 +998,22 @@ def slides_treinamentos(user, resumo=False, filtros=None):
             {"rotulo": "Procedimentos treinados", "valor": d["procs"], "tom": "neutro"},
             {"rotulo": "Treinamentos nos últimos 30 dias", "valor": d["ult30"], "tom": "neutro"},
         ]))
+        qtd = int(f["barras_qtd"]) if str(f.get("barras_qtd") or "").isdigit() and 1 <= int(f["barras_qtd"]) <= 40 else None
+        est_barras = dict(sem_barra=bool(f.get("barras_sem_barra")), texto_prioritario=bool(f.get("barras_texto")),
+                          colunas=_col_barras(f.get("barras_colunas")))
         if d["setor_turno"]:
             slides.append(_slide("treinamentos", "bars", "Treinamentos — vigência por setor e turno", escopo,
-                                 "bi-building", itens=_bars_vigencia(d["setor_turno"])))
+                                 "bi-building", itens=_bars_vigencia(d["setor_turno"][:qtd]), **est_barras))
         if d["lideres"] and not resumo:
             slides.append(_slide("treinamentos", "bars", "Treinamentos — vigência por líder", escopo,
-                                 "bi-person-badge", itens=_bars_vigencia(d["lideres"])))
-        if any(m["n"] for m in d["meses"]):
-            slides.append(_slide("treinamentos", "chart", "Treinamentos realizados por mês", "Últimos 12 meses",
-                                 "bi-calendar3", labels=[m["rotulo"] for m in d["meses"]], valores=[m["n"] for m in d["meses"]],
+                                 "bi-person-badge", itens=_bars_vigencia(d["lideres"][:qtd]), **est_barras))
+        meses = d["meses"]
+        if str(f.get("ultimos") or "").isdigit() and int(f["ultimos"]) > 1:
+            meses = meses[-int(f["ultimos"]):]
+        if any(m["n"] for m in meses):
+            slides.append(_slide("treinamentos", "chart", "Treinamentos realizados por mês", f"Últimos {len(meses)} meses",
+                                 "bi-calendar3", tipo="barras" if f.get("tipo_grafico") == "barras" else "linha",
+                                 labels=[m["rotulo"] for m in meses], valores=[m["n"] for m in meses],
                                  meta=None, unidade=""))
 
     # Planejamento (mesmos recortes do dashboard, aplicados aos colaboradores do treinamento)
@@ -1026,7 +1033,8 @@ def slides_treinamentos(user, resumo=False, filtros=None):
     abertos = pq.filter(status__in=("PLANEJADO", "CONFIRMADO", "ATRASADO"))
     atrasados = abertos.filter(data_prevista__lt=hoje).count()
     proximos_qs = abertos.filter(data_prevista__gte=hoje, data_prevista__lte=hoje + datetime.timedelta(days=janela)).order_by("data_prevista")
-    proximos = [] if f.get("apenas_atrasados") else list(proximos_qs[:8])
+    n_prox = int(f["proximos_qtd"]) if str(f.get("proximos_qtd") or "").isdigit() and 1 <= int(f["proximos_qtd"]) <= 40 else 8
+    proximos = [] if f.get("apenas_atrasados") else list(proximos_qs[:n_prox])
     realizados_mes = pq.filter(status="REALIZADO", data_realizada__year=hoje.year, data_realizada__month=hoje.month).count()
     if atrasados or proximos or realizados_mes:
         tiles = [{"rotulo": "Atrasados", "valor": atrasados, "tom": "critico" if atrasados else "ok"}]
@@ -1038,9 +1046,11 @@ def slides_treinamentos(user, resumo=False, filtros=None):
     cards = [{"titulo": _corta(p.titulo, 100), "texto": "", "tom": "neutro",
               "tags": [f"{p.data_prevista:%d/%m/%Y}", f"em {(p.data_prevista - hoje).days} d", p.get_status_display()]
                       + ([p.local] if p.local and not resumo else [])} for p in proximos]
-    for n, lote in enumerate(_lotes(cards, CARDS_POR_SLIDE), start=1):
-        slides.append(_slide("treinamentos", "cards", "Próximos treinamentos", f"parte {n}" if len(cards) > CARDS_POR_SLIDE else "",
-                             "bi-calendar-event", itens=lote))
+    col_prox = _col_barras(f.get("proximos_colunas"))
+    por_slide = CARDS_POR_SLIDE * (3 if col_prox == "auto" else col_prox)
+    for n, lote in enumerate(_lotes(cards, por_slide), start=1):
+        slides.append(_slide("treinamentos", "cards", "Próximos treinamentos", f"parte {n}" if len(cards) > por_slide else "",
+                             "bi-calendar-event", colunas=col_prox, itens=lote))
     return slides
 
 
@@ -1211,6 +1221,12 @@ CAMPOS_CONFIG = {
         "barras_qtd": ["pcp.frequencias", "pcp.paginas"], "barras_colunas": ["pcp.frequencias", "pcp.paginas"],
         "barras_sem_barra": ["pcp.frequencias", "pcp.paginas"], "barras_texto": ["pcp.frequencias", "pcp.paginas"],
     },
+    "treinamentos": {
+        "tipo_grafico": ["treinamentos.mensal"], "ultimos": ["treinamentos.mensal"],
+        "barras_qtd": ["treinamentos.setor_turno", "treinamentos.lider"], "barras_colunas": ["treinamentos.setor_turno", "treinamentos.lider"],
+        "barras_sem_barra": ["treinamentos.setor_turno", "treinamentos.lider"], "barras_texto": ["treinamentos.setor_turno", "treinamentos.lider"],
+        "proximos_qtd": ["treinamentos.proximos"], "proximos_colunas": ["treinamentos.proximos"],
+    },
     "ocorrencias": {"comentarios": ["ocorrencias.lista"], "oc_colunas": ["ocorrencias.lista"]},
     "auditoria": {
         "tipo_grafico": ["auditoria.evolucao"], "ultimos": ["auditoria.evolucao"],
@@ -1320,6 +1336,18 @@ FILTROS = {
         dict(nome="janela", rotulo="Próximos treinamentos em até", tipo="select",
              opcoes=lambda u: [("15", "15 dias"), ("30", "30 dias"), ("60", "60 dias"), ("90", "90 dias")]),
         dict(nome="apenas_atrasados", rotulo="Planejamento: somente atrasados", tipo="bool"),
+        dict(nome="tipo_grafico", rotulo="Gráfico — tipo", tipo="select",
+             opcoes=lambda u: [("linha", "Linha pontilhada"), ("barras", "Barras")]),
+        dict(nome="ultimos", rotulo="Gráfico — quantos meses (últimos N)", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 6, 8, 10, 12)]),
+        dict(nome="barras_qtd", rotulo="Barras — quantas linhas mostrar", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 8, 10, 12, 15, 20, 30)]),
+        dict(nome="barras_colunas", rotulo="Barras — dividir em colunas", tipo="select", opcoes=lambda u: [("auto", "Automático (ajusta ao tamanho)"), ("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
+        dict(nome="barras_sem_barra", rotulo="Barras — ocultar a barra de preenchimento", tipo="bool"),
+        dict(nome="barras_texto", rotulo="Barras — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
+        dict(nome="proximos_qtd", rotulo="Próximos — quantos mostrar (padrão 8)", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (4, 6, 8, 12, 16, 20, 30)]),
+        dict(nome="proximos_colunas", rotulo="Próximos — dividir em colunas", tipo="select", opcoes=lambda u: [("auto", "Automático (ajusta ao tamanho)"), ("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
     ],
 }
 
