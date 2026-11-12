@@ -546,7 +546,7 @@ def slides_auditoria(user, resumo=False, filtros=None):
 
         slides.append(_slide("auditoria", "bars", "Conformidade — último ciclo fechado", "% de itens conformes por auditoria",
                              "bi-clipboard-check", sem_barra=sem_barra, texto_prioritario=bool(f.get("conf_texto")), colunas=conf_colunas, itens=[{
-            "rotulo": f"{d['nome']} ({d['periodo_curto']})" if d["periodo_curto"] else d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]), "txt": _txt_conf(d),
+            "rotulo": d["nome"], "sub": f"({d['periodo_curto']})" if d["periodo_curto"] else "", "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]), "txt": _txt_conf(d),
         } for d in ordenados[:conf_qtd]]))
     oc_por_modelo = {}
     for i in _itens_ocorrencias(user, "auditoria", f):

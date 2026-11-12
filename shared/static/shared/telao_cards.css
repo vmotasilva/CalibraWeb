@@ -34,6 +34,7 @@
 .tl .bars { display:flex; flex-direction:column; gap:.9em; justify-content:center; flex:1; overflow:hidden; }
 .tl .brow { display:grid; grid-template-columns:minmax(0,30%) 1fr minmax(5.5em,18%); gap:.8em; align-items:center; }
 .tl .brow .l { font-size:1.15em; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tl .brow .l .sub { display:block; font-size:.7em; font-weight:500; opacity:.7; }
 .tl .brow .t { height:1em; border-radius:99px; background:var(--trilho); overflow:hidden; }
 .tl .brow .t > span { display:block; height:100%; border-radius:99px; background:var(--neutro); }
 .tl .brow.ok .t > span { background:var(--ok); } .tl .brow.alerta .t > span { background:var(--alerta); } .tl .brow.critico .t > span { background:var(--critico); }

@@ -116,7 +116,7 @@ window.TelaoCards = (function () {
       if (s.colunas === "auto") barrasAuto(g, s.itens.length);
       if (s.colunas > 1) { g.style.setProperty("--nc", s.colunas); g.style.setProperty("--nl", Math.ceil(s.itens.length / s.colunas)); }
       s.itens.forEach(function (i) {
-        var r = el("div", "brow " + tom(i.tom)); r.appendChild(el("div", "l", i.rotulo));
+        var r = el("div", "brow " + tom(i.tom)); var l = el("div", "l", i.rotulo); if (i.sub) l.appendChild(el("small", "sub", i.sub)); r.appendChild(l);
         if (!s.sem_barra) { var t = el("div", "t"), b = el("span"); b.style.width = Math.max(2, Math.min(100, i.pct)) + "%"; t.appendChild(b); r.appendChild(t); }
         r.appendChild(el("div", "p", i.txt)); g.appendChild(r);
       });
