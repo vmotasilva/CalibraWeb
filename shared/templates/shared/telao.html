@@ -106,8 +106,10 @@ body.manual .corpo { cursor:pointer; }
     if (!slides.length) return;
     idx = (i + slides.length) % slides.length;
     var s = slides[idx];
+    var base = (DUR_FORCADA || s.duracao || 15) * 1000;
+    TelaoCards.pagMs = base;   // cada página de um card paginado fica o tempo do slide; ao passar por todas, vem o próximo slide
     desenhar(s); rodape();
-    totalMs = (DUR_FORCADA || s.duracao || 15) * 1000; restante = totalMs; inicio = performance.now(); agendar();
+    totalMs = base; restante = totalMs; inicio = performance.now(); agendar();
   }
 
   function agendar() {

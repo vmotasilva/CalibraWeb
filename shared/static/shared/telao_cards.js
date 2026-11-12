@@ -1,7 +1,7 @@
 /* Renderer dos cards do Modo Apresentação (player e editor). Requer Chart.js e telao_cards.css; o container pai deve ter a classe .tl.
    TelaoCards.slide(s) devolve o elemento do slide (tiles/cards/bars/chart/pagina/layout/vazio); TelaoCards.destruir() libera os gráficos. */
 window.TelaoCards = (function () {
-  var charts = [], paginados = [], PAG_MS = 8000;
+  var charts = [], paginados = [];   // api.pagMs: quanto cada página fica na tela (o player usa a duração do slide)
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function tom(t) { return t || "neutro"; }
 
@@ -27,7 +27,7 @@ window.TelaoCards = (function () {
     function colunas(c) { g.classList.toggle("multi", c > 1); g.style.setProperty("--nc", c); }
     function ajustar() {
       var cx = g.closest(".cx"); if (!cx || !g.isConnected) return;
-      clearInterval(timer);
+      clearTimeout(timer);
       var itens = [].slice.call(g.children), old = cx.querySelector(".tpag"); if (old) old.remove();
       var pgs = null, usado = 1, nc = [1];
       if (auto) nc = [1, 2, 3, 4];   // automático: o menor número de colunas que cabe na maior fonte; senão, o que gera menos páginas
@@ -51,11 +51,13 @@ window.TelaoCards = (function () {
         ind.textContent = "pág. " + (atual + 1) + "/" + pgs.length;
       }
       mostrar();
-      timer = setInterval(function () {
-        if (!g.isConnected) { clearInterval(timer); return; }
-        if (api.manual) return;   // no modo manual quem passa as páginas é o usuário
-        atual = (atual + 1) % pgs.length; mostrar();
-      }, PAG_MS);
+      (function tique() {
+        timer = setTimeout(function () {
+          if (!g.isConnected) return;
+          if (!api.manual) { atual = (atual + 1) % pgs.length; mostrar(); }   // no manual, quem passa as páginas é o usuário
+          tique();
+        }, api.pagMs);
+      })();
       g._mover = function (d) { var n = atual + d; if (n < 0 || n >= pgs.length) return false; atual = n; mostrar(); return true; };
     }
     setTimeout(function () {
@@ -242,12 +244,12 @@ window.TelaoCards = (function () {
   }
   // Tempo para passar por todas as páginas dos cards do slide atual (0 se nenhum card está paginado): o player não troca o slide antes.
   function tempoPaginas() {
-    return paginados.reduce(function (m, g) { return g.isConnected && g._pgs > 1 ? Math.max(m, g._pgs * PAG_MS) : m; }, 0);
+    return paginados.reduce(function (m, g) { return g.isConnected && g._pgs > 1 ? Math.max(m, g._pgs * api.pagMs) : m; }, 0);
   }
   function moverPagina(d) {   // modo manual: avança/volta uma página de algum card paginado; false se não há mais páginas
     return paginados.some(function (g) { return g.isConnected && g._pgs > 1 && g._mover && g._mover(d); });
   }
   function destruir() { paginados = []; charts.forEach(function (c) { try { c.destroy(); } catch (e) {} }); charts = []; }
-  var api = { manual: false, slide: slide, moverPagina: moverPagina, card: card, painel: painel, tempoPaginas: tempoPaginas, destruir: destruir, el: el };
+  var api = { manual: false, pagMs: 8000, slide: slide, moverPagina: moverPagina, card: card, painel: painel, tempoPaginas: tempoPaginas, destruir: destruir, el: el };
   return api;
 })();
