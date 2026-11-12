@@ -292,6 +292,9 @@ def painel_view(request):
     )
     grafico = request.GET.get('grafico') if request.GET.get('grafico') in dict((g[0], 1) for g in GRAFICOS) else 'unica'
     ctx.update(grafico=grafico, graficos=GRAFICOS, atualizado_ate=HierMovimento.objects.aggregate(m=Max('data'))['m'],
+               ultimo_consumo=(HierMovimento.objects.filter(codigo__item__in=itens, tipo__in=insumos.TIPOS_CONSUMO)
+                               .aggregate(m=Max('data'))['m'] if itens else None),
+               itens_sem_meta=sum(1 for i in itens if i.meta is None),
                total_itens=len(linhas))
     if ctx['serie']:
         matriz = ctx['serie'].pop('_itens')

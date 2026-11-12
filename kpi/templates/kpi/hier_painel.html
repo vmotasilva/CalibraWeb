@@ -262,7 +262,8 @@
             <div class="small text-muted">Sem lançamento</div><div class="fs-4 fw-semibold lh-1">{{ sem_lancamento }}</div></div></div></div>
         <div class="col"><div class="card h-100"><div class="card-body py-2">
             <div class="small text-muted">Dados do almoxarifado até</div>
-            <div class="fs-5 fw-semibold lh-1">{% if atualizado_ate %}{{ atualizado_ate|date:"d/m/Y" }}{% else %}—{% endif %}</div></div></div></div>
+            <div class="fs-5 fw-semibold lh-1">{% if atualizado_ate %}{{ atualizado_ate|date:"d/m/Y" }}{% else %}—{% endif %}</div>
+            <div class="small text-muted">Último consumo {% if varios %}destes itens{% else %}deste item{% endif %}: {% if ultimo_consumo %}{{ ultimo_consumo|date:"d/m/Y" }}{% else %}—{% endif %}</div></div></div></div>
     </div>
 
     <div class="row g-2">
@@ -278,6 +279,7 @@
                     </div>
                     {% endif %}
                 </div>
+                {% if varios and itens_sem_meta %}<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>{{ itens_sem_meta }} {% if itens_sem_meta == 1 %}item sem meta não entra{% else %}itens sem meta não entram{% endif %} na média de % da meta (cadastre a meta em Cadastro).</div>{% endif %}
                 {% if serie.multi.aviso %}<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>{{ serie.multi.aviso }}</div>{% endif %}
                 <div style="position:relative;height:clamp(300px,50vh,480px)"><canvas id="grafico"></canvas></div>
             </div></div>
@@ -406,6 +408,7 @@
                     borderColor: '#212529', borderDash: [6, 4], borderWidth: 2, pointRadius: 0, order: 1});
             }
         }
+        var semanal = !!d.faixas && /^últimas/.test(d.janela || '');
         var unidadeY = multi ? multi.unidade : (d.modo === 'percentual' ? '% da meta' : (d.unidade || ''));
         grafico = new Chart(canvas, {
             data: {labels: d.labels, datasets: datasets},
@@ -413,7 +416,12 @@
                 responsive: true, maintainAspectRatio: false,
                 plugins: {legend: {display: !!multi, position: 'bottom'}, tooltip: {callbacks: {
                     title: function (it) { var i = it[0].dataIndex; return d.faixas ? d.labels[i] + ' · ' + d.faixas[i] : d.labels[i]; }}}},
-                scales: {x: {stacked: empilha}, y: {stacked: empilha, beginAtZero: true, title: {display: true, text: unidadeY}}}
+                scales: {x: {stacked: empilha, ticks: semanal ? {autoSkip: false, maxRotation: 0, callback: function (v, i) {
+                    // Semanas: um rótulo a cada 6, com o período logo abaixo do número da semana.
+                    if (i % 6 !== 0) return '';
+                    var p = (d.faixas[i] || '').split(' a ').map(function (x) { return x.slice(0, 5); });
+                    return [d.labels[i], p.join(' a ')];
+                }} : {}}, y: {stacked: empilha, beginAtZero: true, title: {display: true, text: unidadeY}}}
             }
         });
     };
