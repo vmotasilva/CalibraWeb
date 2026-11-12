@@ -494,7 +494,7 @@ def _slide_motivos(ind, rotulo, f, setor_id=False):
 # Auditoria (checklists periódicos: último ciclo fechado de cada modelo/relatório)
 # ---------------------------------------------------------------------------
 def _dados_modelo(modelo):
-    chave = f"telao:auditoria:v2:{modelo.pk}"
+    chave = f"telao:auditoria:v3:{modelo.pk}"
     dados = _cache_get(chave)
     if dados is None:
         from auditoria.apresentacao import montar_apresentacao
@@ -503,7 +503,7 @@ def _dados_modelo(modelo):
         dados = {
             "nome": modelo.nome, "pct": a["pct_geral"], "variacao": a["variacao"],
             "ciclos": [{"label": c["label"], "pct": c["pct"]} for c in a["ciclos"]],
-            "criticas": [{"pergunta": c["pergunta"], "ncs": c["ncs"], "semanas": c["semanas"]} for c in a["criticas"][:4]],
+            "criticas": [{"pergunta": c["pergunta"], "ncs": c["ncs"], "semanas": c["semanas"]} for c in a["criticas"]],
             "abertas": a["total_ocorrencias_abertas"], "vencidas": a["ocorrencias_vencidas"],
             "periodo": a["periodo_txt"], "tem_ciclo": a["base"] is not None,
         }
@@ -546,7 +546,7 @@ def slides_auditoria(user, resumo=False, filtros=None):
 
         slides.append(_slide("auditoria", "bars", "Conformidade — último ciclo fechado", "% de itens conformes por auditoria",
                              "bi-clipboard-check", sem_barra=sem_barra, texto_prioritario=bool(f.get("conf_texto")), colunas=conf_colunas, itens=[{
-            "rotulo": d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]), "txt": _txt_conf(d),
+            "rotulo": f"{d['nome']} ({d['periodo']})" if d["periodo"] else d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]), "txt": _txt_conf(d),
         } for d in ordenados[:conf_qtd]]))
     oc_por_modelo = {}
     for i in _itens_ocorrencias(user, "auditoria", f):
@@ -582,11 +582,15 @@ def slides_auditoria(user, resumo=False, filtros=None):
                                  f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)", "bi-flag", colunas=1,
                                  itens=[{"titulo": "Nenhum ponto de atenção no último ciclo", "texto": "", "tom": "ok", "tags": []}]))
         elif "pontos" in secoes and restantes:
-            slides.append(_slide("auditoria", "cards", f"{d['nome']} — pontos de atenção",
-                                 f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)", "bi-flag",
-                                 colunas=_colunas_cards(f), itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
-                                         "tags": [f"{c['ncs']} NC", f"{c['semanas']} semana(s) seguidas"] if c["semanas"] else [f"{c['ncs']} NC"]}
-                                        for c in restantes]))
+            cols = _colunas_cards(f)
+            lotes_p = list(_lotes(restantes, CARDS_POR_SLIDE * (3 if cols == "auto" else cols)))
+            for n_p, lote in enumerate(lotes_p, start=1):
+                slides.append(_slide("auditoria", "cards", f"{d['nome']} — pontos de atenção",
+                                     f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)"
+                                     + (f" · parte {n_p}/{len(lotes_p)}" if len(lotes_p) > 1 else ""), "bi-flag",
+                                     colunas=cols, itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
+                                             "tags": [f"{c['ncs']} NC", f"{c['semanas']} semana(s) seguidas"] if c["semanas"] else [f"{c['ncs']} NC"]}
+                                            for c in lote]))
         slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", lista_oc, resumo, mostrar_coment, colunas=_colunas_cards(f))
     return slides
 

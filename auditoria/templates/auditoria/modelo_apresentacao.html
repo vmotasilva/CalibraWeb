@@ -219,9 +219,9 @@
 
     {% elif sl.kind == "criticas" %}
     <section class="slide">
-        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-exclamation-triangle-fill text-danger"></i> Pontos de atenção</h2><span class="text-muted small">Perguntas com não conformidade</span></div>
+        <div class="slide-header"><h2 class="slide-title"><i class="bi bi-exclamation-triangle-fill text-danger"></i> Pontos de atenção</h2><span class="text-muted small">Perguntas com não conformidade{% if sl.partes > 1 %} · parte {{ sl.parte }}/{{ sl.partes }}{% endif %}</span></div>
         <div class="slide-content">
-            {% for q in criticas %}
+            {% for q in sl.itens %}
             <div class="d-flex align-items-center gap-3 py-2 border-bottom">
                 <span class="badge {% if q.semanas >= 3 %}bg-danger{% elif q.semanas >= 2 %}bg-warning text-dark{% else %}bg-secondary{% endif %} rounded-pill px-3 py-2" style="min-width: 118px;">{% if q.semanas %}{{ q.semanas }} sem. seguida{{ q.semanas|pluralize }}{% else %}{{ q.ncs }} NC{% endif %}</span>
                 <div class="flex-grow-1"><div class="fw-semibold">{{ q.pergunta|truncatechars:110 }}</div><div class="small text-muted">{{ q.topico }}</div></div>

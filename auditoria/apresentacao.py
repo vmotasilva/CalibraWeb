@@ -201,7 +201,6 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
             }
         )
     criticas.sort(key=lambda x: (-x["semanas"], -x["ncs"], x["pergunta"]))
-    criticas = criticas[:8]
 
     # Comentários e ocorrências do ciclo base (próprios + associados)
     itens_ciclo: list[dict] = []
@@ -285,7 +284,9 @@ def montar_apresentacao(modelo: ModeloAuditoria, inicio=None, fim=None, max_cicl
         if topicos:  # todos os tópicos num único slide
             slides.append({"kind": "topicos", "titulo": "Conformidade por tópico", "itens": topicos, "parte": 1,
                            "compacto": len(topicos) > 8})
-        slides.append({"kind": "criticas", "titulo": "Pontos de atenção"})
+        lotes_criticas = list(_chunks(criticas, 8)) or [[]]
+        for i, lote in enumerate(lotes_criticas, start=1):
+            slides.append({"kind": "criticas", "titulo": "Pontos de atenção", "itens": lote, "parte": i, "partes": len(lotes_criticas)})
         lotes_itens = list(_chunks(itens_ciclo, ITENS_POR_SLIDE)) or [[]]
         for i, lote in enumerate(lotes_itens, start=1):
             slides.append(
