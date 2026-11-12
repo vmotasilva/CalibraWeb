@@ -100,7 +100,13 @@ def _itens_ocorrencias(user, origem, f):
     return _sem_auditorias_inativas(central.listar_ocorrencias(user, "abertas", origem))
 
 
-def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, icone=None):
+def _colunas_cards(f):
+    """Em quantas colunas os cards de ocorrência são divididos (configuração do card; padrão 1)."""
+    v = str((f or {}).get("oc_colunas") or "")
+    return int(v) if v in ("2", "3", "4") else 1
+
+
+def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, icone=None, colunas=1):
     """Slides de ocorrências de uma sessão: lista = [(item, título curto)]; cada card traz prazo, dias em aberto e comentários."""
     if not lista:
         return []
@@ -108,7 +114,8 @@ def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, ico
     lista = sorted(lista, key=lambda t: (not t[0].vencida, t[0].prazo is None, t[0].prazo or hoje, t[0].data_ordem))
     n_venc = sum(int(t[0].vencida) for t in lista)
     cards = []
-    for t in lista[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
+    por_slide = CARDS_POR_SLIDE * colunas
+    for t in lista[: por_slide * MAX_SLIDES_CARDS]:
         i, titulo_item, extra = t[0], t[1], (t[2] if len(t) > 2 else [])
         dias = max((hoje - timezone.localtime(i.data_ordem).date()).days, 0)
         tags = list(extra) + ([f"prazo {i.prazo:%d/%m/%Y}"] if i.prazo else []) + [f"{dias} d em aberto"]
@@ -122,9 +129,9 @@ def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, ico
         cards.append({"titulo": _corta(titulo_item, 110), "texto": texto, "tom": "critico" if i.vencida else "alerta",
                       "tags": tags, "comentarios": coment})
     sub = f"{len(lista)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "")
-    lotes = list(_lotes(cards, CARDS_POR_SLIDE))
+    lotes = list(_lotes(cards, por_slide))
     return [_slide(provedor, "cards", nome, sub + (f" · parte {n}/{len(lotes)}" if len(lotes) > 1 else ""),
-                   icone or lista[0][0].icon or "bi-exclamation-octagon", grupo=True, ocorr=True, itens=lote)
+                   icone or lista[0][0].icon or "bi-exclamation-octagon", grupo=True, ocorr=True, colunas=colunas, itens=lote)
             for n, lote in enumerate(lotes, start=1)]
 
 
@@ -136,7 +143,7 @@ def _tag_equipamento(titulo):
     return f"{m.group(2)} · {m.group(1)}" if m else (titulo or "")
 
 
-def _slides_por_responsavel(provedor, nome, itens, mostrar_coment):
+def _slides_por_responsavel(provedor, nome, itens, mostrar_coment, colunas=1):
     """Um card por responsável e texto: quando várias ocorrências têm o mesmo texto, listam-se só código e tipo."""
     hoje = timezone.localdate()
     grupos = {}
@@ -145,7 +152,8 @@ def _slides_por_responsavel(provedor, nome, itens, mostrar_coment):
         grupos.setdefault((resp, (i.descricao or "").strip()), []).append(i)
     ordem = sorted(grupos.items(), key=lambda kv: (kv[0][0] == "Sem responsável", -sum(int(i.vencida) for i in kv[1]), -len(kv[1]), kv[0][0]))
     cards = []
-    for (resp, texto), lista in ordem[: CARDS_POR_SLIDE * MAX_SLIDES_CARDS]:
+    por_slide = CARDS_POR_SLIDE * colunas
+    for (resp, texto), lista in ordem[: por_slide * MAX_SLIDES_CARDS]:
         dias = max(max((hoje - timezone.localtime(i.data_ordem).date()).days, 0) for i in lista)
         coment = []
         if mostrar_coment:
@@ -157,18 +165,18 @@ def _slides_por_responsavel(provedor, nome, itens, mostrar_coment):
                       "comentarios": coment})
     n_venc = sum(int(i.vencida) for i in itens)
     sub = f"{len(itens)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "") + " · por responsável"
-    lotes = list(_lotes(cards, CARDS_POR_SLIDE))
+    lotes = list(_lotes(cards, por_slide))
     return [_slide(provedor, "cards", f"{nome} — ocorrências", sub + (f" · parte {n}/{len(lotes)}" if len(lotes) > 1 else ""),
-                   itens[0].icon or "bi-exclamation-octagon", grupo=True, ocorr=True, itens=lote)
+                   itens[0].icon or "bi-exclamation-octagon", grupo=True, ocorr=True, colunas=colunas, itens=lote)
             for n, lote in enumerate(lotes, start=1)]
 
 
 def _slides_ocorrencias_modulo(user, origem, nome, resumo, f):
     itens = _itens_ocorrencias(user, origem, f)
     if itens and not resumo and origem in ("metrologia", "pcp", "laboratorio"):
-        return _slides_por_responsavel(origem, nome, itens, f.get("comentarios") != "nao")
+        return _slides_por_responsavel(origem, nome, itens, f.get("comentarios") != "nao", _colunas_cards(f))
     return _slides_lista_ocorrencias(origem, f"{nome} — ocorrências", [(i, i.titulo) for i in itens],
-                                     resumo, not resumo and f.get("comentarios") != "nao")
+                                     resumo, not resumo and f.get("comentarios") != "nao", colunas=_colunas_cards(f))
 
 
 def _com_ocorrencias(origem, nome):
@@ -261,7 +269,7 @@ def slides_ocorrencias(user, resumo=False, filtros=None):
         grupos.setdefault(grupo, []).append((i, titulo_item))
     ordem = sorted(grupos.items(), key=lambda kv: (-sum(int(i.vencida) for i, _ in kv[1]), -len(kv[1]), kv[0]))
     for nome, lista in ordem[:MAX_GRUPOS_OCORRENCIAS]:
-        slides += _slides_lista_ocorrencias("ocorrencias", nome, lista, resumo, mostrar_coment)
+        slides += _slides_lista_ocorrencias("ocorrencias", nome, lista, resumo, mostrar_coment, colunas=_colunas_cards(f))
     return slides
 
 
@@ -340,7 +348,7 @@ def slides_kpi(user, resumo=False, filtros=None):
     def _ocorr(rotulo, ind):
         if ind.pk in oc_por_ind and ind.pk not in emitidos:
             emitidos.add(ind.pk)
-            return _slides_lista_ocorrencias("kpi", f"{rotulo} — ocorrências", oc_por_ind[ind.pk], resumo, mostrar_coment)
+            return _slides_lista_ocorrencias("kpi", f"{rotulo} — ocorrências", oc_por_ind[ind.pk], resumo, mostrar_coment, colunas=_colunas_cards(f))
         return []
 
     if graficos != "nenhum":
@@ -481,12 +489,12 @@ def _slide_motivos(ind, rotulo, f, setor_id=False):
 # Auditoria (checklists periódicos: último ciclo fechado de cada modelo/relatório)
 # ---------------------------------------------------------------------------
 def _dados_modelo(modelo):
-    chave = f"telao:auditoria:v1:{modelo.pk}"
+    chave = f"telao:auditoria:v2:{modelo.pk}"
     dados = _cache_get(chave)
     if dados is None:
         from auditoria.apresentacao import montar_apresentacao
 
-        a = montar_apresentacao(modelo, max_ciclos=8)
+        a = montar_apresentacao(modelo, max_ciclos=24)
         dados = {
             "nome": modelo.nome, "pct": a["pct_geral"], "variacao": a["variacao"],
             "ciclos": [{"label": c["label"], "pct": c["pct"]} for c in a["ciclos"]],
@@ -517,13 +525,24 @@ def slides_auditoria(user, resumo=False, filtros=None):
         return []
     ordenados = sorted(dados, key=lambda d: (d["pct"] is None, d["pct"] if d["pct"] is not None else 0))
     slides = []
+    # configuração dos cards (como nos de KPI): gráfico de evolução e tabela de conformidade
+    n_ciclos = int(f["ultimos"]) if str(f.get("ultimos") or "").isdigit() and int(f["ultimos"]) > 1 else 8
+    tipo_graf = "barras" if f.get("tipo_grafico") == "barras" else "linha"
+    conf_colunas = int(f["conf_colunas"]) if str(f.get("conf_colunas") or "") in ("2", "3", "4") else 1
+    conf_qtd = int(f["conf_qtd"]) if str(f.get("conf_qtd") or "").isdigit() and 1 <= int(f["conf_qtd"]) <= 40 else None
     if "conformidade" in secoes:
+        sem_barra, exibir = bool(f.get("conf_sem_barra")), f.get("conf_exibir")
+
+        def _txt_conf(d):
+            if d["pct"] is None:
+                return "—"
+            var = f"  ({'+' if d['variacao'] > 0 else ''}{_fmt_num(d['variacao'], 1)})" if d["variacao"] and exibir != "percentual" else ""
+            return f"{_fmt_num(d['pct'], 1)}%{var}"
+
         slides.append(_slide("auditoria", "bars", "Conformidade — último ciclo fechado", "% de itens conformes por auditoria",
-                             "bi-clipboard-check", itens=[{
-            "rotulo": d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]),
-            "txt": (f"{_fmt_num(d['pct'], 1)}%" if d["pct"] is not None else "—")
-                   + (f"  ({'+' if d['variacao'] > 0 else ''}{_fmt_num(d['variacao'], 1)})" if d["variacao"] else ""),
-        } for d in ordenados]))
+                             "bi-clipboard-check", sem_barra=sem_barra, texto_prioritario=bool(f.get("conf_texto")), colunas=conf_colunas, itens=[{
+            "rotulo": d["nome"], "pct": d["pct"] or 0, "tom": _tom_pct(d["pct"]), "txt": _txt_conf(d),
+        } for d in ordenados[:conf_qtd]]))
     oc_por_modelo = {}
     for i in _itens_ocorrencias(user, "auditoria", f):
         if " — " in i.titulo:
@@ -532,13 +551,13 @@ def slides_auditoria(user, resumo=False, filtros=None):
     mostrar_coment = not resumo and f.get("comentarios") != "nao"
     limite = 10 if ids else 4
     for n_mod, d in enumerate(ordenados):
-        pontos = [c for c in d["ciclos"] if c["pct"] is not None]
+        pontos = [c for c in d["ciclos"] if c["pct"] is not None][-n_ciclos:]
         if n_mod >= limite:  # além do limite de gráficos, só as ocorrências da auditoria
-            slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", oc_por_modelo.get(d["nome"], []), resumo, mostrar_coment)
+            slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", oc_por_modelo.get(d["nome"], []), resumo, mostrar_coment, colunas=_colunas_cards(f))
             continue
         if "evolucao" in secoes and len(pontos) > 1:
             slides.append(_slide("auditoria", "chart", d["nome"], f"Evolução da conformidade · {d['periodo']}",
-                                 "bi-graph-up", labels=[c["label"] for c in pontos],
+                                 "bi-graph-up", tipo=tipo_graf, labels=[c["label"] for c in pontos],
                                  valores=[c["pct"] for c in pontos], meta=100, unidade="%"))
         # o ponto de atenção que já tem ocorrência aberta aparece no detalhe dela (com NCs, texto e comentários)
         lista_oc, ja_detalhados = [], set()
@@ -553,10 +572,10 @@ def slides_auditoria(user, resumo=False, filtros=None):
         if "pontos" in secoes and restantes:
             slides.append(_slide("auditoria", "cards", f"{d['nome']} — pontos de atenção",
                                  f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)", "bi-flag",
-                                 itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
+                                 colunas=_colunas_cards(f), itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
                                          "tags": [f"{c['ncs']} NC", f"{c['semanas']} semana(s) seguidas"] if c["semanas"] else [f"{c['ncs']} NC"]}
                                         for c in restantes]))
-        slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", lista_oc, resumo, mostrar_coment)
+        slides += _slides_lista_ocorrencias("auditoria", f"{d['nome']} — ocorrências", lista_oc, resumo, mostrar_coment, colunas=_colunas_cards(f))
     return slides
 
 
@@ -1148,7 +1167,12 @@ CAMPOS_CONFIG = {
         "motivos_exibir": ["kpi.motivos"], "motivos_sem_barra": ["kpi.motivos"], "motivos_texto": ["kpi.motivos"],
         "motivos_qtd": ["kpi.motivos"], "motivos_colunas": ["kpi.motivos"],
     },
-    "ocorrencias": {"comentarios": ["ocorrencias.lista"]},
+    "ocorrencias": {"comentarios": ["ocorrencias.lista"], "oc_colunas": ["ocorrencias.lista"]},
+    "auditoria": {
+        "tipo_grafico": ["auditoria.evolucao"], "ultimos": ["auditoria.evolucao"],
+        "conf_exibir": ["auditoria.conformidade"], "conf_qtd": ["auditoria.conformidade"], "conf_colunas": ["auditoria.conformidade"],
+        "conf_sem_barra": ["auditoria.conformidade"], "conf_texto": ["auditoria.conformidade"],
+    },
 }
 
 FILTROS = {
@@ -1161,6 +1185,8 @@ FILTROS = {
         dict(nome="apenas_vencidas", rotulo="Somente ocorrências vencidas", tipo="bool"),
         dict(nome="comentarios", rotulo="Comentários do plano de ação", tipo="select",
              opcoes=lambda u: [("sim", "Mostrar sob cada ocorrência"), ("nao", "Não mostrar")]),
+        dict(nome="oc_colunas", rotulo="Ocorrências — dividir em colunas", tipo="select",
+             opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
     ],
     "kpi": [
         dict(nome="indicadores", rotulo="Indicadores", tipo="multi", opcoes=_opts_kpi_indicadores, ajuda="Vazio = todos."),
@@ -1199,6 +1225,18 @@ FILTROS = {
     "auditoria": [
         dict(nome="modelos", rotulo="Relatórios (auditorias)", tipo="multi", opcoes=_opts_auditoria_modelos,
              ajuda="Sempre usa o último ciclo concluído de cada um. Vazio = todos os ativos."),
+        dict(nome="tipo_grafico", rotulo="Gráfico — tipo", tipo="select",
+             opcoes=lambda u: [("linha", "Linha pontilhada"), ("barras", "Barras")]),
+        dict(nome="ultimos", rotulo="Gráfico — quantos ciclos (últimos N, padrão 8)", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24)]),
+        dict(nome="conf_exibir", rotulo="Conformidade — informação exibida", tipo="select",
+             opcoes=lambda u: [("ambos", "Percentual e variação"), ("percentual", "Somente o percentual")]),
+        dict(nome="conf_qtd", rotulo="Conformidade — quantas auditorias mostrar", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 8, 10)]),
+        dict(nome="conf_colunas", rotulo="Conformidade — dividir em colunas", tipo="select",
+             opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
+        dict(nome="conf_sem_barra", rotulo="Conformidade — ocultar a barra de preenchimento", tipo="bool"),
+        dict(nome="conf_texto", rotulo="Conformidade — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
     ],
     "metrologia": [
         dict(nome="setores", rotulo="Setores", tipo="multi", opcoes=_opts_metrologia_setores, ajuda="Vazio = todos."),
@@ -1237,11 +1275,14 @@ _CAMPOS_OCORRENCIAS = [
          opcoes=lambda u: [("sim", "Mostrar (e seus comentários)"), ("nao", "Não mostrar")]),
     dict(nome="comentarios", rotulo="Comentários do plano de ação", tipo="select",
          opcoes=lambda u: [("sim", "Mostrar sob cada ocorrência"), ("nao", "Não mostrar")]),
+    dict(nome="oc_colunas", rotulo="Ocorrências — dividir em colunas", tipo="select",
+         opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
 ]
 for _k in ("kpi", "auditoria", "metrologia", "pcp", "laboratorio"):
     FILTROS[_k] = list(FILTROS.get(_k, [])) + _CAMPOS_OCORRENCIAS
     PROVEDOR_CARDS[_k] = [("ocorrencias", "Ocorrências do módulo e comentários (na sequência)", lambda s: bool(s.get("ocorr")))] + list(PROVEDOR_CARDS.get(_k, []))
-    CAMPOS_CONFIG.setdefault(_k, {}).update({"com_ocorrencias": [f"{_k}.ocorrencias"], "comentarios": [f"{_k}.ocorrencias"]})
+    CAMPOS_CONFIG.setdefault(_k, {}).update({"com_ocorrencias": [f"{_k}.ocorrencias"], "comentarios": [f"{_k}.ocorrencias"],
+                                         "oc_colunas": [f"{_k}.ocorrencias"] + (["auditoria.pontos"] if _k == "auditoria" else [])})
 
 
 def campos_filtro(provedor: str, user) -> list[dict]:

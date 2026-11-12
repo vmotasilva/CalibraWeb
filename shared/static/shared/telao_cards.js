@@ -20,7 +20,8 @@ window.TelaoCards = (function () {
       return g;
     },
     cards: function (s) {
-      var g = el("div", "tcards");
+      var g = el("div", "tcards" + (s.colunas > 1 ? " multi" : ""));
+      if (s.colunas > 1) g.style.setProperty("--nc", s.colunas);
       s.itens.forEach(function (i) {
         var c = el("div", "tcard " + tom(i.tom)); c.appendChild(el("h3", null, i.titulo));
         if (i.texto) c.appendChild(el("div", "tx", i.texto));

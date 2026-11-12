@@ -21,6 +21,7 @@
 .tl .tiles.compacto .v { font-size:1.9em; }
 
 .tl .tcards { display:grid; gap:.8em; align-content:start; }
+.tl .tcards.multi { grid-template-columns:repeat(var(--nc), minmax(0,1fr)); }
 .tl .tcard { background:var(--card); border:1px solid var(--linha); border-left:.3em solid var(--alerta); border-radius:.6em; padding:.8em 1.1em; }
 .tl .tcard.critico { border-left-color:var(--critico); } .tl .tcard.neutro { border-left-color:var(--neutro); } .tl .tcard.ok { border-left-color:var(--ok); }
 .tl .tcard h3 { margin:0; font-size:1.3em; font-weight:700; }
