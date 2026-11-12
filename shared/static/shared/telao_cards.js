@@ -5,12 +5,45 @@ window.TelaoCards = (function () {
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function tom(t) { return t || "neutro"; }
 
-  // Lista de cards: reduz a fonte até tudo caber na altura do card (não corta ocorrências nem esconde as de baixo).
+  // Lista de cards que não cabe na altura: tenta reduzir a fonte (até 70%) e, se ainda assim sobrar, divide em páginas
+  // que se alternam dentro do card (cada página com o máximo de cards que cabe), com o indicador "pág. 1/N".
   function encaixar(g) {
+    var timer = null;
+    function paginas(cx, itens, k) {   // quantos cards cabem por página, em ordem
+      g.style.fontSize = k + "em";
+      var pgs = [], i = 0;
+      while (i < itens.length) {
+        itens.forEach(function (c) { c.style.display = "none"; });
+        var n = 0;
+        while (i + n < itens.length) {
+          itens[i + n].style.display = "";
+          if (g.offsetHeight > cx.clientHeight + 1 && n > 0) { itens[i + n].style.display = "none"; break; }
+          n++;
+        }
+        pgs.push(itens.slice(i, i + n)); i += n;
+      }
+      return pgs;
+    }
     function ajustar() {
       var cx = g.closest(".cx"); if (!cx || !g.isConnected) return;
-      var k = 1; g.style.fontSize = "1em";
-      while (k > .3 && g.offsetHeight > cx.clientHeight + 1) { k -= .04; g.style.fontSize = k.toFixed(2) + "em"; }
+      clearInterval(timer);
+      var itens = [].slice.call(g.children), old = cx.querySelector(".tpag"); if (old) old.remove();
+      var pgs = null, usado = 1;
+      [1, .85, .7].some(function (k) { pgs = paginas(cx, itens, k); usado = k; return pgs.length === 1; });
+      g.style.fontSize = usado + "em";
+      if (pgs.length <= 1) { itens.forEach(function (c) { c.style.display = ""; }); return; }
+      var ind = el("div", "tpag"), atual = 0;
+      cx.appendChild(ind);
+      function mostrar() {
+        itens.forEach(function (c) { c.style.display = "none"; });
+        pgs[atual].forEach(function (c) { c.style.display = ""; });
+        ind.textContent = "pág. " + (atual + 1) + "/" + pgs.length;
+      }
+      mostrar();
+      timer = setInterval(function () {
+        if (!g.isConnected) { clearInterval(timer); return; }
+        atual = (atual + 1) % pgs.length; mostrar();
+      }, 8000);
     }
     setTimeout(function () {
       if (!g.isConnected) return;

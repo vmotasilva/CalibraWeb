@@ -8,7 +8,7 @@
 .tl *, .tl *::before, .tl *::after { box-sizing:border-box; font-family:inherit; }
 .tl .tl-frame { container-type:size; }
 
-.tl .cx { container-type:size; flex:1; min-height:0; min-width:0; overflow:hidden; }
+.tl .cx { position:relative; container-type:size; flex:1; min-height:0; min-width:0; overflow:hidden; }
 .tl .cxi { height:100%; display:flex; flex-direction:column; font-size:clamp(10px, min(calc(7px + .8cqw + .4cqh), 14cqh), 30px); }
 
 .tl .tiles { display:grid; gap:.9em; grid-template-columns:repeat(auto-fit,minmax(min(10em,100%),1fr)); align-content:start; }
@@ -76,3 +76,5 @@
 .tl .elem .sem-img { margin:auto; color:var(--mut); font-size:.55em; text-align:center; opacity:.8; }
 /* Principais motivos em colunas: preenche coluna por coluna (1-5 na primeira, 6-10 na segunda...) */
 .tl .bars.multi { display:grid; grid-auto-flow:column; grid-template-columns:repeat(var(--nc), minmax(0,1fr)); grid-template-rows:repeat(var(--nl), max-content); column-gap:2.2em; row-gap:.9em; align-content:start; }
+
+.tl .tpag { position:absolute; right:.6em; bottom:.2em; font-size:.7em; color:var(--mut); background:var(--card); border:1px solid var(--linha); border-radius:99px; padding:.1em .7em; }
