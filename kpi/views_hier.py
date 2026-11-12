@@ -126,7 +126,7 @@ def _serie(itens, meses, consumos):
 
 
 VISOES = (('dia', 'Dia a dia'), ('semana', 'Semana a semana'), ('mes', 'Mês a mês'))
-JANELA_SEMANAS = 12
+JANELA_SEMANAS = 6
 
 
 def _buckets(visao, fim):

@@ -270,7 +270,7 @@
         <div class="{% if serie.tabela and not varios %}col-xl-7{% else %}col-12{% endif %}">
             <div class="card h-100"><div class="card-body py-2">
                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-                    <div class="fw-semibold">{{ serie.titulo }} <span class="text-muted small">— {{ serie.janela|default:"últimos 12 meses" }}{% if serie.meta_texto %} · {{ serie.meta_texto }}{% elif serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
+                    <div class="fw-semibold">{% if serie.multi %}Consumo por item{% else %}{{ serie.titulo }}{% endif %} <span class="text-muted small">— {{ serie.janela|default:"últimos 12 meses" }}{% if serie.meta_texto %} · {{ serie.meta_texto }}{% elif serie.meta is not None %} · meta {{ serie.meta|floatformat:"-2" }}{{ serie.unidade }}{% endif %}</span></div>
                     {% if varios %}
                     <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de gráfico">
                         {% for g, rotulo, icone in graficos %}
@@ -470,8 +470,7 @@
                 plugins: {legend: {display: !!multi, position: 'bottom'}, tooltip: {callbacks: {
                     title: function (it) { var i = it[0].dataIndex; return d.faixas ? d.labels[i] + ' · ' + d.faixas[i] : d.labels[i]; }}}},
                 scales: {x: {stacked: empilha, ticks: semanal ? {autoSkip: false, maxRotation: 0, callback: function (v, i) {
-                    // Semanas: um rótulo a cada 6, com o período logo abaixo do número da semana.
-                    if (i % 6 !== 0) return '';
+                    // Semanas: o período logo abaixo do número da semana.
                     var p = (d.faixas[i] || '').split(' a ').map(function (x) { return x.slice(0, 5); });
                     return [d.labels[i], p.join(' a ')];
                 }} : {}}, y: {stacked: empilha, beginAtZero: true, title: {display: true, text: unidadeY}}}
