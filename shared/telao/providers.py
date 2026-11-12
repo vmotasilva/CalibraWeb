@@ -176,8 +176,36 @@ def _slides_por_responsavel(provedor, nome, itens, mostrar_coment, colunas=1):
             for n, lote in enumerate(lotes, start=1)]
 
 
+def _filtrar_ocorrencias_metrologia(itens, f):
+    """Aplica às ocorrências de metrologia os filtros do módulo (setores e tratativa da calibração do instrumento)."""
+    setores = set(f.get("setores") or [])
+    trat = f.get("tratativa") or ""
+    if not itens or not (setores or trat):
+        return itens
+    from qms.models import OcorrenciaInstrumento
+
+    pks = [int(i.uid.split(":")[1]) for i in itens]
+    info = {}
+    for oc in OcorrenciaInstrumento.objects.filter(pk__in=pks).select_related("instrumento__setor", "instrumento__categoria"):
+        inst = oc.instrumento
+        t = ((getattr(inst, "tratativa_calibracao", "") or (inst.categoria.tratativa_calibracao if getattr(inst, "categoria", None) else "") or "INTERNA")
+             if inst else "INTERNA").upper()
+        info[oc.pk] = (inst.setor.nome if inst and inst.setor_id else "", t == "EXTERNA")
+    saida = []
+    for i in itens:
+        setor, externo = info.get(int(i.uid.split(":")[1]), ("", False))
+        if setores and setor not in setores:
+            continue
+        if trat and externo != (trat == "externa"):
+            continue
+        saida.append(i)
+    return saida
+
+
 def _slides_ocorrencias_modulo(user, origem, nome, resumo, f):
     itens = _itens_ocorrencias(user, origem, f)
+    if origem == "metrologia":
+        itens = _filtrar_ocorrencias_metrologia(itens, f)
     if itens and not resumo and origem in ("metrologia", "pcp", "laboratorio"):
         return _slides_por_responsavel(origem, nome, itens, f.get("comentarios") != "nao", _colunas_cards(f))
     return _slides_lista_ocorrencias(origem, f"{nome} — ocorrências", [(i, i.titulo) for i in itens],
