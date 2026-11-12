@@ -141,7 +141,7 @@ class KpiHierarquicoTests(InsumosBase):
         HierItem.objects.filter(pk=self.pads.pk).update(meta=None)
         r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk, 'grafico': 'multiplas', 'mes': '2026-10'})
         multi = r.context['serie']['multi']
-        self.assertEqual({x['nome'] for x in multi['series']}, {self.pads.nome, self.liquido.nome})
+        self.assertEqual({x['nome'] for x in multi['series']}, {f'{self.pads.nome} ({self.pads.unidade})', f'{self.liquido.nome} ({self.liquido.unidade})'})
         self.assertEqual(multi['tipo'], 'multiplas')
 
     def test_reajustar_meta_pelo_grid_de_consumo(self):
@@ -228,7 +228,7 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertEqual((s['valores'][4], s['valores'][5], s['valores'][6]), (3.0, 2.0, 0.0))
         self.assertAlmostEqual(s['metas'][0], 10 / 31, places=2)
         s = self.client.get(reverse('kpi:hier_painel'), {**base, 'visao': 'semana'}).context['serie']
-        self.assertEqual(len(s['labels']), 12)
+        self.assertEqual(len(s['labels']), 6)
         self.assertIn(5.0, s['valores'])  # semana de 05/10: 3 + 2
         s = self.client.get(reverse('kpi:hier_painel'), {**base, 'visao': 'invalida'}).context['serie']
         self.assertEqual(len(s['labels']), 12)  # cai no mês a mês

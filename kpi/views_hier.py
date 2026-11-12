@@ -74,29 +74,25 @@ GRAFICOS = (('unica', 'Barra única', 'bi-bar-chart'), ('multiplas', 'Múltiplas
 
 
 def _multi(dados, tipo, n):
-    """Uma série por item com consumo no período, sempre com o consumo real. Unidades diferentes não se comparam nem se
-    somam: o painel mostra uma unidade por vez (as mais usadas primeiro). Empilhadas: a meta aparece só quando todos os itens da unidade têm meta similar (ver abaixo)."""
+    """Uma série por item com consumo no período, sempre com o consumo real, todos juntos (a unidade vai no nome quando
+    há mais de uma). Meta só quando faz sentido: todos com a mesma unidade e, em barras múltiplas, a mesma meta; em
+    empilhadas, todos com meta (vale a soma)."""
     com_dados = [x for x in dados if any(v is not None for v in x['valores'])]
-    series = [{'nome': x['nome'], 'unidade': x['unidade'], 'valores': x['valores']} for x in com_dados]
-    contagem = {}
-    for x in com_dados:
-        contagem[x['unidade']] = contagem.get(x['unidade'], 0) + 1
-    unidades = sorted(contagem, key=lambda u: (-contagem[u], u))
-    # Meta só quando faz sentido: barras múltiplas, se todos os itens da unidade têm a mesma meta; empilhadas, se todos
-    # têm meta (vale a soma). Fora disso o gráfico mostra apenas o consumo.
-    metas = {}
-    for u in unidades:
-        do_un = [x for x in com_dados if x['unidade'] == u]
-        if not all(any(m for m in x['metas']) for x in do_un):
-            continue
+    unidades = sorted({x['unidade'] for x in com_dados})
+    misto = len(unidades) > 1
+    series = [{'nome': f"{x['nome']} ({x['unidade']})" if misto and x['unidade'] else x['nome'], 'valores': x['valores']}
+              for x in com_dados]
+    metas = None
+    if com_dados and not misto and all(any(m for m in x['metas']) for x in com_dados):
         if tipo == 'empilhadas':
-            somas = [sum(x['metas'][k] or 0 for x in do_un) for k in range(n)]
-            metas[u] = [round(v, 2) if v else None for v in somas]
-        elif all(x['metas'] == do_un[0]['metas'] for x in do_un):
-            metas[u] = do_un[0]['metas']
-    aviso = ('Itens em unidades diferentes não se comparam nem se somam: escolha a unidade ao lado.'
-             if len(unidades) > 1 else '')
-    return {'tipo': tipo, 'series': series, 'unidades': unidades, 'metas': metas, 'aviso': aviso}
+            somas = [sum(x['metas'][k] or 0 for x in com_dados) for k in range(n)]
+            metas = [round(v, 2) if v else None for v in somas]
+        elif all(x['metas'] == com_dados[0]['metas'] for x in com_dados):
+            metas = com_dados[0]['metas']
+    aviso = ('Itens com unidades diferentes (' + ', '.join(u or 'sem unidade' for u in unidades)
+             + ') aparecem juntos, cada um com o seu consumo real.') if misto else ''
+    return {'tipo': tipo, 'series': series, 'unidade': '' if misto else (unidades[0] if unidades else ''),
+            'metas': metas, 'aviso': aviso}
 
 
 def _serie(itens, meses, consumos):
