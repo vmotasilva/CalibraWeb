@@ -5,6 +5,20 @@ window.TelaoCards = (function () {
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function tom(t) { return t || "neutro"; }
 
+  // Lista de cards: reduz a fonte até tudo caber na altura do card (não corta ocorrências nem esconde as de baixo).
+  function encaixar(g) {
+    function ajustar() {
+      var cx = g.closest(".cx"); if (!cx || !g.isConnected) return;
+      var k = 1; g.style.fontSize = "1em";
+      while (k > .3 && g.offsetHeight > cx.clientHeight + 1) { k -= .04; g.style.fontSize = k.toFixed(2) + "em"; }
+    }
+    setTimeout(function () {
+      if (!g.isConnected) return;
+      ajustar();
+      var cx = g.closest(".cx"); if (cx && window.ResizeObserver) new ResizeObserver(ajustar).observe(cx);
+    }, 30);
+  }
+
   var desenho = {
     tiles: function (s) {
       var g = el("div", "tiles" + (s.itens.length > 8 ? " compacto" : ""));
@@ -32,6 +46,7 @@ window.TelaoCards = (function () {
         });
         g.appendChild(c);
       });
+      encaixar(g);
       return g;
     },
     bars: function (s) {
