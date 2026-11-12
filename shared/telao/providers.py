@@ -111,12 +111,22 @@ def _col_barras(v):
     return int(v) if v in ("2", "3", "4") else "auto" if v == "auto" else 1
 
 
-def _texto_ocorrencia(i):
-    """Texto do card: a última ação do plano (em aberto; senão a última concluída), ou o texto da ocorrência se não houver ação."""
+def _ultima_acao(i):
+    """Última ação do plano (em aberto; senão a última concluída), ou None."""
     ativas = [p for p in i.plano if p.status == "ABERTA"] or [p for p in i.plano if p.status == "CONCLUIDA"]
-    if ativas and (ativas[-1].descricao or "").strip():
-        return ativas[-1].descricao.strip()
-    return (i.descricao or "").strip()
+    return ativas[-1] if ativas and (ativas[-1].descricao or "").strip() else None
+
+
+def _texto_ocorrencia(i):
+    """Texto do card: a última ação do plano, ou o texto da ocorrência se não houver ação."""
+    a = _ultima_acao(i)
+    return a.descricao.strip() if a else (i.descricao or "").strip()
+
+
+def _prazo_ocorrencia(i):
+    """Prazo da última ação do plano (ou o da ocorrência, se não houver ação)."""
+    a = _ultima_acao(i)
+    return a.prazo if a else i.prazo
 
 
 def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, icone=None, colunas=1):
@@ -131,7 +141,8 @@ def _slides_lista_ocorrencias(provedor, nome, lista, resumo, mostrar_coment, ico
     for t in lista[: por_slide * MAX_SLIDES_CARDS]:
         i, titulo_item, extra = t[0], t[1], (t[2] if len(t) > 2 else [])
         dias = max((hoje - timezone.localtime(i.data_ordem).date()).days, 0)
-        tags = list(extra) + ([f"prazo {i.prazo:%d/%m/%Y}"] if i.prazo else []) + [f"{dias} d em aberto"]
+        prazo = _prazo_ocorrencia(i)
+        tags = list(extra) + ([f"prazo {prazo:%d/%m/%Y}"] if prazo else []) + [f"{dias} d em aberto"]
         if i.responsaveis and not resumo:
             tags.append(", ".join(i.responsaveis[:2]))
         coment = []
@@ -169,13 +180,14 @@ def _slides_por_responsavel(provedor, nome, itens, mostrar_coment, colunas=1):
     por_slide = CARDS_POR_SLIDE * (3 if colunas == "auto" else colunas)
     for (resp, texto), lista in ordem[: por_slide * MAX_SLIDES_CARDS]:
         dias = max(max((hoje - timezone.localtime(i.data_ordem).date()).days, 0) for i in lista)
+        prazos = [p for p in (_prazo_ocorrencia(i) for i in lista) if p]
         coment = []
         if mostrar_coment:
             todos = sorted(((_quando(c["quando"]), c) for i in lista for p in i.plano for c in p.comentarios), key=lambda t: t[0], reverse=True)
             coment = [{"autor": c["autor"], "quando": c["quando"], "texto": _corta(c["texto"], 170)} for _, c in todos[:2]]
         cards.append({"titulo": resp, "texto": _corta(texto, 200), "tom": "critico" if any(i.vencida for i in lista) else "alerta",
                       "tags": [_tag_equipamento(i.titulo) for i in lista[:12]] + ([f"+{len(lista) - 12}"] if len(lista) > 12 else [])
-                              + [f"mais antiga {dias} d"],
+                              + ([f"prazo {min(prazos):%d/%m/%Y}"] if prazos else []) + [f"mais antiga {dias} d"],
                       "comentarios": coment})
     n_venc = sum(int(i.vencida) for i in itens)
     sub = f"{len(itens)} em aberto" + (f" · {n_venc} vencida{'s' if n_venc != 1 else ''}" if n_venc else "") + " · por responsável"
@@ -686,7 +698,9 @@ def slides_metrologia(user, resumo=False, filtros=None):
     slides = [_slide("metrologia", "tiles", "Metrologia — calibrações", escopo or f"{len(insts)} instrumentos ativos",
                      "bi-tools", itens=tiles)]
     cards = []
-    for i in [x for x in insts if x["status"] in ("VENCIDO", "AVENCER_30")][:8]:
+    colunas = _col_barras(f.get("oc_colunas") or "auto")
+    por_slide = CARDS_POR_SLIDE * (3 if colunas == "auto" else colunas)
+    for i in [x for x in insts if x["status"] in ("VENCIDO", "AVENCER_30")][: por_slide * MAX_SLIDES_CARDS]:
         venceu = i["status"] == "VENCIDO"
         tags = [i["setor"], f"{'venceu' if venceu else 'vence'} em {i['data']}",
                 "calibração externa" if i["externo"] else "calibração interna"]
@@ -694,9 +708,9 @@ def slides_metrologia(user, resumo=False, filtros=None):
             tags.append("com ocorrência")
         cards.append({"titulo": f"{i['tag']} — {_corta(i['descricao'], 70)}", "texto": "",
                       "tom": "critico" if venceu else "alerta", "tags": tags})
-    for n, lote in enumerate(_lotes(cards, CARDS_POR_SLIDE), start=1):
-        slides.append(_slide("metrologia", "cards", "Instrumentos críticos", f"parte {n}" if len(cards) > CARDS_POR_SLIDE else "",
-                             "bi-exclamation-octagon", itens=lote))
+    for n, lote in enumerate(_lotes(cards, por_slide), start=1):
+        slides.append(_slide("metrologia", "cards", "Instrumentos críticos", f"parte {n}" if len(cards) > por_slide else "",
+                             "bi-exclamation-octagon", colunas=colunas, itens=lote))
     return slides
 
 
@@ -1407,7 +1421,8 @@ for _k in ("kpi", "auditoria", "metrologia", "pcp", "laboratorio"):
     FILTROS[_k] = list(FILTROS.get(_k, [])) + _CAMPOS_OCORRENCIAS
     PROVEDOR_CARDS[_k] = [("ocorrencias", "Ocorrências do módulo e comentários (na sequência)", lambda s: bool(s.get("ocorr")))] + list(PROVEDOR_CARDS.get(_k, []))
     CAMPOS_CONFIG.setdefault(_k, {}).update({"com_ocorrencias": [f"{_k}.ocorrencias"], "comentarios": [f"{_k}.ocorrencias"],
-                                         "oc_colunas": [f"{_k}.ocorrencias"] + (["auditoria.pontos"] if _k == "auditoria" else [])})
+                                         "oc_colunas": [f"{_k}.ocorrencias"] + (["auditoria.pontos"] if _k == "auditoria" else [])
+                                         + (["metrologia.criticos"] if _k == "metrologia" else [])})
 
 
 def campos_filtro(provedor: str, user) -> list[dict]:
