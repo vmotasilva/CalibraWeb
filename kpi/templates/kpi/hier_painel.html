@@ -235,7 +235,8 @@
                 carregar();
             });
         });
-        document.getElementById('resultado').addEventListener('click', function (e) {
+        // #resultado ainda não existe quando este script roda (vem abaixo): delega no document.
+        document.addEventListener('click', function (e) {
             var b = e.target.closest('[data-grafico]');
             if (!b) return;
             f.grafico.value = b.dataset.grafico;
