@@ -699,11 +699,13 @@ def slides_pcp(user, resumo=False, filtros=None):
     dias = int(f["dias"]) if str(f.get("dias") or "").isdigit() else 30
     fid = int(fid) if str(fid or "").isdigit() else None
     d = _dados_pcp(fid, dias)
-    slides = _slides_pcp_dados(d, dias, f, "") if d["devidos"] or f.get("_por_formulario") else []  # cards à mão: sem dado aparece como 0%
+    so_form = f.get("_so_formulario")
+    slides = _slides_pcp_dados(d, dias, f, "") if (d["devidos"] or f.get("_por_formulario")) and not so_form else []  # cards à mão: sem dado aparece como 0%
     if f.get("_por_formulario") and fid is None:  # cards montados à mão: cada formulário (setor) também pode ser escolhido à parte
         from pcp.models import Formulario
 
-        for form in Formulario.objects.filter(ativo=True).order_by("codigo")[:12]:
+        forms = Formulario.objects.filter(ativo=True).order_by("codigo")
+        for form in (forms.filter(codigo=so_form) if so_form else forms[:30]):
             slides += _slides_pcp_dados(_dados_pcp(form.pk, dias), dias, f, f" · {form.codigo}")
     return slides
 

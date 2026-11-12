@@ -370,7 +370,8 @@
   // --- manual: grade
   function placeholder(it, msg) {
     var info = cardInfo[it.card_id], rot = info ? info.card.rotulo : it.card_id;
-    return TelaoCards.painel({ titulo: rot, icone: "bi-hourglass-split", kind: "vazio", subtitulo: msg }, true);
+    var ref = (it.params || {}).ref, sub = it.visual && it.visual.sub_instancia && ref && ref !== "*" ? ref.split(" · ").pop() : "";   // a instância escolhida segue como subtítulo
+    return TelaoCards.painel({ titulo: rot, icone: "bi-hourglass-split", kind: "vazio", subtitulo: sub || msg, mensagem: msg }, true);
   }
   // Elementos soltos (título, subtítulo, texto, imagem) não dependem de dados: o editor os desenha sozinho.
   var ROTULO_EL = { titulo: "Título", subtitulo: "Subtítulo", texto: "Texto", imagem: "Imagem" };

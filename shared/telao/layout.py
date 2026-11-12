@@ -178,7 +178,11 @@ def resolver_item(user, item: dict, resumo: bool, embutidas: list, memo: dict) -
     if cid not in cards.CARDS:
         return None
     provedor = cid.split(".", 1)[0]
-    slides = [s for s in _slides_do_modulo(user, provedor, item.get("filtros"), resumo, embutidas, memo) if s.get("card_id") == cid]
+    filtros = item.get("filtros")
+    ref0 = (item.get("params") or {}).get("ref") or ""
+    if provedor == "pcp" and " · " in ref0:  # o formulário escolhido é calculado direto (a lista completa tem limite)
+        filtros = {**(filtros or {}), "_so_formulario": ref0.rsplit(" · ", 1)[1]}
+    slides = [s for s in _slides_do_modulo(user, provedor, filtros, resumo, embutidas, memo) if s.get("card_id") == cid]
     ref = (item.get("params") or {}).get("ref")
     if ref == "*" and cards.CARDS[cid][2] and slides and slides[0].get("kind") == "cards":  # todas as instâncias num só card
         return aplicar_visual(_concentrar(provedor, slides), item.get("visual"))

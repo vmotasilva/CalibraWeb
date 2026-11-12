@@ -201,7 +201,7 @@ window.TelaoCards = (function () {
       });
       return g;
     },
-    vazio: function (s) { return el("div", "vazio", s.subtitulo); }
+    vazio: function (s) { return el("div", "vazio", s.mensagem || s.subtitulo); }
   };
 
   // Um card = o desenho da sua forma (tiles/cards/bars/chart) dentro de um container que dá a escala (fonte base) a todo o conteúdo.
