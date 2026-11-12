@@ -213,6 +213,8 @@ def montar_manual(user, cfg: dict, resumo: bool, embutidas: list, memo: dict, du
     colunas, linhas = dimensoes(lay)  # a grade que o usuário definiu no editor (padrão 12 x 8)
     slide = _slide_de_layout("layout", cfg.get("titulo") or "Slide", cfg.get("icone") or "bi-layout-text-window", itens,
                              modo="livre" if lay.get("modo") == "livre" else "grade", colunas=colunas, linhas=linhas)
+    if cfg.get("capa") is True:  # capa: o player esconde o cabeçalho padrão e usa a tela inteira
+        slide["capa"] = True
     if cfg.get("duracao") or duracao_padrao:
         slide["duracao"] = int(cfg.get("duracao") or duracao_padrao)
     return [slide]
@@ -423,7 +425,8 @@ def limpar_slide(cfg, user) -> dict | None:
         colunas, linhas = dimensoes(lay)
         itens = [i for i in (limpar_item(x, modo, user, colunas, linhas) for x in (cfg.get("itens") or [])[:MAX_ITENS_SLIDE]) if i]
         return {"origem": "manual", "duracao": duracao, "titulo": str(cfg.get("titulo") or "Slide").strip()[:100] or "Slide",
-                "icone": _icone(cfg.get("icone")), "layout": {"modo": modo, "colunas": colunas, "linhas": linhas}, "itens": itens}
+                "icone": _icone(cfg.get("icone")), "layout": {"modo": modo, "colunas": colunas, "linhas": linhas}, "itens": itens,
+                **({"capa": True} if cfg.get("capa") is True else {})}
     if cfg.get("tipo") == "assunto":
         blocos = [{"provedor": b["provedor"], "filtros": limpar_filtros_dict(b["provedor"], b.get("filtros"), user)}
                   for b in (cfg.get("blocos") or [])[:MAX_BLOCOS] if isinstance(b, dict) and b.get("provedor") in providers.PROVEDORES]

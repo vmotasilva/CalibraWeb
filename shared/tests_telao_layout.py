@@ -72,6 +72,12 @@ class LimparTests(TestCase):
         self.assertEqual(s["itens"][1]["params"], {"ref": "Perda"})
         self.assertEqual(s["itens"][1]["filtros"], {"graficos": "todos"}, "descarta opção inválida, 'layout' e campo desconhecido")
 
+    def test_capa_e_preservada(self):
+        el = {"card_id": "", "el": {"tipo": "titulo", "texto": "Olá"}, "pos": {"x": 0, "y": 0, "w": 12, "h": 2}}
+        s = layout.limpar_slide({"origem": "manual", "capa": True, "titulo": "Capa", "itens": [el]}, self.admin)
+        self.assertTrue(s["capa"])
+        self.assertNotIn("capa", layout.limpar_slide({"origem": "manual", "capa": "sim", "itens": [el]}, self.admin))
+
     def test_grade_prende_ao_tamanho_da_grade(self):
         s = layout.limpar_slide({"origem": "manual", "itens": [{"card_id": "kpi.situacao", "pos": {"x": 11, "y": 7, "w": 9, "h": 9}}]}, self.admin)
         p = s["itens"][0]["pos"]

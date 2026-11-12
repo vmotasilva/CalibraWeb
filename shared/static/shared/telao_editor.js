@@ -115,6 +115,19 @@
     estado.slides.splice(i, 1); if (!estado.slides.length) estado.slides.push(novoManual());
     sujar(); selecionar(Math.min(estado.sel, estado.slides.length - 1));
   }
+  // Capa: slide manual de tela inteira (o player esconde o cabeçalho padrão), já com título, subtítulo e data; vai para o início.
+  function novaCapa() {
+    var hoje = new Date().toLocaleDateString("pt-BR"), base = { alinhar: "centro", vertical: "meio", negrito: false, cor: "padrao" };
+    var el0 = function (tipo, tam, extra, texto, pos) {
+      return { card_id: "", el: Object.assign({ tipo: tipo, tam: tam, texto: texto }, base, extra), pos: pos, visual: { titulo: true, max_itens: null } };
+    };
+    var s = prep({ origem: "manual", capa: true, titulo: "Capa", duracao: null, layout: { modo: "grade", colunas: COL, linhas: LIN }, itens: [
+      el0("titulo", 6, { negrito: true }, (estado.modelo.nome || "Título da apresentação"), { x: 0, y: Math.round(LIN * .25), w: COL, h: Math.max(2, Math.round(LIN * .25)) }),
+      el0("subtitulo", 2.8, { cor: "suave" }, "Subtítulo", { x: 0, y: Math.round(LIN * .5), w: COL, h: 1 }),
+      el0("texto", 1.8, { cor: "suave" }, hoje, { x: 0, y: Math.round(LIN * .75), w: COL, h: 1 })] });
+    estado.slides.unshift(s); sujar(); selecionar(0);
+  }
+  $("edNovaCapa").addEventListener("click", novaCapa);
   $("edNovoManual").addEventListener("click", function () { estado.slides.push(novoManual()); sujar(); selecionar(estado.slides.length - 1); });
   Object.keys(D.rotulos).forEach(function (k) {
     var li = el("li"), a = el("a", "dropdown-item"); a.href = "#"; a.innerHTML = '<i class="bi ' + D.rotulos[k][1] + ' me-2"></i>' + D.rotulos[k][0];

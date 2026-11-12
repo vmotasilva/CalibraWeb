@@ -45,6 +45,8 @@ select option { color:#0f172a; }
 .aviso .opcoes { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; }
 .aviso .opcoes small { display:block; font-size:.8rem; font-weight:500; opacity:.8; margin-top:4px; }
 .aviso .btn.sec { background:#1e293b; border-color:#334155; }
+body.capa .cab { display:none; }
+body.capa .palco { padding-top:5vh; }
 body.manual .prog, body.manual #btnPlay { display:none; }
 body.manual .corpo { cursor:pointer; }
 </style>
@@ -88,7 +90,7 @@ body.manual .corpo { cursor:pointer; }
 
   var el = TelaoCards.el;
   function desenhar(s) {
-    TelaoCards.destruir();
+    TelaoCards.destruir(); document.body.classList.toggle("capa", !!s.capa);
     $("cIcone").className = "bi ic " + (s.icone || "bi-display");
     $("cTitulo").textContent = s.titulo; $("cSub").textContent = s.kind === "vazio" ? "" : (s.subtitulo || "");
     var sl = el("div", "slide"); sl.appendChild(TelaoCards.slide(s));
