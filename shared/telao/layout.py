@@ -104,6 +104,8 @@ def _slides_do_modulo(user, provedor, filtros, resumo, embutidas, memo):
     if provedor == "kpi":  # card escolhido à mão aparece sempre (o padrão do módulo é só os indicadores fora da meta)
         base.setdefault("graficos", "todos")
         base.setdefault("_motivos", True)
+    if provedor == "auditoria":  # cards à mão: o card de pontos de atenção lista todos os relatórios
+        base.setdefault("_pontos_sempre", True)
     if provedor == "pcp":  # cards à mão: além do geral, cada formulário (setor) pode ser escolhido
         base.setdefault("_por_formulario", True)
     chave = (provedor, json.dumps(base, sort_keys=True, default=str))

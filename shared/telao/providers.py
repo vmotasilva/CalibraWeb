@@ -554,7 +554,7 @@ def slides_auditoria(user, resumo=False, filtros=None):
             nome_m, resto = (x.strip() for x in i.titulo.split(" — ", 1))
             oc_por_modelo.setdefault(nome_m, []).append((i, resto))
     mostrar_coment = not resumo and f.get("comentarios") != "nao"
-    limite = 10 if ids else 4
+    limite = 10 if ids or f.get("_pontos_sempre") else 4
     for n_mod, d in enumerate(ordenados):
         pontos = [c for c in d["ciclos"] if c["pct"] is not None][-n_ciclos:]
         if n_mod >= limite:  # além do limite de gráficos, só as ocorrências da auditoria
@@ -574,7 +574,14 @@ def slides_auditoria(user, resumo=False, filtros=None):
                 ja_detalhados.add(resto)
             lista_oc.append((i, resto, extra))
         restantes = [c for c in d["criticas"] if c["pergunta"][:90].strip() not in ja_detalhados]
-        if "pontos" in secoes and restantes:
+        sempre = bool(f.get("_pontos_sempre"))  # card escolhido à mão: todo relatório aparece, mesmo sem pontos a listar
+        if "pontos" in secoes and sempre and not restantes:
+            restantes = d["criticas"]
+        if "pontos" in secoes and sempre and not restantes:
+            slides.append(_slide("auditoria", "cards", f"{d['nome']} — pontos de atenção",
+                                 f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)", "bi-flag", colunas=1,
+                                 itens=[{"titulo": "Nenhum ponto de atenção no último ciclo", "texto": "", "tom": "ok", "tags": []}]))
+        elif "pontos" in secoes and restantes:
             slides.append(_slide("auditoria", "cards", f"{d['nome']} — pontos de atenção",
                                  f"{d['abertas']} ocorrência(s) em aberto · {d['vencidas']} vencida(s)", "bi-flag",
                                  colunas=_colunas_cards(f), itens=[{"titulo": _corta(c["pergunta"], 120), "texto": "", "tom": "critico",
