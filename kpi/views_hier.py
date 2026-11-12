@@ -18,9 +18,9 @@ from django.utils import timezone
 from django.utils.http import urlencode
 from django.views.decorators.http import require_POST
 
-from kpi import insumos
+from kpi import indicadores_insumo, insumos
 from kpi.models import (HierCategoria, HierCodigo, HierConsumo, HierImportacao, HierItem, HierMovimento, HierSetor, HierSubcategoria,
-                        KpiHierarquico)
+                        IndicadorInsumo, KpiHierarquico)
 
 JANELA_MESES = 12
 LIMITE_ARQUIVO = 25 * 1024 * 1024
@@ -300,6 +300,12 @@ def painel_view(request):
         matriz = ctx['serie'].pop('_itens')
         ctx['serie']['tabela'] = _tabela(ctx['serie'])
         ctx['varios'] = len(itens) > 1
+        if len(itens) == 1:
+            # Indicadores de insumo ativos deste item (um por aba); a lista é dinâmica: nenhum, um ou vários.
+            ctx['indicadores_item'] = [
+                {'ind': ind, 'serie': indicadores_insumo.serie(ind, visao, fim)}
+                for ind in IndicadorInsumo.objects.filter(item=itens[0], ativo=True)
+                .select_related('producao_indicador', 'producao_setor')]
         if len(itens) > 1 and grafico != 'unica':
             ctx['serie']['multi'] = _multi(matriz, grafico, len(ctx['serie']['labels']))
     return render(request, 'kpi/hier_painel.html', ctx)
@@ -357,6 +363,24 @@ def lancar_view(request):
     um valor diferente vira lançamento manual, que prevalece sobre o importado."""
     periodo = _mes_param(request.POST.get('mes'))
     gravados = 0
+    metas = 0
+    for chave, bruto in request.POST.items():  # metas reajustadas no grid (em branco = sem meta)
+        if not chave.startswith('meta_'):
+            continue
+        item = HierItem.objects.filter(pk=_int(chave[5:])).first()
+        if not item:
+            continue
+        nova = None if not (bruto or '').strip() else _decimal(bruto)
+        if (bruto or '').strip() and (nova is None or nova < 0):
+            messages.error(request, f'Meta inválida para "{item}".')
+            continue
+        nova = nova.quantize(Decimal('0.01')) if nova is not None else None
+        if nova != item.meta:
+            item.meta = nova
+            item.save(update_fields=['meta'])
+            metas += 1
+    if metas:
+        messages.success(request, f'Meta atualizada em {metas} item(ns).')
     for chave, bruto in request.POST.items():
         if not chave.startswith('valor_') or not (bruto or '').strip():
             continue

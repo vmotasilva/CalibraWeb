@@ -288,33 +288,69 @@
         <div class="col-xl-5">
             <div class="card h-100">
                 <div class="card-header py-2 fw-semibold">Dados do gráfico</div>
-                <div class="card-body p-0">
-                {% if serie.tabela %}
-                <div class="table-responsive" style="max-height:clamp(300px,52vh,520px)" id="tabela-dados">
-                    <table class="table table-sm small align-middle mb-0">
-                        <thead class="table-light" style="position:sticky;top:0">
-                            <tr>
-                                <th>Período</th>
-                                <th class="text-end">{% if serie.modo == 'valor' %}Consumo{% if serie.unidade %} ({{ serie.unidade }}){% endif %}{% else %}% médio da meta{% endif %}</th>
-                                <th class="text-end">Meta</th>
-                                {% if serie.modo == 'valor' %}<th class="text-end">% da meta</th>{% endif %}
-                                <th class="text-center">Situação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for l in serie.tabela %}
-                            <tr>
-                                <td>{{ l.rotulo }}{% if l.faixa %} <span class="text-muted">{{ l.faixa }}</span>{% endif %}</td>
-                                <td class="text-end">{% if l.valor is not None %}{{ l.valor|floatformat:"-2" }}{% if serie.modo != 'valor' %}%{% endif %}{% else %}—{% endif %}</td>
-                                <td class="text-end">{% if l.meta is not None %}{{ l.meta|floatformat:"-2" }}{% if serie.modo != 'valor' %}%{% endif %}{% else %}—{% endif %}</td>
-                                {% if serie.modo == 'valor' %}<td class="text-end">{% if l.pct is not None %}{{ l.pct }}%{% else %}—{% endif %}</td>{% endif %}
-                                <td class="text-center">{% if l.ok is None %}<span class="text-muted">—</span>{% elif l.ok %}<span class="badge bg-success">Na meta</span>{% else %}<span class="badge bg-danger">Acima</span>{% endif %}</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                {% if indicadores_item %}
+                <ul class="nav nav-tabs px-2 pt-2 flex-nowrap overflow-auto" role="tablist">
+                    <li class="nav-item" role="presentation"><button type="button" class="nav-link active text-nowrap" data-bs-toggle="tab" data-bs-target="#aba-consumo" role="tab">Consumo</button></li>
+                    {% for x in indicadores_item %}
+                    <li class="nav-item" role="presentation"><button type="button" class="nav-link text-nowrap" data-bs-toggle="tab" data-bs-target="#aba-ind-{{ x.ind.pk }}" role="tab">{{ x.ind.nome }}</button></li>
+                    {% endfor %}
+                </ul>
                 {% endif %}
+                <div class="card-body p-0 tab-content">
+                    <div class="tab-pane fade show active" id="aba-consumo" role="tabpanel">
+                        <div class="table-responsive" style="max-height:clamp(300px,52vh,520px)" id="tabela-dados">
+                            <table class="table table-sm small align-middle mb-0">
+                                <thead class="table-light" style="position:sticky;top:0">
+                                    <tr><th>Período</th><th class="text-end">Consumo{% if serie.unidade %} ({{ serie.unidade }}){% endif %}</th></tr>
+                                </thead>
+                                <tbody>
+                                {% for l in serie.tabela %}
+                                    <tr>
+                                        <td>{{ l.rotulo }}{% if l.faixa %} <span class="text-muted">{{ l.faixa }}</span>{% endif %}</td>
+                                        <td class="text-end">{% if l.valor is not None %}{{ l.valor|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% for x in indicadores_item %}
+                    <div class="tab-pane fade" id="aba-ind-{{ x.ind.pk }}" role="tabpanel">
+                        <div class="px-3 py-2 small text-muted border-bottom">
+                            {{ x.ind.get_modo_display|truncatechars:60 }}
+                            {% if x.ind.producao_indicador %}· produção: {{ x.ind.producao_indicador.nome }}{% if x.ind.producao_variavel %} ({{ x.ind.producao_variavel }}){% endif %}{% endif %}
+                            {% if x.ind.modo != 'uso' and x.ind.participacao != 100 %}· participação {{ x.ind.participacao|floatformat:"-2" }}%{% endif %}
+                            {% if x.ind.multiplicador != 1 %}· × {{ x.ind.multiplicador|floatformat:"-4" }}{% endif %}
+                            · {{ x.serie.janela }}
+                        </div>
+                        <div class="table-responsive" style="max-height:clamp(260px,46vh,470px)">
+                            <table class="table table-sm small align-middle mb-0">
+                                <thead class="table-light" style="position:sticky;top:0">
+                                    <tr>
+                                        <th>Período</th>
+                                        {% if x.ind.modo != 'uso' %}<th class="text-end">Produção</th>{% endif %}
+                                        <th class="text-end">Consumo</th>
+                                        <th class="text-end">{{ x.ind.unidade|default:"Resultado" }}</th>
+                                        <th class="text-end">Meta</th>
+                                        <th class="text-center">Situação</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                {% for l in x.serie.linhas %}
+                                    <tr>
+                                        <td>{{ l.rotulo }}</td>
+                                        {% if x.ind.modo != 'uso' %}<td class="text-end">{% if l.producao is not None %}{{ l.producao|floatformat:"-2" }}{% else %}—{% endif %}</td>{% endif %}
+                                        <td class="text-end">{% if l.consumo is not None %}{{ l.consumo|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                                        <td class="text-end fw-semibold">{% if l.valor is not None %}{{ l.valor|floatformat:x.ind.casas }}{% else %}—{% endif %}</td>
+                                        <td class="text-end">{% if l.meta is not None %}{{ l.meta|floatformat:"-2" }}{% else %}—{% endif %}</td>
+                                        <td class="text-center">{% if l.ok is None %}<span class="text-muted">—</span>{% elif l.ok %}<span class="badge bg-success">Na meta</span>{% else %}<span class="badge bg-danger">Fora</span>{% endif %}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -344,7 +380,12 @@
                                     <div class="text-muted small">{{ l.item.subcategoria.categoria.setor.nome }} › {{ l.item.subcategoria.categoria.nome }} › {{ l.item.subcategoria.nome }}</div>
                                     {% if l.codigos %}<div class="text-muted small"><i class="bi bi-upc-scan"></i> {{ l.codigos|join:", " }}</div>{% endif %}
                                 </td>
-                                <td class="text-end text-nowrap">{% if l.item.meta is not None %}{{ l.item.sentido_simbolo }} {{ l.item.meta|floatformat:"-2" }} {{ l.item.unidade }}{% else %}—{% endif %}</td>
+                                <td style="width:9.5rem">
+                                    <div class="input-group input-group-sm" title="Meta mensal do item: altere e salve para reajustar">
+                                        <span class="input-group-text">{{ l.item.sentido_simbolo }}</span>
+                                        <input type="text" inputmode="decimal" name="meta_{{ l.item.pk }}" class="form-control text-end" value="{% if l.item.meta is not None %}{{ l.item.meta|floatformat:'-2' }}{% endif %}" placeholder="sem meta" aria-label="Meta de {{ l.item.nome }}">
+                                    </div>
+                                </td>
                                 <td>
                                     <div class="input-group input-group-sm">
                                         <input type="text" inputmode="decimal" name="valor_{{ l.item.pk }}" class="form-control text-end" value="{{ l.consumo|default_if_none:''|stringformat:'s'|cut:'None' }}" placeholder="—">
@@ -363,7 +404,7 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="card-footer text-end"><button class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Salvar consumo do mês</button></div>
+                <div class="card-footer text-end"><button class="btn btn-primary btn-sm"><i class="bi bi-check2 me-1"></i>Salvar consumo e metas</button></div>
             </form>
     </details>
     {% endif %}

@@ -9,7 +9,7 @@ from django.urls import reverse
 from openpyxl import Workbook
 
 from kpi import insumos
-from kpi.models import (HierCategoria, HierCodigo, HierConsumo, HierItem, HierMovimento, HierSetor,
+from kpi.models import (IndicadorInsumo, HierCategoria, HierCodigo, HierConsumo, HierItem, HierMovimento, HierSetor,
                         HierSubcategoria, KpiHierarquico)
 
 SERIAL_2026_10_05 = (date(2026, 10, 5) - date(1899, 12, 30)).days
@@ -121,6 +121,31 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertEqual(r.context['serie']['modo'], 'percentual')
         r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk, 'setor': self.setor.pk, 'categoria': self.cat.pk, 'sub': self.sub.pk, 'item': self.liquido.pk, 'mes': '2026-10'})
         self.assertEqual((r.context['serie']['modo'], r.context['serie']['valores'][-1], r.context['serie']['meta']), ('valor', 5.5, 4.0))
+
+    def test_indicadores_do_item_viram_abas_na_tabela_do_grafico(self):
+        base = {'kpi': self.kpi.pk, 'item': self.liquido.pk, 'mes': '2026-10'}
+        r = self.client.get(reverse('kpi:hier_painel'), base)
+        self.assertEqual(r.context['indicadores_item'], [])
+        self.assertNotContains(r, 'data-bs-toggle="tab"')
+        IndicadorInsumo.objects.create(nome='Uso do líquido', item=self.liquido, modo='uso', meta=Decimal(10), casas=1)
+        IndicadorInsumo.objects.create(nome='Inativo', item=self.liquido, modo='uso', ativo=False)
+        r = self.client.get(reverse('kpi:hier_painel'), base)
+        self.assertEqual([x['ind'].nome for x in r.context['indicadores_item']], ['Uso do líquido'])
+        self.assertContains(r, 'Uso do líquido')
+        self.assertNotContains(r, 'Inativo')
+        self.assertNotContains(r, '<th class="text-end">% da meta</th>')
+
+    def test_reajustar_meta_pelo_grid_de_consumo(self):
+        url = reverse('kpi:hier_lancar')
+        self.client.post(url, {'mes': '2026-10', f'meta_{self.liquido.pk}': '7,5'})
+        self.liquido.refresh_from_db()
+        self.assertEqual(self.liquido.meta, Decimal('7.50'))
+        self.client.post(url, {'mes': '2026-10', f'meta_{self.liquido.pk}': 'abc'})
+        self.liquido.refresh_from_db()
+        self.assertEqual(self.liquido.meta, Decimal('7.50'))
+        self.client.post(url, {'mes': '2026-10', f'meta_{self.liquido.pk}': ''})
+        self.liquido.refresh_from_db()
+        self.assertIsNone(self.liquido.meta)
 
     def test_filtros_independentes_deduzem_os_niveis_acima(self):
         r = self.client.get(reverse('kpi:hier_painel'), {'kpi': self.kpi.pk, 'item': self.liquido.pk})
