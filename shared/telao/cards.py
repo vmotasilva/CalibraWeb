@@ -50,10 +50,10 @@ CARDS = {
     "metrologia.criticos": ("listas", "cards", None),
 
     "pcp.ocorrencias": ("ocorrencias", "cards", None),
-    "pcp.resumo": ("resumo", "tiles", None),
-    "pcp.evolucao": ("graficos", "chart", None),
-    "pcp.frequencias": ("graficos", "bars", None),
-    "pcp.paginas": ("graficos", "bars", None),
+    "pcp.resumo": ("resumo", "tiles", "formulario"),
+    "pcp.evolucao": ("graficos", "chart", "formulario"),
+    "pcp.frequencias": ("graficos", "bars", "formulario"),
+    "pcp.paginas": ("graficos", "bars", "formulario"),
 
     "laboratorio.ocorrencias": ("ocorrencias", "cards", None),
     "laboratorio.resumo": ("resumo", "tiles", None),

@@ -651,7 +651,7 @@ def slides_metrologia(user, resumo=False, filtros=None):
 # PCP (cumprimento das verificações; um formulário = um setor)
 # ---------------------------------------------------------------------------
 def _dados_pcp(formulario_id=None, dias=30):
-    chave = f"telao:pcp:v3:{formulario_id or 0}:{dias}"
+    chave = f"telao:pcp:v4:{formulario_id or 0}:{dias}"
     dados = _cache_get(chave)
     if dados is None:
         import datetime
@@ -670,7 +670,7 @@ def _dados_pcp(formulario_id=None, dias=30):
             "ini": ini, "fim": fim, "pct": d["pct"], "devidos": d["devidos"], "feitos": d["feitos"], "atrasados": d["atrasados"],
             "evolucao": [{"rotulo": e["rotulo"], "pct": e["pct"]} for e in d["evolucao"] if e["pct"] is not None],
             "frequencias": [{"nome": f["nome"], "pct": f["pct"]} for f in d["por_frequencia"] if f["pct"] is not None],
-            "piores": [{"nome": f"{t} · {l['nome']}", "pct": l["pct"]} for l, t in paginas[:6]],
+            "piores": [{"nome": f"{t} · {l['nome']}", "pct": l["pct"]} for l, t in paginas[:30]],
         }
         cache.set(chave, dados, CACHE_SEGUNDOS)
     return dados
@@ -685,24 +685,43 @@ def slides_pcp(user, resumo=False, filtros=None):
     f = filtros or {}
     fid = f.get("formulario")
     dias = int(f["dias"]) if str(f.get("dias") or "").isdigit() else 30
-    d = _dados_pcp(int(fid) if str(fid or "").isdigit() else None, dias)
-    if not d["devidos"]:
-        return []
+    fid = int(fid) if str(fid or "").isdigit() else None
+    d = _dados_pcp(fid, dias)
+    slides = _slides_pcp_dados(d, dias, f, "") if d["devidos"] else []
+    if f.get("_por_formulario") and fid is None:  # cards montados à mão: cada formulário (setor) também pode ser escolhido à parte
+        from pcp.models import Formulario
+
+        for form in Formulario.objects.filter(ativo=True).order_by("codigo")[:12]:
+            df = _dados_pcp(form.pk, dias)
+            if df["devidos"]:
+                slides += _slides_pcp_dados(df, dias, f, f" · {form.codigo}")
+    return slides
+
+
+def _slides_pcp_dados(d, dias, f, sufixo):
     sub = f"{d['ini']:%d/%m} a {d['fim']:%d/%m} (últimos {dias} dias)"
-    slides = [_slide("pcp", "tiles", "PCP — cumprimento das verificações", sub, "bi-gear-wide-connected", itens=[
+    slides = [_slide("pcp", "tiles", f"PCP — cumprimento das verificações{sufixo}", sub, "bi-gear-wide-connected", itens=[
         {"rotulo": "Cumprimento", "valor": f"{_fmt_num(d['pct'], 1)}%", "tom": _tom_pct(d["pct"])},
         {"rotulo": "Devidas", "valor": d["devidos"], "tom": "neutro"},
         {"rotulo": "Feitas", "valor": d["feitos"], "tom": "ok"},
         {"rotulo": "Em atraso", "valor": d["atrasados"], "tom": "critico" if d["atrasados"] else "ok"},
     ])]
-    if len(d["evolucao"]) > 1:
-        slides.append(_slide("pcp", "chart", "PCP — evolução do cumprimento", sub, "bi-graph-up",
-                             labels=[e["rotulo"] for e in d["evolucao"]], valores=[e["pct"] for e in d["evolucao"]],
+    evolucao = d["evolucao"]
+    if str(f.get("ultimos") or "").isdigit() and int(f["ultimos"]) > 1:  # últimos N pontos (dias ou semanas) do gráfico
+        evolucao = evolucao[-int(f["ultimos"]):]
+    if len(evolucao) > 1:
+        slides.append(_slide("pcp", "chart", f"PCP — evolução do cumprimento{sufixo}", sub, "bi-graph-up",
+                             tipo="barras" if f.get("tipo_grafico") == "barras" else "linha",
+                             labels=[e["rotulo"] for e in evolucao], valores=[e["pct"] for e in evolucao],
                              meta=100, unidade="%"))
-    for titulo, lista, icone in (("PCP — cumprimento por frequência", d["frequencias"], "bi-calendar-check"),
-                                 ("PCP — páginas com menor cumprimento", d["piores"], "bi-flag")):
+    qtd = int(f["barras_qtd"]) if str(f.get("barras_qtd") or "").isdigit() and 1 <= int(f["barras_qtd"]) <= 40 else None
+    colunas = int(f["barras_colunas"]) if str(f.get("barras_colunas") or "") in ("2", "3", "4") else 1
+    for titulo, lista, icone, padrao in ((f"PCP — cumprimento por frequência{sufixo}", d["frequencias"], "bi-calendar-check", None),
+                                         (f"PCP — páginas com menor cumprimento{sufixo}", d["piores"], "bi-flag", 6)):
+        lista = lista[:qtd or padrao]
         if lista:
-            slides.append(_slide("pcp", "bars", titulo, sub, icone, itens=[
+            slides.append(_slide("pcp", "bars", titulo, sub, icone, sem_barra=bool(f.get("barras_sem_barra")),
+                                 texto_prioritario=bool(f.get("barras_texto")), colunas=colunas, itens=[
                 {"rotulo": x["nome"], "pct": x["pct"], "tom": _tom_pct(x["pct"]), "txt": f"{_fmt_num(x['pct'], 1)}%"} for x in lista]))
     return slides
 
@@ -1167,6 +1186,12 @@ CAMPOS_CONFIG = {
         "motivos_exibir": ["kpi.motivos"], "motivos_sem_barra": ["kpi.motivos"], "motivos_texto": ["kpi.motivos"],
         "motivos_qtd": ["kpi.motivos"], "motivos_colunas": ["kpi.motivos"],
     },
+    "pcp": {
+        "dias": ["pcp.resumo", "pcp.evolucao", "pcp.frequencias", "pcp.paginas"],
+        "tipo_grafico": ["pcp.evolucao"], "ultimos": ["pcp.evolucao"],
+        "barras_qtd": ["pcp.frequencias", "pcp.paginas"], "barras_colunas": ["pcp.frequencias", "pcp.paginas"],
+        "barras_sem_barra": ["pcp.frequencias", "pcp.paginas"], "barras_texto": ["pcp.frequencias", "pcp.paginas"],
+    },
     "ocorrencias": {"comentarios": ["ocorrencias.lista"], "oc_colunas": ["ocorrencias.lista"]},
     "auditoria": {
         "tipo_grafico": ["auditoria.evolucao"], "ultimos": ["auditoria.evolucao"],
@@ -1247,6 +1272,16 @@ FILTROS = {
         dict(nome="formulario", rotulo="Formulário (setor)", tipo="select", opcoes=_opts_pcp_formularios),
         dict(nome="dias", rotulo="Período analisado", tipo="select",
              opcoes=lambda u: [("7", "7 dias"), ("14", "14 dias"), ("30", "30 dias"), ("60", "60 dias"), ("90", "90 dias")]),
+        dict(nome="tipo_grafico", rotulo="Gráfico — tipo", tipo="select",
+             opcoes=lambda u: [("linha", "Linha pontilhada"), ("barras", "Barras")]),
+        dict(nome="ultimos", rotulo="Gráfico — quantos pontos (últimos N dias/semanas)", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (3, 5, 7, 10, 14, 15, 20, 30)]),
+        dict(nome="barras_qtd", rotulo="Barras — quantas linhas mostrar", tipo="select",
+             opcoes=lambda u: [(str(n), str(n)) for n in (3, 4, 5, 6, 8, 10, 12, 15, 20, 30)]),
+        dict(nome="barras_colunas", rotulo="Barras — dividir em colunas", tipo="select",
+             opcoes=lambda u: [("1", "1 coluna"), ("2", "2 colunas"), ("3", "3 colunas"), ("4", "4 colunas")]),
+        dict(nome="barras_sem_barra", rotulo="Barras — ocultar a barra de preenchimento", tipo="bool"),
+        dict(nome="barras_texto", rotulo="Barras — priorizar o texto (mais largura, sem cortar)", tipo="bool"),
     ],
     "laboratorio": [
         dict(nome="periodo", rotulo="Período (a partir do último lançamento)", tipo="select",
