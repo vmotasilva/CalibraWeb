@@ -692,26 +692,33 @@ def slides_pcp(user, resumo=False, filtros=None):
     dias = int(f["dias"]) if str(f.get("dias") or "").isdigit() else 30
     fid = int(fid) if str(fid or "").isdigit() else None
     d = _dados_pcp(fid, dias)
-    slides = _slides_pcp_dados(d, dias, f, "") if d["devidos"] else []
+    slides = _slides_pcp_dados(d, dias, f, "") if d["devidos"] or f.get("_por_formulario") else []  # cards à mão: sem dado aparece como 0%
     if f.get("_por_formulario") and fid is None:  # cards montados à mão: cada formulário (setor) também pode ser escolhido à parte
         from pcp.models import Formulario
 
         for form in Formulario.objects.filter(ativo=True).order_by("codigo")[:12]:
-            df = _dados_pcp(form.pk, dias)
-            if df["devidos"]:
-                slides += _slides_pcp_dados(df, dias, f, f" · {form.codigo}")
+            slides += _slides_pcp_dados(_dados_pcp(form.pk, dias), dias, f, f" · {form.codigo}")
     return slides
 
 
 def _slides_pcp_dados(d, dias, f, sufixo):
     sub = f"{d['ini']:%d/%m} a {d['fim']:%d/%m} (últimos {dias} dias)"
     slides = [_slide("pcp", "tiles", f"PCP — cumprimento das verificações{sufixo}", sub, "bi-gear-wide-connected", itens=[
-        {"rotulo": "Cumprimento", "valor": f"{_fmt_num(d['pct'], 1)}%", "tom": _tom_pct(d["pct"])},
+        {"rotulo": "Cumprimento", "valor": f"{_fmt_num(d['pct'] or 0, 1)}%", "tom": _tom_pct(d["pct"] or 0)},
         {"rotulo": "Devidas", "valor": d["devidos"], "tom": "neutro"},
         {"rotulo": "Feitas", "valor": d["feitos"], "tom": "ok"},
         {"rotulo": "Em atraso", "valor": d["atrasados"], "tom": "critico" if d["atrasados"] else "ok"},
     ])]
     evolucao = d["evolucao"]
+    if len(evolucao) < 2:  # sem dado no período: o gráfico mostra 0% em cada dia (ou semana)
+        import datetime
+
+        passo = 7 if (d["fim"] - d["ini"]).days + 1 > 31 else 1
+        dia = d["ini"] - datetime.timedelta(days=d["ini"].weekday()) if passo == 7 else d["ini"]
+        evolucao = []
+        while dia <= d["fim"]:
+            evolucao.append({"rotulo": f"sem. {dia:%d/%m}" if passo == 7 else f"{dia:%d/%m}", "pct": 0})
+            dia += datetime.timedelta(days=passo)
     if str(f.get("ultimos") or "").isdigit() and int(f["ultimos"]) > 1:  # últimos N pontos (dias ou semanas) do gráfico
         evolucao = evolucao[-int(f["ultimos"]):]
     if len(evolucao) > 1:

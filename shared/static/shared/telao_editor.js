@@ -655,6 +655,12 @@
         var ref = (it.params || {}).ref || ""; if (ref && ref !== "*" && !lista.some(function (x) { return x === ref || x.indexOf(ref + " \u00b7 ") === 0; })) sel.appendChild(new Option(ref + " (indisponível agora)", ref)); sel.value = lista.indexOf(ref) >= 0 || ref === "*" ? ref : (lista.filter(function (x) { return x.indexOf(ref + " \u00b7 ") === 0; })[0] || ref);
       });
       sel.addEventListener("change", function () { if (sel.value) it.params = { ref: sel.value }; else delete it.params; sujar(); atualizarPrevia(); });
+      var fsi = el("div", "form-check mt-1"), si = el("input", "form-check-input"); si.type = "checkbox"; si.id = "edVisSubInst"; si.checked = !!it.visual.sub_instancia;
+      si.addEventListener("change", function () {
+        if (si.checked) { it.visual.sub_instancia = true; delete it.visual.subtitulo; ts.checked = true; } else delete it.visual.sub_instancia;
+        sujar(); atualizarPrevia();
+      });
+      fsi.appendChild(si); fsi.appendChild(Object.assign(el("label", "form-check-label small", "Usar a seleção como subtítulo do card"), { htmlFor: "edVisSubInst" })); gi.appendChild(fsi);
     }
     var prov = it.card_id.split(".")[0]; it.filtros = it.filtros || {};
     var aoMudar = function () { sujar(); delete instCache[it.card_id]; depois(atualizarPrevia); };

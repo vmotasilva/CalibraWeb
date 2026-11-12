@@ -184,7 +184,12 @@ def resolver_item(user, item: dict, resumo: bool, embutidas: list, memo: dict) -
         # com filtro de setor o título vira "Indicador · Setor": o nome salvo (só o indicador) continua valendo
         slides = [s for s in slides if s.get("titulo") == ref or str(s.get("titulo") or "").startswith(ref + " · ")]
     juntos = juntar_partes(slides)
-    return aplicar_visual(juntos[0], item.get("visual")) if juntos else None
+    if not juntos:
+        return None
+    conteudo = juntos[0]
+    if (item.get("visual") or {}).get("sub_instancia") and ref and ref != "*":  # a instância escolhida (ex.: o formulário) vira o subtítulo
+        conteudo = {**conteudo, "subtitulo": str(conteudo.get("titulo") or "").split(" · ", 1)[-1]}
+    return aplicar_visual(conteudo, item.get("visual"))
 
 
 def instancias(user, card_id: str, filtros: dict | None = None, resumo: bool = False) -> list[str]:
@@ -392,6 +397,8 @@ def limpar_item(it, modo: str, user, colunas: int = cards.COLUNAS, linhas: int =
                         "max_itens": _inteiro(visual.get("max_itens"), 1, 50, None) if visual.get("max_itens") else None}}
     if visual.get("moldura") == "sem":  # sem fundo/borda do card
         saida["visual"]["moldura"] = "sem"
+    if visual.get("sub_instancia") is True:
+        saida["visual"]["sub_instancia"] = True
     if visual.get("subtitulo") is False:  # o título e o subtítulo do card se ocultam separadamente
         saida["visual"]["subtitulo"] = False
     if params.get("ref"):

@@ -1,7 +1,7 @@
 /* Renderer dos cards do Modo Apresentação (player e editor). Requer Chart.js e telao_cards.css; o container pai deve ter a classe .tl.
    TelaoCards.slide(s) devolve o elemento do slide (tiles/cards/bars/chart/pagina/layout/vazio); TelaoCards.destruir() libera os gráficos. */
 window.TelaoCards = (function () {
-  var charts = [];
+  var charts = [], paginados = [], PAG_MS = 8000;
   function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
   function tom(t) { return t || "neutro"; }
 
@@ -40,6 +40,7 @@ window.TelaoCards = (function () {
         });
       });
       pgs = melhor.p; usado = melhor.k; colunas(melhor.c);
+      g._pgs = pgs.length; if (paginados.indexOf(g) < 0) paginados.push(g);
       g.style.fontSize = usado + "em";
       if (pgs.length <= 1) { itens.forEach(function (c) { c.style.display = ""; }); return; }
       var ind = el("div", "tpag"), atual = 0;
@@ -52,8 +53,10 @@ window.TelaoCards = (function () {
       mostrar();
       timer = setInterval(function () {
         if (!g.isConnected) { clearInterval(timer); return; }
+        if (api.manual) return;   // no modo manual quem passa as páginas é o usuário
         atual = (atual + 1) % pgs.length; mostrar();
-      }, 8000);
+      }, PAG_MS);
+      g._mover = function (d) { var n = atual + d; if (n < 0 || n >= pgs.length) return false; atual = n; mostrar(); return true; };
     }
     setTimeout(function () {
       if (!g.isConnected) return;
@@ -237,6 +240,14 @@ window.TelaoCards = (function () {
   function slide(s) {
     return s.kind === "pagina" || s.kind === "layout" || s.kind === "vazio" ? desenho[s.kind](s) : card(s);
   }
-  function destruir() { charts.forEach(function (c) { try { c.destroy(); } catch (e) {} }); charts = []; }
-  return { slide: slide, card: card, painel: painel, destruir: destruir, el: el };
+  // Tempo para passar por todas as páginas dos cards do slide atual (0 se nenhum card está paginado): o player não troca o slide antes.
+  function tempoPaginas() {
+    return paginados.reduce(function (m, g) { return g.isConnected && g._pgs > 1 ? Math.max(m, g._pgs * PAG_MS) : m; }, 0);
+  }
+  function moverPagina(d) {   // modo manual: avança/volta uma página de algum card paginado; false se não há mais páginas
+    return paginados.some(function (g) { return g.isConnected && g._pgs > 1 && g._mover && g._mover(d); });
+  }
+  function destruir() { paginados = []; charts.forEach(function (c) { try { c.destroy(); } catch (e) {} }); charts = []; }
+  var api = { manual: false, slide: slide, moverPagina: moverPagina, card: card, painel: painel, tempoPaginas: tempoPaginas, destruir: destruir, el: el };
+  return api;
 })();

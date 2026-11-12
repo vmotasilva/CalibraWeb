@@ -42,6 +42,11 @@ select option { color:#0f172a; }
 .aviso { position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center; background:var(--bg); }
 .aviso.on { display:flex; }
 .aviso .btn { font-size:1.4rem; padding:16px 34px; background:#2563eb; border-color:#2563eb; font-weight:700; }
+.aviso .opcoes { display:flex; flex-wrap:wrap; gap:18px; justify-content:center; }
+.aviso .opcoes small { display:block; font-size:.8rem; font-weight:500; opacity:.8; margin-top:4px; }
+.aviso .btn.sec { background:#1e293b; border-color:#334155; }
+body.manual .prog, body.manual #btnPlay { display:none; }
+body.manual .corpo { cursor:pointer; }
 </style>
 </head>
 <body class="tl{% if tema == 'claro' %} claro{% endif %}">
@@ -62,19 +67,23 @@ select option { color:#0f172a; }
 
 <div class="ctrl">
   <button class="btn" id="btnAnt" title="Anterior (←)"><i class="bi bi-skip-backward-fill"></i></button>
+  <button class="btn" id="btnModo" title="Alternar entre passagem automática e manual"><i class="bi bi-hand-index-thumb"></i></button>
   <button class="btn" id="btnPlay" title="Pausar/continuar (espaço)"><i class="bi bi-pause-fill"></i></button>
   <button class="btn" id="btnProx" title="Próximo (→)"><i class="bi bi-skip-forward-fill"></i></button>
   <button class="btn" id="btnTela" title="Tela cheia (F)"><i class="bi bi-fullscreen"></i></button>
 </div>
 <div class="rod" id="rodape"></div>
 <div class="prog"><i id="prog"></i></div>
-<div class="aviso" id="aviso"><button class="btn" id="btnIniciar"><i class="bi bi-play-fill"></i> Iniciar apresentação</button></div>
+<div class="aviso" id="aviso"><div class="opcoes">
+  <button class="btn" id="btnIniciarAuto"><i class="bi bi-play-fill"></i> Iniciar automático<small>passa sozinho (TV / indicador)</small></button>
+  <button class="btn sec" id="btnIniciarManual"><i class="bi bi-hand-index-thumb"></i> Iniciar manual<small>setas, cliques ou espaço (apresentação direta)</small></button>
+</div></div>
 
 <script src="{% static 'shared/telao_cards.js' %}"></script>
 <script>
 (function () {
   var API = "{{ api_url }}", PLAYLIST = "{{ playlist }}", DUR_FORCADA = {{ duracao }}, RESUMO = {{ resumo|yesno:"true,false" }};
-  var REFRESH_MS = 60000, slides = [], idx = 0, rodando = true, inicio = 0, restante = 0, raf = null, ociosoT = null, lock = null;
+  var REFRESH_MS = 60000, slides = [], idx = 0, rodando = false, modo = new URLSearchParams(location.search).get("modo") === "manual" ? "manual" : "auto", inicio = 0, restante = 0, totalMs = 0, raf = null, ociosoT = null, lock = null;
   var $ = function (id) { return document.getElementById(id); };
 
   var el = TelaoCards.el;
@@ -96,13 +105,15 @@ select option { color:#0f172a; }
     idx = (i + slides.length) % slides.length;
     var s = slides[idx];
     desenhar(s); rodape();
-    restante = (DUR_FORCADA || s.duracao || 15) * 1000; inicio = performance.now(); agendar();
+    totalMs = (DUR_FORCADA || s.duracao || 15) * 1000; restante = totalMs; inicio = performance.now(); agendar();
   }
 
   function agendar() {
     cancelAnimationFrame(raf);
     (function passo(t) {
-      var total = (DUR_FORCADA || (slides[idx] && slides[idx].duracao) || 15) * 1000;
+      var need = TelaoCards.tempoPaginas();   // cards paginados: o slide dura até passar por todas as páginas
+      if (need > totalMs) { restante += need - totalMs; totalMs = need; }
+      var total = totalMs;
       if (rodando) {
         var frac = Math.min((total - restante + (t - inicio)) / total, 1);
         $("prog").style.width = (frac * 100) + "%";
@@ -150,29 +161,52 @@ select option { color:#0f172a; }
   function ocioso() { document.body.classList.remove("ocioso"); clearTimeout(ociosoT); ociosoT = setTimeout(function () { document.body.classList.add("ocioso"); }, 3000); }
   ["mousemove", "keydown", "touchstart"].forEach(function (e) { document.addEventListener(e, ocioso); });
 
+  // Passagem automática (TV) ou manual (setas, cliques, espaço): no manual, cards paginados avançam página a página antes do próximo slide.
+  function avancar(d) {
+    if (modo === "manual") {
+      if (TelaoCards.moverPagina(d)) return;
+      mostrar(Math.max(0, Math.min(slides.length - 1, idx + d)));
+    } else mostrar(idx + d);
+  }
+  function aplicarModo(m, iniciar) {
+    modo = m; TelaoCards.manual = m === "manual"; document.body.classList.toggle("manual", m === "manual");
+    $("btnModo").innerHTML = '<i class="bi bi-' + (m === "manual" ? "arrow-repeat" : "hand-index-thumb") + '"></i>';
+    $("btnModo").title = m === "manual" ? "Modo manual: clique para passar automaticamente" : "Modo automático: clique para passar manualmente";
+    $("btnPlay").innerHTML = '<i class="bi bi-pause-fill"></i>';
+    if (m === "manual") rodando = false;
+    else if (iniciar) { restante = totalMs; inicio = performance.now(); rodando = true; }
+  }
   document.addEventListener("keydown", function (e) {
-    if (e.key === "ArrowRight") mostrar(idx + 1);
-    else if (e.key === "ArrowLeft") mostrar(idx - 1);
-    else if (e.key === " ") { e.preventDefault(); alternar(); }
+    if (e.key === "ArrowRight" || e.key === "ArrowDown" || e.key === "PageDown") { e.preventDefault(); avancar(1); }
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp" || e.key === "PageUp") { e.preventDefault(); avancar(-1); }
+    else if (e.key === "Home" && modo === "manual") mostrar(0);
+    else if (e.key === "End" && modo === "manual") mostrar(slides.length - 1);
+    else if (e.key === " ") { e.preventDefault(); if (modo === "manual") avancar(1); else alternar(); }
     else if (e.key === "f" || e.key === "F") tela();
     else if (e.key === "Escape" && !document.fullscreenElement) sair();
   });
   function sair() { history.length > 1 ? history.back() : (location.href = "/"); }
-  $("btnSair").onclick = sair; $("btnAnt").onclick = function () { mostrar(idx - 1); }; $("btnProx").onclick = function () { mostrar(idx + 1); };
+  $("btnSair").onclick = sair; $("btnAnt").onclick = function () { avancar(-1); }; $("btnProx").onclick = function () { avancar(1); };
   $("btnPlay").onclick = alternar; $("btnTela").onclick = tela;
-  $("selPlaylist").onchange = function () { location.search = "?p=" + this.value + (RESUMO ? "&resumo=1" : ""); };
+  $("btnModo").onclick = function () { aplicarModo(modo === "manual" ? "auto" : "manual", true); };
+  $("corpo").addEventListener("click", function () { if (modo === "manual") avancar(1); });
+  $("selPlaylist").onchange = function () { location.search = "?p=" + this.value + (RESUMO ? "&resumo=1" : "") + (modo === "manual" ? "&modo=manual" : ""); };
   setInterval(function () { $("relogio").textContent = new Date().toLocaleString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }); }, 1000);
   setInterval(function () { carregar(true); }, REFRESH_MS);
   // ao voltar à aba (ou o aparelho acordar) atualiza na hora, sem esperar o próximo minuto
   document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") carregar(true); });
 
-  // Chegou pelo botão ▶: tenta tela cheia direto; se o navegador exigir gesto, mostra o botão "Iniciar".
-  function partir() {
+  // Chegou pelo botão ▶: escolhe-se o modo e a apresentação só começa (no slide 1) ao clicar; com ?modo= na endereço, começa direto.
+  function partir(m) {
     $("aviso").classList.remove("on"); tela(); manterAcesa(); ocioso();
+    mostrar(0); aplicarModo(m, true);
   }
-  $("btnIniciar").onclick = partir;
+  $("btnIniciarAuto").onclick = function () { partir("auto"); };
+  $("btnIniciarManual").onclick = function () { partir("manual"); };
   carregar(false).then(function () {
-    if (location.hash === "#cheia") { $("aviso").classList.add("on"); }
+    var escolher = location.hash === "#cheia" && !new URLSearchParams(location.search).has("modo");
+    if (escolher) $("aviso").classList.add("on");   // nada avança (rodando = false) até o clique
+    else aplicarModo(modo, true);
     ocioso(); manterAcesa();
   });
 })();
