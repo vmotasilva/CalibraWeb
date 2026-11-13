@@ -8,6 +8,7 @@ from django.db import transaction
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from kpi import calculo, indicadores_insumo as engine
@@ -241,6 +242,26 @@ def salvar_view(request):
         ind.save()
     messages.success(request, f'Indicador "{ind.nome}" salvo.')
     return redirect('kpi:ins_painel')
+
+
+@login_required
+@require_POST
+def participacao_view(request, pk):
+    """Ajusta, direto no grid do painel, o percentual da produção considerado no cálculo (rendimento e consumo específico)."""
+    ind = get_object_or_404(IndicadorInsumo, pk=pk)
+    pct = _dec(request.POST.get('participacao'))
+    if ind.modo == IndicadorInsumo.MODO_USO:
+        messages.error(request, 'Este indicador não usa produção.')
+    elif pct is None or not Decimal(0) < pct <= Decimal(100):
+        messages.error(request, 'A participação na produção deve ser maior que 0 e no máximo 100%.')
+    else:
+        ind.participacao = pct
+        ind.save(update_fields=['participacao'])
+        messages.success(request, f'Participação de "{ind.nome}" ajustada para {pct.normalize():f}%.')
+    destino = request.POST.get('next') or ''
+    if not url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        destino = 'kpi:ins_painel'
+    return redirect(destino)
 
 
 @login_required

@@ -334,10 +334,22 @@
                         <div class="px-3 py-2 small text-muted border-bottom">
                             {{ x.ind.get_modo_display|truncatechars:60 }}
                             {% if x.ind.producao_indicador %}· produção: {{ x.ind.producao_indicador.nome }}{% if x.ind.producao_variavel %} ({{ x.ind.producao_variavel }}){% endif %}{% endif %}
-                            {% if x.ind.modo != 'uso' and x.ind.participacao != 100 %}· participação {{ x.ind.participacao|floatformat:"-2" }}%{% endif %}
                             {% if x.ind.multiplicador != 1 %}· × {{ x.ind.multiplicador|floatformat:"-4" }}{% endif %}
                             · {{ x.serie.janela }}
                         </div>
+                        {% if x.ind.modo != 'uso' %}
+                        <form method="post" action="{% url 'kpi:ins_participacao' x.ind.pk %}" class="px-3 py-2 border-bottom d-flex flex-wrap align-items-center gap-2 small">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <label class="mb-0" for="part-{{ x.ind.pk }}">Percentual da produção considerado no cálculo</label>
+                            <div class="input-group input-group-sm" style="width:9rem">
+                                <input type="number" id="part-{{ x.ind.pk }}" name="participacao" value="{{ x.ind.participacao|floatformat:'-2' }}" min="0.01" max="100" step="any" class="form-control text-end" required>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Aplicar</button>
+                            <span class="text-muted">A coluna Produção mostra o total, antes do percentual.</span>
+                        </form>
+                        {% endif %}
                         <div class="table-responsive" style="max-height:clamp(260px,46vh,470px)">
                             <table class="table table-sm small align-middle mb-0">
                                 <thead class="table-light" style="position:sticky;top:0">

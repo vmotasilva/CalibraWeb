@@ -36,6 +36,7 @@ urlpatterns = [
     path('setores/indicadores/<int:pk>/editar/', views_ins.form_view, name='ins_editar'),
     path('setores/indicadores/preview/', views_ins.preview_view, name='ins_preview'),
     path('setores/indicadores/salvar/', views_ins.salvar_view, name='ins_salvar'),
+    path('setores/indicadores/<int:pk>/participacao/', views_ins.participacao_view, name='ins_participacao'),
     path('setores/indicadores/<int:pk>/excluir/', views_ins.excluir_view, name='ins_excluir'),
     path('setores/cadastro/', views_hier.cadastro_view, name='hier_cadastro'),
     path('setores/cadastro/salvar/', views_hier.cadastro_salvar_view, name='hier_cadastro_salvar'),

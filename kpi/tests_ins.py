@@ -237,6 +237,19 @@ class TelasInsumoTests(InsBase):
         self.client.post(reverse('kpi:ins_excluir', args=[novo.pk]))
         self.assertFalse(IndicadorInsumo.objects.filter(pk=novo.pk).exists())
 
+    def test_ajustar_participacao_no_grid(self):
+        url = reverse('kpi:ins_participacao', args=[self.ind.pk])
+        r = self.client.post(url, {'participacao': '50', 'next': '/kpi/setores/?aba=1'})
+        self.assertRedirects(r, '/kpi/setores/?aba=1', fetch_redirect_response=False)
+        self.ind.refresh_from_db()
+        self.assertEqual(self.ind.participacao, Decimal(50))
+        for ruim in ('0', '150', 'abc', ''):
+            self.client.post(url, {'participacao': ruim})
+        self.ind.refresh_from_db()
+        self.assertEqual(self.ind.participacao, Decimal(50))
+        r = self.client.post(url, {'participacao': '60', 'next': 'https://outro.site/'})  # destino externo é ignorado
+        self.assertRedirects(r, reverse('kpi:ins_painel'))
+
     def test_modelos_da_planilha_sao_validos(self):
         from kpi.views_ins import MODELOS
         self.assertEqual({m['chave'] for m in MODELOS}, {'pad', 'membrana', 'fita', 'polidor', 'diamante', 'quartz', 'zirconio', 'aloy', 'dsx', 'filtro'})
