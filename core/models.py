@@ -524,7 +524,7 @@ class NavigationPermission(models.Model):
 
             # --- GRUPOS (seções do menu) COM CHAVE "No menu" PRÓPRIA ---
             ("nav_mod_gestao", "NAV: Gestão (módulo de exibição) / No menu"),
-            ("nav_gestao_ferramentas", "NAV: Gestão / Seção Ferramentas Auxiliares"),
+            ("nav_gestao_ferramentas", "NAV: Gestão / Seção Ferramentas"),
             ("nav_gestao_tms", "NAV: Gestão / Seção Tempos e Movimentos (TMS)"),
             ("nav_gestao_kpi", "NAV: Gestão / Seção KPI"),
             ("nav_kpi_bloco_painel", "NAV: KPI / Bloco Painel de Indicadores"),
