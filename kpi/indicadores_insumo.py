@@ -234,6 +234,7 @@ def serie(ind, visao, ref, hoje=None):
         valor = calcular_valor(ind, prod[p], cons[p])
         meta = meta_do_periodo(ind, visao, p)
         linhas.append({'rotulo': p.rotulo, 'ini': p.ini, 'fim': p.fim, 'producao': prod[p], 'consumo': cons[p],
+                       'producao_considerada': None if prod[p] is None else prod[p] * ind.participacao / Decimal(100),
                        'valor': valor, 'meta': meta, 'ok': ind.atingiu(valor, meta)})
     com_valor = [l for l in linhas if l['valor'] is not None]
     avaliados = [l for l in linhas if l['ok'] is not None]
