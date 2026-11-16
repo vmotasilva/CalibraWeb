@@ -289,7 +289,6 @@
                     </div>
                     {% endif %}
                 </div>
-                {% if varios and itens_sem_meta and grafico == 'unica' %}<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>{{ itens_sem_meta }} {% if itens_sem_meta == 1 %}item sem meta não entra{% else %}itens sem meta não entram{% endif %} na média de % da meta (cadastre a meta em Cadastro).</div>{% endif %}
                 {% if serie.multi.aviso %}<div class="small text-muted mb-1"><i class="bi bi-info-circle me-1"></i>{{ serie.multi.aviso }}</div>{% endif %}
                 <div style="position:relative;height:clamp(300px,50vh,480px)"><canvas id="grafico"></canvas></div>
             </div></div>

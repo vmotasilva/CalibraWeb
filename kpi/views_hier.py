@@ -69,8 +69,7 @@ def _sentido_comum(itens):
     return sentidos.pop() if len(sentidos) == 1 else '<='
 
 
-GRAFICOS = (('unica', 'Barra única', 'bi-bar-chart'), ('multiplas', 'Múltiplas barras', 'bi-bar-chart-steps'),
-            ('empilhadas', 'Empilhadas', 'bi-layers'))
+GRAFICOS = (('multiplas', 'Múltiplas barras', 'bi-bar-chart-steps'), ('empilhadas', 'Empilhadas', 'bi-layers'))
 
 
 def _multi(dados, tipo, n):
@@ -279,7 +278,7 @@ def painel_view(request):
         dentro=sum(1 for l in com_meta if l['ok']), fora=sum(1 for l in com_meta if not l['ok']),
         sem_lancamento=sum(1 for l in linhas if l['consumo'] is None),
     )
-    grafico = request.GET.get('grafico') if request.GET.get('grafico') in dict((g[0], 1) for g in GRAFICOS) else 'unica'
+    grafico = request.GET.get('grafico') if request.GET.get('grafico') in dict((g[0], 1) for g in GRAFICOS) else 'empilhadas'
     ctx.update(grafico=grafico, graficos=GRAFICOS, atualizado_ate=HierMovimento.objects.aggregate(m=Max('data'))['m'],
                ultimo_consumo=(HierMovimento.objects.filter(codigo__item__in=itens, tipo__in=insumos.TIPOS_CONSUMO)
                                .aggregate(m=Max('data'))['m'] if itens else None),
@@ -297,7 +296,7 @@ def painel_view(request):
                 {'ind': ind, 'serie': indicadores_insumo.serie(ind, ivisao, fim)}
                 for ind in IndicadorInsumo.objects.filter(item=itens[0], ativo=True)
                 .select_related('producao_indicador', 'producao_setor')]
-        if len(itens) > 1 and grafico != 'unica':
+        if len(itens) > 1:
             ctx['serie']['multi'] = _multi(matriz, grafico, len(ctx['serie']['labels']))
     return render(request, 'kpi/hier_painel.html', ctx)
 
