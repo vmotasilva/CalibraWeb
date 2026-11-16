@@ -1370,6 +1370,7 @@ NAV_STRUCTURE = [
                             "auditoria:iso_auditoria_detail",
                             "auditoria:iso_auditoria_edit",
                             "auditoria:iso_auditoria_import_modelo",
+                            "auditoria:iso_auditoria_duplicate",
                             "auditoria:iso_auditoria_toggle_conclusao",
                             "auditoria:api_iso_auditoria_editar_planejamento",
                             "auditoria:iso_agenda_create",

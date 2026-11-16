@@ -4663,12 +4663,23 @@ def consolidar_solicitacoes_perguntas(auditoria=None):
     except Exception:
         pass
 
+def _safe_next_url(request, default):
+    """Retorna o parâmetro POST/GET 'next' se for um caminho interno seguro."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    nxt = request.POST.get("next") or request.GET.get("next")
+    if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return nxt
+    return default
+
+
 @login_required
 def iso_auditoria_list(request):
     from django.db.models import Avg, Count
     from .models import PlanoAcaoMagicLink, TokenAvaliacaoIso, SolicitacaoEvidenciaIso, AvaliacaoAuditorIso
 
-    auditorias_qs = AuditoriaIso.objects.all().order_by("-data_inicio")
+    mostrar_arquivadas = request.GET.get("arquivadas") == "1"
+    total_arquivadas = AuditoriaIso.objects.filter(arquivada=True).count()
+    auditorias_qs = AuditoriaIso.objects.filter(arquivada=mostrar_arquivadas).select_related("norma").order_by("-data_inicio")
     auditorias = []
 
     for aud in auditorias_qs:
@@ -4723,7 +4734,11 @@ def iso_auditoria_list(request):
 
         auditorias.append(aud)
 
-    return render(request, "auditoria/iso_auditoria_list.html", {"auditorias": auditorias})
+    return render(request, "auditoria/iso_auditoria_list.html", {
+        "auditorias": auditorias,
+        "mostrar_arquivadas": mostrar_arquivadas,
+        "total_arquivadas": total_arquivadas,
+    })
 
 
 @login_required
@@ -7443,24 +7458,18 @@ def iso_auditoria_archive(request, pk):
     auditoria = get_object_or_404(AuditoriaIso, pk=pk)
     auditoria.arquivada = not auditoria.arquivada
     if auditoria.arquivada:
-        auditoria.status = "ARQUIVADA"
+        # Mantém o status original (ex.: Concluída) para poder restaurá-lo ao desarquivar.
         msg = f"Auditoria '{auditoria.norma.codigo}' arquivada com sucesso!"
     else:
-        auditoria.status = "PLANEJADA"
+        if auditoria.status == "ARQUIVADA":  # legado: status era sobrescrito ao arquivar
+            auditoria.status = "PLANEJADA"
         msg = f"Auditoria '{auditoria.norma.codigo}' desarquivada com sucesso!"
     auditoria.save()
     messages.success(request, msg)
-    return redirect(reverse('auditoria:iso_norma_detail', args=[auditoria.norma_id]) + "?tab=agendas")
-
-@login_required
-@require_POST
-def iso_auditoria_delete(request, pk):
-    from .models import AuditoriaIso
-    auditoria = get_object_or_404(AuditoriaIso, pk=pk)
-    norma_id = auditoria.norma_id
-    auditoria.delete()
-    messages.success(request, "Planejamento de Auditoria excluído com sucesso!")
-    return redirect(reverse('auditoria:iso_norma_detail', args=[norma_id]) + "?tab=agendas")
+    return redirect(_safe_next_url(
+        request,
+        reverse('auditoria:iso_norma_detail', args=[auditoria.norma_id]) + "?tab=agendas",
+    ))
 
 @login_required
 @require_POST
@@ -7942,7 +7951,88 @@ def iso_auditoria_delete(request, pk):
     auditoria = get_object_or_404(AuditoriaIso, pk=pk)
     auditoria.delete()
     messages.success(request, "Auditoria cancelada/removida com sucesso!")
-    return redirect(reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias")
+    return redirect(_safe_next_url(request, reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"))
+
+
+@login_required
+@require_POST
+def iso_auditoria_duplicate(request, pk):
+    """Cria uma nova auditoria (planejada) copiando a base de uma existente:
+    cabeçalho, escopo, auditores e blocos/agendas com perguntas e itens alvo.
+    Não copia respostas, evidências, síntese, conclusão nem status de conclusão.
+    """
+    from datetime import date, timedelta
+    from django.db import transaction
+    from .models import AuditoriaIso
+
+    origem = get_object_or_404(AuditoriaIso, pk=pk)
+
+    def _parse(v):
+        try:
+            return date.fromisoformat((v or "").strip())
+        except ValueError:
+            return None
+
+    novo_inicio = _parse(request.POST.get("data_inicio")) or origem.data_inicio
+    novo_fim = _parse(request.POST.get("data_fim"))
+    if not novo_fim:
+        novo_fim = novo_inicio + (origem.data_fim - origem.data_inicio)
+    if novo_fim < novo_inicio:
+        messages.error(request, "A data de fim não pode ser anterior à data de início.")
+        return redirect(_safe_next_url(request, reverse('auditoria:iso_auditoria_list')))
+
+    delta = novo_inicio - origem.data_inicio
+    copiar_agendas = request.POST.get("copiar_agendas", "1") != "0"
+
+    with transaction.atomic():
+        nova = AuditoriaIso.objects.create(
+            norma=origem.norma,
+            unidade=origem.unidade,
+            auditor_lider=origem.auditor_lider,
+            responsavel_qms=origem.responsavel_qms,
+            municipio=origem.municipio,
+            tipo_auditoria=origem.tipo_auditoria,
+            data_inicio=novo_inicio,
+            data_fim=novo_fim,
+            status="PLANEJADA",
+            empresa_auditada=origem.empresa_auditada,
+            escopo=origem.escopo,
+            objetivo=origem.objetivo,
+            abertura_auditores=origem.abertura_auditores,
+            abertura_representantes=origem.abertura_representantes,
+            revisao_auditores=origem.revisao_auditores,
+            revisao_representantes=origem.revisao_representantes,
+            encerramento_auditores=origem.encerramento_auditores,
+            encerramento_representantes=origem.encerramento_representantes,
+        )
+        nova.auditores.set(origem.auditores.all())
+        nova.escopo_itens.set(origem.escopo_itens.all())
+        nova.itens_nao_aplicaveis.set(origem.itens_nao_aplicaveis.all())
+
+        total_agendas = 0
+        if copiar_agendas:
+            for ag in origem.agendas.filter(arquivada=False):
+                nova_ag = type(ag).objects.create(
+                    auditoria=nova,
+                    modelo_base=ag.modelo_base,
+                    titulo=ag.titulo,
+                    # Mantém o mesmo dia relativo do cronograma e os horários planejados
+                    data=(ag.data + delta) if ag.data else None,
+                    hora_inicio=ag.hora_inicio,
+                    hora_fim=ag.hora_fim,
+                    auditores_nomes=ag.auditores_nomes,
+                    representantes=ag.representantes,
+                )
+                nova_ag.itens_norma.set(ag.itens_norma.all())
+                nova_ag.perguntas.set(ag.perguntas.all())
+                nova_ag.auditores.set(ag.auditores.all())
+                total_agendas += 1
+
+    messages.success(
+        request,
+        f"Auditoria copiada com sucesso ({total_agendas} bloco(s) de agenda). Revise as datas e o planejamento.",
+    )
+    return redirect('auditoria:iso_auditoria_detail', pk=nova.id)
 
 
 @login_required

@@ -2371,3 +2371,85 @@ class AuditoresAuditadosTests(OcorrenciasAcompanhamentoTests):
         estranho = get_user_model().objects.create_user("estranho_aud", password="x")
         self.client.force_login(estranho)
         self.assertEqual(self.client.get(reverse("auditoria:registros_por_modelo", args=[self.modelo.pk])).status_code, 404)
+
+
+class AuditoriaIsoListaGestaoTests(TestCase):
+    """Criar/copiar/arquivar/excluir a partir da listagem do Modo Entrevista."""
+
+    def setUp(self):
+        from datetime import timedelta
+        from .models import Norma, ItemNorma, AuditoriaIso, AgendaAuditoriaIso, BancoPergunta
+
+        User = get_user_model()
+        self.user = User.objects.create_superuser("admin_iso", "a@example.com", "x")
+        self.client.force_login(self.user)
+        self.norma = Norma.objects.create(codigo="ISO 13485:2016")
+        self.item = ItemNorma.objects.create(norma=self.norma, referencia="4.1", titulo="Geral")
+        self.aud = AuditoriaIso.objects.create(
+            norma=self.norma, unidade="Planta A", data_inicio=date(2026, 8, 18),
+            data_fim=date(2026, 8, 20), status="CONCLUIDA", sintese="texto", escopo="Esc",
+        )
+        self.aud.auditores.add(self.user)
+        self.aud.escopo_itens.add(self.item)
+        self.agenda = AgendaAuditoriaIso.objects.create(
+            auditoria=self.aud, titulo="Bloco 1", data=date(2026, 8, 19), concluida=True,
+        )
+        self.agenda.itens_norma.add(self.item)
+
+    def test_duplicate_copies_base_without_results(self):
+        from .models import AuditoriaIso
+        r = self.client.post(reverse("auditoria:iso_auditoria_duplicate", args=[self.aud.id]),
+                             {"data_inicio": "2027-03-01", "data_fim": "2027-03-03", "copiar_agendas": "1"})
+        nova = AuditoriaIso.objects.exclude(pk=self.aud.pk).get()
+        self.assertRedirects(r, reverse("auditoria:iso_auditoria_detail", args=[nova.id]))
+        self.assertEqual(nova.status, "PLANEJADA")
+        self.assertEqual(nova.unidade, "Planta A")
+        self.assertEqual(nova.sintese, "")
+        self.assertEqual(list(nova.escopo_itens.all()), [self.item])
+        self.assertEqual(list(nova.auditores.all()), [self.user])
+        ag = nova.agendas.get()
+        self.assertEqual(ag.titulo, "Bloco 1")
+        self.assertEqual(ag.data, date(2027, 3, 2))  # deslocada pelo mesmo delta
+        self.assertFalse(ag.concluida)
+        self.assertEqual(list(ag.itens_norma.all()), [self.item])
+
+    def test_duplicate_without_agendas_and_invalid_dates(self):
+        from .models import AuditoriaIso
+        self.client.post(reverse("auditoria:iso_auditoria_duplicate", args=[self.aud.id]),
+                         {"data_inicio": "2027-03-05", "data_fim": "2027-03-01"})
+        self.assertEqual(AuditoriaIso.objects.count(), 1)
+        self.client.post(reverse("auditoria:iso_auditoria_duplicate", args=[self.aud.id]),
+                         {"data_inicio": "2027-03-01", "data_fim": "2027-03-03", "copiar_agendas": "0"})
+        nova = AuditoriaIso.objects.exclude(pk=self.aud.pk).get()
+        self.assertEqual(nova.agendas.count(), 0)
+
+    def test_archive_keeps_status_and_hides_from_list(self):
+        url = reverse("auditoria:iso_auditoria_archive", args=[self.aud.id])
+        r = self.client.post(url, {"next": reverse("auditoria:iso_auditoria_list")})
+        self.assertRedirects(r, reverse("auditoria:iso_auditoria_list"))
+        self.aud.refresh_from_db()
+        self.assertTrue(self.aud.arquivada)
+        self.assertEqual(self.aud.status, "CONCLUIDA")
+        lista = self.client.get(reverse("auditoria:iso_auditoria_list"))
+        self.assertEqual(len(lista.context["auditorias"]), 0)
+        arq = self.client.get(reverse("auditoria:iso_auditoria_list") + "?arquivadas=1")
+        self.assertEqual(len(arq.context["auditorias"]), 1)
+        self.client.post(url)
+        self.aud.refresh_from_db()
+        self.assertFalse(self.aud.arquivada)
+        self.assertEqual(self.aud.status, "CONCLUIDA")
+
+    def test_next_open_redirect_is_rejected_and_delete_works(self):
+        from .models import AuditoriaIso
+        r = self.client.post(reverse("auditoria:iso_auditoria_delete", args=[self.aud.id]),
+                             {"next": "https://evil.example.com/"})
+        self.assertNotIn("evil.example.com", r["Location"])
+        self.assertEqual(AuditoriaIso.objects.count(), 0)
+
+    def test_list_renders_management_controls(self):
+        r = self.client.get(reverse("auditoria:iso_auditoria_list"))
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode()
+        self.assertIn("Nova Auditoria", html)
+        self.assertIn("Copiar como nova auditoria", html)
+        self.assertIn(reverse("auditoria:iso_auditoria_archive", args=[self.aud.id]), html)

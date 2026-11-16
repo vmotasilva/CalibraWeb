@@ -1,0 +1,57 @@
+{% load nav_access %}
+{% can_nav_view user 'auditoria:iso_auditoria_create' 'auditoria' as pode_criar_aud %}
+{% can_nav_view user 'auditoria:iso_auditoria_archive' 'auditoria' as pode_arquivar_aud %}
+{% can_nav_view user 'auditoria:iso_auditoria_delete' 'auditoria' as pode_excluir_aud %}
+{% can_nav_view user 'auditoria:iso_auditoria_edit' 'auditoria' as pode_editar_aud %}
+{% if pode_criar_aud or pode_arquivar_aud or pode_excluir_aud or pode_editar_aud %}
+<div class="dropdown">
+    <button class="btn btn-outline-dark btn-sm rounded-pill px-2 shadow-2xs" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Gerenciar auditoria" aria-label="Gerenciar auditoria">
+        <i class="bi bi-three-dots-vertical"></i>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3 p-1.5" style="font-size: 0.85rem; min-width: 230px;">
+        {% if pode_editar_aud %}
+        <li>
+            <a class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2" href="{% url 'auditoria:iso_auditoria_detail' aud.id %}">
+                <i class="bi bi-pencil-square text-primary"></i> Editar planejamento / agenda
+            </a>
+        </li>
+        {% endif %}
+        {% if pode_criar_aud %}
+        <li>
+            <button type="button" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2"
+                    data-url="{% url 'auditoria:iso_auditoria_duplicate' aud.id %}"
+                    data-label="{{ aud.norma.codigo }} • {{ aud.data_inicio|date:'d/m/Y' }} a {{ aud.data_fim|date:'d/m/Y' }}"
+                    data-inicio="{{ aud.data_inicio|date:'Y-m-d' }}" data-fim="{{ aud.data_fim|date:'Y-m-d' }}"
+                    onclick="abrirModalDuplicarAuditoria(this)">
+                <i class="bi bi-copy text-info"></i> Copiar como nova auditoria
+            </button>
+        </li>
+        {% endif %}
+        {% if pode_arquivar_aud %}
+        <li><hr class="dropdown-divider my-1"></li>
+        <li>
+            <form method="post" action="{% url 'auditoria:iso_auditoria_archive' aud.id %}"
+                  {% if not aud.arquivada and aud.status != 'CONCLUIDA' %}onsubmit="return confirm('Esta auditoria ainda não foi concluída. Arquivar mesmo assim?');"{% endif %}>
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'auditoria:iso_auditoria_list' %}{% if aud.arquivada %}?arquivadas=1{% endif %}">
+                <button type="submit" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2">
+                    {% if aud.arquivada %}<i class="bi bi-archive text-success"></i> Desarquivar{% else %}<i class="bi bi-archive text-secondary"></i> Arquivar auditoria{% endif %}
+                </button>
+            </form>
+        </li>
+        {% endif %}
+        {% if pode_excluir_aud %}
+        <li>
+            <form method="post" action="{% url 'auditoria:iso_auditoria_delete' aud.id %}"
+                  onsubmit="return confirm('EXCLUIR a auditoria {{ aud.norma.codigo|escapejs }} ({{ aud.data_inicio|date:'d/m/Y' }})?\n\nIsso apaga definitivamente respostas, evidências, CAPA e agenda. Para apenas encerrar, use Arquivar.');">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'auditoria:iso_auditoria_list' %}{% if aud.arquivada %}?arquivadas=1{% endif %}">
+                <button type="submit" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2 text-danger">
+                    <i class="bi bi-trash"></i> Excluir definitivamente
+                </button>
+            </form>
+        </li>
+        {% endif %}
+    </ul>
+</div>
+{% endif %}
