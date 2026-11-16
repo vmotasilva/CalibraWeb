@@ -417,6 +417,7 @@
                                         <input type="text" inputmode="decimal" name="valor_{{ l.item.pk }}" class="form-control text-end" value="{{ l.consumo|default_if_none:''|stringformat:'s'|cut:'None' }}" placeholder="—">
                                         {% if l.item.unidade %}<span class="input-group-text">{{ l.item.unidade }}</span>{% endif %}
                                     </div>
+                                    {% if l.consumo_exib is not None %}<div class="small text-muted text-end">= {{ l.consumo_exib|floatformat:2 }} {{ l.item.unidade_exibicao }}</div>{% endif %}
                                     {% if l.origem == 'importado' %}<div class="small text-primary"><i class="bi bi-cloud-download"></i> importado</div>{% elif l.origem == 'manual' %}<div class="small text-muted"><i class="bi bi-pencil"></i> manual</div>{% endif %}
                                 </td>
                                 <td class="text-center">

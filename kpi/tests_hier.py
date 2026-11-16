@@ -149,6 +149,23 @@ class KpiHierarquicoTests(InsumosBase):
         self.assertEqual({x['nome'] for x in multi['series']}, {f'{self.pads.nome} ({self.pads.unidade})', f'{self.liquido.nome} ({self.liquido.unidade})'})
         self.assertEqual(multi['tipo'], 'multiplas')
 
+    def test_kg_exibido_como_un_kg_so_com_o_flag(self):
+        alloy = HierItem.objects.create(subcategoria=self.sub, nome='Alloy', unidade='kg', meta=Decimal('6000'))
+        self.client.post(reverse('kpi:hier_lancar'), {'mes': '2026-10', f'valor_{alloy.pk}': '6539'})
+        url = reverse('kpi:hier_painel')
+        par = {'kpi': self.kpi.pk, 'item': alloy.pk, 'mes': '2026-10'}
+        s = self.client.get(url, par).context['serie']
+        self.assertEqual((s['valores'][-1], s['unidade']), (6539.0, 'kg'))
+        self.client.post(reverse('kpi:hier_cadastro_salvar'), {'tipo': 'item', 'pk': alloy.pk, 'nome': 'Alloy', 'unidade': 'kg',
+                                                              'sentido': '<=', 'meta': '6000', 'exibir_un_kg': 'on'})
+        alloy.refresh_from_db()
+        self.assertTrue(alloy.exibir_un_kg)
+        s = self.client.get(url, par).context['serie']
+        self.assertEqual((s['valores'][-1], s['meta'], s['unidade']), (6.54, 6.0, 'UN (kg)'))
+        self.assertEqual(HierConsumo.objects.get(item=alloy).valor, Decimal('6539'))  # gravado em kg
+        # item em outra unidade ignora o flag
+        self.assertEqual(HierItem(unidade='L', exibir_un_kg=True).fator_exibicao, 1)
+
     def test_reajustar_meta_pelo_grid_de_consumo(self):
         url = reverse('kpi:hier_lancar')
         self.client.post(url, {'mes': '2026-10', f'meta_{self.liquido.pk}': '7,5'})
