@@ -7878,6 +7878,184 @@ def iso_auditoria_create(request):
         form = AuditoriaIsoForm(initial=initial)
     return render(request, "auditoria/iso/setup/auditoria_form.html", {"form": form, "title": "Planejar Nova Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
 
+def montar_cronograma_blocos(n_blocos, data_inicio, hora_inicio, hora_fim, duracao_min,
+                             almoco_inicio=None, almoco_fim=None, pular_fim_semana=True):
+    """Distribui `n_blocos` sequencialmente em dias/horários.
+
+    Cada bloco dura `duracao_min`; respeita a janela diária [hora_inicio, hora_fim],
+    pula o intervalo de almoço (se informado) e, opcionalmente, sábados/domingos.
+    Retorna uma lista de tuplas (data, hora_inicio, hora_fim), uma por bloco.
+    """
+    from datetime import datetime, timedelta
+
+    dur = timedelta(minutes=duracao_min)
+    dia_ini = datetime.combine(data_inicio, hora_inicio)
+    dia_fim_td = datetime.combine(data_inicio, hora_fim) - dia_ini
+    almoco = None
+    if almoco_inicio and almoco_fim and almoco_fim > almoco_inicio:
+        almoco = (almoco_inicio, almoco_fim)
+        # Capacidade útil do dia: precisa caber pelo menos um bloco em algum trecho
+        manha = datetime.combine(data_inicio, almoco_inicio) - dia_ini
+        tarde = datetime.combine(data_inicio, hora_fim) - datetime.combine(data_inicio, almoco_fim)
+        maior_trecho = max(manha, tarde, timedelta(0))
+    else:
+        maior_trecho = dia_fim_td
+    if dur <= timedelta(0) or dur > maior_trecho:
+        raise ValueError("A duração do bloco não cabe na janela diária informada.")
+
+    def _proximo_dia_util(d):
+        while pular_fim_semana and d.weekday() >= 5:
+            d += timedelta(days=1)
+        return d
+
+    dia = _proximo_dia_util(data_inicio)
+    cursor = datetime.combine(dia, hora_inicio)
+    resultado = []
+    for _ in range(n_blocos):
+        while True:
+            fim_dia = datetime.combine(dia, hora_fim)
+            if almoco:
+                a_ini = datetime.combine(dia, almoco[0])
+                a_fim = datetime.combine(dia, almoco[1])
+                if a_ini <= cursor < a_fim:
+                    cursor = a_fim
+                    continue
+                if cursor < a_ini < cursor + dur:
+                    cursor = a_fim
+                    continue
+            if cursor + dur > fim_dia:
+                dia = _proximo_dia_util(dia + timedelta(days=1))
+                cursor = datetime.combine(dia, hora_inicio)
+                continue
+            break
+        resultado.append((dia, cursor.time(), (cursor + dur).time()))
+        cursor += dur
+    return resultado
+
+
+@login_required
+def iso_auditoria_wizard(request):
+    """Questionário simples para planejar uma nova auditoria a partir de um modelo.
+
+    As respostas (quando, onde, quem, horários e duração dos blocos) já geram o
+    cronograma: cada bloco do modelo vira uma agenda com data e horário.
+    """
+    from datetime import date, time
+    from django.contrib.auth import get_user_model
+    from django.db import transaction
+    from .models import Norma, ModeloAuditoriaIso, AuditoriaIso, AgendaAuditoriaIso
+
+    User = get_user_model()
+    normas = Norma.objects.filter(ativa=True).defer(*Norma.CAMPOS_BASE64).order_by("codigo")
+    modelos = (
+        ModeloAuditoriaIso.objects.filter(ativo=True, norma__ativa=True)
+        .annotate(total_blocos=Count("blocos")).order_by("norma__codigo", "titulo")
+    )
+    usuarios = User.objects.filter(is_active=True).order_by("first_name", "username")
+    ctx = {
+        "normas": normas, "modelos": modelos, "usuarios": usuarios,
+        "title": "Planejar Nova Auditoria",
+        "dados": {
+            "tipo_auditoria": "PRESENCIAL", "hora_inicio": "08:00", "hora_fim": "17:00",
+            "almoco_inicio": "12:00", "almoco_fim": "13:00", "duracao_min": "60",
+            "pular_fim_semana": "1",
+            "escopo": "Fabricação de Lentes Oftálmicas",
+            "objetivo": "Avaliar a conformidade dos processos com os requisitos da norma e a eficácia do Sistema de Gestão da Qualidade.",
+        },
+        "auditores_sel": [],
+    }
+    if request.method != "POST":
+        return render(request, "auditoria/iso/setup/auditoria_wizard.html", ctx)
+
+    d = request.POST
+    ctx["dados"] = {**ctx["dados"], **{k: v for k, v in d.items()}}
+    ctx["dados"]["pular_fim_semana"] = d.get("pular_fim_semana", "")
+    ctx["auditores_sel"] = [int(x) for x in d.getlist("auditores") if x.isdigit()]
+
+    def erro(msg):
+        messages.error(request, msg)
+        return render(request, "auditoria/iso/setup/auditoria_wizard.html", ctx)
+
+    def _hora(v, default=None):
+        try:
+            h, m = (v or "").split(":")[:2]
+            return time(int(h), int(m))
+        except (ValueError, TypeError):
+            return default
+
+    norma = Norma.objects.filter(pk=d.get("norma") or 0, ativa=True).first()
+    if not norma:
+        return erro("Selecione a norma da auditoria.")
+    modelo = None
+    if d.get("modelo"):
+        modelo = ModeloAuditoriaIso.objects.filter(pk=d.get("modelo"), norma=norma, ativo=True).first()
+        if not modelo:
+            return erro("O modelo selecionado não pertence à norma escolhida.")
+    try:
+        data_inicio = date.fromisoformat((d.get("data_inicio") or "").strip())
+    except ValueError:
+        return erro("Informe a data de início da auditoria.")
+
+    hora_ini, hora_fim = _hora(d.get("hora_inicio")), _hora(d.get("hora_fim"))
+    if not hora_ini or not hora_fim or hora_fim <= hora_ini:
+        return erro("Informe um horário de início e de término do dia válidos (término após o início).")
+    alm_ini, alm_fim = _hora(d.get("almoco_inicio")), _hora(d.get("almoco_fim"))
+    if (alm_ini or alm_fim) and not (alm_ini and alm_fim and alm_fim > alm_ini):
+        return erro("Intervalo de almoço inválido: informe início e fim (ou deixe ambos em branco).")
+    try:
+        duracao = int(d.get("duracao_min") or 0)
+    except ValueError:
+        duracao = 0
+
+    blocos = list(modelo.blocos.prefetch_related("itens_norma", "perguntas").order_by("ordem", "criado_em")) if modelo else []
+    if modelo and not blocos:
+        return erro("O modelo selecionado ainda não tem blocos cadastrados.")
+
+    cronograma = []
+    if blocos:
+        try:
+            cronograma = montar_cronograma_blocos(
+                len(blocos), data_inicio, hora_ini, hora_fim, duracao, alm_ini, alm_fim,
+                pular_fim_semana=d.get("pular_fim_semana") == "1",
+            )
+        except ValueError as e:
+            return erro(str(e))
+    data_fim = cronograma[-1][0] if cronograma else data_inicio
+
+    with transaction.atomic():
+        aud = AuditoriaIso.objects.create(
+            norma=norma,
+            unidade=(d.get("unidade") or "").strip(),
+            municipio=(d.get("municipio") or "").strip(),
+            auditor_lider=(d.get("auditor_lider") or "").strip(),
+            responsavel_qms=(d.get("responsavel_qms") or "").strip(),
+            tipo_auditoria="REMOTA" if d.get("tipo_auditoria") == "REMOTA" else "PRESENCIAL",
+            data_inicio=data_inicio, data_fim=data_fim, status="PLANEJADA",
+            escopo=(d.get("escopo") or "").strip(), objetivo=(d.get("objetivo") or "").strip(),
+        )
+        aud.auditores.set(User.objects.filter(pk__in=ctx["auditores_sel"], is_active=True))
+        escopo_ids = set()
+        for bloco, (dia, h_i, h_f) in zip(blocos, cronograma):
+            ag = AgendaAuditoriaIso.objects.create(
+                auditoria=aud, modelo_base=modelo, titulo=bloco.titulo,
+                data=dia, hora_inicio=h_i, hora_fim=h_f,
+            )
+            ag.perguntas.set(bloco.perguntas.all())
+            ag.itens_norma.set(bloco.itens_norma.all())
+            escopo_ids.update(bloco.itens_norma.values_list("id", flat=True))
+        if escopo_ids:
+            aud.escopo_itens.set(escopo_ids)
+
+    if blocos:
+        messages.success(
+            request,
+            f"Auditoria planejada: {len(blocos)} bloco(s) de {data_inicio:%d/%m/%Y} a {data_fim:%d/%m/%Y}. Ajuste o que for preciso na agenda.",
+        )
+    else:
+        messages.success(request, "Auditoria criada sem modelo. Monte a agenda a seguir.")
+    return redirect("auditoria:iso_auditoria_detail", pk=aud.id)
+
+
 @login_required
 @require_POST
 def iso_auditoria_import_modelo(request, pk):
@@ -7949,8 +8127,11 @@ def iso_auditoria_edit(request, pk):
 @require_POST
 def iso_auditoria_delete(request, pk):
     auditoria = get_object_or_404(AuditoriaIso, pk=pk)
+    if not auditoria.arquivada:
+        messages.error(request, "Só é possível excluir auditorias arquivadas. Arquive a auditoria antes de excluí-la.")
+        return redirect(_safe_next_url(request, reverse('auditoria:iso_auditoria_detail', args=[pk])))
     auditoria.delete()
-    messages.success(request, "Auditoria cancelada/removida com sucesso!")
+    messages.success(request, "Auditoria excluída com sucesso!")
     return redirect(_safe_next_url(request, reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"))
 
 
@@ -10768,7 +10949,8 @@ def api_iso_analytics_global_data(request):
     data_fim_custom = request.GET.get("data_fim")
 
     # Filtro base de Auditorias
-    auditorias_qs = AuditoriaIso.objects.filter(arquivada=False)
+    incluir_arquivadas = request.GET.get("incluir_arquivadas") in ("1", "true", "on")
+    auditorias_qs = AuditoriaIso.objects.all() if incluir_arquivadas else AuditoriaIso.objects.filter(arquivada=False)
 
     # Aplicação de Filtros de Período
     if periodo == "6m":
@@ -10967,6 +11149,7 @@ def api_iso_analytics_global_data(request):
             "data_inicio": aud.data_inicio.strftime("%d/%m/%Y"),
             "data_fim": aud.data_fim.strftime("%d/%m/%Y"),
             "status": aud.get_status_display(),
+            "arquivada": aud.arquivada,
             "ncs": m.get("count_nc", 0),
             "conformidade": m.get("taxa_conformidade", 100.0),
         })
@@ -10977,6 +11160,7 @@ def api_iso_analytics_global_data(request):
             "periodo": periodo,
             "unidade": unidade,
             "norma_id": norma_id,
+            "incluir_arquivadas": incluir_arquivadas,
         },
         "kpis": {
             "total_auditorias": total_auditorias,

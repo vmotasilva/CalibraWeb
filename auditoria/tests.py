@@ -2441,6 +2441,8 @@ class AuditoriaIsoListaGestaoTests(TestCase):
 
     def test_next_open_redirect_is_rejected_and_delete_works(self):
         from .models import AuditoriaIso
+        self.aud.arquivada = True  # exclusão só é permitida para arquivadas
+        self.aud.save()
         r = self.client.post(reverse("auditoria:iso_auditoria_delete", args=[self.aud.id]),
                              {"next": "https://evil.example.com/"})
         self.assertNotIn("evil.example.com", r["Location"])
@@ -2453,3 +2455,69 @@ class AuditoriaIsoListaGestaoTests(TestCase):
         self.assertIn("Nova Auditoria", html)
         self.assertIn("Copiar como nova auditoria", html)
         self.assertIn(reverse("auditoria:iso_auditoria_archive", args=[self.aud.id]), html)
+
+
+class AuditoriaIsoWizardEArquivadasTests(TestCase):
+    def setUp(self):
+        from .models import Norma, ItemNorma, ModeloAuditoriaIso, BlocoModeloIso, AuditoriaIso
+
+        User = get_user_model()
+        self.user = User.objects.create_superuser("admin_w", "w@example.com", "x")
+        self.client.force_login(self.user)
+        self.norma = Norma.objects.create(codigo="ISO 13485:2016")
+        self.item = ItemNorma.objects.create(norma=self.norma, referencia="4.1", titulo="Geral")
+        self.modelo = ModeloAuditoriaIso.objects.create(titulo="Padrão", norma=self.norma)
+        for i in range(5):
+            b = BlocoModeloIso.objects.create(modelo=self.modelo, titulo=f"Bloco {i+1}", ordem=i)
+            b.itens_norma.add(self.item)
+        self.AuditoriaIso = AuditoriaIso
+
+    def _post(self, **extra):
+        data = {
+            "norma": self.norma.id, "modelo": self.modelo.id, "unidade": "Planta A",
+            "data_inicio": "2026-12-04",  # sexta
+            "hora_inicio": "08:00", "hora_fim": "12:00", "almoco_inicio": "", "almoco_fim": "",
+            "duracao_min": "120", "pular_fim_semana": "1", "tipo_auditoria": "PRESENCIAL",
+        }
+        data.update(extra)
+        return self.client.post(reverse("auditoria:iso_auditoria_wizard"), data)
+
+    def test_cronograma_pula_fim_de_semana_e_calcula_fim(self):
+        r = self._post()
+        aud = self.AuditoriaIso.objects.get()
+        self.assertRedirects(r, reverse("auditoria:iso_auditoria_detail", args=[aud.id]))
+        ags = list(aud.agendas.order_by("hora_inicio", "data").values_list("titulo", "data", "hora_inicio"))
+        por_titulo = {t: (d, h.strftime("%H:%M")) for t, d, h in ags}
+        self.assertEqual(por_titulo["Bloco 1"], (date(2026, 12, 4), "08:00"))
+        self.assertEqual(por_titulo["Bloco 2"], (date(2026, 12, 4), "10:00"))
+        self.assertEqual(por_titulo["Bloco 3"], (date(2026, 12, 7), "08:00"))  # segunda
+        self.assertEqual(aud.data_fim, date(2026, 12, 8))
+        self.assertEqual(aud.status, "PLANEJADA")
+        self.assertEqual(list(aud.escopo_itens.all()), [self.item])
+
+    def test_almoco_e_validacoes(self):
+        self._post(hora_fim="17:00", almoco_inicio="12:00", almoco_fim="13:00", duracao_min="90")
+        aud = self.AuditoriaIso.objects.get()
+        horarios = sorted(a.hora_inicio.strftime("%H:%M") for a in aud.agendas.filter(data=date(2026, 12, 4)))
+        self.assertEqual(horarios, ["08:00", "09:30", "13:00", "14:30"])  # nenhum cruza o almoço
+        aud.delete()
+        r = self._post(duracao_min="300")  # não cabe na janela
+        self.assertEqual(self.AuditoriaIso.objects.count(), 0)
+        self.assertEqual(r.status_code, 200)
+
+    def test_excluir_somente_arquivada_e_analytics_flag(self):
+        self._post()
+        aud = self.AuditoriaIso.objects.get()
+        url = reverse("auditoria:iso_auditoria_delete", args=[aud.id])
+        self.client.post(url)
+        self.assertEqual(self.AuditoriaIso.objects.count(), 1)  # bloqueada: não arquivada
+        aud.arquivada = True
+        aud.save()
+        api = reverse("auditoria:api_iso_analytics_global_data")
+        base = self.client.get(api, {"periodo": "todos"}).json()
+        com = self.client.get(api, {"periodo": "todos", "incluir_arquivadas": "1"}).json()
+        self.assertEqual(len(base["tabela_auditorias"]), 0)
+        self.assertEqual(len(com["tabela_auditorias"]), 1)
+        self.assertTrue(com["tabela_auditorias"][0]["arquivada"])
+        self.client.post(url)
+        self.assertEqual(self.AuditoriaIso.objects.count(), 0)

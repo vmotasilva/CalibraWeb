@@ -40,10 +40,10 @@
             </form>
         </li>
         {% endif %}
-        {% if pode_excluir_aud %}
+        {% if pode_excluir_aud and aud.arquivada %}
         <li>
             <form method="post" action="{% url 'auditoria:iso_auditoria_delete' aud.id %}"
-                  onsubmit="return confirm('EXCLUIR a auditoria {{ aud.norma.codigo|escapejs }} ({{ aud.data_inicio|date:'d/m/Y' }})?\n\nIsso apaga definitivamente respostas, evidências, CAPA e agenda. Para apenas encerrar, use Arquivar.');">
+                  onsubmit="return confirm('EXCLUIR a auditoria {{ aud.norma.codigo|escapejs }} ({{ aud.data_inicio|date:'d/m/Y' }})?\n\nIsso apaga definitivamente respostas, evidências, CAPA e agenda. Esta ação não pode ser desfeita.');">
                 {% csrf_token %}
                 <input type="hidden" name="next" value="{% url 'auditoria:iso_auditoria_list' %}{% if aud.arquivada %}?arquivadas=1{% endif %}">
                 <button type="submit" class="dropdown-item rounded-2 py-1.5 d-flex align-items-center gap-2 text-danger">

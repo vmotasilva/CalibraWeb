@@ -145,6 +145,7 @@ urlpatterns = [
     path("iso/setup/perguntas/<int:pk>/editar/", views.iso_pergunta_edit, name="iso_pergunta_edit"),
     
     path("iso/setup/auditorias/nova/", views.iso_auditoria_create, name="iso_auditoria_create"),
+    path("iso/setup/auditorias/assistente/", views.iso_auditoria_wizard, name="iso_auditoria_wizard"),
     path("iso/setup/auditorias/<int:pk>/", views.iso_auditoria_detail, name="iso_auditoria_detail"),
     path("iso/setup/auditorias/<int:pk>/importar-modelo/", views.iso_auditoria_import_modelo, name="iso_auditoria_import_modelo"),
     path("iso/setup/auditorias/<int:pk>/editar/", views.iso_auditoria_edit, name="iso_auditoria_edit"),

@@ -1367,6 +1367,7 @@ NAV_STRUCTURE = [
                         "nome": "Planejamento e Agendas ISO",
                         "view_name": [
                             "auditoria:iso_auditoria_create",
+                            "auditoria:iso_auditoria_wizard",
                             "auditoria:iso_auditoria_detail",
                             "auditoria:iso_auditoria_edit",
                             "auditoria:iso_auditoria_import_modelo",

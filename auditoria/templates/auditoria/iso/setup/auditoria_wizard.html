@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4 mb-5" style="max-width: 860px;">
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-magic text-primary me-2"></i>{{ title }}</h3>
+            <p class="text-muted small mb-0">Responda às perguntas abaixo: o cronograma é montado automaticamente a partir dos blocos do modelo escolhido.</p>
+        </div>
+        <a href="{% url 'auditoria:iso_auditoria_list' %}" class="btn btn-outline-secondary btn-sm rounded-pill"><i class="bi bi-x-lg"></i> Cancelar</a>
+    </div>
+
+    {% if messages %}{% for m in messages %}<div class="alert alert-{{ m.tags|default:'info' }} py-2">{{ m }}</div>{% endfor %}{% endif %}
+
+    <form method="post" class="d-flex flex-column gap-3">
+        {% csrf_token %}
+
+        <div class="card shadow-sm border-0 rounded-4"><div class="card-body">
+            <h6 class="fw-bold"><span class="badge bg-primary rounded-circle me-2">1</span>Qual auditoria será realizada?</h6>
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold" for="wNorma">Norma <span class="text-danger">*</span></label>
+                    <select name="norma" id="wNorma" class="form-select" required>
+                        <option value="">Selecione...</option>
+                        {% for n in normas %}<option value="{{ n.id }}" {% if dados.norma == n.id|stringformat:"s" %}selected{% endif %}>{{ n.codigo }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-7">
+                    <label class="form-label small fw-semibold" for="wModelo">Modelo (template) a usar</label>
+                    <select name="modelo" id="wModelo" class="form-select">
+                        <option value="">Sem modelo (montar a agenda depois)</option>
+                        {% for m in modelos %}
+                        <option value="{{ m.id }}" data-norma="{{ m.norma_id }}" {% if dados.modelo == m.id|stringformat:"s" %}selected{% endif %}>{{ m.titulo }} — {{ m.total_blocos }} bloco{{ m.total_blocos|pluralize }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Cada bloco do modelo vira uma agenda com data e horário.</div>
+                </div>
+            </div>
+        </div></div>
+
+        <div class="card shadow-sm border-0 rounded-4"><div class="card-body">
+            <h6 class="fw-bold"><span class="badge bg-primary rounded-circle me-2">2</span>Onde será realizada?</h6>
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold" for="wUnidade">Unidade / planta auditada</label>
+                    <input type="text" name="unidade" id="wUnidade" class="form-control" value="{{ dados.unidade|default:'' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold" for="wMunicipio">Município / Estado</label>
+                    <input type="text" name="municipio" id="wMunicipio" class="form-control" value="{{ dados.municipio|default:'' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold" for="wTipo">Tipo</label>
+                    <select name="tipo_auditoria" id="wTipo" class="form-select">
+                        <option value="PRESENCIAL" {% if dados.tipo_auditoria != 'REMOTA' %}selected{% endif %}>Presencial</option>
+                        <option value="REMOTA" {% if dados.tipo_auditoria == 'REMOTA' %}selected{% endif %}>Remota</option>
+                    </select>
+                </div>
+            </div>
+        </div></div>
+
+        <div class="card shadow-sm border-0 rounded-4"><div class="card-body">
+            <h6 class="fw-bold"><span class="badge bg-primary rounded-circle me-2">3</span>Quem participa?</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold" for="wLider">Auditor líder (signatário)</label>
+                    <input type="text" name="auditor_lider" id="wLider" class="form-control" value="{{ dados.auditor_lider|default:'' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold" for="wQms">Representante QMS</label>
+                    <input type="text" name="responsavel_qms" id="wQms" class="form-control" value="{{ dados.responsavel_qms|default:'' }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label small fw-semibold" for="wAuditores">Equipe auditora</label>
+                    <select name="auditores" id="wAuditores" class="form-select" multiple size="5">
+                        {% for u in usuarios %}<option value="{{ u.id }}" {% if u.id in auditores_sel %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>{% endfor %}
+                    </select>
+                    <div class="form-text">Segure Ctrl/Cmd para selecionar mais de um.</div>
+                </div>
+            </div>
+        </div></div>
+
+        <div class="card shadow-sm border-0 rounded-4"><div class="card-body">
+            <h6 class="fw-bold"><span class="badge bg-primary rounded-circle me-2">4</span>Quando? (monta o cronograma)</h6>
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-semibold" for="wInicio">Data de início <span class="text-danger">*</span></label>
+                    <input type="date" name="data_inicio" id="wInicio" class="form-control" value="{{ dados.data_inicio|default:'' }}" required>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-semibold" for="wHi">Início do dia</label>
+                    <input type="time" name="hora_inicio" id="wHi" class="form-control" value="{{ dados.hora_inicio }}" required>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-semibold" for="wHf">Fim do dia</label>
+                    <input type="time" name="hora_fim" id="wHf" class="form-control" value="{{ dados.hora_fim }}" required>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-semibold" for="wDur">Duração de cada bloco (min)</label>
+                    <input type="number" name="duracao_min" id="wDur" class="form-control" min="10" step="5" value="{{ dados.duracao_min }}" required>
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-semibold" for="wAi">Almoço — início</label>
+                    <input type="time" name="almoco_inicio" id="wAi" class="form-control" value="{{ dados.almoco_inicio }}">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="form-label small fw-semibold" for="wAf">Almoço — fim</label>
+                    <input type="time" name="almoco_fim" id="wAf" class="form-control" value="{{ dados.almoco_fim }}">
+                </div>
+                <div class="col-12 col-md-6 d-flex align-items-end">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="pular_fim_semana" id="wFds" value="1" {% if dados.pular_fim_semana == "1" %}checked{% endif %}>
+                        <label class="form-check-label small fw-semibold" for="wFds">Não agendar em sábados e domingos</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-text mt-2">A data de término é calculada: os blocos são encaixados em sequência, pulando o almoço, e avançam para o dia seguinte quando acaba o expediente.</div>
+        </div></div>
+
+        <div class="card shadow-sm border-0 rounded-4"><div class="card-body">
+            <h6 class="fw-bold"><span class="badge bg-primary rounded-circle me-2">5</span>Escopo e objetivo</h6>
+            <div class="mb-2">
+                <label class="form-label small fw-semibold" for="wEscopo">Escopo</label>
+                <textarea name="escopo" id="wEscopo" class="form-control" rows="2">{{ dados.escopo }}</textarea>
+            </div>
+            <div>
+                <label class="form-label small fw-semibold" for="wObj">Objetivo</label>
+                <textarea name="objetivo" id="wObj" class="form-control" rows="2">{{ dados.objetivo }}</textarea>
+            </div>
+        </div></div>
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <a href="{% url 'auditoria:iso_auditoria_create' %}" class="small text-muted">Prefere o formulário completo?</a>
+            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm"><i class="bi bi-calendar-check me-1"></i>Planejar auditoria</button>
+        </div>
+    </form>
+</div>
+<script>
+(function () {
+    const norma = document.getElementById('wNorma'), modelo = document.getElementById('wModelo');
+    function filtrar() {
+        let atualOk = !modelo.value;
+        Array.from(modelo.options).forEach(o => {
+            if (!o.dataset.norma) return;
+            const ok = o.dataset.norma === norma.value;
+            o.hidden = !ok; o.disabled = !ok;
+            if (ok && o.value === modelo.value) atualOk = true;
+        });
+        if (!atualOk) modelo.value = '';
+    }
+    norma.addEventListener('change', filtrar);
+    filtrar();
+})();
+</script>
+{% endblock %}
