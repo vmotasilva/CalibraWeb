@@ -2521,3 +2521,62 @@ class AuditoriaIsoWizardEArquivadasTests(TestCase):
         self.assertTrue(com["tabela_auditorias"][0]["arquivada"])
         self.client.post(url)
         self.assertEqual(self.AuditoriaIso.objects.count(), 0)
+
+
+class BlocoModeloCronogramaTests(TestCase):
+    def test_montar_cronograma_dia_e_duracao_por_bloco(self):
+        from datetime import time
+        from .views import montar_cronograma_blocos
+        seg = date(2026, 12, 7)  # segunda
+        r = montar_cronograma_blocos(
+            [(1, 60), (None, 30), (2, 90), (None, None)], seg, time(8, 0), time(17, 0), 45,
+            time(12, 0), time(13, 0),
+        )
+        self.assertEqual(r[0], (seg, time(8, 0), time(9, 0)))
+        self.assertEqual(r[1], (seg, time(9, 0), time(9, 30)))
+        self.assertEqual(r[2], (date(2026, 12, 8), time(8, 0), time(9, 30)))   # dia 2 começa cedo
+        self.assertEqual(r[3], (date(2026, 12, 8), time(9, 30), time(10, 15)))  # padrão 45 min
+
+    def test_dia_pedido_ja_ultrapassado_nao_volta_no_tempo(self):
+        from datetime import time
+        from .views import montar_cronograma_blocos
+        # 3 blocos de 5h no mesmo expediente de 8h: o 2º transborda para o dia 2; o 3º pede dia 1
+        r = montar_cronograma_blocos([(1, 300), (None, 300), (1, 60)], date(2026, 12, 7), time(8, 0), time(17, 0), 60)
+        self.assertEqual(r[1][0], date(2026, 12, 8))
+        self.assertEqual(r[2][0], date(2026, 12, 8))
+        self.assertEqual(r[2][1], time(13, 0))
+
+    def test_dia_respeita_fim_de_semana_e_wizard_usa_campos_do_bloco(self):
+        from .models import Norma, ModeloAuditoriaIso, BlocoModeloIso, AuditoriaIso
+        user = get_user_model().objects.create_superuser("adm_b", "b@example.com", "x")
+        self.client.force_login(user)
+        norma = Norma.objects.create(codigo="N1")
+        modelo = ModeloAuditoriaIso.objects.create(titulo="M", norma=norma)
+        BlocoModeloIso.objects.create(modelo=modelo, titulo="A", ordem=0, dia=1, duracao_min=60)
+        BlocoModeloIso.objects.create(modelo=modelo, titulo="B", ordem=1, dia=3, duracao_min=120)
+        self.client.post(reverse("auditoria:iso_auditoria_wizard"), {
+            "norma": norma.id, "modelo": modelo.id, "data_inicio": "2026-12-04",  # sexta
+            "hora_inicio": "08:00", "hora_fim": "17:00", "duracao_min": "30", "pular_fim_semana": "1",
+        })
+        aud = AuditoriaIso.objects.get()
+        a, b = aud.agendas.order_by("data")
+        self.assertEqual((a.data, a.hora_fim), (date(2026, 12, 4), __import__("datetime").time(9, 0)))
+        self.assertEqual(b.data, date(2026, 12, 8))  # 3º dia útil: sex, seg, ter
+        self.assertEqual(aud.data_fim, date(2026, 12, 8))
+
+    def test_editar_bloco_salva_dia_duracao_ordem(self):
+        from .models import Norma, ModeloAuditoriaIso, BlocoModeloIso
+        user = get_user_model().objects.create_superuser("adm_c", "c@example.com", "x")
+        self.client.force_login(user)
+        norma = Norma.objects.create(codigo="N2")
+        modelo = ModeloAuditoriaIso.objects.create(titulo="M", norma=norma)
+        b = BlocoModeloIso.objects.create(modelo=modelo, titulo="A")
+        self.client.post(reverse("auditoria:iso_modelo_bloco_edit", args=[modelo.id, b.id]),
+                         {"titulo": "A2", "dia": "2", "duracao_min": "90", "ordem": "0"})
+        b.refresh_from_db()
+        self.assertEqual((b.titulo, b.dia, b.duracao_min, b.ordem), ("A2", 2, 90, 0))
+        self.client.post(reverse("auditoria:iso_modelo_bloco_edit", args=[modelo.id, b.id]),
+                         {"titulo": "A2", "dia": "", "duracao_min": ""})
+        b.refresh_from_db()
+        self.assertIsNone(b.dia)
+        self.assertIsNone(b.duracao_min)

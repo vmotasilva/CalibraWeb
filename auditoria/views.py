@@ -4663,6 +4663,15 @@ def consolidar_solicitacoes_perguntas(auditoria=None):
     except Exception:
         pass
 
+def _int_ou_none(v):
+    """Converte para inteiro positivo; vazio/ inválido/ <= 0 vira None."""
+    try:
+        n = int(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
+
+
 def _safe_next_url(request, default):
     """Retorna o parâmetro POST/GET 'next' se for um caminho interno seguro."""
     from django.utils.http import url_has_allowed_host_and_scheme
@@ -7110,7 +7119,11 @@ def iso_modelo_bloco_create(request, modelo_id):
     if not titulo:
         return JsonResponse({'success': False, 'message': 'O título do bloco é obrigatório.'}, status=400)
         
-    bloco = BlocoModeloIso.objects.create(modelo=modelo, titulo=titulo)
+    ultima = modelo.blocos.aggregate(m=Max("ordem"))["m"]
+    bloco = BlocoModeloIso.objects.create(
+        modelo=modelo, titulo=titulo, ordem=(ultima + 1) if ultima is not None else 0,
+        dia=_int_ou_none(request.POST.get("dia")), duracao_min=_int_ou_none(request.POST.get("duracao_min")),
+    )
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'success': True, 'id': bloco.id, 'titulo': bloco.titulo})
@@ -7127,10 +7140,17 @@ def iso_modelo_bloco_edit(request, modelo_id, pk):
     titulo = request.POST.get("titulo")
     if titulo:
         bloco.titulo = titulo
-        bloco.save()
+    if "dia" in request.POST:
+        bloco.dia = _int_ou_none(request.POST.get("dia"))
+    if "duracao_min" in request.POST:
+        bloco.duracao_min = _int_ou_none(request.POST.get("duracao_min"))
+    ordem_txt = (request.POST.get("ordem") or "").strip()
+    if ordem_txt.lstrip("-").isdigit():
+        bloco.ordem = int(ordem_txt)
+    bloco.save()
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'success': True})
-    messages.success(request, "Título do bloco atualizado!")
+    messages.success(request, "Bloco atualizado!")
     return redirect('auditoria:iso_modelo_detail', pk=modelo_id)
 
 @login_required
@@ -7878,40 +7898,51 @@ def iso_auditoria_create(request):
         form = AuditoriaIsoForm(initial=initial)
     return render(request, "auditoria/iso/setup/auditoria_form.html", {"form": form, "title": "Planejar Nova Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
 
-def montar_cronograma_blocos(n_blocos, data_inicio, hora_inicio, hora_fim, duracao_min,
+def montar_cronograma_blocos(specs, data_inicio, hora_inicio, hora_fim, duracao_padrao_min,
                              almoco_inicio=None, almoco_fim=None, pular_fim_semana=True):
-    """Distribui `n_blocos` sequencialmente em dias/horários.
+    """Distribui blocos em dias/horários.
 
-    Cada bloco dura `duracao_min`; respeita a janela diária [hora_inicio, hora_fim],
-    pula o intervalo de almoço (se informado) e, opcionalmente, sábados/domingos.
-    Retorna uma lista de tuplas (data, hora_inicio, hora_fim), uma por bloco.
+    `specs` é uma lista de (dia, duracao_min), um por bloco, na ordem de execução:
+      - dia: 1 = primeiro dia útil da auditoria, 2 = segundo... ou None (segue o fluxo);
+      - duracao_min: minutos do bloco ou None (usa `duracao_padrao_min`).
+    Um bloco com `dia` posterior ao dia corrente começa no início desse dia. Nunca volta
+    no tempo: se o fluxo já passou do dia pedido, o bloco continua de onde parou.
+    Respeita [hora_inicio, hora_fim], pula o almoço e (opcional) sábados/domingos.
+    Retorna uma lista de tuplas (data, hora_inicio, hora_fim).
     """
     from datetime import datetime, timedelta
 
-    dur = timedelta(minutes=duracao_min)
-    dia_ini = datetime.combine(data_inicio, hora_inicio)
-    dia_fim_td = datetime.combine(data_inicio, hora_fim) - dia_ini
     almoco = None
     if almoco_inicio and almoco_fim and almoco_fim > almoco_inicio:
         almoco = (almoco_inicio, almoco_fim)
-        # Capacidade útil do dia: precisa caber pelo menos um bloco em algum trecho
-        manha = datetime.combine(data_inicio, almoco_inicio) - dia_ini
+        manha = datetime.combine(data_inicio, almoco_inicio) - datetime.combine(data_inicio, hora_inicio)
         tarde = datetime.combine(data_inicio, hora_fim) - datetime.combine(data_inicio, almoco_fim)
         maior_trecho = max(manha, tarde, timedelta(0))
     else:
-        maior_trecho = dia_fim_td
-    if dur <= timedelta(0) or dur > maior_trecho:
-        raise ValueError("A duração do bloco não cabe na janela diária informada.")
+        maior_trecho = datetime.combine(data_inicio, hora_fim) - datetime.combine(data_inicio, hora_inicio)
 
     def _proximo_dia_util(d):
         while pular_fim_semana and d.weekday() >= 5:
             d += timedelta(days=1)
         return d
 
+    def _enesimo_dia(n):
+        d = _proximo_dia_util(data_inicio)
+        for _ in range(max(n, 1) - 1):
+            d = _proximo_dia_util(d + timedelta(days=1))
+        return d
+
     dia = _proximo_dia_util(data_inicio)
     cursor = datetime.combine(dia, hora_inicio)
     resultado = []
-    for _ in range(n_blocos):
+    for dia_pedido, dur_min in specs:
+        dur = timedelta(minutes=dur_min or duracao_padrao_min or 0)
+        if dur <= timedelta(0) or dur > maior_trecho:
+            raise ValueError("A duração de um bloco não cabe na janela diária informada.")
+        if dia_pedido:
+            alvo = _enesimo_dia(dia_pedido)
+            if alvo > dia:
+                dia, cursor = alvo, datetime.combine(alvo, hora_inicio)
         while True:
             fim_dia = datetime.combine(dia, hora_fim)
             if almoco:
@@ -8015,7 +8046,7 @@ def iso_auditoria_wizard(request):
     if blocos:
         try:
             cronograma = montar_cronograma_blocos(
-                len(blocos), data_inicio, hora_ini, hora_fim, duracao, alm_ini, alm_fim,
+                [(b.dia, b.duracao_min) for b in blocos], data_inicio, hora_ini, hora_fim, duracao, alm_ini, alm_fim,
                 pular_fim_semana=d.get("pular_fim_semana") == "1",
             )
         except ValueError as e:

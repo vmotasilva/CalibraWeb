@@ -99,7 +99,11 @@
                     <div class="card-body p-4">
                         
                         <div class="d-flex justify-content-between align-items-start mb-3">
-                            <h5 class="fw-bold text-dark mb-0 me-2">{{ bloco.titulo }}</h5>
+                            <div class="me-2">
+                                <h5 class="fw-bold text-dark mb-1">{{ bloco.titulo }}</h5>
+                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill"><i class="bi bi-calendar-day me-1"></i>{% if bloco.dia %}Dia {{ bloco.dia }}{% else %}Segue o fluxo{% endif %}</span>
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill"><i class="bi bi-clock me-1"></i>{% if bloco.duracao_min %}{{ bloco.duracao_min }} min{% else %}duração padrão{% endif %}</span>
+                            </div>
                             
                             <!-- Menu 3 Pontinhos de Ações do Bloco do Modelo -->
                             <div class="dropdown">
@@ -108,8 +112,8 @@
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-3">
                                     <li>
-                                        <button class="dropdown-item py-2 edit-bloco-btn" data-id="{{ bloco.id }}" data-titulo="{{ bloco.titulo }}">
-                                            <i class="bi bi-pencil me-2 text-primary"></i>Editar Título
+                                        <button class="dropdown-item py-2 edit-bloco-btn" data-id="{{ bloco.id }}" data-titulo="{{ bloco.titulo }}" data-dia="{{ bloco.dia|default_if_none:'' }}" data-duracao="{{ bloco.duracao_min|default_if_none:'' }}" data-ordem="{{ bloco.ordem }}">
+                                            <i class="bi bi-pencil me-2 text-primary"></i>Editar Bloco / Cronograma
                                         </button>
                                     </li>
                                     <li>
@@ -422,6 +426,17 @@
                   <label class="form-label fw-bold text-dark">Título do Bloco / Seção <span class="text-danger">*</span></label>
                   <input type="text" name="titulo" class="form-control border-primary" placeholder="Ex: Alta Direção, Qualidade, Compras" required>
               </div>
+              <div class="row g-3">
+                  <div class="col-6">
+                      <label class="form-label fw-bold text-dark small">Dia da auditoria</label>
+                      <input type="number" name="dia" min="1" class="form-control" placeholder="Ex: 1">
+                  </div>
+                  <div class="col-6">
+                      <label class="form-label fw-bold text-dark small">Duração (min)</label>
+                      <input type="number" name="duracao_min" min="5" step="5" class="form-control" placeholder="Ex: 90">
+                  </div>
+                  <div class="form-text mt-1">Opcional. Dia 1 = primeiro dia útil. Vazio = segue o fluxo / duração padrão do planejamento.</div>
+              </div>
           </div>
           <div class="modal-footer border-0 bg-light">
             <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
@@ -437,7 +452,7 @@
   <div class="modal-dialog">
     <div class="modal-content shadow border-0 rounded-4">
       <div class="modal-header border-0 py-3 bg-light">
-        <h5 class="modal-title fw-bold text-primary"><i class="bi bi-pencil me-2"></i>Editar Título do Bloco</h5>
+        <h5 class="modal-title fw-bold text-primary"><i class="bi bi-pencil me-2"></i>Editar Bloco / Cronograma</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="formEditarBlocoModelo" method="POST" action="">
@@ -446,6 +461,21 @@
               <div class="mb-3">
                   <label class="form-label fw-bold text-dark">Título do Bloco <span class="text-danger">*</span></label>
                   <input type="text" name="titulo" id="inputEditarTituloBloco" class="form-control border-primary" required>
+              </div>
+              <div class="row g-3">
+                  <div class="col-4">
+                      <label class="form-label fw-bold text-dark small">Dia da auditoria</label>
+                      <input type="number" name="dia" id="inputEditarDiaBloco" min="1" class="form-control" placeholder="fluxo">
+                  </div>
+                  <div class="col-4">
+                      <label class="form-label fw-bold text-dark small">Duração (min)</label>
+                      <input type="number" name="duracao_min" id="inputEditarDuracaoBloco" min="5" step="5" class="form-control" placeholder="padrão">
+                  </div>
+                  <div class="col-4">
+                      <label class="form-label fw-bold text-dark small">Ordem</label>
+                      <input type="number" name="ordem" id="inputEditarOrdemBloco" class="form-control">
+                  </div>
+                  <div class="form-text mt-1">Os blocos são agendados pela <strong>ordem</strong>. Com "Dia" informado, o bloco começa no início daquele dia útil (dia 1 = primeiro dia); sem ele, continua logo após o bloco anterior. A duração vazia usa o padrão do planejamento.</div>
               </div>
           </div>
           <div class="modal-footer border-0 bg-light">
@@ -884,6 +914,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             form.action = `/auditoria/iso/setup/modelos/{{ modelo.id }}/blocos/${blocoId}/editar/`;
             input.value = titulo;
+            document.getElementById('inputEditarDiaBloco').value = this.dataset.dia || '';
+            document.getElementById('inputEditarDuracaoBloco').value = this.dataset.duracao || '';
+            document.getElementById('inputEditarOrdemBloco').value = this.dataset.ordem || 0;
             
             const modal = new bootstrap.Modal(document.getElementById('editarBlocoModeloModal'));
             modal.show();

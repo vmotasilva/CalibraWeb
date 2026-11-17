@@ -1146,6 +1146,14 @@ class BlocoModeloIso(models.Model):
     perguntas = models.ManyToManyField('BancoPergunta', blank=True, related_name="blocos_modelo_vinculados", verbose_name="Perguntas do Bloco")
     solicitacoes = models.ManyToManyField('BancoSolicitacaoIso', blank=True, related_name="blocos_modelo_vinculados", verbose_name="Solicitações do Bloco")
     ordem = models.IntegerField(default=0)
+    dia = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name="Dia da auditoria",
+        help_text="1 = primeiro dia útil da auditoria, 2 = segundo... Vazio = segue o fluxo do bloco anterior.",
+    )
+    duracao_min = models.PositiveSmallIntegerField(
+        null=True, blank=True, verbose_name="Duração (min)",
+        help_text="Vazio = usa a duração padrão informada no planejamento.",
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
