@@ -100,16 +100,17 @@ def _serie(itens, meses, consumos):
     for c in consumos:
         por_item.setdefault(c.item_id, {})[c.periodo] = c.valor
     rotulos = [f'{m:%m/%Y}' for m in meses]
-    matriz = [{'nome': i.nome, 'unidade': i.unidade,
-               'valores': [float(por_item[i.pk][m]) if m in por_item.get(i.pk, {}) else None for m in meses],
-               'metas': [float(i.meta) if i.meta is not None else None] * len(meses)} for i in itens]
+    matriz = [{'nome': i.nome, 'unidade': i.unidade_exibicao,
+               'valores': [i.exibir(float(por_item[i.pk][m])) if m in por_item.get(i.pk, {}) else None for m in meses],
+               'metas': [i.exibir(float(i.meta)) if i.meta is not None else None] * len(meses)} for i in itens]
     if len(itens) == 1:
         item = itens[0]
         dados = por_item.get(item.pk, {})
         return {'modo': 'valor', 'labels': rotulos,
-                'valores': [float(dados[m]) if m in dados else None for m in meses],
-                'meta': float(item.meta) if item.meta is not None else None,
-                'sentido': item.sentido, 'unidade': item.unidade, 'titulo': f'Consumo ({item.unidade})' if item.unidade else 'Consumo',
+                'valores': [item.exibir(float(dados[m])) if m in dados else None for m in meses],
+                'meta': item.exibir(float(item.meta)) if item.meta is not None else None,
+                'sentido': item.sentido, 'unidade': item.unidade_exibicao,
+                'titulo': f'Consumo ({item.unidade_exibicao})' if item.unidade_exibicao else 'Consumo',
                 '_itens': matriz}
     valores = []
     for m in meses:
@@ -171,15 +172,15 @@ def _serie_curta(itens, visao, fim):
         metas = [_meta_dia(i, d) for d in b if d <= hoje or b[0] > hoje]
         return None if i.meta is None else float(sum(metas))
 
-    matriz = [{'nome': i.nome, 'unidade': i.unidade,
-               'valores': [None if consumo(i, b) is None else float(consumo(i, b)) for b in buckets],
-               'metas': [meta(i, b) for b in buckets]} for i in itens]
+    matriz = [{'nome': i.nome, 'unidade': i.unidade_exibicao,
+               'valores': [None if consumo(i, b) is None else i.exibir(float(consumo(i, b))) for b in buckets],
+               'metas': [i.exibir(meta(i, b)) for b in buckets]} for i in itens]
     if len(itens) == 1:
         i = itens[0]
         return {'_itens': matriz, 'modo': 'valor', 'labels': rotulos, 'faixas': faixas, 'janela': janela, 'meta': None,
-                'valores': [None if consumo(i, b) is None else round(float(consumo(i, b)), 2) for b in buckets],
-                'metas': [None if meta(i, b) is None else round(meta(i, b), 2) for b in buckets], 'sentido': i.sentido,
-                'unidade': i.unidade, 'titulo': f'Consumo ({i.unidade})' if i.unidade else 'Consumo',
+                'valores': [None if consumo(i, b) is None else round(i.exibir(float(consumo(i, b))), 2) for b in buckets],
+                'metas': [None if meta(i, b) is None else round(i.exibir(meta(i, b)), 2) for b in buckets], 'sentido': i.sentido,
+                'unidade': i.unidade_exibicao, 'titulo': f'Consumo ({i.unidade_exibicao})' if i.unidade_exibicao else 'Consumo',
                 'meta_texto': 'meta proporcional (meta mensal ÷ dias do mês)' if i.meta is not None else ''}
     valores = []
     for b in buckets:
@@ -264,7 +265,7 @@ def painel_view(request):
     for i in itens:
         c = atual.get(i.pk)
         v = c.valor if c else None
-        linhas.append({'item': i, 'consumo': v, 'origem': c.origem if c else '',
+        linhas.append({'item': i, 'consumo': v, 'consumo_exib': i.exibir(v) if i.converte_exibicao else None, 'origem': c.origem if c else '',
                        'codigos': [x.codigo for x in i.codigos.all()],
                        'pct': round(v / i.meta * 100) if v is not None and i.meta else None,
                        'ok': i.atingiu(v)})
@@ -609,6 +610,7 @@ def cadastro_salvar_view(request):
             obj.nome, obj.unidade = nome, (p.get('unidade') or '').strip()[:20]
             obj.sentido = p.get('sentido') if p.get('sentido') in dict(HierItem.SENTIDOS) else '<='
             obj.meta = _decimal(meta) if meta else None
+            obj.exibir_un_kg = p.get('exibir_un_kg') == 'on'
         if pk and 'ativo_form' in p and hasattr(obj, 'ativo'):
             obj.ativo = p.get('ativo') == 'on'
         with transaction.atomic():

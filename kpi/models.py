@@ -333,6 +333,8 @@ class HierItem(models.Model):
     SENTIDOS = [('<=', '≤ (no máximo)'), ('>=', '≥ (no mínimo)'), ('<', '< (abaixo de)'), ('>', '> (acima de)'), ('=', '= (igual a)')]
     sentido = models.CharField('Comparação com a meta', max_length=2, choices=SENTIDOS, default='<=',
                                help_text='Como o consumo é comparado à meta para estar "na meta".')
+    exibir_un_kg = models.BooleanField('Exibir kg como UN (kg)', default=False,
+                                       help_text='Só na exibição: 1.000 kg aparece como 1,00 UN (kg). Vale para itens em kg; consumo e meta continuam em kg.')
     ordem = models.PositiveIntegerField(default=0)
     ativo = models.BooleanField('Ativo', default=True)
 
@@ -344,6 +346,24 @@ class HierItem(models.Model):
 
     def __str__(self):
         return f'{self.subcategoria} / {self.nome}'
+
+    @property
+    def converte_exibicao(self):
+        return bool(self.exibir_un_kg and (self.unidade or '').strip().lower() == 'kg')
+
+    @property
+    def fator_exibicao(self):
+        return 1000 if self.converte_exibicao else 1
+
+    @property
+    def unidade_exibicao(self):
+        return 'UN (kg)' if self.converte_exibicao else self.unidade
+
+    def exibir(self, valor):
+        """Valor como aparece nas telas (kg ÷ 1000, 2 casas, quando o item converte kg em UN (kg))."""
+        if valor is None or not self.converte_exibicao:
+            return valor
+        return round(float(valor) / self.fator_exibicao, 2)
 
     @property
     def sentido_simbolo(self):
