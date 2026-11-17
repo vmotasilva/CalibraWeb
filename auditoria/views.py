@@ -7964,6 +7964,34 @@ def montar_cronograma_blocos(specs, data_inicio, hora_inicio, hora_fim, duracao_
     return resultado
 
 
+def _parse_janela_cronograma(d):
+    """Lê do POST a janela diária do cronograma. Retorna (params, erro)."""
+    from datetime import time
+
+    def _hora(v):
+        try:
+            h, m = (v or "").split(":")[:2]
+            return time(int(h), int(m))
+        except (ValueError, TypeError):
+            return None
+
+    hora_ini, hora_fim = _hora(d.get("hora_inicio")), _hora(d.get("hora_fim"))
+    if not hora_ini or not hora_fim or hora_fim <= hora_ini:
+        return None, "Informe um horário de início e de término do dia válidos (término após o início)."
+    alm_ini, alm_fim = _hora(d.get("almoco_inicio")), _hora(d.get("almoco_fim"))
+    if (alm_ini or alm_fim) and not (alm_ini and alm_fim and alm_fim > alm_ini):
+        return None, "Intervalo de almoço inválido: informe início e fim (ou deixe ambos em branco)."
+    try:
+        duracao = int(d.get("duracao_min") or 0)
+    except ValueError:
+        duracao = 0
+    return {
+        "hora_inicio": hora_ini, "hora_fim": hora_fim, "duracao_padrao_min": duracao,
+        "almoco_inicio": alm_ini, "almoco_fim": alm_fim,
+        "pular_fim_semana": d.get("pular_fim_semana") == "1",
+    }, None
+
+
 @login_required
 def iso_auditoria_wizard(request):
     """Questionário simples para planejar uma nova auditoria a partir de um modelo.
@@ -8007,13 +8035,6 @@ def iso_auditoria_wizard(request):
         messages.error(request, msg)
         return render(request, "auditoria/iso/setup/auditoria_wizard.html", ctx)
 
-    def _hora(v, default=None):
-        try:
-            h, m = (v or "").split(":")[:2]
-            return time(int(h), int(m))
-        except (ValueError, TypeError):
-            return default
-
     norma = Norma.objects.filter(pk=d.get("norma") or 0, ativa=True).first()
     if not norma:
         return erro("Selecione a norma da auditoria.")
@@ -8027,16 +8048,9 @@ def iso_auditoria_wizard(request):
     except ValueError:
         return erro("Informe a data de início da auditoria.")
 
-    hora_ini, hora_fim = _hora(d.get("hora_inicio")), _hora(d.get("hora_fim"))
-    if not hora_ini or not hora_fim or hora_fim <= hora_ini:
-        return erro("Informe um horário de início e de término do dia válidos (término após o início).")
-    alm_ini, alm_fim = _hora(d.get("almoco_inicio")), _hora(d.get("almoco_fim"))
-    if (alm_ini or alm_fim) and not (alm_ini and alm_fim and alm_fim > alm_ini):
-        return erro("Intervalo de almoço inválido: informe início e fim (ou deixe ambos em branco).")
-    try:
-        duracao = int(d.get("duracao_min") or 0)
-    except ValueError:
-        duracao = 0
+    janela, msg_erro = _parse_janela_cronograma(d)
+    if msg_erro:
+        return erro(msg_erro)
 
     blocos = list(modelo.blocos.prefetch_related("itens_norma", "perguntas").order_by("ordem", "criado_em")) if modelo else []
     if modelo and not blocos:
@@ -8045,10 +8059,7 @@ def iso_auditoria_wizard(request):
     cronograma = []
     if blocos:
         try:
-            cronograma = montar_cronograma_blocos(
-                [(b.dia, b.duracao_min) for b in blocos], data_inicio, hora_ini, hora_fim, duracao, alm_ini, alm_fim,
-                pular_fim_semana=d.get("pular_fim_semana") == "1",
-            )
+            cronograma = montar_cronograma_blocos([(b.dia, b.duracao_min) for b in blocos], data_inicio, **janela)
         except ValueError as e:
             return erro(str(e))
     data_fim = cronograma[-1][0] if cronograma else data_inicio
@@ -8090,50 +8101,74 @@ def iso_auditoria_wizard(request):
 @login_required
 @require_POST
 def iso_auditoria_import_modelo(request, pk):
-    """Clona atomicamente todos os blocos, requisitos alvo e perguntas de um ModeloAuditoriaIso para a AuditoriaIso (pk)"""
+    """Clona atomicamente os blocos, requisitos alvo e perguntas de um ModeloAuditoriaIso para a AuditoriaIso (pk).
+
+    Com "agendar" ativo (padrão), cada bloco recebe data/horário pelo mesmo cronograma do assistente
+    (dia e duração do bloco; duração padrão, expediente e almoço informados), a partir da data de início da auditoria.
+    """
     from .models import AuditoriaIso, ModeloAuditoriaIso, AgendaAuditoriaIso
     from django.db import transaction
     from django.http import JsonResponse
 
     auditoria = get_object_or_404(AuditoriaIso, pk=pk)
     modelo_id = request.POST.get("modelo_id")
-    
+    ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
+
+    def falha(msg):
+        if ajax:
+            return JsonResponse({"success": False, "error": msg}, status=400)
+        messages.error(request, msg)
+        return redirect('auditoria:iso_auditoria_detail', pk=pk)
+
     if not modelo_id:
-        if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return JsonResponse({"success": False, "error": "Modelo de auditoria não selecionado."}, status=400)
-        messages.error(request, "Selecione um modelo de auditoria válido.")
-        return redirect('auditoria:iso_auditoria_detail', pk=pk)
-        
+        return falha("Selecione um modelo de auditoria válido.")
+
     modelo = get_object_or_404(ModeloAuditoriaIso, pk=modelo_id, norma=auditoria.norma)
-    blocos_modelo = modelo.blocos.all().prefetch_related('perguntas', 'itens_norma')
-    
-    if not blocos_modelo.exists():
-        if request.headers.get("x-requested-with") == "XMLHttpRequest":
-            return JsonResponse({"success": False, "error": "O modelo selecionado não possui blocos/requisitos cadastrados."}, status=400)
-        messages.error(request, "O modelo selecionado não possui blocos cadastrados.")
-        return redirect('auditoria:iso_auditoria_detail', pk=pk)
+    blocos_modelo = list(modelo.blocos.all().prefetch_related('perguntas', 'itens_norma').order_by('ordem', 'criado_em'))
+    if not blocos_modelo:
+        return falha("O modelo selecionado não possui blocos/requisitos cadastrados.")
+
+    cronograma = []
+    if request.POST.getlist("agendar")[-1:] != ["0"] and request.POST.get("hora_inicio"):
+        janela, msg_erro = _parse_janela_cronograma(request.POST)
+        if msg_erro:
+            return falha(msg_erro)
+        try:
+            cronograma = montar_cronograma_blocos(
+                [(b.dia, b.duracao_min) for b in blocos_modelo], auditoria.data_inicio, **janela
+            )
+        except ValueError as e:
+            return falha(str(e))
 
     agendas_criadas = []
     with transaction.atomic():
-        for b in blocos_modelo:
+        for idx, b in enumerate(blocos_modelo):
+            extra = {}
+            if cronograma:
+                dia, h_i, h_f = cronograma[idx]
+                extra = {"data": dia, "hora_inicio": h_i, "hora_fim": h_f}
             nova_agenda = AgendaAuditoriaIso.objects.create(
-                auditoria=auditoria,
-                modelo_base=modelo,
-                titulo=b.titulo
+                auditoria=auditoria, modelo_base=modelo, titulo=b.titulo, **extra
             )
             nova_agenda.perguntas.set(b.perguntas.all())
             nova_agenda.itens_norma.set(b.itens_norma.all())
             agendas_criadas.append(nova_agenda)
 
-    auditoria.status = "PLANEJADA"
-    auditoria.save()
+        auditoria.status = "PLANEJADA"
+        if cronograma and cronograma[-1][0] > auditoria.data_fim:
+            auditoria.data_fim = cronograma[-1][0]  # estende o fim previsto se o cronograma passar dele
+        auditoria.save()
 
-    messages.success(request, f"Modelo '{modelo.titulo}' importado com sucesso ({len(agendas_criadas)} blocos duplicados)!")
+    msg = f"Modelo '{modelo.titulo}' importado com sucesso ({len(agendas_criadas)} blocos duplicados)"
+    if cronograma:
+        msg += f", agendados de {cronograma[0][0]:%d/%m/%Y} a {cronograma[-1][0]:%d/%m/%Y}"
+    msg += "!"
+    messages.success(request, msg)
 
-    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+    if ajax:
         return JsonResponse({
             "success": True,
-            "message": f"Modelo '{modelo.titulo}' importado com sucesso!",
+            "message": msg,
             "total_blocos": len(agendas_criadas),
             "redirect_url": reverse('auditoria:iso_auditoria_detail', args=[pk])
         })

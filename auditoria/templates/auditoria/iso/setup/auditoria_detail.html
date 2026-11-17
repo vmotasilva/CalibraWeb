@@ -755,7 +755,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="modal-body p-4">
                     <p class="text-muted small mb-3">
-                        Selecione um dos modelos cadastrados para a norma <strong>{{ auditoria.norma.codigo }}</strong>. O sistema clonará automaticamente todos os blocos, requisitos alvo e perguntas vinculadas.
+                        Selecione um dos modelos cadastrados para a norma <strong>{{ auditoria.norma.codigo }}</strong>. O sistema clonará todos os blocos, requisitos alvo e perguntas vinculadas e, se desejar, já monta o cronograma.
                     </p>
 
                     {% if modelos_norma %}
@@ -774,6 +774,45 @@ document.addEventListener('DOMContentLoaded', function() {
                             </span>
                         </label>
                         {% endfor %}
+                    </div>
+                    <div class="border rounded-3 p-3 mt-3 bg-light">
+                        <div class="form-check form-switch mb-2">
+                            <input type="hidden" name="agendar" value="0">
+                            <input class="form-check-input" type="checkbox" name="agendar" id="impAgendar" value="1" checked
+                                   onchange="document.getElementById('impCronogramaCampos').classList.toggle('d-none', !this.checked)">
+                            <label class="form-check-label fw-semibold small" for="impAgendar">
+                                Montar o cronograma (a partir de {{ auditoria.data_inicio|date:"d/m/Y" }}) usando dia e duração de cada bloco
+                            </label>
+                        </div>
+                        <div id="impCronogramaCampos" class="row g-2">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1" for="impHi">Início do dia</label>
+                                <input type="time" class="form-control form-control-sm" name="hora_inicio" id="impHi" value="08:00">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1" for="impHf">Fim do dia</label>
+                                <input type="time" class="form-control form-control-sm" name="hora_fim" id="impHf" value="17:00">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1" for="impDur">Duração padrão (min)</label>
+                                <input type="number" class="form-control form-control-sm" name="duracao_min" id="impDur" min="10" step="5" value="60">
+                            </div>
+                            <div class="col-6 col-md-3 d-flex align-items-end">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="pular_fim_semana" id="impFds" value="1" checked>
+                                    <label class="form-check-label small" for="impFds">Sem fim de semana</label>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1" for="impAi">Almoço — início</label>
+                                <input type="time" class="form-control form-control-sm" name="almoco_inicio" id="impAi" value="12:00">
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small mb-1" for="impAf">Almoço — fim</label>
+                                <input type="time" class="form-control form-control-sm" name="almoco_fim" id="impAf" value="13:00">
+                            </div>
+                            <div class="form-text">Blocos sem duração própria usam a duração padrão. Os horários partem do início da auditoria; se já houver agendas, revise possíveis sobreposições.</div>
+                        </div>
                     </div>
                     {% else %}
                     <div class="alert alert-warning border text-center py-4 rounded-3 mb-0">

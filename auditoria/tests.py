@@ -2580,3 +2580,49 @@ class BlocoModeloCronogramaTests(TestCase):
         b.refresh_from_db()
         self.assertIsNone(b.dia)
         self.assertIsNone(b.duracao_min)
+
+
+class ImportarModeloComCronogramaTests(TestCase):
+    def setUp(self):
+        from datetime import time
+        from .models import Norma, ModeloAuditoriaIso, BlocoModeloIso, AuditoriaIso
+
+        self.user = get_user_model().objects.create_superuser("adm_i", "i@example.com", "x")
+        self.client.force_login(self.user)
+        self.norma = Norma.objects.create(codigo="N-IMP")
+        self.modelo = ModeloAuditoriaIso.objects.create(titulo="M", norma=self.norma)
+        BlocoModeloIso.objects.create(modelo=self.modelo, titulo="A", ordem=0, dia=1, duracao_min=60)
+        BlocoModeloIso.objects.create(modelo=self.modelo, titulo="B", ordem=1, dia=2, duracao_min=90)
+        self.aud = AuditoriaIso.objects.create(
+            norma=self.norma, data_inicio=date(2026, 12, 4), data_fim=date(2026, 12, 4),  # sexta
+        )
+        self.url = reverse("auditoria:iso_auditoria_import_modelo", args=[self.aud.id])
+        self.time = time
+
+    def test_importa_com_cronograma_e_estende_fim(self):
+        r = self.client.post(self.url, {
+            "modelo_id": self.modelo.id, "agendar": ["0", "1"],
+            "hora_inicio": "08:00", "hora_fim": "17:00", "duracao_min": "30",
+            "almoco_inicio": "12:00", "almoco_fim": "13:00", "pular_fim_semana": "1",
+        })
+        self.assertEqual(r.status_code, 302)
+        a, b = self.aud.agendas.order_by("data")
+        self.assertEqual((a.titulo, a.data, a.hora_inicio, a.hora_fim),
+                         ("A", date(2026, 12, 4), self.time(8, 0), self.time(9, 0)))
+        self.assertEqual((b.data, b.hora_fim), (date(2026, 12, 7), self.time(9, 30)))  # dia 2 = segunda
+        self.aud.refresh_from_db()
+        self.assertEqual(self.aud.data_fim, date(2026, 12, 7))
+
+    def test_sem_agendar_ou_post_legado_nao_define_datas(self):
+        self.client.post(self.url, {"modelo_id": self.modelo.id, "agendar": "0", "hora_inicio": "08:00", "hora_fim": "17:00"})
+        self.assertEqual(self.aud.agendas.filter(data__isnull=True).count(), 2)
+        self.aud.agendas.all().delete()
+        self.client.post(self.url, {"modelo_id": self.modelo.id})  # sem campos de cronograma
+        self.assertEqual(self.aud.agendas.filter(data__isnull=True).count(), 2)
+
+    def test_janela_invalida_nao_cria_nada_via_ajax(self):
+        r = self.client.post(self.url, {
+            "modelo_id": self.modelo.id, "agendar": ["0", "1"], "hora_inicio": "17:00", "hora_fim": "08:00",
+        }, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(self.aud.agendas.count(), 0)
