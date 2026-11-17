@@ -840,8 +840,14 @@ def gerar_auto_avaliacao_for141_xlsx(planejamento: PlanejamentoTreinamento, cola
     while len(p_padded) < 5:
         p_padded.append("")
 
+    # Modo "Múltiplas Auto-Avaliações": o título é o Código + Descrição do procedimento avaliado
+    if getattr(planejamento, '_mock_procs', None):
+        titulo_avaliacao = f"{procs[0].codigo} - {procs[0].nome}"
+    else:
+        titulo_avaliacao = planejamento.titulo or "-"
+
     substituicoes = {
-        "{{TITULO}}": planejamento.titulo or "-",
+        "{{TITULO}}": titulo_avaliacao,
         "{{PROCEDIMENTO}}": proc_str,
         "{{CODIGO_PROCEDIMENTO}}": procs[0].codigo if procs else "-",
         "{{NOME_PROCEDIMENTO}}": procs[0].nome if procs else (planejamento.titulo or "-"),
