@@ -7899,7 +7899,7 @@ def iso_auditoria_create(request):
     return render(request, "auditoria/iso/setup/auditoria_form.html", {"form": form, "title": "Planejar Nova Auditoria", "back_url": reverse('auditoria:iso_setup_dashboard') + "?tab=auditorias"})
 
 def montar_cronograma_blocos(specs, data_inicio, hora_inicio, hora_fim, duracao_padrao_min,
-                             almoco_inicio=None, almoco_fim=None, pular_fim_semana=True):
+                             almoco_inicio=None, almoco_fim=None, pular_fim_semana=True, a_partir_de=None):
     """Distribui blocos em dias/horários.
 
     `specs` é uma lista de (dia, duracao_min), um por bloco, na ordem de execução:
@@ -7908,6 +7908,7 @@ def montar_cronograma_blocos(specs, data_inicio, hora_inicio, hora_fim, duracao_
     Um bloco com `dia` posterior ao dia corrente começa no início desse dia. Nunca volta
     no tempo: se o fluxo já passou do dia pedido, o bloco continua de onde parou.
     Respeita [hora_inicio, hora_fim], pula o almoço e (opcional) sábados/domingos.
+    Se `a_partir_de` (datetime) for informado, nada é agendado antes dele (ex.: fim da última agenda existente).
     Retorna uma lista de tuplas (data, hora_inicio, hora_fim).
     """
     from datetime import datetime, timedelta
@@ -7934,6 +7935,15 @@ def montar_cronograma_blocos(specs, data_inicio, hora_inicio, hora_fim, duracao_
 
     dia = _proximo_dia_util(data_inicio)
     cursor = datetime.combine(dia, hora_inicio)
+    if a_partir_de:
+        limite_dia = _proximo_dia_util(a_partir_de.date())
+        if limite_dia > dia:
+            dia = limite_dia
+            cursor = datetime.combine(dia, hora_inicio)
+            if limite_dia == a_partir_de.date():
+                cursor = max(cursor, a_partir_de)
+        elif a_partir_de.date() == dia:
+            cursor = max(cursor, a_partir_de)
     resultado = []
     for dia_pedido, dur_min in specs:
         dur = timedelta(minutes=dur_min or duracao_padrao_min or 0)
@@ -8104,8 +8114,10 @@ def iso_auditoria_import_modelo(request, pk):
     """Clona atomicamente os blocos, requisitos alvo e perguntas de um ModeloAuditoriaIso para a AuditoriaIso (pk).
 
     Com "agendar" ativo (padrão), cada bloco recebe data/horário pelo mesmo cronograma do assistente
-    (dia e duração do bloco; duração padrão, expediente e almoço informados), a partir da data de início da auditoria.
+    (dia e duração do bloco; duração padrão, expediente e almoço informados), a partir da data de início da auditoria
+    ou, se já houver agendas datadas, logo após o término da última delas.
     """
+    from datetime import datetime, time
     from .models import AuditoriaIso, ModeloAuditoriaIso, AgendaAuditoriaIso
     from django.db import transaction
     from django.http import JsonResponse
@@ -8133,9 +8145,16 @@ def iso_auditoria_import_modelo(request, pk):
         janela, msg_erro = _parse_janela_cronograma(request.POST)
         if msg_erro:
             return falha(msg_erro)
+        # Começa depois da última agenda já datada da auditoria (se houver)
+        apos = None
+        for ag in auditoria.agendas.filter(arquivada=False, data__isnull=False):
+            fim = datetime.combine(ag.data, ag.hora_fim or ag.hora_inicio or time(0, 0))
+            if apos is None or fim > apos:
+                apos = fim
         try:
             cronograma = montar_cronograma_blocos(
-                [(b.dia, b.duracao_min) for b in blocos_modelo], auditoria.data_inicio, **janela
+                [(b.dia, b.duracao_min) for b in blocos_modelo], auditoria.data_inicio,
+                a_partir_de=apos, **janela
             )
         except ValueError as e:
             return falha(str(e))

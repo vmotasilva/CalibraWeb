@@ -2626,3 +2626,28 @@ class ImportarModeloComCronogramaTests(TestCase):
         }, HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.assertEqual(r.status_code, 400)
         self.assertEqual(self.aud.agendas.count(), 0)
+
+
+class ImportarModeloAposUltimaAgendaTests(ImportarModeloComCronogramaTests):
+    JANELA = {"agendar": ["0", "1"], "hora_inicio": "08:00", "hora_fim": "17:00", "duracao_min": "30",
+              "almoco_inicio": "12:00", "almoco_fim": "13:00", "pular_fim_semana": "1"}
+
+    def test_comeca_apos_a_ultima_agenda_existente(self):
+        from .models import AgendaAuditoriaIso
+        AgendaAuditoriaIso.objects.create(auditoria=self.aud, titulo="Abertura", data=date(2026, 12, 4),
+                                          hora_inicio=self.time(8, 0), hora_fim=self.time(10, 30))
+        self.client.post(self.url, {"modelo_id": self.modelo.id, **self.JANELA})
+        a = self.aud.agendas.get(titulo="A")
+        self.assertEqual((a.data, a.hora_inicio), (date(2026, 12, 4), self.time(10, 30)))
+        b = self.aud.agendas.get(titulo="B")
+        self.assertEqual(b.data, date(2026, 12, 7))  # dia 2 = segunda
+
+    def test_agenda_existente_em_dia_posterior_empurra_o_cronograma(self):
+        from .models import AgendaAuditoriaIso
+        AgendaAuditoriaIso.objects.create(auditoria=self.aud, titulo="X", data=date(2026, 12, 9),
+                                          hora_inicio=self.time(14, 0), hora_fim=self.time(16, 0))
+        AgendaAuditoriaIso.objects.create(auditoria=self.aud, titulo="Arq", data=date(2026, 12, 20),
+                                          hora_inicio=self.time(8, 0), hora_fim=self.time(9, 0), arquivada=True)
+        self.client.post(self.url, {"modelo_id": self.modelo.id, **self.JANELA})
+        a = self.aud.agendas.get(titulo="A")
+        self.assertEqual((a.data, a.hora_inicio), (date(2026, 12, 9), self.time(16, 0)))  # arquivada é ignorada

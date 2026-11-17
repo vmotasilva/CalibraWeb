@@ -811,7 +811,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <label class="form-label small mb-1" for="impAf">Almoço — fim</label>
                                 <input type="time" class="form-control form-control-sm" name="almoco_fim" id="impAf" value="13:00">
                             </div>
-                            <div class="form-text">Blocos sem duração própria usam a duração padrão. Os horários partem do início da auditoria; se já houver agendas, revise possíveis sobreposições.</div>
+                            <div class="form-text">Blocos sem duração própria usam a duração padrão. Os horários partem do início da auditoria; se já houver agendas com data, os novos blocos começam logo após o término da última.</div>
                         </div>
                     </div>
                     {% else %}
