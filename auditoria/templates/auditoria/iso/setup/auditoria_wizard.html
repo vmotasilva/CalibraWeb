@@ -129,9 +129,23 @@
             </div>
         </div></div>
 
+        {% if conflitos %}
+        <div class="alert alert-warning border-warning rounded-4 mb-0">
+            <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Conflito de datas na mesma unidade</div>
+            <div class="small mb-2">A nova auditoria ({{ periodo_novo.0|date:"d/m/Y" }} a {{ periodo_novo.1|date:"d/m/Y" }}) coincide com:</div>
+            <ul class="small mb-2">
+                {% for c in conflitos %}
+                <li><a href="{% url 'auditoria:iso_auditoria_detail' c.id %}" target="_blank">{{ c.norma.codigo }}</a> — {{ c.data_inicio|date:"d/m/Y" }} a {{ c.data_fim|date:"d/m/Y" }} ({{ c.get_status_display }})</li>
+                {% endfor %}
+            </ul>
+            <input type="hidden" name="confirmar_conflito" value="{{ assinatura_conflito }}">
+            <div class="small text-muted">Altere a data de início acima ou clique em <strong>Criar mesmo assim</strong>.</div>
+        </div>
+        {% endif %}
+
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <a href="{% url 'auditoria:iso_auditoria_create' %}" class="small text-muted">Prefere o formulário completo?</a>
-            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm"><i class="bi bi-calendar-check me-1"></i>Planejar auditoria</button>
+            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm"><i class="bi bi-calendar-check me-1"></i>{% if conflitos %}Criar mesmo assim{% else %}Planejar auditoria{% endif %}</button>
         </div>
     </form>
 </div>

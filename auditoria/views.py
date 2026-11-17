@@ -8074,6 +8074,24 @@ def iso_auditoria_wizard(request):
             return erro(str(e))
     data_fim = cronograma[-1][0] if cronograma else data_inicio
 
+    # Aviso (não bloqueia): outra auditoria ativa da mesma unidade com período sobreposto
+    unidade_txt = (d.get("unidade") or "").strip()
+    if unidade_txt:
+        assinatura = f"{unidade_txt.lower()}|{data_inicio.isoformat()}|{data_fim.isoformat()}"
+        if d.get("confirmar_conflito") != assinatura:
+            conflitos = list(
+                AuditoriaIso.objects.filter(
+                    unidade__iexact=unidade_txt, arquivada=False,
+                    data_inicio__lte=data_fim, data_fim__gte=data_inicio,
+                ).select_related("norma").order_by("data_inicio")
+            )
+            if conflitos:
+                ctx["conflitos"] = conflitos
+                ctx["assinatura_conflito"] = assinatura
+                ctx["periodo_novo"] = (data_inicio, data_fim)
+                messages.warning(request, "Atenção: já existe auditoria da mesma unidade nesse período. Revise ou confirme para criar mesmo assim.")
+                return render(request, "auditoria/iso/setup/auditoria_wizard.html", ctx)
+
     with transaction.atomic():
         aud = AuditoriaIso.objects.create(
             norma=norma,

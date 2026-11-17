@@ -2651,3 +2651,49 @@ class ImportarModeloAposUltimaAgendaTests(ImportarModeloComCronogramaTests):
         self.client.post(self.url, {"modelo_id": self.modelo.id, **self.JANELA})
         a = self.aud.agendas.get(titulo="A")
         self.assertEqual((a.data, a.hora_inicio), (date(2026, 12, 9), self.time(16, 0)))  # arquivada é ignorada
+
+
+class WizardConflitoDatasTests(TestCase):
+    def setUp(self):
+        from .models import Norma, AuditoriaIso
+        self.user = get_user_model().objects.create_superuser("adm_cf", "cf@example.com", "x")
+        self.client.force_login(self.user)
+        self.norma = Norma.objects.create(codigo="N-CF")
+        self.AuditoriaIso = AuditoriaIso
+        self.existente = AuditoriaIso.objects.create(
+            norma=self.norma, unidade="Planta A", data_inicio=date(2026, 12, 7), data_fim=date(2026, 12, 9),
+        )
+        self.url = reverse("auditoria:iso_auditoria_wizard")
+
+    def _dados(self, **extra):
+        d = {"norma": self.norma.id, "unidade": "planta a", "data_inicio": "2026-12-09",
+             "hora_inicio": "08:00", "hora_fim": "17:00", "duracao_min": "60"}
+        d.update(extra)
+        return d
+
+    def test_avisa_e_nao_cria_quando_periodo_coincide(self):
+        r = self.client.post(self.url, self._dados())
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.AuditoriaIso.objects.count(), 1)
+        self.assertEqual(list(r.context["conflitos"]), [self.existente])
+        self.assertContains(r, "Criar mesmo assim")
+
+    def test_confirmacao_cria_mesmo_assim(self):
+        r = self.client.post(self.url, self._dados())
+        r = self.client.post(self.url, self._dados(confirmar_conflito=r.context["assinatura_conflito"]))
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(self.AuditoriaIso.objects.count(), 2)
+
+    def test_confirmacao_vale_so_para_as_mesmas_datas(self):
+        r = self.client.post(self.url, self._dados())
+        assin = r.context["assinatura_conflito"]
+        r = self.client.post(self.url, self._dados(data_inicio="2026-12-08", confirmar_conflito=assin))
+        self.assertEqual(r.status_code, 200)  # datas mudaram: avisa de novo
+        self.assertEqual(self.AuditoriaIso.objects.count(), 1)
+
+    def test_sem_conflito_outra_unidade_periodo_livre_ou_arquivada(self):
+        self.assertEqual(self.client.post(self.url, self._dados(unidade="Planta B")).status_code, 302)
+        self.assertEqual(self.client.post(self.url, self._dados(data_inicio="2026-12-10")).status_code, 302)
+        self.existente.arquivada = True
+        self.existente.save()
+        self.assertEqual(self.client.post(self.url, self._dados(data_inicio="2026-12-08")).status_code, 302)
