@@ -666,6 +666,7 @@ NAV_STRUCTURE = [
                         "nome": "Atualizar Atendimento (Dados, Cotação, Datas, Chegada, Rastreio)",
                         "view_name": [
                             "metrologia:atendimento_atualizar_dados",
+                            "metrologia:atendimento_desconsiderar",
                             "metrologia:atendimento_atualizar_cotacao",
                             "metrologia:atendimento_atualizar_data_calibracao",
                             "metrologia:atendimento_atualizar_chegada",

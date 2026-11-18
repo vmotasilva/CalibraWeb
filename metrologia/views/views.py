@@ -1323,7 +1323,7 @@ def registrar_ocorrencia(request):
         else:
             messages.success(request, 'Ocorrência registrada com sucesso.')
 
-    return redirect(request.META.get('HTTP_REFERER', 'metrologia:modulo_metrologia'))
+    return redirect(request.META.get('HTTP_REFERER', 'modulo_metrologia'))
 
 @login_required
 def atribuir_responsavel_ocorrencia(request, ocorrencia_id):

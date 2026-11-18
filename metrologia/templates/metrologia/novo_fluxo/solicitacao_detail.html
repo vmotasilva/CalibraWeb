@@ -222,52 +222,43 @@
                     {% if tipo_group.grouper == 'NO_LOCAL' %}
                         {% regroup tipo_group.list by item_cotacao.cotacao_fornecedor as atendimentos_por_cotacao %}
                         {% for cotacao_group in atendimentos_por_cotacao %}
-                            <div class="mb-3 border rounded">
+                        {% with base=cotacao_group.list.0 %}
+                            <div class="mb-3 border rounded" data-grupo="NO_LOCAL-{{ cotacao_group.grouper.id }}">
                                 <div class="d-flex justify-content-between align-items-center p-2 bg-light cursor-pointer" onclick="toggleCotacao(this)" style="cursor: pointer;">
                                     <div class="d-flex align-items-center flex-grow-1">
-                                        <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                                        <i class="bi bi-chevron-up toggle-icon me-2"></i>
                                         <h6 class="text-muted mb-0">
                                             <strong>Cotação {{ cotacao_group.grouper.numero }}</strong> - {{ cotacao_group.grouper.fornecedor.empresa }}
                                         </h6>
                                     </div>
                                     <small class="text-muted">{{ cotacao_group.list|length }} item(ns)</small>
                                 </div>
-                                <div class="cotacao-content p-2" style="display: none;">
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-2">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Instrumento</th>
-                                                    <th>Data Prevista</th>
-                                                    <th>Data Realizada</th>
-                                                    <th>Técnico Responsável</th>
-                                                    <th>Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for atendimento in cotacao_group.list %}
-                                                    <tr>
-                                                        <td><strong>{{ atendimento.item_solicitacao.instrumento.tag }}</strong></td>
-                                                        <td>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</td>
-                                                        <td><input type="date" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="data_realizada"></td>
-                                                        <td><input type="text" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="tecnico" placeholder="Técnico"></td>
-                                                        <td>
-                                                            <a href="{% url 'metrologia:atendimento_detail' atendimento.id %}" class="btn btn-sm btn-outline-primary" title="Detalhes">
-                                                                <i class="bi bi-eye"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
+                                <div class="cotacao-content p-2" style="display: block;">
+                                    <div class="row g-2 mb-3 p-2 bg-light rounded align-items-end">
+                                        <div class="col-md-3">
+                                            <label class="form-label small fw-bold mb-1">Data de realização</label>
+                                            <input type="date" class="form-control form-control-sm" data-grupo-campo="data_realizada" value="{{ base.data_realizada|date:'Y-m-d' }}">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label class="form-label small fw-bold mb-1">Técnico responsável</label>
+                                            <input type="text" class="form-control form-control-sm" data-grupo-campo="tecnico" value="{{ base.tecnico_responsavel|default:'' }}" placeholder="Nome do técnico">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label small fw-bold mb-1">Telefone do técnico</label>
+                                            <input type="tel" class="form-control form-control-sm" data-grupo-campo="tecnico_telefone" value="{{ base.tecnico_telefone|default:'' }}" placeholder="(00) 00000-0000">
+                                        </div>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-success" onclick="salvarDadosAtendimento('NO_LOCAL', {{ cotacao_group.grouper.id }})">
+                                    {% include "metrologia/novo_fluxo/_atendimento_instrumentos.html" with grupo=cotacao_group.list tipo="NO_LOCAL" %}
+                                    <button type="button" class="btn btn-sm btn-success" onclick="salvarGrupoAtendimento('NO_LOCAL', {{ cotacao_group.grouper.id }}, this)">
                                         <i class="bi bi-save"></i> Salvar {{ cotacao_group.grouper.numero }}
                                     </button>
                                 </div>
                             </div>
+                        {% endwith %}
                         {% endfor %}
                     {% endif %}
+                {% empty %}
+                    
                 {% endfor %}
             </div>
             {% endif %}
@@ -285,54 +276,43 @@
                     {% if tipo_group.grouper == 'NO_LABORATORIO' %}
                         {% regroup tipo_group.list by item_cotacao.cotacao_fornecedor as atendimentos_por_cotacao2 %}
                         {% for cotacao_group in atendimentos_por_cotacao2 %}
-                            <div class="mb-3 border rounded">
+                        {% with base=cotacao_group.list.0 %}
+                            <div class="mb-3 border rounded" data-grupo="NO_LABORATORIO-{{ cotacao_group.grouper.id }}">
                                 <div class="d-flex justify-content-between align-items-center p-2 bg-light cursor-pointer" onclick="toggleCotacao(this)" style="cursor: pointer;">
                                     <div class="d-flex align-items-center flex-grow-1">
-                                        <i class="bi bi-chevron-down toggle-icon me-2"></i>
+                                        <i class="bi bi-chevron-up toggle-icon me-2"></i>
                                         <h6 class="text-muted mb-0">
                                             <strong>Cotação {{ cotacao_group.grouper.numero }}</strong> - {{ cotacao_group.grouper.fornecedor.empresa }}
                                         </h6>
                                     </div>
                                     <small class="text-muted">{{ cotacao_group.list|length }} item(ns)</small>
                                 </div>
-                                <div class="cotacao-content p-2" style="display: none;">
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-2">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Instrumento</th>
-                                                    <th>Data Envio Previsto</th>
-                                                    <th>Data Envio Realizado</th>
-                                                    <th>Data Retorno Previsto</th>
-                                                    <th>Data Retorno Realizado</th>
-                                                    <th>Observações</th>
-                                                    <th>Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for atendimento in cotacao_group.list %}
-                                                    <tr>
-                                                        <td><strong>{{ atendimento.item_solicitacao.instrumento.tag }}</strong></td>
-                                                        <td>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</td>
-                                                        <td><input type="date" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="data_envio"></td>
-                                                        <td><input type="date" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="data_retorno_previsto"></td>
-                                                        <td><input type="date" class="form-control form-control-sm" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="data_retorno"></td>
-                                                        <td><textarea class="form-control form-control-sm" rows="1" placeholder="Observações" data-cotacao-id="{{ cotacao_group.grouper.id }}" data-atendimento="{{ atendimento.id }}" data-field-type="observacoes"></textarea></td>
-                                                        <td>
-                                                            <a href="{% url 'metrologia:atendimento_detail' atendimento.id %}" class="btn btn-sm btn-outline-primary" title="Detalhes">
-                                                                <i class="bi bi-eye"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
+                                <div class="cotacao-content p-2" style="display: block;">
+                                    <div class="row g-2 mb-3 p-2 bg-light rounded align-items-end">
+                                        <div class="col-md-3">
+                                            <label class="form-label small fw-bold mb-1">Data de envio</label>
+                                            <input type="date" class="form-control form-control-sm" data-grupo-campo="data_envio" value="{{ base.data_envio|date:'Y-m-d' }}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small fw-bold mb-1">Previsão de retorno</label>
+                                            <input type="date" class="form-control form-control-sm" data-grupo-campo="data_retorno_previsto" value="{{ base.data_retorno_previsto|date:'Y-m-d' }}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small fw-bold mb-1">Retorno realizado</label>
+                                            <input type="date" class="form-control form-control-sm" data-grupo-campo="data_retorno" value="{{ base.data_retorno|date:'Y-m-d' }}">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label small fw-bold mb-1">Observações</label>
+                                            <input type="text" class="form-control form-control-sm" data-grupo-campo="observacoes" value="{{ base.observacoes|default:'' }}" placeholder="Opcional">
+                                        </div>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-success" onclick="salvarDadosAtendimento('NO_LABORATORIO', {{ cotacao_group.grouper.id }})">
+                                    {% include "metrologia/novo_fluxo/_atendimento_instrumentos.html" with grupo=cotacao_group.list tipo="NO_LABORATORIO" %}
+                                    <button type="button" class="btn btn-sm btn-success" onclick="salvarGrupoAtendimento('NO_LABORATORIO', {{ cotacao_group.grouper.id }}, this)">
                                         <i class="bi bi-save"></i> Salvar {{ cotacao_group.grouper.numero }}
                                     </button>
                                 </div>
                             </div>
+                        {% endwith %}
                         {% endfor %}
                     {% endif %}
                 {% empty %}
@@ -365,39 +345,8 @@
                                     <small class="text-muted">{{ cotacao_group.list|length }} item(ns)</small>
                                 </div>
                                 <div class="cotacao-content p-2" style="display: none;">
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered mb-2">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Instrumento</th>
-                                                    <th>Data Prevista</th>
-                                                    <th>Data Realizada</th>
-                                                    <th>Ações</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for atendimento in cotacao_group.list %}
-                                                    <tr>
-                                                        <td><strong>{{ atendimento.item_solicitacao.instrumento.tag }}</strong></td>
-                                                        <td>{{ atendimento.data_prevista_atendimento|date:"d/m/Y" }}</td>
-                                                        <td class="bg-light">
-                                                            {% if atendimento.data_chegada %}
-                                                                <span class="badge bg-success">{{ atendimento.data_chegada|date:"d/m/Y" }}</span>
-                                                            {% else %}
-                                                                <span class="text-muted small">-</span>
-                                                            {% endif %}
-                                                        </td>
-                                                        <td>
-                                                            <a href="{% url 'metrologia:atendimento_detail' atendimento.id %}" class="btn btn-sm btn-outline-primary" title="Detalhes">
-                                                                <i class="bi bi-eye"></i>
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    
+                                    {% include "metrologia/novo_fluxo/_atendimento_instrumentos.html" with grupo=cotacao_group.list tipo="COMPRAR_NOVO" %}
+
                                     <!-- Observações da Cotação -->
                                     <div class="mt-3 p-2 bg-light rounded">
                                         <small class="text-muted"><strong>Observações da Cotação:</strong></small>
@@ -1092,97 +1041,6 @@ function salvarAtualizacaoCotacao(event, cotacaoId) {
     });
 }
 
-function salvarDadosAtendimento(tipo, cotacaoId) {
-    console.log('=== INICIANDO SALVAMENTO ===');
-    console.log('Tipo:', tipo);
-    console.log('Cotação ID:', cotacaoId);
-    
-    // Mostrar modal de confirmação
-    const confirmacao = confirm(`Tem certeza que deseja salvar os dados desta cotação?\n\nTipo: ${tipo}\nCotação: ${cotacaoId}`);
-    if (!confirmacao) {
-        console.log('Salvamento cancelado pelo usuário');
-        return;
-    }
-    
-    // Coletar todos os inputs para esta cotação
-    const cotacaoInputs = document.querySelectorAll(`[data-cotacao-id="${cotacaoId}"]`);
-    console.log('Inputs encontrados:', cotacaoInputs.length);
-    
-    let campos = {};
-    let totalCampos = 0;
-    
-    // Coletar dados de todos os atendimentos desta cotação
-    cotacaoInputs.forEach(field => {
-        const atendimentoId = field.dataset.atendimento;
-        const fieldType = field.dataset.fieldType;
-        
-        if (!campos[atendimentoId]) {
-            campos[atendimentoId] = {};
-        }
-        
-        campos[atendimentoId][fieldType] = field.value;
-        totalCampos++;
-    });
-    
-    console.log('Total de campos coletados:', totalCampos);
-    console.log('Dados coletados:', campos);
-    
-    if (totalCampos === 0 || Object.keys(campos).length === 0) {
-        alert('⚠️ Nenhum dado foi preenchido para salvar.');
-        return;
-    }
-    
-    // Mostrar indicador de progresso
-    const btn = event.target.closest('button');
-    const btnTextoOriginal = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
-    
-    // Preparar dados para envio
-    const data = {
-        tipo: tipo,
-        cotacao_id: cotacaoId,
-        campos: campos
-    };
-    
-    console.log('Enviando POST com dados:', data);
-    
-    // Enviar dados via AJAX
-    fetch('{% url "metrologia:atendimento_atualizar_dados" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(result => {
-        console.log('Response result:', result);
-        btn.disabled = false;
-        btn.innerHTML = btnTextoOriginal;
-        
-        if (result.success) {
-            alert(`✅ Sucesso!\n\n${result.atualizados} atendimento(s) atualizado(s)`);
-            location.reload();
-        } else {
-            alert('❌ Erro ao salvar:\n' + (result.error || result.message || 'Erro desconhecido'));
-        }
-    })
-    .catch(error => {
-        console.error('❌ Erro de requisição:', error);
-        btn.disabled = false;
-        btn.innerHTML = btnTextoOriginal;
-        alert('❌ Erro ao salvar os dados:\n' + error.message);
-    });
-}
-
 // Função para alternar (expandir/recolher) cotações
 function toggleCotacao(headerElement) {
     const content = headerElement.nextElementSibling; // div.cotacao-content
@@ -1205,5 +1063,7 @@ function toggleCotacao(headerElement) {
     }
 }
 </script>
+
+{% include "metrologia/novo_fluxo/_atendimento_modais.html" %}
 
 {% endblock %}
