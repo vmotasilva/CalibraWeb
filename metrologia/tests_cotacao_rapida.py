@@ -41,12 +41,12 @@ class CotacaoRapidaTests(TestCase):
     def test_telas_renderizam_e_mostram_filtro(self):
         self.client.post(reverse("metrologia:solicitacao_create"), {"instrumentos_ids": str(self.a.id)})
         r = self.client.get(reverse("modulo_metrologia"))
-        self.assertContains(r, 'data-category="cotacao"')
-        self.assertContains(r, 'data-em-cotacao="SIM"')
+        self.assertContains(r, 'data-category="acompanhamento"')
+        self.assertContains(r, 'data-acompanhamento="EM_COTACAO"')
         self.assertContains(self.client.get(reverse("metrologia:solicitacao_list")), "SOL-")
         r = self.client.get("/dashboard/")
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, 'data-cat="cotacao"')
+        self.assertContains(r, 'data-cat="acompanhamento"')
 
     def test_detalhe_renderiza_enxuto(self):
         self.client.post(reverse("metrologia:solicitacao_create"), {"instrumentos_ids": str(self.a.id)})
