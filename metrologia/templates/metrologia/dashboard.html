@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 
 {% load nav_access %}
+{% load custom_tags %}
 {% load widget_tweaks %}
 
 {% can_nav_view user 'exportar_instrumentos' 'metrologia' as can_exportar_instrumentos %}
@@ -532,25 +533,30 @@
                             </div>
                         </div>
 
-                        <!-- 9. EM COTAÇÃO -->
+                        <!-- 9. ACOMPANHAMENTO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="form-label small fw-bold text-muted mb-0">EM COTAÇÃO</label>
+                                <label class="form-label small fw-bold text-muted mb-0">ACOMPANHAMENTO</label>
                                 <i class="bi bi-chevron-down"></i>
                             </div>
                             <div class="filter-content">
                                 <div class="d-flex flex-column gap-1">
                                     <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="SIM" data-category="cotacao">
-                                        <label class="form-check-label small text-warning fw-bold">Sim</label>
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="EM_COTACAO" data-category="acompanhamento">
+                                        <label class="form-check-label small text-warning fw-bold">Em cotação</label>
                                     </div>
                                     <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="NAO" data-category="cotacao">
-                                        <label class="form-check-label small fw-bold">Não</label>
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="CALIBRACAO_PROGRAMADA" data-category="acompanhamento">
+                                        <label class="form-check-label small text-primary fw-bold">Calibração programada</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="AGUARDANDO_CERTIFICADO" data-category="acompanhamento">
+                                        <label class="form-check-label small text-danger fw-bold">Calibrado: aguardando certificado</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
                     </div>
 
 </div>
@@ -625,13 +631,13 @@
                             data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                             data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
                             data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
-                            data-em-cotacao="{% if i.id in em_cotacao_ids %}SIM{% else %}NAO{% endif %}"
+                            data-acompanhamento="{% with a=acompanhamento_map|acompanhamento_de:i.id %}{{ a.codigo|default:'' }}{% endwith %}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
                             <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" data-tratativa="{% if i.tratativa_calibracao %}{{ i.tratativa_calibracao }}{% elif i.categoria and i.categoria.tratativa_calibracao %}{{ i.categoria.tratativa_calibracao }}{% else %}INTERNA{% endif %}" /></td>
                             
                             <td class="ps-4 py-2 fw-bold text-primary font-monospace">
                                 {{ i.tag }}
-                                {% if i.id in em_cotacao_ids %}<a href="{% url 'metrologia:solicitacao_list' %}?aba=abertas&q={{ i.tag|urlencode }}" class="badge bg-warning text-dark text-decoration-none ms-1" style="font-size:0.65rem;" title="Instrumento em cotação"><i class="bi bi-hourglass-split"></i> Em cotação</a>{% endif %}
+                                {% with a=acompanhamento_map|acompanhamento_de:i.id %}{% if a %}<a href="{{ a.url }}" class="badge {% if a.codigo == 'EM_COTACAO' %}bg-warning text-dark{% elif a.codigo == 'CALIBRACAO_PROGRAMADA' %}bg-primary{% else %}bg-danger{% endif %} text-decoration-none ms-1" style="font-size:0.65rem;" title="{{ a.label }}"><i class="bi {% if a.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif a.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% else %}bi-file-earmark-medical{% endif %}"></i> {{ a.label }}</a>{% endif %}{% endwith %}
                             </td>
 
                             <td class="py-2">
@@ -792,7 +798,7 @@
                     data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                     data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
                     data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
-                            data-em-cotacao="{% if i.id in em_cotacao_ids %}SIM{% else %}NAO{% endif %}"
+                            data-acompanhamento="{% with a=acompanhamento_map|acompanhamento_de:i.id %}{{ a.codigo|default:'' }}{% endwith %}"
                     data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
                     
                     <!-- Topo do Card: Checkbox, TAG, Status e Botões de Ação -->
@@ -800,7 +806,7 @@
                         <div class="d-flex align-items-center gap-2 flex-wrap">
                             <input type="checkbox" class="row-select form-check-input mt-0" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" data-tratativa="{% if i.tratativa_calibracao %}{{ i.tratativa_calibracao }}{% elif i.categoria and i.categoria.tratativa_calibracao %}{{ i.categoria.tratativa_calibracao }}{% else %}INTERNA{% endif %}" />
                             <span class="fw-bold text-primary font-monospace fs-6">{{ i.tag }}</span>
-                            {% if i.id in em_cotacao_ids %}<span class="badge bg-warning text-dark" style="font-size:0.65rem;"><i class="bi bi-hourglass-split"></i> Em cotação</span>{% endif %}
+                            {% with a=acompanhamento_map|acompanhamento_de:i.id %}{% if a %}<a href="{{ a.url }}" class="badge {% if a.codigo == 'EM_COTACAO' %}bg-warning text-dark{% elif a.codigo == 'CALIBRACAO_PROGRAMADA' %}bg-primary{% else %}bg-danger{% endif %} text-decoration-none " style="font-size:0.65rem;" title="{{ a.label }}"><i class="bi {% if a.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif a.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% else %}bi-file-earmark-medical{% endif %}"></i> {{ a.label }}</a>{% endif %}{% endwith %}
                             {% if i.ativo %}
                                 <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-0.5 fw-semibold" style="font-size: 0.68rem;">
                                     <i class="bi bi-check-circle-fill me-0.5"></i> Ativo
@@ -1053,7 +1059,7 @@ function filtrar() {
     const countDisplay = document.getElementById('countDisplay');
     const termoBusca = searchInput.value.toLowerCase();
     
-    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [], ocorrencia: [], cotacao: [] };
+    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [], ocorrencia: [], acompanhamento: [] };
     
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
@@ -1073,7 +1079,7 @@ function filtrar() {
         if (mostrar && filtrosAtivos.resultado.length > 0 && !filtrosAtivos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && filtrosAtivos.periodo.length > 0 && !filtrosAtivos.periodo.includes(row.dataset.periodo)) mostrar = false;
-        if (mostrar && filtrosAtivos.cotacao.length > 0 && !filtrosAtivos.cotacao.includes(row.dataset.emCotacao)) mostrar = false;
+        if (mostrar && filtrosAtivos.acompanhamento.length > 0 && !filtrosAtivos.acompanhamento.includes(row.dataset.acompanhamento || '')) mostrar = false;
         if (mostrar && filtrosAtivos.ocorrencia.length > 0) {
             var ocorrenciaData = row.dataset.ocorrencia || '';
             var temAberta = ocorrenciaData.includes("COM_ABERTA");
@@ -1854,7 +1860,7 @@ function abrirModalNovaOcorrenciaDoVisualizar() {
 function atualizarFiltrosDisponiveis() {
     // Coleta os filtros ativos (excluindo categoria "periodo" que é o que queremos atualizar dinamicamente)
     var termoBusca = (document.getElementById('searchInput') || {value:''}).value.toLowerCase();
-    var ativos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], ocorrencia: [], cotacao: [] };
+    var ativos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], ocorrencia: [], acompanhamento: [] };
     document.querySelectorAll('.filter-checkbox').forEach(function(cb) {
         var cat = cb.dataset.category;
         if (cb.checked && cat !== 'periodo') {
@@ -1873,7 +1879,7 @@ function atualizarFiltrosDisponiveis() {
         if (mostrar && ativos.setor.length > 0 && !ativos.setor.includes(row.dataset.setor)) mostrar = false;
         if (mostrar && ativos.resultado.length > 0 && !ativos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && ativos.acao.length > 0 && !ativos.acao.includes(row.dataset.acao)) mostrar = false;
-        if (mostrar && ativos.cotacao.length > 0 && !ativos.cotacao.includes(row.dataset.emCotacao)) mostrar = false;
+        if (mostrar && ativos.acompanhamento.length > 0 && !ativos.acompanhamento.includes(row.dataset.acompanhamento || '')) mostrar = false;
         if (mostrar && ativos.ocorrencia.length > 0) {
             var temAberta = row.dataset.ocorrencia.includes("COM_ABERTA");
             var querCom = ativos.ocorrencia.includes("COM_ABERTA");

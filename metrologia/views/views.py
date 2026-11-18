@@ -282,7 +282,7 @@ def imp_historico_view(request):
 @login_required
 def modulo_metrologia_view(request):
     """Dashboard principal do módulo de Metrologia."""
-    from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao
+    from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao, acompanhamento_instrumentos
     instrumentos = Instrumento.objects.all().select_related('categoria','setor').prefetch_related('historicos', 'ocorrencias').order_by("tag")
 
     # Filtro de status
@@ -349,6 +349,7 @@ def modulo_metrologia_view(request):
         "periodos_filtro": periodos_filtro,
         "templates_etiquetas_disponiveis": templates_etiquetas,
         "em_cotacao_ids": set(instrumentos_em_cotacao().keys()),
+        "acompanhamento_map": acompanhamento_instrumentos(),
     }
     return render(request, "metrologia/dashboard.html", ctx)
 
@@ -1840,8 +1841,9 @@ def get_metrologia_dashboard_data():
 
     hoje = date.today()
     trinta_dias = hoje + timedelta(days=30)
-    from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao
+    from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao, acompanhamento_instrumentos
     em_cotacao_map = instrumentos_em_cotacao()
+    acompanhamento_map = acompanhamento_instrumentos()
     
     ocorrencias_abertas_prefetch = Prefetch(
         'ocorrencias',
@@ -1996,6 +1998,7 @@ def get_metrologia_dashboard_data():
             'em_cotacao': inst.id in em_cotacao_map,
             'cotacao_id': em_cotacao_map[inst.id][0] if inst.id in em_cotacao_map else None,
             'cotacao_numero': em_cotacao_map[inst.id][1] if inst.id in em_cotacao_map else '',
+            'acompanhamento': acompanhamento_map.get(inst.id),
         })
 
     # Periodos filtro logic

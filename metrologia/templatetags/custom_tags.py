@@ -47,3 +47,12 @@ def safe_filesize(file_field):
             return format_html('<span class="text-danger"><i class="bi bi-exclamation-circle"></i> Arquivo não encontrado</span>')
     except Exception:
         return format_html('<span class="text-warning"><i class="bi bi-question-circle"></i> Tamanho indisponível</span>')
+
+
+@register.filter
+def acompanhamento_de(mapping, instrumento_id):
+    """Item do mapa de acompanhamento ({id: {codigo, label, url}}) para o instrumento."""
+    try:
+        return (mapping or {}).get(instrumento_id)
+    except AttributeError:
+        return None

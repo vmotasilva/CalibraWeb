@@ -225,11 +225,30 @@
                 <p class="mb-2"><strong>2. Execução:</strong> iniciada em {{ cotacao.data_inicio_execucao|date:"d/m/Y H:i" }}</p>
                 <p class="mb-2"><strong>3. Conclusão:</strong> {{ cotacao.data_conclusao_servico|date:"d/m/Y H:i" }}
                     {% if cotacao.concluido_por %}por {{ cotacao.concluido_por.get_full_name|default:cotacao.concluido_por.username }}{% endif %}</p>
+                {% if historicos_gerados %}
+                <div class="alert alert-warning">
+                    <strong><i class="bi bi-exclamation-triangle"></i> Dados do certificado de calibração pendentes</strong>
+                    <p class="small mb-2">Os históricos foram gerados, mas faltam número, arquivo/link do certificado e resultado.</p>
+                    <ul class="mb-0">
+                    {% for h in historicos_gerados %}
+                        <li>
+                            <strong>{{ h.instrumento.tag }}</strong> ({{ h.data_calibracao|date:"d/m/Y" }}) —
+                            {% if h.aguardando_certificado %}
+                                <a href="{% url 'editar_historico_calibracao' h.id %}">preencher certificado</a>
+                            {% else %}
+                                <span class="text-success"><i class="bi bi-check-circle"></i> certificado preenchido</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
                 <label class="form-label fw-bold">Relatório de conclusão</label>
                 <pre class="border rounded p-3 bg-light small" style="white-space:pre-wrap">{{ cotacao.relatorio_conclusao }}</pre>
                 {% if cotacao.observacoes_conclusao %}
                     <p><strong>Observações finais:</strong> {{ cotacao.observacoes_conclusao }}</p>
                 {% endif %}
+                {% if not historicos_gerados %}
                 <form method="post" action="{% url 'metrologia:cotacao_servico_concluir' cotacao.id %}" class="d-inline">
                     {% csrf_token %}
                     <button type="submit" name="acao" value="reabrir" class="btn btn-sm btn-outline-secondary"
@@ -237,6 +256,7 @@
                         <i class="bi bi-arrow-counterclockwise"></i> Reabrir
                     </button>
                 </form>
+                {% endif %}
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
             {% endif %}
         </div>

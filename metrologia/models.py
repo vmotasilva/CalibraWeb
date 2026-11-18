@@ -486,6 +486,23 @@ class HistoricoCalibracao(models.Model):
         help_text='Atendimento da cotação que originou esta calibração'
     )
     
+    # Origem: item da cotação de fornecedor cujo serviço foi concluído
+    item_cotacao = models.ForeignKey(
+        'ItemCotacao',
+        on_delete=models.SET_NULL,
+        related_name='historicos_gerados',
+        verbose_name='Item da Cotação de origem',
+        null=True,
+        blank=True,
+    )
+    # Calibração gerada na conclusão do serviço, ainda sem os dados do certificado.
+    # Limpo automaticamente quando número e arquivo/link do certificado são informados.
+    aguardando_certificado = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name='Aguardando dados do certificado',
+    )
+
     data_calibracao = models.DateField()
     data_aprovacao = models.DateField(default=date.today)
     numero_certificado = models.CharField(max_length=100, default="S/N")
@@ -541,7 +558,16 @@ class HistoricoCalibracao(models.Model):
     observacoes = models.TextField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def certificado_preenchido(self):
+        numero = (self.numero_certificado or '').strip().upper()
+        tem_numero = bool(numero) and numero != 'S/N'
+        return tem_numero and bool(self.certificado or self.link_certificado)
+
     def save(self, *args, **kwargs):
+        if self.aguardando_certificado and self.certificado_preenchido:
+            self.aguardando_certificado = False
+
         # Auto-calculate resultado based on error vs tolerance
         if self.erro_encontrado is not None and self.tolerancia_usada is not None:
             if abs(self.erro_encontrado) <= self.tolerancia_usada:

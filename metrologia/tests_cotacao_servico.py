@@ -11,8 +11,7 @@ from metrologia.models import (
 from qms.models import OcorrenciaInstrumento
 
 
-class CotacaoServicoTests(TestCase):
-    """Planejamento -> Execução -> Conclusão do serviço de uma cotação aceita."""
+class BaseCotacaoServico(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user("u", password="p")
@@ -36,6 +35,11 @@ class CotacaoServicoTests(TestCase):
     def _iniciar(self):
         self._post("cotacao_servico_agendar", {"data_visita": "2026-12-01T09:30", "acao": "iniciar"})
         self.cot.refresh_from_db()
+
+
+
+class CotacaoServicoTests(BaseCotacaoServico):
+    """Planejamento -> Execução -> Conclusão do serviço de uma cotação aceita."""
 
     def test_detalhe_renderiza_em_cada_etapa(self):
         url = reverse("metrologia:cotacao_fornecedor_detail", args=[self.cot.id])
@@ -116,6 +120,76 @@ class CotacaoServicoTests(TestCase):
         self.assertContains(
             self.client.get(reverse("metrologia:cotacao_fornecedor_detail", args=[self.cot.id])),
             "Relatório de conclusão")
+
+    def test_reabrir_sem_historico_gerado(self):
+        self._iniciar()
+        ia, ib = self.itens
+        self._post("cotacao_servico_executar", {
+            f"status_{ia.id}": "NAO_ATENDIDO", f"status_{ib.id}": "NAO_ATENDIDO"})
+        self._post("cotacao_servico_concluir", {})
+        self.cot.refresh_from_db()
+        self.assertEqual(self.cot.etapa_servico, "CONCLUIDO")
         self._post("cotacao_servico_concluir", {"acao": "reabrir"})
         self.cot.refresh_from_db()
         self.assertEqual(self.cot.etapa_servico, "EXECUCAO")
+
+
+class HistoricoEAcompanhamentoTests(BaseCotacaoServico):
+    """Geração de histórico na conclusão e status de acompanhamento nos filtros."""
+
+    def _executar_e_concluir(self, atendido_b=False):
+        self._iniciar()
+        ia, ib = self.itens
+        self._post("cotacao_servico_executar", {
+            f"status_{ia.id}": "ATENDIDO",
+            f"status_{ib.id}": "ATENDIDO" if atendido_b else "NAO_ATENDIDO"})
+        self._post("cotacao_servico_concluir", {})
+
+    def test_conclusao_gera_historico_aguardando_certificado(self):
+        from metrologia.models import HistoricoCalibracao
+        self._executar_e_concluir()
+        h = HistoricoCalibracao.objects.get()
+        self.assertEqual((h.instrumento_id, h.item_cotacao_id), (self.a.id, self.itens[0].id))
+        self.assertTrue(h.aguardando_certificado)
+        self.assertEqual(h.numero_certificado, "S/N")
+        self.assertEqual(h.fornecedor, "Lab X")
+        self.assertIn("PENDENTE", h.observacoes)
+        self.assertIn("PENDENTE: dados do certificado", self.cot.__class__.objects.get().relatorio_conclusao)
+        r = self.client.get(reverse("metrologia:cotacao_fornecedor_detail", args=[self.cot.id]))
+        self.assertContains(r, "Dados do certificado de calibração pendentes")
+        # reabrir fica bloqueado depois de gerar histórico
+        self._post("cotacao_servico_concluir", {"acao": "reabrir"})
+        self.cot.refresh_from_db()
+        self.assertEqual(self.cot.etapa_servico, "CONCLUIDO")
+
+    def test_flag_limpa_ao_preencher_certificado(self):
+        from metrologia.models import HistoricoCalibracao
+        self._executar_e_concluir()
+        h = HistoricoCalibracao.objects.get()
+        h.numero_certificado = "CERT-1"
+        h.save()
+        h.refresh_from_db()
+        self.assertTrue(h.aguardando_certificado)  # falta arquivo/link
+        h.link_certificado = "https://exemplo.com/c.pdf"
+        h.save()
+        h.refresh_from_db()
+        self.assertFalse(h.aguardando_certificado)
+
+    def test_acompanhamento_por_status(self):
+        from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos
+        self.assertEqual(acompanhamento_instrumentos()[self.a.id]["codigo"], "EM_COTACAO")
+        self._post("cotacao_servico_agendar", {"data_visita": "2026-12-01T09:30", "acao": "agendar"})
+        self.assertEqual(acompanhamento_instrumentos()[self.a.id]["codigo"], "CALIBRACAO_PROGRAMADA")
+        self._executar_e_concluir(atendido_b=True)
+        mapa = acompanhamento_instrumentos()
+        self.assertEqual(mapa[self.a.id]["codigo"], "AGUARDANDO_CERTIFICADO")
+        self.assertEqual(mapa[self.b.id]["codigo"], "AGUARDANDO_CERTIFICADO")
+
+    def test_telas_exibem_filtro_e_atributo(self):
+        self._post("cotacao_servico_agendar", {"data_visita": "2026-12-01T09:30", "acao": "agendar"})
+        r = self.client.get(reverse("modulo_metrologia"))
+        self.assertContains(r, 'value="AGUARDANDO_CERTIFICADO" data-category="acompanhamento"')
+        self.assertContains(r, 'data-acompanhamento="CALIBRACAO_PROGRAMADA"')
+        r = self.client.get("/dashboard/")
+        self.assertContains(r, 'data-acompanhamento="CALIBRACAO_PROGRAMADA"')
+        self.assertContains(r, "Calibração programada")
