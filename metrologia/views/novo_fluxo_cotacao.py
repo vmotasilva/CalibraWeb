@@ -594,13 +594,217 @@ def cotacao_fornecedor_detail(request, pk):
     
     # Calcula valor total
     valor_total = sum(item.valor_total for item in itens)
-    
+
+    from qms.models import OcorrenciaInstrumento
+    em_execucao = cotacao.etapa_servico == 'EXECUCAO'
     context = {
         'cotacao': cotacao,
         'itens': itens,
         'valor_total': valor_total,
+        'valor_a_pagar': cotacao.get_valor_a_pagar(),
+        'execucao_registrada': any(i.status_execucao != 'PENDENTE' for i in itens),
+        'tipos_ocorrencia': OcorrenciaInstrumento.TIPO_OCORRENCIA,
+        'itens_pendentes': sum(1 for i in itens if i.status_execucao == 'PENDENTE'),
+        'relatorio_previa': gerar_relatorio_conclusao(cotacao) if em_execucao else '',
     }
     return render(request, 'metrologia/novo_fluxo/cotacao_fornecedor_detail.html', context)
+
+
+# ==============================================================================
+# EXECUÇÃO DO SERVIÇO COTADO: PLANEJAMENTO -> EXECUÇÃO -> CONCLUSÃO
+# ==============================================================================
+
+def _fmt_brl(valor):
+    """Formata Decimal como R$ 1.234,56."""
+    texto = f"{Decimal(valor):,.2f}"
+    return "R$ " + texto.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def gerar_relatorio_conclusao(cotacao):
+    """
+    Monta o relatório de conclusão a partir dos dados das etapas anteriores
+    (visita planejada, instrumentos atendidos, valores praticados e ocorrências).
+    """
+    from django.utils import timezone as tz
+    itens = list(cotacao.itens.select_related('instrumento', 'ocorrencia'))
+    atendidos = [i for i in itens if i.status_execucao == 'ATENDIDO']
+    nao_atendidos = [i for i in itens if i.status_execucao == 'NAO_ATENDIDO']
+    pendentes = [i for i in itens if i.status_execucao == 'PENDENTE']
+
+    def _dt(v):
+        return tz.localtime(v).strftime('%d/%m/%Y %H:%M') if v else '-'
+
+    linhas = [
+        f"RELATÓRIO DE CONCLUSÃO - {cotacao.numero}",
+        f"Fornecedor: {cotacao.fornecedor.empresa}",
+        "",
+        "1. PLANEJAMENTO",
+        f"Visita agendada para: {_dt(cotacao.data_visita)}",
+        "",
+        "2. EXECUÇÃO",
+        f"Início da execução: {_dt(cotacao.data_inicio_execucao)}",
+        f"Instrumentos cotados: {len(itens)} | Atendidos: {len(atendidos)} | "
+        f"Não atendidos: {len(nao_atendidos)} | Pendentes: {len(pendentes)}",
+        "",
+    ]
+    if atendidos:
+        linhas.append("Instrumentos atendidos:")
+        for i in atendidos:
+            extra = ""
+            if i.valor_cobrado != i.valor_total:
+                extra = f" (cotado {_fmt_brl(i.valor_total)})"
+            linhas.append(f"- {i.instrumento.tag}: {_fmt_brl(i.valor_cobrado)}{extra}")
+            if i.observacao_execucao:
+                linhas.append(f"    Obs.: {i.observacao_execucao}")
+        linhas.append("")
+    if nao_atendidos:
+        linhas.append("Instrumentos NÃO atendidos:")
+        for i in nao_atendidos:
+            linhas.append(f"- {i.instrumento.tag}" + (f": {i.observacao_execucao}" if i.observacao_execucao else ""))
+        linhas.append("")
+    com_oc = [i for i in itens if i.ocorrencia_id]
+    if com_oc:
+        linhas.append("Ocorrências abertas:")
+        for i in com_oc:
+            oc = i.ocorrencia
+            linhas.append(f"- {i.instrumento.tag}: #{oc.pk} {oc.get_tipo_display()} - {oc.descricao}")
+        linhas.append("")
+    linhas += [
+        "3. CONCLUSÃO",
+        f"Valor cotado: {_fmt_brl(sum((i.valor_total for i in itens), Decimal('0.00')))}",
+        f"Valor a pagar (conforme praticado): {_fmt_brl(cotacao.get_valor_a_pagar())}",
+    ]
+    return "\n".join(linhas)
+
+
+def _redirect_cotacao(cotacao):
+    return redirect('metrologia:cotacao_fornecedor_detail', pk=cotacao.id)
+
+
+@login_required
+@require_POST
+def cotacao_servico_agendar(request, pk):
+    """PLANEJAMENTO: define data/hora da visita; 'iniciar' avança para a Execução."""
+    cotacao = get_object_or_404(CotacaoFornecedor, pk=pk)
+    if not cotacao.aprovada:
+        messages.error(request, "Apenas cotações aceitas podem ser agendadas.")
+        return _redirect_cotacao(cotacao)
+    if cotacao.etapa_servico == 'CONCLUIDO':
+        messages.error(request, "Serviço já concluído.")
+        return _redirect_cotacao(cotacao)
+
+    raw = (request.POST.get('data_visita') or '').strip()
+    if raw:
+        try:
+            dt = datetime.strptime(raw, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            messages.error(request, "Data/hora da visita inválida.")
+            return _redirect_cotacao(cotacao)
+        cotacao.data_visita = timezone.make_aware(dt) if timezone.is_naive(dt) else dt
+
+    if not cotacao.data_visita:
+        messages.error(request, "Informe a data e hora da visita.")
+        return _redirect_cotacao(cotacao)
+
+    if request.POST.get('acao') == 'iniciar' and cotacao.etapa_servico == 'AGENDAMENTO':
+        cotacao.etapa_servico = 'EXECUCAO'
+        cotacao.data_inicio_execucao = timezone.now()
+        messages.success(request, "Execução iniciada. Confirme os instrumentos atendidos.")
+    else:
+        messages.success(request, "Visita agendada.")
+    cotacao.save()
+    return _redirect_cotacao(cotacao)
+
+
+@login_required
+@require_POST
+def cotacao_servico_executar(request, pk):
+    """EXECUÇÃO: confirma instrumentos atendidos, valores praticados e abre ocorrências."""
+    from qms.models import OcorrenciaInstrumento
+    from shared.inbox import invalidar_cache_inbox
+
+    cotacao = get_object_or_404(CotacaoFornecedor, pk=pk)
+    if cotacao.etapa_servico != 'EXECUCAO':
+        messages.error(request, "A cotação não está na etapa de execução.")
+        return _redirect_cotacao(cotacao)
+
+    ocorrencias_abertas = 0
+    with transaction.atomic():
+        for item in cotacao.itens.select_related('instrumento'):
+            status = request.POST.get(f'status_{item.id}', 'PENDENTE')
+            if status not in ('PENDENTE', 'ATENDIDO', 'NAO_ATENDIDO'):
+                status = 'PENDENTE'
+            item.status_execucao = status
+            item.observacao_execucao = (request.POST.get(f'obs_{item.id}') or '').strip()
+
+            valor_raw = (request.POST.get(f'valor_{item.id}') or '').strip().replace(',', '.')
+            item.valor_praticado = None
+            if valor_raw and status == 'ATENDIDO':
+                try:
+                    valor = Decimal(valor_raw)
+                    if valor >= 0:
+                        item.valor_praticado = valor
+                except Exception:
+                    messages.warning(request, f"Valor inválido para {item.instrumento.tag}; mantido o cotado.")
+
+            if request.POST.get(f'ocorrencia_{item.id}') and not item.ocorrencia_id:
+                tipo = request.POST.get(f'ocorrencia_tipo_{item.id}') or 'OUTRO'
+                if tipo not in dict(OcorrenciaInstrumento.TIPO_OCORRENCIA):
+                    tipo = 'OUTRO'
+                descricao = (request.POST.get(f'ocorrencia_desc_{item.id}') or '').strip()
+                if not descricao:
+                    messages.warning(request, f"Ocorrência de {item.instrumento.tag} não aberta: descreva o problema.")
+                else:
+                    item.ocorrencia = OcorrenciaInstrumento.objects.create(
+                        instrumento=item.instrumento,
+                        tipo=tipo,
+                        descricao=f"[{cotacao.numero}] {descricao}",
+                        data_ocorrencia=timezone.localdate(),
+                        usuario_responsavel=request.user,
+                        status='ABERTA',
+                    )
+                    ocorrencias_abertas += 1
+            item.save()
+
+    invalidar_cache_inbox(request.user)
+    msg = "Execução salva."
+    if ocorrencias_abertas:
+        msg += f" {ocorrencias_abertas} ocorrência(s) aberta(s)."
+    messages.success(request, msg)
+    return _redirect_cotacao(cotacao)
+
+
+@login_required
+@require_POST
+def cotacao_servico_concluir(request, pk):
+    """CONCLUSÃO: finaliza o serviço e grava o relatório gerado das etapas anteriores."""
+    cotacao = get_object_or_404(CotacaoFornecedor, pk=pk)
+    acao = request.POST.get('acao', 'concluir')
+
+    if acao == 'reabrir':
+        if cotacao.etapa_servico == 'CONCLUIDO':
+            cotacao.etapa_servico = 'EXECUCAO'
+            cotacao.data_conclusao_servico = None
+            cotacao.concluido_por = None
+            cotacao.save()
+            messages.success(request, "Serviço reaberto para execução.")
+        return _redirect_cotacao(cotacao)
+
+    if cotacao.etapa_servico != 'EXECUCAO':
+        messages.error(request, "A cotação não está na etapa de execução.")
+        return _redirect_cotacao(cotacao)
+    if cotacao.itens.filter(status_execucao='PENDENTE').exists():
+        messages.error(request, "Confirme todos os instrumentos (atendido ou não) antes de concluir.")
+        return _redirect_cotacao(cotacao)
+
+    cotacao.observacoes_conclusao = (request.POST.get('observacoes_conclusao') or '').strip()
+    cotacao.relatorio_conclusao = gerar_relatorio_conclusao(cotacao)
+    cotacao.etapa_servico = 'CONCLUIDO'
+    cotacao.data_conclusao_servico = timezone.now()
+    cotacao.concluido_por = request.user
+    cotacao.save()
+    messages.success(request, "Serviço concluído e relatório gerado.")
+    return _redirect_cotacao(cotacao)
 
 
 

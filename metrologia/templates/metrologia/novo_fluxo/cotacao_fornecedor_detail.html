@@ -54,11 +54,194 @@
                         R$ <strong>{{ valor_total|floatformat:2 }}</strong>
                     </h4>
                     <p class="text-muted">Valor total da cotação</p>
+                    {% if execucao_registrada %}
+                        <h5 class="mb-0 {% if valor_a_pagar != valor_total %}text-warning{% else %}text-success{% endif %}">
+                            R$ <strong>{{ valor_a_pagar|floatformat:2 }}</strong>
+                        </h5>
+                        <p class="text-muted mb-2">Valor a pagar (conforme praticado)</p>
+                    {% endif %}
                     <p><small>{{ itens.count }} item(ns)</small></p>
                 </div>
             </div>
         </div>
     </div>
+
+    {% if cotacao.aprovada %}
+    <!-- ===== EXECUÇÃO DO SERVIÇO: Planejamento > Execução > Conclusão ===== -->
+    <div class="card mb-4" id="servico">
+        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <h6 class="mb-0"><i class="bi bi-clipboard-check"></i> Execução do Serviço</h6>
+            <div class="d-flex gap-2">
+                <span class="badge {% if cotacao.etapa_servico == 'AGENDAMENTO' %}bg-primary{% else %}bg-success{% endif %}">
+                    <i class="bi {% if cotacao.etapa_servico == 'AGENDAMENTO' %}bi-1-circle{% else %}bi-check-circle{% endif %}"></i> 1. Planejamento
+                </span>
+                <span class="badge {% if cotacao.etapa_servico == 'EXECUCAO' %}bg-primary{% elif cotacao.etapa_servico == 'CONCLUIDO' %}bg-success{% else %}bg-secondary{% endif %}">
+                    <i class="bi {% if cotacao.etapa_servico == 'CONCLUIDO' %}bi-check-circle{% else %}bi-2-circle{% endif %}"></i> 2. Execução
+                </span>
+                <span class="badge {% if cotacao.etapa_servico == 'CONCLUIDO' %}bg-success{% else %}bg-secondary{% endif %}">
+                    <i class="bi {% if cotacao.etapa_servico == 'CONCLUIDO' %}bi-check-circle{% else %}bi-3-circle{% endif %}"></i> 3. Conclusão
+                </span>
+            </div>
+        </div>
+        <div class="card-body">
+
+            {# ---------- 1. PLANEJAMENTO ---------- #}
+            {% if cotacao.etapa_servico == 'AGENDAMENTO' %}
+                <h6>1. Planejamento</h6>
+                <form method="post" action="{% url 'metrologia:cotacao_servico_agendar' cotacao.id %}" class="row g-3 align-items-end">
+                    {% csrf_token %}
+                    <div class="col-md-4">
+                        <label for="data_visita" class="form-label fw-bold">Data e hora da visita para atendimento</label>
+                        <input type="datetime-local" class="form-control" id="data_visita" name="data_visita"
+                               value="{{ cotacao.data_visita|date:'Y-m-d\TH:i' }}" required>
+                    </div>
+                    <div class="col-md-8 d-flex flex-wrap gap-2">
+                        <button type="submit" name="acao" value="agendar" class="btn btn-primary">
+                            <i class="bi bi-calendar-check"></i> Salvar agendamento
+                        </button>
+                        {% if cotacao.data_visita %}
+                        <button type="submit" name="acao" value="iniciar" class="btn btn-success">
+                            <i class="bi bi-play-circle"></i> Iniciar execução
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+            {% else %}
+                <p class="mb-3"><strong>1. Planejamento:</strong> visita em
+                    <strong>{{ cotacao.data_visita|date:"d/m/Y H:i" }}</strong>
+                    {% if cotacao.etapa_servico == 'EXECUCAO' %}
+                        <button type="button" class="btn btn-sm btn-link" data-bs-toggle="collapse" data-bs-target="#reagendar">reagendar</button>
+                    {% endif %}
+                </p>
+                {% if cotacao.etapa_servico == 'EXECUCAO' %}
+                <div class="collapse mb-3" id="reagendar">
+                    <form method="post" action="{% url 'metrologia:cotacao_servico_agendar' cotacao.id %}" class="d-flex gap-2">
+                        {% csrf_token %}
+                        <input type="datetime-local" class="form-control w-auto" name="data_visita" value="{{ cotacao.data_visita|date:'Y-m-d\TH:i' }}" required>
+                        <button type="submit" name="acao" value="agendar" class="btn btn-sm btn-primary">Salvar</button>
+                    </form>
+                </div>
+                {% endif %}
+            {% endif %}
+
+            {# ---------- 2. EXECUÇÃO ---------- #}
+            {% if cotacao.etapa_servico == 'EXECUCAO' %}
+                <hr>
+                <h6>2. Execução <small class="text-muted">— confirme o que foi atendido; o valor a pagar é recalculado pelo praticado.</small></h6>
+                <form method="post" action="{% url 'metrologia:cotacao_servico_executar' cotacao.id %}">
+                    {% csrf_token %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Instrumento</th>
+                                    <th>Cotado</th>
+                                    <th style="width:170px">Situação</th>
+                                    <th style="width:150px">Valor praticado (R$)</th>
+                                    <th>Observação</th>
+                                    <th style="width:120px">Ocorrência</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in itens %}
+                                <tr>
+                                    <td><strong>{{ item.instrumento.tag }}</strong></td>
+                                    <td>R$ {{ item.valor_total|floatformat:2 }}</td>
+                                    <td>
+                                        <select class="form-select form-select-sm" name="status_{{ item.id }}">
+                                            {% for val, label in item.STATUS_EXECUCAO_CHOICES %}
+                                                <option value="{{ val }}" {% if item.status_execucao == val %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" step="0.01" min="0" class="form-control form-control-sm"
+                                               name="valor_{{ item.id }}" placeholder="{{ item.valor_total|floatformat:2 }}"
+                                               value="{% if item.valor_praticado is not None %}{{ item.valor_praticado|stringformat:'.2f' }}{% endif %}">
+                                    </td>
+                                    <td>
+                                        <input type="text" class="form-control form-control-sm" name="obs_{{ item.id }}" value="{{ item.observacao_execucao }}">
+                                    </td>
+                                    <td>
+                                        {% if item.ocorrencia_id %}
+                                            <span class="badge bg-danger">#{{ item.ocorrencia_id }} aberta</span>
+                                        {% else %}
+                                            <div class="form-check">
+                                                <input class="form-check-input oc-toggle" type="checkbox" name="ocorrencia_{{ item.id }}" id="oc_{{ item.id }}" data-target="ocd_{{ item.id }}">
+                                                <label class="form-check-label small" for="oc_{{ item.id }}">Abrir</label>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% if not item.ocorrencia_id %}
+                                <tr id="ocd_{{ item.id }}" class="d-none table-warning">
+                                    <td colspan="6">
+                                        <div class="row g-2">
+                                            <div class="col-md-3">
+                                                <select class="form-select form-select-sm" name="ocorrencia_tipo_{{ item.id }}">
+                                                    {% for val, label in tipos_ocorrencia %}
+                                                        <option value="{{ val }}" {% if val == 'AVARIA' %}selected{% endif %}>{{ label }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-9">
+                                                <input type="text" class="form-control form-control-sm" name="ocorrencia_desc_{{ item.id }}"
+                                                       placeholder="Descreva a ocorrência de {{ item.instrumento.tag }}">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Salvar execução</button>
+                </form>
+
+                {# ---------- 3. CONCLUSÃO ---------- #}
+                <hr>
+                <h6>3. Conclusão</h6>
+                <form method="post" action="{% url 'metrologia:cotacao_servico_concluir' cotacao.id %}">
+                    {% csrf_token %}
+                    <label class="form-label fw-bold">Prévia do relatório (gerado automaticamente)</label>
+                    <pre class="border rounded p-3 bg-light small" style="white-space:pre-wrap">{{ relatorio_previa }}</pre>
+                    <div class="mb-3">
+                        <label for="observacoes_conclusao" class="form-label">Observações finais (opcional)</label>
+                        <textarea class="form-control" id="observacoes_conclusao" name="observacoes_conclusao" rows="2"></textarea>
+                    </div>
+                    {% if itens_pendentes %}
+                        <div class="alert alert-warning py-2">Ainda há {{ itens_pendentes }} instrumento(s) pendente(s). Salve a execução com todos confirmados para concluir.</div>
+                    {% endif %}
+                    <button type="submit" class="btn btn-success" {% if itens_pendentes %}disabled{% endif %}
+                            onclick="return confirm('Concluir o serviço e gerar o relatório?')">
+                        <i class="bi bi-check2-circle"></i> Concluir serviço
+                    </button>
+                </form>
+            {% endif %}
+
+            {% if cotacao.etapa_servico == 'CONCLUIDO' %}
+                <hr>
+                <p class="mb-2"><strong>2. Execução:</strong> iniciada em {{ cotacao.data_inicio_execucao|date:"d/m/Y H:i" }}</p>
+                <p class="mb-2"><strong>3. Conclusão:</strong> {{ cotacao.data_conclusao_servico|date:"d/m/Y H:i" }}
+                    {% if cotacao.concluido_por %}por {{ cotacao.concluido_por.get_full_name|default:cotacao.concluido_por.username }}{% endif %}</p>
+                <label class="form-label fw-bold">Relatório de conclusão</label>
+                <pre class="border rounded p-3 bg-light small" style="white-space:pre-wrap">{{ cotacao.relatorio_conclusao }}</pre>
+                {% if cotacao.observacoes_conclusao %}
+                    <p><strong>Observações finais:</strong> {{ cotacao.observacoes_conclusao }}</p>
+                {% endif %}
+                <form method="post" action="{% url 'metrologia:cotacao_servico_concluir' cotacao.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" name="acao" value="reabrir" class="btn btn-sm btn-outline-secondary"
+                            onclick="return confirm('Reabrir o serviço para execução?')">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reabrir
+                    </button>
+                </form>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <div class="card">
         <div class="card-header">
@@ -74,6 +257,7 @@
                         <th>Qtd</th>
                         <th>Total</th>
                         <th>Prazo</th>
+                        {% if cotacao.aprovada and cotacao.etapa_servico != 'AGENDAMENTO' %}<th>Situação</th><th>A pagar</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -97,10 +281,19 @@
                                     -
                                 {% endif %}
                             </td>
+                            {% if cotacao.aprovada and cotacao.etapa_servico != 'AGENDAMENTO' %}
+                            <td>
+                                {% if item.status_execucao == 'ATENDIDO' %}<span class="badge bg-success">Atendido</span>
+                                {% elif item.status_execucao == 'NAO_ATENDIDO' %}<span class="badge bg-danger">Não atendido</span>
+                                {% else %}<span class="badge bg-secondary">Pendente</span>{% endif %}
+                                {% if item.ocorrencia_id %}<span class="badge bg-warning text-dark">Ocorrência #{{ item.ocorrencia_id }}</span>{% endif %}
+                            </td>
+                            <td><strong>R$ {{ item.valor_cobrado|floatformat:2 }}</strong></td>
+                            {% endif %}
                         </tr>
                     {% empty %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-3">
+                            <td colspan="8" class="text-center text-muted py-3">
                                 Nenhum item adicionado
                             </td>
                         </tr>
@@ -188,6 +381,12 @@
 </div>
 
 <script>
+document.querySelectorAll('.oc-toggle').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+        var row = document.getElementById(cb.dataset.target);
+        if (row) row.classList.toggle('d-none', !cb.checked);
+    });
+});
 function toggleSelectAll() {
     const checkboxes = document.querySelectorAll('.item-checkbox');
     const selectAll = document.getElementById('selectAll');

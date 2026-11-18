@@ -1213,6 +1213,58 @@ class CotacaoFornecedor(models.Model):
         null=True,
         verbose_name='Observações de Execução/Entrega'
     )
+
+    # ------------------------------------------------------------------
+    # Ciclo de execução do serviço (após cotação aceita)
+    # AGENDAMENTO (planejamento) -> EXECUCAO -> CONCLUIDO
+    # ------------------------------------------------------------------
+    ETAPA_SERVICO_CHOICES = [
+        ('AGENDAMENTO', 'Planejamento'),
+        ('EXECUCAO', 'Execução'),
+        ('CONCLUIDO', 'Concluído'),
+    ]
+    etapa_servico = models.CharField(
+        max_length=15,
+        choices=ETAPA_SERVICO_CHOICES,
+        default='AGENDAMENTO',
+        verbose_name='Etapa do Serviço'
+    )
+    # 1. Planejamento
+    data_visita = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Data e Hora da Visita'
+    )
+    # 2. Execução
+    data_inicio_execucao = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Início da Execução'
+    )
+    # 3. Conclusão
+    data_conclusao_servico = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Data de Conclusão do Serviço'
+    )
+    relatorio_conclusao = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Relatório de Conclusão'
+    )
+    observacoes_conclusao = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Observações da Conclusão'
+    )
+    concluido_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cotacoes_fornecedor_concluidas',
+        verbose_name='Concluído por'
+    )
     
     # Rastreamento
     criado_por = models.ForeignKey(
@@ -1231,6 +1283,17 @@ class CotacaoFornecedor(models.Model):
     def get_valor_total(self):
         """Calcula o valor total da cotação"""
         return sum(item.valor_total for item in self.itens.all())
+
+    def get_valor_a_pagar(self):
+        """
+        Valor efetivamente devido ao fornecedor.
+        - Sem execução registrada: vale o valor cotado.
+        - Com execução: soma apenas o que foi atendido, pelo valor praticado.
+        """
+        itens = list(self.itens.all())
+        if not any(i.status_execucao != 'PENDENTE' for i in itens):
+            return sum((i.valor_total for i in itens), Decimal('0.00'))
+        return sum((i.valor_cobrado for i in itens), Decimal('0.00'))
     
     class Meta:
         verbose_name = "Cotação do Fornecedor"
@@ -1328,9 +1391,52 @@ class ItemCotacao(models.Model):
         verbose_name='Descrição do Serviço',
         help_text='Detalhe do que será feito, normas aplicáveis, etc.'
     )
+
+    # Execução do serviço (confirmação do que foi de fato atendido)
+    STATUS_EXECUCAO_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('ATENDIDO', 'Atendido'),
+        ('NAO_ATENDIDO', 'Não atendido'),
+    ]
+    status_execucao = models.CharField(
+        max_length=15,
+        choices=STATUS_EXECUCAO_CHOICES,
+        default='PENDENTE',
+        verbose_name='Situação na Execução'
+    )
+    valor_praticado = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name='Valor Praticado (R$)',
+        help_text='Valor efetivamente cobrado. Se vazio, vale o valor cotado.'
+    )
+    observacao_execucao = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Observação da Execução'
+    )
+    ocorrencia = models.ForeignKey(
+        'qms.OcorrenciaInstrumento',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='itens_cotacao',
+        verbose_name='Ocorrência Aberta na Execução'
+    )
     
     # Rastreamento
     data_criacao = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def valor_cobrado(self):
+        """Valor a pagar por este item: 0 se não atendido, senão o praticado (ou o cotado)."""
+        if self.status_execucao == 'NAO_ATENDIDO':
+            return Decimal('0.00')
+        if self.valor_praticado is not None:
+            return self.valor_praticado
+        return self.valor_total
     
     def save(self, *args, **kwargs):
         """Calcula valor_total antes de salvar"""
