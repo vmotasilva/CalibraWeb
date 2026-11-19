@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% load nav_access %}
 
+{% block content %}
 {% can_nav_view user 'fornecedores:fornecedor_create' 'fornecedores' as can_fornecedor_create %}
 {% can_nav_view user 'fornecedores:fornecedor_update' 'fornecedores' as can_fornecedor_update %}
-{% block content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <h2 class="mb-0">Fornecedores</h2>
     {% if can_fornecedor_create %}

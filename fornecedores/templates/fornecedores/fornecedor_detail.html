@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 {% load nav_access %}
 
+{% block content %}
 {% can_nav_view user 'fornecedores:fornecedor_update' 'fornecedores' as can_fornecedor_update %}
 {% can_nav_view user 'fornecedores:documento_create' 'fornecedores' as can_documento_create %}
 {% can_nav_view user 'fornecedores:documento_delete' 'fornecedores' as can_documento_delete %}
 {% can_nav_view user 'fornecedores:avaliacao_matriz_create' 'fornecedores' as can_avaliacao_matriz_create %}
 {% can_nav_view user 'fornecedores:avaliacao_selecao_create' 'fornecedores' as can_avaliacao_selecao_create %}
 {% can_nav_view user 'fornecedores:avaliacao_reavaliacao_create' 'fornecedores' as can_avaliacao_reavaliacao_create %}
-{% block content %}
 <h2>Detalhes do Fornecedor</h2>
 <table class="table">
     <tr><th>Empresa</th><td>{{ fornecedor.empresa }}</td></tr>
@@ -67,8 +67,6 @@
         {% endfor %}
     </tbody>
 </table>
-
-
 
 <h3>Avaliação
     <span class="badge {% if percentual_avaliacao is None %}bg-secondary{% elif percentual_avaliacao >= 60 %}bg-success{% else %}bg-danger{% endif %}">Pontuação: {% if percentual_avaliacao is None %}—{% else %}{{ percentual_avaliacao|floatformat:1 }}{% endif %}</span>
@@ -153,7 +151,6 @@
         </div>
     </div>
 </div>
-
 
 {% if matriz %}
 <div class="card mb-3">

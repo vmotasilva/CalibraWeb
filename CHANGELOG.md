@@ -12,6 +12,7 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e us
 Alterações que ainda não foram lançadas em uma versão oficial.
 
 ### 🐛 Corrigido (Módulo de Fornecedores)
+- Botões protegidos por permissão (Editar, Novo Documento, Remover, Matriz, Responder...) nunca apareciam: as tags `can_nav_view` estavam fora do `{% block %}` dos templates
 - Erro 500 ao enviar formulário de monitoramento inválido e ao editar/remover registros de seleção/reavaliação pela tela de monitoramento
 - Reavaliação: regra de "uma por ano" não era aplicada; modal de nova reavaliação enviava para uma view incompatível
 - Monitoramento: tipo da nota agora é obrigatório; atualização no mesmo dia mantém nota fiscal/observação; pontuação unificada (ano corrente, nunca negativa) entre lista e detalhe; matriz de seleção não polui mais os registros de monitoramento
