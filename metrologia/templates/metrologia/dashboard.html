@@ -455,6 +455,10 @@
                                         <input class="form-check-input filter-checkbox" type="checkbox" value="AGUARDANDO_CERTIFICADO" data-category="acompanhamento">
                                         <label class="form-check-label small text-danger fw-bold">Calibrado: aguardando certificado</label>
                                     </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_ACOMPANHAMENTO" data-category="acompanhamento">
+                                        <label class="form-check-label small text-secondary fw-bold">Sem acompanhamento <span class="text-muted fw-normal">({{ sem_acompanhamento_total }})</span></label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -466,6 +470,10 @@
                             <div class="filtro-pane-head"><h6><i class="bi bi-hourglass-split me-2 text-primary"></i>Cotações em aberto</h6><div class="filtro-pane-tools d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="limparSecaoFiltro(this)">Limpar seção</button></div></div>
                             <div class="filter-content">
                                 <div class="d-flex flex-column gap-1" style="max-height: 260px; overflow-y: auto;">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_COTACAO" data-category="cotacao_aberta">
+                                        <label class="form-check-label small fw-bold">Sem cotações <span class="text-muted fw-normal">({{ sem_cotacao_total }})</span></label>
+                                    </div>
                                     {% for c in cotacoes_abertas %}
                                     <div class="form-check">
                                         <input class="form-check-input filter-checkbox" type="checkbox" value="{{ c.numero }}" data-category="cotacao_aberta">
@@ -754,7 +762,7 @@
                             data-setor="{{ i.setor_id|default:'' }}"
                             data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{% if historico.aguardando_certificado %}AGUARDANDO_CERTIFICADO{% else %}{{ historico.resultado }}{% endif %}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                             data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
-                            data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
+                            data-ocorrencia="{% if i.ocorrencias_abertas %}COM_ABERTA{% endif %}"
                             data-acompanhamento="{% with a=acompanhamento_map|acompanhamento_de:i.id %}{{ a.codigo|default:'' }}{% endwith %}"
                             data-cotacao-aberta="{{ cotacao_aberta_map|dict_get:i.id|default:'' }}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
@@ -794,7 +802,7 @@
 
                             <td class="py-2 small text-muted">
                                 {% if i.setor %}{{ i.setor.nome }}{% else %}-{% endif %}
-                                {% with abertas=i.ocorrencias.all %}
+                                {% with abertas=i.ocorrencias_abertas %}
                                     {% if abertas %}
                                         <div id="ocorrencias-data-{{ i.id }}" style="display:none;">
                                             {% for oc in abertas %}
@@ -882,7 +890,7 @@
                             </td>
 
                             <td class="text-end pe-4 py-2">
-                                {% with abertas=i.ocorrencias.all %}
+                                {% with abertas=i.ocorrencias_abertas %}
                                     {% if abertas %}
                                         <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill me-1 shadow-sm d-inline-flex align-items-center gap-1" 
                                                 title="Ver {{ abertas|length }} Ocorrência(s) em Aberto" 
@@ -922,7 +930,7 @@
                     data-setor="{{ i.setor_id|default:'' }}"
                     data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{% if historico.aguardando_certificado %}AGUARDANDO_CERTIFICADO{% else %}{{ historico.resultado }}{% endif %}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                     data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
-                    data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
+                    data-ocorrencia="{% if i.ocorrencias_abertas %}COM_ABERTA{% endif %}"
                             data-acompanhamento="{% with a=acompanhamento_map|acompanhamento_de:i.id %}{{ a.codigo|default:'' }}{% endwith %}"
                             data-cotacao-aberta="{{ cotacao_aberta_map|dict_get:i.id|default:'' }}"
                     data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
@@ -1205,8 +1213,8 @@ function filtrar() {
         if (mostrar && filtrosAtivos.resultado.length > 0 && !filtrosAtivos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && filtrosAtivos.periodo.length > 0 && !filtrosAtivos.periodo.includes(row.dataset.periodo)) mostrar = false;
-        if (mostrar && filtrosAtivos.acompanhamento.length > 0 && !filtrosAtivos.acompanhamento.includes(row.dataset.acompanhamento || '')) mostrar = false;
-        if (mostrar && filtrosAtivos.cotacao_aberta.length > 0 && !filtrosAtivos.cotacao_aberta.includes(row.dataset.cotacaoAberta || '')) mostrar = false;
+        if (mostrar && filtrosAtivos.acompanhamento.length > 0 && !filtrosAtivos.acompanhamento.includes(row.dataset.acompanhamento || 'SEM_ACOMPANHAMENTO')) mostrar = false;
+        if (mostrar && filtrosAtivos.cotacao_aberta.length > 0 && !filtrosAtivos.cotacao_aberta.includes(row.dataset.cotacaoAberta || 'SEM_COTACAO')) mostrar = false;
         if (mostrar && filtrosAtivos.ocorrencia.length > 0) {
             var ocorrenciaData = row.dataset.ocorrencia || '';
             var temAberta = ocorrenciaData.includes("COM_ABERTA");
@@ -2006,8 +2014,8 @@ function atualizarFiltrosDisponiveis() {
         if (mostrar && ativos.setor.length > 0 && !ativos.setor.includes(row.dataset.setor)) mostrar = false;
         if (mostrar && ativos.resultado.length > 0 && !ativos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && ativos.acao.length > 0 && !ativos.acao.includes(row.dataset.acao)) mostrar = false;
-        if (mostrar && ativos.acompanhamento.length > 0 && !ativos.acompanhamento.includes(row.dataset.acompanhamento || '')) mostrar = false;
-        if (mostrar && ativos.cotacao_aberta.length > 0 && !ativos.cotacao_aberta.includes(row.dataset.cotacaoAberta || '')) mostrar = false;
+        if (mostrar && ativos.acompanhamento.length > 0 && !ativos.acompanhamento.includes(row.dataset.acompanhamento || 'SEM_ACOMPANHAMENTO')) mostrar = false;
+        if (mostrar && ativos.cotacao_aberta.length > 0 && !ativos.cotacao_aberta.includes(row.dataset.cotacaoAberta || 'SEM_COTACAO')) mostrar = false;
         if (mostrar && ativos.ocorrencia.length > 0) {
             var temAberta = row.dataset.ocorrencia.includes("COM_ABERTA");
             var querCom = ativos.ocorrencia.includes("COM_ABERTA");

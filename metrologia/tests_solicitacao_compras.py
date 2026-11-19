@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -196,3 +197,84 @@ class NumeroCotacaoFornecedorTests(EtapaComprasTests):
         cot = CotacaoFornecedor.objects.create(
             solicitacao=self.sol, fornecedor=self.forn, numero="COT-MANUAL")
         self.assertEqual(cot.numero, "COT-MANUAL")
+
+
+class CustosAdicionaisCotacaoTests(EtapaComprasTests):
+    """Custos adicionais da cotação do fornecedor: deslocamentos, passagens aéreas etc."""
+
+    for _nome in [n for n in dir(EtapaComprasTests) if n.startswith("test_")]:
+        locals()[_nome] = None
+    del _nome
+
+    def _cotacao_com_item(self):
+        from metrologia.models import ItemCotacao
+        cot = CotacaoFornecedor.objects.create(solicitacao=self.sol, fornecedor=self.forn)
+        item_sol = self.sol.itens.first()
+        ItemCotacao.objects.create(cotacao_fornecedor=cot, item_solicitacao=item_sol, instrumento=self.inst,
+                                   valor_unitario=Decimal("1000.00"), pode_atender=True)
+        return cot
+
+    def _salvar(self, cot, **extra):
+        dados = {"fornecedor": self.forn.id, "custos_enviados": "1"}
+        dados.update(extra)
+        return self.client.post(reverse("metrologia:cotacao_fornecedor_update", args=[cot.id]), dados)
+
+    def test_adiciona_custos_e_soma_no_total(self):
+        cot = self._cotacao_com_item()
+        r = self._salvar(cot,
+                         custo_tipo=["DESLOCAMENTO", "PASSAGEM_AEREA", "OUTRO"],
+                         custo_descricao=["Táxi", "Salvador → SP", ""],
+                         custo_quantidade=["1", "2", "1"],
+                         custo_valor=["150,50", "800", ""])          # 3ª linha em branco é ignorada
+        self.assertEqual(r.status_code, 302)
+        custos = list(cot.custos_adicionais.all())
+        self.assertEqual([(c.tipo, c.quantidade, c.valor_unitario, c.valor_total) for c in custos],
+                         [("DESLOCAMENTO", 1, Decimal("150.50"), Decimal("150.50")),
+                          ("PASSAGEM_AEREA", 2, Decimal("800.00"), Decimal("1600.00"))])
+        self.assertEqual(cot.get_valor_servicos(), Decimal("1000.00"))
+        self.assertEqual(cot.get_valor_custos_adicionais(), Decimal("1750.50"))
+        self.assertEqual(cot.get_valor_total(), Decimal("2750.50"))
+        self.assertEqual(cot.get_valor_a_pagar(), Decimal("2750.50"))
+        html = self.client.get(reverse("metrologia:cotacao_fornecedor_detail", args=[cot.id])).content.decode()
+        self.assertIn("Custos adicionais", html)
+        self.assertIn("2750.50".replace(".", ","), html.replace(".", ","))
+        self.assertIn("Passagem aérea", html)
+        # a lista de cotações da solicitação mostra o total com os custos
+        self.assertContains(self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])), "2750")
+
+    def test_editar_substitui_e_remove_custos(self):
+        cot = self._cotacao_com_item()
+        self._salvar(cot, custo_tipo=["FRETE"], custo_descricao=["Ida e volta"], custo_quantidade=["1"], custo_valor=["200"])
+        self.assertEqual(cot.custos_adicionais.count(), 1)
+        self._salvar(cot, custo_tipo=["TAXA"], custo_descricao=["Imposto"], custo_quantidade=["1"], custo_valor=["30"])
+        self.assertEqual([c.tipo for c in cot.custos_adicionais.all()], ["TAXA"])
+        self._salvar(cot)                                            # nenhuma linha: remove tudo
+        self.assertEqual(cot.custos_adicionais.count(), 0)
+
+    def test_sem_marcador_nao_apaga_custos(self):
+        cot = self._cotacao_com_item()
+        self._salvar(cot, custo_tipo=["FRETE"], custo_descricao=[""], custo_quantidade=["1"], custo_valor=["50"])
+        self.client.post(reverse("metrologia:cotacao_fornecedor_update", args=[cot.id]), {"fornecedor": self.forn.id})
+        self.assertEqual(cot.custos_adicionais.count(), 1)
+
+    def test_valores_invalidos_sao_ignorados(self):
+        cot = self._cotacao_com_item()
+        self._salvar(cot, custo_tipo=["FRETE", "FRETE", "FRETE", "XYZ"], custo_descricao=["a", "b", "c", "d"],
+                     custo_quantidade=["1", "0", "x", "1"], custo_valor=["abc", "10", "10", "5"])
+        custos = list(cot.custos_adicionais.all())
+        self.assertEqual([(c.tipo, c.valor_total) for c in custos], [("OUTRO", Decimal("5.00"))])
+
+    def test_tela_de_edicao_tem_a_secao(self):
+        cot = self._cotacao_com_item()
+        html = self.client.get(reverse("metrologia:cotacao_fornecedor_update", args=[cot.id])).content.decode()
+        self.assertIn("Custos adicionais", html)
+        self.assertIn("adicionarCusto()", html)
+        self.assertIn('name="custos_enviados"', html)
+
+    def test_valor_a_pagar_inclui_custos_apos_execucao(self):
+        cot = self._cotacao_com_item()
+        self._salvar(cot, custo_tipo=["DESLOCAMENTO"], custo_descricao=[""], custo_quantidade=["1"], custo_valor=["100"])
+        item = cot.itens.get()
+        item.status_execucao = "NAO_ATENDIDO"
+        item.save()
+        self.assertEqual(cot.get_valor_a_pagar(), Decimal("100.00"))   # só o custo adicional

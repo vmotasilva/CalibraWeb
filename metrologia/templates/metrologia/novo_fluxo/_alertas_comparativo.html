@@ -1,0 +1,17 @@
+{# Questionamentos sugeridos pelo comparativo. Param: alertas #}
+{% if alertas %}
+<div class="mt-3">
+    <h6 class="mb-2"><i class="bi bi-chat-square-quote"></i> Questionamentos sugeridos</h6>
+    <ul class="list-group list-group-flush">
+        {% for a in alertas %}
+        <li class="list-group-item px-0 py-2 border-0 border-bottom">
+            <span class="badge {% if a.nivel == 'danger' %}bg-danger{% elif a.nivel == 'warning' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} me-1">{% if a.nivel == 'danger' %}atenção{% elif a.nivel == 'warning' %}questionar{% else %}nota{% endif %}</span>
+            {{ a.texto }}
+            {% if a.pergunta %}<div class="small text-muted ms-1 mt-1"><i class="bi bi-arrow-return-right"></i> {{ a.pergunta }}</div>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<p class="small text-muted mt-3 mb-0"><i class="bi bi-check-circle text-success"></i> Nenhum ponto de atenção automático.</p>
+{% endif %}

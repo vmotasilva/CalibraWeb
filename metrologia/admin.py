@@ -4,7 +4,7 @@ from .models import (
     ArquivoPadrao, ResultadoFaixaCalibracao, OrdemCalibracao,
     InstrumentoReferencia, FaixaMedicaoPadrao, Cotacao, OcorrenciaCotacao,
     SolicitacaoCotacao, ItemSolicitacaoCotacao, CotacaoFornecedor, 
-    ItemCotacao, AtendimentoSolicitacao, ProcessoAutomatizacao
+    ItemCotacao, AtendimentoSolicitacao, ProcessoAutomatizacao, CustoAdicionalCotacao
 )
 from qms.models import SolicitacaoInstrumento, OcorrenciaInstrumento
 from qms.admin import admin_site
@@ -225,12 +225,19 @@ class ItemCotacaoInline(admin.TabularInline):
     readonly_fields = ['valor_total']
 
 
+class CustoAdicionalCotacaoInline(admin.TabularInline):
+    model = CustoAdicionalCotacao
+    extra = 0
+    fields = ['tipo', 'descricao', 'quantidade', 'valor_unitario', 'valor_total']
+    readonly_fields = ['valor_total']
+
+
 class CotacaoFornecedorAdmin(admin.ModelAdmin):
     list_display = ['numero', 'fornecedor', 'status', 'solicitacao', 'data_criacao']
     search_fields = ['numero', 'fornecedor__empresa', 'observacoes']
     list_filter = ['status', 'data_criacao', 'solicitacao']
     readonly_fields = ['numero', 'data_criacao', 'atualizado_em']
-    inlines = [ItemCotacaoInline]
+    inlines = [ItemCotacaoInline, CustoAdicionalCotacaoInline]
     fieldsets = (
         ('Identificação', {
             'fields': ('numero', 'solicitacao', 'fornecedor', 'data_criacao', 'atualizado_em')

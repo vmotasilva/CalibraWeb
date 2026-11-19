@@ -359,3 +359,58 @@ class CotacoesEmAbertoTests(BaseCotacaoServico):
         self.assertEqual(r.status_code, 200)
         self.sol.refresh_from_db()
         self.assertEqual(self.sol.status, "CONCLUIDA")
+
+
+class SemCotacaoEOcorrenciasTests(BaseCotacaoServico):
+    """Filtro 'Sem cotações' e selo de RNC contando só ocorrências abertas."""
+
+    def test_filtro_sem_cotacoes(self):
+        outro = Instrumento.objects.create(tag="Z-99", descricao="sem cotação")
+        html = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn('value="SEM_COTACAO" data-category="cotacao_aberta"', html)
+        self.assertIn("Sem cotações <span", html)
+        # A-01 e B-01 estão na solicitação aberta; só Z-99 está sem cotação
+        self.assertIn(f'data-cotacao-aberta="{self.sol.numero}"', html)
+        self.assertEqual(html.count('data-cotacao-aberta=""'), 2)       # Z-99 (tabela e cards)
+        self.assertIn("Sem cotações <span class=\"text-muted fw-normal\">(1)</span>", html)
+        self.assertIn("|| 'SEM_COTACAO'", html)
+        shared = self.client.get("/dashboard/").content.decode()
+        self.assertIn('value="SEM_COTACAO" data-cat="cotacao_aberta"', shared)
+        self.assertIn("|| 'SEM_COTACAO'", shared)
+        self.assertIsNotNone(outro.id)
+
+    def test_selo_rnc_conta_apenas_ocorrencias_abertas(self):
+        from qms.models import OcorrenciaInstrumento
+        OcorrenciaInstrumento.objects.create(instrumento=self.a, tipo="OUTRO", descricao="resolvida", status="ENCERRADA")
+        html = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertNotIn("RNC</span>", html)                           # encerrada não gera selo
+        self.assertNotIn('id="ocorrencias-data-', html)
+        OcorrenciaInstrumento.objects.create(instrumento=self.a, tipo="AVARIA", descricao="Riscada no transporte", status="ABERTA")
+        html = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertEqual(html.count("1 RNC</span>"), 1)                # só a aberta conta
+        self.assertIn(f'id="ocorrencias-data-{self.a.id}"', html)
+        self.assertIn("Riscada no transporte", html)
+        self.assertNotIn("resolvida", html)
+        self.assertIn('data-ocorrencia="COM_ABERTA"', html)
+
+
+class SemAcompanhamentoTests(BaseCotacaoServico):
+    def test_filtro_sem_acompanhamento(self):
+        Instrumento.objects.create(tag="Z-99", descricao="livre")
+        Instrumento.objects.create(tag="Z-98", descricao="livre")
+        # A-01 e B-01 estão em cotação (têm status); Z-98 e Z-99 não têm nenhum
+        html = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn('value="SEM_ACOMPANHAMENTO" data-category="acompanhamento"', html)
+        self.assertIn('Sem acompanhamento <span class="text-muted fw-normal">(2)</span>', html)
+        self.assertIn("|| 'SEM_ACOMPANHAMENTO'", html)
+        self.assertEqual(html.count('data-acompanhamento=""'), 4)      # Z-98 e Z-99 (tabela + cards)
+        shared = self.client.get("/dashboard/").content.decode()
+        self.assertIn('value="SEM_ACOMPANHAMENTO" data-cat="acompanhamento"', shared)
+        self.assertIn('Sem acompanhamento <span class="text-muted fw-normal">(2)</span>', shared)
+        self.assertIn("|| 'SEM_ACOMPANHAMENTO'", shared)
+
+    def test_contagem_acompanha_o_status(self):
+        from metrologia.views.novo_fluxo_cotacao import contexto_cotacoes_abertas
+        self.assertEqual(contexto_cotacoes_abertas()["sem_acompanhamento_total"], 0)   # A-01 e B-01 em cotação
+        self.sol.marcar_concluida()
+        self.assertEqual(contexto_cotacoes_abertas()["sem_acompanhamento_total"], 2)   # saem do acompanhamento

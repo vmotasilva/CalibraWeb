@@ -806,7 +806,7 @@ class SolicitacaoCotacao(models.Model):
         # A etapa de compras se encerra em conjunto com as cotações: ao chegar a primeira
         # proposta (respondida/aceita) ela é encerrada automaticamente.
         if self.compras_ativa and self.cotacoes_fornecedores.filter(
-                status__in=['RESPONDIDA', 'ACEITA']).exists():
+                ativa=True, status__in=['RESPONDIDA', 'ACEITA']).exists():
             hoje = timezone.localdate()
             type(self).objects.filter(pk=self.pk).update(compras_concluida_em=hoje)
             self.compras_concluida_em = hoje
@@ -855,11 +855,11 @@ class SolicitacaoCotacao(models.Model):
                 novo_status = 'ABERTA'
             elif self.compras_ativa:
                 novo_status = 'COM_COMPRAS'
-            elif self.cotacoes_fornecedores.count() == 0:
+            elif self.cotacoes_fornecedores.filter(ativa=True).count() == 0:
                 novo_status = 'INSTRUMENTOS_SELECIONADOS'
-            elif self.cotacoes_fornecedores.filter(status='RESPONDIDA').exists():
+            elif self.cotacoes_fornecedores.filter(ativa=True, status='RESPONDIDA').exists():
                 novo_status = 'COTACAO_SOLICITADA'
-            elif self.cotacoes_fornecedores.filter(status='ACEITA').exists():
+            elif self.cotacoes_fornecedores.filter(ativa=True, status='ACEITA').exists():
                 novo_status = 'AGUARDANDO_PLANEJAMENTO'
             else:
                 # Manter status atual como fallback (saindo de COM_COMPRAS quando a etapa encerra)
@@ -886,6 +886,7 @@ class SolicitacaoCotacao(models.Model):
 
         itens = ItemCotacao.objects.filter(
             cotacao_fornecedor__solicitacao=self, cotacao_fornecedor__aprovada=True, pode_atender=True,
+            cotacao_fornecedor__ativa=True,
         ).exclude(cotacao_fornecedor__status__in=('CANCELADA', 'REJEITADA')).exclude(
             status_execucao='NAO_ATENDIDO').select_related('instrumento', 'cotacao_fornecedor')
         for item in itens:
@@ -1408,6 +1409,17 @@ class CotacaoFornecedor(models.Model):
         verbose_name='Concluído por'
     )
     
+    # Cotação obsoleta: inativada para dar lugar a uma nova versão com valores atualizados
+    ativa = models.BooleanField(default=True, db_index=True, verbose_name='Cotação ativa')
+    inativada_em = models.DateTimeField(null=True, blank=True, verbose_name='Inativada em')
+    inativada_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cotacoes_fornecedor_inativadas', verbose_name='Inativada por')
+    motivo_inativacao = models.CharField(max_length=255, blank=True, default='', verbose_name='Motivo da inativação')
+    versao_anterior = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='versoes_novas', verbose_name='Versão anterior (obsoleta)')
+
     # Rastreamento
     criado_por = models.ForeignKey(
         User,
@@ -1441,26 +1453,79 @@ class CotacaoFornecedor(models.Model):
         if self.solicitacao_id and self.solicitacao.status not in ('CONCLUIDA', 'CANCELADA'):
             self.solicitacao.atualizar_status_automatico()
 
+    def atendimentos_vinculados(self):
+        """Atendimentos (planejamento) ligados a itens desta cotação, sem os desconsiderados."""
+        return AtendimentoSolicitacao.objects.filter(item_cotacao__cotacao_fornecedor=self, desconsiderado=False)
+
+    def get_valor_servicos(self):
+        """Soma dos serviços (instrumentos) cotados, sem os custos adicionais."""
+        return sum((item.valor_total for item in self.itens.all()), Decimal('0.00'))
+
+    def get_valor_custos_adicionais(self):
+        """Soma dos custos adicionais (deslocamento, passagens aéreas etc.)."""
+        return sum((c.valor_total for c in self.custos_adicionais.all()), Decimal('0.00'))
+
     def get_valor_total(self):
-        """Calcula o valor total da cotação"""
-        return sum(item.valor_total for item in self.itens.all())
+        """Valor total da cotação: serviços + custos adicionais."""
+        return self.get_valor_servicos() + self.get_valor_custos_adicionais()
 
     def get_valor_a_pagar(self):
         """
         Valor efetivamente devido ao fornecedor.
         - Sem execução registrada: vale o valor cotado.
         - Com execução: soma apenas o que foi atendido, pelo valor praticado.
+        Os custos adicionais (deslocamentos, passagens...) entram nos dois casos.
         """
         itens = list(self.itens.all())
+        adicionais = self.get_valor_custos_adicionais()
         if not any(i.status_execucao != 'PENDENTE' for i in itens):
-            return sum((i.valor_total for i in itens), Decimal('0.00'))
-        return sum((i.valor_cobrado for i in itens), Decimal('0.00'))
+            return sum((i.valor_total for i in itens), Decimal('0.00')) + adicionais
+        return sum((i.valor_cobrado for i in itens), Decimal('0.00')) + adicionais
     
     class Meta:
         verbose_name = "Cotação do Fornecedor"
         verbose_name_plural = "Cotações de Fornecedores"
         ordering = ["-data_criacao"]
-        unique_together = ('solicitacao', 'fornecedor')
+        # um fornecedor pode ter várias versões na solicitação, mas só uma ativa
+        constraints = [
+            models.UniqueConstraint(
+                fields=['solicitacao', 'fornecedor'], condition=models.Q(ativa=True),
+                name='uniq_cotacao_ativa_por_fornecedor'),
+        ]
+
+
+class CustoAdicionalCotacao(models.Model):
+    """Custos além do serviço cotado: deslocamento, passagens aéreas, hospedagem etc."""
+    TIPO_CHOICES = [
+        ('DESLOCAMENTO', 'Deslocamento'),
+        ('PASSAGEM_AEREA', 'Passagem aérea'),
+        ('HOSPEDAGEM', 'Hospedagem'),
+        ('ALIMENTACAO', 'Alimentação'),
+        ('FRETE', 'Frete / transporte do instrumento'),
+        ('TAXA', 'Taxa / impostos'),
+        ('OUTRO', 'Outro'),
+    ]
+
+    cotacao_fornecedor = models.ForeignKey(
+        'CotacaoFornecedor', on_delete=models.CASCADE, related_name='custos_adicionais',
+        verbose_name='Cotação do Fornecedor')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='OUTRO', verbose_name='Tipo')
+    descricao = models.CharField(max_length=150, blank=True, default='', verbose_name='Descrição')
+    quantidade = models.PositiveIntegerField(default=1, verbose_name='Quantidade')
+    valor_unitario = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Valor unitário (R$)')
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Valor total (R$)')
+
+    def save(self, *args, **kwargs):
+        self.valor_total = self.valor_unitario * self.quantidade
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.cotacao_fornecedor.numero} - {self.get_tipo_display()} ({self.valor_total})"
+
+    class Meta:
+        verbose_name = "Custo Adicional da Cotação"
+        verbose_name_plural = "Custos Adicionais da Cotação"
+        ordering = ['id']
 
 
 class ItemCotacao(models.Model):
