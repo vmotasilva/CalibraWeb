@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
+from django.db.models import ProtectedError
 from django.db.models import Q, Prefetch
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
@@ -716,7 +717,23 @@ def item_solicitacao_delete(request, pk):
     
     if request.method == 'POST':
         instrumento_tag = item.instrumento.tag
-        item.delete()
+        try:
+            item.delete()
+        except ProtectedError as exc:
+            n_cotacoes = sum(1 for o in exc.protected_objects if isinstance(o, ItemCotacao))
+            n_atend = sum(1 for o in exc.protected_objects if isinstance(o, AtendimentoSolicitacao))
+            partes = []
+            if n_cotacoes:
+                partes.append(f"{n_cotacoes} item(ns) de cotação")
+            if n_atend:
+                partes.append(f"{n_atend} atendimento(s)")
+            detalhe = " e ".join(partes) or "registros vinculados"
+            messages.error(
+                request,
+                f"Instrumento {instrumento_tag} não pode ser removido da solicitação: "
+                f"já possui {detalhe}. Para preservar o histórico, ele permanece na solicitação."
+            )
+            return redirect('metrologia:solicitacao_detail', pk=solicitacao_id)
         messages.success(request, f"Instrumento {instrumento_tag} removido.")
         return redirect('metrologia:solicitacao_detail', pk=solicitacao_id)
     

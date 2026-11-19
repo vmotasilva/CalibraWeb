@@ -515,3 +515,21 @@ class TemplatesEtiquetasPaginaTests(BaseCotacaoServico):
         resp = self.client.get("/metrologia/templates-etiquetas/")
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, reverse("modulo_metrologia"))
+
+
+class RemoverItemSolicitacaoTests(BaseCotacaoServico):
+    """Item já cotado/atendido não pode ser removido: mostra mensagem em vez de erro 500."""
+
+    def test_item_com_cotacao_nao_gera_500(self):
+        isol = self.itens[0].item_solicitacao
+        resp = self.client.post(reverse("metrologia:item_solicitacao_delete", args=[isol.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(ItemSolicitacaoCotacao.objects.filter(pk=isol.pk).exists())
+        msgs = [str(m) for m in resp.context["messages"]]
+        self.assertTrue(any("não pode ser removido" in m and "item(ns) de cotação" in m for m in msgs), msgs)
+
+    def test_item_sem_vinculos_e_removido(self):
+        extra = Instrumento.objects.create(tag="C-01", descricao="C")
+        isol = ItemSolicitacaoCotacao.objects.create(solicitacao=self.sol, instrumento=extra)
+        self.client.post(reverse("metrologia:item_solicitacao_delete", args=[isol.pk]))
+        self.assertFalse(ItemSolicitacaoCotacao.objects.filter(pk=isol.pk).exists())
