@@ -1829,6 +1829,15 @@ def salvar_edicao_historico_modal_view(request, historico_id):
     return redirect('detalhe_instrumento', instrumento_id=inst.id if inst else 1)
 
 
+def _resultado_ultimo_historico(inst):
+    """Resultado do último histórico: sem certificado recebido não há aprovado/reprovado."""
+    historicos = list(inst.historicos.all())  # Meta.ordering = -data_calibracao
+    if not historicos:
+        return 'SEM_CALIBRACAO'
+    ultimo = historicos[0]
+    return 'AGUARDANDO_CERTIFICADO' if ultimo.aguardando_certificado else ultimo.resultado
+
+
 def get_metrologia_dashboard_data():
     """Agrega e pré-calcula todos os indicadores e instrumentos do dashboard de metrologia.
     
@@ -1855,7 +1864,7 @@ def get_metrologia_dashboard_data():
     instrumentos_qs = (
         Instrumento.objects.filter(ativo=True)
         .select_related('categoria', 'setor', 'responsavel')
-        .prefetch_related(ocorrencias_abertas_prefetch)
+        .prefetch_related(ocorrencias_abertas_prefetch, 'historicos')
     )
     
     instrumentos_list = []
@@ -1971,7 +1980,7 @@ def get_metrologia_dashboard_data():
             'activity_type': acao,
             'frequencia': getattr(inst, 'frequencia_meses', 12) or 12,
             'ativo': getattr(inst, 'ativo', True),
-            'resultado_ultima_calibracao': getattr(inst, 'resultado_ultima_calibracao', 'APROVADO') or 'APROVADO',
+            'resultado_ultima_calibracao': _resultado_ultimo_historico(inst),
             'data_proxima_calibracao': prox_data.strftime('%Y-%m-%d') if prox_data else None,
             'data_proxima_calibracao_display': prox_data.strftime('%d/%m/%Y') if prox_data else '-',
             'mes_ano_proxima_calibracao': mes_ano_prox,

@@ -326,7 +326,7 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                        {% if item.aguardando_certificado %}<span class="badge bg-secondary" title="O resultado só é definido após receber o certificado">⏳ Aguardando certificado</span>{% elif item.resultado == 'APROVADO_SEM_CORRECAO' %}
                                             <span class="badge bg-success">✓ APROVADO</span>
                                         {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
                                             <span class="badge bg-warning text-dark">⚠ COND.</span>
@@ -356,7 +356,7 @@
                             <!-- Cabeçalho do Card: Data e Resultado -->
                             <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
                                 <span class="fw-bold text-dark"><i class="bi bi-calendar-event me-1 text-primary"></i> {{ item.data_calibracao|date:"d/m/Y" }}</span>
-                                {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                {% if item.aguardando_certificado %}<span class="badge bg-secondary" title="O resultado só é definido após receber o certificado">⏳ Aguardando certificado</span>{% elif item.resultado == 'APROVADO_SEM_CORRECAO' %}
                                     <span class="badge bg-success">✓ APROVADO</span>
                                 {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
                                     <span class="badge bg-warning text-dark">⚠ CONDICIONAL</span>
@@ -552,7 +552,7 @@
                                                         <div class="d-flex justify-content-between align-items-center mb-2 p-2" style="background-color: #f8f9fa; border-radius: 0.25rem;">
                                                             <div>
                                                                 <small>{{ historico.data_calibracao|date:"d/m/Y" }} - {{ historico.numero_certificado }}</small><br>
-                                                                {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                                                {% if historico.aguardando_certificado %}<span class="badge bg-secondary" title="O resultado só é definido após receber o certificado">⏳ Aguardando certificado</span>{% elif historico.resultado == 'APROVADO_SEM_CORRECAO' %}
                                                                     <span class="badge bg-success">✓ Aprovado</span>
                                                                 {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
                                                                     <span class="badge bg-warning text-dark">⚠ Condicionado</span>
@@ -1378,7 +1378,7 @@ function toggleEditOcorrencia(id) {
                     <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div>
                             <span class="text-muted small d-block">Resultado da Avaliação:</span>
-                            {% if item.resultado == 'APROVADO_SEM_CORRECAO' %}
+                            {% if item.aguardando_certificado %}<span class="badge bg-secondary" title="O resultado só é definido após receber o certificado">⏳ Aguardando certificado</span>{% elif item.resultado == 'APROVADO_SEM_CORRECAO' %}
                                 <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i> Aprovado sem Correção</span>
                             {% elif item.resultado == 'APROVADO_COM_CORRECAO' %}
                                 <span class="badge bg-warning text-dark fs-6"><i class="bi bi-exclamation-triangle me-1"></i> Aprovado com Correção</span>

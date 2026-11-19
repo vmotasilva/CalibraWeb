@@ -512,6 +512,10 @@
                                         <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_CALIBRACAO" data-category="resultado">
                                         <label class="form-check-label small">Sem Calibração</label>
                                     </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="AGUARDANDO_CERTIFICADO" data-category="resultado">
+                                        <label class="form-check-label small">Aguardando certificado</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -659,7 +663,7 @@
                             data-categoria="{{ i.categoria_id|default:'' }}"
                             data-acao="{{ i.acao|default:'' }}"
                             data-setor="{{ i.setor_id|default:'' }}"
-                            data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
+                            data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{% if historico.aguardando_certificado %}AGUARDANDO_CERTIFICADO{% else %}{{ historico.resultado }}{% endif %}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                             data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
                             data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
                             data-acompanhamento="{% with a=acompanhamento_map|acompanhamento_de:i.id %}{{ a.codigo|default:'' }}{% endwith %}"
@@ -773,7 +777,7 @@
                             <td class="py-2">
                                 {% with historico=i.historicos.all|first %}
                                     {% if historico %}
-                                        {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                        {% if historico.aguardando_certificado %}<span class="badge bg-secondary" title="O resultado só é definido após receber o certificado">⏳ Aguardando certificado</span>{% elif historico.resultado == 'APROVADO_SEM_CORRECAO' %}
                                             <span class="badge bg-success">✓ Aprovado</span>
                                         {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
                                             <span class="badge bg-warning text-dark">⚠ Aprv. c/ Corr.</span>
@@ -827,7 +831,7 @@
                     data-categoria="{{ i.categoria_id|default:'' }}"
                     data-acao="{{ i.acao|default:'' }}"
                     data-setor="{{ i.setor_id|default:'' }}"
-                    data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{{ historico.resultado }}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
+                    data-resultado="{% with historico=i.historicos.all|first %}{% if historico %}{% if historico.aguardando_certificado %}AGUARDANDO_CERTIFICADO{% else %}{{ historico.resultado }}{% endif %}{% else %}SEM_CALIBRACAO{% endif %}{% endwith %}"
                     data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
                     data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
                             data-acompanhamento="{% with a=acompanhamento_map|acompanhamento_de:i.id %}{{ a.codigo|default:'' }}{% endwith %}"
@@ -899,7 +903,7 @@
                             <span class="text-muted d-block" style="font-size: 0.7rem;">Últ. Calibração:</span>
                             {% with historico=i.historicos.all|first %}
                                 {% if historico %}
-                                    {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                    {% if historico.aguardando_certificado %}<span class="badge bg-secondary" title="O resultado só é definido após receber o certificado">⏳ Aguardando certificado</span>{% elif historico.resultado == 'APROVADO_SEM_CORRECAO' %}
                                         <span class="badge bg-success">✓ Aprovado</span>
                                     {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
                                         <span class="badge bg-warning text-dark">⚠ Aprv. c/ Corr.</span>

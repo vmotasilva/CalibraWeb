@@ -190,6 +190,30 @@ class HistoricoEAcompanhamentoTests(BaseCotacaoServico):
         self.assertEqual(mapa[self.a.id]["codigo"], "AGUARDANDO_CERTIFICADO")
         self.assertEqual(mapa[self.b.id]["codigo"], "AGUARDANDO_CERTIFICADO")
 
+    def test_sem_certificado_nao_ha_aprovado_nem_reprovado(self):
+        from metrologia.models import HistoricoCalibracao
+        self._executar_e_concluir()
+        for url in (reverse("modulo_metrologia"), "/dashboard/"):
+            html = self.client.get(url).content.decode()
+            self.assertIn('data-resultado="AGUARDANDO_CERTIFICADO"', html)
+            self.assertNotIn('data-resultado="APROVADO_SEM_CORRECAO"', html)
+        html = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn("Aguardando certificado</span>", html)
+        self.assertNotIn("✓ Aprovado", html)
+        self.assertIn('value="AGUARDANDO_CERTIFICADO" data-category="resultado"', html)
+        # detalhe do instrumento e lista de históricos também não mostram aprovado
+        detalhe = self.client.get(reverse("visualizar_instrumento", args=[self.a.id])).content.decode()
+        self.assertIn("Aguardando certificado", detalhe)
+        self.assertNotIn("✓ APROVADO", detalhe)
+        # certificado recebido -> passa a mostrar o resultado
+        h = HistoricoCalibracao.objects.get()
+        h.numero_certificado = "CERT-1"
+        h.link_certificado = "https://exemplo.com/c.pdf"
+        h.save()
+        html = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn('data-resultado="APROVADO_SEM_CORRECAO"', html)
+        self.assertIn("✓ Aprovado", html)
+
     def test_telas_exibem_filtro_e_atributo(self):
         self._post("cotacao_servico_agendar", {"data_visita": "2026-12-01T09:30", "acao": "agendar"})
         r = self.client.get(reverse("modulo_metrologia"))

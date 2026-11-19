@@ -516,7 +516,7 @@
                         <div class="cert-section">
                             <h4>RESULTADO</h4>
                             <div class="cert-result">
-                                {% if historico.resultado == 'APROVADO_SEM_CORRECAO' %}
+                                {% if historico.aguardando_certificado %}<p class="cert-result-pending">AGUARDANDO CERTIFICADO</p>{% elif historico.resultado == 'APROVADO_SEM_CORRECAO' %}
                                     <p class="cert-result-approved">✓ APROVADO</p>
                                 {% elif historico.resultado == 'APROVADO_COM_CORRECAO' %}
                                     <p class="cert-result-approved-correction">⚠ APROVADO COM CORREÇÃO</p>
