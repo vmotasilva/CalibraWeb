@@ -182,7 +182,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if historico.resultado == "APROVADO_SEM_CORRECAO" %}
+                                {% if historico.aguardando_certificado %}<span class="badge bg-secondary" title="O resultado só é definido após receber o certificado">⏳ Aguardando certificado</span>{% elif historico.resultado == "APROVADO_SEM_CORRECAO" %}
                                 <span class="badge bg-success">Aprovado</span>
                                 {% elif historico.resultado == "APROVADO_COM_CORRECAO" %}
                                 <span class="badge bg-warning text-dark">Aprv. c/ Corr.</span>
