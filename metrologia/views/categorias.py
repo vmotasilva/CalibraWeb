@@ -612,6 +612,37 @@ def categoria_bulk_update_tratativa_view(request, categoria_id):
 
 @login_required
 @require_http_methods(["POST"])
+def categoria_bulk_update_local_view(request, categoria_id):
+    """Atualizar o local da calibração da categoria e, opcionalmente, de todos os instrumentos."""
+    categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)
+
+    novo_local = request.POST.get('local_calibracao', '').strip()
+    aplicar_instrumentos = request.POST.get('aplicar_instrumentos') == 'on'
+
+    opcoes_validas = [choice[0] for choice in CategoriaInstrumento.LOCAL_CALIBRACAO_CHOICES]
+    if novo_local not in opcoes_validas:
+        messages.error(request, 'Local da calibração inválido.')
+        return redirect('metrologia:categoria_update', categoria_id=categoria_id)
+
+    categoria.local_calibracao = novo_local
+    categoria.save()
+
+    rotulo = dict(CategoriaInstrumento.LOCAL_CALIBRACAO_CHOICES).get(novo_local) or 'Não definido'
+    mensagem = f'Categoria atualizada com local da calibração "{rotulo}".'
+
+    if aplicar_instrumentos:
+        atualizados = Instrumento.objects.filter(categoria=categoria).exclude(
+            local_calibracao=novo_local
+        ).update(local_calibracao=novo_local)
+        if atualizados > 0:
+            mensagem += f' {atualizados} instrumento(s) tiveram o local atualizado.'
+
+    messages.success(request, mensagem)
+    return redirect('metrologia:categoria_update', categoria_id=categoria_id)
+
+
+@login_required
+@require_http_methods(["POST"])
 def categoria_bulk_update_frequencia_view(request, categoria_id):
     """Atualizar frequÃªncia de calibraÃ§Ã£o da categoria e aplicar a todos os instrumentos."""
     categoria = get_object_or_404(CategoriaInstrumento, id=categoria_id)

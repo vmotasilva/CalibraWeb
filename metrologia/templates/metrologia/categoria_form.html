@@ -226,6 +226,34 @@
 
                     <hr class="my-2">
 
+                    <!-- Atualizar Local da calibração -->
+                    <div class="mb-3">
+                        <form method="post" action="{% url 'metrologia:categoria_bulk_update_local' categoria.id %}" class="w-100">
+                            {% csrf_token %}
+                            <label class="form-label small fw-bold mb-2">
+                                <i class="bi bi-geo-alt"></i> Atualizar Local da calibração
+                            </label>
+                            <div class="input-group input-group-sm mb-2">
+                                <select name="local_calibracao" class="form-select form-select-sm">
+                                    <option value="" {% if not categoria.local_calibracao %}selected{% endif %}>Não definido</option>
+                                    <option value="NA_EMPRESA" {% if categoria.local_calibracao == 'NA_EMPRESA' %}selected{% endif %}>🏭 Somente na empresa</option>
+                                    <option value="PODE_SAIR" {% if categoria.local_calibracao == 'PODE_SAIR' %}selected{% endif %}>🚚 Pode ser enviado ao fornecedor</option>
+                                </select>
+                                <button type="submit" class="btn btn-primary" title="Atualizar local da calibração">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                            <div class="form-check form-check-sm">
+                                <input type="checkbox" name="aplicar_instrumentos" class="form-check-input" id="aplLocal">
+                                <label class="form-check-label" for="aplLocal">
+                                    Aplicar a todos os {{ total_instrumentos }} instrumento(s)
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+
+                    <hr class="my-2">
+
                     <!-- Atualizar Frequência -->
                     <div class="mb-0">
                         <form method="post" action="{% url 'metrologia:categoria_bulk_update_frequencia' categoria.id %}" class="w-100">
