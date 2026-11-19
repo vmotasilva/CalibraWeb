@@ -742,8 +742,8 @@
                     <!-- Linha 4: Botões de Ação -->
                     <div class="d-flex gap-1.5">
                         {% if item.acompanhamento %}
-                            <a href="{{ item.acompanhamento.url }}" class="btn btn-sm {% if item.acompanhamento.codigo == 'EM_COTACAO' %}btn-warning{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}btn-primary{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}btn-info{% else %}btn-danger{% endif %} flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;" title="{{ item.acompanhamento.label }}">
-                                <i class="bi {% if item.acompanhamento.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}bi-truck{% else %}bi-file-earmark-medical{% endif %} me-1"></i> {{ item.acompanhamento.label }}
+                            <a href="{{ item.acompanhamento.url }}" class="btn btn-sm {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}btn-outline-secondary{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}btn-warning{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}btn-primary{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}btn-info{% else %}btn-danger{% endif %} flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;" title="{{ item.acompanhamento.label }}">
+                                <i class="bi {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}bi-cart3{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}bi-truck{% else %}bi-file-earmark-medical{% endif %} me-1"></i> {{ item.acompanhamento.label }}
                             </a>
                         {% elif not item.is_internal %}
                             <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" class="btn btn-sm btn-outline-primary flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;">
@@ -951,10 +951,10 @@
                             <div class="d-inline-flex align-items-center gap-1">
                                 {% if item.acompanhamento %}
                                     <a href="{{ item.acompanhamento.url }}"
-                                       class="btn btn-xs {% if item.acompanhamento.codigo == 'EM_COTACAO' %}btn-warning{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}btn-primary{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}btn-info{% else %}btn-danger{% endif %} rounded-pill px-2.5 py-1 fw-semibold"
+                                       class="btn btn-xs {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}btn-outline-secondary{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}btn-warning{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}btn-primary{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}btn-info{% else %}btn-danger{% endif %} rounded-pill px-2.5 py-1 fw-semibold"
                                        style="font-size: 0.75rem;"
                                        title="{{ item.acompanhamento.label }}">
-                                        <i class="bi {% if item.acompanhamento.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}bi-truck{% else %}bi-file-earmark-medical{% endif %} me-1"></i> {{ item.acompanhamento.label }}
+                                        <i class="bi {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}bi-cart3{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}bi-truck{% else %}bi-file-earmark-medical{% endif %} me-1"></i> {{ item.acompanhamento.label }}
                                     </a>
                                 {% elif not item.is_internal %}
                                     <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" 
@@ -1110,6 +1110,10 @@
                             <div class="filtro-pane-head"><h6><i class="bi bi-signpost-split me-2 text-primary"></i>Acompanhamento</h6><div class="filtro-pane-tools d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="limparSecaoFiltro(this)">Limpar seção</button></div></div>
                             <div class="filter-content">
                                 <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="COM_COMPRAS" data-cat="acompanhamento">
+                                        <label class="form-check-label small fw-bold" style="color:#6f42c1">Com o setor de compras</label>
+                                    </div>
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="EM_COTACAO" data-cat="acompanhamento">
                                         <label class="form-check-label small text-warning fw-bold">Em cotação</label>

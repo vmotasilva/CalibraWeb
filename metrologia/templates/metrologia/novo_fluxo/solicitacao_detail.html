@@ -42,9 +42,99 @@
     <!-- Etapas -->
     <div class="d-flex flex-wrap gap-2 mb-3 small">
         <span class="badge rounded-pill {% if itens.count %}bg-success{% else %}bg-secondary{% endif %}">1. Instrumentos</span>
-        <span class="badge rounded-pill {% if cotacoes.count %}bg-success{% else %}bg-secondary{% endif %}">2. Propostas dos fornecedores</span>
-        <span class="badge rounded-pill {% if atendimentos %}bg-success{% else %}bg-secondary{% endif %}">3. Planejamento e execução</span>
+        <span class="badge rounded-pill {% if solicitacao.compras_ativa %}bg-warning text-dark{% elif solicitacao.compras_concluida_em %}bg-success{% else %}bg-secondary{% endif %}">2. Solicitação ao setor de compras</span>
+        <span class="badge rounded-pill {% if cotacoes.count %}bg-success{% else %}bg-secondary{% endif %}">3. Propostas dos fornecedores</span>
+        <span class="badge rounded-pill {% if atendimentos %}bg-success{% else %}bg-secondary{% endif %}">4. Planejamento e execução</span>
     </div>
+
+    <!-- Etapa: solicitação das cotações ao setor de compras (começa antes das cotações; encerra com elas) -->
+    <div class="card mb-3 {% if solicitacao.compras_ativa %}border-warning{% endif %}" id="etapa-compras">
+        <div class="card-body py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <i class="bi bi-cart3 fs-5 {% if solicitacao.compras_ativa %}text-warning{% elif solicitacao.compras_concluida_em %}text-success{% else %}text-muted{% endif %}"></i>
+                <strong>Solicitação ao setor de compras</strong>
+                {% if solicitacao.compras_ativa %}
+                    <span class="badge bg-warning text-dark">Com o setor de compras</span>
+                    <span class="small text-muted">desde {{ solicitacao.compras_solicitada_em|date:"d/m/Y" }} ({{ solicitacao.compras_dias }} dia{{ solicitacao.compras_dias|pluralize }})</span>
+                {% elif solicitacao.compras_concluida_em %}
+                    <span class="badge bg-success">Etapa encerrada</span>
+                    <span class="small text-muted">{{ solicitacao.compras_solicitada_em|date:"d/m/Y" }} → {{ solicitacao.compras_concluida_em|date:"d/m/Y" }} ({{ solicitacao.compras_dias }} dia{{ solicitacao.compras_dias|pluralize }})</span>
+                {% else %}
+                    <span class="badge bg-secondary">Não solicitada</span>
+                    <span class="small text-muted">Envie a demanda ao setor de compras antes de pedir as cotações.</span>
+                {% endif %}
+                {% if solicitacao.compras_responsavel %}<span class="small text-muted"><i class="bi bi-person"></i> {{ solicitacao.compras_responsavel }}</span>{% endif %}
+            </div>
+            {% if solicitacao.status != 'CONCLUIDA' and solicitacao.status != 'CANCELADA' %}
+            <div class="d-flex flex-wrap gap-2">
+                {% if not solicitacao.compras_solicitada_em %}
+                    <button type="button" class="btn btn-sm btn-primary" onclick="abrirCompras('solicitar')"><i class="bi bi-send"></i> Solicitar ao setor de compras</button>
+                {% else %}
+                    {% if solicitacao.compras_ativa %}
+                        <form method="post" action="{% url 'metrologia:solicitacao_compras' solicitacao.id %}" class="d-inline" onsubmit="return confirm('Encerrar a etapa de compras? (ela também encerra sozinha quando a primeira proposta chega)')">
+                            {% csrf_token %}<input type="hidden" name="acao" value="encerrar">
+                            <button type="submit" class="btn btn-sm btn-success"><i class="bi bi-check2-circle"></i> Encerrar etapa</button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{% url 'metrologia:solicitacao_compras' solicitacao.id %}" class="d-inline">
+                            {% csrf_token %}<input type="hidden" name="acao" value="reabrir">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Reabrir</button>
+                        </form>
+                    {% endif %}
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="abrirCompras('editar')"><i class="bi bi-pencil"></i> Editar</button>
+                    <form method="post" action="{% url 'metrologia:solicitacao_compras' solicitacao.id %}" class="d-inline" onsubmit="return confirm('Desfazer a solicitação ao setor de compras?')">
+                        {% csrf_token %}<input type="hidden" name="acao" value="desfazer">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Desfazer a solicitação"><i class="bi bi-x-circle"></i></button>
+                    </form>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        {% if solicitacao.compras_observacoes %}
+        <div class="card-footer py-1 small text-muted bg-light"><i class="bi bi-chat-left-text"></i> {{ solicitacao.compras_observacoes|linebreaksbr }}</div>
+        {% endif %}
+    </div>
+
+    <div class="modal fade" id="modalCompras" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <form method="post" action="{% url 'metrologia:solicitacao_compras' solicitacao.id %}" class="modal-content">
+                {% csrf_token %}
+                <input type="hidden" name="acao" id="comprasAcao" value="solicitar">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-cart3 me-2"></i><span id="comprasTitulo">Solicitar ao setor de compras</span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small" for="comprasData">Data da solicitação</label>
+                        <input type="date" name="data_solicitada" id="comprasData" class="form-control" max="{{ hoje|date:'Y-m-d' }}" value="{{ solicitacao.compras_solicitada_em|date:'Y-m-d' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small" for="comprasResp">Responsável em Compras <span class="text-muted fw-normal">(opcional)</span></label>
+                        <input type="text" name="responsavel" id="comprasResp" class="form-control" maxlength="150" value="{{ solicitacao.compras_responsavel }}" placeholder="Quem ficou de pedir as cotações">
+                    </div>
+                    <div>
+                        <label class="form-label fw-bold small" for="comprasObs">Observações <span class="text-muted fw-normal">(opcional)</span></label>
+                        <textarea name="observacoes" id="comprasObs" class="form-control" rows="3" placeholder="Fornecedores sugeridos, prazo desejado...">{{ solicitacao.compras_observacoes }}</textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+    function abrirCompras(acao) {
+        document.getElementById('comprasAcao').value = acao;
+        document.getElementById('comprasTitulo').textContent = acao === 'editar' ? 'Editar solicitação ao setor de compras' : 'Solicitar ao setor de compras';
+        if (acao === 'solicitar' && !document.getElementById('comprasData').value) {
+            document.getElementById('comprasData').value = new Date().toISOString().slice(0, 10);
+        }
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalCompras')).show();
+    }
+    </script>
 
     <!-- Itens da Solicitação (colapsável) -->
     <div class="card mb-4">

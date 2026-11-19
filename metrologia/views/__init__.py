@@ -51,6 +51,7 @@ from .views import (
 from .novo_fluxo_cotacao import (
     solicitacao_list,
     solicitacao_create,
+    solicitacao_compras,
     solicitacao_detail,
     solicitacao_update,
     solicitacao_delete,
@@ -115,6 +116,7 @@ __all__ = [
     # NOVO FLUXO
     'solicitacao_list',
     'solicitacao_create',
+    'solicitacao_compras',
     'solicitacao_detail',
     'solicitacao_update',
     'solicitacao_delete',

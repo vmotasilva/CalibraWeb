@@ -63,7 +63,7 @@
                             {% if not cots %}<span class="text-muted small">Aguardando propostas</span>{% endif %}
                         </td>
                         <td>
-                            <span class="badge {% if s.status == 'CONCLUIDA' or s.status == 'REALIZADO' %}bg-success{% elif s.status == 'CANCELADA' %}bg-secondary{% elif s.status == 'ABERTA' or s.status == 'INSTRUMENTOS_SELECIONADOS' %}bg-warning text-dark{% else %}bg-primary{% endif %}">{{ s.get_status_display }}</span>
+                            <span class="badge {% if s.status == 'CONCLUIDA' or s.status == 'REALIZADO' %}bg-success{% elif s.status == 'CANCELADA' %}bg-secondary{% elif s.status == 'ABERTA' or s.status == 'INSTRUMENTOS_SELECIONADOS' or s.status == 'COM_COMPRAS' %}bg-warning text-dark{% else %}bg-primary{% endif %}">{{ s.get_status_display }}</span>
                         </td>
                         <td class="text-end">
                             <a href="{% url 'metrologia:solicitacao_detail' s.id %}" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation()">Abrir <i class="bi bi-chevron-right"></i></a>

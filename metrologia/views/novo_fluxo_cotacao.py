@@ -122,6 +122,7 @@ def contexto_cotacoes_abertas():
 
 
 ACOMPANHAMENTO_LABELS = {
+    'COM_COMPRAS': 'Com o setor de compras',
     'EM_COTACAO': 'Em cotação',
     'CALIBRACAO_PROGRAMADA': 'Calibração programada',
     'ENVIADO_FORNECEDOR': 'Enviado ao fornecedor',
@@ -136,17 +137,28 @@ def acompanhamento_instrumentos():
       3. ENVIADO_FORNECEDOR     - instrumento enviado ao fornecedor (data de envio) e ainda sem retorno
       4. AGUARDANDO_CERTIFICADO - histórico gerado na conclusão, sem dados do certificado
       2. CALIBRACAO_PROGRAMADA  - orçamento aprovado e calibração ainda não realizada
-      1. EM_COTACAO             - solicitação de cotação em aberto
+      1. COM_COMPRAS / EM_COTACAO - solicitação de cotação em aberto (com o setor de compras, até
+                                    a chegada das propostas; depois, em cotação)
     """
     from django.urls import reverse
     resultado = {}
 
+    com_compras = {
+        s.id: s for s in SolicitacaoCotacao.objects
+        .filter(compras_solicitada_em__isnull=False, compras_concluida_em__isnull=True)
+        .exclude(status__in=STATUS_COTACAO_ENCERRADA)
+    }
     for inst_id, (sol_id, numero) in instrumentos_em_cotacao().items():
-        resultado[inst_id] = {
-            'codigo': 'EM_COTACAO',
-            'label': f'Em cotação ({numero})',
-            'url': reverse('metrologia:solicitacao_detail', args=[sol_id]),
-        }
+        url = reverse('metrologia:solicitacao_detail', args=[sol_id])
+        if sol_id in com_compras:
+            desde = com_compras[sol_id].compras_solicitada_em
+            resultado[inst_id] = {
+                'codigo': 'COM_COMPRAS',
+                'label': f'Com o setor de compras ({numero}, desde {desde:%d/%m/%Y})',
+                'url': url,
+            }
+        else:
+            resultado[inst_id] = {'codigo': 'EM_COTACAO', 'label': f'Em cotação ({numero})', 'url': url}
 
     # Orçamento aprovado e calibração ainda não realizada (sem histórico gerado,
     # sem NAO_ATENDIDO na execução e sem o instrumento desconsiderado no planejamento).
@@ -206,6 +218,73 @@ def acompanhamento_instrumentos():
             'url': reverse('editar_historico_calibracao', args=[h.id]),
         }
     return resultado
+
+
+@login_required
+@require_POST
+def solicitacao_compras(request, pk):
+    """Etapa "Solicitação das cotações ao setor de compras" (acao: solicitar|editar|encerrar|reabrir|desfazer)."""
+    solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
+    voltar = redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
+    if solicitacao.status in STATUS_COTACAO_ENCERRADA:
+        messages.error(request, "Esta cotação está encerrada; reabra-a antes de alterar a etapa de compras.")
+        return voltar
+
+    acao = request.POST.get('acao', '')
+    hoje = timezone.localdate()
+
+    def _data(campo, padrao):
+        bruto = (request.POST.get(campo) or '').strip()
+        if not bruto:
+            return padrao
+        return datetime.strptime(bruto, '%Y-%m-%d').date()
+
+    try:
+        if acao in ('solicitar', 'editar'):
+            if acao == 'editar' and not solicitacao.compras_solicitada_em:
+                messages.error(request, "A cotação ainda não foi solicitada ao setor de compras.")
+                return voltar
+            data = _data('data_solicitada', solicitacao.compras_solicitada_em or hoje)
+            if data > hoje:
+                messages.error(request, "A data da solicitação não pode ser futura.")
+                return voltar
+            solicitacao.compras_solicitada_em = data
+            solicitacao.compras_responsavel = (request.POST.get('responsavel') or '').strip()[:150]
+            solicitacao.compras_observacoes = (request.POST.get('observacoes') or '').strip()
+            if acao == 'solicitar':
+                solicitacao.compras_solicitada_por = request.user
+                solicitacao.compras_concluida_em = None
+            msg = "Demanda enviada ao setor de compras." if acao == 'solicitar' else "Dados da solicitação atualizados."
+        elif acao == 'encerrar':
+            if not solicitacao.compras_solicitada_em:
+                messages.error(request, "A cotação ainda não foi solicitada ao setor de compras.")
+                return voltar
+            fim = _data('data_encerrada', hoje)
+            if fim < solicitacao.compras_solicitada_em:
+                messages.error(request, "O encerramento não pode ser anterior à solicitação.")
+                return voltar
+            solicitacao.compras_concluida_em = fim
+            msg = "Etapa de compras encerrada."
+        elif acao == 'reabrir':
+            solicitacao.compras_concluida_em = None
+            msg = "Etapa de compras reaberta: a demanda voltou ao setor de compras."
+        elif acao == 'desfazer':
+            solicitacao.compras_solicitada_em = None
+            solicitacao.compras_solicitada_por = None
+            solicitacao.compras_responsavel = ''
+            solicitacao.compras_observacoes = ''
+            solicitacao.compras_concluida_em = None
+            msg = "Solicitação ao setor de compras desfeita."
+        else:
+            messages.error(request, "Ação inválida.")
+            return voltar
+    except ValueError:
+        messages.error(request, "Data inválida.")
+        return voltar
+
+    solicitacao.save()          # recalcula o status (Com o Setor de Compras / etc.)
+    messages.success(request, msg)
+    return voltar
 
 
 @login_required
