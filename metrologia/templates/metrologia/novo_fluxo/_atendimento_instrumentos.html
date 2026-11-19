@@ -23,6 +23,7 @@
                     {% if a.desconsiderado %}
                         <span class="badge bg-secondary">Desconsiderado</span>
                         <span class="text-muted">{{ a.justificativa_desconsiderar }}</span>
+                        {% if a.ocorrencia_desconsiderar_id %}<span class="badge bg-warning text-dark ms-1" title="A justificativa foi registrada como ocorrência do instrumento"><i class="bi bi-exclamation-triangle"></i> Ocorrência #{{ a.ocorrencia_desconsiderar_id }}</span>{% endif %}
                         {% if a.desconsiderado_por %}<div class="text-muted" style="font-size: .72rem;">por {{ a.desconsiderado_por.get_full_name|default:a.desconsiderado_por.username }}{% if a.desconsiderado_em %} em {{ a.desconsiderado_em|date:"d/m/Y H:i" }}{% endif %}</div>{% endif %}
                     {% else %}
                         <span class="text-muted">Ativo</span>

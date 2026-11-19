@@ -1651,6 +1651,15 @@ class AtendimentoSolicitacao(models.Model):
         blank=True,
         verbose_name='Desconsiderado em'
     )
+    # Ocorrência aberta automaticamente com a justificativa ao desconsiderar
+    ocorrencia_desconsiderar = models.ForeignKey(
+        'qms.OcorrenciaInstrumento',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='atendimentos_desconsiderados',
+        verbose_name='Ocorrência da justificativa'
+    )
     
     # Status
     status = models.CharField(

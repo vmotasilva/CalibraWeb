@@ -104,3 +104,75 @@ class PlanejamentoAtendimentosTests(TestCase):
         self.assertEqual(OcorrenciaInstrumento.objects.get().instrumento, inst)
         r = self.client.post(reverse("metrologia:registrar_ocorrencia"), dados)  # sem Referer: não quebra
         self.assertEqual(r.status_code, 302)
+
+
+class DesconsiderarOcorrenciaEEnviadoTests(TestCase):
+    """Justificativa vira ocorrência; envio ao fornecedor vira status de acompanhamento."""
+
+    setUp = PlanejamentoAtendimentosTests.setUp          # mesmas fixtures, sem reexecutar os testes
+    _salvar = PlanejamentoAtendimentosTests._salvar
+
+    def _desconsiderar(self, tag, justificativa="Equipamento já estava calibrado"):
+        return self.client.post(
+            reverse("metrologia:atendimento_desconsiderar", args=[self.atends[tag].id]),
+            {"justificativa": justificativa})
+
+    def test_desconsiderar_abre_ocorrencia_com_a_justificativa(self):
+        from qms.models import OcorrenciaInstrumento
+        self._desconsiderar("RC-01")
+        a = AtendimentoSolicitacao.objects.get(pk=self.atends["RC-01"].pk)
+        oc = a.ocorrencia_desconsiderar
+        self.assertEqual((oc.instrumento.tag, oc.status, oc.usuario_responsavel_id), ("RC-01", "ABERTA", self.user.id))
+        self.assertIn("Equipamento já estava calibrado", oc.descricao)
+        self.assertIn("COT-T-0001", oc.descricao)
+        r = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id]))
+        self.assertContains(r, f"Ocorrência #{oc.id}")
+        # repetir não duplica
+        self._desconsiderar("RC-01", "Outro motivo")
+        self.assertEqual(OcorrenciaInstrumento.objects.count(), 1)
+        oc.refresh_from_db()
+        self.assertIn("Outro motivo", oc.descricao)
+
+    def test_reativar_encerra_a_ocorrencia(self):
+        from qms.models import OcorrenciaInstrumento
+        self._desconsiderar("RC-01")
+        self.client.post(reverse("metrologia:atendimento_desconsiderar", args=[self.atends["RC-01"].id]),
+                         {"desconsiderado": "0"})
+        oc = OcorrenciaInstrumento.objects.get()
+        self.assertEqual(oc.status, "ENCERRADA")
+        self.assertIsNotNone(oc.data_encerramento)
+        self.assertEqual(oc.mensagens.count(), 1)
+        # desconsiderar de novo abre uma nova
+        self._desconsiderar("RC-01", "De novo")
+        self.assertEqual(OcorrenciaInstrumento.objects.filter(status="ABERTA").count(), 1)
+
+    def test_sem_justificativa_nao_cria(self):
+        from qms.models import OcorrenciaInstrumento
+        self._desconsiderar("RC-01", "")
+        self.assertEqual(OcorrenciaInstrumento.objects.count(), 0)
+
+    def test_enviado_ao_fornecedor_e_status_de_acompanhamento(self):
+        from metrologia.models import ItemCotacao
+        from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos
+        ItemCotacao.objects.all().update(tipo_servico="CALIBRACAO")
+        CotacaoFornecedor.objects.update(aprovada=True, status="ACEITA")
+        es = self.atends["ES-01"]
+        self.assertEqual(acompanhamento_instrumentos()[es.item_solicitacao.instrumento_id]["codigo"],
+                         "CALIBRACAO_PROGRAMADA")
+        self._salvar("NO_LABORATORIO", ["ES-01"], {"data_envio": "2026-11-17", "data_retorno_previsto": "2026-11-30"})
+        info = acompanhamento_instrumentos()[es.item_solicitacao.instrumento_id]
+        self.assertEqual(info["codigo"], "ENVIADO_FORNECEDOR")
+        self.assertIn("17/11/2026", info["label"])
+        self.assertIn("30/11/2026", info["label"])
+        self.assertContains(self.client.get(reverse("modulo_metrologia")), 'value="ENVIADO_FORNECEDOR"')
+        # retornou -> aguardando certificado
+        self._salvar("NO_LABORATORIO", ["ES-01"], {"data_retorno": "2026-11-20"})
+        self.assertEqual(acompanhamento_instrumentos()[es.item_solicitacao.instrumento_id]["codigo"],
+                         "AGUARDANDO_CERTIFICADO")
+
+    def test_desconsiderado_nao_aparece_como_enviado(self):
+        from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos
+        self._salvar("NO_LABORATORIO", ["ES-01"], {"data_envio": "2026-11-17"})
+        self._desconsiderar("ES-01")
+        inst_id = self.atends["ES-01"].item_solicitacao.instrumento_id
+        self.assertNotEqual(acompanhamento_instrumentos().get(inst_id, {}).get("codigo"), "ENVIADO_FORNECEDOR")
