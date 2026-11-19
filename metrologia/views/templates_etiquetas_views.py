@@ -229,7 +229,7 @@ def export_etiquetas_excel_view(request):
 
     if not instrumentos:
         messages.warning(request, "Nenhum instrumento encontrado para geração de etiquetas.")
-        return redirect(request.META.get('HTTP_REFERER') or 'metrologia:dashboard')
+        return redirect(request.META.get('HTTP_REFERER') or 'modulo_metrologia')
 
     # 2. Escolha do Template / Variação
     template_id = request.GET.get('template_id')
@@ -275,4 +275,4 @@ def export_etiquetas_excel_view(request):
 
     except Exception as e:
         messages.error(request, f"Erro ao gerar arquivo Excel de etiquetas: {str(e)}")
-        return redirect(request.META.get('HTTP_REFERER') or 'metrologia:dashboard')
+        return redirect(request.META.get('HTTP_REFERER') or 'modulo_metrologia')

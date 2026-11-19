@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block title %}Itens pendentes de cotação{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-0"><i class="bi bi-hourglass-bottom me-2"></i>Itens pendentes de tratativa</h1>
+            <div class="text-muted small">Instrumentos que não foram executados na cotação e seguem em aberto. Trate cada um: inclua em uma solicitação, reinclua na origem ou remova com motivo.</div>
+        </div>
+        <a href="{% url 'metrologia:solicitacao_list' %}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Cotações</a>
+    </div>
+
+
+    <div class="card mb-4">
+        <div class="card-header bg-light"><strong>Em aberto</strong> <span class="badge bg-dark ms-1">{{ pendencias|length }}</span></div>
+        <div class="card-body p-2">
+            {% if pendencias %}
+                {% url 'metrologia:pendencias_cotacao' as voltar_url %}
+                {% include "metrologia/novo_fluxo/_pendencias_tabela.html" with lista=pendencias next=voltar_url mostrar_origem=True %}
+            {% else %}
+                <div class="text-muted text-center py-4"><i class="bi bi-check2-circle fs-3 d-block text-success"></i>Nenhum item pendente de tratativa.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if historico %}
+    <div class="card mb-4">
+        <div class="card-header bg-light"><strong>Tratadas recentemente</strong></div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 align-middle">
+                <thead class="table-light"><tr><th>Instrumento</th><th>Origem</th><th>Resolução</th><th>Quando / quem</th><th>Observação</th></tr></thead>
+                <tbody>
+                {% for a in historico %}
+                    <tr>
+                        <td class="font-monospace fw-bold">{{ a.item_solicitacao.instrumento.tag }}</td>
+                        <td><a href="{% url 'metrologia:solicitacao_detail' a.solicitacao_id %}">{{ a.solicitacao.numero }}</a></td>
+                        <td class="small">{{ a.get_pendencia_resolucao_display }}
+                            {% if a.pendencia_nova_solicitacao_id %}→ <a href="{% url 'metrologia:solicitacao_detail' a.pendencia_nova_solicitacao_id %}">{{ a.pendencia_nova_solicitacao.numero }}</a>{% endif %}</td>
+                        <td class="small">{{ a.pendencia_resolvida_em|date:"d/m/Y H:i" }}{% if a.pendencia_resolvida_por %} · {{ a.pendencia_resolvida_por.get_full_name|default:a.pendencia_resolvida_por.username }}{% endif %}</td>
+                        <td class="small text-muted">{{ a.pendencia_observacao }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

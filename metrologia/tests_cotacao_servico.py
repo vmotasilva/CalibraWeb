@@ -506,3 +506,122 @@ class FiltroLocalCalibracaoTests(BaseCotacaoServico):
         self.assertIn('data-local="COMPRAR_NOVO"', metro)
         shared = self.client.get("/dashboard/").content.decode()
         self.assertIn('data-local="comprar_novo"', shared)
+
+
+class TemplatesEtiquetasPaginaTests(BaseCotacaoServico):
+    """A tela de modelos de etiquetas renderiza (regressão: link para rota 'dashboard' inexistente)."""
+
+    def test_lista_renderiza(self):
+        resp = self.client.get("/metrologia/templates-etiquetas/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("modulo_metrologia"))
+
+
+class RemoverItemSolicitacaoTests(BaseCotacaoServico):
+    """Item já cotado/atendido não pode ser removido: mostra mensagem em vez de erro 500."""
+
+    def test_item_com_cotacao_nao_gera_500(self):
+        isol = self.itens[0].item_solicitacao
+        resp = self.client.post(reverse("metrologia:item_solicitacao_delete", args=[isol.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(ItemSolicitacaoCotacao.objects.filter(pk=isol.pk).exists())
+        msgs = [str(m) for m in resp.context["messages"]]
+        self.assertTrue(any("não pode ser removido" in m and "item(ns) de cotação" in m for m in msgs), msgs)
+
+    def test_item_sem_vinculos_e_removido(self):
+        extra = Instrumento.objects.create(tag="C-01", descricao="C")
+        isol = ItemSolicitacaoCotacao.objects.create(solicitacao=self.sol, instrumento=extra)
+        self.client.post(reverse("metrologia:item_solicitacao_delete", args=[isol.pk]))
+        self.assertFalse(ItemSolicitacaoCotacao.objects.filter(pk=isol.pk).exists())
+
+
+class DesconsiderarDoisTiposETratativaTests(BaseCotacaoServico):
+    """Desconsiderar como 'removido' ou 'pendente' + etapa de tratativa dos pendentes."""
+
+    def setUp(self):
+        super().setUp()
+        from metrologia.models import AtendimentoSolicitacao
+        self.Atend = AtendimentoSolicitacao
+        self.atend = [
+            AtendimentoSolicitacao.objects.create(
+                solicitacao=self.sol, item_solicitacao=it.item_solicitacao, item_cotacao=it,
+                data_prevista_atendimento="2026-12-01")
+            for it in self.itens]
+
+    def _desc(self, atend, **dados):
+        return self.client.post(reverse("metrologia:atendimento_desconsiderar", args=[atend.pk]), dados, follow=True)
+
+    def test_removido_e_pendente(self):
+        self._desc(self.atend[0], justificativa="fora de uso", tipo="REMOVIDO")
+        self._desc(self.atend[1], justificativa="avaliar depois", tipo="PENDENTE")
+        for a in self.atend:
+            a.refresh_from_db()
+        self.assertEqual((self.atend[0].desconsiderado, self.atend[0].tipo_desconsideracao), (True, "REMOVIDO"))
+        self.assertEqual((self.atend[1].desconsiderado, self.atend[1].tipo_desconsideracao), (True, "PENDENTE"))
+        self.assertTrue(self.atend[1].pendente_aberto)
+        self.assertFalse(self.atend[0].pendente_aberto)
+        self.assertIn("pendente", self.atend[1].ocorrencia_desconsiderar.descricao.lower())
+
+    def test_tipo_padrao_e_invalido(self):
+        self._desc(self.atend[0], justificativa="x")
+        self.atend[0].refresh_from_db()
+        self.assertEqual(self.atend[0].tipo_desconsideracao, "REMOVIDO")
+        self._desc(self.atend[1], justificativa="x", tipo="XXX")
+        self.atend[1].refresh_from_db()
+        self.assertFalse(self.atend[1].desconsiderado)
+
+    def test_acompanhamento_pendente_e_removido_fora_de_cotacao(self):
+        from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos, instrumentos_em_cotacao
+        self._desc(self.atend[0], justificativa="a", tipo="PENDENTE")
+        self._desc(self.atend[1], justificativa="b", tipo="REMOVIDO")
+        mapa = acompanhamento_instrumentos()
+        self.assertEqual(mapa[self.a.id]["codigo"], "PENDENTE_TRATATIVA")
+        self.assertNotIn(self.b.id, mapa)
+        em_cotacao = instrumentos_em_cotacao()
+        self.assertNotIn(self.a.id, em_cotacao)
+        self.assertNotIn(self.b.id, em_cotacao)
+
+    def test_tratar_nova_solicitacao(self):
+        self._desc(self.atend[0], justificativa="a", tipo="PENDENTE")
+        resp = self.client.post(reverse("metrologia:pendencia_tratar", args=[self.atend[0].pk]),
+                                {"acao": "nova_solicitacao", "solicitacao_destino": "nova", "observacao": "reagendar"})
+        self.atend[0].refresh_from_db()
+        self.assertEqual(self.atend[0].pendencia_resolucao, "NOVA_SOLICITACAO")
+        nova = self.atend[0].pendencia_nova_solicitacao
+        self.assertIsNotNone(nova)
+        self.assertTrue(nova.itens.filter(instrumento=self.a).exists())
+        self.assertEqual(self.atend[0].ocorrencia_desconsiderar.status, "ENCERRADA")
+        self.assertFalse(self.atend[0].pendente_aberto)
+        from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao
+        self.assertEqual(instrumentos_em_cotacao()[self.a.id][0], nova.id)
+        # segunda tratativa é ignorada
+        self.client.post(reverse("metrologia:pendencia_tratar", args=[self.atend[0].pk]), {"acao": "reincluir"})
+        self.atend[0].refresh_from_db()
+        self.assertEqual(self.atend[0].pendencia_resolucao, "NOVA_SOLICITACAO")
+
+    def test_tratar_reincluir_e_remover(self):
+        self._desc(self.atend[0], justificativa="a", tipo="PENDENTE")
+        self._desc(self.atend[1], justificativa="b", tipo="PENDENTE")
+        self.client.post(reverse("metrologia:pendencia_tratar", args=[self.atend[0].pk]), {"acao": "reincluir"})
+        # remover exige motivo
+        self.client.post(reverse("metrologia:pendencia_tratar", args=[self.atend[1].pk]), {"acao": "remover"})
+        for a in self.atend:
+            a.refresh_from_db()
+        self.assertFalse(self.atend[0].desconsiderado)
+        self.assertEqual(self.atend[0].pendencia_resolucao, "REINCLUIDO")
+        self.assertTrue(self.atend[1].pendente_aberto)
+        self.client.post(reverse("metrologia:pendencia_tratar", args=[self.atend[1].pk]),
+                         {"acao": "remover", "observacao": "descartado"})
+        self.atend[1].refresh_from_db()
+        self.assertEqual((self.atend[1].tipo_desconsideracao, self.atend[1].pendencia_resolucao), ("REMOVIDO", "REMOVIDO"))
+
+    def test_telas_renderizam(self):
+        self._desc(self.atend[0], justificativa="a", tipo="PENDENTE")
+        lista = self.client.get(reverse("metrologia:pendencias_cotacao"))
+        self.assertContains(lista, "Itens pendentes de tratativa")
+        self.assertContains(lista, "A-01")
+        det = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.pk]))
+        self.assertContains(det, 'id="etapa-pendencias"')
+        self.assertContains(det, "Pendente")
+        metro = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn('value="PENDENTE_TRATATIVA"', metro)
