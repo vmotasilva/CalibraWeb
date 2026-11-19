@@ -166,11 +166,11 @@ class HistoricoEAcompanhamentoTests(BaseCotacaoServico):
         from metrologia.models import HistoricoCalibracao
         self._executar_e_concluir()
         h = HistoricoCalibracao.objects.get()
-        h.numero_certificado = "CERT-1"
+        h.numero_certificado = "S/N"
         h.save()
         h.refresh_from_db()
-        self.assertTrue(h.aguardando_certificado)  # falta arquivo/link
-        h.link_certificado = "https://exemplo.com/c.pdf"
+        self.assertTrue(h.aguardando_certificado)  # sem número real, segue aguardando
+        h.numero_certificado = "CERT-1"
         h.save()
         h.refresh_from_db()
         self.assertFalse(h.aguardando_certificado)

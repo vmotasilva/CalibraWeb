@@ -301,6 +301,8 @@ def solicitacao_detail(request, pk):
             h.item_cotacao_id: h for h in HistoricoCalibracao.objects.filter(
                 aguardando_certificado=True, item_cotacao__cotacao_fornecedor__solicitacao=solicitacao)
         },
+        # último histórico de cada item (qualquer origem): base do botão "Associar certificado"
+        'historicos_por_item': _ultimo_historico_por_item(solicitacao),
         'usuarios_responsaveis': usuarios_responsaveis,
         'locais_atendimento': {a.item_cotacao.local_atendimento for a in atendimentos},
         'instrumentos_disponiveis': instrumentos_disponiveis,
@@ -848,6 +850,22 @@ def gerar_historicos_calibracao(cotacao):
     return criados
 
 
+def _ultimo_historico_por_item(solicitacao):
+    """{item_cotacao_id: HistoricoCalibracao mais recente} da solicitação."""
+    from django.db.models import Q
+    qs = (HistoricoCalibracao.objects
+          .filter(Q(item_cotacao__cotacao_fornecedor__solicitacao=solicitacao)
+                  | Q(atendimento__solicitacao=solicitacao))
+          .select_related('atendimento')
+          .order_by('data_calibracao', 'id'))  # o mais recente sobrescreve
+    mapa = {}
+    for h in qs:
+        item_id = h.item_cotacao_id or (h.atendimento.item_cotacao_id if h.atendimento_id else None)
+        if item_id:
+            mapa[item_id] = h
+    return mapa
+
+
 def _redirect_cotacao(cotacao):
     return redirect('metrologia:cotacao_fornecedor_detail', pk=cotacao.id)
 
@@ -1258,6 +1276,68 @@ def _descricao_ocorrencia_desconsiderar(atendimento, justificativa):
     cot = atendimento.item_cotacao.cotacao_fornecedor
     return (f"[{atendimento.solicitacao.numero} / {cot.numero}] "
             f"Instrumento desconsiderado no planejamento: {justificativa}")
+
+
+@login_required
+@require_POST
+def atendimento_associar_certificado(request, pk):
+    """Associa o certificado ao instrumento (N° e resultado) e conclui a calibração dele.
+
+    Serve para o registro que aguarda o certificado e também para atendimentos já realizados
+    (calibração no local realizada / retorno do laboratório) que ainda não têm registro.
+    """
+    from django.db.models import Q
+    from metrologia.models import HistoricoCalibracao
+
+    atendimento = get_object_or_404(
+        AtendimentoSolicitacao.objects.select_related(
+            'item_cotacao__instrumento', 'item_cotacao__cotacao_fornecedor__fornecedor', 'solicitacao'),
+        pk=pk)
+    voltar = redirect('metrologia:solicitacao_detail', pk=atendimento.solicitacao_id)
+    item = atendimento.item_cotacao
+    tag = item.instrumento.tag
+
+    numero = (request.POST.get('numero_certificado') or '').strip()
+    resultado = request.POST.get('resultado') or ''
+    if item.tipo_servico != 'CALIBRACAO' or atendimento.desconsiderado:
+        messages.error(request, f"{tag}: este atendimento não aceita certificado de calibração.")
+        return voltar
+    if not numero or numero.upper() == 'S/N':
+        messages.error(request, f"{tag}: informe o N° do certificado.")
+        return voltar
+    if resultado not in dict(HistoricoCalibracao.RESULTADO_CHOICES):
+        messages.error(request, f"{tag}: informe o resultado da calibração.")
+        return voltar
+
+    historico = (HistoricoCalibracao.objects
+                 .filter(Q(item_cotacao=item) | Q(atendimento__item_cotacao=item))
+                 .order_by('-data_calibracao', '-id').first())
+    if historico is None:
+        data_cal = atendimento.data_realizada or atendimento.data_retorno
+        if not data_cal:
+            messages.error(request, f"{tag}: registre a data de realização/retorno antes de associar o certificado.")
+            return voltar
+        historico = registrar_historico_item(
+            item, data_cal, atendimento=atendimento, origem='ao associar o certificado da cotação')
+    elif not historico.aguardando_certificado:
+        messages.warning(request, f"{tag}: o certificado desta calibração já foi associado ({historico.numero_certificado}).")
+        return voltar
+
+    historico.numero_certificado = numero
+    historico.resultado = resultado
+    historico.aguardando_certificado = False
+    historico.data_aprovacao = timezone.localdate()
+    base = (historico.observacoes or '').split(' PENDENTE:')[0].strip()
+    historico.observacoes = (
+        f"{base} Certificado {numero} associado por {request.user.get_full_name() or request.user.username} "
+        f"em {timezone.localdate():%d/%m/%Y}.").strip()
+    historico.save()
+
+    atendimento.status = 'CONCLUIDA'
+    atendimento.save(update_fields=['status', 'atualizado_em'])
+    atendimento.solicitacao.atualizar_status_automatico()
+    messages.success(request, f"{tag}: certificado {numero} associado; calibração concluída.")
+    return voltar
 
 
 @login_required

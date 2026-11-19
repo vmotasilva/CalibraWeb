@@ -647,6 +647,7 @@ NAV_STRUCTURE = [
                             "metrologia:cotacao_servico_agendar",
                             "metrologia:cotacao_servico_executar",
                             "metrologia:cotacao_servico_concluir",
+                            "metrologia:atendimento_associar_certificado",
                             "metrologia:atendimento_detail",
                         ],
                         "perm": "core.nav_metrologia_solicitacoes_cotacao",
