@@ -124,6 +124,7 @@ def contexto_cotacoes_abertas():
 ACOMPANHAMENTO_LABELS = {
     'EM_COTACAO': 'Em cotação',
     'CALIBRACAO_PROGRAMADA': 'Calibração programada',
+    'ENVIADO_FORNECEDOR': 'Enviado ao fornecedor',
     'AGUARDANDO_CERTIFICADO': 'Calibrado: aguardando certificado',
 }
 
@@ -132,7 +133,8 @@ def acompanhamento_instrumentos():
     """Mapa {instrumento_id: {codigo, label, url?}} do acompanhamento de equipamentos.
 
     Um instrumento tem no máximo um status, por prioridade (mais avançado vence):
-      3. AGUARDANDO_CERTIFICADO - histórico gerado na conclusão, sem dados do certificado
+      3. ENVIADO_FORNECEDOR     - instrumento enviado ao fornecedor (data de envio) e ainda sem retorno
+      4. AGUARDANDO_CERTIFICADO - histórico gerado na conclusão, sem dados do certificado
       2. CALIBRACAO_PROGRAMADA  - orçamento aprovado e calibração ainda não realizada
       1. EM_COTACAO             - solicitação de cotação em aberto
     """
@@ -170,6 +172,25 @@ def acompanhamento_instrumentos():
             'codigo': 'CALIBRACAO_PROGRAMADA',
             'label': f'Calibração programada{quando}',
             'url': reverse('metrologia:cotacao_fornecedor_detail', args=[cot.id]),
+        }
+
+    # Enviado ao laboratório do fornecedor e ainda sem retorno
+    enviados = (
+        AtendimentoSolicitacao.objects
+        .filter(data_envio__isnull=False, data_retorno__isnull=True, desconsiderado=False,
+                item_cotacao__tipo_servico='CALIBRACAO')
+        .exclude(solicitacao__status__in=STATUS_COTACAO_ENCERRADA)
+        .exclude(historicos_calibracao__isnull=False)
+        .exclude(item_cotacao__historicos_gerados__isnull=False)
+        .select_related('item_solicitacao', 'item_cotacao__cotacao_fornecedor__fornecedor')
+        .order_by('data_envio', 'id')
+    )
+    for a in enviados:
+        previsto = f', retorno previsto {a.data_retorno_previsto:%d/%m/%Y}' if a.data_retorno_previsto else ''
+        resultado[a.item_solicitacao.instrumento_id] = {
+            'codigo': 'ENVIADO_FORNECEDOR',
+            'label': f'Enviado ao fornecedor (desde {a.data_envio:%d/%m/%Y}{previsto})',
+            'url': reverse('metrologia:solicitacao_detail', args=[a.solicitacao_id]),
         }
 
     from metrologia.models import HistoricoCalibracao
@@ -1195,6 +1216,50 @@ def atendimento_atualizar_dados(request):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
+def _abrir_ocorrencia_desconsiderar(atendimento, usuario):
+    """Registra a justificativa como ocorrência do instrumento (uma aberta por atendimento)."""
+    from qms.models import OcorrenciaInstrumento
+    from shared.inbox import invalidar_cache_inbox
+    atual = atendimento.ocorrencia_desconsiderar
+    descricao = _descricao_ocorrencia_desconsiderar(atendimento, atendimento.justificativa_desconsiderar)
+    if atual and atual.status == 'ABERTA':
+        atual.descricao = descricao
+        atual.save(update_fields=['descricao'])
+        return atual
+    oc = OcorrenciaInstrumento.objects.create(
+        instrumento=atendimento.item_solicitacao.instrumento,
+        tipo='CALIBRACAO',
+        descricao=descricao,
+        data_ocorrencia=timezone.localdate(),
+        usuario_responsavel=usuario,
+        status='ABERTA',
+    )
+    atendimento.ocorrencia_desconsiderar = oc
+    invalidar_cache_inbox(usuario)
+    return oc
+
+
+def _encerrar_ocorrencia_desconsiderar(atendimento, usuario):
+    """Ao voltar a considerar o instrumento, encerra a ocorrência aberta pela justificativa."""
+    from qms.models import OcorrenciaMensagem
+    from shared.inbox import invalidar_cache_inbox
+    oc = atendimento.ocorrencia_desconsiderar
+    if oc and oc.status == 'ABERTA':
+        oc.status = 'ENCERRADA'
+        oc.data_encerramento = timezone.localdate()
+        oc.save(update_fields=['status', 'data_encerramento'])
+        OcorrenciaMensagem.objects.create(
+            ocorrencia=oc, autor=usuario,
+            texto='Instrumento voltou a ser considerado no planejamento; ocorrência encerrada automaticamente.')
+        invalidar_cache_inbox(usuario)
+
+
+def _descricao_ocorrencia_desconsiderar(atendimento, justificativa):
+    cot = atendimento.item_cotacao.cotacao_fornecedor
+    return (f"[{atendimento.solicitacao.numero} / {cot.numero}] "
+            f"Instrumento desconsiderado no planejamento: {justificativa}")
+
+
 @login_required
 @require_POST
 def atendimento_desconsiderar(request, pk):
@@ -1203,6 +1268,7 @@ def atendimento_desconsiderar(request, pk):
     voltar = redirect('metrologia:solicitacao_detail', pk=atendimento.solicitacao_id)
 
     if request.POST.get('desconsiderado') == '0':
+        _encerrar_ocorrencia_desconsiderar(atendimento, request.user)
         atendimento.desconsiderado = False
         atendimento.desconsiderado_por = None
         atendimento.desconsiderado_em = None
@@ -1220,8 +1286,10 @@ def atendimento_desconsiderar(request, pk):
     atendimento.justificativa_desconsiderar = justificativa
     atendimento.desconsiderado_por = request.user
     atendimento.desconsiderado_em = timezone.now()
+    _abrir_ocorrencia_desconsiderar(atendimento, request.user)
     atendimento.save(update_fields=[
-        'desconsiderado', 'justificativa_desconsiderar', 'desconsiderado_por', 'desconsiderado_em', 'atualizado_em',
+        'desconsiderado', 'justificativa_desconsiderar', 'desconsiderado_por', 'desconsiderado_em',
+        'ocorrencia_desconsiderar', 'atualizado_em',
     ])
     atendimento.solicitacao.atualizar_status_automatico()
     messages.success(request, f"Instrumento {atendimento.item_solicitacao.instrumento.tag} desconsiderado.")

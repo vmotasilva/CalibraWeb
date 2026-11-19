@@ -55,3 +55,8 @@ class CotacaoRapidaTests(TestCase):
         self.assertContains(r, "Propostas dos fornecedores")
         self.assertContains(r, "btn-concluir")
         self.assertNotContains(r, "Planejamento de Atendimentos")
+
+    def test_dashboard_nao_prende_a_rolagem_da_pagina(self):
+        html = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn("ajustarAlturaMetrologia", html)
+        self.assertNotIn("body { overflow: hidden; }", html)
