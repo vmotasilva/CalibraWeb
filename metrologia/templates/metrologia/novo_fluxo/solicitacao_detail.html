@@ -245,7 +245,7 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label small fw-bold mb-1">Telefone do técnico</label>
-                                            <input type="tel" class="form-control form-control-sm" data-grupo-campo="tecnico_telefone" value="{{ base.tecnico_telefone|default:'' }}" placeholder="(00) 00000-0000">
+                                            <input type="tel" class="form-control form-control-sm" data-grupo-campo="tecnico_telefone" value="{{ base.tecnico_telefone|default:'' }}" placeholder="(00) 0 0000-0000" maxlength="16" inputmode="numeric" autocomplete="off">
                                         </div>
                                     </div>
                                     {% include "metrologia/novo_fluxo/_atendimento_instrumentos.html" with grupo=cotacao_group.list tipo="NO_LOCAL" %}
@@ -1062,6 +1062,25 @@ function toggleCotacao(headerElement) {
         }
     }
 }
+</script>
+
+<script>
+// Máscara de telefone do técnico: (00) 0 0000-0000
+(function () {
+    function mascararTelefone(valor) {
+        var d = (valor || '').replace(/\D/g, '').slice(0, 11);
+        var r = '';
+        if (d.length > 0) r = '(' + d.slice(0, 2);
+        if (d.length > 2) r += ') ' + d.slice(2, 3);
+        if (d.length > 3) r += ' ' + d.slice(3, 7);
+        if (d.length > 7) r += '-' + d.slice(7, 11);
+        return r;
+    }
+    document.querySelectorAll('[data-grupo-campo$="_telefone"]').forEach(function (el) {
+        el.value = mascararTelefone(el.value);
+        el.addEventListener('input', function () { el.value = mascararTelefone(el.value); });
+    });
+})();
 </script>
 
 {% include "metrologia/novo_fluxo/_atendimento_modais.html" %}
