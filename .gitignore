@@ -69,3 +69,6 @@ coverage.xml
 atualizar_cpf_colaboradores.py
 gerar_sql_neon.py
 
+
+# Dump de migração Neon->Supabase (contém dados)
+*.dump

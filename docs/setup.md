@@ -142,3 +142,42 @@ redis-cli ping
 ---
 
 Para mais informações sobre arquitetura, consulte [Arquitetura](./arquitetura.md)
+
+## Migração Neon.tech → Supabase
+
+Cópia fiel do schema `public` (dados, usuários, sessões, permissões). Não exige mudança de código:
+o `settings.py` lê `DATABASE_URL` e já exige SSL.
+
+**Pré-requisitos:** `postgresql-client` (`pg_dump`, `pg_restore`, `psql`) com versão >= à do Neon; projeto Supabase
+criado com Postgres >= ao do Neon.
+
+**Conexão:** use a URL **direta** do Neon (sem `-pooler`) e, no Supabase, o **Session pooler** (porta 5432).
+Nunca o Transaction pooler (6543) — quebra cursores server-side do Django.
+
+```bash
+export NEON_URL='postgresql://USER:SENHA@ep-xxx.neon.tech/DB?sslmode=require'
+export SUPABASE_HOST='aws-0-sa-east-1.pooler.supabase.com'
+export SUPABASE_PORT=5432
+export SUPABASE_USER='postgres.<project-ref>'
+# a senha do Supabase é pedida pelo script (não vai para arquivos nem para o histórico)
+
+scripts/migrar_neon_supabase.sh preflight   # versões, extensões, nº de tabelas
+# --- colocar o app em manutenção (parar escritas) ---
+scripts/migrar_neon_supabase.sh all         # dump + restore + sequences + RLS + verify
+```
+
+O `verify` compara a contagem de linhas de todas as tabelas e confere as sequences. Só prossiga se terminar com
+`VERIFICAÇÃO OK`.
+
+**Troca:**
+1. Com `DATABASE_URL` = Session pooler do Supabase (a senha deve ser codificada na URL: `@`→`%40`, `*`→`%2A`, `#`→`%23`):
+   `python manage.py showmigrations | grep -v '\[X\]'` deve vir vazio e `python manage.py check` sem erros.
+2. Vercel → Settings → Environment Variables: atualizar `DATABASE_URL` (e remover/atualizar `POSTGRES_URL`, `PG*`
+   criadas pela integração Neon). Atualizar também worker/beat do Celery, se rodarem fora da Vercel.
+3. Redeploy e teste de fumaça (login, auditoria, procedimentos, relatórios).
+
+**Rollback:** voltar `DATABASE_URL` para o Neon (permanece intacto, o script só lê dele). Mantenha-o alguns dias.
+
+**Segurança:** o script habilita RLS em todas as tabelas (sem policies), bloqueando a Data API pública do Supabase;
+o Django conecta como `postgres` e não é afetado. Após a migração, redefina a senha do banco se ela foi exposta e
+apague o arquivo de dump (`calibraweb_neon.dump`).
