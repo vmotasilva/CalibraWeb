@@ -56,3 +56,12 @@ def acompanhamento_de(mapping, instrumento_id):
         return (mapping or {}).get(instrumento_id)
     except AttributeError:
         return None
+
+
+@register.filter
+def dict_get(mapping, key):
+    """mapping[key] em templates (None se ausente)."""
+    try:
+        return (mapping or {}).get(key)
+    except AttributeError:
+        return None
