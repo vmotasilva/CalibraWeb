@@ -1422,7 +1422,20 @@ class CotacaoFornecedor(models.Model):
     def __str__(self):
         return f"{self.numero} - {self.fornecedor.empresa}"
     
+    def _gerar_numero(self):
+        """COT-AAAA-SSSS-FORFFF (20 caracteres): ano, sequência do ano e id do fornecedor."""
+        ano = (self.data_criacao or timezone.now()).year
+        sufixo = f"FOR{self.fornecedor_id % 1000:03d}"
+        sequencia = type(self).objects.filter(numero__startswith=f"COT-{ano}-").count() + 1
+        while True:
+            numero = f"COT-{ano}-{sequencia:04d}-{sufixo}"
+            if not type(self).objects.filter(numero=numero).exists():
+                return numero
+            sequencia += 1
+
     def save(self, *args, **kwargs):
+        if not self.numero:
+            self.numero = self._gerar_numero()
         super().save(*args, **kwargs)
         # proposta respondida/aceita encerra a etapa de compras e atualiza o status da solicitação
         if self.solicitacao_id and self.solicitacao.status not in ('CONCLUIDA', 'CANCELADA'):

@@ -161,3 +161,38 @@ class LinksComprasTests(EtapaComprasTests):
         alheio = LinkSolicitacaoCompras.objects.create(solicitacao=outra, url="https://outra.com")
         self._link("remover", link_id=alheio.id)
         self.assertTrue(LinkSolicitacaoCompras.objects.filter(pk=alheio.pk).exists())
+
+
+class NumeroCotacaoFornecedorTests(EtapaComprasTests):
+    """O número (único) da cotação do fornecedor é gerado: antes a 2ª cotação dava erro 500."""
+
+    for _nome in [n for n in dir(EtapaComprasTests) if n.startswith("test_")]:
+        locals()[_nome] = None
+    del _nome
+
+    def _criar(self, sol, forn):
+        return self.client.post(reverse("metrologia:cotacao_fornecedor_create", args=[sol.id]),
+                                {"fornecedor": forn.id})
+
+    def test_varias_cotacoes_recebem_numeros_unicos(self):
+        outra = SolicitacaoCotacao.objects.create()
+        ItemSolicitacaoCotacao.objects.create(
+            solicitacao=outra, instrumento=Instrumento.objects.create(tag="TH-02", descricao="x"))
+        forn2 = Fornecedor.objects.create(empresa="Lab Y", nome_fantasia="Y", endereco="r", uf="SP")
+        for sol, forn in ((self.sol, self.forn), (self.sol, forn2), (outra, self.forn)):
+            r = self._criar(sol, forn)
+            self.assertEqual(r.status_code, 302)
+        numeros = list(CotacaoFornecedor.objects.order_by("id").values_list("numero", flat=True))
+        self.assertEqual(len(set(numeros)), 3)
+        ano = timezone.now().year
+        self.assertEqual(numeros[0], f"COT-{ano}-0001-FOR{self.forn.id % 1000:03d}")
+        self.assertEqual(numeros[1][:14], f"COT-{ano}-0002-")
+        self.assertTrue(all(len(n) <= 20 for n in numeros))
+        # a tela mostra o número (antes o título ficava só com "$")
+        cot = CotacaoFornecedor.objects.first()
+        self.assertContains(self.client.get(reverse("metrologia:cotacao_fornecedor_detail", args=[cot.id])), cot.numero)
+
+    def test_numero_informado_e_mantido(self):
+        cot = CotacaoFornecedor.objects.create(
+            solicitacao=self.sol, fornecedor=self.forn, numero="COT-MANUAL")
+        self.assertEqual(cot.numero, "COT-MANUAL")
