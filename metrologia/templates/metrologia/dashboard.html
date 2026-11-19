@@ -44,11 +44,18 @@
         .table-container-scroll { height: auto !important; border: none !important; }
     }
 
-    .sidebar-scroll {
-        height: calc(100vh - 160px);
-        overflow-y: auto;
-        padding-right: 5px;
-    }
+
+    /* Modal de filtros avançados: largo, compacto e com colunas equilibradas */
+    .modal-dialog.modal-filtros { max-width: min(1280px, 96vw); }
+    .modal-filtros .filtros-body { padding: .85rem 1.1rem; }
+    .modal-filtros .filter-header { padding: 4px 0; }
+    .modal-filtros .filter-header label { font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; }
+    .modal-filtros .filter-content { padding: 6px 0 2px 2px; }
+    .modal-filtros .filter-group { margin-bottom: .55rem !important; }
+    .modal-filtros .form-check { margin-bottom: 1px; min-height: 0; line-height: 1.25; }
+    .modal-filtros .form-check-label { font-size: .8rem; }
+    .modal-filtros .btn-link { font-size: .78rem; margin-bottom: .25rem !important; }
+    .modal-filtros .filter-content [style*="max-height"] { max-height: 215px !important; }
 
     /* Filtros Expansíveis */
     .filter-header {
@@ -324,25 +331,19 @@
         
         <!-- Modal Filtros -->
         <div class="modal fade" id="filtrosModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-filtros">
                 <div class="modal-content shadow-lg" style="border-radius: 14px;">
-                    <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
-                        <h5 class="modal-title fw-bold"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                    <div class="modal-header bg-dark text-white py-2 px-3" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                        <h5 class="modal-title fw-bold fs-6"><i class="bi bi-funnel me-2"></i>Filtros Avançados</h5>
+                        <button class="btn btn-sm btn-outline-light ms-auto me-3 py-0" type="button" onclick="limparFiltros()">
+                            <i class="bi bi-x-circle me-1"></i>Limpar todos os filtros
+                        </button>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body p-4">
-            <!-- Ações rápidas dos filtros dentro do modal -->
-            <div class="d-flex justify-content-end align-items-center mb-3 flex-shrink-0">
-                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">
-                    <i class="bi bi-x-circle me-1"></i>Limpar todos os filtros
-                </button>
-            </div>
-            <div class="sidebar-scroll">
-                <div class="row">
+                    <div class="modal-body filtros-body">
+                        <div class="row g-3">
 
-                    <!-- Coluna 1 -->
-                    <div class="col-md">
-                        <!-- 1. SITUAÇÃO (Vencimento) -->
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO</label>
@@ -379,7 +380,6 @@
                             </div>
                         </div>
 
-                        <!-- 2. STATUS (Ativo/Inativo) -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">STATUS</label>
@@ -399,11 +399,28 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">OCORRÊNCIA</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="COM_ABERTA" data-category="ocorrencia">
+                                        <label class="form-check-label small text-danger fw-bold">Com Ocorrência Aberta</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_ABERTA" data-category="ocorrencia">
+                                        <label class="form-check-label small text-success fw-bold">Sem Ocorrência Aberta</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Coluna 2 -->
-                    <div class="col-md">
-                        <!-- 7. PERÍODO (Próxima Calibração) -->
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">PRÓX. CALIBRAÇÃO</label>
@@ -422,7 +439,6 @@
                             </div>
                         </div>
 
-                        <!-- 3. AÇÃO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">AÇÃO</label>
@@ -444,9 +460,7 @@
                         </div>
                     </div>
 
-                    <!-- Coluna 3 -->
-                    <div class="col-md">
-                        <!-- 4. CATEGORIA -->
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
@@ -465,7 +479,6 @@
                             </div>
                         </div>
 
-                        <!-- 5. SETOR -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
@@ -485,9 +498,7 @@
                         </div>
                     </div>
 
-                    <!-- Coluna 4 -->
-                    <div class="col-md">
-                        <!-- 6. RESULTADO -->
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">RESULTADO</label>
@@ -520,30 +531,6 @@
                             </div>
                         </div>
 
-                        <!-- 8. OCORRÊNCIA -->
-                        <div class="filter-group open mb-3">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="form-label small fw-bold text-muted mb-0">OCORRÊNCIA</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="COM_ABERTA" data-category="ocorrencia">
-                                        <label class="form-check-label small text-danger fw-bold">Com Ocorrência Aberta</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_ABERTA" data-category="ocorrencia">
-                                        <label class="form-check-label small text-success fw-bold">Sem Ocorrência Aberta</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Coluna 5: Acompanhamento de cotações -->
-                    <div class="col-md">
-                        <!-- 9. ACOMPANHAMENTO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">ACOMPANHAMENTO</label>
@@ -571,7 +558,6 @@
                             </div>
                         </div>
 
-                        <!-- 10. COTAÇÕES EM ABERTO (só saem quando concluídas: etapas e certificados recebidos) -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">COTAÇÕES EM ABERTO</label>
@@ -590,16 +576,13 @@
                                 </div>
                             </div>
                         </div>
-                    
-                    </div>
                     </div>
 
-</div>
-            </div>
+                </div>
                     </div>
-                    <div class="modal-footer bg-light" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: space-between;">
+                    <div class="modal-footer bg-light py-2 px-3" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; justify-content: space-between;">
                         <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltros()">Limpar Filtros</button>
-                        <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">
+                        <button type="button" class="btn btn-primary btn-sm px-4" data-bs-dismiss="modal">
                             <i class="bi bi-check-circle me-1"></i>Aplicar
                         </button>
                     </div>

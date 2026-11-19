@@ -233,6 +233,18 @@
     .filter-group.open .filter-header i { transform: rotate(180deg); }
     .filter-content { display: none; padding: 8px 0 8px 5px; }
     .filter-group.open .filter-content { display: block; }
+
+    /* Modal de filtros avançados: largo, compacto e com colunas equilibradas */
+    .modal-dialog.modal-filtros { max-width: min(1280px, 96vw); }
+    .modal-filtros .filtros-body { padding: .85rem 1.1rem; }
+    .modal-filtros .filter-header { padding: 4px 0; }
+    .modal-filtros .filter-header label { font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; }
+    .modal-filtros .filter-content { padding: 6px 0 2px 2px; }
+    .modal-filtros .filter-group { margin-bottom: .55rem !important; }
+    .modal-filtros .form-check { margin-bottom: 1px; min-height: 0; line-height: 1.25; }
+    .modal-filtros .form-check-label { font-size: .8rem; }
+    .modal-filtros .btn-link { font-size: .78rem; margin-bottom: .25rem !important; }
+    .modal-filtros .filter-content [style*="max-height"] { max-height: 215px !important; }
 </style>
 
 <div class="container-fluid py-3" style="max-width: 1400px;">
@@ -994,7 +1006,7 @@
 
 <!-- 1. MODAL FILTROS AVANÇADOS (ESTRUTURA IGUAL À LISTAGEM DE INSTRUMENTOS) -->
 <div class="modal fade" id="filtrosModal" tabindex="-1" aria-labelledby="filtrosModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-filtros">
         <div class="modal-content shadow-lg border-0" style="border-radius: 14px;">
             <div class="modal-header bg-dark text-white px-4 py-3" style="border-top-left-radius: 14px; border-top-right-radius: 14px;">
                 <h5 class="modal-title fw-bold fs-6" id="filtrosModalLabel">
@@ -1003,17 +1015,16 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             
-            <div class="modal-body p-4">
-                <div class="d-flex justify-content-end mb-3">
+            <div class="modal-body filtros-body">
+                <div class="d-flex justify-content-end mb-2">
                     <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" type="button" onclick="limparFiltrosAvancados()">
                         <i class="bi bi-x-circle me-1"></i>Limpar todos os filtros
                     </button>
                 </div>
                 
                 <div class="row g-3">
-                    <!-- Coluna 1: Situação e Status -->
-                    <div class="col-md">
-                        <!-- 1. SITUAÇÃO -->
+
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">SITUAÇÃO</label>
@@ -1050,7 +1061,6 @@
                             </div>
                         </div>
 
-                        <!-- 2. STATUS -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">STATUS</label>
@@ -1070,11 +1080,28 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">OCORRÊNCIA</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="COM_ABERTA" data-cat="ocorrencia">
+                                        <label class="form-check-label small text-danger fw-bold">Com Ocorrência Aberta</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="SEM_ABERTA" data-cat="ocorrencia">
+                                        <label class="form-check-label small text-success fw-bold">Sem Ocorrência Aberta</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Coluna 2: Próxima Calibração e Ação -->
-                    <div class="col-md">
-                        <!-- 3. PRÓXIMA CALIBRAÇÃO (MÊS/ANO) -->
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">PRÓX. CALIBRAÇÃO</label>
@@ -1095,7 +1122,6 @@
                             </div>
                         </div>
 
-                        <!-- 4. AÇÃO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">AÇÃO</label>
@@ -1117,9 +1143,7 @@
                         </div>
                     </div>
 
-                    <!-- Coluna 3: Categoria e Setor -->
-                    <div class="col-md">
-                        <!-- 5. CATEGORIA -->
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">CATEGORIA</label>
@@ -1140,7 +1164,6 @@
                             </div>
                         </div>
 
-                        <!-- 6. SETOR -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">SETOR</label>
@@ -1162,9 +1185,7 @@
                         </div>
                     </div>
 
-                    <!-- Coluna 4: Resultado e Ocorrência -->
-                    <div class="col-md">
-                        <!-- 7. RESULTADO -->
+                    <div class="col-12 col-md-6 col-xl-3">
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">RESULTADO</label>
@@ -1197,30 +1218,6 @@
                             </div>
                         </div>
 
-                        <!-- 8. OCORRÊNCIA -->
-                        <div class="filter-group open mb-3">
-                            <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="form-label small fw-bold text-muted mb-0">OCORRÊNCIA</label>
-                                <i class="bi bi-chevron-down"></i>
-                            </div>
-                            <div class="filter-content">
-                                <div class="d-flex flex-column gap-1">
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="COM_ABERTA" data-cat="ocorrencia">
-                                        <label class="form-check-label small text-danger fw-bold">Com Ocorrência Aberta</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="SEM_ABERTA" data-cat="ocorrencia">
-                                        <label class="form-check-label small text-success fw-bold">Sem Ocorrência Aberta</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Coluna 5: Acompanhamento de cotações -->
-                    <div class="col-md">
-                        <!-- 9. ACOMPANHAMENTO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">ACOMPANHAMENTO</label>
@@ -1248,7 +1245,6 @@
                             </div>
                         </div>
 
-                        <!-- 10. COTAÇÕES EM ABERTO (só saem quando concluídas: etapas e certificados recebidos) -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
                                 <label class="form-label small fw-bold text-muted mb-0">COTAÇÕES EM ABERTO</label>
@@ -1267,13 +1263,12 @@
                                 </div>
                             </div>
                         </div>
-                    
                     </div>
-                    </div>
+
                 </div>
-            </div>
-            
-            <div class="modal-footer bg-light d-flex justify-content-between">
+                </div>
+
+            <div class="modal-footer bg-light py-2 px-3 d-flex justify-content-between">
                 <button class="btn btn-sm btn-outline-secondary" type="button" onclick="limparFiltrosAvancados()">Limpar Filtros</button>
                 <button type="button" class="btn btn-primary btn-sm px-4" data-bs-dismiss="modal">
                     <i class="bi bi-check-circle me-1"></i>Aplicar Filtros
