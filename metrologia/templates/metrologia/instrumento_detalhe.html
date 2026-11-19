@@ -418,6 +418,8 @@
                                                             <span class="badge bg-info">Aberta</span>
                                                         {% elif sol.status == 'INSTRUMENTOS_SELECIONADOS' %}
                                                             <span class="badge bg-secondary">Instrumentos Selecionados</span>
+                                                        {% elif sol.status == 'COM_COMPRAS' %}
+                                                            <span class="badge bg-warning text-dark">Com o Setor de Compras</span>
                                                         {% elif sol.status == 'COTACAO_SOLICITADA' %}
                                                             <span class="badge bg-primary">Cotação Solicitada</span>
                                                         {% elif sol.status == 'AGUARDANDO_PLANEJAMENTO' %}

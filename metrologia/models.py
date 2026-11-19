@@ -777,6 +777,7 @@ class SolicitacaoCotacao(models.Model):
     STATUS_CHOICES = [
         ('ABERTA', 'Aberta'),
         ('INSTRUMENTOS_SELECIONADOS', 'Instrumentos Selecionados'),
+        ('COM_COMPRAS', 'Com o Setor de Compras'),
         ('COTACAO_SOLICITADA', 'Cotação Solicitada'),
         ('AGUARDANDO_PLANEJAMENTO', 'Aguardando Planejamento'),
         ('PARCIALMENTE_PLANEJADA', 'Parcialmente Planejada'),
@@ -796,11 +797,20 @@ class SolicitacaoCotacao(models.Model):
         3. PARCIALMENTE_PLANEJADA (planejamento parcial)
         4. AGUARDANDO_PLANEJAMENTO (cotações aprovadas, sem planejamento)
         5. COTACAO_SOLICITADA (cotações respondidas)
+        5b. COM_COMPRAS (demanda solicitada ao setor de compras, etapa ainda ativa)
         6. INSTRUMENTOS_SELECIONADOS (itens sem cotações)
         7. ABERTA (sem itens)
         """
         novo_status = self.status
-        
+
+        # A etapa de compras se encerra em conjunto com as cotações: ao chegar a primeira
+        # proposta (respondida/aceita) ela é encerrada automaticamente.
+        if self.compras_ativa and self.cotacoes_fornecedores.filter(
+                status__in=['RESPONDIDA', 'ACEITA']).exists():
+            hoje = timezone.localdate()
+            type(self).objects.filter(pk=self.pk).update(compras_concluida_em=hoje)
+            self.compras_concluida_em = hoje
+
         # Atendimentos desconsiderados (com justificativa) não entram no cálculo
         atendimentos_ativos = self.atendimentos.filter(desconsiderado=False)
         atendimentos_total = atendimentos_ativos.count()
@@ -843,6 +853,8 @@ class SolicitacaoCotacao(models.Model):
             # Sem atendimentos, verificar cotações
             if self.itens.count() == 0:
                 novo_status = 'ABERTA'
+            elif self.compras_ativa:
+                novo_status = 'COM_COMPRAS'
             elif self.cotacoes_fornecedores.count() == 0:
                 novo_status = 'INSTRUMENTOS_SELECIONADOS'
             elif self.cotacoes_fornecedores.filter(status='RESPONDIDA').exists():
@@ -850,8 +862,8 @@ class SolicitacaoCotacao(models.Model):
             elif self.cotacoes_fornecedores.filter(status='ACEITA').exists():
                 novo_status = 'AGUARDANDO_PLANEJAMENTO'
             else:
-                # Manter status atual como fallback
-                novo_status = self.status
+                # Manter status atual como fallback (saindo de COM_COMPRAS quando a etapa encerra)
+                novo_status = 'INSTRUMENTOS_SELECIONADOS' if self.status == 'COM_COMPRAS' else self.status
         
         # Atualizar se houver mudança (não alterar CONCLUIDA ou CANCELADA)
         if novo_status != self.status and self.status not in ['CONCLUIDA', 'CANCELADA']:
@@ -965,6 +977,33 @@ class SolicitacaoCotacao(models.Model):
         default='ABERTA',
         verbose_name='Status'
     )
+
+    # Etapa "Solicitação das cotações ao setor de compras": começa antes das cotações
+    # e se encerra em conjunto com elas (ao chegar a primeira proposta) ou manualmente.
+    compras_solicitada_em = models.DateField(
+        null=True, blank=True, verbose_name='Solicitada ao setor de compras em')
+    compras_solicitada_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='solicitacoes_enviadas_compras', verbose_name='Solicitada por')
+    compras_responsavel = models.CharField(
+        max_length=150, blank=True, default='', verbose_name='Responsável em Compras')
+    compras_observacoes = models.TextField(
+        blank=True, default='', verbose_name='Observações para Compras')
+    compras_concluida_em = models.DateField(
+        null=True, blank=True, verbose_name='Etapa de compras encerrada em')
+
+    @property
+    def compras_ativa(self):
+        """A demanda está com o setor de compras (solicitada e ainda não encerrada)."""
+        return bool(self.compras_solicitada_em) and not self.compras_concluida_em
+
+    @property
+    def compras_dias(self):
+        """Dias da etapa de compras (até o encerramento, ou até hoje se ainda ativa)."""
+        if not self.compras_solicitada_em:
+            return None
+        fim = self.compras_concluida_em or timezone.localdate()
+        return max((fim - self.compras_solicitada_em).days, 0)
     
     # Rastreamento
     atualizado_em = models.DateTimeField(auto_now=True)
@@ -1354,6 +1393,12 @@ class CotacaoFornecedor(models.Model):
     def __str__(self):
         return f"{self.numero} - {self.fornecedor.empresa}"
     
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        # proposta respondida/aceita encerra a etapa de compras e atualiza o status da solicitação
+        if self.solicitacao_id and self.solicitacao.status not in ('CONCLUIDA', 'CANCELADA'):
+            self.solicitacao.atualizar_status_automatico()
+
     def get_valor_total(self):
         """Calcula o valor total da cotação"""
         return sum(item.valor_total for item in self.itens.all())
