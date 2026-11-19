@@ -457,13 +457,13 @@ class FiltroLocalCalibracaoTests(BaseCotacaoServico):
         Instrumento.objects.filter(pk=self.b.pk).update(local_calibracao="PODE_SAIR")
         metro = self.client.get(reverse("modulo_metrologia")).content.decode()
         self.assertIn('data-pane="fploc"', metro)
-        for v in ("NA_EMPRESA", "PODE_SAIR", "NAO_DEFINIDO"):
+        for v in ("NA_EMPRESA", "PODE_SAIR", "COMPRAR_NOVO", "NAO_DEFINIDO"):
             self.assertIn(f'value="{v}" data-category="local"', metro)
         self.assertIn('data-local="NA_EMPRESA"', metro)
         self.assertIn('data-local="PODE_SAIR"', metro)
         self.assertIn("filtrosAtivos.local", metro)
         shared = self.client.get("/dashboard/").content.decode()
-        for v in ("na_empresa", "pode_sair", "nao_definido"):
+        for v in ("na_empresa", "pode_sair", "comprar_novo", "nao_definido"):
             self.assertIn(f'value="{v}" data-cat="local"', shared)
         self.assertIn('data-local="na_empresa"', shared)
         self.assertIn('data-local="pode_sair"', shared)
@@ -494,3 +494,15 @@ class FiltroLocalCalibracaoTests(BaseCotacaoServico):
         self.assertEqual(cat.local_calibracao, "PODE_SAIR")
         resp = self.client.get(reverse("metrologia:categoria_update", args=[cat.pk]))
         self.assertContains(resp, "atualizar-local-em-massa")
+
+    def test_opcao_comprar_novo_salva_e_filtra(self):
+        resp = self.client.post(reverse("editar_instrumento_custom", args=[self.a.pk]), {
+            "tag": self.a.tag, "descricao": self.a.descricao or "x", "tratativa_calibracao": "EXTERNA",
+            "acao": "CALIBRACAO", "local_calibracao": "COMPRAR_NOVO", "ativo": "on",
+        })
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.local_calibracao, "COMPRAR_NOVO")
+        metro = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn('data-local="COMPRAR_NOVO"', metro)
+        shared = self.client.get("/dashboard/").content.decode()
+        self.assertIn('data-local="comprar_novo"', shared)

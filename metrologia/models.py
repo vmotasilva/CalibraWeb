@@ -32,6 +32,7 @@ class CategoriaInstrumento(models.Model):
         ('', 'Não definido'),
         ('NA_EMPRESA', 'Somente na empresa (não sai)'),
         ('PODE_SAIR', 'Pode ser enviado ao fornecedor'),
+        ('COMPRAR_NOVO', 'Não calibra: renovado por compra'),
     ]
     local_calibracao = models.CharField(
         max_length=12,
@@ -199,6 +200,7 @@ class Instrumento(models.Model):
         ('', 'Não definido'),
         ('NA_EMPRESA', 'Somente na empresa (não sai)'),
         ('PODE_SAIR', 'Pode ser enviado ao fornecedor'),
+        ('COMPRAR_NOVO', 'Não calibra: renovado por compra'),
     ]
     local_calibracao = models.CharField(
         max_length=12,

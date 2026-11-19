@@ -162,6 +162,7 @@
                                             <option value="" {% if not instrumento.local_calibracao %}selected{% endif %}>Não definido (herda da categoria)</option>
                             <option value="NA_EMPRESA" {% if instrumento.local_calibracao == 'NA_EMPRESA' %}selected{% endif %}>Somente na empresa (não sai)</option>
                             <option value="PODE_SAIR" {% if instrumento.local_calibracao == 'PODE_SAIR' %}selected{% endif %}>Pode ser enviado ao fornecedor</option>
+                            <option value="COMPRAR_NOVO" {% if instrumento.local_calibracao == 'COMPRAR_NOVO' %}selected{% endif %}>Não calibra: renovado por compra</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3 mb-3">
