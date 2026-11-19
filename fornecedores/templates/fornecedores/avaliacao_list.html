@@ -26,9 +26,9 @@
         {% for avinfo in avaliacoes_info %}
         <tr>
             <td>{{ avinfo.obj.data|date:'d/m/Y' }}</td>
-            <td>{{ avinfo.obj.get_tipo_nota_display }}</td>
-            <td>{{ avinfo.obj.nota_fiscal }}</td>
-            <td>{{ avinfo.obj.avaliador }}</td>
+            <td>{{ avinfo.obj.get_tipo_nota_display|default:"—" }}</td>
+            <td>{{ avinfo.obj.nota_fiscal|default_if_none:"—" }}</td>
+            <td>{{ avinfo.obj.avaliador|default:"—" }}</td>
             <td>
                 {% if avinfo.perguntas_nao %}
                     <ul class="mb-0 ps-3">
@@ -44,7 +44,7 @@
                 <div class="d-flex flex-wrap gap-2">
                     {% if can_avaliacao_edit %}
                         <a href="{% url 'fornecedores:avaliacao_edit' fornecedor.pk avinfo.obj.id %}" class="btn btn-sm btn-outline-primary">Editar</a>
-                        <form method="post" action="" style="display:inline;">
+                        <form method="post" action="{% url 'fornecedores:avaliacao_list' fornecedor.pk %}" style="display:inline;">
                             {% csrf_token %}
                             <input type="hidden" name="delete_id" value="{{ avinfo.obj.id }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem certeza que deseja remover esta avaliação?');">Remover</button>
@@ -54,7 +54,7 @@
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5">Nenhuma avaliação registrada.</td></tr>
+        <tr><td colspan="6">Nenhuma avaliação registrada.</td></tr>
         {% endfor %}
     </tbody>
 </table>

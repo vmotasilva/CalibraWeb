@@ -11,6 +11,19 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e us
 ### 🔄 Em Desenvolvimento
 Alterações que ainda não foram lançadas em uma versão oficial.
 
+### 🐛 Corrigido (Módulo de Fornecedores)
+- Erro 500 ao enviar formulário de monitoramento inválido e ao editar/remover registros de seleção/reavaliação pela tela de monitoramento
+- Reavaliação: regra de "uma por ano" não era aplicada; modal de nova reavaliação enviava para uma view incompatível
+- Monitoramento: tipo da nota agora é obrigatório; atualização no mesmo dia mantém nota fiscal/observação; pontuação unificada (ano corrente, nunca negativa) entre lista e detalhe; matriz de seleção não polui mais os registros de monitoramento
+- Excluir pergunta já respondida passa a desativá-la (antes apagava o histórico de respostas em cascata)
+- Segurança: XSS armazenado nas perguntas/observações do monitoramento, remoção de avaliações sem checar permissão, upload de documentos sem validação de tipo/tamanho, nome de arquivo do Excel sem sanitização
+- Campos vazios exibiam "None"; arquivos de documentos removidos ficavam órfãos
+
+### ✨ Adicionado (Módulo de Fornecedores)
+- Validação/normalização de CNPJ (dígitos verificadores e duplicidade) e UF; paginação e consultas otimizadas na lista
+- Alertas de documentos vencidos/a vencer (detalhe e hub); exibição da última matriz de seleção no detalhe
+- Testes automatizados do módulo
+
 ---
 
 ## [1.1.0] - 2026-08-27

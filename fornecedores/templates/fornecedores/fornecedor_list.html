@@ -56,7 +56,7 @@
                 <th>UF</th>
                 <th>Tipo</th>
                 <th>Avaliação</th>
-                <th>Monitoramento</th>
+                <th>Monitoramento ({{ ano_monitoramento }})</th>
                 <th>Reavaliação</th>
                 <th>Ações</th>
             </tr>
@@ -66,47 +66,23 @@
             <tr>
                 <td>{{ fornecedor.empresa }}</td>
                 <td>{{ fornecedor.nome_fantasia }}</td>
-                <td>{{ fornecedor.cnpj }}</td>
+                <td>{{ fornecedor.cnpj|default_if_none:"—" }}</td>
                 <td>{{ fornecedor.uf }}</td>
                 <td>{{ fornecedor.get_tipo_display }}</td>
                 <td>
-                    {% if fornecedor.pontuacao_selecao != "—" %}
-                        {% if fornecedor.resultado_selecao == "Excelente" %}
-                            <span class="badge bg-success">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
-                        {% elif fornecedor.resultado_selecao == "Bom" %}
-                            <span class="badge bg-info">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
-                        {% elif fornecedor.resultado_selecao == "Satisfatório" %}
-                            <span class="badge bg-warning">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
-                        {% else %}
-                            <span class="badge bg-danger">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
-                        {% endif %}
-                    {% else %}
-                        <span class="text-muted">{{ fornecedor.pontuacao_selecao }}</span>
-                    {% endif %}
+                    {% if fornecedor.pontuacao_selecao is not None %}
+                        <span class="badge {% if fornecedor.resultado_selecao == 'Excelente' %}bg-success{% elif fornecedor.resultado_selecao == 'Bom' %}bg-info{% elif fornecedor.resultado_selecao == 'Satisfatório' %}bg-warning text-dark{% else %}bg-danger{% endif %}" title="{{ fornecedor.resultado_selecao }}">{{ fornecedor.pontuacao_selecao|floatformat:1 }}%</span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
                 </td>
                 <td>
-                    {% if fornecedor.pontuacao_monitoramento != "—" %}
-                        {% if fornecedor.resultado_monitoramento == "Excelente" %}
-                            <span class="badge bg-success" title="Excelente">{{ fornecedor.pontuacao_monitoramento|floatformat:2 }}</span>
-                        {% elif fornecedor.resultado_monitoramento == "Bom" %}
-                            <span class="badge bg-warning" title="Bom">{{ fornecedor.pontuacao_monitoramento|floatformat:2 }}</span>
-                        {% else %}
-                            <span class="badge bg-danger" title="Ruim">{{ fornecedor.pontuacao_monitoramento|floatformat:2 }}</span>
-                        {% endif %}
-                    {% else %}
-                        <span class="text-muted">{{ fornecedor.pontuacao_monitoramento }}</span>
-                    {% endif %}
+                    {% if fornecedor.pontuacao_monitoramento is not None %}
+                        <span class="badge {% if fornecedor.resultado_monitoramento == 'Excelente' %}bg-success{% elif fornecedor.resultado_monitoramento == 'Bom' %}bg-warning text-dark{% else %}bg-danger{% endif %}" title="{{ fornecedor.resultado_monitoramento }} ({{ ano_monitoramento }})">{{ fornecedor.pontuacao_monitoramento|floatformat:1 }}</span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
                 </td>
                 <td>
-                    {% if fornecedor.pontuacao_reavaliacao != "—" %}
-                        {% if fornecedor.resultado_reavaliacao == "Aprovado" %}
-                            <span class="badge bg-success">{{ fornecedor.pontuacao_reavaliacao|floatformat:1 }}%</span>
-                        {% else %}
-                            <span class="badge bg-danger">{{ fornecedor.pontuacao_reavaliacao|floatformat:1 }}%</span>
-                        {% endif %}
-                    {% else %}
-                        <span class="text-muted">{{ fornecedor.pontuacao_reavaliacao }}</span>
-                    {% endif %}
+                    {% if fornecedor.pontuacao_reavaliacao is not None %}
+                        <span class="badge {% if fornecedor.resultado_reavaliacao == 'Aprovado' %}bg-success{% else %}bg-danger{% endif %}" title="{{ fornecedor.resultado_reavaliacao }}">{{ fornecedor.pontuacao_reavaliacao|floatformat:1 }}%</span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
                 </td>
                 <td>
                     <div class="d-flex flex-wrap gap-2">
@@ -123,4 +99,18 @@
         </tbody>
     </table>
 </div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<nav aria-label="Paginação de fornecedores">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.previous_page_number }}">Anterior</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?{% if querystring %}{{ querystring }}&{% endif %}page={{ page_obj.next_page_number }}">Próxima</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}

@@ -7,6 +7,7 @@
     <div class="col-12 col-md-4">
         <label class="form-label">Data</label>
         {{ form.data|add_class:'form-control' }}
+        {% for e in form.data.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
     </div>
     <div class="col-12 col-md-4">
         <label class="form-label">Nota fiscal</label>
@@ -15,6 +16,7 @@
     <div class="col-12 col-md-6">
         <label class="form-label">Tipo nota</label>
         {{ form.tipo_nota|add_class:'form-select' }}
+        {% for e in form.tipo_nota.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
     </div>
     <div class="col-12">
         <label class="form-label">Observação</label>
@@ -41,6 +43,10 @@
 </form>
 <script>
 
+function esc(valor) {
+    return String(valor == null ? '' : valor).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 function renderPerguntas(perguntas, respostas) {
     const container = document.getElementById('perguntas-container');
     if (!perguntas.length) {
@@ -56,9 +62,9 @@ function renderPerguntas(perguntas, respostas) {
             checked = respostas[p.id].resposta ? 'checked' : '';
             obs = respostas[p.id].observacao || '';
         }
-        html += `<tr><td class="w-50">${p.texto} ${p.produto_servico ? ' - ' + p.produto_servico : ''}</td>` +
+        html += `<tr><td class="w-50">${esc(p.texto)} ${p.produto_servico ? ' - ' + esc(p.produto_servico) : ''}</td>` +
             `<td class="text-center"><input type="checkbox" name="resposta_${p.id}" class="form-check-input" ${checked}></td>` +
-            `<td><input type="text" name="observacao_${p.id}" class="form-control" value="${obs}"></td></tr>`;
+            `<td><input type="text" name="observacao_${p.id}" class="form-control" value="${esc(obs)}"></td></tr>`;
     });
     html += '</tbody></table>';
     container.innerHTML = html;
@@ -89,6 +95,13 @@ function fetchPerguntasEdit(avaliacaoId) {
         renderPerguntas(perguntasData.perguntas, respostasData.respostas);
     });
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    {% if not edicao %}
+    // Reexibe as perguntas quando o formulário volta com erro de validação (tipo da nota já escolhido).
+    if (document.getElementById('id_tipo_nota').value) { fetchPerguntas(); }
+    {% endif %}
+});
 
 document.getElementById('id_tipo_nota').addEventListener('change', function() {
     {% if edicao and avaliacao %}

@@ -12,11 +12,11 @@
 <table class="table">
     <tr><th>Empresa</th><td>{{ fornecedor.empresa }}</td></tr>
     <tr><th>Nome Fantasia</th><td>{{ fornecedor.nome_fantasia }}</td></tr>
-    <tr><th>Endereço</th><td>{{ fornecedor.endereco }}</td></tr>
-    <tr><th>CNPJ</th><td>{{ fornecedor.cnpj }}</td></tr>
-    <tr><th>SIRET</th><td>{{ fornecedor.siret }}</td></tr>
-    <tr><th>EIN</th><td>{{ fornecedor.ein }}</td></tr>
-    <tr><th>Telefone</th><td>{{ fornecedor.telefone }}</td></tr>
+    <tr><th>Endereço</th><td>{{ fornecedor.endereco|default:"—" }}</td></tr>
+    <tr><th>CNPJ</th><td>{{ fornecedor.cnpj|default_if_none:"—" }}</td></tr>
+    <tr><th>SIRET</th><td>{{ fornecedor.siret|default_if_none:"—" }}</td></tr>
+    <tr><th>EIN</th><td>{{ fornecedor.ein|default_if_none:"—" }}</td></tr>
+    <tr><th>Telefone</th><td>{{ fornecedor.telefone|default_if_none:"—" }}</td></tr>
     <tr><th>UF</th><td>{{ fornecedor.uf }}</td></tr>
     <tr><th>Tipo</th><td>{{ fornecedor.get_tipo_display }}</td></tr>
     <tr><th>Ativo</th><td>{{ fornecedor.ativo|yesno:"Sim,Não" }}</td></tr>
@@ -44,11 +44,17 @@
         </tr>
     </thead>
     <tbody>
-        {% for doc in fornecedor.documentos.all %}
+        {% for doc in documentos %}
         <tr>
-            <td>{{ doc.categoria }}</td>
-            <td><a href="{{ doc.arquivo.url }}" target="_blank">Download</a></td>
-            <td>{{ doc.data_validade|date:'d/m/Y' }}</td>
+            <td>{{ doc.categoria|default:"—" }}</td>
+            <td><a href="{{ doc.arquivo.url }}" target="_blank" rel="noopener">Download</a></td>
+            <td>
+                {% if doc.data_validade %}
+                    {{ doc.data_validade|date:'d/m/Y' }}
+                    {% if doc.vencido %}<span class="badge bg-danger ms-1">Vencido</span>
+                    {% elif doc.a_vencer %}<span class="badge bg-warning text-dark ms-1">Vence em breve</span>{% endif %}
+                {% else %}—{% endif %}
+            </td>
             <td>{{ doc.observacao }}</td>
             <td>
                 {% if can_documento_delete %}
@@ -65,7 +71,7 @@
 
 
 <h3>Avaliação
-    <span class="badge bg-success">Pontuação: {{ percentual_avaliacao|floatformat:1 }}</span>
+    <span class="badge {% if percentual_avaliacao is None %}bg-secondary{% elif percentual_avaliacao >= 60 %}bg-success{% else %}bg-danger{% endif %}">Pontuação: {% if percentual_avaliacao is None %}—{% else %}{{ percentual_avaliacao|floatformat:1 }}{% endif %}</span>
     {% if can_avaliacao_matriz_create %}
         <a href="{% url 'fornecedores:avaliacao_matriz_create' fornecedor.pk %}" class="btn btn-sm btn-info ms-2">
             <i class="bi bi-table"></i> Matriz
@@ -149,7 +155,36 @@
 </div>
 
 
-<h3>Monitoramento <span class="badge bg-success">Pontuação: {{ pontuacao_geral|floatformat:1 }}</span></h3>
+{% if matriz %}
+<div class="card mb-3">
+    <div class="card-header fw-bold">Última matriz de seleção ({{ matriz.data|date:"d/m/Y" }})</div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <strong>Produtos fornecidos</strong>
+                <ul class="mb-2">{% for item in matriz_produtos %}<li>{{ item }}</li>{% empty %}<li class="text-muted">—</li>{% endfor %}</ul>
+            </div>
+            <div class="col-md-6">
+                <strong>Serviços prestados</strong>
+                <ul class="mb-2">{% for item in matriz_servicos %}<li>{{ item }}</li>{% empty %}<li class="text-muted">—</li>{% endfor %}</ul>
+            </div>
+        </div>
+        <table class="table table-sm table-bordered text-center mb-0">
+            <thead><tr><th></th>{% for r in matriz_requisitos %}<th>{{ r }}</th>{% endfor %}</tr></thead>
+            <tbody>
+                <tr><th class="text-start">Produto</th>
+                    <td>{% if matriz_respostas.PRODUTO_A %}✔{% else %}—{% endif %}</td><td>{% if matriz_respostas.PRODUTO_B %}✔{% else %}—{% endif %}</td>
+                    <td>{% if matriz_respostas.PRODUTO_C %}✔{% else %}—{% endif %}</td><td>{% if matriz_respostas.PRODUTO_D %}✔{% else %}—{% endif %}</td></tr>
+                <tr><th class="text-start">Serviço</th>
+                    <td>{% if matriz_respostas.SERVICO_A %}✔{% else %}—{% endif %}</td><td>{% if matriz_respostas.SERVICO_B %}✔{% else %}—{% endif %}</td>
+                    <td>{% if matriz_respostas.SERVICO_C %}✔{% else %}—{% endif %}</td><td>{% if matriz_respostas.SERVICO_D %}✔{% else %}—{% endif %}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<h3>Monitoramento <small class="text-muted fs-6">({{ ano_monitoramento }})</small> <span class="badge {% if pontuacao_geral >= 75 %}bg-success{% elif pontuacao_geral >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %}">Pontuação: {{ pontuacao_geral|floatformat:1 }}</span></h3>
 <div class="accordion" id="monitoramentoAccordion">
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingProduto">
@@ -236,7 +271,7 @@
     <a href="{% url 'fornecedores:avaliacao_list' fornecedor.pk %}" class="btn btn-primary btn-lg fw-bold shadow">Ver Registros de Monitoramento</a>
 </div>
 
-<h3 class="mt-4">Reavaliação <span class="badge bg-success">Pontuação: {{ percentual_reavaliacao|floatformat:1 }}</span></h3>
+<h3 class="mt-4">Reavaliação <span class="badge {% if percentual_reavaliacao is None %}bg-secondary{% elif percentual_reavaliacao >= 60 %}bg-success{% else %}bg-danger{% endif %}">Pontuação: {% if percentual_reavaliacao is None %}—{% else %}{{ percentual_reavaliacao|floatformat:1 }}{% endif %}</span></h3>
 <div class="accordion" id="reavaliaoAccordion">
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingReavaliacao">

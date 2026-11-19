@@ -29,7 +29,7 @@
         
         <div class="mb-3">
             <label for="observacao" class="form-label">Observação</label>
-            <textarea name="observacao" id="observacao" class="form-control" rows="3"></textarea>
+            <textarea name="observacao" id="observacao" class="form-control" rows="3">{{ ultima_avaliacao.observacao|default_if_none:"" }}</textarea>
         </div>
         
         <h4 class="mt-4 mb-3">Perguntas</h4>
