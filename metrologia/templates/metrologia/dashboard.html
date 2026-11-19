@@ -12,14 +12,17 @@
 <style>
     /* Estilos Desktop / App */
     @media (min-width: 768px) {
-        body { overflow: hidden; }
+        /* A altura exata é ajustada por JS (ajustarAlturaMetrologia) descontando a barra de navegação;
+           o fallback abaixo cobre o primeiro render. O body NÃO fica com overflow hidden para o
+           usuário nunca ficar preso com o topo da página escondido. */
+        body { overflow-x: hidden; }
         .container-fluid-metro {
-            height: 100vh;
+            height: calc(100vh - 60px);
             display: flex;
             flex-direction: column;
         }
         .table-container-scroll {
-            height: calc(100vh - 200px);
+            height: calc(100vh - 260px);
             overflow-y: auto;
             border: 1px solid #dee2e6;
             border-radius: 6px;
@@ -1959,4 +1962,23 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 {% include 'metrologia/_cotar_selecionados.html' %}
+<script>
+// Ajusta a altura da área da tabela ao espaço visível (desconta a barra de navegação e o cabeçalho),
+// para a rolagem ficar só dentro da tabela e o topo da página nunca ser escondido.
+function ajustarAlturaMetrologia() {
+    if (window.innerWidth < 768) return;
+    var c = document.querySelector('.container-fluid-metro');
+    var t = document.querySelector('.table-container-scroll');
+    if (!c || !t) return;
+    var cTop = c.getBoundingClientRect().top + window.pageYOffset;
+    c.style.height = Math.max(320, window.innerHeight - cTop) + 'px';
+    var tTop = t.getBoundingClientRect().top - c.getBoundingClientRect().top;
+    var pb = parseFloat(getComputedStyle(c).paddingBottom) || 0;
+    t.style.height = Math.max(200, c.clientHeight - tTop - pb) + 'px';
+}
+window.addEventListener('load', function () { window.scrollTo(0, 0); ajustarAlturaMetrologia(); });
+window.addEventListener('resize', ajustarAlturaMetrologia);
+document.addEventListener('DOMContentLoaded', ajustarAlturaMetrologia);
+</script>
+
 {% endblock %}
