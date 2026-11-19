@@ -1453,9 +1453,10 @@ class CotacaoFornecedor(models.Model):
         if self.solicitacao_id and self.solicitacao.status not in ('CONCLUIDA', 'CANCELADA'):
             self.solicitacao.atualizar_status_automatico()
 
-    def atendimentos_vinculados(self):
-        """Atendimentos (planejamento) ligados a itens desta cotação, sem os desconsiderados."""
-        return AtendimentoSolicitacao.objects.filter(item_cotacao__cotacao_fornecedor=self, desconsiderado=False)
+    def atendimentos_vinculados(self, incluir_desconsiderados=False):
+        """Atendimentos (planejamento) ligados a itens desta cotação (por padrão, sem os desconsiderados)."""
+        qs = AtendimentoSolicitacao.objects.filter(item_cotacao__cotacao_fornecedor=self)
+        return qs if incluir_desconsiderados else qs.filter(desconsiderado=False)
 
     def get_valor_servicos(self):
         """Soma dos serviços (instrumentos) cotados, sem os custos adicionais."""

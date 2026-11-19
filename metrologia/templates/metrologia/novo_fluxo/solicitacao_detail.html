@@ -308,7 +308,16 @@
                                         <i class="bi bi-archive"></i>
                                     </button>
                                     {% endif %}
-                                    {% if cotacao.versao_anterior_id %}<span class="badge bg-light text-dark border" title="Nova versão de {{ cotacao.versao_anterior.numero }}">v. nova</span>{% endif %}
+                                    {% if cotacao.versao_anterior_id %}
+                                    <span class="badge bg-light text-dark border" title="Nova versão de {{ cotacao.versao_anterior.numero }}">v. nova</span>
+                                    {% if solicitacao.status != 'CONCLUIDA' and solicitacao.status != 'CANCELADA' %}
+                                    <form method="post" action="{% url 'metrologia:cotacao_fornecedor_ativacao' cotacao.id %}" class="d-inline"
+                                          onsubmit="return confirm('Desfazer a nova versão {{ cotacao.numero|escapejs }}?\n\nEla será descartada (valores digitados nela serão perdidos) e {{ cotacao.versao_anterior.numero|escapejs }} volta a ser a cotação ativa.')">
+                                        {% csrf_token %}<input type="hidden" name="acao" value="desfazer_versao">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Desfazer e voltar para {{ cotacao.versao_anterior.numero }}"><i class="bi bi-arrow-counterclockwise"></i> Voltar p/ anterior</button>
+                                    </form>
+                                    {% endif %}
+                                    {% endif %}
                                 </td>
                             </tr>
                         {% empty %}
