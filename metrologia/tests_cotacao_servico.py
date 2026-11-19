@@ -473,3 +473,24 @@ class FiltroLocalCalibracaoTests(BaseCotacaoServico):
         resp = self.client.get(reverse("editar_instrumento_custom", args=[self.a.pk]))
         self.assertContains(resp, 'name="local_calibracao"')
         self.assertContains(resp, "Responsável pela calibração")
+
+    def test_atualizacao_em_massa_na_categoria(self):
+        from metrologia.models import CategoriaInstrumento
+        cat = CategoriaInstrumento.objects.create(nome="CatMassa")
+        Instrumento.objects.filter(pk__in=[self.a.pk, self.b.pk]).update(categoria=cat, local_calibracao="")
+        url = reverse("metrologia:categoria_bulk_update_local", args=[cat.pk])
+        # sem aplicar: só a categoria muda
+        self.client.post(url, {"local_calibracao": "NA_EMPRESA"})
+        cat.refresh_from_db(); self.a.refresh_from_db()
+        self.assertEqual(cat.local_calibracao, "NA_EMPRESA")
+        self.assertEqual(self.a.local_calibracao, "")
+        # aplicando: instrumentos também
+        self.client.post(url, {"local_calibracao": "PODE_SAIR", "aplicar_instrumentos": "on"})
+        self.a.refresh_from_db(); self.b.refresh_from_db()
+        self.assertEqual((self.a.local_calibracao, self.b.local_calibracao), ("PODE_SAIR", "PODE_SAIR"))
+        # valor inválido é ignorado
+        self.client.post(url, {"local_calibracao": "XXX"})
+        cat.refresh_from_db()
+        self.assertEqual(cat.local_calibracao, "PODE_SAIR")
+        resp = self.client.get(reverse("metrologia:categoria_update", args=[cat.pk]))
+        self.assertContains(resp, "atualizar-local-em-massa")
