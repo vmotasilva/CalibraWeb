@@ -455,6 +455,10 @@
                                         <input class="form-check-input filter-checkbox" type="checkbox" value="AGUARDANDO_CERTIFICADO" data-category="acompanhamento">
                                         <label class="form-check-label small text-danger fw-bold">Calibrado: aguardando certificado</label>
                                     </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="SEM_ACOMPANHAMENTO" data-category="acompanhamento">
+                                        <label class="form-check-label small text-secondary fw-bold">Sem acompanhamento <span class="text-muted fw-normal">({{ sem_acompanhamento_total }})</span></label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1209,7 +1213,7 @@ function filtrar() {
         if (mostrar && filtrosAtivos.resultado.length > 0 && !filtrosAtivos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && filtrosAtivos.periodo.length > 0 && !filtrosAtivos.periodo.includes(row.dataset.periodo)) mostrar = false;
-        if (mostrar && filtrosAtivos.acompanhamento.length > 0 && !filtrosAtivos.acompanhamento.includes(row.dataset.acompanhamento || '')) mostrar = false;
+        if (mostrar && filtrosAtivos.acompanhamento.length > 0 && !filtrosAtivos.acompanhamento.includes(row.dataset.acompanhamento || 'SEM_ACOMPANHAMENTO')) mostrar = false;
         if (mostrar && filtrosAtivos.cotacao_aberta.length > 0 && !filtrosAtivos.cotacao_aberta.includes(row.dataset.cotacaoAberta || 'SEM_COTACAO')) mostrar = false;
         if (mostrar && filtrosAtivos.ocorrencia.length > 0) {
             var ocorrenciaData = row.dataset.ocorrencia || '';
@@ -2010,7 +2014,7 @@ function atualizarFiltrosDisponiveis() {
         if (mostrar && ativos.setor.length > 0 && !ativos.setor.includes(row.dataset.setor)) mostrar = false;
         if (mostrar && ativos.resultado.length > 0 && !ativos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && ativos.acao.length > 0 && !ativos.acao.includes(row.dataset.acao)) mostrar = false;
-        if (mostrar && ativos.acompanhamento.length > 0 && !ativos.acompanhamento.includes(row.dataset.acompanhamento || '')) mostrar = false;
+        if (mostrar && ativos.acompanhamento.length > 0 && !ativos.acompanhamento.includes(row.dataset.acompanhamento || 'SEM_ACOMPANHAMENTO')) mostrar = false;
         if (mostrar && ativos.cotacao_aberta.length > 0 && !ativos.cotacao_aberta.includes(row.dataset.cotacaoAberta || 'SEM_COTACAO')) mostrar = false;
         if (mostrar && ativos.ocorrencia.length > 0) {
             var temAberta = row.dataset.ocorrencia.includes("COM_ABERTA");

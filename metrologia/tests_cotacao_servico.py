@@ -392,3 +392,25 @@ class SemCotacaoEOcorrenciasTests(BaseCotacaoServico):
         self.assertIn("Riscada no transporte", html)
         self.assertNotIn("resolvida", html)
         self.assertIn('data-ocorrencia="COM_ABERTA"', html)
+
+
+class SemAcompanhamentoTests(BaseCotacaoServico):
+    def test_filtro_sem_acompanhamento(self):
+        Instrumento.objects.create(tag="Z-99", descricao="livre")
+        Instrumento.objects.create(tag="Z-98", descricao="livre")
+        # A-01 e B-01 estão em cotação (têm status); Z-98 e Z-99 não têm nenhum
+        html = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn('value="SEM_ACOMPANHAMENTO" data-category="acompanhamento"', html)
+        self.assertIn('Sem acompanhamento <span class="text-muted fw-normal">(2)</span>', html)
+        self.assertIn("|| 'SEM_ACOMPANHAMENTO'", html)
+        self.assertEqual(html.count('data-acompanhamento=""'), 4)      # Z-98 e Z-99 (tabela + cards)
+        shared = self.client.get("/dashboard/").content.decode()
+        self.assertIn('value="SEM_ACOMPANHAMENTO" data-cat="acompanhamento"', shared)
+        self.assertIn('Sem acompanhamento <span class="text-muted fw-normal">(2)</span>', shared)
+        self.assertIn("|| 'SEM_ACOMPANHAMENTO'", shared)
+
+    def test_contagem_acompanha_o_status(self):
+        from metrologia.views.novo_fluxo_cotacao import contexto_cotacoes_abertas
+        self.assertEqual(contexto_cotacoes_abertas()["sem_acompanhamento_total"], 0)   # A-01 e B-01 em cotação
+        self.sol.marcar_concluida()
+        self.assertEqual(contexto_cotacoes_abertas()["sem_acompanhamento_total"], 2)   # saem do acompanhamento

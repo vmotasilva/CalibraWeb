@@ -1130,6 +1130,10 @@
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="AGUARDANDO_CERTIFICADO" data-cat="acompanhamento">
                                         <label class="form-check-label small text-danger fw-bold">Calibrado: aguardando certificado</label>
                                     </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="SEM_ACOMPANHAMENTO" data-cat="acompanhamento">
+                                        <label class="form-check-label small fw-bold text-secondary">Sem acompanhamento <span class="text-muted fw-normal">({{ sem_acompanhamento_total }})</span></label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1911,7 +1915,7 @@
             const periodo = row.getAttribute('data-periodo') || '';
             const resultado = row.getAttribute('data-resultado') || '';
             const ocorrencia = row.getAttribute('data-ocorrencia') || '';
-            const acompanhamento = row.getAttribute('data-acompanhamento') || '';
+            const acompanhamento = row.getAttribute('data-acompanhamento') || 'SEM_ACOMPANHAMENTO';
             const cotacaoAberta = row.getAttribute('data-cotacao-aberta') || 'SEM_COTACAO';
             const situacao = row.getAttribute('data-situacao') || '';
 

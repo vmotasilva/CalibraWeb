@@ -132,6 +132,7 @@ def modulo_metrologia_view(request):
     
     from metrologia.forms import HistoricoCalibracaoForm
     
+    _acomp_map = __import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).acompanhamento_instrumentos()
     context = {
         'instrumentos': instrumentos,
         'total_instrumentos': Instrumento.objects.count(),
@@ -153,8 +154,8 @@ def modulo_metrologia_view(request):
         'alerta_120d': alerta_120d,
         'historico_form': HistoricoCalibracaoForm(),
         'em_cotacao_ids': set(__import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).instrumentos_em_cotacao().keys()),
-        'acompanhamento_map': __import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).acompanhamento_instrumentos(),
-        **__import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).contexto_cotacoes_abertas(),
+        'acompanhamento_map': _acomp_map,
+        **__import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).contexto_cotacoes_abertas(_acomp_map),
     }
     return render(request, 'metrologia/dashboard.html', context)
 

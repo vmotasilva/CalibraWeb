@@ -1543,6 +1543,7 @@ def dashboard_view(request):
             "hoje_display": data["hoje_display"],
             "cotacoes_abertas": data.get("cotacoes_abertas", []),
             "sem_cotacao_total": data.get("sem_cotacao_total", 0),
+            "sem_acompanhamento_total": data.get("sem_acompanhamento_total", 0),
             "categorias": data.get("categorias", []),
             "setores": data.get("setores", []),
             "categorias_filtro": data.get("categorias_filtro", []),

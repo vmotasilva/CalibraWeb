@@ -102,7 +102,7 @@ def instrumentos_em_cotacao():
     return {i.instrumento_id: (i.solicitacao_id, i.solicitacao.numero) for i in itens}
 
 
-def contexto_cotacoes_abertas():
+def contexto_cotacoes_abertas(acompanhamento_map=None):
     """Dados do filtro "Cotações em aberto" dos dashboards.
 
     Uma cotação (solicitação) só deixa de estar em aberto quando é concluída, e a
@@ -121,6 +121,10 @@ def contexto_cotacoes_abertas():
         'cotacoes_abertas': [{'numero': n, 'total': contagem[n]} for n in sorted(contagem)],
         # instrumentos ativos que não estão em nenhuma cotação em aberto (opção "Sem cotações")
         'sem_cotacao_total': Instrumento.objects.filter(ativo=True).exclude(id__in=list(mapa.keys())).count(),
+        # instrumentos ativos fora de qualquer status de acompanhamento (opção "Sem acompanhamento")
+        'sem_acompanhamento_total': Instrumento.objects.filter(ativo=True).exclude(
+            id__in=list((acompanhamento_map if acompanhamento_map is not None else acompanhamento_instrumentos()).keys())
+        ).count(),
     }
 
 

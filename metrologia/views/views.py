@@ -284,6 +284,7 @@ def modulo_metrologia_view(request):
     """Dashboard principal do módulo de Metrologia."""
     from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao, acompanhamento_instrumentos, contexto_cotacoes_abertas
     from django.db.models import Prefetch
+    acompanhamento_map = acompanhamento_instrumentos()
     from qms.models import OcorrenciaInstrumento
     instrumentos = Instrumento.objects.all().select_related('categoria','setor').prefetch_related(
         'historicos',
@@ -355,8 +356,8 @@ def modulo_metrologia_view(request):
         "periodos_filtro": periodos_filtro,
         "templates_etiquetas_disponiveis": templates_etiquetas,
         "em_cotacao_ids": set(instrumentos_em_cotacao().keys()),
-        "acompanhamento_map": acompanhamento_instrumentos(),
-        **contexto_cotacoes_abertas(),
+        "acompanhamento_map": acompanhamento_map,
+        **contexto_cotacoes_abertas(acompanhamento_map),
     }
     return render(request, "metrologia/dashboard.html", ctx)
 
@@ -2139,7 +2140,8 @@ def get_metrologia_dashboard_data():
         'usuarios_responsaveis': usuarios_responsaveis,
         'hoje': hoje.strftime('%Y-%m-%d'),
         'hoje_display': hoje.strftime('%d/%m/%Y'),
-        **{k: v for k, v in contexto_cotacoes_abertas().items() if k in ('cotacoes_abertas', 'sem_cotacao_total')},
+        **{k: v for k, v in contexto_cotacoes_abertas(acompanhamento_map).items()
+           if k in ('cotacoes_abertas', 'sem_cotacao_total', 'sem_acompanhamento_total')},
     }
 
 
