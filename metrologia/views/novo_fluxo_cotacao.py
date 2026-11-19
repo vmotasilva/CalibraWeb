@@ -23,7 +23,7 @@ from decimal import Decimal
 from metrologia.models import (
     SolicitacaoCotacao, ItemSolicitacaoCotacao, CotacaoFornecedor,
     ItemCotacao, AtendimentoSolicitacao, Instrumento, ProcessoAutomatizacao,
-    ItemSolicitacaoFaixa, HistoricoCalibracao
+    ItemSolicitacaoFaixa, HistoricoCalibracao, CustoAdicionalCotacao
 )
 from metrologia.forms import (
     SolicitacaoCotacaoForm, ItemSolicitacaoCotacaoForm, CotacaoFornecedorForm,
@@ -752,6 +752,39 @@ def cotacao_fornecedor_create(request, solicitacao_pk):
     return render(request, 'metrologia/novo_fluxo/cotacao_fornecedor_form.html', context)
 
 
+def _salvar_custos_adicionais(request, cotacao):
+    """Substitui os custos adicionais pelos enviados no formulário (linhas vazias são ignoradas)."""
+    from metrologia.models import CustoAdicionalCotacao
+    tipos = request.POST.getlist('custo_tipo')
+    descricoes = request.POST.getlist('custo_descricao')
+    quantidades = request.POST.getlist('custo_quantidade')
+    valores = request.POST.getlist('custo_valor')
+    validos = dict(CustoAdicionalCotacao.TIPO_CHOICES)
+    novos, ignorados = [], 0
+    for i, bruto in enumerate(valores):
+        valor_txt = (bruto or '').strip().replace(',', '.')
+        descricao = (descricoes[i] if i < len(descricoes) else '').strip()[:150]
+        if not valor_txt and not descricao:
+            continue                                   # linha em branco
+        try:
+            valor = Decimal(valor_txt)
+            qtd = int((quantidades[i] if i < len(quantidades) else '1').strip() or '1')
+            if valor < 0 or qtd < 1:
+                raise ValueError
+        except Exception:
+            ignorados += 1
+            continue
+        tipo = tipos[i] if i < len(tipos) and tipos[i] in validos else 'OUTRO'
+        novos.append(CustoAdicionalCotacao(
+            cotacao_fornecedor=cotacao, tipo=tipo, descricao=descricao, quantidade=qtd, valor_unitario=valor))
+    cotacao.custos_adicionais.all().delete()
+    for c in novos:
+        c.save()
+    if ignorados:
+        messages.warning(request, f"{ignorados} custo(s) adicional(is) com valor/quantidade inválidos foram ignorados.")
+    return len(novos)
+
+
 @login_required
 def cotacao_fornecedor_update(request, pk):
     """Edita uma cotação de fornecedor - ETAPA 2"""
@@ -810,6 +843,9 @@ def cotacao_fornecedor_update(request, pk):
                 
                 item_cotacao.save()
             
+            if request.POST.get('custos_enviados'):
+                _salvar_custos_adicionais(request, cotacao)
+
             messages.success(request, f"Cotação {cotacao.numero} atualizada com sucesso!")
             return redirect('metrologia:cotacao_fornecedor_detail', pk=cotacao.id)
     else:
@@ -838,7 +874,9 @@ def cotacao_fornecedor_update(request, pk):
         'solicitacao': cotacao.solicitacao,
         'itens_com_dados': itens_com_dados,
         'titulo': f'Editar Cotação {cotacao.numero}',
-        'mode': 'edit'
+        'mode': 'edit',
+        'custos': list(cotacao.custos_adicionais.all()),
+        'tipos_custo': CustoAdicionalCotacao.TIPO_CHOICES,
     }
     return render(request, 'metrologia/novo_fluxo/cotacao_fornecedor_form.html', context)
 
@@ -849,8 +887,11 @@ def cotacao_fornecedor_detail(request, pk):
     cotacao = get_object_or_404(CotacaoFornecedor, pk=pk)
     itens = cotacao.itens.select_related('instrumento', 'item_solicitacao')
     
-    # Calcula valor total
-    valor_total = sum(item.valor_total for item in itens)
+    # Valor total = serviços + custos adicionais
+    valor_servicos = sum(item.valor_total for item in itens)
+    custos_adicionais = list(cotacao.custos_adicionais.all())
+    valor_custos = sum((c.valor_total for c in custos_adicionais), Decimal('0.00'))
+    valor_total = valor_servicos + valor_custos
 
     from qms.models import OcorrenciaInstrumento
     em_execucao = cotacao.etapa_servico == 'EXECUCAO'
@@ -858,6 +899,9 @@ def cotacao_fornecedor_detail(request, pk):
         'cotacao': cotacao,
         'itens': itens,
         'valor_total': valor_total,
+        'valor_servicos': valor_servicos,
+        'valor_custos': valor_custos,
+        'custos_adicionais': custos_adicionais,
         'valor_a_pagar': cotacao.get_valor_a_pagar(),
         'execucao_registrada': any(i.status_execucao != 'PENDENTE' for i in itens),
         'tipos_ocorrencia': OcorrenciaInstrumento.TIPO_OCORRENCIA,
@@ -932,9 +976,16 @@ def gerar_relatorio_conclusao(cotacao):
             oc = i.ocorrencia
             linhas.append(f"- {i.instrumento.tag}: #{oc.pk} {oc.get_tipo_display()} - {oc.descricao}")
         linhas.append("")
+    custos = list(cotacao.custos_adicionais.all())
+    if custos:
+        linhas.append("Custos adicionais:")
+        for c in custos:
+            rotulo = c.get_tipo_display() + (f" - {c.descricao}" if c.descricao else "")
+            linhas.append(f"- {rotulo}: {c.quantidade} x {_fmt_brl(c.valor_unitario)} = {_fmt_brl(c.valor_total)}")
+        linhas.append("")
     linhas += [
         "3. CONCLUSÃO",
-        f"Valor cotado: {_fmt_brl(sum((i.valor_total for i in itens), Decimal('0.00')))}",
+        f"Valor cotado (serviços + custos adicionais): {_fmt_brl(cotacao.get_valor_total())}",
         f"Valor a pagar (conforme praticado): {_fmt_brl(cotacao.get_valor_a_pagar())}",
     ]
     return "\n".join(linhas)

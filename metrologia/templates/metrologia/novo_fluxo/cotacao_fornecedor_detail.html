@@ -53,7 +53,10 @@
                     <h4>
                         R$ <strong>{{ valor_total|floatformat:2 }}</strong>
                     </h4>
-                    <p class="text-muted">Valor total da cotação</p>
+                    <p class="text-muted mb-1">Valor total da cotação{% if valor_custos %} (serviços + custos adicionais){% endif %}</p>
+                    {% if valor_custos %}
+                        <p class="small mb-2">Serviços: <strong>R$ {{ valor_servicos|floatformat:2 }}</strong> &middot; Custos adicionais: <strong>R$ {{ valor_custos|floatformat:2 }}</strong></p>
+                    {% endif %}
                     {% if execucao_registrada %}
                         <h5 class="mb-0 {% if valor_a_pagar != valor_total %}text-warning{% else %}text-success{% endif %}">
                             R$ <strong>{{ valor_a_pagar|floatformat:2 }}</strong>
@@ -259,6 +262,31 @@
                 {% endif %}
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
             {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if custos_adicionais %}
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-cash-coin"></i> Custos adicionais</h6>
+            <strong>R$ {{ valor_custos|floatformat:2 }}</strong>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light"><tr><th>Tipo</th><th>Descrição</th><th>Qtd</th><th>Valor unit.</th><th class="text-end">Total</th></tr></thead>
+                <tbody>
+                {% for c in custos_adicionais %}
+                    <tr>
+                        <td><span class="badge bg-secondary">{{ c.get_tipo_display }}</span></td>
+                        <td>{{ c.descricao|default:"-" }}</td>
+                        <td>{{ c.quantidade }}</td>
+                        <td>R$ {{ c.valor_unitario|floatformat:2 }}</td>
+                        <td class="text-end"><strong>R$ {{ c.valor_total|floatformat:2 }}</strong></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {% endif %}

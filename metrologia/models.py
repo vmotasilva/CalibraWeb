@@ -1441,26 +1441,70 @@ class CotacaoFornecedor(models.Model):
         if self.solicitacao_id and self.solicitacao.status not in ('CONCLUIDA', 'CANCELADA'):
             self.solicitacao.atualizar_status_automatico()
 
+    def get_valor_servicos(self):
+        """Soma dos serviços (instrumentos) cotados, sem os custos adicionais."""
+        return sum((item.valor_total for item in self.itens.all()), Decimal('0.00'))
+
+    def get_valor_custos_adicionais(self):
+        """Soma dos custos adicionais (deslocamento, passagens aéreas etc.)."""
+        return sum((c.valor_total for c in self.custos_adicionais.all()), Decimal('0.00'))
+
     def get_valor_total(self):
-        """Calcula o valor total da cotação"""
-        return sum(item.valor_total for item in self.itens.all())
+        """Valor total da cotação: serviços + custos adicionais."""
+        return self.get_valor_servicos() + self.get_valor_custos_adicionais()
 
     def get_valor_a_pagar(self):
         """
         Valor efetivamente devido ao fornecedor.
         - Sem execução registrada: vale o valor cotado.
         - Com execução: soma apenas o que foi atendido, pelo valor praticado.
+        Os custos adicionais (deslocamentos, passagens...) entram nos dois casos.
         """
         itens = list(self.itens.all())
+        adicionais = self.get_valor_custos_adicionais()
         if not any(i.status_execucao != 'PENDENTE' for i in itens):
-            return sum((i.valor_total for i in itens), Decimal('0.00'))
-        return sum((i.valor_cobrado for i in itens), Decimal('0.00'))
+            return sum((i.valor_total for i in itens), Decimal('0.00')) + adicionais
+        return sum((i.valor_cobrado for i in itens), Decimal('0.00')) + adicionais
     
     class Meta:
         verbose_name = "Cotação do Fornecedor"
         verbose_name_plural = "Cotações de Fornecedores"
         ordering = ["-data_criacao"]
         unique_together = ('solicitacao', 'fornecedor')
+
+
+class CustoAdicionalCotacao(models.Model):
+    """Custos além do serviço cotado: deslocamento, passagens aéreas, hospedagem etc."""
+    TIPO_CHOICES = [
+        ('DESLOCAMENTO', 'Deslocamento'),
+        ('PASSAGEM_AEREA', 'Passagem aérea'),
+        ('HOSPEDAGEM', 'Hospedagem'),
+        ('ALIMENTACAO', 'Alimentação'),
+        ('FRETE', 'Frete / transporte do instrumento'),
+        ('TAXA', 'Taxa / impostos'),
+        ('OUTRO', 'Outro'),
+    ]
+
+    cotacao_fornecedor = models.ForeignKey(
+        'CotacaoFornecedor', on_delete=models.CASCADE, related_name='custos_adicionais',
+        verbose_name='Cotação do Fornecedor')
+    tipo = models.CharField(max_length=20, choices=TIPO_CHOICES, default='OUTRO', verbose_name='Tipo')
+    descricao = models.CharField(max_length=150, blank=True, default='', verbose_name='Descrição')
+    quantidade = models.PositiveIntegerField(default=1, verbose_name='Quantidade')
+    valor_unitario = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Valor unitário (R$)')
+    valor_total = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Valor total (R$)')
+
+    def save(self, *args, **kwargs):
+        self.valor_total = self.valor_unitario * self.quantidade
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.cotacao_fornecedor.numero} - {self.get_tipo_display()} ({self.valor_total})"
+
+    class Meta:
+        verbose_name = "Custo Adicional da Cotação"
+        verbose_name_plural = "Custos Adicionais da Cotação"
+        ordering = ['id']
 
 
 class ItemCotacao(models.Model):
