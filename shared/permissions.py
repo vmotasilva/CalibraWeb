@@ -648,6 +648,7 @@ NAV_STRUCTURE = [
                             "metrologia:cotacao_servico_executar",
                             "metrologia:cotacao_servico_concluir",
                             "metrologia:solicitacao_compras",
+                            "metrologia:solicitacao_compras_link",
                             "metrologia:atendimento_associar_certificado",
                             "metrologia:atendimento_detail",
                         ],

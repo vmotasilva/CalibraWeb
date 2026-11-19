@@ -67,6 +67,7 @@ urlpatterns = [
     path('solicitacoes/<int:pk>/concluir/', views.solicitacao_marcar_concluida, name='solicitacao_concluir'),
     path('solicitacoes/<int:pk>/cancelar/', views.solicitacao_marcar_cancelada, name='solicitacao_cancelar'),
     path('solicitacoes/<int:pk>/compras/', views.solicitacao_compras, name='solicitacao_compras'),
+    path('solicitacoes/<int:pk>/compras/links/', views.solicitacao_compras_link, name='solicitacao_compras_link'),
     path('solicitacoes/<int:pk>/reativar/', views.solicitacao_reativar, name='solicitacao_reativar'),
     path('solicitacoes/<int:pk>/reabrir/', views.solicitacao_reabrir, name='solicitacao_reabrir'),
 

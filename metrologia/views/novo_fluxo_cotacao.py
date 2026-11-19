@@ -288,6 +288,61 @@ def solicitacao_compras(request, pk):
 
 
 @login_required
+@require_POST
+def solicitacao_compras_link(request, pk):
+    """Adiciona (um ou mais, um por linha) ou remove links das tratativas com o setor de compras."""
+    from django.core.exceptions import ValidationError
+    from django.core.validators import URLValidator
+    from metrologia.models import LinkSolicitacaoCompras
+
+    solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
+    voltar = redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
+    acao = request.POST.get('acao', '')
+
+    if acao == 'remover':
+        link = solicitacao.links_compras.filter(pk=request.POST.get('link_id') or 0).first()
+        if link:
+            link.delete()
+            messages.success(request, "Link removido.")
+        return voltar
+
+    if acao != 'adicionar':
+        messages.error(request, "Ação inválida.")
+        return voltar
+
+    validador = URLValidator(schemes=['http', 'https'])
+    linhas = [l.strip() for l in (request.POST.get('urls') or '').splitlines() if l.strip()]
+    descricao = (request.POST.get('descricao') or '').strip()[:150] if len(linhas) == 1 else ''
+    if not linhas:
+        messages.error(request, "Informe o link.")
+        return voltar
+
+    criados, invalidos = 0, []
+    existentes = set(solicitacao.links_compras.values_list('url', flat=True))
+    for bruto in linhas:
+        url = bruto if '://' in bruto else 'https://' + bruto
+        try:
+            validador(url)
+        except ValidationError:
+            invalidos.append(bruto)
+            continue
+        if len(url) > 500 or url in existentes:
+            if len(url) > 500:
+                invalidos.append(bruto[:60] + '...')
+            continue
+        LinkSolicitacaoCompras.objects.create(
+            solicitacao=solicitacao, url=url, descricao=descricao, criado_por=request.user)
+        existentes.add(url)
+        criados += 1
+
+    if criados:
+        messages.success(request, f"{criados} link(s) adicionado(s).")
+    if invalidos:
+        messages.error(request, "Link inválido: " + ", ".join(invalidos))
+    return voltar
+
+
+@login_required
 def solicitacao_create(request):
     """Cria uma solicitação de cotação já com os instrumentos selecionados.
 

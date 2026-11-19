@@ -110,3 +110,89 @@ class EtapaComprasTests(TestCase):
         self._compras("solicitar")
         self.sol.refresh_from_db()
         self.assertIsNone(self.sol.compras_solicitada_em)
+
+
+class LinksComprasTests(EtapaComprasTests):
+    """Links das tratativas (um ou mais) na etapa de compras."""
+
+    def _link(self, acao="adicionar", **dados):
+        return self.client.post(reverse("metrologia:solicitacao_compras_link", args=[self.sol.id]),
+                                {"acao": acao, **dados})
+
+    def _links(self):
+        from metrologia.models import LinkSolicitacaoCompras
+        return list(LinkSolicitacaoCompras.objects.filter(solicitacao=self.sol).order_by("id"))
+
+    # herda os testes da etapa só para reutilizar as fixtures; evita reexecutá-los
+    for _nome in [n for n in dir(EtapaComprasTests) if n.startswith("test_")]:
+        locals()[_nome] = None
+    del _nome
+
+    def test_adiciona_um_ou_varios_links_e_remove(self):
+        self._compras("solicitar")
+        self._link(urls="https://portal.exemplo.com/pedido/123", descricao="Pedido no portal")
+        self._link(urls="https://drive.google.com/x\nwww.teams.microsoft.com/chat/abc\n")
+        links = self._links()
+        self.assertEqual([l.rotulo for l in links],
+                         ["Pedido no portal", "drive.google.com", "www.teams.microsoft.com"])
+        self.assertEqual(links[2].url, "https://www.teams.microsoft.com/chat/abc")   # assume https
+        self.assertEqual(links[0].criado_por, self.user)
+        html = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
+        self.assertIn('href="https://portal.exemplo.com/pedido/123"', html)
+        self.assertIn('rel="noopener noreferrer"', html)
+        self.assertIn("Pedido no portal", html)
+        self._link("remover", link_id=links[0].id)
+        self.assertEqual(len(self._links()), 2)
+
+    def test_recusa_links_invalidos_e_duplicados(self):
+        self._compras("solicitar")
+        self._link(urls="javascript:alert(1)")
+        self._link(urls="não é link")
+        self._link(urls="ftp://servidor/arquivo")
+        self.assertEqual(self._links(), [])
+        self._link(urls="https://ok.com/a\nhttps://ok.com/a\njavascript:x")
+        self.assertEqual(len(self._links()), 1)                      # duplicado ignorado, inválido recusado
+        self._link(urls="")
+        self.assertEqual(len(self._links()), 1)
+
+    def test_remover_link_de_outra_solicitacao_nao_funciona(self):
+        from metrologia.models import LinkSolicitacaoCompras
+        outra = SolicitacaoCotacao.objects.create()
+        alheio = LinkSolicitacaoCompras.objects.create(solicitacao=outra, url="https://outra.com")
+        self._link("remover", link_id=alheio.id)
+        self.assertTrue(LinkSolicitacaoCompras.objects.filter(pk=alheio.pk).exists())
+
+
+class NumeroCotacaoFornecedorTests(EtapaComprasTests):
+    """O número (único) da cotação do fornecedor é gerado: antes a 2ª cotação dava erro 500."""
+
+    for _nome in [n for n in dir(EtapaComprasTests) if n.startswith("test_")]:
+        locals()[_nome] = None
+    del _nome
+
+    def _criar(self, sol, forn):
+        return self.client.post(reverse("metrologia:cotacao_fornecedor_create", args=[sol.id]),
+                                {"fornecedor": forn.id})
+
+    def test_varias_cotacoes_recebem_numeros_unicos(self):
+        outra = SolicitacaoCotacao.objects.create()
+        ItemSolicitacaoCotacao.objects.create(
+            solicitacao=outra, instrumento=Instrumento.objects.create(tag="TH-02", descricao="x"))
+        forn2 = Fornecedor.objects.create(empresa="Lab Y", nome_fantasia="Y", endereco="r", uf="SP")
+        for sol, forn in ((self.sol, self.forn), (self.sol, forn2), (outra, self.forn)):
+            r = self._criar(sol, forn)
+            self.assertEqual(r.status_code, 302)
+        numeros = list(CotacaoFornecedor.objects.order_by("id").values_list("numero", flat=True))
+        self.assertEqual(len(set(numeros)), 3)
+        ano = timezone.now().year
+        self.assertEqual(numeros[0], f"COT-{ano}-0001-FOR{self.forn.id % 1000:03d}")
+        self.assertEqual(numeros[1][:14], f"COT-{ano}-0002-")
+        self.assertTrue(all(len(n) <= 20 for n in numeros))
+        # a tela mostra o número (antes o título ficava só com "$")
+        cot = CotacaoFornecedor.objects.first()
+        self.assertContains(self.client.get(reverse("metrologia:cotacao_fornecedor_detail", args=[cot.id])), cot.numero)
+
+    def test_numero_informado_e_mantido(self):
+        cot = CotacaoFornecedor.objects.create(
+            solicitacao=self.sol, fornecedor=self.forn, numero="COT-MANUAL")
+        self.assertEqual(cot.numero, "COT-MANUAL")
