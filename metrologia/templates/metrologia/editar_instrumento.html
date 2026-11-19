@@ -149,11 +149,19 @@
                                             placeholder="Ex: 0.1000">
                                     </div>
                                     <div class="col-md-3 mb-3">
-                                        <label for="id_tratativa_calibracao" class="form-label">Tratativa de Calibração <span class="text-danger">*</span></label>
+                                        <label for="id_tratativa_calibracao" class="form-label">Responsável pela calibração <span class="text-danger">*</span></label>
                                         <select class="form-select" id="id_tratativa_calibracao" name="tratativa_calibracao" required>
                                             <option value="">-- Selecione --</option>
-                                            <option value="INTERNA" {% if instrumento.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>Interna</option>
-                                            <option value="EXTERNA" {% if instrumento.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>Externa</option>
+                                            <option value="INTERNA" {% if instrumento.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>Equipe interna</option>
+                                            <option value="EXTERNA" {% if instrumento.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>Fornecedor externo</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <label for="id_local_calibracao" class="form-label">Local da calibração</label>
+                                        <select class="form-select" id="id_local_calibracao" name="local_calibracao">
+                                            <option value="" {% if not instrumento.local_calibracao %}selected{% endif %}>Não definido (herda da categoria)</option>
+                            <option value="NA_EMPRESA" {% if instrumento.local_calibracao == 'NA_EMPRESA' %}selected{% endif %}>Somente na empresa (não sai)</option>
+                            <option value="PODE_SAIR" {% if instrumento.local_calibracao == 'PODE_SAIR' %}selected{% endif %}>Pode ser enviado ao fornecedor</option>
                                         </select>
                                     </div>
                                     <div class="col-md-3 mb-3">

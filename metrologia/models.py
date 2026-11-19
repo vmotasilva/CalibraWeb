@@ -10,8 +10,8 @@ from decimal import Decimal
 
 class CategoriaInstrumento(models.Model):
     TRATATIVA_CHOICES = [
-        ('INTERNA', 'Interna'),
-        ('EXTERNA', 'Externa'),
+        ('INTERNA', 'Equipe interna'),
+        ('EXTERNA', 'Fornecedor externo'),
     ]
     
     nome = models.CharField(max_length=100)
@@ -27,6 +27,19 @@ class CategoriaInstrumento(models.Model):
         choices=TRATATIVA_CHOICES,
         default='INTERNA',
         help_text="Tipo de calibração padrão para instrumentos desta categoria"
+    )
+    LOCAL_CALIBRACAO_CHOICES = [
+        ('', 'Não definido'),
+        ('NA_EMPRESA', 'Somente na empresa (não sai)'),
+        ('PODE_SAIR', 'Pode ser enviado ao fornecedor'),
+    ]
+    local_calibracao = models.CharField(
+        max_length=12,
+        choices=LOCAL_CALIBRACAO_CHOICES,
+        blank=True,
+        default='',
+        verbose_name='Local da calibração',
+        help_text='Padrão para os instrumentos da categoria: onde a calibração deve ocorrer'
     )
     frequencia_calibracao_meses = models.IntegerField(
         default=12,
@@ -172,16 +185,34 @@ class Instrumento(models.Model):
     
     # Tratativa de Calibração
     TRATATIVA_CHOICES = [
-        ('INTERNA', 'Interna'),
-        ('EXTERNA', 'Externa'),
+        ('INTERNA', 'Equipe interna'),
+        ('EXTERNA', 'Fornecedor externo'),
     ]
     tratativa_calibracao = models.CharField(
         max_length=10,
         choices=TRATATIVA_CHOICES,
         default='INTERNA',
-        verbose_name='Tratativa de Calibração',
+        verbose_name='Responsável pela calibração',
         help_text='Indica se a calibração é feita internamente ou com fornecedor externo'
     )
+    LOCAL_CALIBRACAO_CHOICES = [
+        ('', 'Não definido'),
+        ('NA_EMPRESA', 'Somente na empresa (não sai)'),
+        ('PODE_SAIR', 'Pode ser enviado ao fornecedor'),
+    ]
+    local_calibracao = models.CharField(
+        max_length=12,
+        choices=LOCAL_CALIBRACAO_CHOICES,
+        blank=True,
+        default='',
+        verbose_name='Local da calibração',
+        help_text='Onde a calibração deve ocorrer: somente na empresa ou pode ser enviado a fornecedor externo. Vazio = herda da categoria'
+    )
+
+    @property
+    def local_calibracao_efetivo(self):
+        """Local da calibração do instrumento, herdando da categoria; '' = não definido."""
+        return self.local_calibracao or (self.categoria.local_calibracao if self.categoria_id else '') or ''
     
     ACAO_CHOICES = [
         ('CALIBRACAO', 'Calibração'),

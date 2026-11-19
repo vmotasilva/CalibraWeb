@@ -87,9 +87,15 @@
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-3">
-                                    <label for="id_tratativa_calibracao" class="form-label fw-bold">Tratativa de Calibração <span class="text-danger">*</span></label>
+                                    <label for="id_tratativa_calibracao" class="form-label fw-bold">Responsável pela calibração <span class="text-danger">*</span></label>
                                     {{ form.tratativa_calibracao|add_class:"form-select" }}
                                     {% if form.tratativa_calibracao.errors %}<small class="text-danger">{{ form.tratativa_calibracao.errors }}</small>{% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="id_local_calibracao" class="form-label fw-bold">Local da calibração</label>
+                                    {{ form.local_calibracao|add_class:"form-select" }}
                                 </div>
                             </div>
                             <div class="col-md-4">

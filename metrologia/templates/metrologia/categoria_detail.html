@@ -52,12 +52,12 @@
 
                     <!-- TRATATIVA DE CALIBRAÇÃO -->
                     <div class="mb-3">
-                        <label class="form-label fw-bold small text-muted">Tratativa de Calibração</label>
+                        <label class="form-label fw-bold small text-muted">Responsável pela calibração</label>
                         <p class="mb-0">
                             {% if categoria.tratativa_calibracao == 'INTERNA' %}
-                                <span class="badge bg-success">Interna</span>
+                                <span class="badge bg-success">Equipe interna</span>
                             {% elif categoria.tratativa_calibracao == 'EXTERNA' %}
-                                <span class="badge bg-warning">Externa</span>
+                                <span class="badge bg-warning">Fornecedor externo</span>
                             {% endif %}
                         </p>
                     </div>

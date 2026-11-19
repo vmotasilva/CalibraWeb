@@ -2464,6 +2464,11 @@ def editar_instrumento_view(request, instrumento_id):
                 tratativa = request.POST.get('tratativa_calibracao')
                 if tratativa:
                     instrumento.tratativa_calibracao = tratativa
+
+                if 'local_calibracao' in request.POST:
+                    local_cal = request.POST.get('local_calibracao', '').strip()
+                    if local_cal in ('', 'NA_EMPRESA', 'PODE_SAIR'):
+                        instrumento.local_calibracao = local_cal
                     
                 acao_inst = request.POST.get('acao')
                 if acao_inst:
