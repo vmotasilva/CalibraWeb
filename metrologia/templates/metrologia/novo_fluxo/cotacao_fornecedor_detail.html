@@ -29,6 +29,12 @@
                 </button>
                 {% endif %}
             {% elif cotacao.solicitacao.status != 'CONCLUIDA' and cotacao.solicitacao.status != 'CANCELADA' %}
+                {% if pode_nova_versao %}
+                <form method="post" action="{% url 'metrologia:cotacao_fornecedor_ativacao' cotacao.id %}" class="d-inline">
+                    {% csrf_token %}<input type="hidden" name="acao" value="nova_versao">
+                    <button type="submit" class="btn btn-primary" title="Criar nova versão com os valores atualizados"><i class="bi bi-files"></i> Criar nova versão</button>
+                </form>
+                {% endif %}
                 <form method="post" action="{% url 'metrologia:cotacao_fornecedor_ativacao' cotacao.id %}" class="d-inline" onsubmit="return confirm('Reativar esta cotação?')">
                     {% csrf_token %}<input type="hidden" name="acao" value="reativar">
                     <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Reativar</button>

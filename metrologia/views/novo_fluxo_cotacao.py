@@ -441,6 +441,7 @@ def solicitacao_detail(request, pk):
         'itens': itens,
         'cotacoes': cotacoes,
         'cotacoes_obsoletas': cotacoes_obsoletas,
+        'fornecedores_com_ativa': set(cotacoes.values_list('fornecedor_id', flat=True)),
         'comparativo': comparar_fornecedores(solicitacao),
         'atendimentos': atendimentos,
         'historicos_pendentes': {
@@ -819,13 +820,27 @@ def cotacao_fornecedor_ativacao(request, pk):
             cotacao.inativada_por = request.user
             cotacao.motivo_inativacao = motivo
             cotacao.save()
-            nova = _copiar_para_nova_versao(cotacao, request.user) if acao == 'inativar_nova' else None
+            criar_nova = acao == 'inativar_nova' or bool(request.POST.get('nova_versao'))
+            nova = _copiar_para_nova_versao(cotacao, request.user) if criar_nova else None
         if nova:
             messages.success(request, f"{cotacao.numero} inativada. Atualize os valores da nova versão {nova.numero}: "
                                       "o sistema vai comparar com a anterior.")
             return redirect('metrologia:cotacao_fornecedor_update', pk=nova.id)
         messages.success(request, f"{cotacao.numero} inativada (obsoleta).")
         return voltar
+
+    if acao == 'nova_versao':
+        # cotação que já ficou obsoleta sem a cópia: cria agora a nova versão
+        if cotacao.ativa:
+            messages.warning(request, f"{cotacao.numero} está ativa; inative-a para criar uma nova versão.")
+            return voltar
+        if solicitacao.cotacoes_fornecedores.filter(ativa=True, fornecedor=cotacao.fornecedor).exists():
+            messages.error(request, "Este fornecedor já tem uma cotação ativa na solicitação.")
+            return voltar
+        nova = _copiar_para_nova_versao(cotacao, request.user)
+        messages.success(request, f"Nova versão {nova.numero} criada a partir de {cotacao.numero}. "
+                                  "Atualize os valores: o sistema vai comparar com a anterior.")
+        return redirect('metrologia:cotacao_fornecedor_update', pk=nova.id)
 
     if acao == 'reativar':
         if cotacao.ativa:
@@ -999,6 +1014,10 @@ def cotacao_fornecedor_detail(request, pk):
         'valor_a_pagar': cotacao.get_valor_a_pagar(),
         'comparativo_versao': comparar_versoes(cotacao, cotacao.versao_anterior) if cotacao.versao_anterior_id else None,
         'versao_nova': cotacao.versoes_novas.filter(ativa=True).first(),
+        'pode_nova_versao': (not cotacao.ativa
+                             and cotacao.solicitacao.status not in STATUS_COTACAO_ENCERRADA
+                             and not cotacao.solicitacao.cotacoes_fornecedores.filter(
+                                 ativa=True, fornecedor=cotacao.fornecedor).exists()),
         'execucao_registrada': any(i.status_execucao != 'PENDENTE' for i in itens),
         'tipos_ocorrencia': OcorrenciaInstrumento.TIPO_OCORRENCIA,
         'itens_pendentes': sum(1 for i in itens if i.status_execucao == 'PENDENTE'),

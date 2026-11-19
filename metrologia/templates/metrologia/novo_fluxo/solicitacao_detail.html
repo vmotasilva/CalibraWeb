@@ -347,6 +347,12 @@
                             <td class="text-nowrap">
                                 <a href="{% url 'metrologia:cotacao_fornecedor_detail' c.id %}" class="btn btn-sm btn-outline-primary" title="Visualizar"><i class="bi bi-eye"></i></a>
                                 {% if solicitacao.status != 'CONCLUIDA' and solicitacao.status != 'CANCELADA' %}
+                                {% if c.fornecedor_id not in fornecedores_com_ativa %}
+                                <form method="post" action="{% url 'metrologia:cotacao_fornecedor_ativacao' c.id %}" class="d-inline">
+                                    {% csrf_token %}<input type="hidden" name="acao" value="nova_versao">
+                                    <button type="submit" class="btn btn-sm btn-primary" title="Criar nova versão com os valores atualizados"><i class="bi bi-files"></i> Nova versão</button>
+                                </form>
+                                {% endif %}
                                 <form method="post" action="{% url 'metrologia:cotacao_fornecedor_ativacao' c.id %}" class="d-inline" onsubmit="return confirm('Reativar esta cotação?')">
                                     {% csrf_token %}<input type="hidden" name="acao" value="reativar">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary" title="Reativar"><i class="bi bi-arrow-counterclockwise"></i></button>
