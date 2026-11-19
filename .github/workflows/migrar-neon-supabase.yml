@@ -1,0 +1,78 @@
+name: Migrar Neon -> Supabase
+
+# Execução manual. Segredos necessários (Settings > Secrets and variables > Actions):
+#   NEON_URL           URL DIRETA do Neon (host sem "-pooler"), com ?sslmode=require
+#   SUPABASE_PASSWORD  senha do banco do Supabase
+# O Neon é apenas lido. O dump existe só no runner e é descartado ao final (não é publicado como artefato).
+
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: "preflight = só confere versões (somente leitura) | all = dump + restore + verify"
+        type: choice
+        options: [preflight, all]
+        default: preflight
+      confirmacao:
+        description: 'Para a ação "all", digite MIGRAR (app deve estar em manutenção)'
+        required: false
+        default: ""
+
+concurrency:
+  group: migracao-neon-supabase
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      NEON_URL: ${{ secrets.NEON_URL }}
+      SUPABASE_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
+      SUPABASE_HOST: aws-0-us-east-2.pooler.supabase.com
+      SUPABASE_PORT: "5432"
+      SUPABASE_USER: postgres.wxrklurleqqnryobanud
+      SUPABASE_DB: postgres
+      DUMP_FILE: ${{ runner.temp }}/calibraweb_neon.dump
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar segredos e confirmação
+        run: |
+          [ -n "$NEON_URL" ] || { echo "::error::Segredo NEON_URL não cadastrado."; exit 1; }
+          [ -n "$SUPABASE_PASSWORD" ] || { echo "::error::Segredo SUPABASE_PASSWORD não cadastrado."; exit 1; }
+          case "$NEON_URL" in *-pooler*) echo "::error::NEON_URL usa o pooler. Remova '-pooler' do host."; exit 1;; esac
+          if [ "${{ inputs.acao }}" = "all" ] && [ "${{ inputs.confirmacao }}" != "MIGRAR" ]; then
+            echo "::error::Para a ação 'all' digite MIGRAR no campo de confirmação."; exit 1
+          fi
+
+      - name: Instalar cliente PostgreSQL 17
+        run: |
+          sudo apt-get install -y curl ca-certificates >/dev/null
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -y >/dev/null
+          sudo apt-get install -y postgresql-client-17 >/dev/null
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Preflight (somente leitura)
+        if: inputs.acao == 'preflight'
+        run: |
+          pg_dump --version
+          bash scripts/migrar_neon_supabase.sh preflight
+
+      - name: Dump + restore + verify
+        if: inputs.acao == 'all'
+        run: |
+          pg_dump --version
+          bash scripts/migrar_neon_supabase.sh preflight
+          bash scripts/migrar_neon_supabase.sh all
+
+      - name: Remover dump do runner
+        if: always()
+        run: rm -f "$DUMP_FILE"
