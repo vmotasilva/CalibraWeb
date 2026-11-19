@@ -1141,6 +1141,10 @@
                             <div class="filtro-pane-head"><h6><i class="bi bi-hourglass-split me-2 text-primary"></i>Cotações em aberto</h6><div class="filtro-pane-tools d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="limparSecaoFiltro(this)">Limpar seção</button></div></div>
                             <div class="filter-content">
                                 <div class="d-flex flex-column gap-1" style="max-height: 260px; overflow-y: auto;">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="SEM_COTACAO" data-cat="cotacao_aberta">
+                                        <label class="form-check-label small fw-bold">Sem cotações <span class="text-muted fw-normal">({{ sem_cotacao_total }})</span></label>
+                                    </div>
                                     {% for c in cotacoes_abertas %}
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ c.numero }}" data-cat="cotacao_aberta">
@@ -1908,7 +1912,7 @@
             const resultado = row.getAttribute('data-resultado') || '';
             const ocorrencia = row.getAttribute('data-ocorrencia') || '';
             const acompanhamento = row.getAttribute('data-acompanhamento') || '';
-            const cotacaoAberta = row.getAttribute('data-cotacao-aberta') || '';
+            const cotacaoAberta = row.getAttribute('data-cotacao-aberta') || 'SEM_COTACAO';
             const situacao = row.getAttribute('data-situacao') || '';
 
             // 1. Checar Aba

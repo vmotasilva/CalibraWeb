@@ -119,6 +119,8 @@ def contexto_cotacoes_abertas():
     return {
         'cotacao_aberta_map': mapa,
         'cotacoes_abertas': [{'numero': n, 'total': contagem[n]} for n in sorted(contagem)],
+        # instrumentos ativos que não estão em nenhuma cotação em aberto (opção "Sem cotações")
+        'sem_cotacao_total': Instrumento.objects.filter(ativo=True).exclude(id__in=list(mapa.keys())).count(),
     }
 
 

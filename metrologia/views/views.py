@@ -283,7 +283,13 @@ def imp_historico_view(request):
 def modulo_metrologia_view(request):
     """Dashboard principal do módulo de Metrologia."""
     from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao, acompanhamento_instrumentos, contexto_cotacoes_abertas
-    instrumentos = Instrumento.objects.all().select_related('categoria','setor').prefetch_related('historicos', 'ocorrencias').order_by("tag")
+    from django.db.models import Prefetch
+    from qms.models import OcorrenciaInstrumento
+    instrumentos = Instrumento.objects.all().select_related('categoria','setor').prefetch_related(
+        'historicos',
+        # só as ocorrências ABERTAS: o selo "N RNC" e o modal da tela contam/mostram apenas estas
+        Prefetch('ocorrencias', queryset=OcorrenciaInstrumento.objects.filter(status='ABERTA'), to_attr='ocorrencias_abertas'),
+    ).order_by("tag")
 
     # Filtro de status
     st_param = (request.GET.get('st') or '').upper()
@@ -2133,7 +2139,7 @@ def get_metrologia_dashboard_data():
         'usuarios_responsaveis': usuarios_responsaveis,
         'hoje': hoje.strftime('%Y-%m-%d'),
         'hoje_display': hoje.strftime('%d/%m/%Y'),
-        'cotacoes_abertas': contexto_cotacoes_abertas()['cotacoes_abertas'],
+        **{k: v for k, v in contexto_cotacoes_abertas().items() if k in ('cotacoes_abertas', 'sem_cotacao_total')},
     }
 
 

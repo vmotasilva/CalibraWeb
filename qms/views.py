@@ -84,7 +84,11 @@ def modulo_metrologia_view(request):
     from django.db.models.functions import Lower
     
     # Retrieve all instruments and related data
-    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related('faixas').order_by('tag')
+    from qms.models import OcorrenciaInstrumento
+    instrumentos = Instrumento.objects.all().select_related('setor', 'categoria').prefetch_related(
+        'faixas',
+        Prefetch('ocorrencias', queryset=OcorrenciaInstrumento.objects.filter(status='ABERTA'), to_attr='ocorrencias_abertas'),
+    ).order_by('tag')
     
     # Get filter parameters from request
     status_filter = request.GET.get('status', '')
