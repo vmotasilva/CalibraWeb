@@ -215,3 +215,47 @@ class ComparativosTests(BaseVersoes):
         html = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
         self.assertIn("Comparativo de cotações (2 fornecedores)", html)
         self.assertIn("Cotações obsoletas (1)", html)
+
+
+class ModalENovaVersaoRetroativaTests(BaseVersoes):
+    def test_enter_no_motivo_nao_deixa_de_criar_a_nova_versao(self):
+        """O envio por Enter usa o 1º botão: agora só há um botão e a caixa 'nova versão' vem marcada."""
+        html = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
+        modal = html[html.index('id="modalInativarCotacao"'):]
+        modal = modal[:modal.index("</form>")]
+        self.assertEqual(modal.count('type="submit"'), 1)
+        self.assertIn('name="nova_versao"', modal)
+        self.assertIn('id="inativarNovaVersao" checked', modal)
+
+    def test_inativar_com_caixa_marcada_cria_a_nova_versao(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        r = self.ativacao(cot, "inativar", motivo="valores desatualizados", nova_versao="1")
+        nova = CotacaoFornecedor.objects.get(versao_anterior=cot)
+        self.assertRedirects(r, reverse("metrologia:cotacao_fornecedor_update", args=[nova.id]))
+
+    def test_inativar_com_caixa_desmarcada_so_inativa(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        self.ativacao(cot, "inativar", motivo="x")
+        self.assertFalse(CotacaoFornecedor.objects.filter(versao_anterior=cot).exists())
+
+    def test_cria_nova_versao_de_cotacao_que_ja_esta_obsoleta(self):
+        cot = self.cotacao(self.f1, [1000, 1100, 1200], custos=[("DESLOCAMENTO", 1, 100)])
+        self.ativacao(cot, "inativar", motivo="Valores Desatualizados")        # ficou sem cópia
+        pagina = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
+        self.assertIn('value="nova_versao"', pagina)                            # botão aparece
+        r = self.ativacao(cot, "nova_versao")
+        nova = CotacaoFornecedor.objects.get(versao_anterior=cot)
+        self.assertRedirects(r, reverse("metrologia:cotacao_fornecedor_update", args=[nova.id]))
+        self.assertTrue(nova.ativa)
+        self.assertEqual(nova.get_valor_servicos(), Decimal("3300.00"))
+        self.assertEqual(nova.get_valor_custos_adicionais(), Decimal("100.00"))
+        # com uma ativa do fornecedor, não oferece nem cria outra
+        pagina = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
+        self.assertNotIn('value="nova_versao"', pagina)
+        self.ativacao(cot, "nova_versao")
+        self.assertEqual(CotacaoFornecedor.objects.filter(versao_anterior=cot).count(), 1)
+
+    def test_nova_versao_so_para_obsoleta(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        self.ativacao(cot, "nova_versao")                                         # ativa: não cria
+        self.assertFalse(CotacaoFornecedor.objects.filter(versao_anterior=cot).exists())

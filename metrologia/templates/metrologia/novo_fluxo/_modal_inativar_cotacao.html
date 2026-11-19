@@ -13,16 +13,17 @@
                 <label class="form-label fw-bold small" for="inativarMotivo">Motivo <span class="text-danger">*</span></label>
                 <input type="text" name="motivo" id="inativarMotivo" class="form-control" maxlength="255" required
                        placeholder="Ex.: valores desatualizados, escopo mudou, fornecedor reajustou...">
-                <div class="alert alert-info small mt-3 mb-0 py-2">
-                    <i class="bi bi-lightbulb"></i> Use <strong>Inativar e criar nova versão</strong> para já abrir uma cotação do
-                    mesmo fornecedor com os dados atuais: ao atualizar os valores, o sistema compara com esta e aponta o que
-                    vale questionar.
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="nova_versao" value="1" id="inativarNovaVersao" checked>
+                    <label class="form-check-label small" for="inativarNovaVersao">
+                        <strong>Criar nova versão</strong> do mesmo fornecedor, com os itens, valores e custos atuais para você
+                        atualizar. O sistema compara com esta e aponta o que vale questionar.
+                    </label>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" name="acao" value="inativar" class="btn btn-outline-warning btn-sm text-dark">Apenas inativar</button>
-                <button type="submit" name="acao" value="inativar_nova" class="btn btn-primary btn-sm"><i class="bi bi-files"></i> Inativar e criar nova versão</button>
+                <button type="submit" name="acao" value="inativar" class="btn btn-warning btn-sm"><i class="bi bi-archive"></i> Inativar</button>
             </div>
         </form>
     </div>
@@ -33,6 +34,7 @@ function abrirInativarCotacao(cotacaoId, numero) {
         "{% url 'metrologia:cotacao_fornecedor_ativacao' 0 %}".replace('/0/', '/' + cotacaoId + '/');
     document.getElementById('inativarNumero').textContent = numero;
     document.getElementById('inativarMotivo').value = '';
+    document.getElementById('inativarNovaVersao').checked = true;
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalInativarCotacao')).show();
 }
 </script>
