@@ -506,3 +506,12 @@ class FiltroLocalCalibracaoTests(BaseCotacaoServico):
         self.assertIn('data-local="COMPRAR_NOVO"', metro)
         shared = self.client.get("/dashboard/").content.decode()
         self.assertIn('data-local="comprar_novo"', shared)
+
+
+class TemplatesEtiquetasPaginaTests(BaseCotacaoServico):
+    """A tela de modelos de etiquetas renderiza (regressão: link para rota 'dashboard' inexistente)."""
+
+    def test_lista_renderiza(self):
+        resp = self.client.get("/metrologia/templates-etiquetas/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, reverse("modulo_metrologia"))
