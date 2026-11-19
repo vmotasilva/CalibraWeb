@@ -338,7 +338,7 @@
                 <div class="row">
 
                     <!-- Coluna 1 -->
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <!-- 1. SITUAÇÃO (Vencimento) -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -399,7 +399,7 @@
                     </div>
 
                     <!-- Coluna 2 -->
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <!-- 7. PERÍODO (Próxima Calibração) -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -442,7 +442,7 @@
                     </div>
 
                     <!-- Coluna 3 -->
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <!-- 4. CATEGORIA -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -483,7 +483,7 @@
                     </div>
 
                     <!-- Coluna 4 -->
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <!-- 6. RESULTADO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -532,7 +532,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Coluna 5: Acompanhamento de cotações -->
+                    <div class="col-md">
                         <!-- 9. ACOMPANHAMENTO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -556,6 +559,27 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 10. COTAÇÕES EM ABERTO (só saem quando concluídas: etapas e certificados recebidos) -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">COTAÇÕES EM ABERTO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1" style="max-height: 260px; overflow-y: auto;">
+                                    {% for c in cotacoes_abertas %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="{{ c.numero }}" data-category="cotacao_aberta">
+                                        <label class="form-check-label small fw-bold font-monospace">{{ c.numero }} <span class="text-muted fw-normal">({{ c.total }})</span></label>
+                                    </div>
+                                    {% empty %}
+                                    <span class="small text-muted">Nenhuma cotação em aberto.</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    
                     </div>
                     </div>
 
@@ -632,6 +656,7 @@
                             data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
                             data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
                             data-acompanhamento="{% with a=acompanhamento_map|acompanhamento_de:i.id %}{{ a.codigo|default:'' }}{% endwith %}"
+                            data-cotacao-aberta="{{ cotacao_aberta_map|dict_get:i.id|default:'' }}"
                             data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
                             <td class="ps-3"><input type="checkbox" class="row-select" value="{{ i.id }}" data-tag="{{ i.tag }}" data-frequencia="{% if i.frequencia_meses %}{{ i.frequencia_meses }}{% elif i.categoria and i.categoria.frequencia_calibracao_meses %}{{ i.categoria.frequencia_calibracao_meses }}{% else %}12{% endif %}" data-tratativa="{% if i.tratativa_calibracao %}{{ i.tratativa_calibracao }}{% elif i.categoria and i.categoria.tratativa_calibracao %}{{ i.categoria.tratativa_calibracao }}{% else %}INTERNA{% endif %}" /></td>
                             
@@ -799,6 +824,7 @@
                     data-periodo="{% if i.data_proxima_calibracao %}{{ i.data_proxima_calibracao|date:'Y-m' }}{% endif %}"
                     data-ocorrencia="{% if i.ocorrencias.all %}{% for oc in i.ocorrencias.all %}{% if oc.status == 'ABERTA' %}COM_ABERTA{% endif %}{% endfor %}{% endif %}"
                             data-acompanhamento="{% with a=acompanhamento_map|acompanhamento_de:i.id %}{{ a.codigo|default:'' }}{% endwith %}"
+                            data-cotacao-aberta="{{ cotacao_aberta_map|dict_get:i.id|default:'' }}"
                     data-situacao="{% if i.data_proxima_calibracao %}{% if i.data_proxima_calibracao < hoje %}VENCIDO{% elif i.data_proxima_calibracao <= alerta_30d %}AVENCER_30{% elif i.data_proxima_calibracao <= alerta_60d %}AVENCER_60{% elif i.data_proxima_calibracao <= alerta_90d %}AVENCER_90{% elif i.data_proxima_calibracao <= alerta_120d %}AVENCER_120{% else %}EM_DIA{% endif %}{% else %}EM_DIA{% endif %}">
                     
                     <!-- Topo do Card: Checkbox, TAG, Status e Botões de Ação -->
@@ -1059,7 +1085,7 @@ function filtrar() {
     const countDisplay = document.getElementById('countDisplay');
     const termoBusca = searchInput.value.toLowerCase();
     
-    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [], ocorrencia: [], acompanhamento: [] };
+    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [], ocorrencia: [], acompanhamento: [], cotacao_aberta: [] };
     
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
@@ -1080,6 +1106,7 @@ function filtrar() {
         if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && filtrosAtivos.periodo.length > 0 && !filtrosAtivos.periodo.includes(row.dataset.periodo)) mostrar = false;
         if (mostrar && filtrosAtivos.acompanhamento.length > 0 && !filtrosAtivos.acompanhamento.includes(row.dataset.acompanhamento || '')) mostrar = false;
+        if (mostrar && filtrosAtivos.cotacao_aberta.length > 0 && !filtrosAtivos.cotacao_aberta.includes(row.dataset.cotacaoAberta || '')) mostrar = false;
         if (mostrar && filtrosAtivos.ocorrencia.length > 0) {
             var ocorrenciaData = row.dataset.ocorrencia || '';
             var temAberta = ocorrenciaData.includes("COM_ABERTA");
@@ -1860,7 +1887,7 @@ function abrirModalNovaOcorrenciaDoVisualizar() {
 function atualizarFiltrosDisponiveis() {
     // Coleta os filtros ativos (excluindo categoria "periodo" que é o que queremos atualizar dinamicamente)
     var termoBusca = (document.getElementById('searchInput') || {value:''}).value.toLowerCase();
-    var ativos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], ocorrencia: [], acompanhamento: [] };
+    var ativos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], ocorrencia: [], acompanhamento: [], cotacao_aberta: [] };
     document.querySelectorAll('.filter-checkbox').forEach(function(cb) {
         var cat = cb.dataset.category;
         if (cb.checked && cat !== 'periodo') {
@@ -1880,6 +1907,7 @@ function atualizarFiltrosDisponiveis() {
         if (mostrar && ativos.resultado.length > 0 && !ativos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && ativos.acao.length > 0 && !ativos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && ativos.acompanhamento.length > 0 && !ativos.acompanhamento.includes(row.dataset.acompanhamento || '')) mostrar = false;
+        if (mostrar && ativos.cotacao_aberta.length > 0 && !ativos.cotacao_aberta.includes(row.dataset.cotacaoAberta || '')) mostrar = false;
         if (mostrar && ativos.ocorrencia.length > 0) {
             var temAberta = row.dataset.ocorrencia.includes("COM_ABERTA");
             var querCom = ativos.ocorrencia.includes("COM_ABERTA");

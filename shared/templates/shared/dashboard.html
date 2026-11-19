@@ -658,6 +658,7 @@
                 data-resultado="{{ item.resultado_ultima_calibracao|default:'' }}"
                 data-ocorrencia="{% if item.has_active_occurrence %}COM_ABERTA{% else %}SEM_ABERTA{% endif %}"
                         data-acompanhamento="{{ item.acompanhamento.codigo|default:'' }}"
+                        data-cotacao-aberta="{{ item.cotacao_numero|default:'' }}"
                 data-situacao="{{ item.situacao_detalhada }}">
                 
                 <div class="card-body p-3">
@@ -772,6 +773,7 @@
                         data-resultado="{{ item.resultado_ultima_calibracao|default:'' }}"
                         data-ocorrencia="{% if item.has_active_occurrence %}COM_ABERTA{% else %}SEM_ABERTA{% endif %}"
                         data-acompanhamento="{{ item.acompanhamento.codigo|default:'' }}"
+                        data-cotacao-aberta="{{ item.cotacao_numero|default:'' }}"
                         data-situacao="{{ item.situacao_detalhada }}">
                         
                         <!-- CHECKBOX DE SELEÇÃO -->
@@ -1010,7 +1012,7 @@
                 
                 <div class="row g-3">
                     <!-- Coluna 1: Situação e Status -->
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <!-- 1. SITUAÇÃO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -1071,7 +1073,7 @@
                     </div>
 
                     <!-- Coluna 2: Próxima Calibração e Ação -->
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <!-- 3. PRÓXIMA CALIBRAÇÃO (MÊS/ANO) -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -1116,7 +1118,7 @@
                     </div>
 
                     <!-- Coluna 3: Categoria e Setor -->
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <!-- 5. CATEGORIA -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -1161,7 +1163,7 @@
                     </div>
 
                     <!-- Coluna 4: Resultado e Ocorrência -->
-                    <div class="col-md-3">
+                    <div class="col-md">
                         <!-- 7. RESULTADO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -1210,7 +1212,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <!-- Coluna 5: Acompanhamento de cotações -->
+                    <div class="col-md">
                         <!-- 9. ACOMPANHAMENTO -->
                         <div class="filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
@@ -1221,19 +1226,40 @@
                                 <div class="d-flex flex-column gap-1">
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="EM_COTACAO" data-cat="acompanhamento">
-                                        <label class="form-check-label small fw-bold text-warning">Em cotação</label>
+                                        <label class="form-check-label small text-warning fw-bold">Em cotação</label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="CALIBRACAO_PROGRAMADA" data-cat="acompanhamento">
-                                        <label class="form-check-label small fw-bold text-primary">Calibração programada</label>
+                                        <label class="form-check-label small text-primary fw-bold">Calibração programada</label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="AGUARDANDO_CERTIFICADO" data-cat="acompanhamento">
-                                        <label class="form-check-label small fw-bold text-danger">Calibrado: aguardando certificado</label>
+                                        <label class="form-check-label small text-danger fw-bold">Calibrado: aguardando certificado</label>
                                     </div>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- 10. COTAÇÕES EM ABERTO (só saem quando concluídas: etapas e certificados recebidos) -->
+                        <div class="filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">COTAÇÕES EM ABERTO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1" style="max-height: 260px; overflow-y: auto;">
+                                    {% for c in cotacoes_abertas %}
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="{{ c.numero }}" data-cat="cotacao_aberta">
+                                        <label class="form-check-label small fw-bold font-monospace">{{ c.numero }} <span class="text-muted fw-normal">({{ c.total }})</span></label>
+                                    </div>
+                                    {% empty %}
+                                    <span class="small text-muted">Nenhuma cotação em aberto.</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    
                     </div>
                     </div>
                 </div>
@@ -1731,6 +1757,7 @@
             resultado: [],
             ocorrencia: [],
             acompanhamento: [],
+            cotacao_aberta: [],
         };
 
         document.querySelectorAll('.filter-avancado-cb:checked').forEach(cb => {
@@ -1779,6 +1806,7 @@
             const resultado = row.getAttribute('data-resultado') || '';
             const ocorrencia = row.getAttribute('data-ocorrencia') || '';
             const acompanhamento = row.getAttribute('data-acompanhamento') || '';
+            const cotacaoAberta = row.getAttribute('data-cotacao-aberta') || '';
             const situacao = row.getAttribute('data-situacao') || '';
 
             // 1. Checar Aba
@@ -1816,6 +1844,7 @@
             if (activeFilters.resultado.length && !activeFilters.resultado.includes(resultado)) return;
             if (activeFilters.ocorrencia.length && !activeFilters.ocorrencia.includes(ocorrencia)) return;
             if (activeFilters.acompanhamento.length && !activeFilters.acompanhamento.includes(acompanhamento)) return;
+            if (activeFilters.cotacao_aberta.length && !activeFilters.cotacao_aberta.includes(cotacaoAberta)) return;
 
             filteredIndexes.push(idx);
         });

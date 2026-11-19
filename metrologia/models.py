@@ -858,6 +858,49 @@ class SolicitacaoCotacao(models.Model):
             type(self).objects.filter(pk=self.pk).update(status=novo_status)
             self.status = novo_status
 
+    def pendencias_conclusao(self):
+        """Motivos que impedem concluir a cotação (lista vazia = pode concluir).
+
+        Só se considera concluída quando todas as etapas foram realizadas e os
+        certificados dos instrumentos foram recebidos:
+          - calibração aprovada sem registro de calibração realizada;
+          - atendimento (qualquer tipo) ainda sem a data de realização/retorno/chegada;
+          - registro de calibração ainda aguardando os dados do certificado.
+        Instrumentos desconsiderados (com justificativa) ou não atendidos ficam de fora.
+        """
+        pendencias = []
+        desconsiderados = set(
+            self.atendimentos.filter(desconsiderado=True).values_list('item_cotacao_id', flat=True))
+
+        itens = ItemCotacao.objects.filter(
+            cotacao_fornecedor__solicitacao=self, cotacao_fornecedor__aprovada=True, pode_atender=True,
+        ).exclude(cotacao_fornecedor__status__in=('CANCELADA', 'REJEITADA')).exclude(
+            status_execucao='NAO_ATENDIDO').select_related('instrumento', 'cotacao_fornecedor')
+        for item in itens:
+            if item.id in desconsiderados:
+                continue
+            tag = item.instrumento.tag
+            if item.tipo_servico == 'CALIBRACAO' and not (
+                    item.historicos_gerados.exists()
+                    or HistoricoCalibracao.objects.filter(atendimento__item_cotacao=item).exists()):
+                pendencias.append(f'{tag}: calibração ainda não realizada')
+
+        for a in self.atendimentos.filter(desconsiderado=False).select_related('item_cotacao__instrumento'):
+            local = a.item_cotacao.local_atendimento
+            feito = (a.data_realizada if local == 'NO_LOCAL' else
+                     a.data_retorno if local == 'NO_LABORATORIO' else
+                     a.data_chegada if local == 'COMPRAR_NOVO' else True)
+            msg = f'{a.item_cotacao.instrumento.tag}: atendimento sem data de realização'
+            if not feito and msg not in pendencias and \
+                    f'{a.item_cotacao.instrumento.tag}: calibração ainda não realizada' not in pendencias:
+                pendencias.append(msg)
+
+        for h in HistoricoCalibracao.objects.filter(
+                aguardando_certificado=True, item_cotacao__cotacao_fornecedor__solicitacao=self
+        ).select_related('instrumento'):
+            pendencias.append(f'{h.instrumento.tag}: certificado de calibração não recebido')
+        return pendencias
+
     def marcar_concluida(self):
         self.status = 'CONCLUIDA'
         self.save(update_fields=['status'])

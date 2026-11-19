@@ -729,7 +729,9 @@ function marcarSolicitacaoConcluida(solicitacaoId) {
             alert('Solicitação marcada como CONCLUÍDA!');
             location.reload();
         } else {
-            alert('Erro ao concluir solicitação.');
+            let msg = data.error || 'Erro ao concluir solicitação.';
+            if (data.pendencias && data.pendencias.length) msg += '\n\nPendências:\n- ' + data.pendencias.join('\n- ');
+            alert(msg);
             btn.disabled = false;
         }
     })

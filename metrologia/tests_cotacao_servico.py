@@ -283,3 +283,55 @@ class PlanejamentoGeraRegistroTests(BaseCotacaoServico):
         self._post("cotacao_servico_executar", {f"status_{ia.id}": "ATENDIDO", f"status_{ib.id}": "ATENDIDO"})
         self._post("cotacao_servico_concluir", {})
         self.assertEqual(HistoricoCalibracao.objects.count(), 2)
+
+
+class CotacoesEmAbertoTests(BaseCotacaoServico):
+    """Filtro 'Cotações em aberto' e regra de conclusão (etapas + certificados recebidos)."""
+
+    def _concluir_solicitacao(self):
+        return self.client.post(reverse("metrologia:solicitacao_concluir", args=[self.sol.id]),
+                                content_type="application/json")
+
+    def test_filtro_lista_codigos_e_marca_linhas(self):
+        r = self.client.get(reverse("modulo_metrologia"))
+        self.assertContains(r, 'data-category="cotacao_aberta"')
+        self.assertContains(r, f'value="{self.sol.numero}" data-category="cotacao_aberta"')
+        self.assertContains(r, f'data-cotacao-aberta="{self.sol.numero}"')
+        r = self.client.get("/dashboard/")
+        self.assertContains(r, f'value="{self.sol.numero}" data-cat="cotacao_aberta"')
+        self.assertContains(r, f'data-cotacao-aberta="{self.sol.numero}"')
+
+    def test_cotacao_concluida_sai_do_filtro(self):
+        self.sol.marcar_concluida()
+        r = self.client.get(reverse("modulo_metrologia"))
+        self.assertNotContains(r, f'value="{self.sol.numero}" data-category="cotacao_aberta"')
+        self.assertContains(r, "Nenhuma cotação em aberto.")
+
+    def test_conclusao_bloqueada_ate_etapas_e_certificados(self):
+        from metrologia.models import HistoricoCalibracao
+        r = self._concluir_solicitacao()
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("A-01: calibração ainda não realizada", r.json()["pendencias"])
+        self.sol.refresh_from_db()
+        self.assertNotEqual(self.sol.status, "CONCLUIDA")
+
+        # serviço executado e concluído -> faltam os certificados
+        self.client.post(reverse("metrologia:cotacao_servico_agendar", args=[self.cot.id]),
+                         {"data_visita": "2026-12-01T09:30", "acao": "iniciar"})
+        ia, ib = self.itens
+        self.client.post(reverse("metrologia:cotacao_servico_executar", args=[self.cot.id]),
+                         {f"status_{ia.id}": "ATENDIDO", f"status_{ib.id}": "NAO_ATENDIDO"})
+        self.client.post(reverse("metrologia:cotacao_servico_concluir", args=[self.cot.id]), {})
+        r = self._concluir_solicitacao()
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.json()["pendencias"], ["A-01: certificado de calibração não recebido"])
+
+        # certificado recebido -> pode concluir e some do filtro
+        h = HistoricoCalibracao.objects.get()
+        h.numero_certificado = "CERT-9"
+        h.link_certificado = "https://exemplo.com/c.pdf"
+        h.save()
+        r = self._concluir_solicitacao()
+        self.assertEqual(r.status_code, 200)
+        self.sol.refresh_from_db()
+        self.assertEqual(self.sol.status, "CONCLUIDA")

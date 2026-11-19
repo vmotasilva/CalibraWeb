@@ -101,6 +101,26 @@ def instrumentos_em_cotacao():
     return {i.instrumento_id: (i.solicitacao_id, i.solicitacao.numero) for i in itens}
 
 
+def contexto_cotacoes_abertas():
+    """Dados do filtro "Cotações em aberto" dos dashboards.
+
+    Uma cotação (solicitação) só deixa de estar em aberto quando é concluída, e a
+    conclusão exige etapas realizadas e certificados recebidos (ver
+    SolicitacaoCotacao.pendencias_conclusao).
+    Devolve:
+      cotacao_aberta_map: {instrumento_id: numero}
+      cotacoes_abertas:   [{numero, total}] (códigos ordenados)
+    """
+    mapa = {inst_id: numero for inst_id, (_sol_id, numero) in instrumentos_em_cotacao().items()}
+    contagem = {}
+    for numero in mapa.values():
+        contagem[numero] = contagem.get(numero, 0) + 1
+    return {
+        'cotacao_aberta_map': mapa,
+        'cotacoes_abertas': [{'numero': n, 'total': contagem[n]} for n in sorted(contagem)],
+    }
+
+
 ACOMPANHAMENTO_LABELS = {
     'EM_COTACAO': 'Em cotação',
     'CALIBRACAO_PROGRAMADA': 'Calibração programada',
@@ -1340,6 +1360,13 @@ from django.http import JsonResponse
 @login_required
 def solicitacao_marcar_concluida(request, pk):
     solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
+    pendencias = solicitacao.pendencias_conclusao()
+    if pendencias:
+        return JsonResponse({
+            'success': False,
+            'error': 'A cotação só pode ser concluída com todas as etapas realizadas e os certificados recebidos.',
+            'pendencias': pendencias,
+        }, status=400)
     solicitacao.marcar_concluida()
     return JsonResponse({'success': True, 'status': solicitacao.get_status_display()})
 
