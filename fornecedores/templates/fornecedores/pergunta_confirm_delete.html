@@ -7,6 +7,9 @@
         <br>
         <strong>{{ pergunta.texto }}</strong>
     </div>
+    {% if total_respostas %}
+    <div class="alert alert-info">Esta pergunta tem {{ total_respostas }} resposta(s) em avaliações já registradas. Para preservar o histórico ela será apenas <strong>desativada</strong>.</div>
+    {% endif %}
     <form method="post">
         {% csrf_token %}
         <button type="submit" class="btn btn-danger">Remover</button>

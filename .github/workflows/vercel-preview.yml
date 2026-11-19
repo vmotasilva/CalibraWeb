@@ -4,18 +4,15 @@ env:
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
   VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-# Preview apenas em PR (nao a cada push de branch) e sem rodar para mudancas
-# que nao afetam a funcao, para nao acumular deployments no Vercel.
+# DESATIVADO: roda apenas manualmente (workflow_dispatch). Os segredos VERCEL_TOKEN, VERCEL_ORG_ID e
+# VERCEL_PROJECT_ID nao estao configurados, o que fazia o job falhar em todo PR. Para reativar, cadastre os
+# segredos e restaure o gatilho abaixo:
+#   on:
+#     pull_request:
+#       branches: [main, master]
+#       paths-ignore: ['docs/**', '**.md', 'htmlcov/**', '.github/workflows/cobertura-por-app.yml']
 on:
-  pull_request:
-    branches:
-      - main
-      - master
-    paths-ignore:
-      - 'docs/**'
-      - '**.md'
-      - 'htmlcov/**'
-      - '.github/workflows/cobertura-por-app.yml'
+  workflow_dispatch:
 
 concurrency:
   group: vercel-preview-${{ github.ref }}

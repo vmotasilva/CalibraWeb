@@ -1233,8 +1233,8 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_fornecedores_avaliacao",
                 "funcoes": [
                     {"nome": "Avaliações e Reavaliações", "view_name": ["fornecedores:avaliacao_list", "fornecedores:reavaliacao_list"], "perm": "core.nav_fornecedores_avaliacoes"},
-                    {"nome": "Nova Avaliação", "view_name": "fornecedores:avaliacao_create", "perm": "core.nav_fornecedores_avaliacao_create"},
-                    {"nome": "Editar Avaliação", "view_name": "fornecedores:avaliacao_edit", "perm": "core.nav_fornecedores_avaliacao_edit"},
+                    {"nome": "Nova Avaliação", "view_name": ["fornecedores:avaliacao_create", "fornecedores:perguntas_filtradas"], "perm": "core.nav_fornecedores_avaliacao_create"},
+                    {"nome": "Editar Avaliação", "view_name": ["fornecedores:avaliacao_edit", "fornecedores:api_respostas_avaliacao"], "perm": "core.nav_fornecedores_avaliacao_edit"},
                     {"nome": "Criar Matriz de Avaliação", "view_name": "fornecedores:avaliacao_matriz_create", "perm": "core.nav_fornecedores_avaliacao_matriz"},
                     {"nome": "Criar Seleção", "view_name": "fornecedores:avaliacao_selecao_create", "perm": "core.nav_fornecedores_avaliacao_selecao"},
                     {"nome": "Nova Reavaliação", "view_name": ["fornecedores:reavaliacao_create", "fornecedores:avaliacao_reavaliacao_create"], "perm": "core.nav_fornecedores_reavaliacao_create"},

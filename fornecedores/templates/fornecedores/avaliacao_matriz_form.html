@@ -18,7 +18,7 @@
         
         <div class="mb-3">
             <label for="data" class="form-label">Data da Avaliação</label>
-            <input type="date" name="data" id="data" class="form-control" required>
+            <input type="date" name="data" id="data" class="form-control" value="{{ today|date:'Y-m-d' }}" max="{{ today|date:'Y-m-d' }}" required>
         </div>
         
         <div class="mb-3">

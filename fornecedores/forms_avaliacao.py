@@ -14,6 +14,11 @@ class AvaliacaoFornecedorForm(forms.ModelForm):
             "observacao": forms.Textarea(attrs={"rows": 3}),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Sem o tipo da nota nenhuma pergunta é exibida; exigi-lo evita registrar tudo como "NÃO".
+        self.fields["tipo_nota"].required = True
+
 class RespostaAvaliacaoForm(forms.ModelForm):
     class Meta:
         model = RespostaAvaliacao
