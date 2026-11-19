@@ -238,6 +238,7 @@
                                     <option value="" {% if not categoria.local_calibracao %}selected{% endif %}>Não definido</option>
                                     <option value="NA_EMPRESA" {% if categoria.local_calibracao == 'NA_EMPRESA' %}selected{% endif %}>🏭 Somente na empresa</option>
                                     <option value="PODE_SAIR" {% if categoria.local_calibracao == 'PODE_SAIR' %}selected{% endif %}>🚚 Pode ser enviado ao fornecedor</option>
+                                    <option value="COMPRAR_NOVO" {% if categoria.local_calibracao == 'COMPRAR_NOVO' %}selected{% endif %}>Não calibra: renovado por compra</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary" title="Atualizar local da calibração">
                                     <i class="bi bi-check-lg"></i>

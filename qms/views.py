@@ -2467,7 +2467,7 @@ def editar_instrumento_view(request, instrumento_id):
 
                 if 'local_calibracao' in request.POST:
                     local_cal = request.POST.get('local_calibracao', '').strip()
-                    if local_cal in ('', 'NA_EMPRESA', 'PODE_SAIR'):
+                    if local_cal in ('', 'NA_EMPRESA', 'PODE_SAIR', 'COMPRAR_NOVO'):
                         instrumento.local_calibracao = local_cal
                     
                 acao_inst = request.POST.get('acao')

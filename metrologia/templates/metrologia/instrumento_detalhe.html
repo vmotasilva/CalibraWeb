@@ -189,6 +189,7 @@
                         {% with loc=instrumento.local_calibracao_efetivo %}
                             {% if loc == 'NA_EMPRESA' %}<span class="badge bg-secondary"><i class="bi bi-house-lock"></i> Somente na empresa</span>
                             {% elif loc == 'PODE_SAIR' %}<span class="badge bg-warning text-dark"><i class="bi bi-truck"></i> Pode ser enviado</span>
+                            {% elif loc == 'COMPRAR_NOVO' %}<span class="badge bg-dark"><i class="bi bi-cart-check"></i> Renovado por compra</span>
                             {% else %}<span class="text-muted">Não definido</span>{% endif %}
                         {% endwith %}
                     </div>
