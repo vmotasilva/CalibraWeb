@@ -1037,6 +1037,9 @@
                             <button type="button" class="filtro-nav-item active" data-pane="fp0">
                                 <i class="bi bi-calendar-event"></i><span class="filtro-nav-nome">Situação</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
                             </button>
+                            <button type="button" class="filtro-nav-item" data-pane="fptrat">
+                                <i class="bi bi-buildings"></i><span class="filtro-nav-nome">Tratativa</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
+                            </button>
                             <button type="button" class="filtro-nav-item" data-pane="fp1">
                                 <i class="bi bi-signpost-split"></i><span class="filtro-nav-nome">Acompanhamento</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
                             </button>
@@ -1098,6 +1101,25 @@
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="EM_DIA" data-cat="situacao">
                                         <label class="form-check-label small text-success">Em Dia</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div data-pane="fptrat" class="filtro-pane filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">TRATATIVA DA CALIBRAÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filtro-pane-head"><h6><i class="bi bi-buildings me-2 text-primary"></i>Tratativa da calibração</h6><div class="filtro-pane-tools d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="limparSecaoFiltro(this)">Limpar seção</button></div></div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="interna" data-cat="tratativa">
+                                        <label class="form-check-label small fw-bold">Interna <span class="text-muted fw-normal">(<span data-trat-count="interna"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Calibrada pelo laboratório da empresa (equipe própria)</div></label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="externa" data-cat="tratativa">
+                                        <label class="form-check-label small fw-bold">Externa <span class="text-muted fw-normal">(<span data-trat-count="externa"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Calibrada por fornecedor (laboratório terceirizado)</div></label>
                                     </div>
                                 </div>
                             </div>
@@ -1326,6 +1348,16 @@
                 </div>
             </div>
 </div>
+
+<script>
+// Quantidade de instrumentos por tratativa (interna/externa) no rótulo do filtro
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#filtrosModal [data-trat-count]').forEach(function (el) {
+        var valor = el.getAttribute('data-trat-count');
+        el.textContent = document.querySelectorAll('tr[data-tratativa="' + valor + '"]').length;
+    });
+});
+</script>
 
 <script>
 // Filtros avançados em seções: barra lateral + opções da seção ativa (leve, sem recarregar nada)
@@ -1868,6 +1900,7 @@
             ocorrencia: [],
             acompanhamento: [],
             cotacao_aberta: [],
+            tratativa: [],
         };
 
         document.querySelectorAll('.filter-avancado-cb:checked').forEach(cb => {
@@ -1917,6 +1950,7 @@
             const ocorrencia = row.getAttribute('data-ocorrencia') || '';
             const acompanhamento = row.getAttribute('data-acompanhamento') || 'SEM_ACOMPANHAMENTO';
             const cotacaoAberta = row.getAttribute('data-cotacao-aberta') || 'SEM_COTACAO';
+            const tratativaRow = (row.getAttribute('data-tratativa') || 'interna').toLowerCase();
             const situacao = row.getAttribute('data-situacao') || '';
 
             // 1. Checar Aba
@@ -1954,6 +1988,7 @@
             if (activeFilters.resultado.length && !activeFilters.resultado.includes(resultado)) return;
             if (activeFilters.ocorrencia.length && !activeFilters.ocorrencia.includes(ocorrencia)) return;
             if (activeFilters.acompanhamento.length && !activeFilters.acompanhamento.includes(acompanhamento)) return;
+            if (activeFilters.tratativa.length && !activeFilters.tratativa.includes(tratativaRow)) return;
             if (activeFilters.cotacao_aberta.length && !activeFilters.cotacao_aberta.includes(cotacaoAberta)) return;
 
             filteredIndexes.push(idx);

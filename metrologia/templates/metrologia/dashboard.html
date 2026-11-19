@@ -362,6 +362,9 @@
                             <button type="button" class="filtro-nav-item active" data-pane="fp0">
                                 <i class="bi bi-calendar-event"></i><span class="filtro-nav-nome">Situação</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
                             </button>
+                            <button type="button" class="filtro-nav-item" data-pane="fptrat">
+                                <i class="bi bi-buildings"></i><span class="filtro-nav-nome">Tratativa</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
+                            </button>
                             <button type="button" class="filtro-nav-item" data-pane="fp1">
                                 <i class="bi bi-signpost-split"></i><span class="filtro-nav-nome">Acompanhamento</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
                             </button>
@@ -423,6 +426,25 @@
                                     <div class="form-check">
                                         <input class="form-check-input filter-checkbox" type="checkbox" value="EM_DIA" data-category="situacao">
                                         <label class="form-check-label small text-success">Em Dia</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div data-pane="fptrat" class="filtro-pane filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">TRATATIVA DA CALIBRAÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filtro-pane-head"><h6><i class="bi bi-buildings me-2 text-primary"></i>Tratativa da calibração</h6><div class="filtro-pane-tools d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="limparSecaoFiltro(this)">Limpar seção</button></div></div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="INTERNA" data-category="tratativa">
+                                        <label class="form-check-label small fw-bold">Interna <span class="text-muted fw-normal">(<span data-trat-count="INTERNA"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Calibrada pelo laboratório da empresa (equipe própria)</div></label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-checkbox" type="checkbox" value="EXTERNA" data-category="tratativa">
+                                        <label class="form-check-label small fw-bold">Externa <span class="text-muted fw-normal">(<span data-trat-count="EXTERNA"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Calibrada por fornecedor (laboratório terceirizado)</div></label>
                                     </div>
                                 </div>
                             </div>
@@ -647,6 +669,16 @@
         </div>
 
         <script>
+// Quantidade de instrumentos por tratativa (interna/externa) no rótulo do filtro
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('#filtrosModal [data-trat-count]').forEach(function (el) {
+        var valor = el.getAttribute('data-trat-count');
+        el.textContent = document.querySelectorAll('tr[data-trat="' + valor + '"]').length;
+    });
+});
+</script>
+
+        <script>
 // Filtros avançados em seções: barra lateral + opções da seção ativa (leve, sem recarregar nada)
 (function () {
     var modal = document.getElementById('filtrosModal');
@@ -755,6 +787,7 @@
                         {% for i in instrumentos %}
                         
                         <tr class="instrumento-row border-bottom"
+                            data-trat="{% if i.tratativa_calibracao %}{{ i.tratativa_calibracao|upper }}{% elif i.categoria and i.categoria.tratativa_calibracao %}{{ i.categoria.tratativa_calibracao|upper }}{% else %}INTERNA{% endif %}"
                             data-nome="{{ i.tag|default:''|lower }} {{ i.descricao|default:''|lower }} {{ i.fabricante|default:''|lower }}"
                             data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
                             data-categoria="{{ i.categoria_id|default:'' }}"
@@ -923,7 +956,8 @@
             <div class="d-block d-md-none" id="metroMobileCardsContainer">
                 {% for i in instrumentos %}
                 <div class="instrumento-mobile-card instrumento-row"
-                    data-nome="{{ i.tag|default:''|lower }} {{ i.descricao|default:''|lower }} {{ i.fabricante|default:''|lower }}"
+                    data-trat="{% if i.tratativa_calibracao %}{{ i.tratativa_calibracao|upper }}{% elif i.categoria and i.categoria.tratativa_calibracao %}{{ i.categoria.tratativa_calibracao|upper }}{% else %}INTERNA{% endif %}"
+                            data-nome="{{ i.tag|default:''|lower }} {{ i.descricao|default:''|lower }} {{ i.fabricante|default:''|lower }}"
                     data-status="{% if i.ativo %}ATIVO{% else %}INATIVO{% endif %}"
                     data-categoria="{{ i.categoria_id|default:'' }}"
                     data-acao="{{ i.acao|default:'' }}"
@@ -1193,7 +1227,7 @@ function filtrar() {
     const countDisplay = document.getElementById('countDisplay');
     const termoBusca = searchInput.value.toLowerCase();
     
-    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [], ocorrencia: [], acompanhamento: [], cotacao_aberta: [] };
+    const filtrosAtivos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], periodo: [], ocorrencia: [], acompanhamento: [], cotacao_aberta: [], tratativa: [] };
     
     document.querySelectorAll('.filter-checkbox').forEach(cb => {
         if (cb.checked) filtrosAtivos[cb.dataset.category].push(cb.value);
@@ -1214,6 +1248,7 @@ function filtrar() {
         if (mostrar && filtrosAtivos.acao.length > 0 && !filtrosAtivos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && filtrosAtivos.periodo.length > 0 && !filtrosAtivos.periodo.includes(row.dataset.periodo)) mostrar = false;
         if (mostrar && filtrosAtivos.acompanhamento.length > 0 && !filtrosAtivos.acompanhamento.includes(row.dataset.acompanhamento || 'SEM_ACOMPANHAMENTO')) mostrar = false;
+        if (mostrar && filtrosAtivos.tratativa.length > 0 && !filtrosAtivos.tratativa.includes(row.dataset.trat || 'INTERNA')) mostrar = false;
         if (mostrar && filtrosAtivos.cotacao_aberta.length > 0 && !filtrosAtivos.cotacao_aberta.includes(row.dataset.cotacaoAberta || 'SEM_COTACAO')) mostrar = false;
         if (mostrar && filtrosAtivos.ocorrencia.length > 0) {
             var ocorrenciaData = row.dataset.ocorrencia || '';
@@ -1995,7 +2030,7 @@ function abrirModalNovaOcorrenciaDoVisualizar() {
 function atualizarFiltrosDisponiveis() {
     // Coleta os filtros ativos (excluindo categoria "periodo" que é o que queremos atualizar dinamicamente)
     var termoBusca = (document.getElementById('searchInput') || {value:''}).value.toLowerCase();
-    var ativos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], ocorrencia: [], acompanhamento: [], cotacao_aberta: [] };
+    var ativos = { status: [], situacao: [], categoria: [], setor: [], resultado: [], acao: [], ocorrencia: [], acompanhamento: [], cotacao_aberta: [], tratativa: [] };
     document.querySelectorAll('.filter-checkbox').forEach(function(cb) {
         var cat = cb.dataset.category;
         if (cb.checked && cat !== 'periodo') {
@@ -2015,6 +2050,7 @@ function atualizarFiltrosDisponiveis() {
         if (mostrar && ativos.resultado.length > 0 && !ativos.resultado.includes(row.dataset.resultado)) mostrar = false;
         if (mostrar && ativos.acao.length > 0 && !ativos.acao.includes(row.dataset.acao)) mostrar = false;
         if (mostrar && ativos.acompanhamento.length > 0 && !ativos.acompanhamento.includes(row.dataset.acompanhamento || 'SEM_ACOMPANHAMENTO')) mostrar = false;
+        if (mostrar && ativos.tratativa.length > 0 && !ativos.tratativa.includes(row.dataset.trat || 'INTERNA')) mostrar = false;
         if (mostrar && ativos.cotacao_aberta.length > 0 && !ativos.cotacao_aberta.includes(row.dataset.cotacaoAberta || 'SEM_COTACAO')) mostrar = false;
         if (mostrar && ativos.ocorrencia.length > 0) {
             var temAberta = row.dataset.ocorrencia.includes("COM_ABERTA");
