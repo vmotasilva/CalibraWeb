@@ -7,7 +7,7 @@
 <div class="container-fluid mt-4">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div>
-            <h1 class="h3 mb-0"><i class="bi bi-cash-coin me-2"></i>Cotações</h1>
+            <h1 class="h3 mb-0"><i class="bi bi-cash-coin me-2"></i>Cotações <a href="{% url 'metrologia:pendencias_cotacao' %}" class="btn btn-sm btn-outline-dark ms-2 align-middle"><i class="bi bi-hourglass-bottom"></i> Itens pendentes</a></h1>
             <div class="text-muted small">Acompanhamento das cotações de calibração. Para abrir uma nova, selecione os instrumentos na tela de calibrações e clique em <strong>Cotar</strong>.</div>
         </div>
         <a href="{% url 'dashboard' %}" class="btn btn-primary btn-sm">

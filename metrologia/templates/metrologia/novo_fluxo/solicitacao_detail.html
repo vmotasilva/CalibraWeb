@@ -47,6 +47,21 @@
         <span class="badge rounded-pill {% if atendimentos %}bg-success{% else %}bg-secondary{% endif %}">4. Planejamento e execução</span>
     </div>
 
+    {% if pendencias_abertas %}
+    <!-- Etapa: tratativa dos itens que ficaram pendentes (não executados e em aberto) -->
+    <div class="card mb-3 border-dark" id="etapa-pendencias">
+        <div class="card-header bg-dark text-white d-flex flex-wrap align-items-center justify-content-between gap-2 py-2">
+            <span><i class="bi bi-hourglass-bottom me-1"></i><strong>Itens pendentes de tratativa</strong> <span class="badge bg-light text-dark ms-1">{{ pendencias_abertas|length }}</span></span>
+            <a href="{% url 'metrologia:pendencias_cotacao' %}" class="btn btn-sm btn-outline-light">Ver todas as pendências</a>
+        </div>
+        <div class="card-body p-2">
+            <div class="small text-muted mb-2">Não foram executados nesta cotação e seguem em aberto. Trate cada um: inclua em uma solicitação, reinclua aqui ou remova com motivo.</div>
+            {% url 'metrologia:solicitacao_detail' solicitacao.id as voltar_url %}
+            {% include "metrologia/novo_fluxo/_pendencias_tabela.html" with lista=pendencias_abertas next=voltar_url mostrar_origem=False %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Etapa: solicitação das cotações ao setor de compras (começa antes das cotações; encerra com elas) -->
     <div class="card mb-3 {% if solicitacao.compras_ativa %}border-warning{% endif %}" id="etapa-compras">
         <div class="card-body py-2 d-flex flex-wrap align-items-center justify-content-between gap-2">

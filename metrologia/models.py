@@ -1837,6 +1837,39 @@ class AtendimentoSolicitacao(models.Model):
         blank=True,
         verbose_name='Desconsiderado em'
     )
+    # Tipo de desconsideração: removido de vez da cotação ou pendente para tratativa futura
+    TIPO_DESCONSIDERACAO_CHOICES = [
+        ('REMOVIDO', 'Removido da cotação'),
+        ('PENDENTE', 'Pendente (tratativa futura)'),
+    ]
+    tipo_desconsideracao = models.CharField(
+        max_length=10,
+        choices=TIPO_DESCONSIDERACAO_CHOICES,
+        blank=True,
+        default='',
+        verbose_name='Tipo de desconsideração',
+        help_text='REMOVIDO: não faz mais parte da cotação. PENDENTE: não foi executado agora e fica em aberto.'
+    )
+    # Resolução da pendência (tratativa do item que ficou pendente)
+    PENDENCIA_RESOLUCAO_CHOICES = [
+        ('REINCLUIDO', 'Reincluído nesta solicitação'),
+        ('NOVA_SOLICITACAO', 'Incluído em nova solicitação'),
+        ('REMOVIDO', 'Removido (sem nova tratativa)'),
+    ]
+    pendencia_resolucao = models.CharField(
+        max_length=20, choices=PENDENCIA_RESOLUCAO_CHOICES, blank=True, default='',
+        verbose_name='Resolução da pendência'
+    )
+    pendencia_resolvida_em = models.DateTimeField(null=True, blank=True, verbose_name='Pendência resolvida em')
+    pendencia_resolvida_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='pendencias_resolvidas', verbose_name='Pendência resolvida por'
+    )
+    pendencia_observacao = models.TextField(blank=True, default='', verbose_name='Observação da tratativa')
+    pendencia_nova_solicitacao = models.ForeignKey(
+        'SolicitacaoCotacao', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='pendencias_originadas', verbose_name='Nova solicitação da tratativa'
+    )
     # Ocorrência aberta automaticamente com a justificativa ao desconsiderar
     ocorrencia_desconsiderar = models.ForeignKey(
         'qms.OcorrenciaInstrumento',
@@ -1858,6 +1891,11 @@ class AtendimentoSolicitacao(models.Model):
     # Rastreamento adicional
     atualizado_em = models.DateTimeField(auto_now=True)
     
+    @property
+    def pendente_aberto(self):
+        """Item que não foi executado e segue em aberto para tratativa futura."""
+        return self.desconsiderado and self.tipo_desconsideracao == 'PENDENTE' and not self.pendencia_resolvida_em
+
     def __str__(self):
         return f"Atendimento #{self.id} - {self.item_solicitacao.instrumento.tag}"
     

@@ -17,6 +17,7 @@ from django.db import transaction
 from django.db.models import ProtectedError
 from django.db.models import Q, Prefetch
 from django.http import JsonResponse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST, require_GET, require_http_methods
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -94,9 +95,19 @@ STATUS_COTACAO_ENCERRADA = ("CONCLUIDA", "CANCELADA")
 def instrumentos_em_cotacao():
     """Mapa {instrumento_id: (solicitacao_id, numero)} dos instrumentos que
     possuem alguma solicitação de cotação em aberto (não concluída/cancelada)."""
+    # Itens cujos atendimentos foram todos desconsiderados (removidos ou pendentes de tratativa)
+    # deixam de contar como "em cotação".
+    from django.db.models import Exists, OuterRef
     itens = (
         ItemSolicitacaoCotacao.objects
         .exclude(solicitacao__status__in=STATUS_COTACAO_ENCERRADA)
+        .annotate(
+            _tem_desconsiderado=Exists(AtendimentoSolicitacao.objects.filter(
+                item_solicitacao=OuterRef('pk'), desconsiderado=True)),
+            _tem_ativo=Exists(AtendimentoSolicitacao.objects.filter(
+                item_solicitacao=OuterRef('pk'), desconsiderado=False)),
+        )
+        .exclude(_tem_desconsiderado=True, _tem_ativo=False)
         .select_related("solicitacao")
         .order_by("solicitacao__data_criacao")
     )
@@ -135,6 +146,7 @@ ACOMPANHAMENTO_LABELS = {
     'CALIBRACAO_PROGRAMADA': 'Calibração programada',
     'ENVIADO_FORNECEDOR': 'Enviado ao fornecedor',
     'AGUARDANDO_CERTIFICADO': 'Calibrado: aguardando certificado',
+    'PENDENTE_TRATATIVA': 'Pendente de tratativa',
 }
 
 
@@ -147,9 +159,24 @@ def acompanhamento_instrumentos():
       2. CALIBRACAO_PROGRAMADA  - orçamento aprovado e calibração ainda não realizada
       1. COM_COMPRAS / EM_COTACAO - solicitação de cotação em aberto (com o setor de compras, até
                                     a chegada das propostas; depois, em cotação)
+      0. PENDENTE_TRATATIVA     - item que não foi executado e ficou em aberto para tratativa futura
+                                  (menor prioridade: qualquer andamento novo do instrumento vence)
     """
     from django.urls import reverse
     resultado = {}
+
+    pendencias = (
+        AtendimentoSolicitacao.objects
+        .filter(desconsiderado=True, tipo_desconsideracao='PENDENTE', pendencia_resolvida_em__isnull=True)
+        .select_related('item_solicitacao', 'solicitacao')
+        .order_by('desconsiderado_em', 'id')
+    )
+    for a in pendencias:
+        resultado[a.item_solicitacao.instrumento_id] = {
+            'codigo': 'PENDENTE_TRATATIVA',
+            'label': f'Pendente de tratativa ({a.solicitacao.numero})',
+            'url': reverse('metrologia:pendencias_cotacao'),
+        }
 
     com_compras = {
         s.id: s for s in SolicitacaoCotacao.objects
@@ -454,6 +481,9 @@ def solicitacao_detail(request, pk):
         'usuarios_responsaveis': usuarios_responsaveis,
         'locais_atendimento': {a.item_cotacao.local_atendimento for a in atendimentos},
         'instrumentos_disponiveis': instrumentos_disponiveis,
+        'pendencias_abertas': [a for a in _pendencias_abertas_qs() if a.solicitacao_id == solicitacao.id],
+        'solicitacoes_abertas': SolicitacaoCotacao.objects.exclude(
+            status__in=STATUS_COTACAO_ENCERRADA).exclude(pk=solicitacao.pk).order_by('-data_criacao')[:30],
         'hoje': hoje,
         'dias_30': dias_30,
         'dias_60': dias_60,
@@ -1604,8 +1634,8 @@ def _abrir_ocorrencia_desconsiderar(atendimento, usuario):
     return oc
 
 
-def _encerrar_ocorrencia_desconsiderar(atendimento, usuario):
-    """Ao voltar a considerar o instrumento, encerra a ocorrência aberta pela justificativa."""
+def _encerrar_ocorrencia_desconsiderar(atendimento, usuario, motivo=None):
+    """Ao voltar a considerar o instrumento (ou tratar a pendência), encerra a ocorrência aberta pela justificativa."""
     from qms.models import OcorrenciaMensagem
     from shared.inbox import invalidar_cache_inbox
     oc = atendimento.ocorrencia_desconsiderar
@@ -1615,14 +1645,17 @@ def _encerrar_ocorrencia_desconsiderar(atendimento, usuario):
         oc.save(update_fields=['status', 'data_encerramento'])
         OcorrenciaMensagem.objects.create(
             ocorrencia=oc, autor=usuario,
-            texto='Instrumento voltou a ser considerado no planejamento; ocorrência encerrada automaticamente.')
+            texto=motivo or 'Instrumento voltou a ser considerado no planejamento; ocorrência encerrada automaticamente.')
         invalidar_cache_inbox(usuario)
 
 
 def _descricao_ocorrencia_desconsiderar(atendimento, justificativa):
     cot = atendimento.item_cotacao.cotacao_fornecedor
+    if atendimento.tipo_desconsideracao == 'PENDENTE':
+        return (f"[{atendimento.solicitacao.numero} / {cot.numero}] "
+                f"Item pendente para tratativa futura (não executado nesta cotação): {justificativa}")
     return (f"[{atendimento.solicitacao.numero} / {cot.numero}] "
-            f"Instrumento desconsiderado no planejamento: {justificativa}")
+            f"Instrumento removido da cotação: {justificativa}")
 
 
 @login_required
@@ -1699,7 +1732,16 @@ def atendimento_desconsiderar(request, pk):
         atendimento.desconsiderado = False
         atendimento.desconsiderado_por = None
         atendimento.desconsiderado_em = None
-        atendimento.save(update_fields=['desconsiderado', 'desconsiderado_por', 'desconsiderado_em', 'atualizado_em'])
+        atendimento.tipo_desconsideracao = ''
+        atendimento.pendencia_resolucao = ''
+        atendimento.pendencia_resolvida_em = None
+        atendimento.pendencia_resolvida_por = None
+        atendimento.pendencia_observacao = ''
+        atendimento.pendencia_nova_solicitacao = None
+        atendimento.save(update_fields=[
+            'desconsiderado', 'desconsiderado_por', 'desconsiderado_em', 'tipo_desconsideracao',
+            'pendencia_resolucao', 'pendencia_resolvida_em', 'pendencia_resolvida_por',
+            'pendencia_observacao', 'pendencia_nova_solicitacao', 'atualizado_em'])
         atendimento.solicitacao.atualizar_status_automatico()
         messages.success(request, f"Instrumento {atendimento.item_solicitacao.instrumento.tag} voltou a ser considerado.")
         return voltar
@@ -1709,17 +1751,138 @@ def atendimento_desconsiderar(request, pk):
         messages.error(request, "Informe a justificativa para desconsiderar o instrumento.")
         return voltar
 
+    tipo = request.POST.get('tipo') or 'REMOVIDO'
+    if tipo not in dict(AtendimentoSolicitacao.TIPO_DESCONSIDERACAO_CHOICES):
+        messages.error(request, "Tipo de desconsideração inválido.")
+        return voltar
+
     atendimento.desconsiderado = True
+    atendimento.tipo_desconsideracao = tipo
     atendimento.justificativa_desconsiderar = justificativa
     atendimento.desconsiderado_por = request.user
     atendimento.desconsiderado_em = timezone.now()
+    # Nova (ou alterada) desconsideração reabre a pendência, se houver resolução anterior
+    atendimento.pendencia_resolucao = ''
+    atendimento.pendencia_resolvida_em = None
+    atendimento.pendencia_resolvida_por = None
+    atendimento.pendencia_observacao = ''
+    atendimento.pendencia_nova_solicitacao = None
     _abrir_ocorrencia_desconsiderar(atendimento, request.user)
     atendimento.save(update_fields=[
-        'desconsiderado', 'justificativa_desconsiderar', 'desconsiderado_por', 'desconsiderado_em',
-        'ocorrencia_desconsiderar', 'atualizado_em',
+        'desconsiderado', 'tipo_desconsideracao', 'justificativa_desconsiderar', 'desconsiderado_por',
+        'desconsiderado_em', 'ocorrencia_desconsiderar', 'pendencia_resolucao', 'pendencia_resolvida_em',
+        'pendencia_resolvida_por', 'pendencia_observacao', 'pendencia_nova_solicitacao', 'atualizado_em',
     ])
     atendimento.solicitacao.atualizar_status_automatico()
-    messages.success(request, f"Instrumento {atendimento.item_solicitacao.instrumento.tag} desconsiderado.")
+    tag = atendimento.item_solicitacao.instrumento.tag
+    if tipo == 'PENDENTE':
+        messages.success(request, f"Instrumento {tag} ficou pendente para tratativa futura.")
+    else:
+        messages.success(request, f"Instrumento {tag} removido da cotação.")
+    return voltar
+
+
+def _pendencias_abertas_qs():
+    return (
+        AtendimentoSolicitacao.objects
+        .filter(desconsiderado=True, tipo_desconsideracao='PENDENTE', pendencia_resolvida_em__isnull=True)
+        .select_related('solicitacao', 'item_solicitacao__instrumento', 'item_cotacao__cotacao_fornecedor__fornecedor',
+                        'desconsiderado_por', 'ocorrencia_desconsiderar')
+        .order_by('desconsiderado_em', 'id')
+    )
+
+
+@login_required
+def pendencias_cotacao(request):
+    """Etapa de tratativa: itens que não foram executados e seguem em aberto, de todas as solicitações."""
+    pendencias = list(_pendencias_abertas_qs())
+    historico = list(
+        AtendimentoSolicitacao.objects
+        .filter(tipo_desconsideracao='PENDENTE', pendencia_resolvida_em__isnull=False)
+        .select_related('solicitacao', 'item_solicitacao__instrumento', 'pendencia_nova_solicitacao',
+                        'pendencia_resolvida_por')
+        .order_by('-pendencia_resolvida_em')[:50]
+    )
+    abertas = (SolicitacaoCotacao.objects.exclude(status__in=STATUS_COTACAO_ENCERRADA).order_by('-data_criacao')[:30])
+    return render(request, 'metrologia/novo_fluxo/pendencias_cotacao.html', {
+        'pendencias': pendencias,
+        'historico': historico,
+        'solicitacoes_abertas': abertas,
+        'hoje': timezone.localdate(),
+    })
+
+
+@login_required
+@require_POST
+def pendencia_tratar(request, pk):
+    """Trata um item pendente: reincluir (acao=reincluir), nova solicitação (acao=nova_solicitacao) ou remover (acao=remover)."""
+    atendimento = get_object_or_404(
+        AtendimentoSolicitacao.objects.select_related('solicitacao', 'item_solicitacao__instrumento'), pk=pk)
+    destino_volta = request.POST.get('next') or ''
+    if not url_has_allowed_host_and_scheme(destino_volta, allowed_hosts={request.get_host()}):
+        destino_volta = ''
+    voltar = redirect(destino_volta or 'metrologia:pendencias_cotacao')
+    if not atendimento.pendente_aberto:
+        messages.warning(request, "Este item não está mais pendente de tratativa.")
+        return voltar
+
+    acao = request.POST.get('acao', '')
+    obs = (request.POST.get('observacao') or '').strip()
+    inst = atendimento.item_solicitacao.instrumento
+    agora = timezone.now()
+
+    def _carimbar(resolucao):
+        atendimento.pendencia_resolucao = resolucao
+        atendimento.pendencia_resolvida_em = agora
+        atendimento.pendencia_resolvida_por = request.user
+        atendimento.pendencia_observacao = obs
+
+    campos = ['pendencia_resolucao', 'pendencia_resolvida_em', 'pendencia_resolvida_por',
+              'pendencia_observacao', 'atualizado_em']
+
+    if acao == 'reincluir':
+        _encerrar_ocorrencia_desconsiderar(atendimento, request.user,
+                                           "Pendência tratada: instrumento reincluído na solicitação de origem.")
+        _carimbar('REINCLUIDO')
+        atendimento.desconsiderado = False
+        atendimento.save(update_fields=campos + ['desconsiderado'])
+        atendimento.solicitacao.atualizar_status_automatico()
+        messages.success(request, f"{inst.tag}: reincluído na solicitação {atendimento.solicitacao.numero}.")
+    elif acao == 'nova_solicitacao':
+        destino_id = request.POST.get('solicitacao_destino') or 'nova'
+        with transaction.atomic():
+            if destino_id == 'nova':
+                destino = SolicitacaoCotacao.objects.create(
+                    responsavel=request.user, dias_vencimento=30, data_solicitacao_orcamento=timezone.localdate())
+            else:
+                destino = get_object_or_404(
+                    SolicitacaoCotacao.objects.exclude(status__in=STATUS_COTACAO_ENCERRADA), pk=destino_id)
+                if destino.pk == atendimento.solicitacao_id:
+                    messages.error(request, "Escolha outra solicitação, ou use \"Reincluir\" para voltar a esta.")
+                    return voltar
+            ItemSolicitacaoCotacao.objects.get_or_create(solicitacao=destino, instrumento=inst)
+            _encerrar_ocorrencia_desconsiderar(
+                atendimento, request.user,
+                f"Pendência tratada: instrumento incluído na solicitação {destino.numero}.")
+            _carimbar('NOVA_SOLICITACAO')
+            atendimento.pendencia_nova_solicitacao = destino
+            atendimento.save(update_fields=campos + ['pendencia_nova_solicitacao'])
+            destino.atualizar_status_automatico()
+        messages.success(request, f"{inst.tag}: incluído na solicitação {destino.numero}.")
+        if destino_id == 'nova':
+            return redirect('metrologia:solicitacao_detail', pk=destino.pk)
+    elif acao == 'remover':
+        if not obs:
+            messages.error(request, "Informe o motivo para remover o item sem nova tratativa.")
+            return voltar
+        _encerrar_ocorrencia_desconsiderar(atendimento, request.user,
+                                           f"Pendência encerrada: item removido sem nova tratativa. {obs}")
+        _carimbar('REMOVIDO')
+        atendimento.tipo_desconsideracao = 'REMOVIDO'
+        atendimento.save(update_fields=campos + ['tipo_desconsideracao'])
+        messages.success(request, f"{inst.tag}: pendência encerrada (removido).")
+    else:
+        messages.error(request, "Ação inválida.")
     return voltar
 
 

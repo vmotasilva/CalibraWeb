@@ -21,9 +21,16 @@
                 {% endif %}
                 <td class="small">
                     {% if a.desconsiderado %}
-                        <span class="badge bg-secondary">Desconsiderado</span>
+                        {% if a.tipo_desconsideracao == 'PENDENTE' %}
+                            {% if a.pendencia_resolvida_em %}<span class="badge bg-success" title="Pendência tratada: {{ a.get_pendencia_resolucao_display }}">Pendência tratada</span>
+                            {% else %}<span class="badge bg-dark"><i class="bi bi-hourglass-bottom"></i> Pendente</span>{% endif %}
+                        {% else %}
+                            <span class="badge bg-secondary">Removido</span>
+                        {% endif %}
                         <span class="text-muted">{{ a.justificativa_desconsiderar }}</span>
                         {% if a.ocorrencia_desconsiderar_id %}<span class="badge bg-warning text-dark ms-1" title="A justificativa foi registrada como ocorrência do instrumento"><i class="bi bi-exclamation-triangle"></i> Ocorrência #{{ a.ocorrencia_desconsiderar_id }}</span>{% endif %}
+                        <a href="#" class="small ms-1 text-decoration-none" title="Alterar o tipo (removido / pendente) ou a justificativa"
+                           onclick="alterarTipoDesconsideracao({{ a.id }}, '{{ a.item_solicitacao.instrumento.tag|escapejs }}', '{{ a.tipo_desconsideracao|default:'REMOVIDO' }}', '{{ a.justificativa_desconsiderar|escapejs }}'); return false;"><i class="bi bi-pencil"></i> alterar</a>
                         {% if a.desconsiderado_por %}<div class="text-muted" style="font-size: .72rem;">por {{ a.desconsiderado_por.get_full_name|default:a.desconsiderado_por.username }}{% if a.desconsiderado_em %} em {{ a.desconsiderado_em|date:"d/m/Y H:i" }}{% endif %}</div>{% endif %}
                     {% else %}
                         <span class="text-muted">Ativo</span>

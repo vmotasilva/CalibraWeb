@@ -1,0 +1,95 @@
+{# Itens pendentes para tratativa futura. Params: lista, next (url de retorno), solicitacoes_abertas, mostrar_origem #}
+<div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Instrumento</th>
+                {% if mostrar_origem %}<th>Solicitação de origem</th>{% endif %}
+                <th>Cotação / fornecedor</th>
+                <th>Pendente desde</th>
+                <th>Motivo</th>
+                <th style="width: 1%; white-space: nowrap;">Tratativa</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in lista %}
+            <tr>
+                <td><strong class="font-monospace">{{ a.item_solicitacao.instrumento.tag }}</strong>
+                    <div class="small text-muted">{{ a.item_solicitacao.instrumento.descricao|default:""|truncatechars:40 }}</div></td>
+                {% if mostrar_origem %}
+                <td><a href="{% url 'metrologia:solicitacao_detail' a.solicitacao_id %}">{{ a.solicitacao.numero }}</a></td>
+                {% endif %}
+                <td class="small">{{ a.item_cotacao.cotacao_fornecedor.numero }}<div class="text-muted">{{ a.item_cotacao.cotacao_fornecedor.fornecedor.nome_fantasia|default:a.item_cotacao.cotacao_fornecedor.fornecedor.empresa }}</div></td>
+                <td class="small">{% if a.desconsiderado_em %}{{ a.desconsiderado_em|date:"d/m/Y" }}<div class="text-muted">{{ a.desconsiderado_em|timesince }}</div>{% else %}-{% endif %}
+                    {% if a.desconsiderado_por %}<div class="text-muted" style="font-size:.72rem;">por {{ a.desconsiderado_por.get_full_name|default:a.desconsiderado_por.username }}</div>{% endif %}</td>
+                <td class="small">{{ a.justificativa_desconsiderar }}
+                    {% if a.ocorrencia_desconsiderar_id %}<span class="badge bg-warning text-dark ms-1"><i class="bi bi-exclamation-triangle"></i> Ocorrência #{{ a.ocorrencia_desconsiderar_id }}</span>{% endif %}</td>
+                <td class="text-nowrap">
+                    <button type="button" class="btn btn-sm btn-primary"
+                            onclick="abrirTratarPendencia({{ a.id }}, '{{ a.item_solicitacao.instrumento.tag|escapejs }}', '{{ a.solicitacao.numero|escapejs }}')">
+                        <i class="bi bi-arrow-right-circle"></i> Tratar
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal fade" id="modalTratarPendencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" id="formTratarPendencia" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ next }}">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-arrow-right-circle me-2"></i>Tratar item pendente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small mb-3">Instrumento <strong id="tpTag" class="font-monospace"></strong> · origem <strong id="tpOrigem"></strong></p>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="acao" id="tpNova" value="nova_solicitacao" checked onchange="tpAtualizar()">
+                    <label class="form-check-label fw-bold small" for="tpNova">Incluir em uma solicitação de cotação</label>
+                </div>
+                <div class="ms-4 mb-3" id="tpDestinoBox">
+                    <select name="solicitacao_destino" class="form-select form-select-sm">
+                        <option value="nova">Criar nova solicitação</option>
+                        {% for s in solicitacoes_abertas %}<option value="{{ s.id }}">Adicionar à {{ s.numero }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="acao" id="tpReincluir" value="reincluir" onchange="tpAtualizar()">
+                    <label class="form-check-label fw-bold small" for="tpReincluir">Reincluir na solicitação de origem <span class="fw-normal text-muted">(volta a contar no andamento)</span></label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" name="acao" id="tpRemover" value="remover" onchange="tpAtualizar()">
+                    <label class="form-check-label fw-bold small" for="tpRemover">Remover, sem nova tratativa <span class="fw-normal text-muted">(exige motivo)</span></label>
+                </div>
+                <label class="form-label fw-bold small" for="tpObs">Observação <span id="tpObsObrig" class="text-danger d-none">*</span></label>
+                <textarea name="observacao" id="tpObs" class="form-control" rows="2" placeholder="Registro da tratativa (opcional, obrigatório ao remover)"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary btn-sm">Confirmar tratativa</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function tpAtualizar() {
+    const acao = document.querySelector('#formTratarPendencia input[name=acao]:checked').value;
+    document.getElementById('tpDestinoBox').classList.toggle('d-none', acao !== 'nova_solicitacao');
+    document.getElementById('tpObsObrig').classList.toggle('d-none', acao !== 'remover');
+    document.getElementById('tpObs').required = (acao === 'remover');
+}
+function abrirTratarPendencia(atendimentoId, tag, origem) {
+    document.getElementById('formTratarPendencia').action =
+        "{% url 'metrologia:pendencia_tratar' 0 %}".replace('/0/', '/' + atendimentoId + '/');
+    document.getElementById('tpTag').textContent = tag;
+    document.getElementById('tpOrigem').textContent = origem;
+    document.getElementById('tpNova').checked = true;
+    document.getElementById('tpObs').value = '';
+    tpAtualizar();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTratarPendencia')).show();
+}
+</script>
