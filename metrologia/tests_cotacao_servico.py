@@ -414,3 +414,23 @@ class SemAcompanhamentoTests(BaseCotacaoServico):
         self.assertEqual(contexto_cotacoes_abertas()["sem_acompanhamento_total"], 0)   # A-01 e B-01 em cotação
         self.sol.marcar_concluida()
         self.assertEqual(contexto_cotacoes_abertas()["sem_acompanhamento_total"], 2)   # saem do acompanhamento
+
+
+class FiltroTratativaTests(BaseCotacaoServico):
+    """Filtro 'Tratativa da calibração' (interna/externa) nas telas de Metrologia e dashboard."""
+
+    def test_filtro_e_atributos_nas_duas_telas(self):
+        Instrumento.objects.filter(pk=self.b.pk).update(tratativa_calibracao="EXTERNA")
+        Instrumento.objects.filter(pk=self.a.pk).update(tratativa_calibracao="INTERNA")
+        metro = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn('data-pane="fptrat"', metro)
+        self.assertIn('value="INTERNA" data-category="tratativa"', metro)
+        self.assertIn('value="EXTERNA" data-category="tratativa"', metro)
+        self.assertIn('data-trat="EXTERNA"', metro)
+        self.assertIn('data-trat="INTERNA"', metro)
+        self.assertIn("filtrosAtivos.tratativa", metro)
+        shared = self.client.get("/dashboard/").content.decode()
+        self.assertIn('value="externa" data-cat="tratativa"', shared)
+        self.assertIn('value="interna" data-cat="tratativa"', shared)
+        self.assertIn('data-tratativa="externa"', shared)
+        self.assertIn("activeFilters.tratativa", shared)
