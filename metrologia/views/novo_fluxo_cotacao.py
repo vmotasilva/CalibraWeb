@@ -769,6 +769,16 @@ def cotacao_fornecedor_create(request, solicitacao_pk):
     return render(request, 'metrologia/novo_fluxo/cotacao_fornecedor_form.html', context)
 
 
+def _restaurar_cotacao_obsoleta(cotacao):
+    """Reativa uma cotação obsoleta (a aprovação volta se ela estava aceita)."""
+    cotacao.ativa = True
+    cotacao.inativada_em = None
+    cotacao.inativada_por = None
+    cotacao.motivo_inativacao = ''
+    cotacao.aprovada = cotacao.status == 'ACEITA'
+    cotacao.save()
+
+
 def _copiar_para_nova_versao(cotacao, usuario):
     """Nova cotação do mesmo fornecedor com os dados da obsoleta, para atualizar os valores."""
     nova = CotacaoFornecedor.objects.create(
@@ -849,12 +859,29 @@ def cotacao_fornecedor_ativacao(request, pk):
             messages.error(request, "Este fornecedor já tem uma cotação ativa na solicitação; "
                                     "inative-a antes de reativar esta.")
             return voltar
-        cotacao.ativa = True
-        cotacao.inativada_em = None
-        cotacao.inativada_por = None
-        cotacao.motivo_inativacao = ''
-        cotacao.save()
+        _restaurar_cotacao_obsoleta(cotacao)
         messages.success(request, f"{cotacao.numero} reativada.")
+        return voltar
+
+    if acao == 'desfazer_versao':
+        # descarta a nova versão e volta para a cotação obsoleta que ela substituiu
+        anterior = cotacao.versao_anterior
+        if not anterior or not cotacao.ativa:
+            messages.error(request, "Só dá para desfazer uma nova versão ativa que substitui outra cotação.")
+            return voltar
+        if cotacao.atendimentos_vinculados(incluir_desconsiderados=True).exists():
+            messages.error(request, f"{cotacao.numero} já tem instrumentos planejados e não pode ser descartada.")
+            return voltar
+        numero_nova = cotacao.numero
+        try:
+            with transaction.atomic():
+                cotacao.delete()                 # primeiro: libera a única-ativa do fornecedor
+                _restaurar_cotacao_obsoleta(anterior)
+        except Exception:
+            messages.error(request, "Não foi possível desfazer a nova versão (há registros ligados a ela).")
+            return voltar
+        solicitacao.atualizar_status_automatico()
+        messages.success(request, f"Nova versão {numero_nova} descartada. {anterior.numero} voltou a ser a cotação ativa.")
         return voltar
 
     messages.error(request, "Ação inválida.")

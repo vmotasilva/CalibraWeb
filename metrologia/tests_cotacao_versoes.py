@@ -303,3 +303,63 @@ class EdicaoDaNovaVersaoTests(BaseVersoes):
         self.assertTrue(all(nova.itens.values_list("pode_atender", flat=True)))
         self.client.post(reverse("metrologia:cotacao_fornecedor_update", args=[nova.id]), {"fornecedor": self.f1.id})
         self.assertTrue(all(nova.itens.values_list("pode_atender", flat=True)))
+
+
+class DesfazerNovaVersaoTests(BaseVersoes):
+    def _par(self, **extra):
+        antiga = self.cotacao(self.f1, [1000, 1100, 1200], **extra)
+        self.ativacao(antiga, "inativar", motivo="reajuste", nova_versao="1")
+        antiga.refresh_from_db()
+        return antiga, CotacaoFornecedor.objects.get(versao_anterior=antiga)
+
+    def test_desfazer_descarta_a_nova_e_reativa_a_anterior(self):
+        antiga, nova = self._par()
+        ItemCotacao.objects.filter(cotacao_fornecedor=nova).update(valor_unitario=Decimal("2000"))
+        numero_nova = nova.numero
+        r = self.ativacao(nova, "desfazer_versao")
+        self.assertRedirects(r, reverse("metrologia:solicitacao_detail", args=[self.sol.id]))
+        self.assertFalse(CotacaoFornecedor.objects.filter(pk=nova.pk).exists())
+        self.assertFalse(ItemCotacao.objects.filter(cotacao_fornecedor_id=nova.pk).exists())
+        antiga.refresh_from_db()
+        self.assertTrue(antiga.ativa)
+        self.assertEqual((antiga.motivo_inativacao, antiga.inativada_em, antiga.inativada_por), ("", None, None))
+        self.assertEqual(antiga.get_valor_servicos(), Decimal("3300.00"))         # valores originais intactos
+        html = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
+        self.assertNotIn(numero_nova, html)
+        self.assertNotIn("Cotações obsoletas", html)
+
+    def test_aceita_volta_aprovada_e_status_recalculado(self):
+        antiga, nova = self._par(status="ACEITA", aprovada=True)
+        self.assertFalse(antiga.aprovada)                                           # inativada tira a aprovação
+        self.ativacao(nova, "desfazer_versao")
+        antiga.refresh_from_db()
+        self.assertTrue(antiga.aprovada)
+        self.sol.refresh_from_db()
+        self.assertEqual(self.sol.status, "AGUARDANDO_PLANEJAMENTO")
+
+    def test_botoes_aparecem_na_nova_versao(self):
+        antiga, nova = self._par()
+        html = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
+        self.assertIn('value="desfazer_versao"', html)
+        self.assertIn(f"Voltar p/ anterior", html)
+        det = self.client.get(reverse("metrologia:cotacao_fornecedor_detail", args=[nova.id])).content.decode()
+        self.assertIn(f"Desfazer e voltar para {antiga.numero}", det)
+
+    def test_bloqueado_com_atendimento_mesmo_desconsiderado(self):
+        antiga, nova = self._par()
+        item = nova.itens.first()
+        AtendimentoSolicitacao.objects.create(
+            solicitacao=self.sol, item_solicitacao=item.item_solicitacao, item_cotacao=item,
+            data_prevista_atendimento="2026-12-01", desconsiderado=True, justificativa_desconsiderar="x")
+        self.ativacao(nova, "desfazer_versao")                                      # sem erro 500
+        self.assertTrue(CotacaoFornecedor.objects.filter(pk=nova.pk).exists())
+        antiga.refresh_from_db()
+        self.assertFalse(antiga.ativa)
+
+    def test_so_vale_para_nova_versao_ativa(self):
+        cot = self.cotacao(self.f2, [1000, 1000, 1000])                              # sem versão anterior
+        self.ativacao(cot, "desfazer_versao")
+        self.assertTrue(CotacaoFornecedor.objects.filter(pk=cot.pk).exists())
+        antiga, nova = self._par()
+        self.ativacao(antiga, "desfazer_versao")                                     # a obsoleta não tem anterior
+        self.assertTrue(CotacaoFornecedor.objects.filter(pk=antiga.pk).exists())
