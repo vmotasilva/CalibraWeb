@@ -743,8 +743,8 @@
                     <!-- Linha 4: Botões de Ação -->
                     <div class="d-flex gap-1.5">
                         {% if item.acompanhamento %}
-                            <a href="{{ item.acompanhamento.url }}" class="btn btn-sm {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}btn-outline-secondary{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}btn-warning{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}btn-primary{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}btn-info{% else %}btn-danger{% endif %} flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;" title="{{ item.acompanhamento.label }}">
-                                <i class="bi {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}bi-cart3{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}bi-truck{% else %}bi-file-earmark-medical{% endif %} me-1"></i> {{ item.acompanhamento.label }}
+                            <a href="{{ item.acompanhamento.url }}" class="btn btn-sm {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}btn-outline-secondary{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}btn-warning{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}btn-primary{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}btn-info{% elif item.acompanhamento.codigo == 'PENDENTE_TRATATIVA' %}btn-dark{% else %}btn-danger{% endif %} flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;" title="{{ item.acompanhamento.label }}">
+                                <i class="bi {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}bi-cart3{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}bi-truck{% elif item.acompanhamento.codigo == 'PENDENTE_TRATATIVA' %}bi-hourglass-bottom{% else %}bi-file-earmark-medical{% endif %} me-1"></i> {{ item.acompanhamento.label }}
                             </a>
                         {% elif not item.is_internal %}
                             <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" class="btn btn-sm btn-outline-primary flex-fill fw-semibold py-1.5" style="font-size: 0.78rem;">
@@ -953,10 +953,10 @@
                             <div class="d-inline-flex align-items-center gap-1">
                                 {% if item.acompanhamento %}
                                     <a href="{{ item.acompanhamento.url }}"
-                                       class="btn btn-xs {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}btn-outline-secondary{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}btn-warning{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}btn-primary{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}btn-info{% else %}btn-danger{% endif %} rounded-pill px-2.5 py-1 fw-semibold"
+                                       class="btn btn-xs {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}btn-outline-secondary{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}btn-warning{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}btn-primary{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}btn-info{% elif item.acompanhamento.codigo == 'PENDENTE_TRATATIVA' %}btn-dark{% else %}btn-danger{% endif %} rounded-pill px-2.5 py-1 fw-semibold"
                                        style="font-size: 0.75rem;"
                                        title="{{ item.acompanhamento.label }}">
-                                        <i class="bi {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}bi-cart3{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}bi-truck{% else %}bi-file-earmark-medical{% endif %} me-1"></i> {{ item.acompanhamento.label }}
+                                        <i class="bi {% if item.acompanhamento.codigo == 'COM_COMPRAS' %}bi-cart3{% elif item.acompanhamento.codigo == 'EM_COTACAO' %}bi-hourglass-split{% elif item.acompanhamento.codigo == 'CALIBRACAO_PROGRAMADA' %}bi-calendar-check{% elif item.acompanhamento.codigo == 'ENVIADO_FORNECEDOR' %}bi-truck{% elif item.acompanhamento.codigo == 'PENDENTE_TRATATIVA' %}bi-hourglass-bottom{% else %}bi-file-earmark-medical{% endif %} me-1"></i> {{ item.acompanhamento.label }}
                                     </a>
                                 {% elif not item.is_internal %}
                                     <a href="{% url 'metrologia:solicitacao_create' %}?instrumento_id={{ item.id }}" 
@@ -1179,6 +1179,10 @@
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="ENVIADO_FORNECEDOR" data-cat="acompanhamento">
                                         <label class="form-check-label small fw-bold text-info">Enviado ao fornecedor</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="PENDENTE_TRATATIVA" data-cat="acompanhamento">
+                                        <label class="form-check-label small fw-bold">Pendente de tratativa</label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="AGUARDANDO_CERTIFICADO" data-cat="acompanhamento">
