@@ -176,3 +176,89 @@ class DesconsiderarOcorrenciaEEnviadoTests(TestCase):
         self._desconsiderar("ES-01")
         inst_id = self.atends["ES-01"].item_solicitacao.instrumento_id
         self.assertNotEqual(acompanhamento_instrumentos().get(inst_id, {}).get("codigo"), "ENVIADO_FORNECEDOR")
+
+
+class AssociarCertificadoTests(TestCase):
+    """Botão 'Certificado': N° + resultado concluem a calibração do instrumento."""
+
+    setUp = PlanejamentoAtendimentosTests.setUp
+    _salvar = PlanejamentoAtendimentosTests._salvar
+
+    def _preparar(self):
+        ItemCotacao.objects.all().update(tipo_servico="CALIBRACAO")
+        CotacaoFornecedor.objects.update(aprovada=True, status="ACEITA")
+
+    def _associar(self, tag, numero="CERT-77", resultado="REPROVADO"):
+        return self.client.post(
+            reverse("metrologia:atendimento_associar_certificado", args=[self.atends[tag].id]),
+            {"numero_certificado": numero, "resultado": resultado})
+
+    def test_botao_aparece_so_para_realizados_e_olho_removido(self):
+        self._preparar()
+        url = reverse("metrologia:solicitacao_detail", args=[self.sol.id])
+        html = self.client.get(url).content.decode()
+        for a in self.atends.values():                          # botão do olho (detalhes) removido
+            self.assertNotIn(reverse("metrologia:atendimento_detail", args=[a.id]), html)
+        self.assertEqual(html.count("abrirAssociarCertificado("), 1)   # só a definição JS
+        self._salvar("NO_LOCAL", ["RC-01", "RC-02"], {"data_realizada": "2026-11-17"})
+        html = self.client.get(url).content.decode()
+        self.assertEqual(html.count("abrirAssociarCertificado("), 2 + 1)
+        self.assertIn('name="numero_certificado"', html)
+        self.assertIn('name="resultado"', html)
+
+    def test_laboratorio_com_retorno_realizado_tem_o_botao(self):
+        self._preparar()
+        url = reverse("metrologia:solicitacao_detail", args=[self.sol.id])
+        self._salvar("NO_LABORATORIO", ["ES-01"], {"data_envio": "2026-11-10"})
+        self.assertEqual(self.client.get(url).content.decode().count("abrirAssociarCertificado("), 1)
+        self._salvar("NO_LABORATORIO", ["ES-01"], {"data_retorno": "2026-11-18"})
+        self.assertEqual(self.client.get(url).content.decode().count("abrirAssociarCertificado("), 1 + 1)
+
+    def test_associar_conclui_a_calibracao(self):
+        from metrologia.models import HistoricoCalibracao
+        from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos
+        self._preparar()
+        self._salvar("NO_LOCAL", ["RC-01"], {"data_realizada": "2026-11-17"})
+        r = self._associar("RC-01")
+        self.assertEqual(r.status_code, 302)
+        h = HistoricoCalibracao.objects.get()
+        self.assertEqual((h.numero_certificado, h.resultado, h.aguardando_certificado),
+                         ("CERT-77", "REPROVADO", False))
+        self.assertNotIn("PENDENTE", h.observacoes)
+        self.assertIn("CERT-77", h.observacoes)
+        a = AtendimentoSolicitacao.objects.get(pk=self.atends["RC-01"].pk)
+        self.assertEqual(a.status, "CONCLUIDA")
+        inst_id = a.item_solicitacao.instrumento_id
+        self.assertNotIn(inst_id, {i for i, v in acompanhamento_instrumentos().items()
+                                   if v["codigo"] == "AGUARDANDO_CERTIFICADO"})
+        # a tela mostra o certificado associado em vez do botão
+        html = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
+        self.assertIn("CERT-77", html)
+        # associar de novo não altera
+        self._associar("RC-01", numero="OUTRO", resultado="APROVADO_SEM_CORRECAO")
+        h.refresh_from_db()
+        self.assertEqual(h.numero_certificado, "CERT-77")
+
+    def test_realizado_sem_registro_cria_o_historico_ao_associar(self):
+        from metrologia.models import HistoricoCalibracao
+        self._preparar()
+        # realizado antes do recurso: data salva direto, sem registro de calibração
+        AtendimentoSolicitacao.objects.filter(pk=self.atends["RC-02"].pk).update(data_realizada=date(2026, 11, 17))
+        self.assertEqual(HistoricoCalibracao.objects.count(), 0)
+        self._associar("RC-02", resultado="APROVADO_COM_CORRECAO")
+        h = HistoricoCalibracao.objects.get()
+        self.assertEqual((h.instrumento.tag, h.resultado, h.aguardando_certificado, str(h.data_calibracao)),
+                         ("RC-02", "APROVADO_COM_CORRECAO", False, "2026-11-17"))
+
+    def test_validacoes(self):
+        from metrologia.models import HistoricoCalibracao
+        self._preparar()
+        self._salvar("NO_LOCAL", ["RC-01"], {"data_realizada": "2026-11-17"})
+        self._associar("RC-01", numero="")
+        self._associar("RC-01", numero="S/N")
+        self._associar("RC-01", resultado="")
+        self._associar("RC-01", resultado="XYZ")
+        self.assertTrue(HistoricoCalibracao.objects.get().aguardando_certificado)
+        # sem data de realização não dá para associar
+        self._associar("RC-02")
+        self.assertEqual(HistoricoCalibracao.objects.count(), 1)

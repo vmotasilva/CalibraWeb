@@ -560,9 +560,9 @@ class HistoricoCalibracao(models.Model):
 
     @property
     def certificado_preenchido(self):
+        """Certificado recebido = número real informado (arquivo/link são opcionais)."""
         numero = (self.numero_certificado or '').strip().upper()
-        tem_numero = bool(numero) and numero != 'S/N'
-        return tem_numero and bool(self.certificado or self.link_certificado)
+        return bool(numero) and numero != 'S/N'
 
     def save(self, *args, **kwargs):
         if self.aguardando_certificado and self.certificado_preenchido:

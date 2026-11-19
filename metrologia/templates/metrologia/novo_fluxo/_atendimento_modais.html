@@ -77,6 +77,38 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalCertificado" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" id="formCertificado" class="modal-content">
+            {% csrf_token %}
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-medical me-2"></i>Associar certificado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small mb-3">Instrumento: <strong id="certTag" class="font-monospace"></strong>. Ao salvar, a calibração dele é concluída.</p>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small" for="certNumero">N° do certificado <span class="text-danger">*</span></label>
+                    <input type="text" name="numero_certificado" id="certNumero" class="form-control" maxlength="100" required autocomplete="off">
+                </div>
+                <div>
+                    <label class="form-label fw-bold small" for="certResultado">Resultado <span class="text-danger">*</span></label>
+                    <select name="resultado" id="certResultado" class="form-select" required>
+                        <option value="">Selecione...</option>
+                        <option value="APROVADO_SEM_CORRECAO">Aprovado sem correção</option>
+                        <option value="APROVADO_COM_CORRECAO">Aprovado com correção</option>
+                        <option value="REPROVADO">Reprovado</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-success btn-sm"><i class="bi bi-check2-circle"></i> Associar e concluir</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function _abrirModal(id) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById(id)).show();
@@ -97,6 +129,15 @@ function alternarDesconsiderar(checkbox, atendimentoId, tag) {
     } else {
         checkbox.checked = true;
     }
+}
+
+function abrirAssociarCertificado(atendimentoId, tag) {
+    document.getElementById('formCertificado').action =
+        "{% url 'metrologia:atendimento_associar_certificado' 0 %}".replace('/0/', '/' + atendimentoId + '/');
+    document.getElementById('certTag').textContent = tag;
+    document.getElementById('certNumero').value = '';
+    document.getElementById('certResultado').value = '';
+    _abrirModal('modalCertificado');
 }
 
 function abrirOcorrenciaAtendimento(instrumentoId, tag, atendimentoId) {

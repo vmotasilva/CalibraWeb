@@ -65,6 +65,7 @@ from .novo_fluxo_cotacao import (
     cotacao_servico_concluir,
     atendimento_create,
     atendimento_detail,
+    atendimento_associar_certificado,
     atendimento_create_from_cotacao,
     atendimento_atualizar_dados,
     atendimento_desconsiderar,
@@ -129,6 +130,7 @@ __all__ = [
 
     'atendimento_create',
     'atendimento_detail',
+    'atendimento_associar_certificado',
     'atendimento_create_from_cotacao',
     'atendimento_atualizar_dados',
     'atendimento_desconsiderar',

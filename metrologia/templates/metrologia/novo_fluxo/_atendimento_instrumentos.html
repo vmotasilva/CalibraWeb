@@ -37,7 +37,18 @@
                     {% endif %}
                 </td>
                 <td class="text-nowrap">
-                    <a href="{% url 'metrologia:atendimento_detail' a.id %}" class="btn btn-sm btn-outline-primary" title="Detalhes"><i class="bi bi-eye"></i></a>
+                    {% if not a.desconsiderado and a.item_cotacao.tipo_servico == 'CALIBRACAO' %}
+                    {% with h=historicos_por_item|dict_get:a.item_cotacao_id %}
+                        {% if h and not h.aguardando_certificado %}
+                            <span class="badge bg-success align-middle" title="Certificado {{ h.numero_certificado }} · {{ h.get_resultado_display }}"><i class="bi bi-patch-check"></i> {{ h.numero_certificado }}</span>
+                        {% elif h or tipo == 'NO_LOCAL' and a.data_realizada or tipo == 'NO_LABORATORIO' and a.data_retorno %}
+                            <button type="button" class="btn btn-sm btn-success" title="Associar o certificado e concluir a calibração de {{ a.item_solicitacao.instrumento.tag }}"
+                                    onclick="abrirAssociarCertificado({{ a.id }}, '{{ a.item_solicitacao.instrumento.tag|escapejs }}')">
+                                <i class="bi bi-file-earmark-medical"></i> Certificado
+                            </button>
+                        {% endif %}
+                    {% endwith %}
+                    {% endif %}
                     <button type="button" class="btn btn-sm btn-outline-warning" title="Abrir ocorrência para {{ a.item_solicitacao.instrumento.tag }}"
                             onclick="abrirOcorrenciaAtendimento({{ a.item_solicitacao.instrumento_id }}, '{{ a.item_solicitacao.instrumento.tag|escapejs }}', {{ a.id }})">
                         <i class="bi bi-exclamation-triangle"></i> Ocorrência
