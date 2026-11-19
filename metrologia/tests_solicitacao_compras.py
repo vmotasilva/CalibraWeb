@@ -110,3 +110,54 @@ class EtapaComprasTests(TestCase):
         self._compras("solicitar")
         self.sol.refresh_from_db()
         self.assertIsNone(self.sol.compras_solicitada_em)
+
+
+class LinksComprasTests(EtapaComprasTests):
+    """Links das tratativas (um ou mais) na etapa de compras."""
+
+    def _link(self, acao="adicionar", **dados):
+        return self.client.post(reverse("metrologia:solicitacao_compras_link", args=[self.sol.id]),
+                                {"acao": acao, **dados})
+
+    def _links(self):
+        from metrologia.models import LinkSolicitacaoCompras
+        return list(LinkSolicitacaoCompras.objects.filter(solicitacao=self.sol).order_by("id"))
+
+    # herda os testes da etapa só para reutilizar as fixtures; evita reexecutá-los
+    for _nome in [n for n in dir(EtapaComprasTests) if n.startswith("test_")]:
+        locals()[_nome] = None
+    del _nome
+
+    def test_adiciona_um_ou_varios_links_e_remove(self):
+        self._compras("solicitar")
+        self._link(urls="https://portal.exemplo.com/pedido/123", descricao="Pedido no portal")
+        self._link(urls="https://drive.google.com/x\nwww.teams.microsoft.com/chat/abc\n")
+        links = self._links()
+        self.assertEqual([l.rotulo for l in links],
+                         ["Pedido no portal", "drive.google.com", "www.teams.microsoft.com"])
+        self.assertEqual(links[2].url, "https://www.teams.microsoft.com/chat/abc")   # assume https
+        self.assertEqual(links[0].criado_por, self.user)
+        html = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id])).content.decode()
+        self.assertIn('href="https://portal.exemplo.com/pedido/123"', html)
+        self.assertIn('rel="noopener noreferrer"', html)
+        self.assertIn("Pedido no portal", html)
+        self._link("remover", link_id=links[0].id)
+        self.assertEqual(len(self._links()), 2)
+
+    def test_recusa_links_invalidos_e_duplicados(self):
+        self._compras("solicitar")
+        self._link(urls="javascript:alert(1)")
+        self._link(urls="não é link")
+        self._link(urls="ftp://servidor/arquivo")
+        self.assertEqual(self._links(), [])
+        self._link(urls="https://ok.com/a\nhttps://ok.com/a\njavascript:x")
+        self.assertEqual(len(self._links()), 1)                      # duplicado ignorado, inválido recusado
+        self._link(urls="")
+        self.assertEqual(len(self._links()), 1)
+
+    def test_remover_link_de_outra_solicitacao_nao_funciona(self):
+        from metrologia.models import LinkSolicitacaoCompras
+        outra = SolicitacaoCotacao.objects.create()
+        alheio = LinkSolicitacaoCompras.objects.create(solicitacao=outra, url="https://outra.com")
+        self._link("remover", link_id=alheio.id)
+        self.assertTrue(LinkSolicitacaoCompras.objects.filter(pk=alheio.pk).exists())

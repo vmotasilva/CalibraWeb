@@ -1031,6 +1031,35 @@ class SolicitacaoCotacao(models.Model):
         ordering = ["-data_criacao"]
 
 
+class LinkSolicitacaoCompras(models.Model):
+    """Links das tratativas com o setor de compras (feitas muitas vezes em outras plataformas)."""
+    solicitacao = models.ForeignKey(
+        SolicitacaoCotacao, on_delete=models.CASCADE, related_name='links_compras',
+        verbose_name='Solicitação')
+    url = models.URLField(max_length=500, verbose_name='Link')
+    descricao = models.CharField(max_length=150, blank=True, default='', verbose_name='Descrição')
+    criado_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='links_compras_criados', verbose_name='Adicionado por')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def rotulo(self):
+        """Descrição informada ou, na falta dela, o domínio do link."""
+        if self.descricao:
+            return self.descricao
+        from urllib.parse import urlparse
+        return urlparse(self.url).netloc or self.url
+
+    def __str__(self):
+        return f"{self.solicitacao.numero} - {self.rotulo}"
+
+    class Meta:
+        verbose_name = "Link da Etapa de Compras"
+        verbose_name_plural = "Links da Etapa de Compras"
+        ordering = ['criado_em', 'id']
+
+
 class ItemSolicitacaoCotacao(models.Model):
     """
     ETAPA 1: Itens da Solicitação - Cada instrumento que será cotado
