@@ -14,19 +14,45 @@
             </p>
         </div>
         <div class="col-md-4 text-end">
-            {% if cotacao.aprovada %}
-                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtendimento">
-                    <i class="bi bi-plus-circle"></i> Adicionar ao Atendimento
+            {% if cotacao.ativa %}
+                {% if cotacao.aprovada %}
+                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAdicionarAtendimento">
+                        <i class="bi bi-plus-circle"></i> Adicionar ao Atendimento
+                    </button>
+                {% endif %}
+                <a href="{% url 'metrologia:cotacao_fornecedor_update' cotacao.id %}" class="btn btn-primary">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                {% if cotacao.solicitacao.status != 'CONCLUIDA' and cotacao.solicitacao.status != 'CANCELADA' %}
+                <button type="button" class="btn btn-outline-warning text-dark" onclick="abrirInativarCotacao({{ cotacao.id }}, '{{ cotacao.numero|escapejs }}')" title="Inativar (obsoleta) / criar nova versão">
+                    <i class="bi bi-archive"></i> Inativar
                 </button>
+                {% endif %}
+            {% elif cotacao.solicitacao.status != 'CONCLUIDA' and cotacao.solicitacao.status != 'CANCELADA' %}
+                <form method="post" action="{% url 'metrologia:cotacao_fornecedor_ativacao' cotacao.id %}" class="d-inline" onsubmit="return confirm('Reativar esta cotação?')">
+                    {% csrf_token %}<input type="hidden" name="acao" value="reativar">
+                    <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Reativar</button>
+                </form>
             {% endif %}
-            <a href="{% url 'metrologia:cotacao_fornecedor_update' cotacao.id %}" class="btn btn-primary">
-                <i class="bi bi-pencil"></i> Editar
-            </a>
             <a href="{% url 'metrologia:solicitacao_detail' cotacao.solicitacao.id %}" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Voltar
             </a>
         </div>
     </div>
+
+    {% if not cotacao.ativa %}
+    <div class="alert alert-secondary">
+        <strong><i class="bi bi-archive"></i> Cotação obsoleta</strong> — inativada em {{ cotacao.inativada_em|date:"d/m/Y H:i" }}{% if cotacao.inativada_por %} por {{ cotacao.inativada_por.get_full_name|default:cotacao.inativada_por.username }}{% endif %}.
+        {% if cotacao.motivo_inativacao %}<div class="small">Motivo: {{ cotacao.motivo_inativacao }}</div>{% endif %}
+        {% if versao_nova %}<div class="small">Nova versão: <a href="{% url 'metrologia:cotacao_fornecedor_detail' versao_nova.id %}">{{ versao_nova.numero }}</a> ({{ versao_nova.get_status_display }})</div>{% endif %}
+    </div>
+    {% endif %}
+    {% if cotacao.versao_anterior %}
+    <div class="alert alert-info py-2">
+        <i class="bi bi-files"></i> Nova versão de
+        <a href="{% url 'metrologia:cotacao_fornecedor_detail' cotacao.versao_anterior.id %}">{{ cotacao.versao_anterior.numero }}</a> (obsoleta).
+    </div>
+    {% endif %}
 
     <div class="row mb-4">
         <div class="col-md-6">
@@ -266,6 +292,53 @@
     </div>
     {% endif %}
 
+    {% if comparativo_versao %}
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white d-flex justify-content-between">
+            <h6 class="mb-0"><i class="bi bi-arrow-left-right"></i> Comparação com a versão anterior ({{ cotacao.versao_anterior.numero }})</h6>
+            <strong>
+                R$ {{ comparativo_versao.totais.total_ant|floatformat:2 }} → R$ {{ comparativo_versao.totais.total_nov|floatformat:2 }}
+                {% if comparativo_versao.totais.variacao is not None %}({% widthratio comparativo_versao.totais.variacao 1 100 as pv %}{% if comparativo_versao.totais.variacao > 0 %}+{% endif %}{{ pv }}%){% endif %}
+            </strong>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle mb-0">
+                    <thead class="table-light"><tr><th>Instrumento</th><th class="text-end">Anterior</th><th class="text-end">Nova versão</th><th class="text-end">Diferença</th><th class="text-end">%</th></tr></thead>
+                    <tbody>
+                    {% for l in comparativo_versao.linhas %}
+                        <tr {% if l.destaque %}class="table-warning"{% endif %}>
+                            <td><strong>{{ l.tag }}</strong></td>
+                            <td class="text-end">{% if l.anterior is not None %}R$ {{ l.anterior|floatformat:2 }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                            <td class="text-end">{% if l.nova is not None %}R$ {{ l.nova|floatformat:2 }}{% else %}<span class="text-danger">removido</span>{% endif %}</td>
+                            <td class="text-end {% if l.delta and l.delta > 0 %}text-danger{% elif l.delta and l.delta < 0 %}text-success{% endif %}">{% if l.delta is not None %}{% if l.delta > 0 %}+{% endif %}R$ {{ l.delta|floatformat:2 }}{% endif %}</td>
+                            <td class="text-end">{% if l.variacao is not None %}{% widthratio l.variacao 1 100 as pl %}{% if l.variacao > 0 %}+{% endif %}{{ pl }}%{% endif %}</td>
+                        </tr>
+                    {% endfor %}
+                    {% for c in comparativo_versao.linhas_custos %}
+                        <tr class="table-light">
+                            <td>Custo: {{ c.rotulo }}</td>
+                            <td class="text-end">R$ {{ c.anterior|floatformat:2 }}</td>
+                            <td class="text-end">R$ {{ c.nova|floatformat:2 }}</td>
+                            <td class="text-end {% if c.delta > 0 %}text-danger{% elif c.delta < 0 %}text-success{% endif %}">{% if c.delta > 0 %}+{% endif %}R$ {{ c.delta|floatformat:2 }}</td>
+                            <td></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><th>Total</th>
+                            <th class="text-end">R$ {{ comparativo_versao.totais.total_ant|floatformat:2 }}</th>
+                            <th class="text-end">R$ {{ comparativo_versao.totais.total_nov|floatformat:2 }}</th>
+                            <th class="text-end">{% if comparativo_versao.totais.delta > 0 %}+{% endif %}R$ {{ comparativo_versao.totais.delta|floatformat:2 }}</th>
+                            <th></th></tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% include "metrologia/novo_fluxo/_alertas_comparativo.html" with alertas=comparativo_versao.alertas %}
+        </div>
+    </div>
+    {% endif %}
+
     {% if custos_adicionais %}
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -427,6 +500,8 @@
         </div>
     </div>
 </div>
+
+{% include "metrologia/novo_fluxo/_modal_inativar_cotacao.html" %}
 
 <script>
 document.querySelectorAll('.oc-toggle').forEach(function (cb) {

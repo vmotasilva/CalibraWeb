@@ -75,6 +75,7 @@ urlpatterns = [
     path('solicitacoes/<int:solicitacao_pk>/cotacao-fornecedor/nova/', views.cotacao_fornecedor_create, name='cotacao_fornecedor_create'),
     path('cotacao-fornecedor/<int:pk>/', views.cotacao_fornecedor_detail, name='cotacao_fornecedor_detail'),
     path('cotacao-fornecedor/<int:pk>/editar/', views.cotacao_fornecedor_update, name='cotacao_fornecedor_update'),
+    path('cotacao-fornecedor/<int:pk>/ativacao/', views.cotacao_fornecedor_ativacao, name='cotacao_fornecedor_ativacao'),
     path('cotacao-fornecedor/<int:pk>/servico/agendar/', views.cotacao_servico_agendar, name='cotacao_servico_agendar'),
     path('cotacao-fornecedor/<int:pk>/servico/executar/', views.cotacao_servico_executar, name='cotacao_servico_executar'),
     path('cotacao-fornecedor/<int:pk>/servico/concluir/', views.cotacao_servico_concluir, name='cotacao_servico_concluir'),

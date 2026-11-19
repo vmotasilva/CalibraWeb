@@ -806,7 +806,7 @@ class SolicitacaoCotacao(models.Model):
         # A etapa de compras se encerra em conjunto com as cotações: ao chegar a primeira
         # proposta (respondida/aceita) ela é encerrada automaticamente.
         if self.compras_ativa and self.cotacoes_fornecedores.filter(
-                status__in=['RESPONDIDA', 'ACEITA']).exists():
+                ativa=True, status__in=['RESPONDIDA', 'ACEITA']).exists():
             hoje = timezone.localdate()
             type(self).objects.filter(pk=self.pk).update(compras_concluida_em=hoje)
             self.compras_concluida_em = hoje
@@ -855,11 +855,11 @@ class SolicitacaoCotacao(models.Model):
                 novo_status = 'ABERTA'
             elif self.compras_ativa:
                 novo_status = 'COM_COMPRAS'
-            elif self.cotacoes_fornecedores.count() == 0:
+            elif self.cotacoes_fornecedores.filter(ativa=True).count() == 0:
                 novo_status = 'INSTRUMENTOS_SELECIONADOS'
-            elif self.cotacoes_fornecedores.filter(status='RESPONDIDA').exists():
+            elif self.cotacoes_fornecedores.filter(ativa=True, status='RESPONDIDA').exists():
                 novo_status = 'COTACAO_SOLICITADA'
-            elif self.cotacoes_fornecedores.filter(status='ACEITA').exists():
+            elif self.cotacoes_fornecedores.filter(ativa=True, status='ACEITA').exists():
                 novo_status = 'AGUARDANDO_PLANEJAMENTO'
             else:
                 # Manter status atual como fallback (saindo de COM_COMPRAS quando a etapa encerra)
@@ -886,6 +886,7 @@ class SolicitacaoCotacao(models.Model):
 
         itens = ItemCotacao.objects.filter(
             cotacao_fornecedor__solicitacao=self, cotacao_fornecedor__aprovada=True, pode_atender=True,
+            cotacao_fornecedor__ativa=True,
         ).exclude(cotacao_fornecedor__status__in=('CANCELADA', 'REJEITADA')).exclude(
             status_execucao='NAO_ATENDIDO').select_related('instrumento', 'cotacao_fornecedor')
         for item in itens:
@@ -1408,6 +1409,17 @@ class CotacaoFornecedor(models.Model):
         verbose_name='Concluído por'
     )
     
+    # Cotação obsoleta: inativada para dar lugar a uma nova versão com valores atualizados
+    ativa = models.BooleanField(default=True, db_index=True, verbose_name='Cotação ativa')
+    inativada_em = models.DateTimeField(null=True, blank=True, verbose_name='Inativada em')
+    inativada_por = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cotacoes_fornecedor_inativadas', verbose_name='Inativada por')
+    motivo_inativacao = models.CharField(max_length=255, blank=True, default='', verbose_name='Motivo da inativação')
+    versao_anterior = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='versoes_novas', verbose_name='Versão anterior (obsoleta)')
+
     # Rastreamento
     criado_por = models.ForeignKey(
         User,
@@ -1441,6 +1453,10 @@ class CotacaoFornecedor(models.Model):
         if self.solicitacao_id and self.solicitacao.status not in ('CONCLUIDA', 'CANCELADA'):
             self.solicitacao.atualizar_status_automatico()
 
+    def atendimentos_vinculados(self):
+        """Atendimentos (planejamento) ligados a itens desta cotação, sem os desconsiderados."""
+        return AtendimentoSolicitacao.objects.filter(item_cotacao__cotacao_fornecedor=self, desconsiderado=False)
+
     def get_valor_servicos(self):
         """Soma dos serviços (instrumentos) cotados, sem os custos adicionais."""
         return sum((item.valor_total for item in self.itens.all()), Decimal('0.00'))
@@ -1470,7 +1486,12 @@ class CotacaoFornecedor(models.Model):
         verbose_name = "Cotação do Fornecedor"
         verbose_name_plural = "Cotações de Fornecedores"
         ordering = ["-data_criacao"]
-        unique_together = ('solicitacao', 'fornecedor')
+        # um fornecedor pode ter várias versões na solicitação, mas só uma ativa
+        constraints = [
+            models.UniqueConstraint(
+                fields=['solicitacao', 'fornecedor'], condition=models.Q(ativa=True),
+                name='uniq_cotacao_ativa_por_fornecedor'),
+        ]
 
 
 class CustoAdicionalCotacao(models.Model):

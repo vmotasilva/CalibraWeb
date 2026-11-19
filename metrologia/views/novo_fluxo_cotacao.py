@@ -25,6 +25,7 @@ from metrologia.models import (
     ItemCotacao, AtendimentoSolicitacao, Instrumento, ProcessoAutomatizacao,
     ItemSolicitacaoFaixa, HistoricoCalibracao, CustoAdicionalCotacao
 )
+from metrologia.services.comparativo_cotacoes import comparar_fornecedores, comparar_versoes
 from metrologia.forms import (
     SolicitacaoCotacaoForm, ItemSolicitacaoCotacaoForm, CotacaoFornecedorForm,
     ItemCotacaoForm, AtendimentoSolicitacaoForm
@@ -166,6 +167,7 @@ def acompanhamento_instrumentos():
         ItemCotacao.objects
         .filter(
             cotacao_fornecedor__aprovada=True,
+            cotacao_fornecedor__ativa=True,
             pode_atender=True,
             tipo_servico='CALIBRACAO',
         )
@@ -404,7 +406,9 @@ def solicitacao_detail(request, pk):
     """Detalha uma solicitação e permite gerenciar itens - ETAPA 1"""
     solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
     itens = solicitacao.itens.all()
-    cotacoes = solicitacao.cotacoes_fornecedores.prefetch_related('itens')
+    cotacoes = solicitacao.cotacoes_fornecedores.filter(ativa=True).prefetch_related('itens')
+    cotacoes_obsoletas = solicitacao.cotacoes_fornecedores.filter(ativa=False).select_related(
+        'fornecedor', 'inativada_por').prefetch_related('versoes_novas').order_by('-inativada_em')
     atendimentos = solicitacao.atendimentos.select_related(
         'item_cotacao__cotacao_fornecedor__fornecedor', 'item_solicitacao__instrumento'
     ).order_by(
@@ -430,6 +434,8 @@ def solicitacao_detail(request, pk):
         'solicitacao': solicitacao,
         'itens': itens,
         'cotacoes': cotacoes,
+        'cotacoes_obsoletas': cotacoes_obsoletas,
+        'comparativo': comparar_fornecedores(solicitacao),
         'atendimentos': atendimentos,
         'historicos_pendentes': {
             h.item_cotacao_id: h for h in HistoricoCalibracao.objects.filter(
@@ -722,6 +728,10 @@ def cotacao_fornecedor_create(request, solicitacao_pk):
     
     if request.method == 'POST':
         form = CotacaoFornecedorForm(request.POST)
+        if form.is_valid() and solicitacao.cotacoes_fornecedores.filter(
+                ativa=True, fornecedor=form.cleaned_data['fornecedor']).exists():
+            form.add_error('fornecedor', "Já existe uma cotação ativa deste fornecedor nesta solicitação. "
+                                         "Edite-a ou inative-a (obsoleta) para criar uma nova versão.")
         if form.is_valid():
             cotacao = form.save(commit=False)
             cotacao.solicitacao = solicitacao
@@ -750,6 +760,84 @@ def cotacao_fornecedor_create(request, solicitacao_pk):
         'titulo': 'Criar Cotação de Fornecedor'
     }
     return render(request, 'metrologia/novo_fluxo/cotacao_fornecedor_form.html', context)
+
+
+def _copiar_para_nova_versao(cotacao, usuario):
+    """Nova cotação do mesmo fornecedor com os dados da obsoleta, para atualizar os valores."""
+    nova = CotacaoFornecedor.objects.create(
+        solicitacao=cotacao.solicitacao, fornecedor=cotacao.fornecedor, versao_anterior=cotacao,
+        data_solicitacao=timezone.localdate(), criado_por=usuario, status='RASCUNHO',
+        observacoes=f"Nova versão de {cotacao.numero} (obsoleta). Atualize os valores.")
+    for item in cotacao.itens.all():
+        ItemCotacao.objects.create(
+            cotacao_fornecedor=nova, item_solicitacao=item.item_solicitacao, instrumento=item.instrumento,
+            pode_atender=item.pode_atender, tipo_servico=item.tipo_servico, local_atendimento=item.local_atendimento,
+            valor_unitario=item.valor_unitario, quantidade=item.quantidade, prazo_dias=item.prazo_dias,
+            descricao_servico=item.descricao_servico)
+    for custo in cotacao.custos_adicionais.all():
+        CustoAdicionalCotacao.objects.create(
+            cotacao_fornecedor=nova, tipo=custo.tipo, descricao=custo.descricao,
+            quantidade=custo.quantidade, valor_unitario=custo.valor_unitario)
+    return nova
+
+
+@login_required
+@require_POST
+def cotacao_fornecedor_ativacao(request, pk):
+    """Inativa a cotação (obsoleta), opcionalmente criando a nova versão; ou a reativa."""
+    cotacao = get_object_or_404(CotacaoFornecedor, pk=pk)
+    solicitacao = cotacao.solicitacao
+    voltar = redirect('metrologia:solicitacao_detail', pk=solicitacao.id)
+    acao = request.POST.get('acao', '')
+
+    if solicitacao.status in STATUS_COTACAO_ENCERRADA:
+        messages.error(request, "A cotação está encerrada; reabra-a antes de alterar as propostas.")
+        return voltar
+
+    if acao in ('inativar', 'inativar_nova'):
+        if not cotacao.ativa:
+            messages.warning(request, f"{cotacao.numero} já está inativa.")
+            return voltar
+        motivo = (request.POST.get('motivo') or '').strip()[:255]
+        if not motivo:
+            messages.error(request, "Informe o motivo para inativar a cotação (ex.: valores desatualizados).")
+            return voltar
+        if cotacao.atendimentos_vinculados().exists():
+            messages.error(request, f"{cotacao.numero} já tem instrumentos planejados. "
+                                    "Desconsidere ou remova esses atendimentos antes de inativá-la.")
+            return voltar
+        with transaction.atomic():
+            cotacao.ativa = False
+            cotacao.aprovada = False
+            cotacao.inativada_em = timezone.now()
+            cotacao.inativada_por = request.user
+            cotacao.motivo_inativacao = motivo
+            cotacao.save()
+            nova = _copiar_para_nova_versao(cotacao, request.user) if acao == 'inativar_nova' else None
+        if nova:
+            messages.success(request, f"{cotacao.numero} inativada. Atualize os valores da nova versão {nova.numero}: "
+                                      "o sistema vai comparar com a anterior.")
+            return redirect('metrologia:cotacao_fornecedor_update', pk=nova.id)
+        messages.success(request, f"{cotacao.numero} inativada (obsoleta).")
+        return voltar
+
+    if acao == 'reativar':
+        if cotacao.ativa:
+            return voltar
+        if solicitacao.cotacoes_fornecedores.filter(ativa=True, fornecedor=cotacao.fornecedor).exists():
+            messages.error(request, "Este fornecedor já tem uma cotação ativa na solicitação; "
+                                    "inative-a antes de reativar esta.")
+            return voltar
+        cotacao.ativa = True
+        cotacao.inativada_em = None
+        cotacao.inativada_por = None
+        cotacao.motivo_inativacao = ''
+        cotacao.save()
+        messages.success(request, f"{cotacao.numero} reativada.")
+        return voltar
+
+    messages.error(request, "Ação inválida.")
+    return voltar
 
 
 def _salvar_custos_adicionais(request, cotacao):
@@ -903,6 +991,8 @@ def cotacao_fornecedor_detail(request, pk):
         'valor_custos': valor_custos,
         'custos_adicionais': custos_adicionais,
         'valor_a_pagar': cotacao.get_valor_a_pagar(),
+        'comparativo_versao': comparar_versoes(cotacao, cotacao.versao_anterior) if cotacao.versao_anterior_id else None,
+        'versao_nova': cotacao.versoes_novas.filter(ativa=True).first(),
         'execucao_registrada': any(i.status_execucao != 'PENDENTE' for i in itens),
         'tipos_ocorrencia': OcorrenciaInstrumento.TIPO_OCORRENCIA,
         'itens_pendentes': sum(1 for i in itens if i.status_execucao == 'PENDENTE'),
@@ -1222,6 +1312,7 @@ def atendimento_create(request, solicitacao_pk, item_pk):
         # Filtra apenas cotações que podem atender este instrumento
         cotacoes_disponiveis = ItemCotacao.objects.filter(
             cotacao_fornecedor__solicitacao=solicitacao,
+            cotacao_fornecedor__ativa=True,
             instrumento=item_solicitacao.instrumento,
             pode_atender=True
         )
@@ -1250,8 +1341,8 @@ def atendimento_create_from_cotacao(request, cotacao_id):
     """Cria atendimentos para os itens selecionados de uma cotação aprovada"""
     cotacao = get_object_or_404(CotacaoFornecedor, pk=cotacao_id)
     
-    # Apenas cotações aprovadas podem gerar atendimentos
-    if not cotacao.aprovada:
+    # Apenas cotações aprovadas (e ativas) podem gerar atendimentos
+    if not cotacao.aprovada or not cotacao.ativa:
         messages.error(request, "Apenas cotações aprovadas podem gerar atendimentos.")
         return redirect('metrologia:cotacao_fornecedor_detail', pk=cotacao.id)
     
