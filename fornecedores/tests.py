@@ -341,3 +341,30 @@ class DocumentoViewTests(BaseTest):
         self.assertTrue(os.path.exists(caminho))
         self.client.post(self.url("documento_delete", self.f.pk, doc.pk))
         self.assertFalse(os.path.exists(caminho))
+
+
+class BotoesPorPermissaoTests(BaseTest):
+    """As tags can_nav_view ficavam fora do {% block %} (ignoradas pelo Django): nenhum botão protegido aparecia."""
+
+    def test_botoes_de_acao_aparecem_para_administrador(self):
+        cat = CategoriaDocumento.objects.create(nome="AFE")
+        DocumentoFornecedor.objects.create(fornecedor=self.f, categoria=cat, arquivo="x.pdf")
+        PerguntaAvaliacao.objects.create(texto="q", tipo="SELECAO")
+        casos = [
+            ("fornecedor_list", [], ["Novo Fornecedor", "Editar"]),
+            ("fornecedor_detail", [self.f.pk], ["Editar", "Novo Documento", "Remover", "Responder Avaliação", "Matriz"]),
+            ("pergunta_list", [], ["Nova Pergunta", "Editar", "Remover"]),
+        ]
+        for nome, args, esperados in casos:
+            html = self.client.get(self.url(nome, *args)).content.decode()
+            for texto in esperados:
+                self.assertIn(texto, html, f"'{texto}' ausente em {nome}")
+
+    def test_usuario_sem_permissao_nao_ve_botoes_de_edicao(self):
+        from django.contrib.auth.models import Permission
+        leitor = get_user_model().objects.create_user("leitor2", password="x")
+        leitor.user_permissions.add(Permission.objects.get(codename="nav_fornecedores_lista", content_type__app_label="core"))
+        self.client.force_login(leitor)
+        html = self.client.get(self.url("fornecedor_detail", self.f.pk)).content.decode()
+        self.assertNotIn("Novo Documento", html)
+        self.assertNotIn(">Editar<", html)

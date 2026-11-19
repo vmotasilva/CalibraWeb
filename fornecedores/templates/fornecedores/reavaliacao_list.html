@@ -2,11 +2,10 @@
 
 {% load nav_access %}
 
+{% block content %}
 {% can_nav_view user 'fornecedores:reavaliacao_create' 'fornecedores' as can_reavaliacao_create %}
 {% can_nav_view user 'fornecedores:avaliacao_reavaliacao_create' 'fornecedores' as can_avaliacao_reavaliacao_create %}
 {% can_nav_view user 'fornecedores:reavaliacao_delete' 'fornecedores' as can_reavaliacao_delete %}
-
-{% block content %}
 <div class="container mt-4">
     <h2>Histórico de Reavaliações - {{ fornecedor.empresa }}</h2>
     
