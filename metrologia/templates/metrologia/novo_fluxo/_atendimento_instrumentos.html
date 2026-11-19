@@ -1,3 +1,4 @@
+{% load custom_tags %}
 {# Lista de instrumentos de um agrupamento (cotação). Params: grupo (lista de atendimentos), tipo (NO_LOCAL|NO_LABORATORIO|COMPRAR_NOVO) #}
 <div class="table-responsive">
     <table class="table table-sm table-bordered align-middle mb-2">
@@ -25,6 +26,13 @@
                         {% if a.desconsiderado_por %}<div class="text-muted" style="font-size: .72rem;">por {{ a.desconsiderado_por.get_full_name|default:a.desconsiderado_por.username }}{% if a.desconsiderado_em %} em {{ a.desconsiderado_em|date:"d/m/Y H:i" }}{% endif %}</div>{% endif %}
                     {% else %}
                         <span class="text-muted">Ativo</span>
+                        {% with h=historicos_pendentes|dict_get:a.item_cotacao_id %}
+                        {% if h %}
+                            <a href="{% url 'editar_historico_calibracao' h.id %}" class="badge bg-danger text-decoration-none ms-1" title="Preencher número, arquivo/link e resultado do certificado">
+                                <i class="bi bi-file-earmark-medical"></i> Calibrado: aguardando certificado
+                            </a>
+                        {% endif %}
+                        {% endwith %}
                     {% endif %}
                 </td>
                 <td class="text-nowrap">

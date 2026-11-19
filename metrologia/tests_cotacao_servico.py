@@ -177,9 +177,14 @@ class HistoricoEAcompanhamentoTests(BaseCotacaoServico):
 
     def test_acompanhamento_por_status(self):
         from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos
+        # orçamento ainda não aprovado: em cotação
+        CotacaoFornecedor.objects.filter(pk=self.cot.pk).update(aprovada=False, status="RESPONDIDA")
         self.assertEqual(acompanhamento_instrumentos()[self.a.id]["codigo"], "EM_COTACAO")
-        self._post("cotacao_servico_agendar", {"data_visita": "2026-12-01T09:30", "acao": "agendar"})
+        # aprovado: já fica programado, mesmo sem visita agendada
+        CotacaoFornecedor.objects.filter(pk=self.cot.pk).update(aprovada=True, status="ACEITA")
         self.assertEqual(acompanhamento_instrumentos()[self.a.id]["codigo"], "CALIBRACAO_PROGRAMADA")
+        self._post("cotacao_servico_agendar", {"data_visita": "2026-12-01T09:30", "acao": "agendar"})
+        self.assertIn("01/12/2026", acompanhamento_instrumentos()[self.a.id]["label"])
         self._executar_e_concluir(atendido_b=True)
         mapa = acompanhamento_instrumentos()
         self.assertEqual(mapa[self.a.id]["codigo"], "AGUARDANDO_CERTIFICADO")
@@ -193,3 +198,140 @@ class HistoricoEAcompanhamentoTests(BaseCotacaoServico):
         r = self.client.get("/dashboard/")
         self.assertContains(r, 'data-acompanhamento="CALIBRACAO_PROGRAMADA"')
         self.assertContains(r, "Calibração programada")
+
+
+class PlanejamentoGeraRegistroTests(BaseCotacaoServico):
+    """Atendimentos salvos como realizados já viram registro 'aguardando certificado'."""
+
+    def setUp(self):
+        super().setUp()
+        from datetime import date
+        from metrologia.models import AtendimentoSolicitacao
+        self.atends = []
+        for item in self.itens:
+            item.local_atendimento = "NO_LOCAL"
+            item.save()
+            self.atends.append(AtendimentoSolicitacao.objects.create(
+                solicitacao=self.sol, item_solicitacao=item.item_solicitacao, item_cotacao=item,
+                data_prevista_atendimento=date(2026, 11, 17)))
+
+    def _salvar(self, atends, grupo, tipo="NO_LOCAL"):
+        import json
+        return self.client.post(
+            reverse("metrologia:atendimento_atualizar_dados"),
+            data=json.dumps({"tipo": tipo, "cotacao_id": self.cot.id,
+                             "atendimentos": [a.id for a in atends], "grupo": grupo}),
+            content_type="application/json")
+
+    def test_aprovado_sem_planejamento_ja_e_programado(self):
+        from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos
+        mapa = acompanhamento_instrumentos()
+        self.assertEqual({mapa[self.a.id]["codigo"], mapa[self.b.id]["codigo"]}, {"CALIBRACAO_PROGRAMADA"})
+
+    def test_salvar_realizado_cria_registro_aguardando_certificado(self):
+        from metrologia.models import HistoricoCalibracao
+        from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos
+        r = self._salvar(self.atends, {"data_realizada": "2026-11-17", "tecnico": "Vitor",
+                                       "tecnico_telefone": "(71) 9 8142-1115"})
+        self.assertEqual(r.json()["historicos_criados"], 2)
+        hs = HistoricoCalibracao.objects.all()
+        self.assertEqual(hs.count(), 2)
+        for h in hs:
+            self.assertTrue(h.aguardando_certificado)
+            self.assertEqual(str(h.data_calibracao), "2026-11-17")
+            self.assertIsNotNone(h.atendimento_id)
+            self.assertIsNotNone(h.item_cotacao_id)
+        self.assertEqual({v["codigo"] for v in acompanhamento_instrumentos().values()}, {"AGUARDANDO_CERTIFICADO"})
+        # salvar de novo não duplica
+        self._salvar(self.atends, {"data_realizada": "2026-11-17"})
+        self.assertEqual(HistoricoCalibracao.objects.count(), 2)
+        # a tela mostra o status com link para preencher o certificado
+        r = self.client.get(reverse("metrologia:solicitacao_detail", args=[self.sol.id]))
+        self.assertContains(r, "Calibrado: aguardando certificado")
+
+    def test_sem_data_realizada_nao_cria(self):
+        from metrologia.models import HistoricoCalibracao
+        self._salvar(self.atends, {"tecnico": "Vitor"})
+        self.assertEqual(HistoricoCalibracao.objects.count(), 0)
+
+    def test_desconsiderado_nao_gera_nem_fica_programado(self):
+        from metrologia.models import HistoricoCalibracao
+        from metrologia.views.novo_fluxo_cotacao import acompanhamento_instrumentos
+        a0 = self.atends[0]
+        a0.desconsiderado = True
+        a0.save()
+        self._salvar(self.atends, {"data_realizada": "2026-11-17"})
+        self.assertEqual(HistoricoCalibracao.objects.count(), 1)
+        self.assertNotIn(self.a.id, {i for i, v in acompanhamento_instrumentos().items()
+                                     if v["codigo"] == "CALIBRACAO_PROGRAMADA"})
+
+    def test_laboratorio_gera_no_retorno(self):
+        from metrologia.models import HistoricoCalibracao
+        for it in self.itens:
+            it.local_atendimento = "NO_LABORATORIO"
+            it.save()
+        self._salvar(self.atends, {"data_envio": "2026-11-10"}, tipo="NO_LABORATORIO")
+        self.assertEqual(HistoricoCalibracao.objects.count(), 0)
+        self._salvar(self.atends, {"data_retorno": "2026-11-18"}, tipo="NO_LABORATORIO")
+        self.assertEqual(HistoricoCalibracao.objects.count(), 2)
+
+    def test_conclusao_do_servico_nao_duplica_registro_do_planejamento(self):
+        from metrologia.models import HistoricoCalibracao
+        self._salvar(self.atends, {"data_realizada": "2026-11-17"})
+        self._post("cotacao_servico_agendar", {"data_visita": "2026-12-01T09:30", "acao": "iniciar"})
+        ia, ib = self.itens
+        self._post("cotacao_servico_executar", {f"status_{ia.id}": "ATENDIDO", f"status_{ib.id}": "ATENDIDO"})
+        self._post("cotacao_servico_concluir", {})
+        self.assertEqual(HistoricoCalibracao.objects.count(), 2)
+
+
+class CotacoesEmAbertoTests(BaseCotacaoServico):
+    """Filtro 'Cotações em aberto' e regra de conclusão (etapas + certificados recebidos)."""
+
+    def _concluir_solicitacao(self):
+        return self.client.post(reverse("metrologia:solicitacao_concluir", args=[self.sol.id]),
+                                content_type="application/json")
+
+    def test_filtro_lista_codigos_e_marca_linhas(self):
+        r = self.client.get(reverse("modulo_metrologia"))
+        self.assertContains(r, 'data-category="cotacao_aberta"')
+        self.assertContains(r, f'value="{self.sol.numero}" data-category="cotacao_aberta"')
+        self.assertContains(r, f'data-cotacao-aberta="{self.sol.numero}"')
+        r = self.client.get("/dashboard/")
+        self.assertContains(r, f'value="{self.sol.numero}" data-cat="cotacao_aberta"')
+        self.assertContains(r, f'data-cotacao-aberta="{self.sol.numero}"')
+
+    def test_cotacao_concluida_sai_do_filtro(self):
+        self.sol.marcar_concluida()
+        r = self.client.get(reverse("modulo_metrologia"))
+        self.assertNotContains(r, f'value="{self.sol.numero}" data-category="cotacao_aberta"')
+        self.assertContains(r, "Nenhuma cotação em aberto.")
+
+    def test_conclusao_bloqueada_ate_etapas_e_certificados(self):
+        from metrologia.models import HistoricoCalibracao
+        r = self._concluir_solicitacao()
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("A-01: calibração ainda não realizada", r.json()["pendencias"])
+        self.sol.refresh_from_db()
+        self.assertNotEqual(self.sol.status, "CONCLUIDA")
+
+        # serviço executado e concluído -> faltam os certificados
+        self.client.post(reverse("metrologia:cotacao_servico_agendar", args=[self.cot.id]),
+                         {"data_visita": "2026-12-01T09:30", "acao": "iniciar"})
+        ia, ib = self.itens
+        self.client.post(reverse("metrologia:cotacao_servico_executar", args=[self.cot.id]),
+                         {f"status_{ia.id}": "ATENDIDO", f"status_{ib.id}": "NAO_ATENDIDO"})
+        self.client.post(reverse("metrologia:cotacao_servico_concluir", args=[self.cot.id]), {})
+        r = self._concluir_solicitacao()
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(r.json()["pendencias"], ["A-01: certificado de calibração não recebido"])
+
+        # certificado recebido -> pode concluir e some do filtro
+        h = HistoricoCalibracao.objects.get()
+        h.numero_certificado = "CERT-9"
+        h.link_certificado = "https://exemplo.com/c.pdf"
+        h.save()
+        r = self._concluir_solicitacao()
+        self.assertEqual(r.status_code, 200)
+        self.sol.refresh_from_db()
+        self.assertEqual(self.sol.status, "CONCLUIDA")

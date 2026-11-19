@@ -101,6 +101,26 @@ def instrumentos_em_cotacao():
     return {i.instrumento_id: (i.solicitacao_id, i.solicitacao.numero) for i in itens}
 
 
+def contexto_cotacoes_abertas():
+    """Dados do filtro "Cotações em aberto" dos dashboards.
+
+    Uma cotação (solicitação) só deixa de estar em aberto quando é concluída, e a
+    conclusão exige etapas realizadas e certificados recebidos (ver
+    SolicitacaoCotacao.pendencias_conclusao).
+    Devolve:
+      cotacao_aberta_map: {instrumento_id: numero}
+      cotacoes_abertas:   [{numero, total}] (códigos ordenados)
+    """
+    mapa = {inst_id: numero for inst_id, (_sol_id, numero) in instrumentos_em_cotacao().items()}
+    contagem = {}
+    for numero in mapa.values():
+        contagem[numero] = contagem.get(numero, 0) + 1
+    return {
+        'cotacao_aberta_map': mapa,
+        'cotacoes_abertas': [{'numero': n, 'total': contagem[n]} for n in sorted(contagem)],
+    }
+
+
 ACOMPANHAMENTO_LABELS = {
     'EM_COTACAO': 'Em cotação',
     'CALIBRACAO_PROGRAMADA': 'Calibração programada',
@@ -113,7 +133,7 @@ def acompanhamento_instrumentos():
 
     Um instrumento tem no máximo um status, por prioridade (mais avançado vence):
       3. AGUARDANDO_CERTIFICADO - histórico gerado na conclusão, sem dados do certificado
-      2. CALIBRACAO_PROGRAMADA  - cotação aceita com visita agendada e serviço não concluído
+      2. CALIBRACAO_PROGRAMADA  - orçamento aprovado e calibração ainda não realizada
       1. EM_COTACAO             - solicitação de cotação em aberto
     """
     from django.urls import reverse
@@ -126,24 +146,29 @@ def acompanhamento_instrumentos():
             'url': reverse('metrologia:solicitacao_detail', args=[sol_id]),
         }
 
+    # Orçamento aprovado e calibração ainda não realizada (sem histórico gerado,
+    # sem NAO_ATENDIDO na execução e sem o instrumento desconsiderado no planejamento).
     programados = (
         ItemCotacao.objects
         .filter(
             cotacao_fornecedor__aprovada=True,
-            cotacao_fornecedor__etapa_servico__in=('AGENDAMENTO', 'EXECUCAO'),
-            cotacao_fornecedor__data_visita__isnull=False,
             pode_atender=True,
             tipo_servico='CALIBRACAO',
         )
+        .exclude(cotacao_fornecedor__status__in=('CANCELADA', 'REJEITADA'))
+        .exclude(cotacao_fornecedor__solicitacao__status__in=STATUS_COTACAO_ENCERRADA)
         .exclude(status_execucao='NAO_ATENDIDO')
-        .exclude(cotacao_fornecedor__solicitacao__status='CANCELADA')
+        .exclude(historicos_gerados__isnull=False)
+        .exclude(atendimentos__historicos_calibracao__isnull=False)
+        .exclude(atendimentos__desconsiderado=True)
         .select_related('cotacao_fornecedor')
     )
     for item in programados:
         cot = item.cotacao_fornecedor
+        quando = f' ({cot.data_visita:%d/%m/%Y})' if cot.data_visita else ''
         resultado[item.instrumento_id] = {
             'codigo': 'CALIBRACAO_PROGRAMADA',
-            'label': f'Calibração programada ({cot.data_visita:%d/%m/%Y})',
+            'label': f'Calibração programada{quando}',
             'url': reverse('metrologia:cotacao_fornecedor_detail', args=[cot.id]),
         }
 
@@ -251,6 +276,10 @@ def solicitacao_detail(request, pk):
         'itens': itens,
         'cotacoes': cotacoes,
         'atendimentos': atendimentos,
+        'historicos_pendentes': {
+            h.item_cotacao_id: h for h in HistoricoCalibracao.objects.filter(
+                aguardando_certificado=True, item_cotacao__cotacao_fornecedor__solicitacao=solicitacao)
+        },
         'usuarios_responsaveis': usuarios_responsaveis,
         'locais_atendimento': {a.item_cotacao.local_atendimento for a in atendimentos},
         'instrumentos_disponiveis': instrumentos_disponiveis,
@@ -754,34 +783,47 @@ def gerar_relatorio_conclusao(cotacao):
     return "\n".join(linhas)
 
 
-def gerar_historicos_calibracao(cotacao):
+def registrar_historico_item(item, data_calibracao, atendimento=None, origem=''):
     """
-    Cria um HistoricoCalibracao para cada calibração atendida (idempotente por item).
-    Nasce marcado como "aguardando certificado": número, arquivo/link e resultado
-    reais dependem do certificado emitido pelo fornecedor.
+    Cria o HistoricoCalibracao de uma calibração externa realizada, marcado como
+    "aguardando certificado" (número, arquivo/link e resultado pendentes).
+    Idempotente por item da cotação: devolve None se já existe histórico dele
+    (gerado na conclusão do serviço ou a partir do planejamento de atendimentos).
     """
     from metrologia.models import HistoricoCalibracao
-    criados = []
+    if item.tipo_servico != 'CALIBRACAO':
+        return None
+    if item.historicos_gerados.exists() or HistoricoCalibracao.objects.filter(atendimento__item_cotacao=item).exists():
+        return None
+    cotacao = item.cotacao_fornecedor
+    return HistoricoCalibracao.objects.create(
+        instrumento=item.instrumento,
+        item_cotacao=item,
+        atendimento=atendimento,
+        data_calibracao=data_calibracao,
+        tipo_calibracao='EXTERNA',
+        fornecedor=cotacao.fornecedor.empresa,
+        aguardando_certificado=True,
+        observacoes=(
+            f"Gerado {origem or 'a partir da cotação'} {cotacao.numero}. "
+            "PENDENTE: informar número, arquivo/link do certificado e resultado da calibração."
+        ),
+    )
+
+
+def gerar_historicos_calibracao(cotacao):
+    """Na conclusão do serviço: um histórico por calibração atendida (idempotente por item)."""
     hoje = timezone.localdate()
     data_cal = hoje
     if cotacao.data_visita:
         data_cal = min(timezone.localtime(cotacao.data_visita).date(), hoje)
-    itens = cotacao.itens.filter(status_execucao='ATENDIDO', tipo_servico='CALIBRACAO').select_related('instrumento')
+    criados = []
+    itens = cotacao.itens.filter(status_execucao='ATENDIDO', tipo_servico='CALIBRACAO').select_related(
+        'instrumento', 'cotacao_fornecedor__fornecedor')
     for item in itens:
-        if item.historicos_gerados.exists():
-            continue
-        criados.append(HistoricoCalibracao.objects.create(
-            instrumento=item.instrumento,
-            item_cotacao=item,
-            data_calibracao=data_cal,
-            tipo_calibracao='EXTERNA',
-            fornecedor=cotacao.fornecedor.empresa,
-            aguardando_certificado=True,
-            observacoes=(
-                f"Gerado na conclusão do serviço da cotação {cotacao.numero}. "
-                "PENDENTE: informar número, arquivo/link do certificado e resultado da calibração."
-            ),
-        ))
+        h = registrar_historico_item(item, data_cal, origem='na conclusão do serviço da cotação')
+        if h:
+            criados.append(h)
     return criados
 
 
@@ -1090,6 +1132,7 @@ def atendimento_atualizar_dados(request):
 
     try:
         atualizados = 0
+        historicos_criados = 0
         solicitacao_ids = set()
         with transaction.atomic():
             for atendimento_id_str, valores in por_atendimento.items():
@@ -1121,13 +1164,30 @@ def atendimento_atualizar_dados(request):
                 atendimento.save()
                 atualizados += 1
 
+                # Calibração realizada (no local: data realizada; no laboratório: retorno)
+                # já entra no histórico, aguardando os dados do certificado.
+                data_cal = atendimento.data_realizada if tipo == 'NO_LOCAL' else (
+                    atendimento.data_retorno if tipo == 'NO_LABORATORIO' else None)
+                if data_cal:
+                    h = registrar_historico_item(
+                        atendimento.item_cotacao, data_cal, atendimento=atendimento,
+                        origem='no planejamento de atendimentos da cotação')
+                    if h:
+                        historicos_criados += 1
+
             for solicitacao in SolicitacaoCotacao.objects.filter(id__in=solicitacao_ids):
                 solicitacao.atualizar_status_automatico()
 
+        mensagem = f'{atualizados} atendimento(s) atualizado(s)'
+        if historicos_criados:
+            mensagem += (f'; {historicos_criados} registro(s) de calibração criado(s) '
+                         '(Calibrado: aguardando certificado)')
+            messages.success(request, mensagem + '. Preencha os dados dos certificados.')
         return JsonResponse({
             'success': True,
-            'message': f'{atualizados} atendimento(s) atualizado(s)',
+            'message': mensagem,
             'atualizados': atualizados,
+            'historicos_criados': historicos_criados,
         })
     except ValueError:
         return JsonResponse({'success': False, 'error': 'Data inválida (use o formato AAAA-MM-DD).'}, status=400)
@@ -1300,6 +1360,13 @@ from django.http import JsonResponse
 @login_required
 def solicitacao_marcar_concluida(request, pk):
     solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
+    pendencias = solicitacao.pendencias_conclusao()
+    if pendencias:
+        return JsonResponse({
+            'success': False,
+            'error': 'A cotação só pode ser concluída com todas as etapas realizadas e os certificados recebidos.',
+            'pendencias': pendencias,
+        }, status=400)
     solicitacao.marcar_concluida()
     return JsonResponse({'success': True, 'status': solicitacao.get_status_display()})
 

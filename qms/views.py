@@ -150,6 +150,7 @@ def modulo_metrologia_view(request):
         'historico_form': HistoricoCalibracaoForm(),
         'em_cotacao_ids': set(__import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).instrumentos_em_cotacao().keys()),
         'acompanhamento_map': __import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).acompanhamento_instrumentos(),
+        **__import__('metrologia.views.novo_fluxo_cotacao', fromlist=['x']).contexto_cotacoes_abertas(),
     }
     return render(request, 'metrologia/dashboard.html', context)
 

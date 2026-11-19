@@ -49,6 +49,8 @@ class PlanejamentoAtendimentosTests(TestCase):
         html = r.content.decode()
         self.assertEqual(html.count('data-grupo-campo="data_realizada"'), 1)   # 1 data para todos os itens
         self.assertEqual(html.count('data-grupo-campo="tecnico_telefone"'), 1)
+        self.assertIn('placeholder="(00) 0 0000-0000"', html)               # máscara do telefone
+        self.assertIn("mascararTelefone", html)
         self.assertEqual(html.count('data-grupo-campo="data_envio"'), 1)
         self.assertEqual(html.count('data-grupo-campo="data_retorno_previsto"'), 1)
         self.assertEqual(html.count("Desconsiderar</label>"), 3)               # flag em todos

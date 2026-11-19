@@ -104,6 +104,7 @@ def root_view(request):
                 "qtd_pendentes": data["qtd_solicitacoes_qms"],
                 "today": data["hoje"],
                 "hoje_display": data["hoje_display"],
+                "cotacoes_abertas": data.get("cotacoes_abertas", []),
                 "categorias": data.get("categorias", []),
                 "setores": data.get("setores", []),
                 "categorias_filtro": data.get("categorias_filtro", []),

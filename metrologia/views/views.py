@@ -282,7 +282,7 @@ def imp_historico_view(request):
 @login_required
 def modulo_metrologia_view(request):
     """Dashboard principal do módulo de Metrologia."""
-    from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao, acompanhamento_instrumentos
+    from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao, acompanhamento_instrumentos, contexto_cotacoes_abertas
     instrumentos = Instrumento.objects.all().select_related('categoria','setor').prefetch_related('historicos', 'ocorrencias').order_by("tag")
 
     # Filtro de status
@@ -350,6 +350,7 @@ def modulo_metrologia_view(request):
         "templates_etiquetas_disponiveis": templates_etiquetas,
         "em_cotacao_ids": set(instrumentos_em_cotacao().keys()),
         "acompanhamento_map": acompanhamento_instrumentos(),
+        **contexto_cotacoes_abertas(),
     }
     return render(request, "metrologia/dashboard.html", ctx)
 
@@ -1841,7 +1842,7 @@ def get_metrologia_dashboard_data():
 
     hoje = date.today()
     trinta_dias = hoje + timedelta(days=30)
-    from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao, acompanhamento_instrumentos
+    from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao, acompanhamento_instrumentos, contexto_cotacoes_abertas
     em_cotacao_map = instrumentos_em_cotacao()
     acompanhamento_map = acompanhamento_instrumentos()
     
@@ -2123,6 +2124,7 @@ def get_metrologia_dashboard_data():
         'usuarios_responsaveis': usuarios_responsaveis,
         'hoje': hoje.strftime('%Y-%m-%d'),
         'hoje_display': hoje.strftime('%d/%m/%Y'),
+        'cotacoes_abertas': contexto_cotacoes_abertas()['cotacoes_abertas'],
     }
 
 
