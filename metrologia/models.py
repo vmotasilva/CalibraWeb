@@ -801,13 +801,18 @@ class SolicitacaoCotacao(models.Model):
         """
         novo_status = self.status
         
-        # Verificar primeiro se há atendimentos
-        atendimentos_total = self.atendimentos.count()
-        
+        # Atendimentos desconsiderados (com justificativa) não entram no cálculo
+        atendimentos_ativos = self.atendimentos.filter(desconsiderado=False)
+        atendimentos_total = atendimentos_ativos.count()
+
+        if atendimentos_total == 0 and self.atendimentos.exists():
+            # Todos os instrumentos foram desconsiderados: mantém o status atual
+            return novo_status
+
         if atendimentos_total > 0:
             # Contar atendimentos completos conforme o tipo de local
             atendimentos_completos = 0
-            for atendimento in self.atendimentos.all():
+            for atendimento in atendimentos_ativos:
                 local = atendimento.item_cotacao.local_atendimento
                 
                 if local == 'NO_LOCAL' and atendimento.data_realizada:
@@ -825,7 +830,7 @@ class SolicitacaoCotacao(models.Model):
             # Se nenhum está completo, continua verificando planejamento
             elif atendimentos_total > 0:
                 # Verificar planejamento
-                atendimentos_planejados = self.atendimentos.filter(data_prevista_atendimento__isnull=False).count()
+                atendimentos_planejados = atendimentos_ativos.filter(data_prevista_atendimento__isnull=False).count()
                 
                 if atendimentos_planejados == atendimentos_total:
                     novo_status = 'PLANEJADA'
@@ -1543,6 +1548,12 @@ class AtendimentoSolicitacao(models.Model):
         null=True,
         verbose_name='Técnico Responsável'
     )
+    tecnico_telefone = models.CharField(
+        max_length=30,
+        blank=True,
+        default='',
+        verbose_name='Telefone do Técnico'
+    )
     
     # Execução - Para NO_LABORATORIO
     data_envio = models.DateField(
@@ -1572,6 +1583,30 @@ class AtendimentoSolicitacao(models.Model):
         blank=True,
         null=True,
         verbose_name='Observações'
+    )
+
+    # Desconsiderar o instrumento nesta solicitação (exige justificativa)
+    desconsiderado = models.BooleanField(
+        default=False,
+        verbose_name='Desconsiderado'
+    )
+    justificativa_desconsiderar = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Justificativa para desconsiderar'
+    )
+    desconsiderado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='atendimentos_desconsiderados',
+        verbose_name='Desconsiderado por'
+    )
+    desconsiderado_em = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Desconsiderado em'
     )
     
     # Status

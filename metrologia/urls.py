@@ -83,6 +83,7 @@ urlpatterns = [
     path('atendimentos/<int:pk>/', views.atendimento_detail, name='atendimento_detail'),
     path('atendimentos/<int:pk>/confirmar/', views.atendimento_confirmar, name='atendimento_confirmar'),
     path('api/atendimento/atualizar-dados/', views.atendimento_atualizar_dados, name='atendimento_atualizar_dados'),
+    path('atendimentos/<int:pk>/desconsiderar/', views.atendimento_desconsiderar, name='atendimento_desconsiderar'),
     path('api/atendimento/atualizar-cotacao/', views.atendimento_atualizar_cotacao, name='atendimento_atualizar_cotacao'),
     
     # NEW: Atualizar dados de atendimento (Calibração, Rastreio, Substituição)

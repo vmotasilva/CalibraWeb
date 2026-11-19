@@ -225,8 +225,17 @@ def solicitacao_detail(request, pk):
     solicitacao = get_object_or_404(SolicitacaoCotacao, pk=pk)
     itens = solicitacao.itens.all()
     cotacoes = solicitacao.cotacoes_fornecedores.prefetch_related('itens')
-    atendimentos = solicitacao.atendimentos.select_related('item_cotacao__cotacao_fornecedor__fornecedor')
-    
+    atendimentos = solicitacao.atendimentos.select_related(
+        'item_cotacao__cotacao_fornecedor__fornecedor', 'item_solicitacao__instrumento'
+    ).order_by(
+        'item_cotacao__local_atendimento', 'item_cotacao__cotacao_fornecedor_id',
+        'desconsiderado', 'item_solicitacao__instrumento__tag',
+    )
+    from django.contrib.auth.models import User
+    usuarios_responsaveis = User.objects.filter(is_active=True).select_related(
+        'colaborador', 'colaborador__setor'
+    ).order_by('first_name', 'username')
+
     # Listar instrumentos disponíveis para seleção
     instrumentos_disponiveis = Instrumento.objects.filter(ativo=True).order_by('tag')
     
@@ -242,6 +251,7 @@ def solicitacao_detail(request, pk):
         'itens': itens,
         'cotacoes': cotacoes,
         'atendimentos': atendimentos,
+        'usuarios_responsaveis': usuarios_responsaveis,
         'locais_atendimento': {a.item_cotacao.local_atendimento for a in atendimentos},
         'instrumentos_disponiveis': instrumentos_disponiveis,
         'hoje': hoje,
@@ -1037,96 +1047,125 @@ def atendimento_create_from_cotacao(request, cotacao_id):
     return redirect('metrologia:cotacao_fornecedor_detail', pk=cotacao.id)
 
 
+def _data_ou_none(valor):
+    """'' / None -> None; 'YYYY-MM-DD' -> date. Levanta ValueError se inválida."""
+    valor = (valor or '').strip() if isinstance(valor, str) else valor
+    if not valor:
+        return None
+    return datetime.strptime(valor, '%Y-%m-%d').date()
+
+
 @login_required
 @require_http_methods(['POST'])
 def atendimento_atualizar_dados(request):
-    """API endpoint para atualizar dados dos atendimentos em lote"""
+    """Salva em lote os dados de um agrupamento (cotação) de atendimentos.
+
+    Payload novo (um conjunto de campos por agrupamento, aplicado a todos os itens ativos):
+      {tipo, cotacao_id, atendimentos: [ids],
+       grupo: {data_realizada, tecnico, tecnico_telefone,            # NO_LOCAL
+               data_envio, data_retorno_previsto, data_retorno,      # NO_LABORATORIO
+               data_chegada,                                         # COMPRAR_NOVO
+               observacoes}}
+    Itens desconsiderados nunca são alterados. Formato antigo ({campos: {id: {...}}}) segue aceito.
+    """
     import json
-    
+
     try:
         data = json.loads(request.body)
-        tipo = data.get('tipo')
-        campos = data.get('campos', {})
-        
-        print(f"DEBUG: Recebido tipo={tipo}, campos={campos}")
-        
+    except json.JSONDecodeError as e:
+        return JsonResponse({'success': False, 'error': f'Erro ao processar JSON: {e}'}, status=400)
+
+    tipo = data.get('tipo')
+    if tipo not in ('NO_LOCAL', 'NO_LABORATORIO', 'COMPRAR_NOVO'):
+        return JsonResponse({'success': False, 'error': 'Tipo de atendimento inválido.'}, status=400)
+
+    # Normaliza os dois formatos para {atendimento_id: valores}
+    por_atendimento = {}
+    if 'grupo' in data:
+        grupo = data.get('grupo') or {}
+        for aid in data.get('atendimentos', []):
+            por_atendimento[aid] = grupo
+    else:
+        por_atendimento = data.get('campos', {}) or {}
+
+    try:
         atualizados = 0
         solicitacao_ids = set()
-        
-        for atendimento_id_str, valores in campos.items():
-            try:
-                # Converter ID para inteiro
-                atendimento_id = int(atendimento_id_str)
-                atendimento = AtendimentoSolicitacao.objects.get(id=atendimento_id)
+        with transaction.atomic():
+            for atendimento_id_str, valores in por_atendimento.items():
+                try:
+                    atendimento = AtendimentoSolicitacao.objects.get(id=int(atendimento_id_str))
+                except (ValueError, TypeError, AtendimentoSolicitacao.DoesNotExist):
+                    continue
+                if atendimento.desconsiderado:
+                    continue
                 solicitacao_ids.add(atendimento.solicitacao_id)
-                
-                print(f"DEBUG: Atualizando atendimento {atendimento_id} com valores {valores}")
-                
-                # Atualizar conforme o tipo
+
                 if tipo == 'NO_LOCAL':
-                    if valores.get('data_realizada'):
-                        atendimento.data_realizada = valores.get('data_realizada')
-                    atendimento.observacoes = f"Técnico: {valores.get('tecnico', 'N/A')}"
-                    atendimento.save()
-                    atualizados += 1
-                    
+                    if 'data_realizada' in valores:
+                        atendimento.data_realizada = _data_ou_none(valores.get('data_realizada'))
+                    if 'tecnico' in valores:
+                        atendimento.tecnico_responsavel = (valores.get('tecnico') or '').strip()
+                    if 'tecnico_telefone' in valores:
+                        atendimento.tecnico_telefone = (valores.get('tecnico_telefone') or '').strip()
                 elif tipo == 'NO_LABORATORIO':
-                    if valores.get('data_envio'):
-                        atendimento.data_envio = valores.get('data_envio')
-                    if valores.get('data_retorno'):
-                        atendimento.data_retorno = valores.get('data_retorno')
-                    obs = f"Envio: {valores.get('data_envio', 'N/A')}\nRetorno: {valores.get('data_retorno', 'N/A')}\nObs: {valores.get('observacoes', '')}"
-                    atendimento.observacoes = obs
-                    atendimento.save()
-                    atualizados += 1
-                    
+                    for campo in ('data_envio', 'data_retorno_previsto', 'data_retorno'):
+                        if campo in valores:
+                            setattr(atendimento, campo, _data_ou_none(valores.get(campo)))
                 elif tipo == 'COMPRAR_NOVO':
-                    if valores.get('data_chegada_realizada'):
-                        atendimento.data_chegada = valores.get('data_chegada_realizada')
-                    atendimento.observacoes = valores.get('observacoes', '')
-                    atendimento.save()
-                    atualizados += 1
-                    
-            except ValueError:
-                print(f"DEBUG: ID inválido: {atendimento_id_str}")
-                continue
-            except AtendimentoSolicitacao.DoesNotExist:
-                print(f"DEBUG: AtendimentoSolicitacao {atendimento_id_str} não encontrado")
-                continue
-            except Exception as e:
-                print(f"DEBUG: Erro ao atualizar atendimento {atendimento_id_str}: {str(e)}")
-                continue
-        
-        # Atualizar status das solicitações afetadas
-        from metrologia.models import SolicitacaoCotacao
-        for solicitacao_id in solicitacao_ids:
-            try:
-                solicitacao = SolicitacaoCotacao.objects.get(id=solicitacao_id)
+                    chegada = valores.get('data_chegada', valores.get('data_chegada_realizada'))
+                    if chegada is not None:
+                        atendimento.data_chegada = _data_ou_none(chegada)
+                if 'observacoes' in valores:
+                    atendimento.observacoes = (valores.get('observacoes') or '').strip()
+                atendimento.save()
+                atualizados += 1
+
+            for solicitacao in SolicitacaoCotacao.objects.filter(id__in=solicitacao_ids):
                 solicitacao.atualizar_status_automatico()
-                print(f"DEBUG: Status da solicitação {solicitacao_id} atualizado para {solicitacao.status}")
-            except Exception as e:
-                print(f"DEBUG: Erro ao atualizar status da solicitação {solicitacao_id}: {str(e)}")
-        
-        print(f"DEBUG: Total atualizado: {atualizados}")
-        
+
         return JsonResponse({
             'success': True,
             'message': f'{atualizados} atendimento(s) atualizado(s)',
-            'atualizados': atualizados
+            'atualizados': atualizados,
         })
-        
-    except json.JSONDecodeError as e:
-        print(f"DEBUG: Erro ao decodificar JSON: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': f'Erro ao processar JSON: {str(e)}'
-        }, status=400)
+    except ValueError:
+        return JsonResponse({'success': False, 'error': 'Data inválida (use o formato AAAA-MM-DD).'}, status=400)
     except Exception as e:
-        print(f"DEBUG: Erro geral: {str(e)}")
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=400)
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def atendimento_desconsiderar(request, pk):
+    """Desconsidera (com justificativa obrigatória) ou reativa um instrumento do planejamento."""
+    atendimento = get_object_or_404(AtendimentoSolicitacao, pk=pk)
+    voltar = redirect('metrologia:solicitacao_detail', pk=atendimento.solicitacao_id)
+
+    if request.POST.get('desconsiderado') == '0':
+        atendimento.desconsiderado = False
+        atendimento.desconsiderado_por = None
+        atendimento.desconsiderado_em = None
+        atendimento.save(update_fields=['desconsiderado', 'desconsiderado_por', 'desconsiderado_em', 'atualizado_em'])
+        atendimento.solicitacao.atualizar_status_automatico()
+        messages.success(request, f"Instrumento {atendimento.item_solicitacao.instrumento.tag} voltou a ser considerado.")
+        return voltar
+
+    justificativa = (request.POST.get('justificativa') or '').strip()
+    if not justificativa:
+        messages.error(request, "Informe a justificativa para desconsiderar o instrumento.")
+        return voltar
+
+    atendimento.desconsiderado = True
+    atendimento.justificativa_desconsiderar = justificativa
+    atendimento.desconsiderado_por = request.user
+    atendimento.desconsiderado_em = timezone.now()
+    atendimento.save(update_fields=[
+        'desconsiderado', 'justificativa_desconsiderar', 'desconsiderado_por', 'desconsiderado_em', 'atualizado_em',
+    ])
+    atendimento.solicitacao.atualizar_status_automatico()
+    messages.success(request, f"Instrumento {atendimento.item_solicitacao.instrumento.tag} desconsiderado.")
+    return voltar
 
 
 @login_required

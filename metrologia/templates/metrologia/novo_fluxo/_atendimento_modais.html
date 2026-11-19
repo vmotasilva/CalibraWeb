@@ -1,0 +1,138 @@
+{# Modais e scripts compartilhados do planejamento: desconsiderar, reativar, ocorrência e salvar agrupamento #}
+<div class="modal fade" id="modalDesconsiderar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="post" id="formDesconsiderar" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="desconsiderado" value="1">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-slash-circle me-2"></i>Desconsiderar instrumento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small mb-2">Instrumento: <strong id="descTag" class="font-monospace"></strong>. Ele deixa de contar no andamento desta solicitação.</p>
+                <label class="form-label fw-bold small" for="descJustificativa">Justificativa <span class="text-danger">*</span></label>
+                <textarea name="justificativa" id="descJustificativa" class="form-control" rows="3" required placeholder="Ex.: instrumento inutilizado, fora de uso, enviado em outra solicitação..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-dark btn-sm">Desconsiderar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<form method="post" id="formReativar" class="d-none">
+    {% csrf_token %}
+    <input type="hidden" name="desconsiderado" value="0">
+</form>
+
+<div class="modal fade" id="modalOcorrenciaAtendimento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{% url 'metrologia:registrar_ocorrencia' %}" class="modal-content">
+            {% csrf_token %}
+            <input type="hidden" name="instrumento_id" id="ocAtInstrumentoId">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Abrir ocorrência</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning py-2 small">Instrumento: <strong id="ocAtTag" class="font-monospace"></strong></div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Tipo da ocorrência</label>
+                    <select name="tipo" class="form-select form-select-sm" required>
+                        <option value="">Selecione...</option>
+                        <option value="CALIBRACAO">Calibração</option>
+                        <option value="VERIFICACAO">Verificação</option>
+                        <option value="INSPECAO">Inspeção</option>
+                        <option value="AJUSTE">Ajuste</option>
+                        <option value="MANUTENCAO">Manutenção</option>
+                        <option value="AVARIA">Avaria/Dano</option>
+                        <option value="EXTRAVIO">Extravio/Perda</option>
+                        <option value="OUTRO">Outro</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Descrição detalhada</label>
+                    <textarea name="descricao" id="ocAtDescricao" class="form-control form-control-sm" rows="3" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Responsável pela tratativa <span class="text-muted fw-normal">(opcional)</span></label>
+                    <select name="usuario_responsavel" class="form-select form-select-sm">
+                        <option value="">-- Selecione --</option>
+                        {% for u in usuarios_responsaveis %}
+                        <option value="{{ u.id }}">{% if u.get_full_name %}{{ u.get_full_name }}{% else %}{{ u.username }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label fw-bold small">Data da ocorrência</label>
+                    <input type="date" name="data_ocorrencia" class="form-control form-control-sm" required value="{{ hoje|date:'Y-m-d' }}">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-warning btn-sm">Salvar ocorrência</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function _abrirModal(id) {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById(id)).show();
+}
+
+function alternarDesconsiderar(checkbox, atendimentoId, tag) {
+    const url = "{% url 'metrologia:atendimento_desconsiderar' 0 %}".replace('/0/', '/' + atendimentoId + '/');
+    if (checkbox.checked) {
+        checkbox.checked = false;               // só vale depois de salvar com justificativa
+        document.getElementById('formDesconsiderar').action = url;
+        document.getElementById('descTag').textContent = tag;
+        document.getElementById('descJustificativa').value = '';
+        _abrirModal('modalDesconsiderar');
+    } else if (confirm('Voltar a considerar o instrumento ' + tag + '?')) {
+        const f = document.getElementById('formReativar');
+        f.action = url;
+        f.submit();
+    } else {
+        checkbox.checked = true;
+    }
+}
+
+function abrirOcorrenciaAtendimento(instrumentoId, tag, atendimentoId) {
+    document.getElementById('ocAtInstrumentoId').value = instrumentoId;
+    document.getElementById('ocAtTag').textContent = tag;
+    document.getElementById('ocAtDescricao').value = 'Solicitação {{ solicitacao.numero|escapejs }} · Atendimento #' + atendimentoId + ': ';
+    _abrirModal('modalOcorrenciaAtendimento');
+}
+
+function salvarGrupoAtendimento(tipo, cotacaoId, btn) {
+    const box = document.querySelector('[data-grupo="' + tipo + '-' + cotacaoId + '"]');
+    const ids = Array.from(box.querySelectorAll('tr[data-atendimento-id][data-ativo="1"]')).map(tr => tr.dataset.atendimentoId);
+    if (!ids.length) { alert('Todos os instrumentos deste agrupamento estão desconsiderados.'); return; }
+
+    const grupo = {};
+    box.querySelectorAll('[data-grupo-campo]').forEach(el => { grupo[el.dataset.grupoCampo] = el.value; });
+
+    if (tipo === 'NO_LABORATORIO' && grupo.data_envio && grupo.data_retorno_previsto && grupo.data_retorno_previsto < grupo.data_envio) {
+        alert('A previsão de retorno não pode ser anterior à data de envio.');
+        return;
+    }
+    if (!confirm('Salvar os dados deste agrupamento para ' + ids.length + ' instrumento(s)?')) return;
+
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Salvando...';
+    fetch('{% url "metrologia:atendimento_atualizar_dados" %}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}'},
+        body: JSON.stringify({tipo: tipo, cotacao_id: cotacaoId, atendimentos: ids, grupo: grupo})
+    })
+    .then(r => r.json().then(j => ({ok: r.ok, j: j})))
+    .then(({ok, j}) => {
+        if (ok && j.success) { location.reload(); }
+        else { alert('Erro ao salvar: ' + (j.error || 'erro desconhecido')); btn.disabled = false; btn.innerHTML = original; }
+    })
+    .catch(e => { alert('Erro ao salvar: ' + e.message); btn.disabled = false; btn.innerHTML = original; });
+}
+</script>
