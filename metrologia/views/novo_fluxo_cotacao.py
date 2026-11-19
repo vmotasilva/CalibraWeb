@@ -919,38 +919,40 @@ def cotacao_fornecedor_update(request, pk):
             
             cotacao_obj.save()
             
-            # Processar itens se houver dados na tabela
-            itens_solicitacao = cotacao.solicitacao.itens.all()
+            # Processar os itens só se a tabela de instrumentos foi enviada (senão o 'Pode atender?'
+            # de todos os itens seria zerado ao salvar apenas os dados gerais)
+            if request.POST.get('itens_enviados'):
+                itens_solicitacao = cotacao.solicitacao.itens.all()
             
-            for item_sol in itens_solicitacao:
-                # Pegar ou criar o item de cotação
-                item_cotacao, created = ItemCotacao.objects.get_or_create(
-                    cotacao_fornecedor=cotacao,
-                    instrumento=item_sol.instrumento,
-                    defaults={
-                        'item_solicitacao': item_sol,
-                        'valor_unitario': Decimal('0.00'),
-                    }
-                )
+                for item_sol in itens_solicitacao:
+                    # Pegar ou criar o item de cotação
+                    item_cotacao, created = ItemCotacao.objects.get_or_create(
+                        cotacao_fornecedor=cotacao,
+                        instrumento=item_sol.instrumento,
+                        defaults={
+                            'item_solicitacao': item_sol,
+                            'valor_unitario': Decimal('0.00'),
+                        }
+                    )
                 
-                # Atualizar se o fornecedor pode atender
-                pode_atender = f'item_{item_sol.id}_pode_atender' in request.POST
-                item_cotacao.pode_atender = pode_atender
+                    # Atualizar se o fornecedor pode atender
+                    pode_atender = f'item_{item_sol.id}_pode_atender' in request.POST
+                    item_cotacao.pode_atender = pode_atender
                 
-                # Atualizar valor
-                valor = request.POST.get(f'item_{item_sol.id}_valor', '')
-                if valor:
-                    try:
-                        item_cotacao.valor_unitario = Decimal(valor)
-                    except:
-                        item_cotacao.valor_unitario = Decimal('0.00')
+                    # Atualizar valor
+                    valor = request.POST.get(f'item_{item_sol.id}_valor', '')
+                    if valor:
+                        try:
+                            item_cotacao.valor_unitario = Decimal(valor)
+                        except:
+                            item_cotacao.valor_unitario = Decimal('0.00')
                 
-                # Atualizar tipo de atendimento
-                local = request.POST.get(f'item_{item_sol.id}_local', '')
-                if local:
-                    item_cotacao.local_atendimento = local
+                    # Atualizar tipo de atendimento
+                    local = request.POST.get(f'item_{item_sol.id}_local', '')
+                    if local:
+                        item_cotacao.local_atendimento = local
                 
-                item_cotacao.save()
+                    item_cotacao.save()
             
             if request.POST.get('custos_enviados'):
                 _salvar_custos_adicionais(request, cotacao)

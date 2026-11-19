@@ -259,3 +259,47 @@ class ModalENovaVersaoRetroativaTests(BaseVersoes):
         cot = self.cotacao(self.f1, [1000, 1000, 1000])
         self.ativacao(cot, "nova_versao")                                         # ativa: não cria
         self.assertFalse(CotacaoFornecedor.objects.filter(versao_anterior=cot).exists())
+
+
+class EdicaoDaNovaVersaoTests(BaseVersoes):
+    def _nova_versao(self):
+        antiga = self.cotacao(self.f1, [1125, 1125, 1125], data_solicitacao="2026-10-05",
+                              data_retorno_fornecedor="2026-10-05")
+        self.ativacao(antiga, "inativar", motivo="reajuste", nova_versao="1")
+        return antiga, CotacaoFornecedor.objects.get(versao_anterior=antiga)
+
+    def test_tela_de_edicao_da_nova_versao_mostra_os_instrumentos_copiados(self):
+        _antiga, nova = self._nova_versao()
+        self.assertIsNone(nova.data_retorno_fornecedor)             # ainda sem retorno do fornecedor
+        html = self.client.get(reverse("metrologia:cotacao_fornecedor_update", args=[nova.id])).content.decode()
+        self.assertIn("Instrumentos da Solicitação", html)
+        for tag in ("LE-01", "LE-02", "LE-03"):
+            self.assertIn(f"<strong>{tag}</strong>", html)
+        self.assertEqual(html.count('value="1125.00"'), 3)           # valores copiados, com ponto decimal
+        self.assertIn('name="itens_enviados"', html)
+
+    def test_datas_da_cotacao_vao_em_formato_iso(self):
+        _antiga, nova = self._nova_versao()
+        html = self.client.get(reverse("metrologia:cotacao_fornecedor_update", args=[nova.id])).content.decode()
+        import re
+        campo = re.search(r'<input[^>]*name="data_solicitacao"[^>]*>', html).group(0)
+        self.assertIn(f'value="{nova.data_solicitacao.isoformat()}"', campo)   # AAAA-MM-DD, aceito pelo type=date
+
+    def test_atualizar_valores_da_nova_versao(self):
+        antiga, nova = self._nova_versao()
+        dados = {"fornecedor": self.f1.id, "itens_enviados": "1"}
+        for item in nova.itens.all():
+            dados[f"item_{item.item_solicitacao_id}_pode_atender"] = "on"
+            dados[f"item_{item.item_solicitacao_id}_valor"] = "1400.00"
+        r = self.client.post(reverse("metrologia:cotacao_fornecedor_update", args=[nova.id]), dados)
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(set(nova.itens.values_list("valor_unitario", flat=True)), {Decimal("1400.00")})
+        self.assertEqual(antiga.get_valor_servicos(), Decimal("3375.00"))   # a obsoleta não muda
+        html = self.client.get(reverse("metrologia:cotacao_fornecedor_detail", args=[nova.id])).content.decode()
+        self.assertIn("Comparação com a versão anterior", html)
+
+    def test_salvar_dados_gerais_sem_a_tabela_nao_zera_pode_atender(self):
+        _antiga, nova = self._nova_versao()
+        self.assertTrue(all(nova.itens.values_list("pode_atender", flat=True)))
+        self.client.post(reverse("metrologia:cotacao_fornecedor_update", args=[nova.id]), {"fornecedor": self.f1.id})
+        self.assertTrue(all(nova.itens.values_list("pode_atender", flat=True)))
