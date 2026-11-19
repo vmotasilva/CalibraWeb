@@ -104,9 +104,10 @@
                     </div>
                 </div>
 
-                <!-- Tabela de Instrumentos (quando em modo edição e após retorno) -->
-                {% if mode == 'edit' and form.data_retorno_fornecedor.value %}
+                <!-- Tabela de Instrumentos (sempre na edição: uma nova versão já nasce com os itens copiados) -->
+                {% if mode == 'edit' %}
                     <hr class="my-4">
+                    <input type="hidden" name="itens_enviados" value="1">
                     
                     <h6 class="mb-3"><i class="bi bi-table"></i> Instrumentos da Solicitação</h6>
                     <div class="table-responsive">
@@ -149,7 +150,7 @@
                                                        placeholder="0,00"
                                                        step="0.01"
                                                        min="0"
-                                                       value="{% if item_cot.valor_unitario %}{{ item_cot.valor_unitario }}{% endif %}">
+                                                       value="{% if item_cot.valor_unitario %}{{ item_cot.valor_unitario|stringformat:'.2f' }}{% endif %}">
                                             </div>
                                         </td>
                                         <td>

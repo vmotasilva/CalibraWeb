@@ -305,11 +305,12 @@ class CotacaoFornecedorForm(forms.ModelForm):
             'fornecedor': forms.Select(attrs={
                 'class': 'form-select',
             }),
-            'data_solicitacao': forms.DateInput(attrs={
+            # format ISO: o <input type="date"> só aceita AAAA-MM-DD (o formato local deixava o campo vazio)
+            'data_solicitacao': forms.DateInput(format='%Y-%m-%d', attrs={
                 'class': 'form-control',
                 'type': 'date',
             }),
-            'data_retorno_fornecedor': forms.DateInput(attrs={
+            'data_retorno_fornecedor': forms.DateInput(format='%Y-%m-%d', attrs={
                 'class': 'form-control',
                 'type': 'date',
             }),
