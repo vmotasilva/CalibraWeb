@@ -2,11 +2,10 @@
 {% load fornecedor_extras %}
 {% load nav_access %}
 
+{% block content %}
 {% can_nav_view user 'fornecedores:pergunta_create' 'fornecedores' as can_pergunta_create %}
 {% can_nav_view user 'fornecedores:pergunta_edit' 'fornecedores' as can_pergunta_edit %}
 {% can_nav_view user 'fornecedores:pergunta_delete' 'fornecedores' as can_pergunta_delete %}
-
-{% block content %}
 <div class="container mt-4">
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h2 class="mb-0">Perguntas de Avaliação</h2>
