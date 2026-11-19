@@ -36,7 +36,7 @@ jobs:
       SUPABASE_PORT: "5432"
       SUPABASE_USER: postgres.wxrklurleqqnryobanud
       SUPABASE_DB: postgres
-      DUMP_FILE: ${{ runner.temp }}/calibraweb_neon.dump
+      DUMP_FILE: /tmp/calibraweb_neon.dump
     steps:
       - uses: actions/checkout@v4
 
