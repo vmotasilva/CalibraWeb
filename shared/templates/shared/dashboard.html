@@ -673,6 +673,7 @@
             <div class="card mb-2.5 shadow-sm border-0 border-start border-4 {% if item.status_situacao == 'VENCIDO' %}border-danger{% elif item.status_situacao == 'AVENCER_30' %}border-warning{% else %}border-success{% endif %} instrument-row instrument-card-item"
                 data-row-index="{{ forloop.counter0 }}"
                 data-tratativa="{{ item.tratativa|lower }}"
+                data-local="{{ item.local_calibracao|lower }}"
                 data-is-internal="{% if item.is_internal %}true{% else %}false{% endif %}"
                 data-tag="{{ item.tag|lower }}"
                 data-codigo="{{ item.codigo|lower }}"
@@ -788,6 +789,7 @@
                     <tr class="instrument-row instrument-table-item" 
                         data-row-index="{{ forloop.counter0 }}" 
                         data-tratativa="{{ item.tratativa|lower }}"
+                        data-local="{{ item.local_calibracao|lower }}"
                         data-is-internal="{% if item.is_internal %}true{% else %}false{% endif %}"
                         data-tag="{{ item.tag|lower }}"
                         data-codigo="{{ item.codigo|lower }}"
@@ -1038,7 +1040,10 @@
                                 <i class="bi bi-calendar-event"></i><span class="filtro-nav-nome">Situação</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
                             </button>
                             <button type="button" class="filtro-nav-item" data-pane="fptrat">
-                                <i class="bi bi-buildings"></i><span class="filtro-nav-nome">Tratativa</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
+                                <i class="bi bi-buildings"></i><span class="filtro-nav-nome">Responsável pela calibração</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
+                            </button>
+                            <button type="button" class="filtro-nav-item" data-pane="fploc">
+                                <i class="bi bi-geo-alt"></i><span class="filtro-nav-nome">Local da calibração</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
                             </button>
                             <button type="button" class="filtro-nav-item" data-pane="fp1">
                                 <i class="bi bi-signpost-split"></i><span class="filtro-nav-nome">Acompanhamento</span><span class="filtro-count badge rounded-pill bg-primary d-none">0</span>
@@ -1107,19 +1112,42 @@
                         </div>
                         <div data-pane="fptrat" class="filtro-pane filter-group open mb-3">
                             <div class="filter-header" onclick="toggleFilterGroup(this)">
-                                <label class="form-label small fw-bold text-muted mb-0">TRATATIVA DA CALIBRAÇÃO</label>
+                                <label class="form-label small fw-bold text-muted mb-0">RESPONSÁVEL PELA CALIBRAÇÃO</label>
                                 <i class="bi bi-chevron-down"></i>
                             </div>
-                            <div class="filtro-pane-head"><h6><i class="bi bi-buildings me-2 text-primary"></i>Tratativa da calibração</h6><div class="filtro-pane-tools d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="limparSecaoFiltro(this)">Limpar seção</button></div></div>
+                            <div class="filtro-pane-head"><h6><i class="bi bi-buildings me-2 text-primary"></i>Responsável pela calibração</h6><div class="filtro-pane-tools d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="limparSecaoFiltro(this)">Limpar seção</button></div></div>
                             <div class="filter-content">
                                 <div class="d-flex flex-column gap-1">
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="interna" data-cat="tratativa">
-                                        <label class="form-check-label small fw-bold">Interna <span class="text-muted fw-normal">(<span data-trat-count="interna"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Calibrada pelo laboratório da empresa (equipe própria)</div></label>
+                                        <label class="form-check-label small fw-bold">Equipe interna <span class="text-muted fw-normal">(<span data-trat-count="interna"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Calibrado internamente pela equipe local</div></label>
                                     </div>
                                     <div class="form-check">
                                         <input class="form-check-input filter-avancado-cb" type="checkbox" value="externa" data-cat="tratativa">
-                                        <label class="form-check-label small fw-bold">Externa <span class="text-muted fw-normal">(<span data-trat-count="externa"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Calibrada por fornecedor (laboratório terceirizado)</div></label>
+                                        <label class="form-check-label small fw-bold">Fornecedor externo <span class="text-muted fw-normal">(<span data-trat-count="externa"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Calibrado pelo fornecedor (laboratório terceirizado)</div></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div data-pane="fploc" class="filtro-pane filter-group open mb-3">
+                            <div class="filter-header" onclick="toggleFilterGroup(this)">
+                                <label class="form-label small fw-bold text-muted mb-0">LOCAL DA CALIBRAÇÃO</label>
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                            <div class="filtro-pane-head"><h6><i class="bi bi-geo-alt me-2 text-primary"></i>Local da calibração</h6><div class="filtro-pane-tools d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-secondary py-0" onclick="limparSecaoFiltro(this)">Limpar seção</button></div></div>
+                            <div class="filter-content">
+                                <div class="d-flex flex-column gap-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="na_empresa" data-cat="local">
+                                        <label class="form-check-label small fw-bold">Somente na empresa <span class="text-muted fw-normal">(<span data-local-count="na_empresa"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">O instrumento não sai da empresa para ser calibrado</div></label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="pode_sair" data-cat="local">
+                                        <label class="form-check-label small fw-bold">Pode ser enviado ao fornecedor <span class="text-muted fw-normal">(<span data-local-count="pode_sair"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Pode sair para calibração em fornecedor externo</div></label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input filter-avancado-cb" type="checkbox" value="nao_definido" data-cat="local">
+                                        <label class="form-check-label small fw-bold">Não definido <span class="text-muted fw-normal">(<span data-local-count="nao_definido"></span>)</span><div class="text-muted fw-normal" style="font-size:.75rem">Local ainda não informado no instrumento/categoria</div></label>
                                     </div>
                                 </div>
                             </div>
@@ -1355,6 +1383,10 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('#filtrosModal [data-trat-count]').forEach(function (el) {
         var valor = el.getAttribute('data-trat-count');
         el.textContent = document.querySelectorAll('tr[data-tratativa="' + valor + '"]').length;
+    });
+    document.querySelectorAll('#filtrosModal [data-local-count]').forEach(function (el) {
+        var valor = el.getAttribute('data-local-count');
+        el.textContent = document.querySelectorAll('tr[data-local="' + valor + '"]').length;
     });
 });
 </script>
@@ -1901,6 +1933,7 @@ document.addEventListener('DOMContentLoaded', function () {
             acompanhamento: [],
             cotacao_aberta: [],
             tratativa: [],
+            local: [],
         };
 
         document.querySelectorAll('.filter-avancado-cb:checked').forEach(cb => {
@@ -1951,6 +1984,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const acompanhamento = row.getAttribute('data-acompanhamento') || 'SEM_ACOMPANHAMENTO';
             const cotacaoAberta = row.getAttribute('data-cotacao-aberta') || 'SEM_COTACAO';
             const tratativaRow = (row.getAttribute('data-tratativa') || 'interna').toLowerCase();
+            const localRow = (row.getAttribute('data-local') || 'nao_definido').toLowerCase();
             const situacao = row.getAttribute('data-situacao') || '';
 
             // 1. Checar Aba
@@ -1989,6 +2023,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (activeFilters.ocorrencia.length && !activeFilters.ocorrencia.includes(ocorrencia)) return;
             if (activeFilters.acompanhamento.length && !activeFilters.acompanhamento.includes(acompanhamento)) return;
             if (activeFilters.tratativa.length && !activeFilters.tratativa.includes(tratativaRow)) return;
+            if (activeFilters.local.length && !activeFilters.local.includes(localRow)) return;
             if (activeFilters.cotacao_aberta.length && !activeFilters.cotacao_aberta.includes(cotacaoAberta)) return;
 
             filteredIndexes.push(idx);

@@ -74,7 +74,7 @@
                         <!-- TRATATIVA DE CALIBRAÇÃO -->
                         <div class="mb-3">
                             <label for="id_tratativa_calibracao" class="form-label fw-bold">
-                                Tratativa de Calibração <span class="text-danger">*</span>
+                                Responsável pela calibração <span class="text-danger">*</span>
                             </label>
                             {{ form.tratativa_calibracao|add_class:"form-select form-select-lg" }}
                             {% if form.tratativa_calibracao.errors %}
@@ -83,7 +83,16 @@
                             </div>
                             {% endif %}
                             <small class="form-text text-muted">
-                                Define se os instrumentos desta categoria são calibrados internamente ou externamente
+                                Define se os instrumentos desta categoria são calibrados pela equipe interna ou por fornecedor
+                            </small>
+                        </div>
+
+                        <!-- LOCAL DA CALIBRAÇÃO -->
+                        <div class="mb-3">
+                            <label for="id_local_calibracao" class="form-label fw-bold">Local da calibração</label>
+                            {{ form.local_calibracao|add_class:"form-select form-select-lg" }}
+                            <small class="form-text text-muted">
+                                Onde a calibração deve ocorrer: somente na empresa ou pode ser enviado a fornecedor externo
                             </small>
                         </div>
 
@@ -195,12 +204,12 @@
                         <form method="post" action="{% url 'metrologia:categoria_bulk_update_tratativa' categoria.id %}" class="w-100">
                             {% csrf_token %}
                             <label class="form-label small fw-bold mb-2">
-                                <i class="bi bi-arrow-repeat"></i> Atualizar Tratativa
+                                <i class="bi bi-arrow-repeat"></i> Atualizar Responsável
                             </label>
                             <div class="input-group input-group-sm mb-2">
                                 <select name="tratativa_calibracao" class="form-select form-select-sm">
-                                    <option value="INTERNA" {% if categoria.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>🔧 Interna</option>
-                                    <option value="EXTERNA" {% if categoria.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>🏢 Externa</option>
+                                    <option value="INTERNA" {% if categoria.tratativa_calibracao == 'INTERNA' %}selected{% endif %}>🔧 Equipe interna</option>
+                                    <option value="EXTERNA" {% if categoria.tratativa_calibracao == 'EXTERNA' %}selected{% endif %}>🏢 Fornecedor externo</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary" title="Atualizar tratativa">
                                     <i class="bi bi-check-lg"></i>

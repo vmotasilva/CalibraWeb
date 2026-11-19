@@ -171,17 +171,26 @@
                     
                     <hr>
                     
-                    <div class="label-detail">Tratativa de Calibração</div>
+                    <div class="label-detail">Responsável pela calibração</div>
                     <div class="value-detail">
                         {% if instrumento.tratativa_calibracao == 'INTERNA' %}
                             <span class="badge bg-info">
-                                <i class="bi bi-building"></i> Interna
+                                <i class="bi bi-building"></i> Equipe interna
                             </span>
                         {% else %}
                             <span class="badge bg-success">
-                                <i class="bi bi-briefcase"></i> Externa
+                                <i class="bi bi-briefcase"></i> Fornecedor
                             </span>
                         {% endif %}
+                    </div>
+
+                    <div class="label-detail mt-2">Local da calibração</div>
+                    <div class="value-detail">
+                        {% with loc=instrumento.local_calibracao_efetivo %}
+                            {% if loc == 'NA_EMPRESA' %}<span class="badge bg-secondary"><i class="bi bi-house-lock"></i> Somente na empresa</span>
+                            {% elif loc == 'PODE_SAIR' %}<span class="badge bg-warning text-dark"><i class="bi bi-truck"></i> Pode ser enviado</span>
+                            {% else %}<span class="text-muted">Não definido</span>{% endif %}
+                        {% endwith %}
                     </div>
                 </div>
             </div>

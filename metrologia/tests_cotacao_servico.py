@@ -434,3 +434,42 @@ class FiltroTratativaTests(BaseCotacaoServico):
         self.assertIn('value="interna" data-cat="tratativa"', shared)
         self.assertIn('data-tratativa="externa"', shared)
         self.assertIn("activeFilters.tratativa", shared)
+
+
+class FiltroLocalCalibracaoTests(BaseCotacaoServico):
+    """Segundo ponto de vista: onde a calibração deve ocorrer (na empresa x pode sair)."""
+
+    def test_propriedade_efetiva_herda_da_categoria(self):
+        from metrologia.models import CategoriaInstrumento
+        cat = CategoriaInstrumento.objects.create(nome="CatLocal", local_calibracao="PODE_SAIR")
+        Instrumento.objects.filter(pk=self.a.pk).update(categoria=cat, local_calibracao="")
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.local_calibracao_efetivo, "PODE_SAIR")
+        Instrumento.objects.filter(pk=self.a.pk).update(local_calibracao="NA_EMPRESA")
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.local_calibracao_efetivo, "NA_EMPRESA")
+        Instrumento.objects.filter(pk=self.a.pk).update(categoria=None, local_calibracao="")
+        self.a.refresh_from_db()
+        self.assertEqual(self.a.local_calibracao_efetivo, "")
+
+    def test_filtro_e_atributos_nas_duas_telas(self):
+        Instrumento.objects.filter(pk=self.a.pk).update(local_calibracao="NA_EMPRESA")
+        Instrumento.objects.filter(pk=self.b.pk).update(local_calibracao="PODE_SAIR")
+        metro = self.client.get(reverse("modulo_metrologia")).content.decode()
+        self.assertIn('data-pane="fploc"', metro)
+        for v in ("NA_EMPRESA", "PODE_SAIR", "NAO_DEFINIDO"):
+            self.assertIn(f'value="{v}" data-category="local"', metro)
+        self.assertIn('data-local="NA_EMPRESA"', metro)
+        self.assertIn('data-local="PODE_SAIR"', metro)
+        self.assertIn("filtrosAtivos.local", metro)
+        shared = self.client.get("/dashboard/").content.decode()
+        for v in ("na_empresa", "pode_sair", "nao_definido"):
+            self.assertIn(f'value="{v}" data-cat="local"', shared)
+        self.assertIn('data-local="na_empresa"', shared)
+        self.assertIn('data-local="pode_sair"', shared)
+        self.assertIn("activeFilters.local", shared)
+
+    def test_edicao_pelo_modal_salva_local(self):
+        resp = self.client.get(reverse("editar_instrumento_custom", args=[self.a.pk]))
+        self.assertContains(resp, 'name="local_calibracao"')
+        self.assertContains(resp, "Responsável pela calibração")

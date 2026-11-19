@@ -1899,6 +1899,7 @@ def get_metrologia_dashboard_data():
         # Tratativa e Ação
         tratativa = (inst.tratativa_calibracao or (inst.categoria.tratativa_calibracao if inst.categoria else '') or 'INTERNA').upper()
         is_internal = tratativa != 'EXTERNA'
+        local_calibracao = (inst.local_calibracao_efetivo or 'NAO_DEFINIDO').upper()
         
         acao = (inst.acao or (inst.categoria.acao if inst.categoria else '') or 'CALIBRACAO').upper()
         
@@ -1983,6 +1984,7 @@ def get_metrologia_dashboard_data():
             'categoria_nome': inst.categoria.nome if inst.categoria else '-',
             'categoria_id': inst.categoria_id,
             'tratativa': tratativa,
+            'local_calibracao': local_calibracao,
             'is_internal': is_internal,
             'activity_type': acao,
             'frequencia': getattr(inst, 'frequencia_meses', 12) or 12,
