@@ -70,21 +70,30 @@
         <div class="oc-card mb-3 p-3 {% if oc.envolve_usuario and oc.status == 'aberta' %}mine{% endif %} {% if oc.vencida %}vencida{% endif %} {% if oc.status == 'encerrada' %}fechada{% endif %}"
              role="button" tabindex="0" data-oc-abrir="{{ oc.uid }}" title="Clique para abrir">
             <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
-                <span class="badge text-bg-dark"><i class="bi {{ oc.icon }} me-1"></i>{{ oc.origem_nome }}</span>
+                {% if not origem %}<span class="badge text-bg-dark"><i class="bi {{ oc.icon }} me-1"></i>{{ oc.origem_nome }}</span>{% endif %}
                 {% if oc.envolve_usuario %}<span class="badge text-bg-warning"><i class="bi bi-person-fill me-1"></i>{{ oc.papel }}</span>{% endif %}
                 {% if oc.status == 'encerrada' %}<span class="badge text-bg-success">Encerrada</span>{% else %}<span class="badge text-bg-primary">Em aberto</span>{% endif %}
-                {% if oc.vencida %}<span class="badge text-bg-danger"><i class="bi bi-alarm me-1"></i>Em atraso</span>{% endif %}
+                {% if oc.vencida %}<span class="badge text-bg-danger"><i class="bi bi-alarm me-1"></i>{% if oc.dias_atraso %}Atrasada há {{ oc.dias_atraso }} dia{{ oc.dias_atraso|pluralize }}{% else %}Em atraso{% endif %}</span>{% endif %}
                 <span class="text-muted small">{{ oc.data|date:"d/m/Y" }}{% if oc.prazo %} · prazo {{ oc.prazo|date:"d/m/Y" }}{% endif %}</span>
             </div>
-            <div class="fw-bold">{{ oc.titulo }}</div>
+            {% if oc.titulo_contexto %}<div class="small text-muted text-uppercase" style="letter-spacing:.03em;">{{ oc.titulo_contexto }}</div>{% endif %}
+            <div class="fw-bold">{{ oc.titulo_curto }}</div>
             {% if oc.descricao %}<div class="oc-desc mt-1">{{ oc.descricao|truncatechars:220 }}</div>{% endif %}
             <div class="d-flex flex-wrap justify-content-between gap-2 small text-muted mt-2">
                 <span>
                     {% if oc.responsaveis %}<i class="bi bi-people me-1"></i>{{ oc.responsaveis|join:", "|truncatechars:140 }}{% else %}<i class="bi bi-person-dash me-1"></i>Sem responsável{% endif %}
                 </span>
-                <span>
-                    <i class="bi bi-list-check me-1"></i>{{ oc.plano|length }} ação(ões){% if oc.acoes_abertas %} · <strong class="text-primary">{{ oc.acoes_abertas }} em aberto</strong>{% endif %}
-                    <i class="bi bi-chevron-right ms-2"></i>
+                <span class="d-inline-flex align-items-center gap-2">
+                    {% if oc.acoes_validas %}
+                        <i class="bi bi-list-check"></i>
+                        <span class="progress" style="width:70px;height:6px;" role="progressbar" aria-label="Ações concluídas" aria-valuenow="{{ oc.progresso_pct }}" aria-valuemin="0" aria-valuemax="100">
+                            <span class="progress-bar {% if oc.acoes_concluidas == oc.acoes_validas %}bg-success{% endif %}" style="width:{{ oc.progresso_pct }}%"></span>
+                        </span>
+                        <span>{{ oc.acoes_concluidas }}/{{ oc.acoes_validas }} ações concluídas</span>
+                    {% else %}
+                        <i class="bi bi-list-check"></i><span>Sem ações no plano</span>
+                    {% endif %}
+                    <i class="bi bi-chevron-right"></i>
                 </span>
             </div>
         </div>
@@ -95,7 +104,7 @@
             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                 {% if oc.envolve_usuario %}<span class="badge text-bg-warning"><i class="bi bi-person-fill me-1"></i>{{ oc.papel }}</span>{% endif %}
                 {% if oc.status == 'encerrada' %}<span class="badge text-bg-success">Encerrada</span>{% else %}<span class="badge text-bg-primary">Em aberto</span>{% endif %}
-                {% if oc.vencida %}<span class="badge text-bg-danger"><i class="bi bi-alarm me-1"></i>Em atraso</span>{% endif %}
+                {% if oc.vencida %}<span class="badge text-bg-danger"><i class="bi bi-alarm me-1"></i>{% if oc.dias_atraso %}Atrasada há {{ oc.dias_atraso }} dia{{ oc.dias_atraso|pluralize }}{% else %}Em atraso{% endif %}</span>{% endif %}
                 <span class="text-muted small">Aberta em {{ oc.data|date:"d/m/Y" }}{% if oc.prazo %} · prazo {{ oc.prazo|date:"d/m/Y" }}{% endif %}</span>
             </div>
 
