@@ -11,6 +11,12 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e us
 ### 🔄 Em Desenvolvimento
 Alterações que ainda não foram lançadas em uma versão oficial.
 
+### ✨ Adicionado (Módulo de Pessoas)
+- **Estrutura de Equipes e Turnos** (menu Pessoas › Equipe): estrutura de trabalho em Setor › Bloco › Posto de trabalho, com titular e situação por turno e associação das pessoas aos postos
+- Posto sem pessoa associada é marcado como **VAGO** (necessário contratar) ou **RESERVA** (equipamento reserva instalado); aba "Quadro por turno" com resumo de vagas e reservas
+- Movimentação em lote de pessoas entre postos, com ajuste opcional de turno; efetivo planejado x atual por turno
+- Novas permissões de navegação: visualizar e editar a estrutura
+
 ### 🐛 Corrigido (Módulo de Fornecedores)
 - Botões protegidos por permissão (Editar, Novo Documento, Remover, Matriz, Responder...) nunca apareciam: as tags `can_nav_view` estavam fora do `{% block %}` dos templates
 - Erro 500 ao enviar formulário de monitoramento inválido e ao editar/remover registros de seleção/reavaliação pela tela de monitoramento

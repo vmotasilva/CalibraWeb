@@ -64,6 +64,15 @@ from rh.views_ponto import (
     api_excluir_demanda,
 )
 
+from rh.views.estrutura_equipes import (
+    estrutura_equipes_view,
+    api_estrutura_equipes_dados,
+    api_estrutura_equipes_membros,
+    api_estrutura_equipes_salvar,
+    api_estrutura_equipes_excluir,
+    api_estrutura_equipes_membros_atualizar,
+)
+
 from shared.views import rh_hub_view
 
 app_name = 'rh'
@@ -102,6 +111,14 @@ urlpatterns = [
     path('api/lideres/', api_lideres, name='api_lideres'),
     path('api/supervisores/', api_supervisores, name='api_supervisores'),
     
+    # Estrutura de Equipes e Turnos
+    path('estrutura-equipes/', estrutura_equipes_view, name='estrutura_equipes'),
+    path('api/estrutura-equipes/dados/', api_estrutura_equipes_dados, name='api_estrutura_equipes_dados'),
+    path('api/estrutura-equipes/membros/', api_estrutura_equipes_membros, name='api_estrutura_equipes_membros'),
+    path('api/estrutura-equipes/salvar/', api_estrutura_equipes_salvar, name='api_estrutura_equipes_salvar'),
+    path('api/estrutura-equipes/excluir/', api_estrutura_equipes_excluir, name='api_estrutura_equipes_excluir'),
+    path('api/estrutura-equipes/membros/atualizar/', api_estrutura_equipes_membros_atualizar, name='api_estrutura_equipes_membros_atualizar'),
+
     # Atualização em massa
     path('atualizar-liderancas/', atualizar_liderancas_em_massa, name='atualizar_liderancas_em_massa'),
     

@@ -1,0 +1,622 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Estrutura de Equipes e Turnos{% endblock %}
+
+{% block content %}
+<style>
+  .ee-tree, .ee-tree ul { list-style: none; margin: 0; padding-left: 1.1rem; }
+  .ee-tree { padding-left: 0; }
+  .ee-node { display: flex; align-items: center; gap: .35rem; padding: .3rem .5rem; border-radius: .4rem; cursor: pointer; }
+  .ee-node:hover { background: var(--bs-tertiary-bg, #f1f3f5); }
+  .ee-node.active { background: rgba(13,110,253,.12); font-weight: 600; }
+  .ee-node.inativo .ee-nome { text-decoration: line-through; opacity: .6; }
+  .ee-toggle { width: 1.2rem; text-align: center; color: #6c757d; flex: 0 0 auto; }
+  .ee-nome { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ee-turno-pill { cursor: pointer; }
+  .ee-members { max-height: 55vh; overflow: auto; }
+</style>
+
+<div class="container-fluid py-4" id="ee-app" data-pode-editar="{{ pode_editar|yesno:'1,0' }}">
+  {% csrf_token %}
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 mb-0"><i class="bi bi-diagram-3-fill text-primary me-2"></i>Estrutura de Equipes e Turnos</h1>
+      <p class="text-muted small mt-1 mb-0">Monte a estrutura de trabalho (Setor › Bloco › Posto de trabalho), defina o titular e a situação de cada posto por turno e associe as pessoas que atuam neles.</p>
+    </div>
+    <div class="d-flex gap-2">
+      {% if pode_editar %}
+      <button type="button" class="btn btn-primary" id="ee-btn-novo-raiz"><i class="bi bi-plus-circle me-1"></i>Novo bloco</button>
+      {% endif %}
+      <a href="{% url 'modulo_rh' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+    </div>
+  </div>
+
+  <div id="ee-alert" class="alert d-none" role="alert"></div>
+
+  <div class="d-flex flex-wrap gap-2 mb-3 align-items-center" id="ee-turnos-filtro" aria-label="Filtro por turno">
+    <span class="text-muted small me-1">Turno:</span>
+  </div>
+
+  <ul class="nav nav-pills mb-3" id="ee-abas">
+    <li class="nav-item"><button type="button" class="nav-link active" data-aba="estrutura"><i class="bi bi-diagram-3 me-1"></i>Estrutura</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-aba="quadro"><i class="bi bi-grid-3x3-gap me-1"></i>Quadro por turno</button></li>
+  </ul>
+
+  <div class="card border-0 shadow-sm d-none" id="ee-quadro">
+    <div class="card-body p-0"><div class="table-responsive"><table class="table table-bordered align-middle mb-0" id="ee-quadro-tabela"></table></div></div>
+    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Cada linha é um bloco/posto; cada coluna, um turno. Posto sem pessoa associada fica como <b>VAGO</b> (contratar) ou <b>RESERVA</b> (equipamento reserva instalado).</div>
+  </div>
+
+  <div class="row g-3" id="ee-estrutura">
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+          <span>Setores › Blocos › Postos</span>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="ee-btn-expandir" title="Expandir ou recolher todos">
+            <i class="bi bi-arrows-expand"></i>
+          </button>
+        </div>
+        <div class="card-body p-2">
+          <ul class="ee-tree" id="ee-tree"></ul>
+          <div class="text-muted small p-2 d-none" id="ee-tree-vazio">Nenhum bloco cadastrado ainda. Crie o primeiro bloco e informe o setor.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm mb-3" id="ee-detalhe">
+        <div class="card-body text-muted">Selecione um bloco ou posto à esquerda.</div>
+      </div>
+      <div class="card border-0 shadow-sm d-none" id="ee-membros-card">
+        <div class="card-header bg-white d-flex flex-wrap gap-2 justify-content-between align-items-center">
+          <span class="fw-bold">Pessoas <span class="badge bg-secondary" id="ee-membros-total">0</span></span>
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="form-check form-switch mb-0" id="ee-sub-wrap">
+              <input class="form-check-input" type="checkbox" id="ee-incluir-sub" checked>
+              <label class="form-check-label small" for="ee-incluir-sub">Incluir postos do bloco</label>
+            </div>
+            <input type="search" class="form-control form-control-sm" id="ee-busca" placeholder="Buscar nome ou matrícula" style="width:14rem" aria-label="Buscar colaborador">
+            {% if pode_editar %}
+            <button type="button" class="btn btn-sm btn-outline-primary" id="ee-btn-add-membros"><i class="bi bi-person-plus me-1"></i>Adicionar</button>
+            {% endif %}
+          </div>
+        </div>
+        {% if pode_editar %}
+        <div class="card-body border-bottom py-2 d-none" id="ee-acoes-lote">
+          <div class="d-flex flex-wrap gap-2 align-items-center">
+            <span class="small fw-semibold"><span id="ee-sel-count">0</span> selecionado(s):</span>
+            <select class="form-select form-select-sm w-auto" id="ee-lote-grupo" aria-label="Mover para o posto"></select>
+            <select class="form-select form-select-sm w-auto" id="ee-lote-turno" aria-label="Alterar turno">
+              <option value="">Manter turno</option>
+              {% for cod, nome in turnos %}<option value="{{ cod }}">Mudar para {{ nome }}</option>{% endfor %}
+            </select>
+            <button type="button" class="btn btn-sm btn-primary" id="ee-btn-aplicar-lote">Aplicar</button>
+          </div>
+        </div>
+        {% endif %}
+        <div class="ee-members">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light" style="position:sticky;top:0">
+              <tr>
+                {% if pode_editar %}<th style="width:2rem"><input type="checkbox" class="form-check-input" id="ee-sel-todos" aria-label="Selecionar todos"></th>{% endif %}
+                <th>Nome</th><th>Matrícula</th><th>Cargo</th><th>Turno</th><th>Posto / Bloco</th>
+              </tr>
+            </thead>
+            <tbody id="ee-membros-body"></tbody>
+          </table>
+          <div class="text-muted small p-3 d-none" id="ee-membros-vazio">Nenhum colaborador encontrado.</div>
+        </div>
+        <div class="card-footer bg-white small text-muted d-none" id="ee-truncado">Mostrando apenas os primeiros 500 resultados. Refine pela busca ou pelo turno.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if pode_editar %}
+<!-- Modal: grupo -->
+<div class="modal fade" id="ee-modal-grupo" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="ee-modal-titulo">Grupo</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="ee-modal-erro" class="alert alert-danger d-none"></div>
+        <div class="row g-3">
+          <div class="col-md-8">
+            <label class="form-label fw-semibold" for="ee-f-nome">Nome *</label>
+            <input type="text" class="form-control" id="ee-f-nome" maxlength="100">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="ee-f-ordem">Ordem</label>
+            <input type="number" class="form-control" id="ee-f-ordem" min="0" value="0">
+          </div>
+          <div class="col-md-6" id="ee-f-parent-wrap">
+            <label class="form-label fw-semibold" for="ee-f-parent">Bloco *</label>
+            <select class="form-select" id="ee-f-parent"></select>
+          </div>
+          <div class="col-md-6" id="ee-f-setor-wrap">
+            <label class="form-label fw-semibold" for="ee-f-setor">Setor *</label>
+            <select class="form-select" id="ee-f-setor"></select>
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold" for="ee-f-desc">Descrição</label>
+            <input type="text" class="form-control" id="ee-f-desc" maxlength="255">
+          </div>
+          <div class="col-12">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="ee-f-ativo" checked>
+              <label class="form-check-label" for="ee-f-ativo">Ativo</label>
+            </div>
+          </div>
+          <div class="col-12">
+            <h6 class="fw-bold mt-2">Turnos em que opera</h6>
+            <p class="small text-muted mb-2">Marque os turnos e informe o responsável (titular), a situação do posto e o efetivo planejado.</p>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light"><tr><th style="width:2rem"></th><th>Turno</th><th>Responsável (titular)</th><th style="width:8rem">Situação</th><th style="width:7rem">Efetivo plan.</th></tr></thead>
+                <tbody id="ee-f-turnos"></tbody>
+              </table>
+            </div>
+            <datalist id="ee-resp-opcoes"></datalist>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="ee-btn-salvar">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: adicionar colaboradores -->
+<div class="modal fade" id="ee-modal-add" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Associar pessoas ao posto / bloco</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          <input type="search" class="form-control" id="ee-add-busca" placeholder="Buscar por nome ou matrícula" style="max-width:18rem">
+          <select class="form-select w-auto" id="ee-add-origem" aria-label="Origem">
+            <option value="sem">Somente sem posto</option>
+            <option value="todos">Todos os colaboradores</option>
+          </select>
+          <select class="form-select w-auto" id="ee-add-turno" aria-label="Filtrar turno">
+            <option value="">Todos os turnos</option>
+            {% for cod, nome in turnos %}<option value="{{ cod }}">{{ nome }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="table-responsive" style="max-height:45vh">
+          <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th style="width:2rem"></th><th>Nome</th><th>Matrícula</th><th>Turno</th><th>Posto atual</th></tr></thead>
+            <tbody id="ee-add-body"></tbody>
+          </table>
+        </div>
+        <div class="text-muted small mt-2" id="ee-add-info"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="ee-add-confirmar">Associar selecionados</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function () {
+  const app = document.getElementById('ee-app');
+  const PODE_EDITAR = app.dataset.podeEditar === '1';
+  const URLS = {
+    dados: "{% url 'rh:api_estrutura_equipes_dados' %}",
+    membros: "{% url 'rh:api_estrutura_equipes_membros' %}",
+    salvar: "{% url 'rh:api_estrutura_equipes_salvar' %}",
+    excluir: "{% url 'rh:api_estrutura_equipes_excluir' %}",
+    atualizar: "{% url 'rh:api_estrutura_equipes_membros_atualizar' %}",
+  };
+  const csrf = () => app.querySelector('[name=csrfmiddlewaretoken]').value;
+
+  const state = { grupos: [], turnos: [], setores: [], semGrupo: {}, sel: null, turno: '', abertos: new Set(), membros: [], tudoAberto: true, setoresFechados: new Set() };
+  const byId = id => state.grupos.find(g => g.id === id);
+  const filhos = pid => state.grupos.filter(g => g.parent_id === pid).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
+  const turnoNome = c => (state.turnos.find(t => t.codigo === c) || {}).nome || c;
+
+  function sitBadge(s) {
+    return s === 'VAGO' ? '<span class="badge bg-danger" title="Necessário contratar">VAGO</span>' : s === 'RESERVA' ? '<span class="badge bg-info text-dark" title="Equipamento reserva instalado, para quando um falhar">RESERVA</span>' : s === 'PARADO' ? '<span class="badge bg-secondary">Parado</span>' : '<span class="badge bg-success">Ativo</span>';
+  }
+  function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function descendentes(id) {
+    const out = []; const fila = filhos(id).map(g => g.id);
+    while (fila.length) { const x = fila.pop(); out.push(x); filhos(x).forEach(g => fila.push(g.id)); }
+    return out;
+  }
+  function caminho(id) {
+    const n = []; let g = byId(id), guard = 0;
+    while (g && guard++ < 50) { n.unshift(g.nome); g = g.parent_id ? byId(g.parent_id) : null; }
+    return n.join(' › ');
+  }
+  // total (próprio + subgrupos) no filtro de turno atual
+  function contar(id, incluirSub = true) {
+    const ids = incluirSub ? [id, ...descendentes(id)] : [id];
+    let n = 0;
+    ids.forEach(i => { const c = (byId(i) || {}).contagem || {}; n += state.turno ? (c[state.turno] || 0) : Object.values(c).reduce((a, b) => a + b, 0); });
+    return n;
+  }
+
+  function aviso(msg, tipo = 'success') {
+    const el = document.getElementById('ee-alert');
+    el.className = 'alert alert-' + tipo; el.textContent = msg;
+    clearTimeout(aviso.t); aviso.t = setTimeout(() => el.classList.add('d-none'), 5000);
+  }
+  async function api(url, body) {
+    const opt = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify(body) };
+    const r = await fetch(url, opt);
+    let j = {}; try { j = await r.json(); } catch (e) {}
+    if (!r.ok || j.success === false) throw new Error(j.error || 'Falha na requisição (' + r.status + ').');
+    return j;
+  }
+
+  // ---------------------------------------------------------- carga / render
+  async function carregar() {
+    const j = await api(URLS.dados);
+    state.grupos = j.grupos; state.turnos = j.turnos; state.setores = j.setores; state.semGrupo = j.sem_grupo || {};
+    if (state.sel !== 'sem' && state.sel !== null && !byId(state.sel)) state.sel = null;
+    if (state.tudoAberto && state.abertos.size === 0) state.grupos.forEach(g => state.abertos.add(g.id));
+    renderFiltroTurnos(); renderArvore(); renderDetalhe(); renderQuadro(); await carregarMembros();
+  }
+
+  function renderFiltroTurnos() {
+    const box = document.getElementById('ee-turnos-filtro');
+    box.querySelectorAll('.ee-turno-pill').forEach(e => e.remove());
+    const total = state.grupos.reduce((a, g) => a + Object.values(g.contagem).reduce((x, y) => x + y, 0), 0) + Object.values(state.semGrupo).reduce((a, b) => a + b, 0);
+    const itens = [{ codigo: '', nome: 'Todos', n: total }].concat(state.turnos.map(t => ({
+      ...t, n: state.grupos.reduce((a, g) => a + (g.contagem[t.codigo] || 0), 0) + (state.semGrupo[t.codigo] || 0)
+    })));
+    itens.forEach(t => {
+      const b = document.createElement('button'); b.type = 'button';
+      b.className = 'btn btn-sm ee-turno-pill ' + (state.turno === t.codigo ? 'btn-primary' : 'btn-outline-secondary');
+      b.innerHTML = esc(t.nome) + ' <span class="badge bg-light text-dark">' + t.n + '</span>';
+      b.onclick = async () => { state.turno = t.codigo; renderFiltroTurnos(); renderArvore(); renderDetalhe(); await carregarMembros(); };
+      box.appendChild(b);
+    });
+  }
+
+  function renderArvore() {
+    const ul = document.getElementById('ee-tree'); ul.innerHTML = '';
+    document.getElementById('ee-tree-vazio').classList.toggle('d-none', state.grupos.length > 0);
+    const desenha = (pid, alvo) => {
+      filhos(pid).forEach(g => {
+        const li = document.createElement('li');
+        const temFilhos = filhos(g.id).length > 0;
+        const aberto = state.abertos.has(g.id);
+        const row = document.createElement('div');
+        row.className = 'ee-node' + (state.sel === g.id ? ' active' : '') + (g.ativo ? '' : ' inativo');
+        row.innerHTML = '<span class="ee-toggle">' + (temFilhos ? '<i class="bi bi-chevron-' + (aberto ? 'down' : 'right') + '"></i>' : '') + '</span>' +
+          '<i class="bi ' + (g.nivel === 1 ? 'bi-grid-3x3-gap text-primary' : 'bi-wrench-adjustable text-secondary') + '"></i><span class="ee-nome" title="' + esc(g.nome) + '">' + esc(g.nome) + '</span>' +
+          '<span class="badge bg-secondary">' + contar(g.id) + '</span>';
+        row.querySelector('.ee-toggle').onclick = e => { e.stopPropagation(); if (!temFilhos) return; aberto ? state.abertos.delete(g.id) : state.abertos.add(g.id); renderArvore(); };
+        row.onclick = () => selecionar(g.id);
+        li.appendChild(row);
+        if (temFilhos && aberto) { const sub = document.createElement('ul'); li.appendChild(sub); desenha(g.id, sub); }
+        alvo.appendChild(li);
+      });
+    };
+    // Nível 0: setores que possuem blocos
+    const setoresUsados = state.setores.filter(st => state.grupos.some(g => !g.parent_id && g.setor_id === st.id));
+    setoresUsados.forEach(st => {
+      const key = 's' + st.id; const aberto = !state.setoresFechados.has(key);
+      const li = document.createElement('li');
+      const row = document.createElement('div'); row.className = 'ee-node';
+      const n = state.grupos.filter(g => !g.parent_id && g.setor_id === st.id).reduce((a, g) => a + contar(g.id), 0);
+      row.innerHTML = '<span class="ee-toggle"><i class="bi bi-chevron-' + (aberto ? 'down' : 'right') + '"></i></span><i class="bi bi-building text-dark"></i><span class="ee-nome fw-bold">' + esc(st.nome) + '</span><span class="badge bg-dark">' + n + '</span>';
+      row.onclick = () => { aberto ? state.setoresFechados.add(key) : state.setoresFechados.delete(key); renderArvore(); };
+      li.appendChild(row);
+      if (aberto) {
+        const sub = document.createElement('ul'); li.appendChild(sub);
+        state.grupos.filter(g => !g.parent_id && g.setor_id === st.id).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome)).forEach(g => {
+          // reaproveita o desenho recursivo para o bloco e seus postos
+          const tmp = document.createElement('ul');
+          const original = filhos;
+          const li2 = document.createElement('li');
+          const temFilhos = filhos(g.id).length > 0, ab = state.abertos.has(g.id);
+          const r2 = document.createElement('div');
+          r2.className = 'ee-node' + (state.sel === g.id ? ' active' : '') + (g.ativo ? '' : ' inativo');
+          r2.innerHTML = '<span class="ee-toggle">' + (temFilhos ? '<i class="bi bi-chevron-' + (ab ? 'down' : 'right') + '"></i>' : '') + '</span><i class="bi bi-grid-3x3-gap text-primary"></i><span class="ee-nome" title="' + esc(g.nome) + '">' + esc(g.nome) + '</span><span class="badge bg-secondary">' + contar(g.id) + '</span>';
+          r2.querySelector('.ee-toggle').onclick = e => { e.stopPropagation(); if (!temFilhos) return; ab ? state.abertos.delete(g.id) : state.abertos.add(g.id); renderArvore(); };
+          r2.onclick = () => selecionar(g.id);
+          li2.appendChild(r2);
+          if (temFilhos && ab) { const u = document.createElement('ul'); li2.appendChild(u); desenha(g.id, u); }
+          sub.appendChild(li2);
+        });
+      }
+      ul.appendChild(li);
+    });
+    const semN = state.turno ? (state.semGrupo[state.turno] || 0) : Object.values(state.semGrupo).reduce((a, b) => a + b, 0);
+    const li = document.createElement('li'); li.className = 'mt-2 border-top pt-2';
+    li.innerHTML = '<div class="ee-node' + (state.sel === 'sem' ? ' active' : '') + '"><span class="ee-toggle"></span><i class="bi bi-person-dash text-warning"></i><span class="ee-nome">Sem posto</span><span class="badge bg-warning text-dark">' + semN + '</span></div>';
+    li.firstChild.onclick = () => selecionar('sem');
+    ul.appendChild(li);
+  }
+
+  async function selecionar(id) { state.sel = id; renderArvore(); renderDetalhe(); await carregarMembros(); }
+
+  function renderDetalhe() {
+    const box = document.getElementById('ee-detalhe');
+    const membrosCard = document.getElementById('ee-membros-card');
+    if (state.sel === null) { box.innerHTML = '<div class="card-body text-muted">Selecione um bloco ou posto à esquerda.</div>'; membrosCard.classList.add('d-none'); return; }
+    membrosCard.classList.remove('d-none');
+    document.getElementById('ee-sub-wrap').classList.toggle('d-none', state.sel === 'sem');
+    const addBtn = document.getElementById('ee-btn-add-membros'); if (addBtn) addBtn.classList.toggle('d-none', state.sel === 'sem');
+    if (state.sel === 'sem') {
+      box.innerHTML = '<div class="card-body"><h5 class="mb-1"><i class="bi bi-person-dash text-warning me-2"></i>Pessoas sem posto</h5><p class="text-muted small mb-0">Selecione as pessoas abaixo e associe-as a um posto de trabalho.</p></div>';
+      return;
+    }
+    const g = byId(state.sel);
+    const cfgPor = Object.fromEntries(g.turnos.map(t => [t.turno, t]));
+    const codigos = Array.from(new Set([...Object.keys(cfgPor), ...Object.keys(g.contagem)])).sort();
+    let linhas = codigos.map(c => {
+      const cfg = cfgPor[c]; const atual = g.contagem[c] || 0; const plan = cfg ? cfg.efetivo_planejado : null;
+      let dif = '<span class="text-muted">—</span>';
+      if (plan != null) { const d = atual - plan; dif = d === 0 ? '<span class="badge bg-success">completo</span>' : d < 0 ? '<span class="badge bg-danger">faltam ' + (-d) + '</span>' : '<span class="badge bg-warning text-dark">+' + d + ' acima</span>'; }
+      return '<tr><td>' + esc(turnoNome(c)) + (cfg ? '' : ' <span class="badge bg-light text-dark" title="Há colaboradores neste turno, mas o posto não está configurado para ele">sem config.</span>') + '</td><td>' + (cfg && cfg.responsavel_nome ? esc(cfg.responsavel_nome) : '<span class="text-muted">—</span>') + '</td><td>' + (cfg ? sitBadge(cfg.situacao) : '<span class="text-muted">—</span>') + '</td><td class="text-end">' + (plan != null ? plan : '—') + '</td><td class="text-end">' + atual + '</td><td>' + dif + '</td></tr>';
+    }).join('');
+    if (!linhas) linhas = '<tr><td colspan="6" class="text-muted">Nenhum turno configurado.</td></tr>';
+    const sub = filhos(g.id);
+    box.innerHTML = '<div class="card-body">' +
+      '<div class="d-flex justify-content-between flex-wrap gap-2"><div>' +
+      '<h5 class="mb-1"><span class="badge text-bg-light me-1">' + (g.nivel === 1 ? 'Bloco' : 'Posto') + '</span>' + esc(g.nome) + (g.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</h5>' +
+      '<div class="small text-muted">' + esc(caminho(g.id)) + (g.setor_nome ? ' · Setor: ' + esc(g.setor_nome) : '') + '</div>' +
+      (g.descricao ? '<div class="small mt-1">' + esc(g.descricao) + '</div>' : '') + '</div>' +
+      (PODE_EDITAR ? '<div class="d-flex gap-2 align-items-start">' + (g.nivel === 1 ? '<button class="btn btn-sm btn-outline-primary" id="ee-b-sub"><i class="bi bi-plus-circle me-1"></i>Posto de trabalho</button>' : '') + '<button class="btn btn-sm btn-outline-secondary" id="ee-b-edit"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-sm btn-outline-danger" id="ee-b-del"><i class="bi bi-trash me-1"></i>Excluir</button></div>' : '') +
+      '</div>' +
+      '<div class="table-responsive mt-3"><table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th>Turno</th><th>Titular</th><th>Situação do posto</th><th class="text-end">Planejado</th><th class="text-end">Atual</th><th>Efetivo</th></tr></thead><tbody>' + linhas + '</tbody></table></div>' +
+      (sub.length ? '<div class="mt-3 small"><span class="text-muted">Postos:</span> ' + sub.map(s => '<a href="#" class="badge text-bg-light text-decoration-none ee-sub-link" data-id="' + s.id + '">' + esc(s.nome) + ' (' + contar(s.id) + ')</a>').join(' ') + '</div>' : '') +
+      '</div>';
+    box.querySelectorAll('.ee-sub-link').forEach(a => a.onclick = e => { e.preventDefault(); state.abertos.add(g.id); selecionar(parseInt(a.dataset.id)); });
+    if (PODE_EDITAR) {
+      const bs = document.getElementById('ee-b-sub'); if (bs) bs.onclick = () => abrirModal(null, g.id);
+      document.getElementById('ee-b-edit').onclick = () => abrirModal(g.id);
+      document.getElementById('ee-b-del').onclick = () => excluir(g);
+    }
+  }
+
+  // ---------------------------------------------------------- quadro por turno
+  function renderQuadro() {
+    const t = document.getElementById('ee-quadro-tabela');
+    const usados = state.turnos.filter(tn => state.grupos.some(g => g.turnos.some(c => c.turno === tn.codigo)));
+    const cols = usados.length ? usados : state.turnos;
+    let vagas = 0, reservas = 0;
+    let h = '<thead class="table-light"><tr><th>Bloco / Posto de trabalho</th>' + cols.map(c => '<th>' + esc(c.nome) + '</th>').join('') + '</tr></thead><tbody>';
+    const linha = (g, nivel) => {
+      const temPostos = filhos(g.id).length > 0;
+      h += '<tr' + (g.ativo ? '' : ' class="text-muted"') + '><td style="padding-left:' + (0.6 + nivel * 1.4) + 'rem" class="' + (nivel === 0 ? 'fw-bold bg-light' : '') + '">' + esc(g.nome) + '</td>';
+      cols.forEach(c => {
+        const cfg = g.turnos.find(x => x.turno === c.codigo);
+        let cel = '<span class="text-muted">—</span>';
+        if (cfg) {
+          if (cfg.situacao === 'VAGO') { cel = '<span class="badge bg-danger">VAGO</span> <span class="small text-muted">contratar</span>'; if (nivel === 1 || !temPostos) vagas++; }
+          else if (cfg.situacao === 'RESERVA') { cel = '<span class="badge bg-info text-dark">RESERVA</span>'; if (nivel === 1 || !temPostos) reservas++; }
+          else cel = (cfg.responsavel_nome ? esc(cfg.responsavel_nome) : '<span class="text-muted">sem titular</span>') + (cfg.situacao === 'PARADO' ? ' <span class="badge bg-secondary">Parado</span>' : '');
+        }
+        h += '<td class="' + (nivel === 0 ? 'bg-light' : '') + '">' + cel + '</td>';
+      });
+      h += '</tr>';
+      filhos(g.id).forEach(f => linha(f, nivel + 1));
+    };
+    state.setores.forEach(st => {
+      const blocos = state.grupos.filter(g => !g.parent_id && g.setor_id === st.id).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
+      if (!blocos.length) return;
+      h += '<tr class="table-dark"><td colspan="' + (cols.length + 1) + '" class="fw-bold"><i class="bi bi-building me-1"></i>' + esc(st.nome) + '</td></tr>';
+      blocos.forEach(g => linha(g, 0));
+    });
+    if (!state.grupos.length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Nenhum bloco cadastrado.</td></tr>';
+    t.innerHTML = h + '</tbody>';
+    document.getElementById('ee-quadro-resumo').innerHTML = '<span class="badge bg-danger">' + vagas + ' vaga(s) a contratar</span> <span class="badge bg-info text-dark">' + reservas + ' posto(s) com equipamento reserva</span>';
+  }
+  function trocaAba(aba) {
+    document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.classList.toggle('active', b.dataset.aba === aba));
+    document.getElementById('ee-quadro').classList.toggle('d-none', aba !== 'quadro');
+    document.getElementById('ee-estrutura').classList.toggle('d-none', aba === 'quadro');
+    if (aba === 'quadro') renderQuadro();
+  }
+  document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.onclick = () => trocaAba(b.dataset.aba));
+
+  // ---------------------------------------------------------- membros
+  const sel = new Set();
+  async function carregarMembros() {
+    if (state.sel === null) return;
+    const p = new URLSearchParams({ grupo: state.sel, turno: state.turno, q: document.getElementById('ee-busca').value.trim() });
+    if (document.getElementById('ee-incluir-sub').checked) p.set('subgrupos', '1');
+    try {
+      const j = await api(URLS.membros + '?' + p);
+      state.membros = j.membros; sel.clear();
+      document.getElementById('ee-membros-total').textContent = j.total;
+      document.getElementById('ee-truncado').classList.toggle('d-none', !j.truncado);
+      renderMembros();
+    } catch (e) { aviso(e.message, 'danger'); }
+  }
+  function renderMembros() {
+    const tb = document.getElementById('ee-membros-body'); tb.innerHTML = '';
+    document.getElementById('ee-membros-vazio').classList.toggle('d-none', state.membros.length > 0);
+    state.membros.forEach(m => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = (PODE_EDITAR ? '<td><input type="checkbox" class="form-check-input ee-chk" data-id="' + m.id + '" aria-label="Selecionar ' + esc(m.nome) + '"></td>' : '') +
+        '<td>' + esc(m.nome) + (m.afastado ? ' <span class="badge bg-warning text-dark">afastado</span>' : '') + (m.em_ferias ? ' <span class="badge bg-info text-dark">férias</span>' : '') + '</td><td>' + esc(m.matricula) + '</td><td>' + esc(m.cargo) + '</td><td>' + esc(m.turno_label) + '</td><td>' + (m.equipe ? esc(m.equipe) : '<span class="text-muted">—</span>') + '</td>';
+      tb.appendChild(tr);
+    });
+    tb.querySelectorAll('.ee-chk').forEach(c => c.onchange = () => { const id = parseInt(c.dataset.id); c.checked ? sel.add(id) : sel.delete(id); atualizaLote(); });
+    const todos = document.getElementById('ee-sel-todos'); if (todos) todos.checked = false;
+    atualizaLote();
+  }
+  function atualizaLote() {
+    const box = document.getElementById('ee-acoes-lote'); if (!box) return;
+    box.classList.toggle('d-none', sel.size === 0);
+    document.getElementById('ee-sel-count').textContent = sel.size;
+  }
+  function opcoesGrupo(select, { raiz = false, excluir = [], vazio = null } = {}) {
+    select.innerHTML = '';
+    if (vazio !== null) select.add(new Option(vazio, ''));
+    const add = (pid, nivel) => filhos(pid).forEach(g => {
+      if (!excluir.includes(g.id)) { select.add(new Option('  '.repeat(nivel) + (nivel ? '↳ ' : '') + g.nome, g.id)); add(g.id, nivel + 1); }
+    });
+    add(null, 0);
+  }
+
+  // ---------------------------------------------------------- edição
+  let editId = null;
+  let liderMapa = {};
+  let modalGrupo, modalAdd;
+  function abrirModal(id, parentId = null) {
+    editId = id; const g = id ? byId(id) : null;
+    const ehPosto = g ? !!g.parent_id : !!parentId;
+    document.getElementById('ee-modal-erro').classList.add('d-none');
+    document.getElementById('ee-modal-titulo').textContent = (g ? 'Editar ' : 'Novo ') + (ehPosto ? 'posto de trabalho' : 'bloco');
+    document.getElementById('ee-f-nome').value = g ? g.nome : '';
+    document.getElementById('ee-f-ordem').value = g ? g.ordem : 0;
+    document.getElementById('ee-f-desc').value = g ? g.descricao : '';
+    document.getElementById('ee-f-ativo').checked = g ? g.ativo : true;
+    const pSel = document.getElementById('ee-f-parent');
+    pSel.innerHTML = '';
+    state.grupos.filter(x => !x.parent_id && (!g || x.id !== g.id)).sort((a, b) => a.nome.localeCompare(b.nome)).forEach(x => pSel.add(new Option(x.setor_nome + ' › ' + x.nome, x.id)));
+    pSel.value = g ? (g.parent_id || '') : (parentId || '');
+    document.getElementById('ee-f-parent-wrap').classList.toggle('d-none', !ehPosto);
+    document.getElementById('ee-f-setor-wrap').classList.toggle('d-none', ehPosto);
+    const sSel = document.getElementById('ee-f-setor'); sSel.innerHTML = '';
+    sSel.add(new Option('— Selecione o setor —', '')); state.setores.forEach(s => sSel.add(new Option(s.nome, s.id)));
+    sSel.value = g && g.setor_id ? g.setor_id : '';
+    liderMapa = {};
+    const tb = document.getElementById('ee-f-turnos'); tb.innerHTML = '';
+    state.turnos.forEach(t => {
+      const cfg = g ? g.turnos.find(x => x.turno === t.codigo) : null;
+      const label = cfg && cfg.responsavel_id ? cfg.responsavel_nome : '';
+      if (cfg && cfg.responsavel_id) liderMapa[label] = cfg.responsavel_id;
+      const sit = cfg ? cfg.situacao : 'VAGO';
+      const tr = document.createElement('tr'); tr.dataset.turno = t.codigo;
+      tr.innerHTML = '<td><input type="checkbox" class="form-check-input ee-t-on" aria-label="Opera no turno ' + esc(t.nome) + '"' + (cfg ? ' checked' : '') + '></td><td>' + esc(t.nome) + '</td>' +
+        '<td><input type="text" class="form-control form-control-sm ee-t-lider" list="ee-resp-opcoes" placeholder="Digite para buscar..." value="' + esc(label) + '" data-lider-id="' + (cfg && cfg.responsavel_id ? cfg.responsavel_id : '') + '"></td>' +
+        '<td><select class="form-select form-select-sm ee-t-sit"><option value="ATIVO"' + (sit === 'ATIVO' ? ' selected' : '') + '>Ativo</option><option value="VAGO"' + (sit === 'VAGO' ? ' selected' : '') + '>Vago (contratar)</option><option value="RESERVA"' + (sit === 'RESERVA' ? ' selected' : '') + '>Reserva (equip.)</option><option value="PARADO"' + (sit === 'PARADO' ? ' selected' : '') + '>Parado</option></select></td>' +
+        '<td><input type="number" min="0" class="form-control form-control-sm ee-t-efetivo" value="' + (cfg && cfg.efetivo_planejado != null ? cfg.efetivo_planejado : '') + '"></td>';
+      tb.appendChild(tr);
+    });
+    tb.querySelectorAll('.ee-t-lider').forEach(inp => {
+      inp.addEventListener('input', async () => {
+        const v = inp.value.trim();
+        const selSit = inp.closest('tr').querySelector('.ee-t-sit');
+        // sem titular => Vago; com titular => Ativo (o usuário ainda pode trocar para Reserva/Vago)
+        if (v && ['VAGO', 'RESERVA'].includes(selSit.value)) selSit.value = 'ATIVO';
+        if (!v && selSit.value === 'ATIVO') selSit.value = 'VAGO';
+        if (liderMapa[v]) { inp.dataset.liderId = liderMapa[v]; return; }
+        inp.dataset.liderId = '';
+        if (v.length < 2) return;
+        try {
+          const j = await api(URLS.membros + '?' + new URLSearchParams({ grupo: 'todos', q: v }));
+          const dl = document.getElementById('ee-resp-opcoes'); dl.innerHTML = '';
+          j.membros.slice(0, 20).forEach(m => { const lb = m.nome + ' (' + m.matricula + ')'; liderMapa[lb] = m.id; const o = document.createElement('option'); o.value = lb; dl.appendChild(o); });
+          if (liderMapa[inp.value.trim()]) inp.dataset.liderId = liderMapa[inp.value.trim()];
+        } catch (e) { /* sugestões são opcionais */ }
+      });
+    });
+    modalGrupo.show();
+  }
+  async function salvar() {
+    const erro = document.getElementById('ee-modal-erro');
+    const turnos = [];
+    let faltaLider = null, faltaTitular = null;
+    document.querySelectorAll('#ee-f-turnos tr').forEach(tr => {
+      if (!tr.querySelector('.ee-t-on').checked) return;
+      const inp = tr.querySelector('.ee-t-lider');
+      const txt = inp.value.trim();
+      const lid = inp.dataset.liderId || liderMapa[txt] || '';
+      const sitV = tr.querySelector('.ee-t-sit').value;
+      if (txt && !lid && !['VAGO', 'RESERVA'].includes(sitV)) faltaLider = txt;
+      if (!txt && sitV === 'ATIVO') faltaTitular = tr.dataset.turno;
+      turnos.push({ turno: tr.dataset.turno, responsavel_id: lid || null, situacao: tr.querySelector('.ee-t-sit').value, efetivo_planejado: tr.querySelector('.ee-t-efetivo').value });
+    });
+    if (faltaTitular) { erro.textContent = 'Posto sem titular em um turno marcado como Ativo: informe a pessoa ou marque Vago (contratar) / Reserva (equipamento reserva).'; erro.classList.remove('d-none'); return; }
+    if (faltaLider) { erro.textContent = 'Responsável não reconhecido: "' + faltaLider + '". Escolha um item da lista de sugestões.'; erro.classList.remove('d-none'); return; }
+    try {
+      const j = await api(URLS.salvar, {
+        id: editId, nome: document.getElementById('ee-f-nome').value, parent_id: document.getElementById('ee-f-parent').value,
+        setor_id: document.getElementById('ee-f-setor').value, descricao: document.getElementById('ee-f-desc').value,
+        ordem: document.getElementById('ee-f-ordem').value, ativo: document.getElementById('ee-f-ativo').checked, turnos
+      });
+      modalGrupo.hide();
+      const pai = document.getElementById('ee-f-parent').value; if (pai) state.abertos.add(parseInt(pai));
+      state.abertos.add(j.id); state.sel = j.id;
+      await carregar(); aviso(j.criado ? 'Criado com sucesso.' : 'Atualizado com sucesso.');
+    } catch (e) { erro.textContent = e.message; erro.classList.remove('d-none'); }
+  }
+  async function excluir(g) {
+    const nSub = filhos(g.id).length, nMem = Object.values(g.contagem).reduce((a, b) => a + b, 0);
+    let msg = 'Excluir "' + g.nome + '"?';
+    if (nSub) { aviso('Exclua ou mova os ' + nSub + ' posto(s) deste bloco antes de excluí-lo.', 'warning'); return; }
+    if (nMem) msg += '\n• ' + nMem + ' pessoa(s) ficarão sem posto.';
+    if (!confirm(msg)) return;
+    try { await api(URLS.excluir, { id: g.id }); state.sel = g.parent_id || null; await carregar(); aviso('Excluído.'); }
+    catch (e) { aviso(e.message, 'danger'); }
+  }
+  async function aplicarLote() {
+    if (!sel.size) return;
+    const grupoDest = document.getElementById('ee-lote-grupo').value, turno = document.getElementById('ee-lote-turno').value;
+    const body = { colaborador_ids: Array.from(sel), turno };
+    if (grupoDest !== '__manter__') body.grupo_id = grupoDest === '' ? null : parseInt(grupoDest);
+    if (grupoDest === '__manter__' && !turno) { aviso('Escolha um grupo de destino ou um turno.', 'warning'); return; }
+    try { const j = await api(URLS.atualizar, body); await carregar(); aviso(j.alterados + ' colaborador(es) atualizado(s).'); }
+    catch (e) { aviso(e.message, 'danger'); }
+  }
+
+  // ---------------------------------------------------------- adicionar
+  let addSel = new Set();
+  async function buscarAdd() {
+    const p = new URLSearchParams({ grupo: document.getElementById('ee-add-origem').value, turno: document.getElementById('ee-add-turno').value, q: document.getElementById('ee-add-busca').value.trim() });
+    try {
+      const j = await api(URLS.membros + '?' + p);
+      const tb = document.getElementById('ee-add-body'); tb.innerHTML = '';
+      j.membros.filter(m => m.equipe_id !== state.sel).forEach(m => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td><input type="checkbox" class="form-check-input" data-id="' + m.id + '"' + (addSel.has(m.id) ? ' checked' : '') + ' aria-label="Selecionar ' + esc(m.nome) + '"></td><td>' + esc(m.nome) + '</td><td>' + esc(m.matricula) + '</td><td>' + esc(m.turno_label) + '</td><td>' + (m.equipe ? esc(m.equipe) : '<span class="text-muted">—</span>') + '</td>';
+        tr.querySelector('input').onchange = e => { e.target.checked ? addSel.add(m.id) : addSel.delete(m.id); document.getElementById('ee-add-info').textContent = addSel.size + ' selecionado(s)'; };
+        tb.appendChild(tr);
+      });
+      document.getElementById('ee-add-info').textContent = (addSel.size ? addSel.size + ' selecionado(s). ' : '') + (j.truncado ? 'Mostrando os primeiros 500 — refine a busca.' : '');
+    } catch (e) { document.getElementById('ee-add-info').textContent = e.message; }
+  }
+
+  // ---------------------------------------------------------- eventos
+  function debounce(fn, ms = 300) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+  document.getElementById('ee-busca').addEventListener('input', debounce(carregarMembros));
+  document.getElementById('ee-incluir-sub').addEventListener('change', carregarMembros);
+  document.getElementById('ee-btn-expandir').onclick = () => {
+    state.tudoAberto = !state.tudoAberto; state.abertos = new Set(state.tudoAberto ? state.grupos.map(g => g.id) : []); renderArvore();
+  };
+  if (PODE_EDITAR) {
+    modalGrupo = new bootstrap.Modal(document.getElementById('ee-modal-grupo'));
+    modalAdd = new bootstrap.Modal(document.getElementById('ee-modal-add'));
+    document.getElementById('ee-btn-novo-raiz').onclick = () => abrirModal(null, null);
+    document.getElementById('ee-btn-salvar').onclick = salvar;
+    document.getElementById('ee-btn-aplicar-lote').onclick = aplicarLote;
+    document.getElementById('ee-sel-todos').onchange = e => {
+      document.querySelectorAll('.ee-chk').forEach(c => { c.checked = e.target.checked; const id = parseInt(c.dataset.id); e.target.checked ? sel.add(id) : sel.delete(id); }); atualizaLote();
+    };
+    document.getElementById('ee-btn-add-membros').onclick = () => { addSel = new Set(); document.getElementById('ee-add-body').innerHTML = ''; modalAdd.show(); buscarAdd(); };
+    ['ee-add-origem', 'ee-add-turno'].forEach(i => document.getElementById(i).addEventListener('change', buscarAdd));
+    document.getElementById('ee-add-busca').addEventListener('input', debounce(buscarAdd));
+    document.getElementById('ee-add-confirmar').onclick = async () => {
+      if (!addSel.size) return;
+      try { const j = await api(URLS.atualizar, { colaborador_ids: Array.from(addSel), grupo_id: state.sel }); modalAdd.hide(); await carregar(); aviso(j.alterados + ' colaborador(es) adicionado(s).'); }
+      catch (e) { document.getElementById('ee-add-info').textContent = e.message; }
+    };
+    // seletor de destino do lote é recriado a cada render de detalhe/árvore
+    const refazLote = () => { const s = document.getElementById('ee-lote-grupo'); opcoesGrupo(s, { vazio: 'Sem posto' }); s.add(new Option('Manter posto atual', '__manter__'), 0); s.value = '__manter__'; };
+    const origCarregar = carregarMembros; carregarMembros = async function () { refazLote(); return origCarregar.apply(this, arguments); };
+  }
+  carregar().catch(e => aviso(e.message, 'danger'));
+})();
+</script>
+{% endblock %}
