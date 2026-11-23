@@ -1340,7 +1340,7 @@ NAV_STRUCTURE = [
                         "view_name": [
                             "auditoria:livre_list", "auditoria:livre_create", "auditoria:livre_execucao",
                             "auditoria:livre_edit", "auditoria:livre_toggle_conclusao", "auditoria:livre_arquivar",
-                            "auditoria:livre_delete", "auditoria:livre_export_excel",
+                            "auditoria:livre_delete", "auditoria:livre_export_excel", "auditoria:livre_export_docx",
                             "auditoria:api_livre_sol_create", "auditoria:api_livre_conclusao_salvar",
                             "auditoria:api_livre_sol_update", "auditoria:api_livre_sol_delete",
                             "auditoria:api_livre_imagem_upload", "auditoria:api_livre_imagem_delete",
