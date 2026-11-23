@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-3 py-md-4" style="max-width: 900px;">
+    <div class="mb-4">
+        <h2 class="fw-bold text-dark mb-1 fs-3">
+            <i class="bi bi-journal-check text-primary me-2"></i>{% if aud.pk %}Editar Auditoria Livre{% else %}Nova Auditoria Livre{% endif %}
+        </h2>
+        <p class="text-muted small mb-0">Defina o objetivo. O restante é conduzido solicitando evidências durante a auditoria.</p>
+    </div>
+
+    {% if messages %}
+        {% for m in messages %}
+            <div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags }}{% endif %} py-2">{{ m }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" class="card border-0 shadow-sm rounded-4">
+        {% csrf_token %}
+        <div class="card-body p-4">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="titulo">Título *</label>
+                    <input type="text" class="form-control" id="titulo" name="titulo" maxlength="255" required
+                           value="{{ request.POST.titulo|default:aud.titulo }}" placeholder="Ex.: Auditoria de recebimento de insumos">
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="objetivo">Objetivo</label>
+                    <textarea class="form-control" id="objetivo" name="objetivo" rows="3"
+                              placeholder="O que se pretende verificar ou comprovar?">{% if request.method == 'POST' %}{{ request.POST.objetivo }}{% else %}{{ aud.objetivo }}{% endif %}</textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="escopo">Escopo</label>
+                    <textarea class="form-control" id="escopo" name="escopo" rows="2"
+                              placeholder="Processos, áreas, períodos ou produtos abrangidos">{% if request.method == 'POST' %}{{ request.POST.escopo }}{% else %}{{ aud.escopo }}{% endif %}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="criterio">Critério / Referência <span class="text-muted fw-normal">(opcional)</span></label>
+                    <input type="text" class="form-control" id="criterio" name="criterio" maxlength="255"
+                           value="{{ request.POST.criterio|default:aud.criterio }}" placeholder="Norma, procedimento, contrato, requisito legal…">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="local">Local / Setor / Processo</label>
+                    <input type="text" class="form-control" id="local" name="local" maxlength="255"
+                           value="{{ request.POST.local|default:aud.local }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="data_inicio">Data de início *</label>
+                    <input type="date" class="form-control" id="data_inicio" name="data_inicio" required
+                           value="{% if request.method == 'POST' %}{{ request.POST.data_inicio }}{% else %}{{ aud.data_inicio|date:'Y-m-d' }}{% endif %}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="data_fim">Data de fim</label>
+                    <input type="date" class="form-control" id="data_fim" name="data_fim"
+                           value="{% if request.method == 'POST' %}{{ request.POST.data_fim }}{% else %}{{ aud.data_fim|date:'Y-m-d' }}{% endif %}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="auditor_lider">Auditor líder</label>
+                    <input type="text" class="form-control" id="auditor_lider" name="auditor_lider" maxlength="255"
+                           value="{{ request.POST.auditor_lider|default:aud.auditor_lider }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="auditores">Auditores</label>
+                    <select class="form-select" id="auditores" name="auditores" multiple size="4">
+                        {% for u in usuarios %}
+                            <option value="{{ u.pk }}" {% if u.pk in selecionados %}selected{% endif %}>{{ u.get_full_name|default:u.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Ctrl/Cmd + clique para selecionar vários.</div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold" for="auditados">Auditados / Entrevistados</label>
+                    <textarea class="form-control" id="auditados" name="auditados" rows="2"
+                              placeholder="Nome e função de quem acompanha a auditoria">{% if request.method == 'POST' %}{{ request.POST.auditados }}{% else %}{{ aud.auditados }}{% endif %}</textarea>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer bg-transparent border-0 p-4 pt-0 d-flex justify-content-end gap-2">
+            <a href="{% if aud.pk %}{% url 'auditoria:livre_execucao' aud.pk %}{% else %}{% url 'auditoria:livre_list' %}{% endif %}"
+               class="btn btn-outline-secondary rounded-pill px-4">Cancelar</a>
+            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">
+                <i class="bi bi-check-lg me-1"></i> {% if aud.pk %}Salvar{% else %}Criar e iniciar{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

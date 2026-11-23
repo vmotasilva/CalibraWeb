@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .chip-filtro { border-radius: 30px; font-weight: 600; font-size: .85rem; padding: 5px 14px; }
+    .chip-filtro.active { box-shadow: 0 3px 10px rgba(0,0,0,.18); transform: scale(1.04); }
+    .btn-class { border-radius: 30px; font-weight: 600; font-size: .85rem; padding: 6px 14px; border-width: 2px; }
+    .btn-class[data-c="C"]  { color:#198754; border-color:#198754; background:transparent; }
+    .btn-class[data-c="C"].active  { background:#198754; color:#fff; }
+    .btn-class[data-c="NC"] { color:#dc3545; border-color:#dc3545; background:transparent; }
+    .btn-class[data-c="NC"].active { background:#dc3545; color:#fff; }
+    .btn-class[data-c="OM"] { color:#b58105; border-color:#ffc107; background:transparent; }
+    .btn-class[data-c="OM"].active { background:#ffc107; color:#3d2e00; }
+    .btn-class[data-c="NA"] { color:#6c757d; border-color:#adb5bd; background:transparent; }
+    .btn-class[data-c="NA"].active { background:#6c757d; color:#fff; }
+    .btn-class[data-c="P"]  { color:#495057; border-color:#ced4da; background:transparent; }
+    .btn-class[data-c="P"].active  { background:#495057; color:#fff; }
+    .sol-card { border-left: 6px solid #ced4da; transition: border-color .2s; }
+    .sol-card[data-c="C"]  { border-left-color:#198754; }
+    .sol-card[data-c="NC"] { border-left-color:#dc3545; }
+    .sol-card[data-c="OM"] { border-left-color:#ffc107; }
+    .sol-card[data-c="NA"] { border-left-color:#adb5bd; }
+    .sol-card textarea { resize: vertical; }
+    .btn-grau { font-size:.75rem; padding:2px 10px; font-weight:700; border-radius:12px; }
+    #save-indicator { position:fixed; bottom:20px; right:20px; padding:8px 18px; border-radius:20px; color:#fff;
+        font-weight:700; opacity:0; transition:opacity .3s; box-shadow:0 4px 10px rgba(0,0,0,.2); z-index:10090; background:#27ae60; }
+    #save-indicator.err { background:#dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-4" style="max-width: 1100px;">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-3">
+        <div class="min-w-0">
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-journal-check text-primary me-2"></i>{{ aud.titulo }}
+                <span class="badge rounded-pill fs-6 align-middle {% if aud.status == 'CONCLUIDA' %}bg-success{% else %}bg-primary{% endif %}">{{ aud.get_status_display }}</span>
+            </h3>
+            <div class="small text-muted">
+                <i class="bi bi-calendar3 me-1"></i>{{ aud.data_inicio|date:"d/m/Y" }}{% if aud.data_fim %} a {{ aud.data_fim|date:"d/m/Y" }}{% endif %}
+                {% if aud.local %} · <i class="bi bi-geo-alt me-1"></i>{{ aud.local }}{% endif %}
+                {% if aud.auditor_lider %} · <i class="bi bi-person-badge me-1"></i>{{ aud.auditor_lider }}{% endif %}
+                {% if aud.criterio %} · <i class="bi bi-bookmark me-1"></i>{{ aud.criterio }}{% endif %}
+            </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'auditoria:livre_list' %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-left me-1"></i> Lista</a>
+            <a href="{% url 'auditoria:livre_edit' aud.pk %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-pencil me-1"></i> Dados</a>
+            <a href="{% url 'auditoria:livre_export_excel' aud.pk %}" class="btn btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a>
+            <form method="post" action="{% url 'auditoria:livre_toggle_conclusao' aud.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button class="btn {% if aud.status == 'CONCLUIDA' %}btn-outline-primary{% else %}btn-success{% endif %} rounded-pill px-3 fw-bold">
+                    {% if aud.status == 'CONCLUIDA' %}<i class="bi bi-arrow-counterclockwise me-1"></i> Reabrir{% else %}<i class="bi bi-check2-circle me-1"></i> Concluir auditoria{% endif %}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for m in messages %}
+            <div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags }}{% endif %} py-2">{{ m }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if aud.objetivo or aud.escopo or aud.auditados %}
+    <details class="card border-0 shadow-sm rounded-4 mb-3">
+        <summary class="card-body py-2 px-3 fw-semibold" style="cursor:pointer;"><i class="bi bi-info-circle me-1"></i> Objetivo e escopo</summary>
+        <div class="card-body pt-0 small">
+            {% if aud.objetivo %}<p class="mb-2"><strong>Objetivo:</strong> {{ aud.objetivo|linebreaksbr }}</p>{% endif %}
+            {% if aud.escopo %}<p class="mb-2"><strong>Escopo:</strong> {{ aud.escopo|linebreaksbr }}</p>{% endif %}
+            {% if aud.auditados %}<p class="mb-0"><strong>Auditados:</strong> {{ aud.auditados|linebreaksbr }}</p>{% endif %}
+        </div>
+    </details>
+    {% endif %}
+
+    <!-- Solicitar nova evidência -->
+    <div class="card border-0 shadow-sm rounded-4 mb-3">
+        <div class="card-body">
+            <label class="form-label fw-bold" for="novaSolicitacao"><i class="bi bi-plus-circle me-1"></i> Solicitar evidência</label>
+            <textarea id="novaSolicitacao" class="form-control mb-2" rows="2"
+                      placeholder="O que você precisa ver? (ex.: registro de treinamento do operador, última calibração do equipamento…)"></textarea>
+            <div class="d-flex flex-column flex-md-row gap-2">
+                <input id="novoTopico" class="form-control" list="listaTopicos" maxlength="255"
+                       placeholder="Tópico / área / requisito (opcional)">
+                <datalist id="listaTopicos">{% for t in topicos %}<option value="{{ t }}">{% endfor %}</datalist>
+                <button id="btnSolicitar" class="btn btn-dark rounded-pill px-4 fw-bold text-nowrap">
+                    <i class="bi bi-send me-1"></i> Solicitar <span class="small opacity-75">(Ctrl+Enter)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="filtros">
+        <button class="btn btn-sm btn-dark chip-filtro active" data-f="">Todas <span class="badge bg-light text-dark ms-1" data-n="total">0</span></button>
+        <button class="btn btn-sm btn-outline-secondary chip-filtro" data-f="P">Pendentes <span class="badge bg-secondary ms-1" data-n="P">0</span></button>
+        <button class="btn btn-sm btn-outline-success chip-filtro" data-f="C">Conformes <span class="badge bg-success ms-1" data-n="C">0</span></button>
+        <button class="btn btn-sm btn-outline-danger chip-filtro" data-f="NC">NC <span class="badge bg-danger ms-1" data-n="NC">0</span></button>
+        <button class="btn btn-sm btn-outline-warning chip-filtro" data-f="OM">Oport. Melhoria <span class="badge bg-warning text-dark ms-1" data-n="OM">0</span></button>
+        <button class="btn btn-sm btn-outline-secondary chip-filtro" data-f="NA">N/A <span class="badge bg-secondary ms-1" data-n="NA">0</span></button>
+        <select id="filtroTopico" class="form-select form-select-sm ms-md-auto" style="max-width:260px;">
+            <option value="">Todos os tópicos</option>
+        </select>
+    </div>
+
+    <div id="lista"></div>
+    <div id="vazio" class="text-center text-muted py-5 d-none">
+        <i class="bi bi-inbox display-5 d-block mb-2"></i><span id="vazioTxt"></span>
+    </div>
+
+    <!-- Conclusão -->
+    <div class="card border-0 shadow-sm rounded-4 mt-4">
+        <div class="card-body">
+            <label class="form-label fw-bold" for="conclusaoTexto"><i class="bi bi-flag me-1"></i> Conclusão / Parecer final</label>
+            <textarea id="conclusaoTexto" class="form-control" rows="4"
+                      placeholder="Resumo dos resultados, pontos de atenção e encaminhamentos.">{{ aud.conclusao_texto }}</textarea>
+        </div>
+    </div>
+</div>
+
+<div id="save-indicator"></div>
+{{ solicitacoes_json|json_script:"dados-solicitacoes" }}
+{{ resumo|json_script:"dados-resumo" }}
+
+<script>
+(() => {
+    const AUD = {{ aud.pk }};
+    const URL_CRIAR = "{% url 'auditoria:api_livre_sol_create' aud.pk %}";
+    const URL_CONCLUSAO = "{% url 'auditoria:api_livre_conclusao_salvar' aud.pk %}";
+    const URL_EDIT = id => `{% url 'auditoria:api_livre_sol_update' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_DEL = id => `{% url 'auditoria:api_livre_sol_delete' 0 %}`.replace('/0/', `/${id}/`);
+    const CSRF = "{{ csrf_token }}";
+    const CLASSES = [["C","Conforme"],["NC","Não Conformidade"],["OM","Oportunidade de Melhoria"],["NA","N/A"],["P","Pendente"]];
+
+    let itens = JSON.parse(document.getElementById('dados-solicitacoes').textContent);
+    let filtroClasse = "", filtroTopico = "";
+    const $ = id => document.getElementById(id);
+
+    // ---------- util
+    let tInd;
+    function aviso(msg, erro) {
+        const el = $('save-indicator');
+        el.textContent = msg; el.className = erro ? 'err' : ''; el.style.opacity = 1;
+        clearTimeout(tInd); tInd = setTimeout(() => el.style.opacity = 0, erro ? 4000 : 1200);
+    }
+    async function api(url, payload) {
+        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF }, body: JSON.stringify(payload || {}) });
+        let j = {}; try { j = await r.json(); } catch (e) {}
+        if (!r.ok || !j.success) throw new Error(j.error || 'Falha ao salvar.');
+        return j;
+    }
+    function el(tag, attrs = {}, ...kids) {
+        const e = document.createElement(tag);
+        for (const [k, v] of Object.entries(attrs)) {
+            if (k === 'class') e.className = v;
+            else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+            else if (v !== null && v !== undefined) e.setAttribute(k, v);
+        }
+        kids.flat().forEach(c => e.append(c));
+        return e;
+    }
+    function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+    function autosize(t) { t.style.height = 'auto'; t.style.height = Math.max(t.scrollHeight, 48) + 'px'; }
+
+    // ---------- contadores / filtros
+    function contarLocal() {
+        const r = { total: itens.length, C: 0, NC: 0, OM: 0, NA: 0, P: 0 };
+        itens.forEach(i => r[i.conclusao]++);
+        document.querySelectorAll('[data-n]').forEach(b => b.textContent = r[b.dataset.n] ?? 0);
+    }
+    function atualizarTopicos() {
+        const ts = [...new Set(itens.map(i => i.topico).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+        $('listaTopicos').replaceChildren(...ts.map(t => el('option', { value: t })));
+        const sel = $('filtroTopico'), atual = sel.value;
+        sel.replaceChildren(el('option', { value: '' }, 'Todos os tópicos'), ...ts.map(t => el('option', { value: t }, t)));
+        sel.value = ts.includes(atual) ? atual : ''; filtroTopico = sel.value;
+    }
+    function visivel(i) {
+        return (!filtroClasse || i.conclusao === filtroClasse) && (!filtroTopico || i.topico === filtroTopico);
+    }
+    function aplicarFiltro() {
+        let n = 0;
+        document.querySelectorAll('.sol-card').forEach(c => {
+            const i = itens.find(x => x.id == c.dataset.id);
+            const v = i && visivel(i); c.classList.toggle('d-none', !v); if (v) n++;
+        });
+        $('vazio').classList.toggle('d-none', n > 0);
+        $('vazioTxt').textContent = itens.length ? 'Nenhuma solicitação neste filtro.' : 'Nenhuma evidência solicitada ainda. Comece pelo campo acima.';
+    }
+
+    // ---------- card
+    function salvarCampo(item, campo, valor) {
+        item[campo] = valor;
+        return api(URL_EDIT(item.id), { [campo]: valor }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true));
+    }
+    function montarCard(item) {
+        const card = el('div', { class: 'card border-0 shadow-sm rounded-4 mb-3 sol-card', 'data-id': item.id, 'data-c': item.conclusao });
+        const body = el('div', { class: 'card-body' });
+
+        const topico = el('input', { class: 'form-control form-control-sm', list: 'listaTopicos', maxlength: 255, placeholder: 'Tópico (opcional)', value: item.topico });
+        topico.addEventListener('change', () => { salvarCampo(item, 'topico', topico.value.trim()).then(atualizarTopicos); });
+        const btnDel = el('button', { class: 'btn btn-sm btn-outline-danger rounded-circle', title: 'Remover solicitação', type: 'button',
+            onclick: async () => {
+                if (!confirm('Remover esta solicitação?')) return;
+                try { await api(URL_DEL(item.id)); itens = itens.filter(x => x.id !== item.id); card.remove(); contarLocal(); atualizarTopicos(); aplicarFiltro(); aviso('Removida'); }
+                catch (e) { aviso(e.message, true); }
+            } }, el('i', { class: 'bi bi-trash' }));
+        body.append(el('div', { class: 'd-flex gap-2 align-items-center mb-2' }, el('div', { class: 'flex-grow-1' }, topico), btnDel));
+
+        const sol = el('textarea', { class: 'form-control fw-semibold mb-2', rows: 1, placeholder: 'Evidência solicitada' });
+        sol.value = item.solicitacao;
+        const salvaSol = debounce(() => { if (sol.value.trim()) salvarCampo(item, 'solicitacao', sol.value.trim()); }, 800);
+        sol.addEventListener('input', () => { autosize(sol); salvaSol(); });
+
+        const evi = el('textarea', { class: 'form-control mb-2', rows: 2, placeholder: 'Evidência apresentada / o que foi verificado' });
+        evi.value = item.evidencia;
+        const salvaEvi = debounce(() => salvarCampo(item, 'evidencia', evi.value.trim()), 800);
+        evi.addEventListener('input', () => { autosize(evi); salvaEvi(); });
+
+        const obs = el('textarea', { class: 'form-control form-control-sm mt-2', rows: 2, placeholder: 'Observação do auditor (opcional)' });
+        obs.value = item.observacao;
+        const salvaObs = debounce(() => salvarCampo(item, 'observacao', obs.value.trim()), 800);
+        obs.addEventListener('input', () => { autosize(obs); salvaObs(); });
+        const obsWrap = el('div', { class: item.observacao ? '' : 'd-none' }, obs);
+        const obsBtn = el('button', { type: 'button', class: 'btn btn-sm btn-link text-decoration-none p-0 ms-2',
+            onclick: () => { obsWrap.classList.toggle('d-none'); if (!obsWrap.classList.contains('d-none')) obs.focus(); } },
+            el('i', { class: 'bi bi-chat-left-text me-1' }), 'Observação');
+
+        // classificação
+        const grupoGrau = el('span', { class: 'ms-2' });
+        const botoes = {};
+        function pintar() {
+            card.dataset.c = item.conclusao;
+            Object.entries(botoes).forEach(([c, b]) => b.classList.toggle('active', c === item.conclusao));
+            grupoGrau.classList.toggle('d-none', item.conclusao !== 'NC');
+            grupoGrau.querySelectorAll('.btn-grau').forEach(b => {
+                const ativo = b.dataset.g === item.grau_nc;
+                b.className = 'btn btn-grau ' + (ativo ? (b.dataset.g === 'MAIOR' ? 'btn-danger' : 'btn-outline-danger active') : 'btn-outline-secondary');
+            });
+        }
+        ['MENOR', 'MAIOR'].forEach(g => grupoGrau.append(el('button', { type: 'button', 'data-g': g, class: 'btn btn-grau btn-outline-secondary me-1',
+            onclick: async () => { item.grau_nc = item.grau_nc === g ? '' : g; pintar();
+                try { await api(URL_EDIT(item.id), { grau_nc: item.grau_nc }); aviso('Salvo'); } catch (e) { aviso(e.message, true); } } },
+            g === 'MAIOR' ? 'Maior' : 'Menor')));
+        const linhaClasse = el('div', { class: 'd-flex flex-wrap align-items-center gap-2' });
+        CLASSES.forEach(([c, nome]) => {
+            const b = el('button', { type: 'button', class: 'btn btn-class', 'data-c': c,
+                onclick: async () => {
+                    item.conclusao = c; if (c !== 'NC') item.grau_nc = '';
+                    pintar(); contarLocal(); aplicarFiltro();
+                    try { await api(URL_EDIT(item.id), { conclusao: c }); aviso('Salvo'); } catch (e) { aviso(e.message, true); }
+                } }, nome);
+            botoes[c] = b; linhaClasse.append(b);
+        });
+        linhaClasse.append(grupoGrau, obsBtn);
+        pintar();
+
+        body.append(sol, evi, linhaClasse, obsWrap);
+        card.append(body);
+        requestAnimationFrame(() => { autosize(sol); autosize(evi); if (item.observacao) autosize(obs); });
+        return card;
+    }
+    function renderTudo() {
+        $('lista').replaceChildren(...[...itens].reverse().map(montarCard));
+        contarLocal(); atualizarTopicos(); aplicarFiltro();
+    }
+
+    // ---------- nova solicitação
+    async function solicitar() {
+        const txt = $('novaSolicitacao').value.trim();
+        if (!txt) { $('novaSolicitacao').focus(); return; }
+        const btn = $('btnSolicitar'); btn.disabled = true;
+        try {
+            const j = await api(URL_CRIAR, { solicitacao: txt, topico: $('novoTopico').value.trim() });
+            itens.push(j.solicitacao);
+            $('lista').prepend(montarCard(j.solicitacao));
+            $('novaSolicitacao').value = ''; $('novaSolicitacao').focus();
+            contarLocal(); atualizarTopicos(); aplicarFiltro(); aviso('Evidência solicitada');
+        } catch (e) { aviso(e.message, true); }
+        btn.disabled = false;
+    }
+    $('btnSolicitar').addEventListener('click', solicitar);
+    $('novaSolicitacao').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); solicitar(); } });
+
+    // ---------- filtros
+    $('filtros').addEventListener('click', e => {
+        const b = e.target.closest('.chip-filtro'); if (!b) return;
+        filtroClasse = b.dataset.f;
+        document.querySelectorAll('.chip-filtro').forEach(x => x.classList.toggle('active', x === b));
+        aplicarFiltro();
+    });
+    $('filtroTopico').addEventListener('change', e => { filtroTopico = e.target.value; aplicarFiltro(); });
+
+    // ---------- conclusão
+    const salvaConclusao = debounce(() => api(URL_CONCLUSAO, { conclusao_texto: $('conclusaoTexto').value }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true)), 900);
+    $('conclusaoTexto').addEventListener('input', salvaConclusao);
+
+    renderTudo();
+})();
+</script>
+{% endblock %}

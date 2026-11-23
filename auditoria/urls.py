@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import apresentacao, views
+from . import apresentacao, views, views_livre
 from shared.views import auditoria_hub_view
 
 app_name = "auditoria"
@@ -66,6 +66,21 @@ urlpatterns = [
     path("ocorrencias/<int:pk>/excluir/", views.ocorrencia_excluir, name="ocorrencia_excluir"),
     path("modelos/<int:modelo_id>/ocorrencias/unificar/", views.ocorrencia_unificar, name="ocorrencia_unificar"),
     path("dashboard/", views.dashboard_auditoria, name="dashboard"),
+
+
+    # Auditoria Livre (solicitação de evidências sem norma)
+    path("livre/", views_livre.livre_list, name="livre_list"),
+    path("livre/nova/", views_livre.livre_create, name="livre_create"),
+    path("livre/<int:pk>/", views_livre.livre_execucao, name="livre_execucao"),
+    path("livre/<int:pk>/editar/", views_livre.livre_edit, name="livre_edit"),
+    path("livre/<int:pk>/concluir/", views_livre.livre_toggle_conclusao, name="livre_toggle_conclusao"),
+    path("livre/<int:pk>/arquivar/", views_livre.livre_arquivar, name="livre_arquivar"),
+    path("livre/<int:pk>/excluir/", views_livre.livre_delete, name="livre_delete"),
+    path("livre/<int:pk>/exportar-excel/", views_livre.livre_export_excel, name="livre_export_excel"),
+    path("livre/<int:pk>/api/solicitacoes/criar/", views_livre.api_livre_sol_create, name="api_livre_sol_create"),
+    path("livre/<int:pk>/api/conclusao/", views_livre.api_livre_conclusao_salvar, name="api_livre_conclusao_salvar"),
+    path("livre/api/solicitacoes/<int:pk>/editar/", views_livre.api_livre_sol_update, name="api_livre_sol_update"),
+    path("livre/api/solicitacoes/<int:pk>/deletar/", views_livre.api_livre_sol_delete, name="api_livre_sol_delete"),
 
     # ISO 13485 (Entrevista)
     path("iso/", views.iso_auditoria_list, name="iso_auditoria_list"),

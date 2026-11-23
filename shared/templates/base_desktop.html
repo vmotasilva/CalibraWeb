@@ -187,6 +187,12 @@
                                         <li><a class="dropdown-item" href="{% url 'auditoria:iso_auditoria_list' %}"><i class="bi bi-play-circle me-1"></i> Modo Entrevista</a></li>
                                     {% endif %}
                                 {% endif %}
+                                {% if nav_aud_iso %}
+                                    {% can_nav_view user 'auditoria:livre_list' 'auditoria' as nav_aud_livre_view %}
+                                    {% if nav_aud_livre_view %}
+                                        <li><a class="dropdown-item" href="{% url 'auditoria:livre_list' %}"><i class="bi bi-journal-check me-1"></i> Auditoria Livre</a></li>
+                                    {% endif %}
+                                {% endif %}
                             </ul>
                         </li>
                         <li><hr class="dropdown-divider"></li>
