@@ -678,7 +678,8 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                             {% can_nav_view user 'rh:gestao_ferias' 'rh' as nav_pe_ferias %}
                             {% can_nav_view user 'rh:atualizar_liderancas_em_massa' 'rh' as nav_pe_lid %}
                             {% can_nav_view user 'listar_ocorrencias' 'rh' as nav_pe_oco %}
-                            {% if nav_pe_colab or nav_pe_novo or nav_pe_ferias or nav_pe_lid or nav_pe_oco %}
+                            {% can_nav_view user 'rh:estrutura_equipes' 'rh' as nav_pe_est_chk %}
+                            {% if nav_pe_colab or nav_pe_novo or nav_pe_ferias or nav_pe_lid or nav_pe_oco or nav_pe_est_chk %}
                                 <li>
                                     <h6 class="dropdown-header text-muted d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#collapseEQUIPE" style="cursor: pointer;">
                                         EQUIPE <i class="bi bi-chevron-down transition-transform rotate-180"></i>
@@ -688,6 +689,7 @@ DIAGRAMAS <i class="bi bi-chevron-down transition-transform"></i>
                                 {% if nav_pe_novo %}<li><a class="dropdown-item" href="{% url 'rh:criar_colaborador' %}"><i class="bi bi-plus-circle text-success"></i> Novo Colaborador</a></li>{% endif %}
                                 {% if nav_pe_ferias %}<li><a class="dropdown-item" href="{% url 'rh:projecao_mensal_ferias' %}">📅 Gestão de Férias</a></li>{% endif %}
                                 {% if nav_pe_lid %}<li><a class="dropdown-item" href="{% url 'rh:atualizar_liderancas_em_massa' %}">🛠️ Lideranças</a></li>{% endif %}
+                                {% if nav_pe_est_chk %}<li><a class="dropdown-item" href="{% url 'rh:estrutura_equipes' %}">🧩 Estrutura de Equipes e Turnos</a></li>{% endif %}
                                 {% if nav_pe_oco %}<li><a class="dropdown-item" href="{% url 'listar_ocorrencias' %}">⚠️ Ocorrências</a></li>{% endif %}
                                     </ul>
                                 </li>

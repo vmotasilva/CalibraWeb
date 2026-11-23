@@ -134,6 +134,14 @@ class Colaborador(models.Model):
         related_name="gerenciados",
         verbose_name="Gerente",
     )
+    equipe = models.ForeignKey(
+        "organization.GrupoEquipe",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="membros",
+        verbose_name="Grupo / Subgrupo da Equipe",
+    )
     pacotes_treinamento = models.ManyToManyField(
         "procedures.PacoteTreinamento",
         blank=True,
