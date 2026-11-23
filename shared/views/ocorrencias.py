@@ -19,6 +19,7 @@ ORDENS = (
     ("antigas", "Mais antigas"),
 )
 _FUTURO = date.max
+PAGINA = 20
 
 
 def _ordenar(itens, ordem):
@@ -39,6 +40,10 @@ def _lista_para(request):
     q = (request.GET.get("q") or "").strip().lower()
     atraso = request.GET.get("atraso") == "1"
     resp = (request.GET.get("resp") or "").strip()
+    try:
+        limite = max(PAGINA, min(int(request.GET.get("limite") or PAGINA), 1000))
+    except ValueError:
+        limite = PAGINA
     ordem = (request.GET.get("ordem") or "").strip()
     if ordem not in {o for o, _ in ORDENS}:
         ordem = "urgencia"
@@ -74,7 +79,18 @@ def _lista_para(request):
     for i in abertas:
         por_origem[i.origem] = por_origem.get(i.origem, 0) + 1
     return {
-        "itens": itens,
+        "itens": itens[:limite],
+        "itens_todos": itens,
+        "total_itens": len(itens),
+        "limite": limite,
+        "proximo_limite": limite + PAGINA,
+        "restantes": max(0, len(itens) - limite),
+        "resumo": {
+            "abertas": len(abertas),
+            "vencidas": sum(1 for i in abertas if i.vencida),
+            "minhas": len(minhas),
+            "sem_responsavel": sum(1 for i in abertas if not i.responsaveis),
+        },
         "aba": aba,
         "abas": [
             (a, nome, len(minhas) if a == "minhas" else len(abertas) if a == "abertas" else None)
@@ -97,7 +113,13 @@ def _lista_para(request):
 def ocorrencias_central_view(request):
     ctx = _lista_para(request)
     abrir = (request.GET.get("abrir") or "").strip()
-    ctx["abrir"] = abrir if any(i.uid == abrir for i in ctx["itens"]) else ""
+    uids = [i.uid for i in ctx["itens_todos"]]
+    ctx["abrir"] = abrir if abrir in uids else ""
+    if ctx["abrir"] and uids.index(abrir) >= len(ctx["itens"]):  # garante que o card reaberto esteja renderizado
+        ctx["itens"] = ctx["itens_todos"][:uids.index(abrir) + 1]
+        ctx["restantes"] = len(ctx["itens_todos"]) - len(ctx["itens"])
+        ctx["limite"] = len(ctx["itens"])
+        ctx["proximo_limite"] = ctx["limite"] + PAGINA
     ctx["next_qs"] = request.GET.urlencode()
     return render(request, "shared/ocorrencias_central.html", ctx)
 
@@ -123,7 +145,7 @@ def ocorrencias_acao_view(request):
     # next_qs vem do próprio formulário; mantém apenas parâmetros conhecidos da listagem
     from urllib.parse import parse_qsl
 
-    permitido = {"aba", "origem", "q", "atraso", "resp", "ordem"}
+    permitido = {"aba", "origem", "q", "atraso", "resp", "ordem", "limite"}
     params = [(k, v) for k, v in parse_qsl(qs) if k in permitido]
     if res.ok or request.POST.get("uid"):
         params.append(("abrir", request.POST.get("uid", "")))  # reabre o pop-up da ocorrência tratada
