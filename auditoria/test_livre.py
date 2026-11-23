@@ -200,3 +200,70 @@ class AuditoriaLivreFotosTests(TestCase):
         self.assertEqual(wb.sheetnames, ["Resumo", "Evidências", "Fotos"])
         self.assertEqual(wb["Evidências"]["H2"].value, 1)
         self.assertEqual(len(wb["Fotos"]._images), 1)
+
+
+class AuditoriaLivreWordTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser("aud3", "aud3@example.com", "x")
+        self.client.force_login(self.user)
+        self.aud = AuditoriaLivre.objects.create(
+            titulo="Auditoria de Recebimento", objetivo="Verificar insumos", escopo="Doca 1",
+            data_inicio=date(2026, 11, 20), conclusao_texto="Aprovado com ressalvas", auditor_lider="Maria",
+        )
+        self.aud.auditores.add(self.user)
+        mk = lambda **kw: SolicitacaoLivre.objects.create(auditoria=self.aud, **kw)
+        mk(solicitacao="Registro de temperatura", conclusao="C", evidencia="Planilha OK")
+        self.nc = mk(solicitacao="Calibração do termômetro", conclusao="NC", grau_nc="MAIOR",
+                     evidencia="Vencida", observacao="Abrir ação", topico="Metrologia")
+        mk(solicitacao="Sinalização", conclusao="OM")
+        mk(solicitacao="Sem classificar")
+
+    def _doc(self):
+        from docx import Document
+        r = self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("wordprocessingml", r["Content-Type"])
+        self.assertIn(".docx", r["Content-Disposition"])
+        return Document(BytesIO(r.content))
+
+    def _texto(self, doc):
+        partes = [p.text for p in doc.paragraphs]
+        for t in doc.tables:
+            for row in t.rows:
+                partes += [c.text for c in row.cells]
+        return "\n".join(partes)
+
+    def test_report_content_and_grouping(self):
+        t = self._texto(self._doc())
+        for esperado in ("Auditoria de Recebimento", "Verificar insumos", "Aprovado com ressalvas",
+                         "Não Conformidades (1)", "Oportunidades de Melhoria (1)", "Conformidades (1)",
+                         "Pendentes de classificação (1)", "Não Conformidade (NC Maior)",
+                         "#2  ·  Metrologia", "Abrir ação", "Índice de conformidade: 33%"):
+            self.assertIn(esperado, t)
+        # NC aparece antes das conformidades
+        self.assertLess(t.index("Calibração do termômetro"), t.index("Registro de temperatura"))
+
+    def test_report_embeds_photos(self):
+        import base64
+        from PIL import Image
+        from .models import ImagemSolicitacaoLivre
+        buf = BytesIO()
+        Image.new("RGB", (300, 200), (10, 90, 200)).save(buf, format="JPEG")
+        ImagemSolicitacaoLivre.objects.create(
+            solicitacao=self.nc, nome_arquivo="a.jpg", legenda="Etiqueta vencida",
+            arquivo_base64=base64.b64encode(buf.getvalue()).decode(),
+        )
+        r = self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk]))
+        import zipfile
+        midia = [n for n in zipfile.ZipFile(BytesIO(r.content)).namelist() if n.startswith("word/media/")]
+        self.assertEqual(len(midia), 1)
+        from docx import Document
+        self.assertIn("Etiqueta vencida", self._texto(Document(BytesIO(r.content))))
+
+    def test_empty_audit_and_login(self):
+        from .models import AuditoriaLivre as A
+        vazia = A.objects.create(titulo="Vazia", data_inicio=date(2026, 11, 1))
+        r = self.client.get(reverse("auditoria:livre_export_docx", args=[vazia.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse("auditoria:livre_export_docx", args=[vazia.pk])).status_code, 302)

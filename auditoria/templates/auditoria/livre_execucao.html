@@ -53,6 +53,7 @@
             <a href="{% url 'auditoria:livre_list' %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-left me-1"></i> Lista</a>
             <a href="{% url 'auditoria:livre_edit' aud.pk %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-pencil me-1"></i> Dados</a>
             <a href="{% url 'auditoria:livre_export_excel' aud.pk %}" class="btn btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a>
+            <a href="{% url 'auditoria:livre_export_docx' aud.pk %}" class="btn btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-word me-1"></i> Word</a>
             <form method="post" action="{% url 'auditoria:livre_toggle_conclusao' aud.pk %}" class="d-inline">
                 {% csrf_token %}
                 <button class="btn {% if aud.status == 'CONCLUIDA' %}btn-outline-primary{% else %}btn-success{% endif %} rounded-pill px-3 fw-bold">
