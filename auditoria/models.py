@@ -1955,6 +1955,10 @@ class CapaLinkLivre(models.Model):
     dias_validade = models.PositiveIntegerField(default=15)
     expira_em = models.DateTimeField()
     incluir_om = models.BooleanField(default=False, verbose_name="Incluir Oportunidades de Melhoria")
+    emails_destino = models.TextField(
+        blank=True, default="",
+        help_text="E-mails do auditado (um por linha) que recebem o link e os avisos de revisão.",
+    )
     ativo = models.BooleanField(default=True)
     criado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
@@ -1979,6 +1983,10 @@ class CapaLinkLivre(models.Model):
     @property
     def is_valid(self):
         return self.ativo and not self.is_expired
+
+    @property
+    def lista_emails(self):
+        return [e for e in self.emails_destino.splitlines() if e.strip()]
 
     def conclusoes_alvo(self):
         return ("NC", "OM") if self.incluir_om else ("NC",)

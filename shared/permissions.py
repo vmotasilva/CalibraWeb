@@ -1346,7 +1346,7 @@ NAV_STRUCTURE = [
                             "auditoria:api_livre_imagem_upload", "auditoria:api_livre_imagem_delete",
                             "auditoria:api_livre_imagem_legenda", "auditoria:livre_imagem_arquivo",
                             "auditoria:livre_capa", "auditoria:api_livre_capa_gerar_link",
-                            "auditoria:api_livre_capa_revogar_link", "auditoria:api_livre_capa_salvar",
+                            "auditoria:api_livre_capa_revogar_link", "auditoria:api_livre_capa_enviar_link", "auditoria:api_livre_capa_salvar",
                             "auditoria:api_livre_capa_revisar", "auditoria:livre_capa_anexo",
                         ],
                         "perm": "core.nav_auditoria_iso_lista",

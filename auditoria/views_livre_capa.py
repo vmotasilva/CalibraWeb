@@ -24,6 +24,7 @@ from .models import (
     ImagemSolicitacaoLivre,
     SolicitacaoLivre,
 )
+from .services.notificacao_livre import MAX_DESTINATARIOS, enviar_link_capa, notificar_revisao, parse_emails
 from .views_livre import _json_body
 
 # --- limites e validação dos anexos (o portal aceita upload sem login, então é restritivo)
@@ -174,6 +175,7 @@ def livre_capa(request, pk):
     for l in aud.links_capa.all():
         links.append({
             "id": l.id, "topico": l.topico, "incluir_om": l.incluir_om, "ativo": l.ativo,
+            "emails": l.lista_emails,
             "expirado": l.is_expired, "expira_em": l.expira_em, "ultimo_acesso_em": l.ultimo_acesso_em,
             "url": request.build_absolute_uri(reverse("auditoria:livre_capa_portal", args=[l.token])),
         })
@@ -181,6 +183,32 @@ def livre_capa(request, pk):
     return render(request, "auditoria/livre_capa.html", {
         "aud": aud, "itens": itens, "resumo": _contagem(itens), "links": links, "topicos": topicos,
     })
+
+
+def _url_portal(request, link):
+    return request.build_absolute_uri(reverse("auditoria:livre_capa_portal", args=[link.token]))
+
+
+def _nome_usuario(user):
+    return user.get_full_name() or user.get_username()
+
+
+def _enviar_link(request, link, emails_txt, mensagem):
+    """Valida os e-mails, guarda no link e envia. Retorna dict para a resposta JSON (ou (None, erro))."""
+    validos, invalidos = parse_emails(emails_txt)
+    if invalidos:
+        return None, "E-mail inválido: " + ", ".join(invalidos[:3])
+    if not validos:
+        return None, "Informe ao menos um e-mail."
+    if len(validos) > MAX_DESTINATARIOS:
+        return None, f"No máximo {MAX_DESTINATARIOS} e-mails por envio."
+    link.emails_destino = "\n".join(validos)
+    link.save(update_fields=["emails_destino"])
+    enviados, falhas = enviar_link_capa(
+        link, _url_portal(request, link), validos, mensagem=mensagem,
+        remetente_nome=_nome_usuario(request.user), responder_para=request.user.email or "",
+    )
+    return {"enviados": enviados, "falhas": falhas}, None
 
 
 @login_required
@@ -195,15 +223,39 @@ def api_livre_capa_gerar_link(request, pk):
     except (TypeError, ValueError):
         dias = 15
     dias = max(1, min(dias, 90))
+    emails_txt = str(data.get("emails") or "").strip()
+    if emails_txt:  # valida antes de criar o link, para não deixar link órfão em caso de erro
+        validos, invalidos = parse_emails(emails_txt)
+        if invalidos or not validos or len(validos) > MAX_DESTINATARIOS:
+            erro = ("E-mail inválido: " + ", ".join(invalidos[:3])) if invalidos else (
+                f"No máximo {MAX_DESTINATARIOS} e-mails por envio." if validos else "Informe ao menos um e-mail.")
+            return JsonResponse({"success": False, "error": erro}, status=400)
     link = CapaLinkLivre.objects.create(
         auditoria=aud, dias_validade=dias, incluir_om=bool(data.get("incluir_om")),
         topico=str(data.get("topico") or "").strip()[:255], criado_por=request.user,
         expira_em=timezone.now() + timezone.timedelta(days=dias),
     )
-    return JsonResponse({
-        "success": True,
-        "url": request.build_absolute_uri(reverse("auditoria:livre_capa_portal", args=[link.token])),
-    })
+    resp = {"success": True, "url": _url_portal(request, link), "email": None}
+    if emails_txt:
+        resp["email"], _ = _enviar_link(request, link, emails_txt, str(data.get("mensagem") or ""))
+    return JsonResponse(resp)
+
+
+@login_required
+@require_POST
+def api_livre_capa_enviar_link(request, pk):
+    """Envia (ou reenvia) por e-mail um link já existente e ainda válido."""
+    link = get_object_or_404(CapaLinkLivre, pk=pk)
+    if not link.is_valid:
+        return JsonResponse({"success": False, "error": "Este link está revogado ou expirado."}, status=400)
+    data = _json_body(request)
+    if data is None:
+        return JsonResponse({"success": False, "error": "Requisição inválida."}, status=400)
+    texto = str(data.get("emails") or "").strip() or link.emails_destino
+    resultado, erro = _enviar_link(request, link, texto, str(data.get("mensagem") or ""))
+    if erro:
+        return JsonResponse({"success": False, "error": erro}, status=400)
+    return JsonResponse({"success": True, "email": resultado})
 
 
 @login_required
@@ -248,7 +300,17 @@ def api_livre_capa_revisar(request, pk):
     sol.capa_status = decisao
     sol.capa_parecer_auditor = parecer
     sol.save()
-    return JsonResponse({"success": True, "status": sol.capa_status, "status_display": sol.get_capa_status_display()})
+    email = None
+    if data.get("notificar"):
+        try:
+            enviados, falhas, total = notificar_revisao(
+                sol, decisao, lambda l: _url_portal(request, l), responder_para=request.user.email or "")
+            email = {"enviados": enviados, "falhas": falhas, "destinatarios": total}
+        except Exception:  # noqa: BLE001 - a revisão já foi gravada; o aviso é acessório
+            email = {"enviados": 0, "falhas": 1, "destinatarios": 0}
+    return JsonResponse({
+        "success": True, "status": sol.capa_status, "status_display": sol.get_capa_status_display(), "email": email,
+    })
 
 
 @login_required
