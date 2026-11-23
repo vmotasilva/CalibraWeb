@@ -309,7 +309,18 @@
                                             <i class="bi bi-plus-circle"></i>
                                         </button>
                                     {% endif %}
-                                    <a href="{% url 'metrologia:cotacao_fornecedor_update' cotacao.id %}" 
+                                    {% if solicitacao.status != 'CONCLUIDA' and solicitacao.status != 'CANCELADA' %}
+                                    <form method="post" action="{% url 'metrologia:cotacao_fornecedor_ativacao' cotacao.id %}" class="d-inline"
+                                          {% if cotacao.aprovada %}onsubmit="return confirm('Remover a aprovação de {{ cotacao.numero|escapejs }}?')"{% endif %}>
+                                        {% csrf_token %}<input type="hidden" name="acao" value="{% if cotacao.aprovada %}desaprovar{% else %}aprovar{% endif %}">
+                                        {% if cotacao.aprovada %}
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Aprovada — clique para remover a aprovação"><i class="bi bi-check-circle-fill"></i> Aprovada</button>
+                                        {% else %}
+                                        <button type="submit" class="btn btn-sm btn-success" title="Aprovar cotação"><i class="bi bi-check-circle"></i> Aprovar</button>
+                                        {% endif %}
+                                    </form>
+                                    {% endif %}
+                                    <a href="{% url 'metrologia:cotacao_fornecedor_update' cotacao.id %}"
                                        class="btn btn-sm btn-warning" title="Editar">
                                         <i class="bi bi-pencil"></i>
                                     </a>
