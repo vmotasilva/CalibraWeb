@@ -1,4 +1,5 @@
 """Central de Ocorrências: tela única para listar e tratar ocorrências de todos os módulos."""
+from datetime import date
 from urllib.parse import urlencode
 
 from django.contrib import messages
@@ -11,6 +12,25 @@ from django.views.decorators.http import require_POST
 from shared import ocorrencias as central
 
 ABAS = (("minhas", "Envolvem você"), ("abertas", "Todas em aberto"), ("encerradas", "Encerradas"))
+ORDENS = (
+    ("urgencia", "Mais urgentes (atrasadas primeiro)"),
+    ("prazo", "Prazo mais próximo"),
+    ("recentes", "Mais recentes"),
+    ("antigas", "Mais antigas"),
+)
+_FUTURO = date.max
+
+
+def _ordenar(itens, ordem):
+    if ordem == "prazo":
+        return sorted(itens, key=lambda i: (i.prazo or _FUTURO, -i.data_ordem.timestamp()))
+    if ordem == "recentes":
+        return sorted(itens, key=lambda i: -i.data_ordem.timestamp())
+    if ordem == "antigas":
+        return sorted(itens, key=lambda i: i.data_ordem.timestamp())
+    # urgência: atrasadas (mais dias primeiro), depois por prazo; sem prazo por último.
+    # O destaque "envolve você" é só visual e não altera a posição.
+    return sorted(itens, key=lambda i: (not i.vencida, -i.dias_atraso, i.prazo or _FUTURO, i.data_ordem.timestamp()))
 
 
 def _lista_para(request):
@@ -18,6 +38,10 @@ def _lista_para(request):
     origem = (request.GET.get("origem") or "").strip()
     q = (request.GET.get("q") or "").strip().lower()
     atraso = request.GET.get("atraso") == "1"
+    resp = (request.GET.get("resp") or "").strip()
+    ordem = (request.GET.get("ordem") or "").strip()
+    if ordem not in {o for o, _ in ORDENS}:
+        ordem = "urgencia"
     if aba not in {a for a, _ in ABAS}:
         aba = ""
     if origem not in central.ORIGENS:
@@ -37,6 +61,10 @@ def _lista_para(request):
         atraso = False
     elif atraso:
         itens = [i for i in itens if i.vencida]
+    responsaveis = sorted({n for i in itens for n in i.responsaveis}, key=str.casefold)
+    if resp:
+        itens = [i for i in itens if resp in i.responsaveis]
+    itens = _ordenar(itens, "recentes" if aba == "encerradas" and not request.GET.get("ordem") else ordem)
     if q:
         itens = [
             i for i in itens
@@ -56,6 +84,11 @@ def _lista_para(request):
         "origens": [(k, o.nome, o.icon, por_origem.get(k, 0)) for k, o in central.ORIGENS.items()],
         "q": q,
         "atraso": atraso,
+        "resp": resp,
+        "extra_qs": urlencode([(k, v) for k, v in (("ordem", request.GET.get("ordem") and ordem), ("resp", resp), ("q", q)) if v]),
+        "responsaveis": responsaveis,
+        "ordem": ordem,
+        "ordens": ORDENS,
         "total_vencidas": sum(1 for i in abertas if i.vencida),
     }
 
@@ -90,7 +123,7 @@ def ocorrencias_acao_view(request):
     # next_qs vem do próprio formulário; mantém apenas parâmetros conhecidos da listagem
     from urllib.parse import parse_qsl
 
-    permitido = {"aba", "origem", "q", "atraso"}
+    permitido = {"aba", "origem", "q", "atraso", "resp", "ordem"}
     params = [(k, v) for k, v in parse_qsl(qs) if k in permitido]
     if res.ok or request.POST.get("uid"):
         params.append(("abrir", request.POST.get("uid", "")))  # reabre o pop-up da ocorrência tratada

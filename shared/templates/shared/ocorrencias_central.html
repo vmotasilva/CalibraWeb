@@ -25,6 +25,11 @@
                font-size: .88rem; font-weight: 600; text-decoration: none; white-space: nowrap; }
     .oc-pill.active { background: #0f172a; color: #fff; border-color: #0f172a; }
     .oc-pill.active .badge { background: rgba(255,255,255,.25) !important; color: #fff !important; }
+    .oc-av { width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; color: #334155; font-size: .65rem; font-weight: 700;
+             display: inline-flex; align-items: center; justify-content: center; border: 2px solid #fff; margin-left: -6px; }
+    .oc-av:first-child { margin-left: 0; }
+    .oc-av.mais { background: #cbd5e1; }
+    .oc-pill.zero { opacity: .55; }
     .oc-pill.atraso { border-color: #fecaca; color: #b91c1c; background: #fef2f2; }
     .oc-pill.atraso.active { background: #dc2626; border-color: #dc2626; color: #fff; }
 </style>
@@ -35,36 +40,47 @@
             <h3 class="mb-1"><i class="bi bi-exclamation-triangle text-warning me-2"></i>Central de Ocorrências</h3>
             <div class="text-muted small">Todas as ocorrências do sistema em um só lugar. Clique em uma ocorrência para ver os detalhes e tratá-la, sem sair da tela.</div>
         </div>
-        <form method="get" class="d-flex gap-2">
-            <input type="hidden" name="aba" value="{{ aba }}">
-            {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
-            {% if atraso %}<input type="hidden" name="atraso" value="1">{% endif %}
-            <input type="search" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Buscar ocorrência..." style="min-width:240px;">
-            <button class="btn btn-sm btn-dark"><i class="bi bi-search"></i></button>
-        </form>
     </div>
 
     <div class="d-flex flex-wrap gap-2 mb-2">
         {% for key, nome, total in abas %}
-            <a class="oc-pill {% if aba == key %}active{% endif %}" href="?aba={{ key }}{% if origem %}&origem={{ origem }}{% endif %}{% if atraso and key != 'encerradas' %}&atraso=1{% endif %}">
+            <a class="oc-pill {% if aba == key %}active{% endif %}" href="?aba={{ key }}{% if origem %}&origem={{ origem }}{% endif %}{% if atraso and key != 'encerradas' %}&atraso=1{% endif %}{% if extra_qs %}&{{ extra_qs }}{% endif %}">
                 {{ nome }}{% if total is not None %} <span class="badge bg-secondary rounded-pill">{{ total }}</span>{% endif %}
             </a>
         {% endfor %}
         {% if aba != 'encerradas' %}
             <a class="oc-pill atraso {% if atraso %}active{% endif %}" title="Mostrar somente ocorrências com prazo vencido (da ocorrência ou de alguma ação)"
-               href="?aba={{ aba }}{% if origem %}&origem={{ origem }}{% endif %}{% if not atraso %}&atraso=1{% endif %}">
+               href="?aba={{ aba }}{% if origem %}&origem={{ origem }}{% endif %}{% if not atraso %}&atraso=1{% endif %}{% if extra_qs %}&{{ extra_qs }}{% endif %}">
                 <i class="bi bi-alarm me-1"></i>Em atraso <span class="badge {% if atraso %}bg-light text-danger{% else %}bg-danger{% endif %} rounded-pill">{{ total_vencidas }}</span>
             </a>
         {% endif %}
     </div>
     <div class="d-flex flex-wrap gap-2 mb-4">
-        <a class="oc-pill {% if not origem %}active{% endif %}" href="?aba={{ aba }}{% if atraso %}&atraso=1{% endif %}">Todas as origens</a>
+        <a class="oc-pill {% if not origem %}active{% endif %}" href="?aba={{ aba }}{% if atraso %}&atraso=1{% endif %}{% if extra_qs %}&{{ extra_qs }}{% endif %}">Todas as origens</a>
         {% for key, nome, icon, total in origens %}
-            <a class="oc-pill {% if origem == key %}active{% endif %}" href="?aba={{ aba }}&origem={{ key }}{% if atraso %}&atraso=1{% endif %}">
+            <a class="oc-pill {% if origem == key %}active{% endif %}{% if not total and origem != key %} zero{% endif %}" href="?aba={{ aba }}&origem={{ key }}{% if atraso %}&atraso=1{% endif %}{% if extra_qs %}&{{ extra_qs }}{% endif %}">
                 <i class="bi {{ icon }} me-1"></i>{{ nome }} <span class="badge bg-secondary rounded-pill">{{ total }}</span>
             </a>
         {% endfor %}
     </div>
+
+    <form method="get" class="d-flex flex-wrap align-items-center gap-2 mb-3" id="ocToolbar">
+        <input type="hidden" name="aba" value="{{ aba }}">
+        {% if origem %}<input type="hidden" name="origem" value="{{ origem }}">{% endif %}
+        {% if atraso %}<input type="hidden" name="atraso" value="1">{% endif %}
+        <div class="input-group input-group-sm" style="max-width:300px;">
+            <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Buscar ocorrência..." aria-label="Buscar ocorrência">
+            <button class="btn btn-dark" aria-label="Buscar"><i class="bi bi-search"></i></button>
+        </div>
+        <select name="resp" class="form-select form-select-sm w-auto" aria-label="Filtrar por responsável" onchange="this.form.submit()">
+            <option value="">Todos os responsáveis</option>
+            {% for n in responsaveis %}<option value="{{ n }}" {% if n == resp %}selected{% endif %}>{{ n|title }}</option>{% endfor %}
+        </select>
+        <select name="ordem" class="form-select form-select-sm w-auto" aria-label="Ordenar por" onchange="this.form.submit()">
+            {% for k, nome in ordens %}<option value="{{ k }}" {% if k == ordem %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+        </select>
+        <span class="text-muted small ms-auto">{{ itens|length }} ocorrência{{ itens|length|pluralize }}</span>
+    </form>
 
     {% for oc in itens %}
         <div class="oc-card mb-3 p-3 {% if oc.envolve_usuario and oc.status == 'aberta' %}mine{% endif %} {% if oc.vencida %}vencida{% endif %} {% if oc.status == 'encerrada' %}fechada{% endif %}"
@@ -80,8 +96,11 @@
             <div class="fw-bold">{{ oc.titulo_curto }}</div>
             {% if oc.descricao %}<div class="oc-desc mt-1">{{ oc.descricao|truncatechars:220 }}</div>{% endif %}
             <div class="d-flex flex-wrap justify-content-between gap-2 small text-muted mt-2">
-                <span>
-                    {% if oc.responsaveis %}<i class="bi bi-people me-1"></i>{{ oc.responsaveis|join:", "|truncatechars:140 }}{% else %}<i class="bi bi-person-dash me-1"></i>Sem responsável{% endif %}
+                <span class="d-inline-flex align-items-center gap-2">
+                    {% if oc.responsaveis %}
+                        <span class="d-inline-flex">{% for n in oc.responsaveis|slice:":3" %}<span class="oc-av" title="{{ n|title }}">{{ n|slice:":1" }}</span>{% endfor %}{% if oc.responsaveis|length > 3 %}<span class="oc-av mais" title="{{ oc.responsaveis|slice:'3:'|join:', '|title }}">+{{ oc.responsaveis|length|add:"-3" }}</span>{% endif %}</span>
+                        <span>Responsáveis: {{ oc.responsaveis|slice:":2"|join:", "|title }}{% if oc.responsaveis|length > 2 %} e mais {{ oc.responsaveis|length|add:"-2" }}{% endif %}</span>
+                    {% else %}<i class="bi bi-person-dash"></i><span>Sem responsável</span>{% endif %}
                 </span>
                 <span class="d-inline-flex align-items-center gap-2">
                     {% if oc.acoes_validas %}
