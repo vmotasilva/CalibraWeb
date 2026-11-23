@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from openpyxl import Workbook
 
-from organization.models import GrupoEquipe, GrupoEquipeTurno, Setor
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor
 from rh.models import Colaborador
 from rh.services.estrutura_import import PlanilhaInvalida, ler_planilha
 
@@ -96,7 +96,7 @@ class ImportacaoTests(TestCase):
         self.assertEqual(cel["status"], "ok")
         self.assertEqual(j["blocos"][0]["existe"], False)
         self.assertEqual(GrupoEquipe.objects.count(), 0)
-        self.assertEqual(GrupoEquipeTurno.objects.count(), 0)
+        self.assertEqual(AlocacaoPosto.objects.count(), 0)
 
     def test_nome_ambiguo_e_nao_encontrado_ficam_para_revisao(self):
         _colab("9", "Rogerio Alves", Setor.objects.create(nome="Outro"))
@@ -112,7 +112,6 @@ class ImportacaoTests(TestCase):
     def payload(self, **extra):
         base = {
             "setor_id": self.setor.id,
-            "associar": True,
             "blocos": [
                 {"nome": "CÁLCULO", "postos": [
                     {"nome": "Calculo Siol", "turnos": [{"turno": "TURNO_1", "decisao": f"c:{self.rogerio.id}"}, {"turno": "TURNO_2", "decisao": "s:VAGO"}]},
@@ -130,28 +129,26 @@ class ImportacaoTests(TestCase):
         r = self.confirmar(self.payload())
         self.assertEqual(r.status_code, 200, r.content)
         res = r.json()["resumo"]
-        self.assertEqual((res["blocos_criados"], res["postos_criados"], res["titulares"], res["vagos"], res["reservas"], res["associados"]), (2, 3, 2, 1, 1, 2))
+        self.assertEqual((res["blocos_criados"], res["postos_criados"], res["colaboradores"], res["vagos"], res["reservas"]), (2, 3, 2, 1, 1))
         siol = GrupoEquipe.objects.get(nome="Calculo Siol")
-        self.assertEqual(siol.parent.nome, "CÁLCULO")
-        self.assertEqual(siol.setor_id, self.setor.id)
-        cfg = {c.turno: c for c in siol.turnos_config.all()}
-        self.assertEqual(cfg["TURNO_1"].responsavel_id, self.rogerio.id)
-        self.assertEqual((cfg["TURNO_2"].situacao, cfg["TURNO_2"].responsavel_id), ("VAGO", None))
-        self.rogerio.refresh_from_db()
-        self.assertEqual(self.rogerio.equipe_id, siol.id)
-        self.assertEqual(GrupoEquipeTurno.objects.get(grupo__nome="PRA 01").situacao, "RESERVA")
+        self.assertEqual((siol.parent.nome, siol.setor_id), ("CÁLCULO", self.setor.id))
+        t1 = AlocacaoPosto.objects.get(posto=siol, turno="TURNO_1")
+        self.assertEqual((t1.tipo, t1.colaborador_id), ("PESSOA", self.rogerio.id))
+        t2 = AlocacaoPosto.objects.get(posto=siol, turno="TURNO_2")
+        self.assertEqual((t2.tipo, t2.colaborador_id), ("VAGO", None))
+        self.assertEqual(AlocacaoPosto.objects.get(posto__nome="PRA 01").tipo, "RESERVA")
 
-    def test_reimportar_atualiza_sem_duplicar_e_nao_muda_posto_de_quem_ja_tem(self):
+    def test_reimportar_nao_duplica_e_parado_inativa_o_posto(self):
         self.confirmar(self.payload())
-        p = self.payload()
-        p["blocos"][0]["postos"][1]["turnos"][0]["decisao"] = f"c:{self.rogerio.id}"  # Rogerio já está em outro posto
-        r = self.confirmar(p)
+        r = self.confirmar(self.payload())
         res = r.json()["resumo"]
-        self.assertEqual((res["blocos_criados"], res["postos_criados"], res["postos_atualizados"]), (0, 0, 3))
-        self.assertEqual(res["mantidos_em_outro_posto"], 1)
-        self.assertEqual(GrupoEquipe.objects.filter(parent__isnull=True).count(), 2)
-        self.rogerio.refresh_from_db()
-        self.assertEqual(self.rogerio.equipe.nome, "Calculo Siol")
+        self.assertEqual((res["blocos_criados"], res["postos_criados"], res["postos_atualizados"], res["colaboradores"], res["vagos"], res["reservas"]), (0, 0, 3, 0, 0, 0))
+        self.assertEqual(AlocacaoPosto.objects.count(), 4)
+        p = self.payload()
+        p["blocos"][1]["postos"][0]["turnos"] = [{"turno": "TURNO_1", "decisao": "s:PARADO"}]
+        res = self.confirmar(p).json()["resumo"]
+        self.assertEqual(res["postos_parados"], 1)
+        self.assertFalse(GrupoEquipe.objects.get(nome="PRA 01").ativo)
 
     def test_confirmar_exige_decisao_e_e_tudo_ou_nada(self):
         p = self.payload()
@@ -163,14 +160,16 @@ class ImportacaoTests(TestCase):
         self.assertEqual(self.confirmar(p).status_code, 400)
         self.assertEqual(GrupoEquipe.objects.count(), 0)
 
-    def test_setor_novo_e_bloco_em_outro_setor(self):
+    def test_setor_novo_e_mesmo_bloco_em_outro_setor(self):
         r = self.confirmar(self.payload(setor_id=None, setor_novo="Produção"))
         self.assertEqual(r.status_code, 200, r.content)
         self.assertTrue(Setor.objects.filter(nome="Produção").exists())
+        # o mesmo nome de bloco em outro setor é um bloco diferente (não move nem reaproveita o existente)
         outro = Setor.objects.create(nome="Outro")
         r = self.confirmar(self.payload(setor_id=outro.id))
-        self.assertEqual(r.status_code, 400)
-        self.assertIn("já existe no setor", r.json()["error"])
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["resumo"]["blocos_criados"], 2)
+        self.assertEqual(GrupoEquipe.objects.filter(parent__isnull=True, nome="CÁLCULO").count(), 2)
 
     def test_validacoes_de_arquivo_e_permissao(self):
         r = self.previa(nome="dados.csv")

@@ -13,8 +13,13 @@
   .ee-node.inativo .ee-nome { text-decoration: line-through; opacity: .6; }
   .ee-toggle { width: 1.2rem; text-align: center; color: #6c757d; flex: 0 0 auto; }
   .ee-nome { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ee-add { border: 0; background: transparent; color: #0d6efd; padding: 0 .25rem; line-height: 1; }
+  .ee-add:hover { background: rgba(13,110,253,.15); border-radius: .3rem; }
   .ee-turno-pill { cursor: pointer; }
-  .ee-members { max-height: 55vh; overflow: auto; }
+  .ee-aloc { display: flex; align-items: center; gap: .4rem; padding: .3rem .5rem; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .ee-aloc:last-child { border-bottom: 0; }
+  .ee-aloc .ee-quem { flex: 1 1 auto; min-width: 0; }
+  .ee-lista { max-height: 50vh; overflow: auto; }
 </style>
 
 <div class="container-fluid py-4" id="ee-app" data-pode-editar="{{ pode_editar|yesno:'1,0' }}">
@@ -22,12 +27,12 @@
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
       <h1 class="h3 mb-0"><i class="bi bi-diagram-3-fill text-primary me-2"></i>Estrutura de Equipes e Turnos</h1>
-      <p class="text-muted small mt-1 mb-0">Monte a estrutura de trabalho (Setor › Bloco › Posto de trabalho), defina o titular e a situação de cada posto por turno e associe as pessoas que atuam neles.</p>
+      <p class="text-muted small mt-1 mb-0">Monte a estrutura livremente: <b>Setor › Bloco › Posto de trabalho</b> e, em cada posto, aloque por turno <b>colaboradores</b>, <b>VAGO</b> (necessário contratar) ou <b>Reserva</b> (equipamento reserva instalado).</p>
     </div>
     <div class="d-flex gap-2">
       {% if pode_editar %}
       <a href="{% url 'rh:importar_estrutura_equipes' %}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-excel me-1"></i>Importar planilha</a>
-      <button type="button" class="btn btn-primary" id="ee-btn-novo-raiz"><i class="bi bi-plus-circle me-1"></i>Novo bloco</button>
+      <button type="button" class="btn btn-primary" id="ee-btn-novo-setor"><i class="bi bi-plus-circle me-1"></i>Novo setor</button>
       {% endif %}
       <a href="{% url 'modulo_rh' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
     </div>
@@ -46,7 +51,7 @@
 
   <div class="card border-0 shadow-sm d-none" id="ee-quadro">
     <div class="card-body p-0"><div class="table-responsive"><table class="table table-bordered align-middle mb-0" id="ee-quadro-tabela"></table></div></div>
-    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Cada linha é um bloco/posto; cada coluna, um turno. Posto sem pessoa associada fica como <b>VAGO</b> (contratar) ou <b>RESERVA</b> (equipamento reserva instalado).</div>
+    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Cada linha é um posto; cada coluna, um turno.</div>
   </div>
 
   <div class="row g-3" id="ee-estrutura">
@@ -54,114 +59,59 @@
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
           <span>Setores › Blocos › Postos</span>
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="ee-btn-expandir" title="Expandir ou recolher todos">
-            <i class="bi bi-arrows-expand"></i>
-          </button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="ee-btn-expandir" title="Expandir ou recolher tudo"><i class="bi bi-arrows-expand"></i></button>
         </div>
         <div class="card-body p-2">
           <ul class="ee-tree" id="ee-tree"></ul>
-          <div class="text-muted small p-2 d-none" id="ee-tree-vazio">Nenhum bloco cadastrado ainda. Crie o primeiro bloco e informe o setor.</div>
+          <div class="text-muted small p-2 d-none" id="ee-tree-vazio">Nada cadastrado ainda. Use <b>Novo setor</b> para começar.</div>
         </div>
       </div>
     </div>
-
     <div class="col-lg-8">
-      <div class="card border-0 shadow-sm mb-3" id="ee-detalhe">
-        <div class="card-body text-muted">Selecione um bloco ou posto à esquerda.</div>
-      </div>
-      <div class="card border-0 shadow-sm d-none" id="ee-membros-card">
-        <div class="card-header bg-white d-flex flex-wrap gap-2 justify-content-between align-items-center">
-          <span class="fw-bold">Pessoas <span class="badge bg-secondary" id="ee-membros-total">0</span></span>
-          <div class="d-flex flex-wrap gap-2 align-items-center">
-            <div class="form-check form-switch mb-0" id="ee-sub-wrap">
-              <input class="form-check-input" type="checkbox" id="ee-incluir-sub" checked>
-              <label class="form-check-label small" for="ee-incluir-sub">Incluir postos do bloco</label>
-            </div>
-            <input type="search" class="form-control form-control-sm" id="ee-busca" placeholder="Buscar nome ou matrícula" style="width:14rem" aria-label="Buscar colaborador">
-            {% if pode_editar %}
-            <button type="button" class="btn btn-sm btn-outline-primary" id="ee-btn-add-membros"><i class="bi bi-person-plus me-1"></i>Adicionar</button>
-            {% endif %}
-          </div>
-        </div>
-        {% if pode_editar %}
-        <div class="card-body border-bottom py-2 d-none" id="ee-acoes-lote">
-          <div class="d-flex flex-wrap gap-2 align-items-center">
-            <span class="small fw-semibold"><span id="ee-sel-count">0</span> selecionado(s):</span>
-            <select class="form-select form-select-sm w-auto" id="ee-lote-grupo" aria-label="Mover para o posto"></select>
-            <select class="form-select form-select-sm w-auto" id="ee-lote-turno" aria-label="Alterar turno">
-              <option value="">Manter turno</option>
-              {% for cod, nome in turnos %}<option value="{{ cod }}">Mudar para {{ nome }}</option>{% endfor %}
-            </select>
-            <button type="button" class="btn btn-sm btn-primary" id="ee-btn-aplicar-lote">Aplicar</button>
-          </div>
-        </div>
-        {% endif %}
-        <div class="ee-members">
-          <table class="table table-sm table-hover align-middle mb-0">
-            <thead class="table-light" style="position:sticky;top:0">
-              <tr>
-                {% if pode_editar %}<th style="width:2rem"><input type="checkbox" class="form-check-input" id="ee-sel-todos" aria-label="Selecionar todos"></th>{% endif %}
-                <th>Nome</th><th>Matrícula</th><th>Cargo</th><th>Turno</th><th>Posto / Bloco</th>
-              </tr>
-            </thead>
-            <tbody id="ee-membros-body"></tbody>
-          </table>
-          <div class="text-muted small p-3 d-none" id="ee-membros-vazio">Nenhum colaborador encontrado.</div>
-        </div>
-        <div class="card-footer bg-white small text-muted d-none" id="ee-truncado">Mostrando apenas os primeiros 500 resultados. Refine pela busca ou pelo turno.</div>
+      <div class="card border-0 shadow-sm" id="ee-detalhe">
+        <div class="card-body text-muted">Selecione um setor, bloco ou posto à esquerda.</div>
       </div>
     </div>
   </div>
 </div>
 
 {% if pode_editar %}
-<!-- Modal: grupo -->
+<!-- Modal: setor / bloco / posto -->
 <div class="modal fade" id="ee-modal-grupo" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="ee-modal-titulo">Grupo</h5>
+        <h5 class="modal-title" id="ee-modal-titulo">Novo</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
       <div class="modal-body">
         <div id="ee-modal-erro" class="alert alert-danger d-none"></div>
         <div class="row g-3">
-          <div class="col-md-8">
+          <div class="col-12">
             <label class="form-label fw-semibold" for="ee-f-nome">Nome *</label>
             <input type="text" class="form-control" id="ee-f-nome" maxlength="100">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold" for="ee-f-ordem">Ordem</label>
-            <input type="number" class="form-control" id="ee-f-ordem" min="0" value="0">
-          </div>
-          <div class="col-md-6" id="ee-f-parent-wrap">
-            <label class="form-label fw-semibold" for="ee-f-parent">Bloco *</label>
-            <select class="form-select" id="ee-f-parent"></select>
           </div>
           <div class="col-md-6" id="ee-f-setor-wrap">
             <label class="form-label fw-semibold" for="ee-f-setor">Setor *</label>
             <select class="form-select" id="ee-f-setor"></select>
           </div>
-          <div class="col-12">
+          <div class="col-md-6" id="ee-f-parent-wrap">
+            <label class="form-label fw-semibold" for="ee-f-parent">Bloco *</label>
+            <select class="form-select" id="ee-f-parent"></select>
+          </div>
+          <div class="col-md-6" id="ee-f-ordem-wrap">
+            <label class="form-label fw-semibold" for="ee-f-ordem">Ordem</label>
+            <input type="number" class="form-control" id="ee-f-ordem" min="0" value="0">
+          </div>
+          <div class="col-12" id="ee-f-desc-wrap">
             <label class="form-label fw-semibold" for="ee-f-desc">Descrição</label>
             <input type="text" class="form-control" id="ee-f-desc" maxlength="255">
           </div>
-          <div class="col-12">
+          <div class="col-12" id="ee-f-ativo-wrap">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="ee-f-ativo" checked>
               <label class="form-check-label" for="ee-f-ativo">Ativo</label>
             </div>
-          </div>
-          <div class="col-12">
-            <h6 class="fw-bold mt-2">Turnos em que opera</h6>
-            <p class="small text-muted mb-2">Marque os turnos e informe o responsável (titular), a situação do posto e o efetivo planejado.</p>
-            <div class="table-responsive">
-              <table class="table table-sm align-middle mb-0">
-                <thead class="table-light"><tr><th style="width:2rem"></th><th>Turno</th><th>Responsável (titular)</th><th style="width:8rem">Situação</th><th style="width:7rem">Efetivo plan.</th></tr></thead>
-                <tbody id="ee-f-turnos"></tbody>
-              </table>
-            </div>
-            <datalist id="ee-resp-opcoes"></datalist>
           </div>
         </div>
       </div>
@@ -173,37 +123,61 @@
   </div>
 </div>
 
-<!-- Modal: adicionar colaboradores -->
-<div class="modal fade" id="ee-modal-add" tabindex="-1" aria-hidden="true">
+<!-- Modal: alocação (colaborador / vago / reserva) -->
+<div class="modal fade" id="ee-modal-aloc" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Associar pessoas ao posto / bloco</h5>
+        <h5 class="modal-title" id="ee-aloc-titulo">Alocar</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
       </div>
       <div class="modal-body">
-        <div class="d-flex flex-wrap gap-2 mb-2">
-          <input type="search" class="form-control" id="ee-add-busca" placeholder="Buscar por nome ou matrícula" style="max-width:18rem">
-          <select class="form-select w-auto" id="ee-add-origem" aria-label="Origem">
-            <option value="sem">Somente sem posto</option>
-            <option value="todos">Todos os colaboradores</option>
-          </select>
-          <select class="form-select w-auto" id="ee-add-turno" aria-label="Filtrar turno">
-            <option value="">Todos os turnos</option>
-            {% for cod, nome in turnos %}<option value="{{ cod }}">{{ nome }}</option>{% endfor %}
-          </select>
+        <div id="ee-aloc-erro" class="alert alert-danger d-none"></div>
+        <div class="row g-3 mb-2">
+          <div class="col-md-4" id="ee-a-tipo-wrap">
+            <label class="form-label fw-semibold" for="ee-a-tipo">Tipo</label>
+            <select class="form-select" id="ee-a-tipo">
+              <option value="PESSOA">Colaborador</option>
+              <option value="VAGO">VAGO (contratar)</option>
+              <option value="RESERVA">Reserva (equip. reserva)</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold" for="ee-a-turno">Turno *</label>
+            <select class="form-select" id="ee-a-turno">
+              {% for cod, nome in turnos %}<option value="{{ cod }}">{{ nome }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4 d-none" id="ee-a-posto-wrap">
+            <label class="form-label fw-semibold" for="ee-a-posto">Posto</label>
+            <select class="form-select" id="ee-a-posto"></select>
+          </div>
+          <div class="col-md-4 d-none" id="ee-a-qtd-wrap">
+            <label class="form-label fw-semibold" for="ee-a-qtd">Quantidade</label>
+            <input type="number" class="form-control" id="ee-a-qtd" min="1" max="20" value="1">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold" for="ee-a-obs">Observação</label>
+            <input type="text" class="form-control" id="ee-a-obs" maxlength="255" placeholder="Opcional (ex.: cobre férias, equipamento no almoxarifado…)">
+          </div>
         </div>
-        <div class="table-responsive" style="max-height:45vh">
-          <table class="table table-sm table-hover align-middle mb-0">
-            <thead class="table-light"><tr><th style="width:2rem"></th><th>Nome</th><th>Matrícula</th><th>Turno</th><th>Posto atual</th></tr></thead>
-            <tbody id="ee-add-body"></tbody>
-          </table>
+        <div id="ee-a-pessoas">
+          <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+            <input type="search" class="form-control" id="ee-a-busca" placeholder="Buscar colaborador por nome ou matrícula" style="max-width:22rem" aria-label="Buscar colaborador">
+            <span class="small text-muted" id="ee-a-sel-info"></span>
+          </div>
+          <div class="table-responsive ee-lista">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th style="width:2rem"></th><th>Nome</th><th>Matrícula</th><th>Cargo</th><th>Turno (cadastro)</th><th>Já alocado em</th></tr></thead>
+              <tbody id="ee-a-body"></tbody>
+            </table>
+          </div>
+          <div class="small text-muted mt-1" id="ee-a-info"></div>
         </div>
-        <div class="text-muted small mt-2" id="ee-add-info"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="ee-add-confirmar">Associar selecionados</button>
+        <button type="button" class="btn btn-primary" id="ee-a-salvar">Salvar</button>
       </div>
     </div>
   </div>
@@ -219,41 +193,29 @@
     membros: "{% url 'rh:api_estrutura_equipes_membros' %}",
     salvar: "{% url 'rh:api_estrutura_equipes_salvar' %}",
     excluir: "{% url 'rh:api_estrutura_equipes_excluir' %}",
-    atualizar: "{% url 'rh:api_estrutura_equipes_membros_atualizar' %}",
+    setor: "{% url 'rh:api_estrutura_equipes_setor_criar' %}",
+    alocCriar: "{% url 'rh:api_estrutura_equipes_alocacoes_criar' %}",
+    alocAtualizar: "{% url 'rh:api_estrutura_equipes_alocacoes_atualizar' %}",
+    alocExcluir: "{% url 'rh:api_estrutura_equipes_alocacoes_excluir' %}",
   };
+  const $ = id => document.getElementById(id);
   const csrf = () => app.querySelector('[name=csrfmiddlewaretoken]').value;
+  // O bootstrap.bundle.js é carregado DEPOIS deste bloco (base_desktop.html): modais só são criados no uso.
+  const modal = id => bootstrap.Modal.getOrCreateInstance($(id));
 
-  const state = { grupos: [], turnos: [], setores: [], semGrupo: {}, sel: null, turno: '', abertos: new Set(), membros: [], tudoAberto: true, setoresFechados: new Set() };
-  const byId = id => state.grupos.find(g => g.id === id);
-  const filhos = pid => state.grupos.filter(g => g.parent_id === pid).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
+  const state = { setores: [], grupos: [], alocs: [], turnos: [], turno: '', sel: null, abertos: new Set(), tudoAberto: true };
   const turnoNome = c => (state.turnos.find(t => t.codigo === c) || {}).nome || c;
+  const setorDe = id => state.setores.find(s => s.id === id);
+  const grupo = id => state.grupos.find(g => g.id === id);
+  const ordena = (a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome);
+  const blocosDe = sid => state.grupos.filter(g => !g.parent_id && g.setor_id === sid).sort(ordena);
+  const postosDe = bid => state.grupos.filter(g => g.parent_id === bid).sort(ordena);
+  const key = (t, id) => t + id;
 
-  function sitBadge(s) {
-    return s === 'VAGO' ? '<span class="badge bg-danger" title="Necessário contratar">VAGO</span>' : s === 'RESERVA' ? '<span class="badge bg-info text-dark" title="Equipamento reserva instalado, para quando um falhar">RESERVA</span>' : s === 'PARADO' ? '<span class="badge bg-secondary">Parado</span>' : '<span class="badge bg-success">Ativo</span>';
-  }
   function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
-  function descendentes(id) {
-    const out = []; const fila = filhos(id).map(g => g.id);
-    while (fila.length) { const x = fila.pop(); out.push(x); filhos(x).forEach(g => fila.push(g.id)); }
-    return out;
-  }
-  function caminho(id) {
-    const n = []; let g = byId(id), guard = 0;
-    while (g && guard++ < 50) { n.unshift(g.nome); g = g.parent_id ? byId(g.parent_id) : null; }
-    return n.join(' › ');
-  }
-  // total (próprio + subgrupos) no filtro de turno atual
-  function contar(id, incluirSub = true) {
-    const ids = incluirSub ? [id, ...descendentes(id)] : [id];
-    let n = 0;
-    ids.forEach(i => { const c = (byId(i) || {}).contagem || {}; n += state.turno ? (c[state.turno] || 0) : Object.values(c).reduce((a, b) => a + b, 0); });
-    return n;
-  }
-
   function aviso(msg, tipo = 'success') {
-    const el = document.getElementById('ee-alert');
-    el.className = 'alert alert-' + tipo; el.textContent = msg;
-    clearTimeout(aviso.t); aviso.t = setTimeout(() => el.classList.add('d-none'), 5000);
+    const el = $('ee-alert'); el.className = 'alert alert-' + tipo; el.textContent = msg;
+    clearTimeout(aviso.t); aviso.t = setTimeout(() => el.classList.add('d-none'), 6000);
   }
   async function api(url, body) {
     const opt = body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify(body) };
@@ -263,358 +225,316 @@
     return j;
   }
 
-  // ---------------------------------------------------------- carga / render
-  async function carregar() {
-    const j = await api(URLS.dados);
-    state.grupos = j.grupos; state.turnos = j.turnos; state.setores = j.setores; state.semGrupo = j.sem_grupo || {};
-    if (state.sel !== 'sem' && state.sel !== null && !byId(state.sel)) state.sel = null;
-    if (state.tudoAberto && state.abertos.size === 0) state.grupos.forEach(g => state.abertos.add(g.id));
-    renderFiltroTurnos(); renderArvore(); renderDetalhe(); renderQuadro(); await carregarMembros();
+  // ---------------------------------------------------------- consultas
+  const idsPostosDoNo = sel => {
+    if (!sel) return [];
+    if (sel.t === 'posto') return [sel.id];
+    if (sel.t === 'bloco') return postosDe(sel.id).map(p => p.id);
+    return blocosDe(sel.id).flatMap(b => postosDe(b.id).map(p => p.id));
+  };
+  const alocsDe = (idsPostos, turno = state.turno) => state.alocs.filter(a => idsPostos.includes(a.posto_id) && (!turno || a.turno === turno));
+  function cont(alocs) { return { p: alocs.filter(a => a.tipo === 'PESSOA').length, v: alocs.filter(a => a.tipo === 'VAGO').length, r: alocs.filter(a => a.tipo === 'RESERVA').length }; }
+  function badgesCont(c, vazioTxt = '') {
+    if (!c.p && !c.v && !c.r) return vazioTxt ? '<span class="text-muted small">' + vazioTxt + '</span>' : '';
+    return (c.p ? '<span class="badge bg-secondary" title="Colaboradores">' + c.p + '</span> ' : '') + (c.v ? '<span class="badge bg-danger" title="Vagas (contratar)">' + c.v + ' vago</span> ' : '') + (c.r ? '<span class="badge bg-info text-dark" title="Reservas">' + c.r + ' res.</span>' : '');
+  }
+  function caminhoPosto(id) {
+    const p = grupo(id); if (!p) return '';
+    const b = p.parent_id ? grupo(p.parent_id) : null;
+    return [(setorDe(p.setor_id) || {}).nome, b && b.nome, p.nome].filter(Boolean).join(' › ');
   }
 
-  function renderFiltroTurnos() {
-    const box = document.getElementById('ee-turnos-filtro');
-    box.querySelectorAll('.ee-turno-pill').forEach(e => e.remove());
-    const total = state.grupos.reduce((a, g) => a + Object.values(g.contagem).reduce((x, y) => x + y, 0), 0) + Object.values(state.semGrupo).reduce((a, b) => a + b, 0);
-    const itens = [{ codigo: '', nome: 'Todos', n: total }].concat(state.turnos.map(t => ({
-      ...t, n: state.grupos.reduce((a, g) => a + (g.contagem[t.codigo] || 0), 0) + (state.semGrupo[t.codigo] || 0)
-    })));
+  // ---------------------------------------------------------- carga
+  async function carregar() {
+    const j = await api(URLS.dados);
+    state.setores = j.setores; state.grupos = j.grupos; state.alocs = j.alocacoes; state.turnos = j.turnos;
+    if (state.tudoAberto && state.abertos.size === 0) {
+      state.setores.forEach(s => state.abertos.add(key('s', s.id))); state.grupos.filter(g => !g.parent_id).forEach(g => state.abertos.add(key('g', g.id)));
+    }
+    if (state.sel) {
+      const ok = state.sel.t === 'setor' ? setorDe(state.sel.id) : grupo(state.sel.id);
+      if (!ok) state.sel = null;
+    }
+    renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro();
+  }
+
+  function renderFiltro() {
+    const box = $('ee-turnos-filtro'); box.querySelectorAll('.ee-turno-pill').forEach(e => e.remove());
+    const itens = [{ codigo: '', nome: 'Todos' }].concat(state.turnos);
     itens.forEach(t => {
+      const n = state.alocs.filter(a => !t.codigo || a.turno === t.codigo).length;
       const b = document.createElement('button'); b.type = 'button';
       b.className = 'btn btn-sm ee-turno-pill ' + (state.turno === t.codigo ? 'btn-primary' : 'btn-outline-secondary');
-      b.innerHTML = esc(t.nome) + ' <span class="badge bg-light text-dark">' + t.n + '</span>';
-      b.onclick = async () => { state.turno = t.codigo; renderFiltroTurnos(); renderArvore(); renderDetalhe(); await carregarMembros(); };
+      b.innerHTML = esc(t.nome) + ' <span class="badge bg-light text-dark">' + n + '</span>';
+      b.onclick = () => { state.turno = t.codigo; renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); };
       box.appendChild(b);
     });
   }
 
+  // ---------------------------------------------------------- árvore
+  function noArvore(tipo, id, icone, nome, contagem, ativo, aoClicar, aoAdd, tituloAdd, temFilhos, aberto, aoAlternar) {
+    const li = document.createElement('li');
+    const row = document.createElement('div');
+    row.className = 'ee-node' + (state.sel && state.sel.t === tipo && state.sel.id === id ? ' active' : '') + (ativo ? '' : ' inativo');
+    row.innerHTML = '<span class="ee-toggle">' + (temFilhos ? '<i class="bi bi-chevron-' + (aberto ? 'down' : 'right') + '"></i>' : '') + '</span>' + icone +
+      '<span class="ee-nome" title="' + esc(nome) + '">' + esc(nome) + '</span><span>' + contagem + '</span>' +
+      (PODE_EDITAR && aoAdd ? '<button type="button" class="ee-add" title="' + esc(tituloAdd) + '" aria-label="' + esc(tituloAdd) + '"><i class="bi bi-plus-lg"></i></button>' : '');
+    row.querySelector('.ee-toggle').onclick = e => { e.stopPropagation(); if (temFilhos) aoAlternar(); };
+    row.onclick = aoClicar;
+    const add = row.querySelector('.ee-add'); if (add) add.onclick = e => { e.stopPropagation(); aoAdd(); };
+    li.appendChild(row); return li;
+  }
+  function alterna(k) { state.abertos.has(k) ? state.abertos.delete(k) : state.abertos.add(k); renderArvore(); }
+
   function renderArvore() {
-    const ul = document.getElementById('ee-tree'); ul.innerHTML = '';
-    document.getElementById('ee-tree-vazio').classList.toggle('d-none', state.grupos.length > 0);
-    const desenha = (pid, alvo) => {
-      filhos(pid).forEach(g => {
-        const li = document.createElement('li');
-        const temFilhos = filhos(g.id).length > 0;
-        const aberto = state.abertos.has(g.id);
-        const row = document.createElement('div');
-        row.className = 'ee-node' + (state.sel === g.id ? ' active' : '') + (g.ativo ? '' : ' inativo');
-        row.innerHTML = '<span class="ee-toggle">' + (temFilhos ? '<i class="bi bi-chevron-' + (aberto ? 'down' : 'right') + '"></i>' : '') + '</span>' +
-          '<i class="bi ' + (g.nivel === 1 ? 'bi-grid-3x3-gap text-primary' : 'bi-wrench-adjustable text-secondary') + '"></i><span class="ee-nome" title="' + esc(g.nome) + '">' + esc(g.nome) + '</span>' +
-          '<span class="badge bg-secondary">' + contar(g.id) + '</span>';
-        row.querySelector('.ee-toggle').onclick = e => { e.stopPropagation(); if (!temFilhos) return; aberto ? state.abertos.delete(g.id) : state.abertos.add(g.id); renderArvore(); };
-        row.onclick = () => selecionar(g.id);
-        li.appendChild(row);
-        if (temFilhos && aberto) { const sub = document.createElement('ul'); li.appendChild(sub); desenha(g.id, sub); }
-        alvo.appendChild(li);
-      });
-    };
-    // Nível 0: setores que possuem blocos
-    const setoresUsados = state.setores.filter(st => state.grupos.some(g => !g.parent_id && g.setor_id === st.id));
-    setoresUsados.forEach(st => {
-      const key = 's' + st.id; const aberto = !state.setoresFechados.has(key);
-      const li = document.createElement('li');
-      const row = document.createElement('div'); row.className = 'ee-node';
-      const n = state.grupos.filter(g => !g.parent_id && g.setor_id === st.id).reduce((a, g) => a + contar(g.id), 0);
-      row.innerHTML = '<span class="ee-toggle"><i class="bi bi-chevron-' + (aberto ? 'down' : 'right') + '"></i></span><i class="bi bi-building text-dark"></i><span class="ee-nome fw-bold">' + esc(st.nome) + '</span><span class="badge bg-dark">' + n + '</span>';
-      row.onclick = () => { aberto ? state.setoresFechados.add(key) : state.setoresFechados.delete(key); renderArvore(); };
-      li.appendChild(row);
-      if (aberto) {
-        const sub = document.createElement('ul'); li.appendChild(sub);
-        state.grupos.filter(g => !g.parent_id && g.setor_id === st.id).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome)).forEach(g => {
-          // reaproveita o desenho recursivo para o bloco e seus postos
-          const tmp = document.createElement('ul');
-          const original = filhos;
-          const li2 = document.createElement('li');
-          const temFilhos = filhos(g.id).length > 0, ab = state.abertos.has(g.id);
-          const r2 = document.createElement('div');
-          r2.className = 'ee-node' + (state.sel === g.id ? ' active' : '') + (g.ativo ? '' : ' inativo');
-          r2.innerHTML = '<span class="ee-toggle">' + (temFilhos ? '<i class="bi bi-chevron-' + (ab ? 'down' : 'right') + '"></i>' : '') + '</span><i class="bi bi-grid-3x3-gap text-primary"></i><span class="ee-nome" title="' + esc(g.nome) + '">' + esc(g.nome) + '</span><span class="badge bg-secondary">' + contar(g.id) + '</span>';
-          r2.querySelector('.ee-toggle').onclick = e => { e.stopPropagation(); if (!temFilhos) return; ab ? state.abertos.delete(g.id) : state.abertos.add(g.id); renderArvore(); };
-          r2.onclick = () => selecionar(g.id);
-          li2.appendChild(r2);
-          if (temFilhos && ab) { const u = document.createElement('ul'); li2.appendChild(u); desenha(g.id, u); }
-          sub.appendChild(li2);
+    const ul = $('ee-tree'); ul.innerHTML = '';
+    $('ee-tree-vazio').classList.toggle('d-none', state.setores.length > 0);
+    state.setores.forEach(s => {
+      const blocos = blocosDe(s.id); const ks = key('s', s.id); const ab = state.abertos.has(ks);
+      const li = noArvore('setor', s.id, '<i class="bi bi-building text-dark"></i>', s.nome, badgesCont(cont(alocsDe(idsPostosDoNo({ t: 'setor', id: s.id })))), true,
+        () => selecionar('setor', s.id), () => abrirGrupo({ tipo: 'bloco', setorId: s.id }), 'Novo bloco neste setor', blocos.length > 0, ab, () => alterna(ks));
+      if (blocos.length && ab) {
+        const ub = document.createElement('ul'); li.appendChild(ub);
+        blocos.forEach(b => {
+          const postos = postosDe(b.id); const kb = key('g', b.id); const abb = state.abertos.has(kb);
+          const lb = noArvore('bloco', b.id, '<i class="bi bi-grid-3x3-gap text-primary"></i>', b.nome, badgesCont(cont(alocsDe(idsPostosDoNo({ t: 'bloco', id: b.id })))), b.ativo,
+            () => selecionar('bloco', b.id), () => abrirGrupo({ tipo: 'posto', parentId: b.id }), 'Novo posto neste bloco', postos.length > 0, abb, () => alterna(kb));
+          if (postos.length && abb) {
+            const up = document.createElement('ul'); lb.appendChild(up);
+            postos.forEach(p => up.appendChild(noArvore('posto', p.id, '<i class="bi bi-wrench-adjustable text-secondary"></i>', p.nome, badgesCont(cont(alocsDe([p.id]))), p.ativo,
+              () => selecionar('posto', p.id), () => abrirAloc({ postoId: p.id }), 'Alocar colaborador, vago ou reserva', false, false, null)));
+          }
+          ub.appendChild(lb);
         });
       }
       ul.appendChild(li);
     });
-    const semN = state.turno ? (state.semGrupo[state.turno] || 0) : Object.values(state.semGrupo).reduce((a, b) => a + b, 0);
-    const li = document.createElement('li'); li.className = 'mt-2 border-top pt-2';
-    li.innerHTML = '<div class="ee-node' + (state.sel === 'sem' ? ' active' : '') + '"><span class="ee-toggle"></span><i class="bi bi-person-dash text-warning"></i><span class="ee-nome">Sem posto</span><span class="badge bg-warning text-dark">' + semN + '</span></div>';
-    li.firstChild.onclick = () => selecionar('sem');
-    ul.appendChild(li);
   }
+  function selecionar(t, id) { state.sel = { t, id }; renderArvore(); renderDetalhe(); }
 
-  async function selecionar(id) { state.sel = id; renderArvore(); renderDetalhe(); await carregarMembros(); }
-
+  // ---------------------------------------------------------- painel de detalhe
   function renderDetalhe() {
-    const box = document.getElementById('ee-detalhe');
-    const membrosCard = document.getElementById('ee-membros-card');
-    if (state.sel === null) { box.innerHTML = '<div class="card-body text-muted">Selecione um bloco ou posto à esquerda.</div>'; membrosCard.classList.add('d-none'); return; }
-    membrosCard.classList.remove('d-none');
-    document.getElementById('ee-sub-wrap').classList.toggle('d-none', state.sel === 'sem');
-    const addBtn = document.getElementById('ee-btn-add-membros'); if (addBtn) addBtn.classList.toggle('d-none', state.sel === 'sem');
-    if (state.sel === 'sem') {
-      box.innerHTML = '<div class="card-body"><h5 class="mb-1"><i class="bi bi-person-dash text-warning me-2"></i>Pessoas sem posto</h5><p class="text-muted small mb-0">Selecione as pessoas abaixo e associe-as a um posto de trabalho.</p></div>';
-      return;
+    const box = $('ee-detalhe'); const sel = state.sel;
+    if (!sel) { box.innerHTML = '<div class="card-body text-muted">Selecione um setor, bloco ou posto à esquerda.</div>'; return; }
+    let titulo, tipoTxt, rota, botoes = '', corpo = '';
+    if (sel.t === 'setor') {
+      const s = setorDe(sel.id); titulo = s.nome; tipoTxt = 'Setor'; rota = '';
+      if (PODE_EDITAR) botoes = '<button class="btn btn-sm btn-primary" data-acao="novo-bloco"><i class="bi bi-plus-circle me-1"></i>Novo bloco</button>';
+      corpo = tabelaPostos(blocosDe(s.id).flatMap(b => [b, ...postosDe(b.id)]), true);
+    } else {
+      const g = grupo(sel.id); titulo = g.nome; tipoTxt = g.nivel === 1 ? 'Bloco' : 'Posto de trabalho';
+      rota = [(setorDe(g.setor_id) || {}).nome, g.parent_id ? (grupo(g.parent_id) || {}).nome : null].filter(Boolean).join(' › ');
+      if (PODE_EDITAR) {
+        if (g.nivel === 1) botoes += '<button class="btn btn-sm btn-primary" data-acao="novo-posto"><i class="bi bi-plus-circle me-1"></i>Novo posto</button>';
+        botoes += '<button class="btn btn-sm btn-outline-secondary" data-acao="editar"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-sm btn-outline-danger" data-acao="excluir"><i class="bi bi-trash me-1"></i>Excluir</button>';
+      }
+      corpo = g.nivel === 1 ? tabelaPostos(postosDe(g.id), false) : painelPosto(g);
     }
-    const g = byId(state.sel);
-    const cfgPor = Object.fromEntries(g.turnos.map(t => [t.turno, t]));
-    const codigos = Array.from(new Set([...Object.keys(cfgPor), ...Object.keys(g.contagem)])).sort();
-    let linhas = codigos.map(c => {
-      const cfg = cfgPor[c]; const atual = g.contagem[c] || 0; const plan = cfg ? cfg.efetivo_planejado : null;
-      let dif = '<span class="text-muted">—</span>';
-      if (plan != null) { const d = atual - plan; dif = d === 0 ? '<span class="badge bg-success">completo</span>' : d < 0 ? '<span class="badge bg-danger">faltam ' + (-d) + '</span>' : '<span class="badge bg-warning text-dark">+' + d + ' acima</span>'; }
-      return '<tr><td>' + esc(turnoNome(c)) + (cfg ? '' : ' <span class="badge bg-light text-dark" title="Há colaboradores neste turno, mas o posto não está configurado para ele">sem config.</span>') + '</td><td>' + (cfg && cfg.responsavel_nome ? esc(cfg.responsavel_nome) : '<span class="text-muted">—</span>') + '</td><td>' + (cfg ? sitBadge(cfg.situacao) : '<span class="text-muted">—</span>') + '</td><td class="text-end">' + (plan != null ? plan : '—') + '</td><td class="text-end">' + atual + '</td><td>' + dif + '</td></tr>';
-    }).join('');
-    if (!linhas) linhas = '<tr><td colspan="6" class="text-muted">Nenhum turno configurado.</td></tr>';
-    const sub = filhos(g.id);
-    box.innerHTML = '<div class="card-body">' +
-      '<div class="d-flex justify-content-between flex-wrap gap-2"><div>' +
-      '<h5 class="mb-1"><span class="badge text-bg-light me-1">' + (g.nivel === 1 ? 'Bloco' : 'Posto') + '</span>' + esc(g.nome) + (g.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</h5>' +
-      '<div class="small text-muted">' + esc(caminho(g.id)) + (g.setor_nome ? ' · Setor: ' + esc(g.setor_nome) : '') + '</div>' +
-      (g.descricao ? '<div class="small mt-1">' + esc(g.descricao) + '</div>' : '') + '</div>' +
-      (PODE_EDITAR ? '<div class="d-flex gap-2 align-items-start">' + (g.nivel === 1 ? '<button class="btn btn-sm btn-outline-primary" id="ee-b-sub"><i class="bi bi-plus-circle me-1"></i>Posto de trabalho</button>' : '') + '<button class="btn btn-sm btn-outline-secondary" id="ee-b-edit"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-sm btn-outline-danger" id="ee-b-del"><i class="bi bi-trash me-1"></i>Excluir</button></div>' : '') +
-      '</div>' +
-      '<div class="table-responsive mt-3"><table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th>Turno</th><th>Titular</th><th>Situação do posto</th><th class="text-end">Planejado</th><th class="text-end">Atual</th><th>Efetivo</th></tr></thead><tbody>' + linhas + '</tbody></table></div>' +
-      (sub.length ? '<div class="mt-3 small"><span class="text-muted">Postos:</span> ' + sub.map(s => '<a href="#" class="badge text-bg-light text-decoration-none ee-sub-link" data-id="' + s.id + '">' + esc(s.nome) + ' (' + contar(s.id) + ')</a>').join(' ') + '</div>' : '') +
-      '</div>';
-    box.querySelectorAll('.ee-sub-link').forEach(a => a.onclick = e => { e.preventDefault(); state.abertos.add(g.id); selecionar(parseInt(a.dataset.id)); });
-    if (PODE_EDITAR) {
-      const bs = document.getElementById('ee-b-sub'); if (bs) bs.onclick = () => abrirModal(null, g.id);
-      document.getElementById('ee-b-edit').onclick = () => abrirModal(g.id);
-      document.getElementById('ee-b-del').onclick = () => excluir(g);
-    }
+    box.innerHTML = '<div class="card-body"><div class="d-flex justify-content-between flex-wrap gap-2 mb-3"><div>' +
+      '<h5 class="mb-1"><span class="badge text-bg-light me-1">' + tipoTxt + '</span>' + esc(titulo) + (sel.t !== 'setor' && !grupo(sel.id).ativo ? ' <span class="badge bg-secondary">inativo</span>' : '') + '</h5>' +
+      (rota ? '<div class="small text-muted">' + esc(rota) + '</div>' : '') + (sel.t !== 'setor' && grupo(sel.id).descricao ? '<div class="small mt-1">' + esc(grupo(sel.id).descricao) + '</div>' : '') +
+      '</div><div class="d-flex gap-2 align-items-start flex-wrap">' + botoes + '</div></div>' + corpo + '</div>';
+    box.querySelectorAll('[data-acao]').forEach(b => b.onclick = () => acaoDetalhe(b.dataset.acao));
+    box.querySelectorAll('[data-ir]').forEach(a => a.onclick = e => { e.preventDefault(); const [t, id] = a.dataset.ir.split(':'); if (t === 'bloco') state.abertos.add(key('g', +id)); selecionar(t, +id); });
+    box.querySelectorAll('[data-aloc]').forEach(b => b.onclick = () => { const [ac, id] = b.dataset.aloc.split(':'); ac === 'editar' ? abrirAloc({ alocId: +id }) : removerAloc(+id); });
+    box.querySelectorAll('[data-add]').forEach(b => b.onclick = () => abrirAloc({ postoId: sel.id, tipo: b.dataset.add }));
+  }
+  function acaoDetalhe(ac) {
+    const sel = state.sel;
+    if (ac === 'novo-bloco') abrirGrupo({ tipo: 'bloco', setorId: sel.id });
+    else if (ac === 'novo-posto') abrirGrupo({ tipo: 'posto', parentId: sel.id });
+    else if (ac === 'editar') abrirGrupo({ editId: sel.id });
+    else if (ac === 'excluir') excluirGrupo(grupo(sel.id));
   }
 
-  // ---------------------------------------------------------- quadro por turno
-  function renderQuadro() {
-    const t = document.getElementById('ee-quadro-tabela');
-    const usados = state.turnos.filter(tn => state.grupos.some(g => g.turnos.some(c => c.turno === tn.codigo)));
-    const cols = usados.length ? usados : state.turnos;
-    let vagas = 0, reservas = 0;
-    let h = '<thead class="table-light"><tr><th>Bloco / Posto de trabalho</th>' + cols.map(c => '<th>' + esc(c.nome) + '</th>').join('') + '</tr></thead><tbody>';
-    const linha = (g, nivel) => {
-      const temPostos = filhos(g.id).length > 0;
-      h += '<tr' + (g.ativo ? '' : ' class="text-muted"') + '><td style="padding-left:' + (0.6 + nivel * 1.4) + 'rem" class="' + (nivel === 0 ? 'fw-bold bg-light' : '') + '">' + esc(g.nome) + '</td>';
-      cols.forEach(c => {
-        const cfg = g.turnos.find(x => x.turno === c.codigo);
-        let cel = '<span class="text-muted">—</span>';
-        if (cfg) {
-          if (cfg.situacao === 'VAGO') { cel = '<span class="badge bg-danger">VAGO</span> <span class="small text-muted">contratar</span>'; if (nivel === 1 || !temPostos) vagas++; }
-          else if (cfg.situacao === 'RESERVA') { cel = '<span class="badge bg-info text-dark">RESERVA</span>'; if (nivel === 1 || !temPostos) reservas++; }
-          else cel = (cfg.responsavel_nome ? esc(cfg.responsavel_nome) : '<span class="text-muted">sem titular</span>') + (cfg.situacao === 'PARADO' ? ' <span class="badge bg-secondary">Parado</span>' : '');
-        }
-        h += '<td class="' + (nivel === 0 ? 'bg-light' : '') + '">' + cel + '</td>';
-      });
+  // Visão geral de um setor/bloco: uma linha por posto, resumo por turno
+  function tabelaPostos(itens, comBlocos) {
+    if (!itens.length) return '<div class="text-muted">Ainda não há ' + (comBlocos ? 'blocos' : 'postos') + ' aqui. ' + (PODE_EDITAR ? 'Use o botão acima para criar.' : '') + '</div>';
+    const turnos = state.turnos.filter(t => !state.turno || t.codigo === state.turno);
+    let h = '<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th>' + (comBlocos ? 'Bloco / Posto' : 'Posto') + '</th>' + turnos.map(t => '<th>' + esc(t.nome) + '</th>').join('') + '</tr></thead><tbody>';
+    itens.forEach(g => {
+      const eBloco = g.nivel === 1; const ids = eBloco ? postosDe(g.id).map(p => p.id) : [g.id];
+      h += '<tr class="' + (eBloco && comBlocos ? 'table-light fw-bold' : '') + '"><td style="padding-left:' + (eBloco ? 0.5 : 1.8) + 'rem"><a href="#" data-ir="' + (eBloco ? 'bloco' : 'posto') + ':' + g.id + '" class="text-decoration-none">' + esc(g.nome) + '</a></td>';
+      turnos.forEach(t => { h += '<td>' + badgesCont(cont(alocsDe(ids, t.codigo)), '—') + '</td>'; });
       h += '</tr>';
-      filhos(g.id).forEach(f => linha(f, nivel + 1));
-    };
-    state.setores.forEach(st => {
-      const blocos = state.grupos.filter(g => !g.parent_id && g.setor_id === st.id).sort((a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome));
-      if (!blocos.length) return;
-      h += '<tr class="table-dark"><td colspan="' + (cols.length + 1) + '" class="fw-bold"><i class="bi bi-building me-1"></i>' + esc(st.nome) + '</td></tr>';
-      blocos.forEach(g => linha(g, 0));
     });
-    if (!state.grupos.length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Nenhum bloco cadastrado.</td></tr>';
+    return h + '</tbody></table></div>';
+  }
+
+  // Um posto: ações + alocações agrupadas por turno
+  function painelPosto(g) {
+    let h = '';
+    if (PODE_EDITAR) h += '<div class="d-flex flex-wrap gap-2 mb-3"><button class="btn btn-sm btn-outline-primary" data-add="PESSOA"><i class="bi bi-person-plus me-1"></i>Colaborador</button><button class="btn btn-sm btn-outline-danger" data-add="VAGO"><i class="bi bi-person-exclamation me-1"></i>VAGO</button><button class="btn btn-sm btn-outline-info" data-add="RESERVA"><i class="bi bi-hdd-stack me-1"></i>Reserva</button></div>';
+    const todas = alocsDe([g.id], '');
+    const turnos = state.turnos.filter(t => (!state.turno || t.codigo === state.turno) && todas.some(a => a.turno === t.codigo));
+    if (!turnos.length) return h + '<div class="text-muted">Nenhuma alocação' + (state.turno ? ' neste turno' : '') + '. ' + (PODE_EDITAR ? 'Aloque um colaborador, uma vaga ou uma reserva.' : '') + '</div>';
+    h += '<div class="row g-3">';
+    turnos.forEach(t => {
+      const lista = todas.filter(a => a.turno === t.codigo);
+      h += '<div class="col-md-6"><div class="border rounded"><div class="bg-light px-2 py-1 fw-semibold d-flex justify-content-between"><span>' + esc(t.nome) + '</span><span>' + badgesCont(cont(lista)) + '</span></div>';
+      lista.forEach(a => {
+        const quem = a.tipo === 'PESSOA' ? esc(a.nome) + ' <span class="text-muted small">' + esc(a.matricula) + '</span>' + (a.afastado ? ' <span class="badge bg-warning text-dark">afastado</span>' : '') + (a.em_ferias ? ' <span class="badge bg-info text-dark">férias</span>' : '') + (a.turno_cadastro && a.turno_cadastro !== a.turno ? ' <span class="badge bg-light text-dark border" title="O turno no cadastro do colaborador é diferente deste">cadastro: ' + esc(turnoNome(a.turno_cadastro)) + '</span>' : '')
+          : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span> <span class="small text-muted">necessário contratar</span>' : '<span class="badge bg-info text-dark">RESERVA</span> <span class="small text-muted">equipamento reserva</span>';
+        h += '<div class="ee-aloc"><div class="ee-quem">' + quem + (a.observacao ? '<div class="small text-muted">' + esc(a.observacao) + '</div>' : '') + '</div>' +
+          (PODE_EDITAR ? '<button class="btn btn-sm btn-outline-secondary" data-aloc="editar:' + a.id + '" title="Editar / mover"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" data-aloc="remover:' + a.id + '" title="Remover"><i class="bi bi-x-lg"></i></button>' : '') + '</div>';
+      });
+      h += '</div></div>';
+    });
+    return h + '</div>';
+  }
+
+  // ---------------------------------------------------------- quadro
+  function renderQuadro() {
+    const t = $('ee-quadro-tabela');
+    const turnos = state.turnos.filter(tn => (!state.turno || tn.codigo === state.turno) && state.alocs.some(a => a.turno === tn.codigo));
+    const cols = turnos.length ? turnos : state.turnos.filter(tn => !state.turno || tn.codigo === state.turno);
+    let h = '<thead class="table-light"><tr><th>Posto de trabalho</th>' + cols.map(c => '<th>' + esc(c.nome) + '</th>').join('') + '</tr></thead><tbody>';
+    let vagas = 0, reservas = 0;
+    state.setores.forEach(s => {
+      const blocos = blocosDe(s.id); if (!blocos.length) return;
+      h += '<tr class="table-dark"><td colspan="' + (cols.length + 1) + '" class="fw-bold"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</td></tr>';
+      blocos.forEach(b => {
+        h += '<tr class="table-light"><td colspan="' + (cols.length + 1) + '" class="fw-bold">' + esc(b.nome) + '</td></tr>';
+        postosDe(b.id).forEach(p => {
+          h += '<tr' + (p.ativo ? '' : ' class="text-muted"') + '><td style="padding-left:1.6rem">' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</td>';
+          cols.forEach(c => {
+            const l = state.alocs.filter(a => a.posto_id === p.id && a.turno === c.codigo);
+            vagas += l.filter(a => a.tipo === 'VAGO').length; reservas += l.filter(a => a.tipo === 'RESERVA').length;
+            h += '<td>' + (l.length ? l.map(a => a.tipo === 'PESSOA' ? '<div>' + esc(a.nome) + '</div>' : a.tipo === 'VAGO' ? '<div><span class="badge bg-danger">VAGO</span></div>' : '<div><span class="badge bg-info text-dark">RESERVA</span></div>').join('') : '<span class="text-muted">—</span>') + '</td>';
+          });
+          h += '</tr>';
+        });
+      });
+    });
+    if (!state.setores.length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Nada cadastrado.</td></tr>';
     t.innerHTML = h + '</tbody>';
-    document.getElementById('ee-quadro-resumo').innerHTML = '<span class="badge bg-danger">' + vagas + ' vaga(s) a contratar</span> <span class="badge bg-info text-dark">' + reservas + ' posto(s) com equipamento reserva</span>';
+    $('ee-quadro-resumo').innerHTML = '<span class="badge bg-danger">' + vagas + ' vaga(s) a contratar</span> <span class="badge bg-info text-dark">' + reservas + ' reserva(s)</span>';
   }
   function trocaAba(aba) {
     document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.classList.toggle('active', b.dataset.aba === aba));
-    document.getElementById('ee-quadro').classList.toggle('d-none', aba !== 'quadro');
-    document.getElementById('ee-estrutura').classList.toggle('d-none', aba === 'quadro');
-    if (aba === 'quadro') renderQuadro();
-  }
-  document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.onclick = () => trocaAba(b.dataset.aba));
-
-  // ---------------------------------------------------------- membros
-  const sel = new Set();
-  async function carregarMembros() {
-    if (state.sel === null) return;
-    const p = new URLSearchParams({ grupo: state.sel, turno: state.turno, q: document.getElementById('ee-busca').value.trim() });
-    if (document.getElementById('ee-incluir-sub').checked) p.set('subgrupos', '1');
-    try {
-      const j = await api(URLS.membros + '?' + p);
-      state.membros = j.membros; sel.clear();
-      document.getElementById('ee-membros-total').textContent = j.total;
-      document.getElementById('ee-truncado').classList.toggle('d-none', !j.truncado);
-      renderMembros();
-    } catch (e) { aviso(e.message, 'danger'); }
-  }
-  function renderMembros() {
-    const tb = document.getElementById('ee-membros-body'); tb.innerHTML = '';
-    document.getElementById('ee-membros-vazio').classList.toggle('d-none', state.membros.length > 0);
-    state.membros.forEach(m => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = (PODE_EDITAR ? '<td><input type="checkbox" class="form-check-input ee-chk" data-id="' + m.id + '" aria-label="Selecionar ' + esc(m.nome) + '"></td>' : '') +
-        '<td>' + esc(m.nome) + (m.afastado ? ' <span class="badge bg-warning text-dark">afastado</span>' : '') + (m.em_ferias ? ' <span class="badge bg-info text-dark">férias</span>' : '') + '</td><td>' + esc(m.matricula) + '</td><td>' + esc(m.cargo) + '</td><td>' + esc(m.turno_label) + '</td><td>' + (m.equipe ? esc(m.equipe) : '<span class="text-muted">—</span>') + '</td>';
-      tb.appendChild(tr);
-    });
-    tb.querySelectorAll('.ee-chk').forEach(c => c.onchange = () => { const id = parseInt(c.dataset.id); c.checked ? sel.add(id) : sel.delete(id); atualizaLote(); });
-    const todos = document.getElementById('ee-sel-todos'); if (todos) todos.checked = false;
-    atualizaLote();
-  }
-  function atualizaLote() {
-    const box = document.getElementById('ee-acoes-lote'); if (!box) return;
-    box.classList.toggle('d-none', sel.size === 0);
-    document.getElementById('ee-sel-count').textContent = sel.size;
-  }
-  function opcoesGrupo(select, { raiz = false, excluir = [], vazio = null } = {}) {
-    select.innerHTML = '';
-    if (vazio !== null) select.add(new Option(vazio, ''));
-    const add = (pid, nivel) => filhos(pid).forEach(g => {
-      if (!excluir.includes(g.id)) { select.add(new Option('  '.repeat(nivel) + (nivel ? '↳ ' : '') + g.nome, g.id)); add(g.id, nivel + 1); }
-    });
-    add(null, 0);
+    $('ee-quadro').classList.toggle('d-none', aba !== 'quadro'); $('ee-estrutura').classList.toggle('d-none', aba === 'quadro');
   }
 
-  // ---------------------------------------------------------- edição
-  let editId = null;
-  let liderMapa = {};
-  // O bootstrap.bundle.js é carregado DEPOIS deste bloco (base_desktop.html), então os modais são criados só no uso.
-  const modal = id => bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
-  function abrirModal(id, parentId = null) {
-    editId = id; const g = id ? byId(id) : null;
-    const ehPosto = g ? !!g.parent_id : !!parentId;
-    document.getElementById('ee-modal-erro').classList.add('d-none');
-    document.getElementById('ee-modal-titulo').textContent = (g ? 'Editar ' : 'Novo ') + (ehPosto ? 'posto de trabalho' : 'bloco');
-    document.getElementById('ee-f-nome').value = g ? g.nome : '';
-    document.getElementById('ee-f-ordem').value = g ? g.ordem : 0;
-    document.getElementById('ee-f-desc').value = g ? g.descricao : '';
-    document.getElementById('ee-f-ativo').checked = g ? g.ativo : true;
-    const pSel = document.getElementById('ee-f-parent');
-    pSel.innerHTML = '';
-    state.grupos.filter(x => !x.parent_id && (!g || x.id !== g.id)).sort((a, b) => a.nome.localeCompare(b.nome)).forEach(x => pSel.add(new Option(x.setor_nome + ' › ' + x.nome, x.id)));
+  // ---------------------------------------------------------- setor / bloco / posto (modal)
+  let modo = null; // {tipo:'setor'|'bloco'|'posto', editId}
+  function abrirGrupo({ tipo, editId = null, setorId = null, parentId = null }) {
+    const g = editId ? grupo(editId) : null;
+    if (g) tipo = g.nivel === 1 ? 'bloco' : 'posto';
+    modo = { tipo, editId };
+    $('ee-modal-erro').classList.add('d-none');
+    $('ee-modal-titulo').textContent = (g ? 'Editar ' : 'Novo ') + { setor: 'setor', bloco: 'bloco', posto: 'posto de trabalho' }[tipo];
+    $('ee-f-nome').value = g ? g.nome : ''; $('ee-f-ordem').value = g ? g.ordem : 0; $('ee-f-desc').value = g ? g.descricao : ''; $('ee-f-ativo').checked = g ? g.ativo : true;
+    const sSel = $('ee-f-setor'); sSel.innerHTML = ''; state.setores.forEach(s => sSel.add(new Option(s.nome, s.id)));
+    sSel.value = g ? (g.setor_id || '') : (setorId || (state.sel && state.sel.t === 'setor' ? state.sel.id : '') || (state.setores[0] || {}).id || '');
+    const pSel = $('ee-f-parent'); pSel.innerHTML = '';
+    state.grupos.filter(x => !x.parent_id).sort((a, b) => a.nome.localeCompare(b.nome)).forEach(x => pSel.add(new Option(x.setor_nome + ' › ' + x.nome, x.id)));
     pSel.value = g ? (g.parent_id || '') : (parentId || '');
-    document.getElementById('ee-f-parent-wrap').classList.toggle('d-none', !ehPosto);
-    document.getElementById('ee-f-setor-wrap').classList.toggle('d-none', ehPosto);
-    const sSel = document.getElementById('ee-f-setor'); sSel.innerHTML = '';
-    sSel.add(new Option('— Selecione o setor —', '')); state.setores.forEach(s => sSel.add(new Option(s.nome, s.id)));
-    sSel.value = g && g.setor_id ? g.setor_id : '';
-    liderMapa = {};
-    const tb = document.getElementById('ee-f-turnos'); tb.innerHTML = '';
-    state.turnos.forEach(t => {
-      const cfg = g ? g.turnos.find(x => x.turno === t.codigo) : null;
-      const label = cfg && cfg.responsavel_id ? cfg.responsavel_nome : '';
-      if (cfg && cfg.responsavel_id) liderMapa[label] = cfg.responsavel_id;
-      const sit = cfg ? cfg.situacao : 'VAGO';
-      const tr = document.createElement('tr'); tr.dataset.turno = t.codigo;
-      tr.innerHTML = '<td><input type="checkbox" class="form-check-input ee-t-on" aria-label="Opera no turno ' + esc(t.nome) + '"' + (cfg ? ' checked' : '') + '></td><td>' + esc(t.nome) + '</td>' +
-        '<td><input type="text" class="form-control form-control-sm ee-t-lider" list="ee-resp-opcoes" placeholder="Digite para buscar..." value="' + esc(label) + '" data-lider-id="' + (cfg && cfg.responsavel_id ? cfg.responsavel_id : '') + '"></td>' +
-        '<td><select class="form-select form-select-sm ee-t-sit"><option value="ATIVO"' + (sit === 'ATIVO' ? ' selected' : '') + '>Ativo</option><option value="VAGO"' + (sit === 'VAGO' ? ' selected' : '') + '>Vago (contratar)</option><option value="RESERVA"' + (sit === 'RESERVA' ? ' selected' : '') + '>Reserva (equip.)</option><option value="PARADO"' + (sit === 'PARADO' ? ' selected' : '') + '>Parado</option></select></td>' +
-        '<td><input type="number" min="0" class="form-control form-control-sm ee-t-efetivo" value="' + (cfg && cfg.efetivo_planejado != null ? cfg.efetivo_planejado : '') + '"></td>';
-      tb.appendChild(tr);
-    });
-    tb.querySelectorAll('.ee-t-lider').forEach(inp => {
-      inp.addEventListener('input', async () => {
-        const v = inp.value.trim();
-        const selSit = inp.closest('tr').querySelector('.ee-t-sit');
-        // sem titular => Vago; com titular => Ativo (o usuário ainda pode trocar para Reserva/Vago)
-        if (v && ['VAGO', 'RESERVA'].includes(selSit.value)) selSit.value = 'ATIVO';
-        if (!v && selSit.value === 'ATIVO') selSit.value = 'VAGO';
-        if (liderMapa[v]) { inp.dataset.liderId = liderMapa[v]; return; }
-        inp.dataset.liderId = '';
-        if (v.length < 2) return;
-        try {
-          const j = await api(URLS.membros + '?' + new URLSearchParams({ grupo: 'todos', q: v }));
-          const dl = document.getElementById('ee-resp-opcoes'); dl.innerHTML = '';
-          j.membros.slice(0, 20).forEach(m => { const lb = m.nome + ' (' + m.matricula + ')'; liderMapa[lb] = m.id; const o = document.createElement('option'); o.value = lb; dl.appendChild(o); });
-          if (liderMapa[inp.value.trim()]) inp.dataset.liderId = liderMapa[inp.value.trim()];
-        } catch (e) { /* sugestões são opcionais */ }
-      });
-    });
+    $('ee-f-setor-wrap').classList.toggle('d-none', tipo !== 'bloco');
+    $('ee-f-parent-wrap').classList.toggle('d-none', tipo !== 'posto');
+    ['ee-f-ordem-wrap', 'ee-f-desc-wrap', 'ee-f-ativo-wrap'].forEach(i => $(i).classList.toggle('d-none', tipo === 'setor'));
     modal('ee-modal-grupo').show();
+    setTimeout(() => $('ee-f-nome').focus(), 300);
   }
-  async function salvar() {
-    const erro = document.getElementById('ee-modal-erro');
-    const turnos = [];
-    let faltaLider = null, faltaTitular = null;
-    document.querySelectorAll('#ee-f-turnos tr').forEach(tr => {
-      if (!tr.querySelector('.ee-t-on').checked) return;
-      const inp = tr.querySelector('.ee-t-lider');
-      const txt = inp.value.trim();
-      const lid = inp.dataset.liderId || liderMapa[txt] || '';
-      const sitV = tr.querySelector('.ee-t-sit').value;
-      if (txt && !lid && !['VAGO', 'RESERVA'].includes(sitV)) faltaLider = txt;
-      if (!txt && sitV === 'ATIVO') faltaTitular = tr.dataset.turno;
-      turnos.push({ turno: tr.dataset.turno, responsavel_id: lid || null, situacao: tr.querySelector('.ee-t-sit').value, efetivo_planejado: tr.querySelector('.ee-t-efetivo').value });
-    });
-    if (faltaTitular) { erro.textContent = 'Posto sem titular em um turno marcado como Ativo: informe a pessoa ou marque Vago (contratar) / Reserva (equipamento reserva).'; erro.classList.remove('d-none'); return; }
-    if (faltaLider) { erro.textContent = 'Responsável não reconhecido: "' + faltaLider + '". Escolha um item da lista de sugestões.'; erro.classList.remove('d-none'); return; }
+  async function salvarGrupo() {
+    const erro = $('ee-modal-erro');
     try {
-      const j = await api(URLS.salvar, {
-        id: editId, nome: document.getElementById('ee-f-nome').value, parent_id: document.getElementById('ee-f-parent').value,
-        setor_id: document.getElementById('ee-f-setor').value, descricao: document.getElementById('ee-f-desc').value,
-        ordem: document.getElementById('ee-f-ordem').value, ativo: document.getElementById('ee-f-ativo').checked, turnos
-      });
-      modal('ee-modal-grupo').hide();
-      const pai = document.getElementById('ee-f-parent').value; if (pai) state.abertos.add(parseInt(pai));
-      state.abertos.add(j.id); state.sel = j.id;
-      await carregar(); aviso(j.criado ? 'Criado com sucesso.' : 'Atualizado com sucesso.');
+      let j;
+      if (modo.tipo === 'setor') {
+        j = await api(URLS.setor, { nome: $('ee-f-nome').value });
+        state.abertos.add(key('s', j.id)); state.sel = { t: 'setor', id: j.id };
+      } else {
+        const body = { id: modo.editId, nome: $('ee-f-nome').value, ordem: $('ee-f-ordem').value, descricao: $('ee-f-desc').value, ativo: $('ee-f-ativo').checked };
+        if (modo.tipo === 'bloco') body.setor_id = $('ee-f-setor').value; else body.parent_id = $('ee-f-parent').value;
+        j = await api(URLS.salvar, body);
+        if (modo.tipo === 'posto') state.abertos.add(key('g', +$('ee-f-parent').value)); else state.abertos.add(key('s', +$('ee-f-setor').value));
+        state.abertos.add(key('g', j.id)); state.sel = { t: modo.tipo, id: j.id };
+      }
+      modal('ee-modal-grupo').hide(); await carregar(); aviso(j.criado === false ? 'Atualizado com sucesso.' : 'Criado com sucesso.');
     } catch (e) { erro.textContent = e.message; erro.classList.remove('d-none'); }
   }
-  async function excluir(g) {
-    const nSub = filhos(g.id).length, nMem = Object.values(g.contagem).reduce((a, b) => a + b, 0);
-    let msg = 'Excluir "' + g.nome + '"?';
-    if (nSub) { aviso('Exclua ou mova os ' + nSub + ' posto(s) deste bloco antes de excluí-lo.', 'warning'); return; }
-    if (nMem) msg += '\n• ' + nMem + ' pessoa(s) ficarão sem posto.';
-    if (!confirm(msg)) return;
-    try { await api(URLS.excluir, { id: g.id }); state.sel = g.parent_id || null; await carregar(); aviso('Excluído.'); }
-    catch (e) { aviso(e.message, 'danger'); }
-  }
-  async function aplicarLote() {
-    if (!sel.size) return;
-    const grupoDest = document.getElementById('ee-lote-grupo').value, turno = document.getElementById('ee-lote-turno').value;
-    const body = { colaborador_ids: Array.from(sel), turno };
-    if (grupoDest !== '__manter__') body.grupo_id = grupoDest === '' ? null : parseInt(grupoDest);
-    if (grupoDest === '__manter__' && !turno) { aviso('Escolha um grupo de destino ou um turno.', 'warning'); return; }
-    try { const j = await api(URLS.atualizar, body); await carregar(); aviso(j.alterados + ' colaborador(es) atualizado(s).'); }
+  async function excluirGrupo(g) {
+    const n = alocsDe([g.id], '').length;
+    if (g.nivel === 1 && postosDe(g.id).length) return aviso('Exclua ou mova os ' + postosDe(g.id).length + ' posto(s) deste bloco antes de excluí-lo.', 'warning');
+    if (!confirm('Excluir "' + g.nome + '"?' + (n ? '\n• ' + n + ' alocação(ões) deste posto serão removidas.' : ''))) return;
+    try { await api(URLS.excluir, { id: g.id }); state.sel = g.parent_id ? { t: 'bloco', id: g.parent_id } : { t: 'setor', id: g.setor_id }; await carregar(); aviso('Excluído.'); }
     catch (e) { aviso(e.message, 'danger'); }
   }
 
-  // ---------------------------------------------------------- adicionar
-  let addSel = new Set();
-  async function buscarAdd() {
-    const p = new URLSearchParams({ grupo: document.getElementById('ee-add-origem').value, turno: document.getElementById('ee-add-turno').value, q: document.getElementById('ee-add-busca').value.trim() });
+  // ---------------------------------------------------------- alocação (colaborador / vago / reserva)
+  let am = null; // {postoId, alocId, escolhidos:Set, unico}
+  const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+  function abrirAloc({ postoId = null, alocId = null, tipo = 'PESSOA' }) {
+    const a = alocId ? state.alocs.find(x => x.id === alocId) : null;
+    am = { postoId: a ? a.posto_id : postoId, alocId, escolhidos: new Set(a && a.colaborador_id ? [a.colaborador_id] : []), unico: !!a };
+    $('ee-aloc-erro').classList.add('d-none');
+    $('ee-aloc-titulo').textContent = a ? 'Editar alocação' : 'Alocar em ' + ((grupo(postoId) || {}).nome || 'posto');
+    $('ee-a-tipo').value = a ? a.tipo : tipo;
+    $('ee-a-turno').value = a ? a.turno : (state.turno || 'TURNO_1');
+    $('ee-a-obs').value = a ? a.observacao : '';
+    $('ee-a-qtd').value = 1; $('ee-a-busca').value = '';
+    $('ee-a-posto-wrap').classList.toggle('d-none', !a);
+    if (a) { const ps = $('ee-a-posto'); ps.innerHTML = ''; state.grupos.filter(g => g.parent_id).forEach(p => ps.add(new Option(caminhoPosto(p.id), p.id))); ps.value = a.posto_id; }
+    ajustaTipo(); modal('ee-modal-aloc').show(); if ($('ee-a-tipo').value === 'PESSOA') buscarPessoas();
+  }
+  function ajustaTipo() {
+    const t = $('ee-a-tipo').value;
+    $('ee-a-pessoas').classList.toggle('d-none', t !== 'PESSOA');
+    $('ee-a-qtd-wrap').classList.toggle('d-none', t === 'PESSOA' || !!am.alocId);
+  }
+  async function buscarPessoas() {
+    const q = $('ee-a-busca').value.trim();
     try {
-      const j = await api(URLS.membros + '?' + p);
-      const tb = document.getElementById('ee-add-body'); tb.innerHTML = '';
-      j.membros.filter(m => m.equipe_id !== state.sel).forEach(m => {
+      const j = await api(URLS.membros + '?' + new URLSearchParams({ q }));
+      const tb = $('ee-a-body'); tb.innerHTML = '';
+      j.membros.forEach(m => {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td><input type="checkbox" class="form-check-input" data-id="' + m.id + '"' + (addSel.has(m.id) ? ' checked' : '') + ' aria-label="Selecionar ' + esc(m.nome) + '"></td><td>' + esc(m.nome) + '</td><td>' + esc(m.matricula) + '</td><td>' + esc(m.turno_label) + '</td><td>' + (m.equipe ? esc(m.equipe) : '<span class="text-muted">—</span>') + '</td>';
-        tr.querySelector('input').onchange = e => { e.target.checked ? addSel.add(m.id) : addSel.delete(m.id); document.getElementById('ee-add-info').textContent = addSel.size + ' selecionado(s)'; };
+        tr.innerHTML = '<td><input class="form-check-input" type="' + (am.unico ? 'radio' : 'checkbox') + '" name="ee-a-pick" data-id="' + m.id + '"' + (am.escolhidos.has(m.id) ? ' checked' : '') + ' aria-label="Selecionar ' + esc(m.nome) + '"></td><td>' + esc(m.nome) + '</td><td>' + esc(m.matricula) + '</td><td>' + esc(m.cargo) + '</td><td>' + esc(m.turno_label) + '</td><td>' + (m.postos.length ? '<span class="small">' + esc(m.postos.join(', ')) + '</span>' : '<span class="text-muted">—</span>') + '</td>';
+        tr.querySelector('input').onchange = e => { if (am.unico) am.escolhidos.clear(); e.target.checked ? am.escolhidos.add(m.id) : am.escolhidos.delete(m.id); infoSel(); };
         tb.appendChild(tr);
       });
-      document.getElementById('ee-add-info').textContent = (addSel.size ? addSel.size + ' selecionado(s). ' : '') + (j.truncado ? 'Mostrando os primeiros 500 — refine a busca.' : '');
-    } catch (e) { document.getElementById('ee-add-info').textContent = e.message; }
+      $('ee-a-info').textContent = j.truncado ? 'Mostrando os primeiros ' + j.membros.length + ' de ' + j.total + ' — refine a busca.' : (j.membros.length ? '' : 'Nenhum colaborador encontrado.');
+      infoSel();
+    } catch (e) { $('ee-a-info').textContent = e.message; }
+  }
+  const infoSel = () => { $('ee-a-sel-info').textContent = am.escolhidos.size ? am.escolhidos.size + ' selecionado(s)' : ''; };
+  async function salvarAloc() {
+    const erro = $('ee-aloc-erro'); const tipo = $('ee-a-tipo').value; const turno = $('ee-a-turno').value; const obs = $('ee-a-obs').value;
+    try {
+      let msg;
+      if (am.alocId) {
+        const body = { id: am.alocId, turno, tipo, observacao: obs, posto_id: $('ee-a-posto').value };
+        if (tipo === 'PESSOA') { const c = [...am.escolhidos][0]; if (!c) throw new Error('Escolha o colaborador.'); body.colaborador_id = c; }
+        await api(URLS.alocAtualizar, body); msg = 'Alocação atualizada.'; state.sel = { t: 'posto', id: +$('ee-a-posto').value };
+      } else {
+        const body = { posto_id: am.postoId, turno, tipo, observacao: obs };
+        if (tipo === 'PESSOA') { if (!am.escolhidos.size) throw new Error('Selecione ao menos um colaborador.'); body.colaborador_ids = [...am.escolhidos]; } else body.quantidade = $('ee-a-qtd').value;
+        const j = await api(URLS.alocCriar, body);
+        msg = j.criadas + ' alocação(ões) criada(s)' + (j.ja_existiam ? ' (' + j.ja_existiam + ' já existia(m) neste posto e turno)' : '') + '.';
+        state.sel = { t: 'posto', id: am.postoId };
+      }
+      modal('ee-modal-aloc').hide(); await carregar(); aviso(msg);
+    } catch (e) { erro.textContent = e.message; erro.classList.remove('d-none'); }
+  }
+  async function removerAloc(id) {
+    const a = state.alocs.find(x => x.id === id); if (!a) return;
+    if (!confirm('Remover ' + (a.tipo === 'PESSOA' ? a.nome : a.tipo === 'VAGO' ? 'a VAGA' : 'a RESERVA') + ' do ' + turnoNome(a.turno) + '?')) return;
+    try { await api(URLS.alocExcluir, { ids: [id] }); await carregar(); aviso('Removido.'); } catch (e) { aviso(e.message, 'danger'); }
   }
 
   // ---------------------------------------------------------- eventos
-  function debounce(fn, ms = 300) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
-  document.getElementById('ee-busca').addEventListener('input', debounce(carregarMembros));
-  document.getElementById('ee-incluir-sub').addEventListener('change', carregarMembros);
-  document.getElementById('ee-btn-expandir').onclick = () => {
-    state.tudoAberto = !state.tudoAberto; state.abertos = new Set(state.tudoAberto ? state.grupos.map(g => g.id) : []); renderArvore();
+  document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.onclick = () => trocaAba(b.dataset.aba));
+  $('ee-btn-expandir').onclick = () => {
+    state.tudoAberto = !state.tudoAberto; state.abertos = new Set();
+    if (state.tudoAberto) { state.setores.forEach(s => state.abertos.add(key('s', s.id))); state.grupos.filter(g => !g.parent_id).forEach(g => state.abertos.add(key('g', g.id))); }
+    renderArvore();
   };
   if (PODE_EDITAR) {
-    document.getElementById('ee-btn-novo-raiz').onclick = () => abrirModal(null, null);
-    document.getElementById('ee-btn-salvar').onclick = salvar;
-    document.getElementById('ee-btn-aplicar-lote').onclick = aplicarLote;
-    document.getElementById('ee-sel-todos').onchange = e => {
-      document.querySelectorAll('.ee-chk').forEach(c => { c.checked = e.target.checked; const id = parseInt(c.dataset.id); e.target.checked ? sel.add(id) : sel.delete(id); }); atualizaLote();
-    };
-    document.getElementById('ee-btn-add-membros').onclick = () => { addSel = new Set(); document.getElementById('ee-add-body').innerHTML = ''; modal('ee-modal-add').show(); buscarAdd(); };
-    ['ee-add-origem', 'ee-add-turno'].forEach(i => document.getElementById(i).addEventListener('change', buscarAdd));
-    document.getElementById('ee-add-busca').addEventListener('input', debounce(buscarAdd));
-    document.getElementById('ee-add-confirmar').onclick = async () => {
-      if (!addSel.size) return;
-      try { const j = await api(URLS.atualizar, { colaborador_ids: Array.from(addSel), grupo_id: state.sel }); modal('ee-modal-add').hide(); await carregar(); aviso(j.alterados + ' colaborador(es) adicionado(s).'); }
-      catch (e) { document.getElementById('ee-add-info').textContent = e.message; }
-    };
-    // seletor de destino do lote é recriado a cada render de detalhe/árvore
-    const refazLote = () => { const s = document.getElementById('ee-lote-grupo'); opcoesGrupo(s, { vazio: 'Sem posto' }); s.add(new Option('Manter posto atual', '__manter__'), 0); s.value = '__manter__'; };
-    const origCarregar = carregarMembros; carregarMembros = async function () { refazLote(); return origCarregar.apply(this, arguments); };
+    $('ee-btn-novo-setor').onclick = () => abrirGrupo({ tipo: 'setor' });
+    $('ee-btn-salvar').onclick = salvarGrupo;
+    $('ee-f-nome').addEventListener('keydown', e => { if (e.key === 'Enter') salvarGrupo(); });
+    $('ee-a-tipo').onchange = () => { ajustaTipo(); if ($('ee-a-tipo').value === 'PESSOA') buscarPessoas(); };
+    $('ee-a-busca').addEventListener('input', debounce(buscarPessoas));
+    $('ee-a-salvar').onclick = salvarAloc;
   }
   carregar().catch(e => aviso(e.message, 'danger'));
 })();

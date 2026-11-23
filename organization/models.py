@@ -109,9 +109,7 @@ class HierarquiaSetor(models.Model):
 class GrupoEquipe(models.Model):
     """Estrutura de trabalho: Setor > Bloco (nível 1) > Posto de trabalho (nível 2).
 
-    Os colaboradores se vinculam ao grupo via ``Colaborador.equipe``; o turno de
-    cada membro vem do próprio cadastro do colaborador. A configuração por turno
-    (líder e efetivo planejado) fica em ``GrupoEquipeTurno``.
+    Quem ocupa cada posto, por turno, é dado por ``AlocacaoPosto`` (colaboradores, vagas e reservas).
     """
 
     nome = models.CharField(max_length=100, verbose_name="Nome do Grupo")
@@ -200,7 +198,10 @@ class GrupoEquipe(models.Model):
 
 
 class GrupoEquipeTurno(models.Model):
-    """Configuração de um grupo em um turno: responsável/titular, situação (ativo, vago, parado) e efetivo planejado."""
+    """OBSOLETO: substituído por ``AlocacaoPosto`` (lista livre de colaboradores, vagas e reservas por turno).
+
+    Mantido apenas para não quebrar a versão anterior durante o deploy; não é mais lido nem gravado.
+    """
 
     grupo = models.ForeignKey(
         GrupoEquipe, on_delete=models.CASCADE, related_name="turnos_config", verbose_name="Grupo"
@@ -234,3 +235,59 @@ class GrupoEquipeTurno(models.Model):
         verbose_name = "Configuração de Grupo por Turno"
         verbose_name_plural = "Configurações de Grupo por Turno"
         unique_together = ("grupo", "turno")
+
+
+class AlocacaoPosto(models.Model):
+    """O que ocupa um posto de trabalho em um turno: um colaborador, uma VAGA (necessário
+    contratar) ou uma RESERVA (equipamento reserva instalado, para quando um falhar).
+
+    Um posto pode ter várias alocações no mesmo turno e o mesmo colaborador pode estar em vários postos.
+    """
+
+    TIPO_CHOICES = [
+        ("PESSOA", "Colaborador"),
+        ("VAGO", "Vago (necessário contratar)"),
+        ("RESERVA", "Reserva (equipamento reserva instalado)"),
+    ]
+
+    posto = models.ForeignKey(
+        GrupoEquipe, on_delete=models.CASCADE, related_name="alocacoes", verbose_name="Posto de trabalho"
+    )
+    turno = models.CharField(max_length=20, choices=TURNOS_CHOICES, verbose_name="Turno")
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default="PESSOA", verbose_name="Tipo")
+    colaborador = models.ForeignKey(
+        "rh.Colaborador",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="alocacoes_posto",
+        verbose_name="Colaborador",
+    )
+    observacao = models.CharField(max_length=255, blank=True, default="", verbose_name="Observação")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if not self.posto.parent_id:
+            raise ValidationError("Colaboradores, vagas e reservas são alocados em um posto de trabalho (dentro de um bloco).")
+        if self.tipo == "PESSOA" and not self.colaborador_id:
+            raise ValidationError("Informe o colaborador.")
+        if self.tipo != "PESSOA" and self.colaborador_id:
+            raise ValidationError("Vaga e reserva não têm colaborador.")
+
+    def __str__(self):
+        quem = self.colaborador.nome_completo if self.colaborador_id else self.get_tipo_display()
+        return f"{self.posto.nome} / {self.get_turno_display()}: {quem}"
+
+    class Meta:
+        verbose_name = "Alocação em Posto"
+        verbose_name_plural = "Alocações em Postos"
+        ordering = ["turno", "tipo", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["posto", "turno", "colaborador"],
+                condition=models.Q(colaborador__isnull=False),
+                name="uniq_alocacao_pessoa_posto_turno",
+            )
+        ]

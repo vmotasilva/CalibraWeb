@@ -140,7 +140,8 @@ class Colaborador(models.Model):
         null=True,
         blank=True,
         related_name="membros",
-        verbose_name="Grupo / Subgrupo da Equipe",
+        verbose_name="Grupo / Subgrupo da Equipe (obsoleto)",
+        help_text="Obsoleto: use organization.AlocacaoPosto (um colaborador pode estar em vários postos).",
     )
     pacotes_treinamento = models.ManyToManyField(
         "procedures.PacoteTreinamento",
