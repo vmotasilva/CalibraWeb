@@ -126,6 +126,49 @@ class CentralOcorrenciasTests(TestCase):
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
+class FiltrosPorOrigemTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        from laboratorio.models import CategoriaLaboratorio
+
+        U = get_user_model()
+        self.admin = U.objects.create_user("admin", password="x", is_superuser=True, is_staff=True)
+        c1 = CategoriaLaboratorio.objects.create(nome="Quebra")
+        c2 = CategoriaLaboratorio.objects.create(nome="Atraso")
+        OcorrenciaLaboratorio.objects.create(assunto="Lab A", detalhamento="d", criado_por=self.admin, categoria=c1)
+        OcorrenciaLaboratorio.objects.create(assunto="Lab B", detalhamento="d", criado_por=self.admin, categoria=c2)
+        OcorrenciaInstrumento.objects.create(tipo="AVARIA", descricao="x", usuario_responsavel=self.admin)
+        self.client.force_login(self.admin)
+
+    def test_contagem_das_outras_origens_nao_zera_ao_filtrar_uma(self):
+        resp = self.client.get(reverse("ocorrencias_central"), {"aba": "abertas", "origem": "laboratorio"})
+        origens = {k: total for k, _n, _i, total in resp.context["origens"]}
+        self.assertEqual(origens["laboratorio"], 2)
+        self.assertEqual(origens["metrologia"], 1)
+        self.assertEqual([i.origem for i in resp.context["itens"]], ["laboratorio", "laboratorio"])
+
+    def test_filtro_especifico_do_laboratorio(self):
+        url = reverse("ocorrencias_central")
+        resp = self.client.get(url, {"aba": "abertas", "origem": "laboratorio"})
+        chaves = [f[0] for f in resp.context["filtros_origem"]]
+        self.assertEqual(chaves, ["setor", "categoria"])
+        categorias = dict((f[0], f[2]) for f in resp.context["filtros_origem"])["categoria"]
+        self.assertEqual(categorias, ["Atraso", "Quebra"])
+        resp = self.client.get(url, {"aba": "abertas", "origem": "laboratorio", "f_categoria": "Quebra"})
+        self.assertEqual([i.titulo for i in resp.context["itens"]], ["Lab A"])
+
+    def test_sem_origem_nao_ha_filtros_especificos(self):
+        resp = self.client.get(reverse("ocorrencias_central"), {"aba": "abertas"})
+        self.assertEqual(resp.context["filtros_origem"], [])
+
+    def test_filtros_de_metrologia_incluem_cotacao(self):
+        resp = self.client.get(reverse("ocorrencias_central"), {"aba": "abertas", "origem": "metrologia"})
+        filtros = dict((f[0], f[2]) for f in resp.context["filtros_origem"])
+        self.assertEqual(filtros["cotacao"], ["Sem cotação em aberto"])
+        self.assertIn("Sem tipo", filtros["tipo"])
+
+
+@override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])
 class PlanoDeAcaoTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -203,7 +246,7 @@ class PlanoDeAcaoTests(TestCase):
         resp = self.client.get(reverse("ocorrencias_central"))
         self.assertContains(resp, "data-plano-mount")          # o pop-up monta o widget do plano
         self.assertContains(resp, "shared/plano_acao.js")
-        self.assertContains(resp, "1 ação(ões)")                  # resumo no card
+        self.assertContains(resp, "0/1 ações concluídas")         # resumo de progresso no card
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])

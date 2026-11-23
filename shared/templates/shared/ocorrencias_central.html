@@ -71,9 +71,9 @@
         {% endif %}
     </div>
     <div class="d-flex flex-wrap gap-2 mb-4">
-        <a class="oc-pill {% if not origem %}active{% endif %}" href="?aba={{ aba }}{% if atraso %}&atraso=1{% endif %}{% if extra_qs %}&{{ extra_qs }}{% endif %}">Todas as origens</a>
+        <a class="oc-pill {% if not origem %}active{% endif %}" href="?aba={{ aba }}{% if atraso %}&atraso=1{% endif %}{% if extra_qs_base %}&{{ extra_qs_base }}{% endif %}">Todas as origens</a>
         {% for key, nome, icon, total in origens %}
-            <a class="oc-pill {% if origem == key %}active{% endif %}{% if not total and origem != key %} zero{% endif %}" href="?aba={{ aba }}&origem={{ key }}{% if atraso %}&atraso=1{% endif %}{% if extra_qs %}&{{ extra_qs }}{% endif %}">
+            <a class="oc-pill {% if origem == key %}active{% endif %}{% if not total and origem != key %} zero{% endif %}" href="?aba={{ aba }}&origem={{ key }}{% if atraso %}&atraso=1{% endif %}{% if extra_qs_base %}&{{ extra_qs_base }}{% endif %}">
                 <i class="bi {{ icon }} me-1"></i>{{ nome }} <span class="badge bg-secondary rounded-pill">{{ total }}</span>
             </a>
         {% endfor %}
@@ -91,6 +91,12 @@
             <option value="">Todos os responsáveis</option>
             {% for n in responsaveis %}<option value="{{ n }}" {% if n == resp %}selected{% endif %}>{{ n|title }}</option>{% endfor %}
         </select>
+        {% for chave, rotulo, valores, sel in filtros_origem %}
+        <select name="f_{{ chave }}" class="form-select form-select-sm w-auto" aria-label="Filtrar por {{ rotulo|lower }}" onchange="this.form.submit()">
+            <option value="">{{ rotulo }}: todos</option>
+            {% for v in valores %}<option value="{{ v }}" {% if v == sel %}selected{% endif %}>{{ v }}</option>{% endfor %}
+        </select>
+        {% endfor %}
         <select name="ordem" class="form-select form-select-sm w-auto" aria-label="Ordenar por" onchange="this.form.submit()">
             {% for k, nome in ordens %}<option value="{{ k }}" {% if k == ordem %}selected{% endif %}>{{ nome }}</option>{% endfor %}
         </select>
