@@ -1790,3 +1790,102 @@ class RespostaItemAvaliacaoIso(models.Model):
 
 
 
+
+
+# ==========================================
+# AUDITORIA LIVRE
+# ==========================================
+# Formato sem norma/checklist: o auditor define o objetivo, solicita evidências
+# ao longo da auditoria e direciona cada uma como Conforme, Não Conformidade,
+# Oportunidade de Melhoria (ou N/A / Pendente). Serve a qualquer cenário.
+
+class AuditoriaLivre(models.Model):
+    STATUS_CHOICES = [
+        ("PLANEJADA", "Planejada"),
+        ("EM_ANDAMENTO", "Em Andamento"),
+        ("CONCLUIDA", "Concluída"),
+    ]
+
+    titulo = models.CharField(max_length=255, verbose_name="Título da Auditoria")
+    objetivo = models.TextField(blank=True, default="", verbose_name="Objetivo")
+    escopo = models.TextField(blank=True, default="", verbose_name="Escopo / O que será auditado")
+    criterio = models.CharField(
+        max_length=255, blank=True, default="",
+        verbose_name="Critério / Referência",
+        help_text="Opcional. Norma, procedimento, contrato, requisito legal, expectativa do cliente…",
+    )
+    local = models.CharField(max_length=255, blank=True, default="", verbose_name="Local / Setor / Processo")
+    auditor_lider = models.CharField(max_length=255, blank=True, default="", verbose_name="Auditor Líder")
+    auditores = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="auditorias_livres",
+        verbose_name="Auditores",
+    )
+    auditados = models.TextField(blank=True, default="", verbose_name="Auditados / Entrevistados")
+    data_inicio = models.DateField(verbose_name="Data de Início")
+    data_fim = models.DateField(null=True, blank=True, verbose_name="Data de Fim")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PLANEJADA")
+    conclusao_texto = models.TextField(blank=True, default="", verbose_name="Conclusão / Parecer Final")
+    arquivada = models.BooleanField(default=False)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="auditorias_livres_criadas",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Auditoria Livre"
+        verbose_name_plural = "Auditorias Livres"
+        ordering = ["-data_inicio", "-id"]
+
+    def __str__(self):
+        return f"{self.titulo} ({self.data_inicio:%d/%m/%Y})"
+
+    def resumo(self):
+        """Contagem de solicitações por classificação."""
+        from django.db.models import Count
+        base = {c: 0 for c, _ in SolicitacaoLivre.CLASSIFICACAO_CHOICES}
+        for row in self.solicitacoes.values("conclusao").annotate(n=Count("id")):
+            base[row["conclusao"]] = row["n"]
+        base["total"] = sum(base.values())
+        return base
+
+
+class SolicitacaoLivre(models.Model):
+    CLASSIFICACAO_CHOICES = [
+        ("P", "Pendente"),
+        ("C", "Conforme"),
+        ("NC", "Não Conformidade"),
+        ("OM", "Oportunidade de Melhoria"),
+        ("NA", "Não Aplicável"),
+    ]
+    GRAU_NC_CHOICES = [
+        ("MENOR", "NC Menor"),
+        ("MAIOR", "NC Maior"),
+    ]
+
+    auditoria = models.ForeignKey(AuditoriaLivre, on_delete=models.CASCADE, related_name="solicitacoes")
+    topico = models.CharField(
+        max_length=255, blank=True, default="",
+        verbose_name="Tópico / Área / Requisito",
+        help_text="Agrupador livre (ex.: Recebimento, 7.5.1, Treinamentos).",
+    )
+    solicitacao = models.TextField(verbose_name="Evidência Solicitada")
+    evidencia = models.TextField(blank=True, default="", verbose_name="Evidência Apresentada")
+    conclusao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES, default="P")
+    grau_nc = models.CharField(max_length=10, choices=GRAU_NC_CHOICES, blank=True, null=True)
+    observacao = models.TextField(blank=True, default="", verbose_name="Observação do Auditor")
+    ordem = models.PositiveIntegerField(default=0)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Solicitação de Evidência (Auditoria Livre)"
+        verbose_name_plural = "Solicitações de Evidência (Auditoria Livre)"
+        ordering = ["ordem", "id"]
+
+    def __str__(self):
+        return f"{self.solicitacao[:40]} ({self.conclusao})"

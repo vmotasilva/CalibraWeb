@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-3 py-md-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold text-dark mb-1 fs-3">
+                <i class="bi bi-journal-check text-primary me-2"></i>Auditorias Livres
+            </h2>
+            <p class="text-muted small mb-0">
+                Auditoria sem norma ou checklist: solicite evidências e direcione cada uma como
+                Conforme, Não Conformidade ou Oportunidade de Melhoria.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            {% if mostrar_arquivadas %}
+                <a href="{% url 'auditoria:livre_list' %}" class="btn btn-outline-secondary rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar às ativas
+                </a>
+            {% else %}
+                {% if total_arquivadas %}
+                <a href="?arquivadas=1" class="btn btn-outline-secondary rounded-pill px-3">
+                    <i class="bi bi-archive me-1"></i> Arquivadas ({{ total_arquivadas }})
+                </a>
+                {% endif %}
+                <a href="{% url 'auditoria:livre_create' %}" class="btn btn-primary rounded-pill px-4 fw-bold">
+                    <i class="bi bi-plus-lg me-1"></i> Nova Auditoria Livre
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for m in messages %}
+            <div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags }}{% endif %} py-2">{{ m }}</div>
+        {% endfor %}
+    {% endif %}
+
+    {% if not auditorias %}
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body text-center py-5 text-muted">
+                <i class="bi bi-journal-check display-4 d-block mb-3"></i>
+                {% if mostrar_arquivadas %}Nenhuma auditoria arquivada.{% else %}Nenhuma auditoria livre criada ainda.{% endif %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="row g-3">
+        {% for a in auditorias %}
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div class="min-w-0">
+                            <h5 class="fw-bold mb-1">{{ a.titulo }}</h5>
+                            <div class="small text-muted">
+                                <i class="bi bi-calendar3 me-1"></i>{{ a.data_inicio|date:"d/m/Y" }}{% if a.data_fim %} a {{ a.data_fim|date:"d/m/Y" }}{% endif %}
+                                {% if a.local %} · <i class="bi bi-geo-alt me-1"></i>{{ a.local }}{% endif %}
+                            </div>
+                        </div>
+                        <span class="badge rounded-pill {% if a.status == 'CONCLUIDA' %}bg-success{% elif a.status == 'EM_ANDAMENTO' %}bg-primary{% else %}bg-secondary{% endif %}">{{ a.get_status_display }}</span>
+                    </div>
+                    {% if a.objetivo %}<p class="small text-secondary mt-2 mb-2">{{ a.objetivo|truncatechars:160 }}</p>{% endif %}
+
+                    <div class="d-flex flex-wrap gap-1 my-3">
+                        <span class="badge text-bg-light border">{{ a.res.total }} solicitação(ões)</span>
+                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">{{ a.res.C }} C</span>
+                        <span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">{{ a.res.NC }} NC</span>
+                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">{{ a.res.OM }} OM</span>
+                        {% if a.res.P %}<span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ a.res.P }} pendente(s)</span>{% endif %}
+                    </div>
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{% url 'auditoria:livre_execucao' a.pk %}" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold">
+                            <i class="bi bi-play-circle me-1"></i> {% if a.status == 'CONCLUIDA' %}Abrir{% else %}Conduzir{% endif %}
+                        </a>
+                        <a href="{% url 'auditoria:livre_edit' a.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                            <i class="bi bi-pencil me-1"></i> Editar
+                        </a>
+                        <a href="{% url 'auditoria:livre_export_excel' a.pk %}" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                            <i class="bi bi-file-earmark-excel me-1"></i> Excel
+                        </a>
+                        <form method="post" action="{% url 'auditoria:livre_arquivar' a.pk %}" class="d-inline">
+                            {% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button class="btn btn-sm btn-outline-secondary rounded-pill px-3">
+                                <i class="bi bi-archive me-1"></i> {% if a.arquivada %}Desarquivar{% else %}Arquivar{% endif %}
+                            </button>
+                        </form>
+                        {% if a.arquivada %}
+                        <form method="post" action="{% url 'auditoria:livre_delete' a.pk %}" class="d-inline"
+                              onsubmit="return confirm('Excluir definitivamente esta auditoria e todas as suas solicitações?');">
+                            {% csrf_token %}
+                            <button class="btn btn-sm btn-outline-danger rounded-pill px-3"><i class="bi bi-trash me-1"></i> Excluir</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

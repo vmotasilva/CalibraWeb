@@ -1336,6 +1336,17 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Modo Entrevista (Lista de Auditorias)", "view_name": "auditoria:iso_auditoria_list", "perm": "core.nav_auditoria_iso_lista"},
                     {
+                        "nome": "Auditoria Livre (qualquer objetivo/cenário)",
+                        "view_name": [
+                            "auditoria:livre_list", "auditoria:livre_create", "auditoria:livre_execucao",
+                            "auditoria:livre_edit", "auditoria:livre_toggle_conclusao", "auditoria:livre_arquivar",
+                            "auditoria:livre_delete", "auditoria:livre_export_excel",
+                            "auditoria:api_livre_sol_create", "auditoria:api_livre_conclusao_salvar",
+                            "auditoria:api_livre_sol_update", "auditoria:api_livre_sol_delete",
+                        ],
+                        "perm": "core.nav_auditoria_iso_lista",
+                    },
+                    {
                         "nome": "Execução da Entrevista",
                         "view_name": [
                             "auditoria:iso_entrevista_view",
