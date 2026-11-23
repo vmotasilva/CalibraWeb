@@ -267,3 +267,198 @@ class AuditoriaLivreWordTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.client.logout()
         self.assertEqual(self.client.get(reverse("auditoria:livre_export_docx", args=[vazia.pk])).status_code, 302)
+
+
+class AuditoriaLivreCapaTests(TestCase):
+    def setUp(self):
+        from django.test import Client
+        self.user = get_user_model().objects.create_superuser("aud4", "aud4@example.com", "x")
+        self.client.force_login(self.user)
+        self.publico = Client()  # visitante sem login (o auditado)
+        self.aud = AuditoriaLivre.objects.create(titulo="Auditoria CAPA", data_inicio=date(2026, 11, 20))
+        mk = lambda **kw: SolicitacaoLivre.objects.create(auditoria=self.aud, **kw)
+        self.nc = mk(solicitacao="Calibração vencida", conclusao="NC", grau_nc="MAIOR", topico="Metrologia", ordem=1)
+        self.nc2 = mk(solicitacao="Sem registro", conclusao="NC", topico="Produção", ordem=2)
+        self.om = mk(solicitacao="Sinalização", conclusao="OM", topico="Metrologia", ordem=3)
+        self.ok = mk(solicitacao="Tudo certo", conclusao="C", ordem=4)
+        self.link = self._link()
+        outra = AuditoriaLivre.objects.create(titulo="Outra", data_inicio=date(2026, 11, 1))
+        self.alheia = SolicitacaoLivre.objects.create(auditoria=outra, solicitacao="x", conclusao="NC")
+
+    def _link(self, **kw):
+        from .models import CapaLinkLivre
+        return CapaLinkLivre.objects.create(auditoria=self.aud, **kw)
+
+    def _resp(self, sol, token=None, **extra):
+        dados = {"solicitacao_id": sol.pk, "causa_raiz": "Falta de rotina", "acao_corretiva": "Criar agenda",
+                 "responsavel": "João", "prazo": "2026-12-31", "respondente": "João Silva", "enviar": "true"}
+        dados.update(extra)
+        return self.publico.post(
+            reverse("auditoria:api_livre_capa_responder_publico", args=[token or self.link.token]), dados)
+
+    # ---- auditor
+    def test_panel_and_link_generation(self):
+        r = self.client.get(reverse("auditoria:livre_capa", args=[self.aud.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context["resumo"]["total"], 3)  # NC, NC e OM
+        self.assertEqual([i["numero"] for i in r.context["itens"]], [1, 2, 3])
+        url = reverse("auditoria:api_livre_capa_gerar_link", args=[self.aud.pk])
+        j = self.client.post(url, json.dumps({"dias_validade": 9999, "incluir_om": True, "topico": "Metrologia"}),
+                             content_type="application/json").json()
+        self.assertTrue(j["success"])
+        from .models import CapaLinkLivre
+        novo = CapaLinkLivre.objects.exclude(pk=self.link.pk).get()
+        self.assertEqual(novo.dias_validade, 90)
+        self.assertTrue(novo.incluir_om and novo.topico == "Metrologia")
+        self.assertIn(novo.token, j["url"])
+        self.client.post(reverse("auditoria:api_livre_capa_revogar_link", args=[novo.pk]))
+        novo.refresh_from_db()
+        self.assertFalse(novo.ativo)
+
+    def test_auditor_endpoints_require_login(self):
+        self.client.logout()
+        for nome, args in (("livre_capa", [self.aud.pk]), ("api_livre_capa_gerar_link", [self.aud.pk]),
+                           ("api_livre_capa_salvar", [self.nc.pk]), ("api_livre_capa_revisar", [self.nc.pk])):
+            self.assertEqual(self.client.post(reverse(f"auditoria:{nome}", args=args)).status_code, 302, nome)
+
+    # ---- portal público: acesso e escopo
+    def test_portal_access_rules(self):
+        url = reverse("auditoria:livre_capa_portal", args=[self.link.token])
+        r = self.publico.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual([i["id"] for i in r.context["itens"]], [self.nc.pk, self.nc2.pk])  # sem OM, sem C
+        self.assertEqual(r["Cache-Control"], "no-store")
+        self.assertEqual(r["Referrer-Policy"], "no-referrer")
+        self.assertEqual(self.publico.get(reverse("auditoria:livre_capa_portal", args=["inexistente"])).status_code, 404)
+        self.link.ativo = False
+        self.link.save()
+        self.assertEqual(self.publico.get(url).status_code, 404)
+        from django.utils import timezone
+        exp = self._link(expira_em=timezone.now() - timezone.timedelta(days=1))
+        self.assertEqual(self.publico.get(reverse("auditoria:livre_capa_portal", args=[exp.token])).status_code, 403)
+
+    def test_portal_scope_topic_and_om(self):
+        l = self._link(topico="Metrologia", incluir_om=True)
+        itens = self.publico.get(reverse("auditoria:livre_capa_portal", args=[l.token])).context["itens"]
+        self.assertEqual({i["id"] for i in itens}, {self.nc.pk, self.om.pk})
+        self.assertEqual(self._resp(self.nc2, token=l.token).status_code, 404)   # outro tópico
+        self.assertEqual(self._resp(self.om, token=self.link.token).status_code, 404)  # OM fora do escopo
+        self.assertEqual(self._resp(self.alheia).status_code, 404)  # outra auditoria
+        self.assertEqual(self._resp(self.ok).status_code, 404)  # conforme
+        self.assertEqual(self.publico.post(reverse("auditoria:api_livre_capa_responder_publico", args=[self.link.token]),
+                                           {"solicitacao_id": "abc"}).status_code, 404)
+
+    # ---- portal público: resposta
+    def test_respond_flow(self):
+        r = self._resp(self.nc, enviar="false", acao_corretiva="")
+        self.assertEqual(r.json()["status"], "PENDENTE")  # rascunho
+        self.assertEqual(self._resp(self.nc, causa_raiz="").status_code, 400)  # envio incompleto
+        self.assertEqual(self._resp(self.nc, prazo="31/12").status_code, 400)  # prazo inválido
+        r = self._resp(self.nc)
+        self.assertEqual(r.json()["status"], "AGUARDANDO_REVISAO")
+        self.nc.refresh_from_db()
+        self.assertEqual((self.nc.capa_respondido_por_nome, self.nc.capa_prazo), ("João Silva", date(2026, 12, 31)))
+        self.assertIsNotNone(self.nc.capa_respondido_em)
+        self.assertEqual(self._resp(self.nc, causa_raiz="mudei").status_code, 400)  # travado em revisão
+        self.nc.refresh_from_db()
+        self.assertEqual(self.nc.capa_causa_raiz, "Falta de rotina")
+
+    def test_attachments_validation_and_serving(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import EvidenciaPlanoAcaoLivre
+        bom = SimpleUploadedFile("laudo.pdf", b"%PDF-1.4 x", content_type="application/pdf")
+        txt = SimpleUploadedFile("nota.txt", b"<script>alert(1)</script>", content_type="text/plain")
+        exe = SimpleUploadedFile("virus.exe", b"MZ", content_type="application/octet-stream")
+        html = SimpleUploadedFile("x.html", b"<b>x</b>", content_type="text/html")
+        r = self.publico.post(reverse("auditoria:api_livre_capa_responder_publico", args=[self.link.token]), {
+            "solicitacao_id": self.nc.pk, "enviar": "false", "anexos": [bom, txt, exe, html]})
+        j = r.json()
+        self.assertEqual([a["nome"] for a in j["anexos"]], ["laudo.pdf", "nota.txt"])
+        self.assertEqual(len(j["avisos"]), 2)
+        self.assertEqual(EvidenciaPlanoAcaoLivre.objects.count(), 2)
+        pdf, nota = EvidenciaPlanoAcaoLivre.objects.order_by("id")
+        r = self.publico.get(reverse("auditoria:livre_capa_anexo_publico", args=[self.link.token, pdf.pk]))
+        self.assertEqual((r["Content-Type"], r["X-Content-Type-Options"]), ("application/pdf", "nosniff"))
+        r = self.publico.get(reverse("auditoria:livre_capa_anexo_publico", args=[self.link.token, nota.pk]))
+        self.assertEqual(r["Content-Type"], "application/octet-stream")  # texto nunca é exibido inline
+        self.assertIn("attachment", r["Content-Disposition"])
+        # outro link (outro escopo) e visitante sem token válido não acessam
+        l2 = self._link(topico="Produção")
+        self.assertEqual(self.publico.get(reverse("auditoria:livre_capa_anexo_publico", args=[l2.token, pdf.pk])).status_code, 404)
+        self.assertEqual(self.publico.get(reverse("auditoria:livre_capa_anexo_publico", args=["x", pdf.pk])).status_code, 404)
+        self.assertEqual(self.publico.get(reverse("auditoria:livre_capa_anexo", args=[pdf.pk])).status_code, 302)
+        self.assertEqual(self.client.get(reverse("auditoria:livre_capa_anexo", args=[pdf.pk])).status_code, 200)
+        # remoção: só em plano editável e dentro do escopo
+        rm = lambda tok, ev: self.publico.post(reverse("auditoria:api_livre_capa_remover_anexo_publico", args=[tok, ev.pk]))
+        self.assertEqual(rm(l2.token, nota).status_code, 404)
+        self.assertEqual(rm(self.link.token, nota).status_code, 200)
+        self.nc.capa_status = "AGUARDANDO_REVISAO"
+        self.nc.save()
+        self.assertEqual(rm(self.link.token, pdf).status_code, 400)
+
+    def test_attachment_limits(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .views_livre_capa import MAX_ANEXOS_POR_ITEM, MAX_BYTES_ANEXO
+        grande = SimpleUploadedFile("g.pdf", b"0" * (MAX_BYTES_ANEXO + 1))
+        pequenos = [SimpleUploadedFile(f"{n}.txt", b"a") for n in range(MAX_ANEXOS_POR_ITEM + 2)]
+        r = self.publico.post(reverse("auditoria:api_livre_capa_responder_publico", args=[self.link.token]), {
+            "solicitacao_id": self.nc.pk, "enviar": "false", "anexos": [grande] + pequenos})
+        self.assertEqual(len(r.json()["anexos"]), MAX_ANEXOS_POR_ITEM)
+        self.assertEqual(self.nc.evidencias_capa.count(), MAX_ANEXOS_POR_ITEM)
+
+    # ---- revisão pelo auditor
+    def test_review_flow(self):
+        rev = lambda sol, **d: self.client.post(reverse("auditoria:api_livre_capa_revisar", args=[sol.pk]),
+                                                json.dumps(d), content_type="application/json")
+        self.assertEqual(rev(self.nc, status="APROVADO").status_code, 400)  # sem plano enviado
+        self._resp(self.nc)
+        self.assertEqual(rev(self.nc, status="REJEITADO").status_code, 400)  # exige parecer
+        self.assertEqual(rev(self.nc, status="XX").status_code, 400)
+        self.assertEqual(rev(self.nc, status="REJEITADO", parecer="Causa rasa").status_code, 200)
+        self.nc.refresh_from_db()
+        self.assertEqual((self.nc.capa_status, self.nc.capa_parecer_auditor), ("REJEITADO", "Causa rasa"))
+        # o auditado edita depois da rejeição: rascunho volta a pendente; reenvio vai para revisão
+        self.assertEqual(self._resp(self.nc, enviar="false").json()["status"], "PENDENTE")
+        self.assertEqual(self._resp(self.nc).json()["status"], "AGUARDANDO_REVISAO")
+        self.assertEqual(rev(self.nc, status="APROVADO", parecer="Ok").status_code, 200)
+        self.nc.refresh_from_db()
+        self.assertEqual(self.nc.capa_status, "APROVADO")
+        self.assertEqual(self._resp(self.nc, causa_raiz="x").status_code, 400)  # aprovado não muda
+
+    def test_auditor_registers_plan_directly(self):
+        url = reverse("auditoria:api_livre_capa_salvar", args=[self.nc.pk])
+        post = lambda d: self.client.post(url, json.dumps(d), content_type="application/json")
+        self.assertEqual(post({"causa_raiz": "a", "enviar": True}).status_code, 400)
+        j = post({"causa_raiz": "a", "acao_corretiva": "b", "responsavel": "c", "prazo": "2026-12-01", "enviar": True}).json()
+        self.assertEqual(j["status"], "AGUARDANDO_REVISAO")
+        self.assertEqual(self.client.post(reverse("auditoria:api_livre_capa_salvar", args=[self.ok.pk]),
+                                          "{}", content_type="application/json").status_code, 404)
+
+    # ---- integração com execução, Excel e Word
+    def test_execution_page_exports_and_cascade(self):
+        from io import BytesIO
+        from docx import Document
+        from openpyxl import load_workbook
+        self._resp(self.nc)
+        r = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk]))
+        self.assertContains(r, reverse("auditoria:livre_capa", args=[self.aud.pk]))
+        self.assertEqual(r.context["solicitacoes_json"][0]["capa_status"], "AGUARDANDO_REVISAO")
+        wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
+        linha = [c.value for c in wb["Evidências"][2]]
+        self.assertEqual(linha[8:11], ["Aguardando Revisão", "João", "31/12/2026"])
+        self.assertFalse(wb["Evidências"]["I5"].value)  # conforme não tem plano
+        doc = Document(BytesIO(self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk])).content))
+        texto = "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
+        for esperado in ("Falta de rotina", "Criar agenda", "31/12/2026", "Plano de ação — situação"):
+            self.assertIn(esperado, texto)
+        self.link.delete()
+        self.aud.delete()
+        from .models import EvidenciaPlanoAcaoLivre
+        self.assertEqual(EvidenciaPlanoAcaoLivre.objects.count(), 0)
+
+    def test_permission_mapping_covers_auditor_views_only(self):
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        for nome in ("livre_capa", "api_livre_capa_salvar", "api_livre_capa_revisar", "livre_capa_anexo"):
+            self.assertEqual(M[f"auditoria:{nome}"]["perm"], "core.nav_auditoria_iso_lista")
+        for nome in ("livre_capa_portal", "api_livre_capa_responder_publico", "livre_capa_anexo_publico"):
+            self.assertNotIn(f"auditoria:{nome}", M)  # públicas: validadas pelo token

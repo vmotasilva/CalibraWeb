@@ -54,6 +54,7 @@
             <a href="{% url 'auditoria:livre_edit' aud.pk %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-pencil me-1"></i> Dados</a>
             <a href="{% url 'auditoria:livre_export_excel' aud.pk %}" class="btn btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a>
             <a href="{% url 'auditoria:livre_export_docx' aud.pk %}" class="btn btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-word me-1"></i> Word</a>
+            <a href="{% url 'auditoria:livre_capa' aud.pk %}" class="btn btn-outline-danger rounded-pill px-3"><i class="bi bi-clipboard2-check me-1"></i> Plano de Ação</a>
             <form method="post" action="{% url 'auditoria:livre_toggle_conclusao' aud.pk %}" class="d-inline">
                 {% csrf_token %}
                 <button class="btn {% if aud.status == 'CONCLUIDA' %}btn-outline-primary{% else %}btn-success{% endif %} rounded-pill px-3 fw-bold">
@@ -289,6 +290,7 @@
         const botoes = {};
         function pintar() {
             card.dataset.c = item.conclusao;
+            if (typeof pintarCapa === 'function') pintarCapa();
             Object.entries(botoes).forEach(([c, b]) => b.classList.toggle('active', c === item.conclusao));
             grupoGrau.classList.toggle('d-none', item.conclusao !== 'NC');
             grupoGrau.querySelectorAll('.btn-grau').forEach(b => {
@@ -310,8 +312,17 @@
                 } }, nome);
             botoes[c] = b; linhaClasse.append(b);
         });
-        linhaClasse.append(grupoGrau, obsBtn, btnFoto, inputFoto);
-        pintar();
+        const rotulosCapa = { PENDENTE: 'Plano pendente', AGUARDANDO_REVISAO: 'Plano em revisão', APROVADO: 'Plano aprovado', REJEITADO: 'Plano rejeitado' };
+        const coresCapa = { PENDENTE: 'text-bg-secondary', AGUARDANDO_REVISAO: 'text-bg-warning', APROVADO: 'text-bg-success', REJEITADO: 'text-bg-danger' };
+        const capaBadge = el('a', { href: "{% url 'auditoria:livre_capa' aud.pk %}", class: 'badge text-decoration-none ms-1' });
+        function pintarCapa() {
+            const aplica = item.conclusao === 'NC' || item.conclusao === 'OM';
+            capaBadge.classList.toggle('d-none', !aplica);
+            capaBadge.className = 'badge text-decoration-none ms-1 ' + (coresCapa[item.capa_status] || 'text-bg-secondary') + (aplica ? '' : ' d-none');
+            capaBadge.textContent = rotulosCapa[item.capa_status] || 'Plano pendente';
+        }
+        linhaClasse.append(grupoGrau, obsBtn, btnFoto, inputFoto, capaBadge);
+        pintar(); pintarCapa();
 
         body.append(sol, evi, fotos, linhaClasse, obsWrap);
         card.append(body);

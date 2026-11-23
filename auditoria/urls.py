@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import apresentacao, views, views_livre
+from . import apresentacao, views, views_livre, views_livre_capa
 from shared.views import auditoria_hub_view
 
 app_name = "auditoria"
@@ -86,6 +86,19 @@ urlpatterns = [
     path("livre/api/imagens/<int:pk>/deletar/", views_livre.api_livre_imagem_delete, name="api_livre_imagem_delete"),
     path("livre/api/imagens/<int:pk>/legenda/", views_livre.api_livre_imagem_legenda, name="api_livre_imagem_legenda"),
     path("livre/arquivos/imagem/<int:pk>/", views_livre.livre_imagem_arquivo, name="livre_imagem_arquivo"),
+    # Auditoria Livre: Plano de Ação (CAPA)
+    path("livre/<int:pk>/capa/", views_livre_capa.livre_capa, name="livre_capa"),
+    path("livre/<int:pk>/api/capa/gerar-link/", views_livre_capa.api_livre_capa_gerar_link, name="api_livre_capa_gerar_link"),
+    path("livre/api/capa/links/<int:pk>/revogar/", views_livre_capa.api_livre_capa_revogar_link, name="api_livre_capa_revogar_link"),
+    path("livre/api/capa/<int:pk>/salvar/", views_livre_capa.api_livre_capa_salvar, name="api_livre_capa_salvar"),
+    path("livre/api/capa/<int:pk>/revisar/", views_livre_capa.api_livre_capa_revisar, name="api_livre_capa_revisar"),
+    path("livre/arquivos/capa/<int:pk>/", views_livre_capa.livre_capa_anexo, name="livre_capa_anexo"),
+    # Portal público do auditado (sem login; validado pelo token)
+    path("livre/capa/responder/<str:token>/", views_livre_capa.livre_capa_portal, name="livre_capa_portal"),
+    path("livre/capa/api/responder/<str:token>/", views_livre_capa.api_livre_capa_responder_publico, name="api_livre_capa_responder_publico"),
+    path("livre/capa/api/anexos/<str:token>/<int:pk>/remover/", views_livre_capa.api_livre_capa_remover_anexo_publico, name="api_livre_capa_remover_anexo_publico"),
+    path("livre/capa/arquivos/<str:token>/anexo/<int:pk>/", views_livre_capa.livre_capa_anexo_publico, name="livre_capa_anexo_publico"),
+    path("livre/capa/arquivos/<str:token>/foto/<int:pk>/", views_livre_capa.livre_capa_imagem_publico, name="livre_capa_imagem_publico"),
 
     # ISO 13485 (Entrevista)
     path("iso/", views.iso_auditoria_list, name="iso_auditoria_list"),

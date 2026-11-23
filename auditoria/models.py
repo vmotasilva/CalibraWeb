@@ -1876,6 +1876,23 @@ class SolicitacaoLivre(models.Model):
     grau_nc = models.CharField(max_length=10, choices=GRAU_NC_CHOICES, blank=True, null=True)
     observacao = models.TextField(blank=True, default="", verbose_name="Observação do Auditor")
     ordem = models.PositiveIntegerField(default=0)
+
+    # Plano de Ação (CAPA) — aplicável às NC e (opcionalmente) às OM
+    CAPA_STATUS_CHOICES = [
+        ("PENDENTE", "Pendente de Plano"),
+        ("AGUARDANDO_REVISAO", "Aguardando Revisão"),
+        ("APROVADO", "Plano Aprovado"),
+        ("REJEITADO", "Plano Rejeitado"),
+    ]
+    capa_status = models.CharField(max_length=20, choices=CAPA_STATUS_CHOICES, default="PENDENTE")
+    capa_causa_raiz = models.TextField(blank=True, default="", verbose_name="Análise de Causa Raiz")
+    capa_acao_corretiva = models.TextField(blank=True, default="", verbose_name="Ação Corretiva / Preventiva")
+    capa_responsavel = models.CharField(max_length=255, blank=True, default="", verbose_name="Responsável pela Ação")
+    capa_prazo = models.DateField(null=True, blank=True, verbose_name="Prazo")
+    capa_respondido_em = models.DateTimeField(null=True, blank=True)
+    capa_respondido_por_nome = models.CharField(max_length=255, blank=True, default="")
+    capa_parecer_auditor = models.TextField(blank=True, default="", verbose_name="Parecer do Auditor")
+
     criado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
     )
@@ -1910,3 +1927,68 @@ class ImagemSolicitacaoLivre(models.Model):
     @property
     def url(self):
         return reverse("auditoria:livre_imagem_arquivo", args=[self.pk])
+
+
+class EvidenciaPlanoAcaoLivre(models.Model):
+    """Anexo (comprovante) do Plano de Ação de uma evidência da Auditoria Livre. Guardado no banco."""
+    solicitacao = models.ForeignKey(SolicitacaoLivre, on_delete=models.CASCADE, related_name="evidencias_capa")
+    arquivo_base64 = models.TextField(blank=True, default="")
+    nome_arquivo = models.CharField(max_length=255, blank=True, default="")
+    tipo_arquivo = models.CharField(max_length=100, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["criado_em", "id"]
+
+    def __str__(self):
+        return f"Anexo CAPA {self.pk} - {self.nome_arquivo}"
+
+
+class CapaLinkLivre(models.Model):
+    """Link público (sem login) para o auditado responder os Planos de Ação de uma Auditoria Livre."""
+    auditoria = models.ForeignKey(AuditoriaLivre, on_delete=models.CASCADE, related_name="links_capa")
+    topico = models.CharField(
+        max_length=255, blank=True, default="",
+        help_text="Se preenchido, o link dá acesso só às evidências desse tópico.",
+    )
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    dias_validade = models.PositiveIntegerField(default=15)
+    expira_em = models.DateTimeField()
+    incluir_om = models.BooleanField(default=False, verbose_name="Incluir Oportunidades de Melhoria")
+    ativo = models.BooleanField(default=True)
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ultimo_acesso_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = uuid.uuid4().hex
+        if not self.expira_em:
+            self.expira_em = timezone.now() + timezone.timedelta(days=self.dias_validade or 15)
+        super().save(*args, **kwargs)
+
+    @property
+    def is_expired(self):
+        return bool(self.expira_em and self.expira_em <= timezone.now())
+
+    @property
+    def is_valid(self):
+        return self.ativo and not self.is_expired
+
+    def conclusoes_alvo(self):
+        return ("NC", "OM") if self.incluir_om else ("NC",)
+
+    def solicitacoes(self):
+        """Evidências no escopo do link."""
+        qs = SolicitacaoLivre.objects.filter(auditoria=self.auditoria, conclusao__in=self.conclusoes_alvo())
+        if self.topico:
+            qs = qs.filter(topico=self.topico)
+        return qs
+
+    def __str__(self):
+        return f"Link CAPA {self.auditoria_id} - {self.token[:8]}"
