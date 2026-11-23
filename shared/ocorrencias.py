@@ -93,6 +93,39 @@ class OcorrenciaItem:
         return sum(1 for p in self.plano if p.status == "ABERTA")
 
     @property
+    def titulo_contexto(self) -> str:
+        """Parte do título antes de ' — ' (ex.: roteiro/setor), exibida como contexto secundário."""
+        return self.titulo.split(" — ", 1)[0] if " — " in self.titulo else ""
+
+    @property
+    def titulo_curto(self) -> str:
+        """Parte do título depois de ' — '; o título completo quando não há separador."""
+        return self.titulo.split(" — ", 1)[1] if " — " in self.titulo else self.titulo
+
+    @property
+    def acoes_validas(self) -> int:
+        """Ações que contam para o progresso (ignora canceladas e redirecionadas)."""
+        return sum(1 for p in self.plano if p.status in ("ABERTA", "CONCLUIDA"))
+
+    @property
+    def acoes_concluidas(self) -> int:
+        return sum(1 for p in self.plano if p.status == "CONCLUIDA")
+
+    @property
+    def progresso_pct(self) -> int:
+        total = self.acoes_validas
+        return round(100 * self.acoes_concluidas / total) if total else 0
+
+    @property
+    def dias_atraso(self) -> int:
+        """Dias de atraso: o maior entre o prazo da ocorrência e o das ações abertas vencidas."""
+        hoje = timezone.localdate()
+        prazos = [p.prazo for p in self.plano if p.status == "ABERTA" and p.vencida and p.prazo]
+        if self.prazo and self.prazo < hoje:
+            prazos.append(self.prazo)
+        return (hoje - min(prazos)).days if prazos else 0
+
+    @property
     def data_ordem(self) -> datetime:
         d = self.data
         if isinstance(d, datetime):
