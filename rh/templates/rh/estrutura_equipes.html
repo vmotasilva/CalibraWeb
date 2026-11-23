@@ -472,7 +472,8 @@
   // ---------------------------------------------------------- edição
   let editId = null;
   let liderMapa = {};
-  let modalGrupo, modalAdd;
+  // O bootstrap.bundle.js é carregado DEPOIS deste bloco (base_desktop.html), então os modais são criados só no uso.
+  const modal = id => bootstrap.Modal.getOrCreateInstance(document.getElementById(id));
   function abrirModal(id, parentId = null) {
     editId = id; const g = id ? byId(id) : null;
     const ehPosto = g ? !!g.parent_id : !!parentId;
@@ -523,7 +524,7 @@
         } catch (e) { /* sugestões são opcionais */ }
       });
     });
-    modalGrupo.show();
+    modal('ee-modal-grupo').show();
   }
   async function salvar() {
     const erro = document.getElementById('ee-modal-erro');
@@ -547,7 +548,7 @@
         setor_id: document.getElementById('ee-f-setor').value, descricao: document.getElementById('ee-f-desc').value,
         ordem: document.getElementById('ee-f-ordem').value, ativo: document.getElementById('ee-f-ativo').checked, turnos
       });
-      modalGrupo.hide();
+      modal('ee-modal-grupo').hide();
       const pai = document.getElementById('ee-f-parent').value; if (pai) state.abertos.add(parseInt(pai));
       state.abertos.add(j.id); state.sel = j.id;
       await carregar(); aviso(j.criado ? 'Criado com sucesso.' : 'Atualizado com sucesso.');
@@ -597,20 +598,18 @@
     state.tudoAberto = !state.tudoAberto; state.abertos = new Set(state.tudoAberto ? state.grupos.map(g => g.id) : []); renderArvore();
   };
   if (PODE_EDITAR) {
-    modalGrupo = new bootstrap.Modal(document.getElementById('ee-modal-grupo'));
-    modalAdd = new bootstrap.Modal(document.getElementById('ee-modal-add'));
     document.getElementById('ee-btn-novo-raiz').onclick = () => abrirModal(null, null);
     document.getElementById('ee-btn-salvar').onclick = salvar;
     document.getElementById('ee-btn-aplicar-lote').onclick = aplicarLote;
     document.getElementById('ee-sel-todos').onchange = e => {
       document.querySelectorAll('.ee-chk').forEach(c => { c.checked = e.target.checked; const id = parseInt(c.dataset.id); e.target.checked ? sel.add(id) : sel.delete(id); }); atualizaLote();
     };
-    document.getElementById('ee-btn-add-membros').onclick = () => { addSel = new Set(); document.getElementById('ee-add-body').innerHTML = ''; modalAdd.show(); buscarAdd(); };
+    document.getElementById('ee-btn-add-membros').onclick = () => { addSel = new Set(); document.getElementById('ee-add-body').innerHTML = ''; modal('ee-modal-add').show(); buscarAdd(); };
     ['ee-add-origem', 'ee-add-turno'].forEach(i => document.getElementById(i).addEventListener('change', buscarAdd));
     document.getElementById('ee-add-busca').addEventListener('input', debounce(buscarAdd));
     document.getElementById('ee-add-confirmar').onclick = async () => {
       if (!addSel.size) return;
-      try { const j = await api(URLS.atualizar, { colaborador_ids: Array.from(addSel), grupo_id: state.sel }); modalAdd.hide(); await carregar(); aviso(j.alterados + ' colaborador(es) adicionado(s).'); }
+      try { const j = await api(URLS.atualizar, { colaborador_ids: Array.from(addSel), grupo_id: state.sel }); modal('ee-modal-add').hide(); await carregar(); aviso(j.alterados + ' colaborador(es) adicionado(s).'); }
       catch (e) { document.getElementById('ee-add-info').textContent = e.message; }
     };
     // seletor de destino do lote é recriado a cada render de detalhe/árvore
