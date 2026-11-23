@@ -87,6 +87,8 @@ class OcorrenciaItem:
     url_origem: str = ""
     acoes: list[Acao] = field(default_factory=list)
     plano: list[AcaoPlano] = field(default_factory=list)
+    # Valores dos filtros específicos da origem: {chave: (valor exibido, chave de ordenação)}
+    facetas: dict = field(default_factory=dict)
 
     @property
     def acoes_abertas(self) -> int:
@@ -183,6 +185,11 @@ class _Origem:
     key = ""
     nome = ""
     icon = "bi-exclamation-diamond"
+    FILTROS: tuple = ()  # ((chave, rótulo), ...): filtros específicos da origem na Central
+
+    def facetas_lote(self, objs) -> dict:
+        """Facetas que dependem de dados externos, calculadas em lote: {pk: {chave: (valor, ordem)}}."""
+        return {}
 
     def base_qs(self, user):  # todas as ocorrências visíveis ao usuário
         raise NotImplementedError
@@ -208,6 +215,7 @@ class _Origem:
 
 class OrigemAuditoria(_Origem):
     key, nome, icon = "auditoria", "Auditoria", "bi-clipboard-check"
+    FILTROS = (("modelo", "Modelo"),)
 
     def base_qs(self, user):
         from auditoria.models import ComentarioRespostaAuditoria, ModeloAuditoria
@@ -255,6 +263,7 @@ class OrigemAuditoria(_Origem):
             data=oc.criado_em, envolve_usuario=papel != "", papel=papel,
             detalhes=detalhes, historico=historico,
             url_origem=reverse("auditoria:modulo") + "#ocorrencias-em-aberto", acoes=acoes,
+            facetas={"modelo": (oc.pergunta.modelo.nome, oc.pergunta.modelo.nome.casefold())},
         )
 
     def executar(self, user, oc, acao, dados):
@@ -277,6 +286,7 @@ class OrigemAuditoria(_Origem):
 
 class OrigemLaboratorio(_Origem):
     key, nome, icon = "laboratorio", "Laboratório", "bi-droplet-half"
+    FILTROS = (("setor", "Setor"), ("categoria", "Categoria"))
 
     def base_qs(self, user):
         from laboratorio.models import OcorrenciaLaboratorio
@@ -284,7 +294,7 @@ class OrigemLaboratorio(_Origem):
         if not _can(user, "laboratorio", "laboratorio:ocorrencias_list"):
             return OcorrenciaLaboratorio.objects.none()
         return OcorrenciaLaboratorio.objects.select_related(
-            "categoria", "responsavel", "criado_por", "maquina", "colaborador"
+            "categoria", "responsavel", "criado_por", "maquina", "maquina__setor", "colaborador"
         ).prefetch_related("anotacoes_registradas__usuario")
 
     def aberta_q(self):
@@ -335,6 +345,10 @@ class OrigemLaboratorio(_Origem):
             responsaveis=[_nome_user(oc.responsavel)] if oc.responsavel_id else [],
             detalhes=detalhes, historico=historico,
             url_origem=reverse("laboratorio:ocorrencia_detail", args=[oc.pk]), acoes=acoes,
+            facetas=_facetas({
+                "setor": oc.maquina.setor.nome if oc.maquina_id and oc.maquina.setor_id else "Sem setor",
+                "categoria": oc.categoria.nome if oc.categoria_id else "Sem categoria",
+            }),
         )
 
     def executar(self, user, oc, acao, dados):
@@ -366,6 +380,7 @@ class OrigemLaboratorio(_Origem):
 
 class OrigemPcp(_Origem):
     key, nome, icon = "pcp", "PCP", "bi-gear-wide-connected"
+    FILTROS = (("codigo", "Código"), ("pacote", "Pacote"))
 
     def base_qs(self, user):
         from pcp.models import Ocorrencia
@@ -402,6 +417,10 @@ class OrigemPcp(_Origem):
             data=oc.criado_em, envolve_usuario=papel != "", papel=papel,
             responsaveis=[_nome_user(oc.criado_por)] if oc.criado_por_id else [],
             historico=historico, url_origem=reverse("pcp:ocorrencias"), acoes=acoes,
+            facetas=_facetas({
+                "codigo": getattr(getattr(oc.verificacao, "pagina", None), "codigo_sistema", "") or pagina,
+                "pacote": getattr(getattr(oc.verificacao, "pagina", None), "grupo", "") or "Sem pacote",
+            }),
         )
 
     def executar(self, user, oc, acao, dados):
@@ -420,6 +439,20 @@ class OrigemPcp(_Origem):
 
 class OrigemMetrologia(_Origem):
     key, nome, icon = "metrologia", "Metrologia", "bi-tools"
+    FILTROS = (("tipo", "Tipo de instrumento"), ("cotacao", "Cotação"))
+
+    def facetas_lote(self, objs):
+        from metrologia.views.novo_fluxo_cotacao import instrumentos_em_cotacao
+
+        try:
+            mapa = instrumentos_em_cotacao()
+        except Exception:
+            mapa = {}
+        out = {}
+        for o in objs:
+            numero = (mapa.get(o.instrumento_id) or (None, ""))[1]
+            out[o.pk] = _facetas({"cotacao": f"Cotação {numero}" if numero else "Sem cotação em aberto"})
+        return out
 
     def base_qs(self, user):
         from qms.models import OcorrenciaInstrumento
@@ -427,7 +460,7 @@ class OrigemMetrologia(_Origem):
         if not _can(user, "metrologia", "metrologia:relatorio_ocorrencias"):
             return OcorrenciaInstrumento.objects.none()
         return OcorrenciaInstrumento.objects.select_related(
-            "instrumento", "instrumento__setor", "usuario_responsavel"
+            "instrumento", "instrumento__setor", "instrumento__categoria", "usuario_responsavel"
         ).prefetch_related("mensagens__autor", "mensagens__destinatarios")
 
     def aberta_q(self):
@@ -478,6 +511,9 @@ class OrigemMetrologia(_Origem):
             responsaveis=[_nome_user(oc.usuario_responsavel)] if oc.usuario_responsavel_id else [],
             detalhes=detalhes, historico=historico,
             url_origem=reverse("metrologia:relatorio_ocorrencias") + f"?ocorrencia_id={oc.pk}", acoes=acoes,
+            facetas=_facetas({
+                "tipo": inst.categoria.nome if inst and getattr(inst, "categoria_id", None) else "Sem tipo",
+            }),
         )
 
     def executar(self, user, oc, acao, dados):
@@ -541,6 +577,7 @@ class OrigemMetrologia(_Origem):
 class OrigemKpi(_Origem):
     """Cards de causa/análise dos indicadores fora da meta marcados como ocorrência (os relatos não entram)."""
     key, nome, icon = "kpi", "KPI", "bi-speedometer2"
+    FILTROS = (("indicador", "Indicador"), ("periodo", "Período"))
 
     def base_qs(self, user):
         from kpi.models import AnaliseItem
@@ -588,6 +625,10 @@ class OrigemKpi(_Origem):
             data=it.criado_em, envolve_usuario=papel != "", papel=papel,
             detalhes=detalhes, historico=historico,
             url_origem=reverse("kpi:painel") + f"?ind={reg.indicador_id}", acoes=acoes,
+            facetas={
+                "indicador": (reg.indicador.nome, reg.indicador.nome.casefold()),
+                "periodo": (_rotulo_longo(reg.granularidade, reg.periodo), -reg.periodo.toordinal()),  # mais recente primeiro
+            },
         )
 
     def executar(self, user, it, acao, dados):
@@ -605,6 +646,11 @@ class OrigemKpi(_Origem):
             it.save(update_fields=["status", "resolvido_em", "resolvido_por"])
             return ResultadoAcao(True, "Ocorrência de KPI reaberta.")
         return ResultadoAcao(False, "Ação inválida.")
+
+
+def _facetas(valores: dict) -> dict:
+    """{chave: valor} -> {chave: (valor, ordem alfabética)}."""
+    return {k: (v, (v or "").casefold()) for k, v in valores.items()}
 
 
 ORIGENS: dict[str, _Origem] = {o.key: o for o in (
@@ -900,12 +946,14 @@ def listar_ocorrencias(user: Any, status: str = "abertas", origem: str = "") -> 
             qs = qs.filter(orig.aberta_q()) if status != "encerradas" else qs.exclude(orig.aberta_q())
             mine_ids = set(qs.filter(_mine_filter(orig, user)).values_list("pk", flat=True))
             objs = list(qs.order_by("-pk")[:300])
+            lote = orig.facetas_lote(objs)
             planos: dict[int, list] = {}
             for a in AcaoOcorrencia.objects.filter(origem=key, ocorrencia_id__in=[o.pk for o in objs]).select_related(
                     "criado_por", "encerrada_por").prefetch_related("responsaveis", "comentarios__autor"):
                 planos.setdefault(a.ocorrencia_id, []).append(a)
             for obj in objs:
                 item = orig.to_item(obj, user, mine_ids)
+                item.facetas.update(lote.get(obj.pk, {}))
                 item.envolve_usuario = item.envolve_usuario or obj.pk in mine_ids
                 if item.envolve_usuario and not item.papel:
                     item.papel = "Envolvido"

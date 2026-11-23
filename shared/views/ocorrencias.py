@@ -52,7 +52,9 @@ def _lista_para(request):
     if origem not in central.ORIGENS:
         origem = ""
 
-    abertas = central.listar_ocorrencias(request.user, "abertas", origem)
+    # Sempre carrega todas as origens: os contadores das demais origens não podem zerar ao filtrar uma delas.
+    todas_abertas = central.listar_ocorrencias(request.user, "abertas", "")
+    abertas = [i for i in todas_abertas if not origem or i.origem == origem]
     encerradas = None
     if aba == "encerradas":
         encerradas = central.listar_ocorrencias(request.user, "encerradas", origem)
@@ -69,6 +71,25 @@ def _lista_para(request):
     responsaveis = sorted({n for i in itens for n in i.responsaveis}, key=str.casefold)
     if resp:
         itens = [i for i in itens if resp in i.responsaveis]
+
+    # Filtros específicos da origem selecionada (ex.: Auditoria → Modelo; Laboratório → Setor e Categoria).
+    filtros_origem, f_params = [], []
+    if origem:
+        for chave, rotulo in central.ORIGENS[origem].FILTROS:
+            sel = (request.GET.get(f"f_{chave}") or "").strip()
+            valores = {}
+            for i in itens:
+                v = i.facetas.get(chave)
+                if v and v[0]:
+                    valores[v[0]] = v[1]
+            if sel and sel not in valores:
+                valores[sel] = sel.casefold()
+            filtros_origem.append((chave, rotulo, sorted(valores, key=lambda v: valores[v]), sel))
+            if sel:
+                f_params.append((f"f_{chave}", sel))
+        for chave, _rotulo, _vals, sel in filtros_origem:
+            if sel:
+                itens = [i for i in itens if (i.facetas.get(chave) or ("",))[0] == sel]
     itens = _ordenar(itens, "recentes" if aba == "encerradas" and not request.GET.get("ordem") else ordem)
     if q:
         itens = [
@@ -76,7 +97,7 @@ def _lista_para(request):
             if q in f"{i.titulo} {i.descricao} {i.origem_nome} {' '.join(i.responsaveis)}".lower()
         ]
     por_origem = {}
-    for i in abertas:
+    for i in todas_abertas:
         por_origem[i.origem] = por_origem.get(i.origem, 0) + 1
     return {
         "itens": itens[:limite],
@@ -101,7 +122,9 @@ def _lista_para(request):
         "q": q,
         "atraso": atraso,
         "resp": resp,
-        "extra_qs": urlencode([(k, v) for k, v in (("ordem", request.GET.get("ordem") and ordem), ("resp", resp), ("q", q)) if v]),
+        "filtros_origem": filtros_origem,
+        "extra_qs_base": urlencode([(k, v) for k, v in (("ordem", request.GET.get("ordem") and ordem), ("resp", resp), ("q", q)) if v]),
+        "extra_qs": urlencode([(k, v) for k, v in (("ordem", request.GET.get("ordem") and ordem), ("resp", resp), ("q", q)) if v] + f_params),
         "responsaveis": responsaveis,
         "ordem": ordem,
         "ordens": ORDENS,
@@ -146,7 +169,7 @@ def ocorrencias_acao_view(request):
     from urllib.parse import parse_qsl
 
     permitido = {"aba", "origem", "q", "atraso", "resp", "ordem", "limite"}
-    params = [(k, v) for k, v in parse_qsl(qs) if k in permitido]
+    params = [(k, v) for k, v in parse_qsl(qs) if k in permitido or k.startswith("f_")]
     if res.ok or request.POST.get("uid"):
         params.append(("abrir", request.POST.get("uid", "")))  # reabre o pop-up da ocorrência tratada
     qs = urlencode(params)
