@@ -16,6 +16,7 @@ Alterações que ainda não foram lançadas em uma versão oficial.
 - Posto sem pessoa associada é marcado como **VAGO** (necessário contratar) ou **RESERVA** (equipamento reserva instalado); aba "Quadro por turno" com resumo de vagas e reservas
 - Movimentação em lote de pessoas entre postos, com ajuste opcional de turno; efetivo planejado x atual por turno
 - Novas permissões de navegação: visualizar e editar a estrutura
+- **Importação por planilha (.xlsx)** da estrutura (bloco, posto e titular por turno), em duas etapas: prévia editável com revisão de nomes e escolha da pessoa em casos ambíguos, e gravação só após confirmar (tudo ou nada)
 
 ### 🐛 Corrigido (Módulo de Fornecedores)
 - Botões protegidos por permissão (Editar, Novo Documento, Remover, Matriz, Responder...) nunca apareciam: as tags `can_nav_view` estavam fora do `{% block %}` dos templates

@@ -26,6 +26,7 @@
     </div>
     <div class="d-flex gap-2">
       {% if pode_editar %}
+      <a href="{% url 'rh:importar_estrutura_equipes' %}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-excel me-1"></i>Importar planilha</a>
       <button type="button" class="btn btn-primary" id="ee-btn-novo-raiz"><i class="bi bi-plus-circle me-1"></i>Novo bloco</button>
       {% endif %}
       <a href="{% url 'modulo_rh' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>

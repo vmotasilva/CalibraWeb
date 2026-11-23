@@ -1112,7 +1112,7 @@ NAV_STRUCTURE = [
                 "perm": "core.nav_pessoas_estrutura_bloco",
                 "funcoes": [
                     {"nome": "Estrutura de Equipes e Turnos", "view_name": ["rh:estrutura_equipes", "rh:api_estrutura_equipes_dados", "rh:api_estrutura_equipes_membros"], "perm": "core.nav_pessoas_estrutura_equipes"},
-                    {"nome": "Editar Estrutura (grupos, subgrupos, turnos e membros)", "view_name": ["rh:api_estrutura_equipes_salvar", "rh:api_estrutura_equipes_excluir", "rh:api_estrutura_equipes_membros_atualizar"], "perm": "core.nav_pessoas_estrutura_equipes_editar"},
+                    {"nome": "Editar Estrutura (blocos, postos, turnos, membros e importação)", "view_name": ["rh:api_estrutura_equipes_salvar", "rh:api_estrutura_equipes_excluir", "rh:api_estrutura_equipes_membros_atualizar", "rh:importar_estrutura_equipes", "rh:api_importar_estrutura_equipes_previa", "rh:api_importar_estrutura_equipes_confirmar"], "perm": "core.nav_pessoas_estrutura_equipes_editar"},
                 ],
             },
             {

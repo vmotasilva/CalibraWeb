@@ -73,6 +73,12 @@ from rh.views.estrutura_equipes import (
     api_estrutura_equipes_membros_atualizar,
 )
 
+from rh.views.estrutura_equipes_importar import (
+    estrutura_equipes_importar_view,
+    api_estrutura_equipes_importar_previa,
+    api_estrutura_equipes_importar_confirmar,
+)
+
 from shared.views import rh_hub_view
 
 app_name = 'rh'
@@ -118,6 +124,10 @@ urlpatterns = [
     path('api/estrutura-equipes/salvar/', api_estrutura_equipes_salvar, name='api_estrutura_equipes_salvar'),
     path('api/estrutura-equipes/excluir/', api_estrutura_equipes_excluir, name='api_estrutura_equipes_excluir'),
     path('api/estrutura-equipes/membros/atualizar/', api_estrutura_equipes_membros_atualizar, name='api_estrutura_equipes_membros_atualizar'),
+
+    path('estrutura-equipes/importar/', estrutura_equipes_importar_view, name='importar_estrutura_equipes'),
+    path('api/estrutura-equipes/importar/previa/', api_estrutura_equipes_importar_previa, name='api_importar_estrutura_equipes_previa'),
+    path('api/estrutura-equipes/importar/confirmar/', api_estrutura_equipes_importar_confirmar, name='api_importar_estrutura_equipes_confirmar'),
 
     # Atualização em massa
     path('atualizar-liderancas/', atualizar_liderancas_em_massa, name='atualizar_liderancas_em_massa'),

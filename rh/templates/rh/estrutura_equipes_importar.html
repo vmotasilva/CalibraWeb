@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Importar Estrutura de Equipes{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" id="im-app">
+  {% csrf_token %}
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 mb-0"><i class="bi bi-file-earmark-excel text-success me-2"></i>Importar Estrutura de Equipes</h1>
+      <p class="text-muted small mt-1 mb-0">Envie a planilha, revise tudo na tela e só então grave. Nada é salvo antes da sua confirmação.</p>
+    </div>
+    <a href="{% url 'rh:estrutura_equipes' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
+  </div>
+
+  <div id="im-alert" class="alert d-none" role="alert"></div>
+
+  <!-- Etapa 1: envio -->
+  <div class="card border-0 shadow-sm mb-3" id="im-etapa1">
+    <div class="card-header bg-white fw-bold">1. Enviar planilha</div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-5">
+          <label class="form-label fw-semibold" for="im-arquivo">Planilha (.xlsx) *</label>
+          <input type="file" class="form-control" id="im-arquivo" accept=".xlsx">
+          <div class="form-text">Coluna A = bloco, coluna B = posto de trabalho, e uma coluna por turno ("Turno 01", "Turno 02", "Turno 03") com o titular. Use VAGO, RESERVA ou PARADO quando não houver pessoa.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold" for="im-setor">Setor dos blocos *</label>
+          <select class="form-select" id="im-setor">
+            <option value="">— Selecione —</option>
+            {% for s in setores %}<option value="{{ s.id }}">{{ s.nome }}</option>{% endfor %}
+            <option value="__novo__">+ Criar novo setor…</option>
+          </select>
+          <input type="text" class="form-control mt-2 d-none" id="im-setor-novo" maxlength="100" placeholder="Nome do novo setor">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="button" class="btn btn-primary w-100" id="im-btn-ler"><i class="bi bi-search me-1"></i>Ler planilha</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Etapa 2: revisão -->
+  <div class="d-none" id="im-etapa2">
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-header bg-white fw-bold d-flex justify-content-between flex-wrap gap-2">
+        <span>2. Revisar antes de gravar</span>
+        <span id="im-resumo"></span>
+      </div>
+      <div class="card-body">
+        <div id="im-avisos" class="alert alert-warning d-none"></div>
+        <p class="small text-muted mb-2">Corrija nomes se precisar. Onde a planilha traz só um nome curto (ex.: "Rogerio"), escolha a pessoa certa na lista. Postos sem pessoa ficam como <b>Vago</b> (contratar) ou <b>Reserva</b> (equipamento reserva).</p>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="im-associar" checked>
+          <label class="form-check-label" for="im-associar">Associar também cada titular ao seu posto (só quem ainda está sem posto)</label>
+        </div>
+      </div>
+    </div>
+    <div id="im-blocos"></div>
+    <div class="d-flex justify-content-between align-items-center mt-3 mb-5">
+      <button type="button" class="btn btn-outline-secondary" id="im-btn-cancelar">Cancelar</button>
+      <div class="d-flex align-items-center gap-3">
+        <span class="small text-muted" id="im-pendencias"></span>
+        <button type="button" class="btn btn-success" id="im-btn-confirmar" disabled><i class="bi bi-check2-circle me-1"></i>Confirmar e gravar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Etapa 3: resultado -->
+  <div class="card border-0 shadow-sm d-none" id="im-etapa3">
+    <div class="card-body">
+      <h5 class="text-success"><i class="bi bi-check-circle-fill me-2"></i>Importação concluída</h5>
+      <ul class="mb-3" id="im-resultado"></ul>
+      <a href="{% url 'rh:estrutura_equipes' %}" class="btn btn-primary">Ver a estrutura</a>
+      <a href="{% url 'rh:importar_estrutura_equipes' %}" class="btn btn-outline-secondary">Importar outra planilha</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const app = document.getElementById('im-app');
+  const URLS = {
+    previa: "{% url 'rh:api_importar_estrutura_equipes_previa' %}",
+    confirmar: "{% url 'rh:api_importar_estrutura_equipes_confirmar' %}",
+    membros: "{% url 'rh:api_estrutura_equipes_membros' %}",
+  };
+  const TURNO_NOME = { TURNO_1: 'Turno 1', TURNO_2: 'Turno 2', TURNO_3: 'Turno 3' };
+  const csrf = () => app.querySelector('[name=csrfmiddlewaretoken]').value;
+  const $ = id => document.getElementById(id);
+  let dados = null;
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function aviso(msg, tipo = 'danger') { const el = $('im-alert'); el.className = 'alert alert-' + tipo; el.textContent = msg; el.scrollIntoView({ block: 'nearest' }); }
+  function limpaAviso() { $('im-alert').className = 'alert d-none'; }
+
+  $('im-setor').onchange = () => $('im-setor-novo').classList.toggle('d-none', $('im-setor').value !== '__novo__');
+
+  async function ler() {
+    limpaAviso();
+    const f = $('im-arquivo').files[0];
+    const setor = $('im-setor').value;
+    if (!f) return aviso('Escolha a planilha (.xlsx).');
+    if (!setor) return aviso('Selecione o setor dos blocos.');
+    if (setor === '__novo__' && !$('im-setor-novo').value.trim()) return aviso('Informe o nome do novo setor.');
+    const fd = new FormData(); fd.append('arquivo', f);
+    if (setor !== '__novo__') fd.append('setor_id', setor);
+    $('im-btn-ler').disabled = true;
+    try {
+      const r = await fetch(URLS.previa, { method: 'POST', headers: { 'X-CSRFToken': csrf() }, body: fd });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.success === false) throw new Error(j.error || 'Falha ao ler a planilha.');
+      dados = j; render();
+      $('im-etapa1').classList.add('d-none'); $('im-etapa2').classList.remove('d-none');
+    } catch (e) { aviso(e.message); }
+    $('im-btn-ler').disabled = false;
+  }
+
+  function opcoes(cel) {
+    let h = '<option value="">— escolher —</option>';
+    (cel.candidatos || []).forEach(c => {
+      h += '<option value="c:' + c.id + '"' + (cel.decisao === 'c:' + c.id ? ' selected' : '') + '>' + esc(c.nome + ' · ' + c.matricula + (c.setor ? ' · ' + c.setor : '')) + '</option>';
+    });
+    [['s:VAGO', 'VAGO (contratar)'], ['s:RESERVA', 'RESERVA (equip. reserva)'], ['s:PARADO', 'PARADO']].forEach(([v, t]) => {
+      h += '<option value="' + v + '"' + (cel.decisao === v ? ' selected' : '') + '>' + t + '</option>';
+    });
+    return h;
+  }
+
+  function render() {
+    const box = $('im-blocos'); box.innerHTML = '';
+    $('im-avisos').classList.toggle('d-none', !dados.avisos.length);
+    $('im-avisos').innerHTML = dados.avisos.map(esc).join('<br>');
+    const turnos = dados.turnos;
+    dados.blocos.forEach((b, bi) => {
+      const card = document.createElement('div'); card.className = 'card border-0 shadow-sm mb-3';
+      card.innerHTML = '<div class="card-header bg-white d-flex flex-wrap gap-2 align-items-center">' +
+        '<i class="bi bi-grid-3x3-gap text-primary"></i>' +
+        '<input type="text" class="form-control form-control-sm fw-bold im-nome-bloco" style="max-width:20rem" maxlength="100" data-b="' + bi + '" value="' + esc(b.nome) + '" aria-label="Nome do bloco">' +
+        (b.existe ? '<span class="badge bg-info text-dark">bloco já existe' + (b.setor_existente ? ' (' + esc(b.setor_existente) + ')' : '') + '</span>' : '<span class="badge bg-success">novo bloco</span>') +
+        '</div><div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th style="width:2rem"></th><th>Posto de trabalho</th>' +
+        turnos.map(t => '<th>' + esc(TURNO_NOME[t] || t) + '</th>').join('') + '</tr></thead><tbody></tbody></table></div>';
+      const tb = card.querySelector('tbody');
+      b.postos.forEach((p, pi) => {
+        const tr = document.createElement('tr'); tr.dataset.b = bi; tr.dataset.p = pi;
+        let h = '<td><input type="checkbox" class="form-check-input im-incluir" checked title="Importar este posto" aria-label="Importar o posto ' + esc(p.nome) + '"></td>' +
+          '<td style="min-width:13rem"><input type="text" class="form-control form-control-sm im-nome-posto" maxlength="100" value="' + esc(p.nome) + '" aria-label="Nome do posto"> ' +
+          (p.existe ? '<span class="badge bg-info text-dark">atualiza</span>' : '<span class="badge bg-success">novo</span>') + '</td>';
+        turnos.forEach(t => {
+          const cel = p.turnos[t];
+          if (!cel) { h += '<td class="text-muted">—</td>'; return; }
+          h += '<td style="min-width:15rem" data-t="' + t + '"><div class="small text-muted mb-1">planilha: <b>' + esc(cel.original) + '</b></div>' +
+            '<div class="input-group input-group-sm"><select class="form-select im-dec" aria-label="Titular de ' + esc(p.nome) + ' no ' + esc(TURNO_NOME[t] || t) + '">' + opcoes(cel) + '</select>' +
+            (cel.situacao === 'ATIVO' ? '<button type="button" class="btn btn-outline-secondary im-buscar" title="Buscar outra pessoa"><i class="bi bi-search"></i></button>' : '') + '</div>' +
+            '<div class="im-dup small text-warning d-none">mesma pessoa em outro posto deste turno</div></td>';
+        });
+        tr.innerHTML = h; tb.appendChild(tr);
+      });
+      box.appendChild(card);
+    });
+    box.querySelectorAll('.im-nome-bloco').forEach(i => i.oninput = () => { dados.blocos[i.dataset.b].nome = i.value; });
+    box.querySelectorAll('tr[data-p]').forEach(tr => {
+      const p = dados.blocos[tr.dataset.b].postos[tr.dataset.p];
+      tr.querySelector('.im-nome-posto').oninput = e => { p.nome = e.target.value; };
+      tr.querySelector('.im-incluir').onchange = e => { p.ignorar = !e.target.checked; tr.classList.toggle('table-secondary', p.ignorar); validar(); };
+      tr.querySelectorAll('td[data-t]').forEach(td => {
+        const cel = p.turnos[td.dataset.t];
+        td.querySelector('.im-dec').onchange = e => { cel.decisao = e.target.value; validar(); };
+        const bt = td.querySelector('.im-buscar');
+        if (bt) bt.onclick = async () => {
+          const q = prompt('Buscar colaborador por nome ou matrícula:', cel.pessoa || ''); if (!q) return;
+          try {
+            const r = await fetch(URLS.membros + '?' + new URLSearchParams({ grupo: 'todos', q })); const j = await r.json();
+            if (!j.membros.length) return aviso('Nenhum colaborador encontrado para "' + q + '".', 'warning');
+            j.membros.slice(0, 15).forEach(m => { if (!cel.candidatos.some(c => c.id === m.id)) cel.candidatos.push({ id: m.id, nome: m.nome, matricula: m.matricula, setor: m.setor, turno: m.turno, cargo: m.cargo }); });
+            td.querySelector('.im-dec').innerHTML = opcoes(cel); limpaAviso();
+          } catch (e) { aviso('Falha na busca.'); }
+        };
+      });
+    });
+    validar();
+  }
+
+  function validar() {
+    let pend = 0, total = 0, vagos = 0, reservas = 0, postos = 0;
+    const porTurno = {};
+    document.querySelectorAll('tr[data-p]').forEach(tr => {
+      const p = dados.blocos[tr.dataset.b].postos[tr.dataset.p];
+      tr.querySelectorAll('.im-dup').forEach(d => d.classList.add('d-none'));
+      tr.querySelectorAll('td[data-t]').forEach(td => td.querySelector('.im-dec').classList.remove('is-invalid'));
+      if (p.ignorar) return;
+      postos++;
+      tr.querySelectorAll('td[data-t]').forEach(td => {
+        const cel = p.turnos[td.dataset.t]; total++;
+        const sel = td.querySelector('.im-dec');
+        if (!cel.decisao) { pend++; sel.classList.add('is-invalid'); }
+        if (cel.decisao === 's:VAGO') vagos++;
+        if (cel.decisao === 's:RESERVA') reservas++;
+        if (cel.decisao.startsWith('c:')) { (porTurno[td.dataset.t + cel.decisao] = porTurno[td.dataset.t + cel.decisao] || []).push(td); }
+      });
+    });
+    Object.values(porTurno).forEach(l => { if (l.length > 1) l.forEach(td => td.querySelector('.im-dup').classList.remove('d-none')); });
+    $('im-resumo').innerHTML = '<span class="badge bg-secondary">' + postos + ' posto(s)</span> <span class="badge bg-danger">' + vagos + ' vago(s)</span> <span class="badge bg-info text-dark">' + reservas + ' reserva(s)</span>';
+    $('im-pendencias').textContent = pend ? pend + ' célula(s) a resolver' : '';
+    $('im-btn-confirmar').disabled = pend > 0 || postos === 0;
+  }
+
+  async function confirmar() {
+    limpaAviso();
+    const setor = $('im-setor').value;
+    const payload = { associar: $('im-associar').checked, blocos: [] };
+    if (setor === '__novo__') payload.setor_novo = $('im-setor-novo').value.trim(); else payload.setor_id = setor;
+    dados.blocos.forEach(b => {
+      const postos = b.postos.filter(p => !p.ignorar).map(p => ({
+        nome: p.nome, turnos: Object.entries(p.turnos).map(([t, c]) => ({ turno: t, decisao: c.decisao }))
+      }));
+      if (postos.length) payload.blocos.push({ nome: b.nome, postos });
+    });
+    $('im-btn-confirmar').disabled = true;
+    try {
+      const r = await fetch(URLS.confirmar, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() }, body: JSON.stringify(payload) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.success === false) throw new Error(j.error || 'Falha ao gravar.');
+      const s = j.resumo;
+      const itens = [
+        s.blocos_criados + ' bloco(s) criado(s) no setor ' + j.setor,
+        s.postos_criados + ' posto(s) criado(s) e ' + s.postos_atualizados + ' atualizado(s)',
+        s.titulares + ' titular(es) definido(s)',
+        s.vagos + ' vago(s) · ' + s.reservas + ' reserva(s) · ' + s.parados + ' parado(s)',
+      ];
+      if (payload.associar) itens.push(s.associados + ' pessoa(s) associada(s) ao posto' + (s.mantidos_em_outro_posto ? ' (' + s.mantidos_em_outro_posto + ' já estavam em outro posto e foram mantidas)' : ''));
+      $('im-resultado').innerHTML = itens.map(i => '<li>' + esc(i) + '</li>').join('');
+      $('im-etapa2').classList.add('d-none'); $('im-etapa3').classList.remove('d-none');
+    } catch (e) { aviso(e.message); validar(); }
+  }
+
+  $('im-btn-ler').onclick = ler;
+  $('im-btn-confirmar').onclick = confirmar;
+  $('im-btn-cancelar').onclick = () => { dados = null; $('im-etapa2').classList.add('d-none'); $('im-etapa1').classList.remove('d-none'); limpaAviso(); };
+})();
+</script>
+{% endblock %}
