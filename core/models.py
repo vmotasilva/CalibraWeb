@@ -314,6 +314,7 @@ class NavigationPermission(models.Model):
             ("nav_pessoas_ponto_ver_todos", "NAV: Pessoas / Permissão Especial: Ver Todos os Colaboradores (Ponto)"),
             ("nav_pessoas_perfil_rh", "NAV: Pessoas / Permissão Especial: Perfil RH/DP"),
             ("nav_pessoas_ver_salario", "NAV: Pessoas / Permissão Especial: Ver Salário"),
+            ("nav_pessoas_ver_cpf", "NAV: Pessoas / Permissão Especial: Ver CPF"),
             ("nav_pessoas_ferias_configuracao", "NAV: Pessoas / Permissão Especial: Configurar Meses de Abono e Adiantamento de 13º"),
 
             # --- FORNECEDORES ---

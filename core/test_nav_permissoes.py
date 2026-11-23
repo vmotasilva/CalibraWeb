@@ -148,6 +148,12 @@ class PainelPermissoesTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertTrue({"nav_pessoas_ver_salario", "nav_pessoas_ver_todos_colaboradores"} <= self._codenames())
 
+    def test_ver_cpf_e_especial_do_modulo_pessoas(self):
+        self._salvar(["nav_mod_pessoas", "nav_pessoas_ver_cpf"])
+        self.assertIn("nav_pessoas_ver_cpf", self._codenames())
+        self._salvar(["nav_pessoas_ver_cpf"])
+        self.assertNotIn("nav_pessoas_ver_cpf", self._codenames())
+
     def test_especial_do_modulo_e_descartada_sem_o_modulo(self):
         self._salvar(["nav_pessoas_ver_salario"])
         self.assertNotIn("nav_pessoas_ver_salario", self._codenames())

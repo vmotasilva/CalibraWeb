@@ -113,6 +113,7 @@ Além desses, várias funções diferentes usam a mesma permissão, e com isso "
 | Exibir botões de ações em tabelas | Global | `nav_global_action_buttons` ✅ (dentro de Usuários) | Seção **Global** |
 | Tratar como RH/DP/Qualidade | Férias, Ocorrências | fixo: nome do setor contém "RH", "DP" ou "QUALIDADE" (`_is_admin_setor`) | 🆕 `nav_pessoas_perfil_rh` (manter a regra do setor como fallback na transição) |
 | Ver salário | Pessoas (lista e detalhe) | fixo: cargo GERENTE/DIRETOR, setor RH/DP, staff. ⚠️ **A lista e o detalhe usam regras diferentes** | 🆕 `nav_pessoas_ver_salario` |
+| Ver CPF | Pessoas (detalhe, edição da ficha e modal de férias) | superuser/staff, ver salário/ver todos, cargo GERENTE/DIRETOR, setor RH/DP | 🆕 `nav_pessoas_ver_cpf` |
 | Registrar/editar/excluir/ver ocorrência (RH) | Pessoas › Ocorrências | perms de modelo `rh.add/change/delete/view_ocorrencia` (não aparecem no painel) | substituir por `nav_*` |
 | Configurar meses de abono/13º; ver férias | Pessoas › Férias | `rh.change_ferias` / `rh.view_ferias` / staff | 🆕 `nav_pessoas_ferias_configuracao` |
 | Encerrar ocorrência de outro usuário | Laboratório | fixo: criador ou staff | 🆕 `nav_laboratorio_encerrar_qualquer_ocorrencia` |
