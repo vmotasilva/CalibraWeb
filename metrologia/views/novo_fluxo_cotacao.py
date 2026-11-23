@@ -858,6 +858,38 @@ def cotacao_fornecedor_ativacao(request, pk):
         messages.error(request, "A cotação está encerrada; reabra-a antes de alterar as propostas.")
         return voltar
 
+    if acao in ('aprovar', 'desaprovar'):
+        # equivale a marcar/desmarcar "Cotação Aprovada" na tela de edição
+        if not cotacao.ativa:
+            messages.error(request, "Cotação obsoleta não pode ser aprovada; reative-a ou use a nova versão.")
+            return voltar
+        if acao == 'aprovar':
+            if cotacao.aprovada:
+                messages.info(request, f"{cotacao.numero} já está aprovada.")
+                return voltar
+            cotacao.aprovada = True
+            cotacao.data_aprovacao = timezone.now()
+            cotacao.aprovado_por = request.user
+            cotacao.status = 'ACEITA'
+            cotacao.save()
+            msg = f"{cotacao.numero} aprovada."
+        else:
+            if not cotacao.aprovada:
+                return voltar
+            if cotacao.atendimentos_vinculados().exists():
+                messages.error(request, f"{cotacao.numero} já tem instrumentos planejados. "
+                                        "Desconsidere ou remova esses atendimentos antes de remover a aprovação.")
+                return voltar
+            cotacao.aprovada = False
+            cotacao.status = 'RASCUNHO'
+            cotacao.save()
+            msg = f"Aprovação de {cotacao.numero} removida."
+        solicitacao.atualizar_status_automatico()
+        messages.success(request, msg)
+        if request.POST.get('next') == 'detail':
+            return redirect('metrologia:cotacao_fornecedor_detail', pk=cotacao.id)
+        return voltar
+
     if acao in ('inativar', 'inativar_nova'):
         if not cotacao.ativa:
             messages.warning(request, f"{cotacao.numero} já está inativa.")

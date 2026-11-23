@@ -896,7 +896,9 @@ class SolicitacaoCotacao(models.Model):
                 novo_status = 'AGUARDANDO_PLANEJAMENTO'
             else:
                 # Manter status atual como fallback (saindo de COM_COMPRAS quando a etapa encerra)
-                novo_status = 'INSTRUMENTOS_SELECIONADOS' if self.status == 'COM_COMPRAS' else self.status
+                # (ou quando a única cotação aprovada volta a rascunho: AGUARDANDO_PLANEJAMENTO deixa de valer)
+                novo_status = ('INSTRUMENTOS_SELECIONADOS'
+                               if self.status in ('COM_COMPRAS', 'AGUARDANDO_PLANEJAMENTO') else self.status)
         
         # Atualizar se houver mudança (não alterar CONCLUIDA ou CANCELADA)
         if novo_status != self.status and self.status not in ['CONCLUIDA', 'CANCELADA']:

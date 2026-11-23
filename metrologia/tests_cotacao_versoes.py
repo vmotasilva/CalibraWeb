@@ -124,6 +124,90 @@ class InativarENovaVersaoTests(BaseVersoes):
         self.assertIn("Cotações (0)", html)
 
 
+class AprovarCotacaoTests(BaseVersoes):
+    def test_aprovar_equivale_a_marcar_aprovada_na_edicao(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        r = self.ativacao(cot, "aprovar")
+        self.assertRedirects(r, reverse("metrologia:solicitacao_detail", args=[self.sol.id]))
+        cot.refresh_from_db()
+        self.assertTrue(cot.aprovada)
+        self.assertEqual(cot.status, "ACEITA")
+        self.assertEqual(cot.aprovado_por, self.user)
+        self.assertIsNotNone(cot.data_aprovacao)
+        self.sol.refresh_from_db()
+        self.assertEqual(self.sol.status, "AGUARDANDO_PLANEJAMENTO")
+
+    def test_aprovar_a_partir_do_detalhe_volta_para_o_detalhe(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        r = self.ativacao(cot, "aprovar", next="detail")
+        self.assertRedirects(r, reverse("metrologia:cotacao_fornecedor_detail", args=[cot.id]))
+        cot.refresh_from_db()
+        self.assertTrue(cot.aprovada)
+
+    def test_aprovar_duas_vezes_nao_altera_data_nem_usuario(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        self.ativacao(cot, "aprovar")
+        cot.refresh_from_db()
+        data = cot.data_aprovacao
+        outro = User.objects.create_user("outro", password="p")
+        self.client.force_login(outro)
+        self.ativacao(cot, "aprovar")
+        cot.refresh_from_db()
+        self.assertEqual((cot.data_aprovacao, cot.aprovado_por), (data, self.user))
+
+    def test_desaprovar_volta_para_rascunho(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        self.ativacao(cot, "aprovar")
+        self.ativacao(cot, "desaprovar")
+        cot.refresh_from_db()
+        self.assertFalse(cot.aprovada)
+        self.assertEqual(cot.status, "RASCUNHO")
+        self.sol.refresh_from_db()
+        self.assertNotEqual(self.sol.status, "AGUARDANDO_PLANEJAMENTO")
+
+    def test_desaprovar_bloqueado_com_atendimento_planejado(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000], aprovada=True, status="ACEITA")
+        item = cot.itens.first()
+        AtendimentoSolicitacao.objects.create(
+            solicitacao=self.sol, item_solicitacao=item.item_solicitacao, item_cotacao=item,
+            data_prevista_atendimento="2026-12-01")
+        self.ativacao(cot, "desaprovar")
+        cot.refresh_from_db()
+        self.assertTrue(cot.aprovada)
+        self.assertEqual(cot.status, "ACEITA")
+
+    def test_cotacao_obsoleta_nao_pode_ser_aprovada(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        self.ativacao(cot, "inativar", motivo="obsoleta")
+        self.ativacao(cot, "aprovar")
+        cot.refresh_from_db()
+        self.assertFalse(cot.aprovada)
+
+    def test_solicitacao_encerrada_bloqueia_aprovacao(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        SolicitacaoCotacao.objects.filter(pk=self.sol.pk).update(status="CONCLUIDA")
+        self.ativacao(cot, "aprovar")
+        cot.refresh_from_db()
+        self.assertFalse(cot.aprovada)
+
+    def test_botoes_aparecem_nas_telas(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        lista = reverse("metrologia:solicitacao_detail", args=[self.sol.id])
+        detalhe = reverse("metrologia:cotacao_fornecedor_detail", args=[cot.id])
+        self.assertContains(self.client.get(lista), 'value="aprovar"')
+        self.assertContains(self.client.get(detalhe), "Aprovar Cotação")
+        self.ativacao(cot, "aprovar")
+        self.assertContains(self.client.get(lista), 'value="desaprovar"')
+        self.assertContains(self.client.get(detalhe), 'value="desaprovar"')
+
+    def test_exige_login(self):
+        cot = self.cotacao(self.f1, [1000, 1000, 1000])
+        self.client.logout()
+        self.ativacao(cot, "aprovar")
+        cot.refresh_from_db()
+        self.assertFalse(cot.aprovada)
+
+
 class ComparativosTests(BaseVersoes):
     def _textos(self, resultado):
         return " | ".join(a["texto"] for a in resultado["alertas"])
