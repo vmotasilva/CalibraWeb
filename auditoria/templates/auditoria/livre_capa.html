@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-3 py-md-4" style="max-width: 1100px;">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-3">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-clipboard2-check text-danger me-2"></i>Plano de Ação (CAPA)</h3>
+            <div class="text-muted">{{ aud.titulo }}</div>
+        </div>
+        <a href="{% url 'auditoria:livre_execucao' aud.pk %}" class="btn btn-outline-secondary rounded-pill px-3">
+            <i class="bi bi-arrow-left me-1"></i> Voltar à auditoria
+        </a>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge text-bg-light border fs-6">{{ resumo.total }} desvio(s)</span>
+        <span class="badge bg-secondary fs-6">{{ resumo.PENDENTE }} pendente(s) de plano</span>
+        <span class="badge bg-warning text-dark fs-6">{{ resumo.AGUARDANDO_REVISAO }} aguardando revisão</span>
+        <span class="badge bg-success fs-6">{{ resumo.APROVADO }} aprovado(s)</span>
+        <span class="badge bg-danger fs-6">{{ resumo.REJEITADO }} rejeitado(s)</span>
+    </div>
+
+    <!-- Links públicos -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body">
+            <h5 class="fw-bold mb-1"><i class="bi bi-link-45deg me-1"></i>Link para o auditado responder</h5>
+            <p class="text-muted small mb-3">Quem recebe o link responde sem login. Inclui as Não Conformidades (e, se marcado, as Oportunidades de Melhoria).</p>
+            <div class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1" for="lkTopico">Restringir a um tópico</label>
+                    <select id="lkTopico" class="form-select">
+                        <option value="">Todos os tópicos</option>
+                        {% for t in topicos %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-semibold mb-1" for="lkDias">Validade (dias)</label>
+                    <input id="lkDias" type="number" class="form-control" min="1" max="90" value="15">
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="form-check mt-md-4">
+                        <input class="form-check-input" type="checkbox" id="lkOm">
+                        <label class="form-check-label" for="lkOm">Incluir Oport. de Melhoria</label>
+                    </div>
+                </div>
+                <div class="col-md-3 d-grid">
+                    <button id="btnGerarLink" class="btn btn-dark rounded-pill fw-bold"><i class="bi bi-plus-lg me-1"></i> Gerar link</button>
+                </div>
+            </div>
+
+            {% if links %}
+            <div class="table-responsive mt-3">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Escopo</th><th>Validade</th><th>Último acesso</th><th></th></tr></thead>
+                    <tbody>
+                    {% for l in links %}
+                    <tr>
+                        <td>{{ l.topico|default:"Todos os tópicos" }}{% if l.incluir_om %} <span class="badge bg-warning text-dark">+OM</span>{% endif %}</td>
+                        <td>
+                            {% if not l.ativo %}<span class="badge bg-secondary">Revogado</span>
+                            {% elif l.expirado %}<span class="badge bg-secondary">Expirado</span>
+                            {% else %}até {{ l.expira_em|date:"d/m/Y" }}{% endif %}
+                        </td>
+                        <td class="small text-muted">{% if l.ultimo_acesso_em %}{{ l.ultimo_acesso_em|date:"d/m/Y H:i" }}{% else %}—{% endif %}</td>
+                        <td class="text-end text-nowrap">
+                            {% if l.ativo and not l.expirado %}
+                            <button class="btn btn-sm btn-outline-primary rounded-pill btn-copiar" data-url="{{ l.url }}"><i class="bi bi-clipboard me-1"></i>Copiar</button>
+                            <button class="btn btn-sm btn-outline-danger rounded-pill btn-revogar" data-id="{{ l.id }}"><i class="bi bi-x-circle me-1"></i>Revogar</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Desvios -->
+    {% if not itens %}
+        <div class="card border-0 shadow-sm rounded-4"><div class="card-body text-center py-5 text-muted">
+            <i class="bi bi-emoji-smile display-5 d-block mb-2"></i>Nenhuma Não Conformidade ou Oportunidade de Melhoria registrada.
+        </div></div>
+    {% endif %}
+
+    {% for i in itens %}
+    <div class="card border-0 shadow-sm rounded-4 mb-3 item-capa" data-id="{{ i.id }}" style="border-left: 6px solid {% if i.conclusao == 'NC' %}#dc3545{% else %}#ffc107{% endif %} !important;">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                <div class="fw-bold">
+                    #{{ i.numero }}{% if i.topico %} · {{ i.topico }}{% endif %}
+                    <span class="badge {% if i.conclusao == 'NC' %}bg-danger{% else %}bg-warning text-dark{% endif %} ms-1">{{ i.conclusao_display }}{% if i.grau_nc %} · {{ i.grau_nc }}{% endif %}</span>
+                </div>
+                <span class="badge fs-6 {% if i.capa_status == 'APROVADO' %}bg-success{% elif i.capa_status == 'REJEITADO' %}bg-danger{% elif i.capa_status == 'AGUARDANDO_REVISAO' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ i.capa_status_display }}</span>
+            </div>
+            <div class="fw-semibold">{{ i.solicitacao|linebreaksbr }}</div>
+            {% if i.evidencia %}<div class="text-secondary small mt-1"><strong>Evidência:</strong> {{ i.evidencia|linebreaksbr }}</div>{% endif %}
+            {% if i.observacao %}<div class="text-secondary small mt-1"><strong>Observação:</strong> {{ i.observacao|linebreaksbr }}</div>{% endif %}
+            {% if i.fotos %}<div class="d-flex flex-wrap gap-2 mt-2">{% for f in i.fotos %}<a href="{{ f.url }}" target="_blank" rel="noopener"><img src="{{ f.url }}" alt="{{ f.legenda }}" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6;"></a>{% endfor %}</div>{% endif %}
+            <hr>
+
+            {% if i.editavel %}
+                <div class="row g-2">
+                    <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Causa raiz</label>
+                        <textarea class="form-control f-causa" rows="2">{{ i.causa_raiz }}</textarea></div>
+                    <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Ação corretiva / preventiva</label>
+                        <textarea class="form-control f-acao" rows="2">{{ i.acao_corretiva }}</textarea></div>
+                    <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Responsável</label>
+                        <input class="form-control f-resp" maxlength="255" value="{{ i.responsavel }}"></div>
+                    <div class="col-md-6"><label class="form-label small fw-semibold mb-1">Prazo</label>
+                        <input type="date" class="form-control f-prazo" value="{{ i.prazo }}"></div>
+                </div>
+                {% if i.capa_status == 'REJEITADO' and i.parecer %}<div class="alert alert-danger py-2 mt-2 mb-0 small"><strong>Rejeitado:</strong> {{ i.parecer|linebreaksbr }}</div>{% endif %}
+                <div class="d-flex gap-2 mt-3">
+                    <button class="btn btn-outline-secondary rounded-pill px-3 btn-plano" data-enviar="0">Salvar rascunho</button>
+                    <button class="btn btn-dark rounded-pill px-3 btn-plano" data-enviar="1"><i class="bi bi-send me-1"></i> Registrar para revisão</button>
+                </div>
+            {% else %}
+                <div class="row g-2 small">
+                    <div class="col-md-6"><strong>Causa raiz:</strong><br>{{ i.causa_raiz|linebreaksbr }}</div>
+                    <div class="col-md-6"><strong>Ação:</strong><br>{{ i.acao_corretiva|linebreaksbr }}</div>
+                    <div class="col-md-6"><strong>Responsável:</strong> {{ i.responsavel }}</div>
+                    <div class="col-md-6"><strong>Prazo:</strong> {{ i.prazo }}</div>
+                    {% if i.respondido_em %}<div class="col-12 text-muted">Enviado por {{ i.respondido_por|default:"—" }} em {{ i.respondido_em|date:"d/m/Y H:i" }}</div>{% endif %}
+                </div>
+                {% if i.anexos %}<div class="mt-2 small"><strong>Anexos:</strong> {% for a in i.anexos %}<a href="{{ a.url }}" target="_blank" rel="noopener" class="me-2"><i class="bi bi-paperclip"></i>{{ a.nome }}</a>{% endfor %}</div>{% endif %}
+                <div class="mt-3">
+                    <label class="form-label small fw-semibold mb-1">Parecer do auditor</label>
+                    <textarea class="form-control f-parecer" rows="2" placeholder="Obrigatório para rejeitar">{{ i.parecer }}</textarea>
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-success rounded-pill px-3 btn-revisar" data-status="APROVADO"><i class="bi bi-check2-circle me-1"></i> Aprovar plano</button>
+                        <button class="btn btn-outline-danger rounded-pill px-3 btn-revisar" data-status="REJEITADO"><i class="bi bi-x-circle me-1"></i> Rejeitar</button>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<div id="aviso" class="position-fixed bottom-0 end-0 m-3 px-3 py-2 rounded-pill text-white fw-bold" style="opacity:0;transition:opacity .3s;z-index:10090;"></div>
+
+<script>
+(() => {
+    const CSRF = "{{ csrf_token }}";
+    const URL_GERAR = "{% url 'auditoria:api_livre_capa_gerar_link' aud.pk %}";
+    const URL_REVOGAR = id => `{% url 'auditoria:api_livre_capa_revogar_link' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_SALVAR = id => `{% url 'auditoria:api_livre_capa_salvar' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_REVISAR = id => `{% url 'auditoria:api_livre_capa_revisar' 0 %}`.replace('/0/', `/${id}/`);
+    function aviso(msg, erro) {
+        const el = document.getElementById('aviso');
+        el.textContent = msg; el.style.background = erro ? '#dc3545' : '#27ae60'; el.style.opacity = 1;
+        setTimeout(() => el.style.opacity = 0, erro ? 4000 : 1500);
+    }
+    async function api(url, payload) {
+        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF }, body: JSON.stringify(payload || {}) });
+        let j = {}; try { j = await r.json(); } catch (e) {}
+        if (!r.ok || !j.success) throw new Error(j.error || 'Falha na operação.');
+        return j;
+    }
+    const recarregar = () => setTimeout(() => location.reload(), 600);
+
+    document.getElementById('btnGerarLink').addEventListener('click', async () => {
+        try {
+            const j = await api(URL_GERAR, {
+                topico: document.getElementById('lkTopico').value,
+                dias_validade: document.getElementById('lkDias').value,
+                incluir_om: document.getElementById('lkOm').checked,
+            });
+            try { await navigator.clipboard.writeText(j.url); aviso('Link gerado e copiado'); } catch (e) { prompt('Copie o link:', j.url); }
+            recarregar();
+        } catch (e) { aviso(e.message, true); }
+    });
+    document.querySelectorAll('.btn-copiar').forEach(b => b.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(b.dataset.url); aviso('Link copiado'); } catch (e) { prompt('Copie o link:', b.dataset.url); }
+    }));
+    document.querySelectorAll('.btn-revogar').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Revogar este link? Quem o recebeu perderá o acesso.')) return;
+        try { await api(URL_REVOGAR(b.dataset.id)); aviso('Link revogado'); recarregar(); } catch (e) { aviso(e.message, true); }
+    }));
+    document.querySelectorAll('.btn-plano').forEach(b => b.addEventListener('click', async () => {
+        const c = b.closest('.item-capa');
+        try {
+            await api(URL_SALVAR(c.dataset.id), {
+                causa_raiz: c.querySelector('.f-causa').value, acao_corretiva: c.querySelector('.f-acao').value,
+                responsavel: c.querySelector('.f-resp').value, prazo: c.querySelector('.f-prazo').value,
+                enviar: b.dataset.enviar === '1',
+            });
+            aviso('Salvo'); recarregar();
+        } catch (e) { aviso(e.message, true); }
+    }));
+    document.querySelectorAll('.btn-revisar').forEach(b => b.addEventListener('click', async () => {
+        const c = b.closest('.item-capa');
+        try {
+            await api(URL_REVISAR(c.dataset.id), { status: b.dataset.status, parecer: c.querySelector('.f-parecer').value });
+            aviso('Revisão registrada'); recarregar();
+        } catch (e) { aviso(e.message, true); }
+    }));
+})();
+</script>
+{% endblock %}

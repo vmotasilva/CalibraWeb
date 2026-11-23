@@ -145,6 +145,16 @@ def _achado(doc, numero, sol):
     linhas = [("Evidência solicitada", _texto(sol.solicitacao)), ("Evidência apresentada", _texto(sol.evidencia))]
     if (sol.observacao or "").strip():
         linhas.append(("Observação do auditor", sol.observacao.strip()))
+    if sol.conclusao in ("NC", "OM") and (
+        sol.capa_status != "PENDENTE" or sol.capa_causa_raiz or sol.capa_acao_corretiva
+    ):
+        linhas.append(("Plano de ação — situação", sol.get_capa_status_display()))
+        linhas.append(("Causa raiz", _texto(sol.capa_causa_raiz)))
+        linhas.append(("Ação corretiva / preventiva", _texto(sol.capa_acao_corretiva)))
+        linhas.append(("Responsável", _texto(sol.capa_responsavel)))
+        linhas.append(("Prazo", sol.capa_prazo.strftime("%d/%m/%Y") if sol.capa_prazo else "—"))
+        if (sol.capa_parecer_auditor or "").strip():
+            linhas.append(("Parecer do auditor", sol.capa_parecer_auditor.strip()))
     _manter_junto(_tabela_chave_valor(doc, linhas))
 
     imagens = list(sol.imagens.all())

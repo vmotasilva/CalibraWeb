@@ -1,0 +1,141 @@
+{% load static %}<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Plano de Ação | Calibra QMS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>body{background:#f8fafc;color:#1e293b}.item{border-left:6px solid #dc3545}.item.om{border-left-color:#ffc107}</style>
+</head>
+<body>
+<div class="container py-4" style="max-width: 900px;">
+{% if erro_titulo %}
+    <div class="card border-0 shadow-sm rounded-4 mt-5"><div class="card-body text-center py-5">
+        <i class="bi bi-shield-exclamation display-4 text-danger d-block mb-3"></i>
+        <h4 class="fw-bold">{{ erro_titulo }}</h4><p class="text-muted mb-0">{{ erro_msg }}</p>
+    </div></div>
+{% else %}
+    {% csrf_token %}
+    <div class="mb-4">
+        <div class="text-muted small fw-semibold text-uppercase">Portal do Auditado · Plano de Ação</div>
+        <h3 class="fw-bold">{{ aud.titulo }}</h3>
+        {% if aud.objetivo %}<p class="text-secondary mb-1">{{ aud.objetivo }}</p>{% endif %}
+        <div class="small text-muted">Acesso válido até {{ link.expira_em|date:"d/m/Y" }}{% if link.topico %} · Tópico: {{ link.topico }}{% endif %}</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <span class="badge bg-secondary">{{ resumo.PENDENTE }} pendente(s)</span>
+        <span class="badge bg-warning text-dark">{{ resumo.AGUARDANDO_REVISAO }} em revisão</span>
+        <span class="badge bg-success">{{ resumo.APROVADO }} aprovado(s)</span>
+        <span class="badge bg-danger">{{ resumo.REJEITADO }} rejeitado(s)</span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label fw-semibold" for="respondente">Seu nome</label>
+        <input id="respondente" class="form-control" maxlength="255" placeholder="Quem está respondendo">
+    </div>
+
+    {% if not itens %}
+        <div class="card border-0 shadow-sm rounded-4"><div class="card-body text-center py-5 text-muted">Nenhum item para responder neste link.</div></div>
+    {% endif %}
+
+    {% for i in itens %}
+    <div class="card border-0 shadow-sm rounded-4 mb-3 item {% if i.conclusao == 'OM' %}om{% endif %}" data-id="{{ i.id }}">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                <div class="fw-bold">#{{ i.numero }}{% if i.topico %} · {{ i.topico }}{% endif %}
+                    <span class="badge {% if i.conclusao == 'NC' %}bg-danger{% else %}bg-warning text-dark{% endif %} ms-1">{{ i.conclusao_display }}{% if i.grau_nc %} · {{ i.grau_nc }}{% endif %}</span></div>
+                <span class="badge status {% if i.capa_status == 'APROVADO' %}bg-success{% elif i.capa_status == 'REJEITADO' %}bg-danger{% elif i.capa_status == 'AGUARDANDO_REVISAO' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ i.capa_status_display }}</span>
+            </div>
+            <div class="fw-semibold">{{ i.solicitacao|linebreaksbr }}</div>
+            {% if i.evidencia %}<div class="small text-secondary mt-1"><strong>Constatação:</strong> {{ i.evidencia|linebreaksbr }}</div>{% endif %}
+            {% if i.fotos %}<div class="d-flex flex-wrap gap-2 mt-2">{% for f in i.fotos %}<a href="{{ f.url }}" target="_blank" rel="noopener"><img src="{{ f.url }}" alt="{{ f.legenda }}" loading="lazy" style="width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6;"></a>{% endfor %}</div>{% endif %}
+            <hr>
+            {% if i.capa_status == 'REJEITADO' and i.parecer %}<div class="alert alert-danger py-2 small"><strong>Plano rejeitado:</strong> {{ i.parecer|linebreaksbr }}</div>{% endif %}
+            {% if i.capa_status == 'APROVADO' and i.parecer %}<div class="alert alert-success py-2 small"><strong>Parecer do auditor:</strong> {{ i.parecer|linebreaksbr }}</div>{% endif %}
+
+            {% if i.editavel %}
+            <div class="row g-2">
+                <div class="col-12"><label class="form-label small fw-semibold mb-1">Causa raiz *</label>
+                    <textarea class="form-control f-causa" rows="2">{{ i.causa_raiz }}</textarea></div>
+                <div class="col-12"><label class="form-label small fw-semibold mb-1">Ação corretiva / preventiva *</label>
+                    <textarea class="form-control f-acao" rows="2">{{ i.acao_corretiva }}</textarea></div>
+                <div class="col-md-7"><label class="form-label small fw-semibold mb-1">Responsável *</label>
+                    <input class="form-control f-resp" maxlength="255" value="{{ i.responsavel }}"></div>
+                <div class="col-md-5"><label class="form-label small fw-semibold mb-1">Prazo *</label>
+                    <input type="date" class="form-control f-prazo" value="{{ i.prazo }}"></div>
+                <div class="col-12">
+                    <label class="form-label small fw-semibold mb-1">Anexos <span class="text-muted fw-normal">(imagens, PDF, Word, Excel, CSV ou TXT · até 10 MB)</span></label>
+                    <input type="file" class="form-control f-arq" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt">
+                    <div class="lista-anexos small mt-1">
+                        {% for a in i.anexos %}<span class="anexo me-2" data-id="{{ a.id }}"><a href="{{ a.url }}" target="_blank" rel="noopener"><i class="bi bi-paperclip"></i>{{ a.nome }}</a> <button type="button" class="btn btn-link btn-sm text-danger p-0 btn-rm" title="Remover">×</button></span>{% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary rounded-pill px-3 btn-resp" data-enviar="false">Salvar rascunho</button>
+                <button class="btn btn-primary rounded-pill px-3 btn-resp" data-enviar="true"><i class="bi bi-send me-1"></i> Enviar plano</button>
+            </div>
+            {% else %}
+            <div class="row g-2 small">
+                <div class="col-12"><strong>Causa raiz:</strong><br>{{ i.causa_raiz|linebreaksbr }}</div>
+                <div class="col-12"><strong>Ação:</strong><br>{{ i.acao_corretiva|linebreaksbr }}</div>
+                <div class="col-md-7"><strong>Responsável:</strong> {{ i.responsavel }}</div>
+                <div class="col-md-5"><strong>Prazo:</strong> {{ i.prazo }}</div>
+                {% if i.anexos %}<div class="col-12"><strong>Anexos:</strong> {% for a in i.anexos %}<a href="{{ a.url }}" target="_blank" rel="noopener" class="me-2"><i class="bi bi-paperclip"></i>{{ a.nome }}</a>{% endfor %}</div>{% endif %}
+                <div class="col-12 text-muted">{% if i.capa_status == 'AGUARDANDO_REVISAO' %}Plano enviado. Aguardando revisão do auditor.{% else %}Plano aprovado.{% endif %}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+{% endif %}
+</div>
+<div id="aviso" class="position-fixed bottom-0 end-0 m-3 px-3 py-2 rounded-pill text-white fw-bold" style="opacity:0;transition:opacity .3s;z-index:2000;"></div>
+{% if not erro_titulo %}
+<script>
+(() => {
+    const TOKEN = "{{ token }}";
+    const CSRF = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const URL_RESP = "{% url 'auditoria:api_livre_capa_responder_publico' token %}";
+    const URL_RM = id => `{% url 'auditoria:api_livre_capa_remover_anexo_publico' token 0 %}`.replace('/0/', `/${id}/`);
+    const nomeSalvo = (() => { try { return localStorage.getItem('capa_respondente') || ''; } catch (e) { return ''; } })();
+    const campoNome = document.getElementById('respondente');
+    if (campoNome) { campoNome.value = nomeSalvo; campoNome.addEventListener('change', () => { try { localStorage.setItem('capa_respondente', campoNome.value); } catch (e) {} }); }
+    function aviso(msg, erro) {
+        const el = document.getElementById('aviso');
+        el.textContent = msg; el.style.background = erro ? '#dc3545' : '#27ae60'; el.style.opacity = 1;
+        setTimeout(() => el.style.opacity = 0, erro ? 5000 : 2000);
+    }
+    document.querySelectorAll('.btn-resp').forEach(b => b.addEventListener('click', async () => {
+        const c = b.closest('.item'), enviar = b.dataset.enviar === 'true';
+        if (enviar && !campoNome.value.trim()) { aviso('Informe seu nome antes de enviar.', true); campoNome.focus(); return; }
+        const fd = new FormData();
+        fd.append('solicitacao_id', c.dataset.id); fd.append('enviar', enviar);
+        fd.append('respondente', campoNome.value.trim());
+        fd.append('causa_raiz', c.querySelector('.f-causa').value); fd.append('acao_corretiva', c.querySelector('.f-acao').value);
+        fd.append('responsavel', c.querySelector('.f-resp').value); fd.append('prazo', c.querySelector('.f-prazo').value);
+        [...c.querySelector('.f-arq').files].forEach(f => fd.append('anexos', f));
+        b.disabled = true;
+        try {
+            const r = await fetch(URL_RESP, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd });
+            const j = await r.json().catch(() => ({}));
+            if (!r.ok || !j.success) throw new Error(j.error || 'Falha ao salvar.');
+            const avisos = j.avisos || [];
+            if (avisos.length) aviso(avisos.join(' '), true); else aviso(enviar ? 'Plano enviado!' : 'Rascunho salvo');
+            setTimeout(() => location.reload(), avisos.length ? 3500 : 800);
+        } catch (e) { aviso(e.message, true); }
+        b.disabled = false;
+    }));
+    document.querySelectorAll('.btn-rm').forEach(b => b.addEventListener('click', async () => {
+        const span = b.closest('.anexo');
+        if (!confirm('Remover este anexo?')) return;
+        const r = await fetch(URL_RM(span.dataset.id), { method: 'POST', headers: { 'X-CSRFToken': CSRF } });
+        if (r.ok) span.remove(); else aviso('Não foi possível remover.', true);
+    }));
+})();
+</script>
+{% endif %}
+</body>
+</html>

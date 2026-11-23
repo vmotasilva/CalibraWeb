@@ -57,6 +57,8 @@ def _serialize(sol):
         "conclusao": sol.conclusao,
         "grau_nc": sol.grau_nc or "",
         "observacao": sol.observacao,
+        "capa_status": sol.capa_status,
+        "capa_status_display": sol.get_capa_status_display(),
         "imagens": [_serialize_imagem(i) for i in sol.imagens.all()],
     }
 
@@ -369,7 +371,7 @@ def livre_export_excel(request, pk):
     ws.column_dimensions["B"].width = 90
 
     ws2 = wb.create_sheet("Evidências")
-    cab = ["#", "Tópico", "Evidência solicitada", "Evidência apresentada", "Classificação", "Grau NC", "Observação", "Fotos"]
+    cab = ["#", "Tópico", "Evidência solicitada", "Evidência apresentada", "Classificação", "Grau NC", "Observação", "Fotos", "Plano de ação", "Responsável", "Prazo"]
     fill = PatternFill("solid", fgColor="1F2937")
     for col, titulo in enumerate(cab, start=1):
         c = ws2.cell(row=1, column=col, value=titulo)
@@ -381,12 +383,15 @@ def livre_export_excel(request, pk):
         valores = [
             i, s.topico, s.solicitacao, s.evidencia, s.get_conclusao_display(),
             s.get_grau_nc_display() if s.grau_nc else "", s.observacao, len(s.imagens.all()),
+            s.get_capa_status_display() if s.conclusao in ("NC", "OM") else "",
+            s.capa_responsavel if s.conclusao in ("NC", "OM") else "",
+            s.capa_prazo.strftime("%d/%m/%Y") if s.capa_prazo and s.conclusao in ("NC", "OM") else "",
         ]
         for col, v in enumerate(valores, start=1):
             c = ws2.cell(row=i + 1, column=col, value=v)
             c.alignment = Alignment(wrap_text=True, vertical="top")
         ws2.cell(row=i + 1, column=5).fill = PatternFill("solid", fgColor=cores.get(s.conclusao, "FFFFFF"))
-    for col, w in enumerate([5, 24, 50, 50, 24, 12, 40, 8], start=1):
+    for col, w in enumerate([5, 24, 50, 50, 24, 12, 40, 8, 22, 24, 12], start=1):
         ws2.column_dimensions[get_column_letter(col)].width = w
     ws2.freeze_panes = "A2"
     _aba_fotos(wb, solicitacoes)
