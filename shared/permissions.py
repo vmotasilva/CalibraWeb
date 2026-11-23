@@ -1343,6 +1343,8 @@ NAV_STRUCTURE = [
                             "auditoria:livre_delete", "auditoria:livre_export_excel",
                             "auditoria:api_livre_sol_create", "auditoria:api_livre_conclusao_salvar",
                             "auditoria:api_livre_sol_update", "auditoria:api_livre_sol_delete",
+                            "auditoria:api_livre_imagem_upload", "auditoria:api_livre_imagem_delete",
+                            "auditoria:api_livre_imagem_legenda", "auditoria:livre_imagem_arquivo",
                         ],
                         "perm": "core.nav_auditoria_iso_lista",
                     },

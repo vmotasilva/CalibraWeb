@@ -81,6 +81,10 @@ urlpatterns = [
     path("livre/<int:pk>/api/conclusao/", views_livre.api_livre_conclusao_salvar, name="api_livre_conclusao_salvar"),
     path("livre/api/solicitacoes/<int:pk>/editar/", views_livre.api_livre_sol_update, name="api_livre_sol_update"),
     path("livre/api/solicitacoes/<int:pk>/deletar/", views_livre.api_livre_sol_delete, name="api_livre_sol_delete"),
+    path("livre/api/solicitacoes/<int:pk>/imagens/upload/", views_livre.api_livre_imagem_upload, name="api_livre_imagem_upload"),
+    path("livre/api/imagens/<int:pk>/deletar/", views_livre.api_livre_imagem_delete, name="api_livre_imagem_delete"),
+    path("livre/api/imagens/<int:pk>/legenda/", views_livre.api_livre_imagem_legenda, name="api_livre_imagem_legenda"),
+    path("livre/arquivos/imagem/<int:pk>/", views_livre.livre_imagem_arquivo, name="livre_imagem_arquivo"),
 
     # ISO 13485 (Entrevista)
     path("iso/", views.iso_auditoria_list, name="iso_auditoria_list"),

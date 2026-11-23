@@ -128,3 +128,75 @@ class AuditoriaLivreTests(TestCase):
             self.assertEqual(
                 VIEW_NAME_TO_PERMISSION[f"auditoria:{nome}"]["perm"], "core.nav_auditoria_iso_lista"
             )
+
+
+class AuditoriaLivreFotosTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser("aud2", "aud2@example.com", "x")
+        self.client.force_login(self.user)
+        aud = AuditoriaLivre.objects.create(titulo="Fotos", data_inicio=date(2026, 11, 20))
+        self.sol = SolicitacaoLivre.objects.create(auditoria=aud, solicitacao="Foto do local")
+        self.url = reverse("auditoria:api_livre_imagem_upload", args=[self.sol.pk])
+
+    def _img(self, nome="foto.png", size=(3000, 2000), fmt="PNG", mode="RGB"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        buf = BytesIO()
+        Image.new(mode, size, (200, 30, 30) + ((255,) if mode == "RGBA" else ())).save(buf, format=fmt)
+        return SimpleUploadedFile(nome, buf.getvalue(), content_type=f"image/{fmt.lower()}")
+
+    def test_upload_resizes_to_jpeg_and_serves(self):
+        from PIL import Image
+        r = self.client.post(self.url, {"imagem": [self._img(), self._img("b.png", mode="RGBA")], "legenda": "Entrada"})
+        self.assertEqual(r.status_code, 200, r.content)
+        imgs = r.json()["imagens"]
+        self.assertEqual(len(imgs), 2)
+        self.assertEqual(imgs[0]["nome"], "foto.jpg")
+        self.assertEqual(self.sol.imagens.count(), 2)
+        r = self.client.get(imgs[0]["url"])
+        self.assertEqual(r["Content-Type"], "image/jpeg")
+        self.assertEqual(r["X-Content-Type-Options"], "nosniff")
+        im = Image.open(BytesIO(r.content))
+        self.assertEqual(max(im.size), 1920)
+
+    def test_rejects_non_images_and_empty(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        falso = SimpleUploadedFile("x.png", b"<script>alert(1)</script>", content_type="image/png")
+        self.assertEqual(self.client.post(self.url, {"imagem": falso}).status_code, 400)
+        self.assertEqual(self.client.post(self.url, {}).status_code, 400)
+        self.assertEqual(self.sol.imagens.count(), 0)
+
+    def test_limit_per_evidence(self):
+        from .views_livre import MAX_FOTOS_POR_SOLICITACAO
+        r = self.client.post(self.url, {"imagem": [self._img(size=(50, 50)) for _ in range(MAX_FOTOS_POR_SOLICITACAO + 2)]})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(self.sol.imagens.count(), MAX_FOTOS_POR_SOLICITACAO)
+        self.assertTrue(r.json()["avisos"])
+        self.assertEqual(self.client.post(self.url, {"imagem": self._img(size=(50, 50))}).status_code, 400)
+
+    def test_caption_delete_and_page_payload(self):
+        img_id = self.client.post(self.url, {"imagem": self._img(size=(50, 50))}).json()["imagens"][0]["id"]
+        self._post = lambda u, d: self.client.post(u, json.dumps(d), content_type="application/json")
+        self._post(reverse("auditoria:api_livre_imagem_legenda", args=[img_id]), {"legenda": "Piso"})
+        r = self.client.get(reverse("auditoria:livre_execucao", args=[self.sol.auditoria_id]))
+        self.assertEqual(r.context["solicitacoes_json"][0]["imagens"][0]["legenda"], "Piso")
+        self.client.post(reverse("auditoria:api_livre_imagem_delete", args=[img_id]))
+        self.assertEqual(self.sol.imagens.count(), 0)
+        self.assertEqual(self.client.get(reverse("auditoria:livre_imagem_arquivo", args=[img_id])).status_code, 404)
+
+    def test_requires_login_and_cascade(self):
+        self.client.post(self.url, {"imagem": self._img(size=(50, 50))})
+        self.client.logout()
+        self.assertEqual(self.client.post(self.url, {"imagem": self._img(size=(50, 50))}).status_code, 302)
+        self.sol.delete()
+        from .models import ImagemSolicitacaoLivre
+        self.assertEqual(ImagemSolicitacaoLivre.objects.count(), 0)
+
+    def test_excel_has_photos_sheet(self):
+        from openpyxl import load_workbook
+        self.client.post(self.url, {"imagem": self._img(size=(400, 300)), "legenda": "Vista"})
+        r = self.client.get(reverse("auditoria:livre_export_excel", args=[self.sol.auditoria_id]))
+        wb = load_workbook(BytesIO(r.content))
+        self.assertEqual(wb.sheetnames, ["Resumo", "Evidências", "Fotos"])
+        self.assertEqual(wb["Evidências"]["H2"].value, 1)
+        self.assertEqual(len(wb["Fotos"]._images), 1)
