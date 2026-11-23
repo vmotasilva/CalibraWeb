@@ -77,6 +77,7 @@ urlpatterns = [
     path("livre/<int:pk>/arquivar/", views_livre.livre_arquivar, name="livre_arquivar"),
     path("livre/<int:pk>/excluir/", views_livre.livre_delete, name="livre_delete"),
     path("livre/<int:pk>/exportar-excel/", views_livre.livre_export_excel, name="livre_export_excel"),
+    path("livre/<int:pk>/exportar-docx/", views_livre.livre_export_docx, name="livre_export_docx"),
     path("livre/<int:pk>/api/solicitacoes/criar/", views_livre.api_livre_sol_create, name="api_livre_sol_create"),
     path("livre/<int:pk>/api/conclusao/", views_livre.api_livre_conclusao_salvar, name="api_livre_conclusao_salvar"),
     path("livre/api/solicitacoes/<int:pk>/editar/", views_livre.api_livre_sol_update, name="api_livre_sol_update"),

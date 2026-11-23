@@ -504,3 +504,21 @@ def livre_imagem_arquivo(request, pk):
     resp["Cache-Control"] = "private, max-age=31536000, immutable"  # o conteúdo de um id não muda
     resp["X-Content-Type-Options"] = "nosniff"
     return resp
+
+
+# -------------------------------------------------------------------- Word
+
+@login_required
+def livre_export_docx(request, pk):
+    from .services.relatorio_livre_docx import gerar_relatorio_livre_docx
+
+    aud = get_object_or_404(AuditoriaLivre, pk=pk)
+    solicitacoes = list(aud.solicitacoes.prefetch_related("imagens"))
+    buf = gerar_relatorio_livre_docx(aud, solicitacoes)
+    nome = re.sub(r"[^a-zA-Z0-9_-]+", "_", aud.titulo).strip("_")[:60] or "auditoria"
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    resp["Content-Disposition"] = f'attachment; filename="Relatorio_Auditoria_Livre_{nome}_{aud.pk}.docx"'
+    return resp
