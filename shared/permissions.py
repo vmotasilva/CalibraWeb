@@ -1196,6 +1196,11 @@ NAV_STRUCTURE = [
                         "descricao": "Exibe o salário na lista e no detalhe dos colaboradores que o usuário pode acessar.",
                     },
                     {
+                        "nome": "Ver CPF",
+                        "perm": "core.nav_pessoas_ver_cpf",
+                        "descricao": "Exibe o CPF (e permite editá-lo) no detalhe dos colaboradores que o usuário pode acessar.",
+                    },
+                    {
                         "nome": "Configurar Meses de Abono e Adiantamento de 13º",
                         "perm": "core.nav_pessoas_ferias_configuracao",
                         "descricao": "Altera os meses em que Abono Salarial e Adiantamento de 13º são permitidos no registro de férias.",

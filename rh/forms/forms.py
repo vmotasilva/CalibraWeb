@@ -123,9 +123,13 @@ class ColaboradorForm(forms.ModelForm):
             return f"{nums[:3]}.{nums[3:6]}.{nums[6:9]}-{nums[9:]}"
         return cpf
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, pode_ver_cpf=True, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
+        # Sem permissão para ver o CPF, o campo some do form (não é exibido nem sobrescrito ao salvar)
+        if not pode_ver_cpf:
+            self.fields.pop('cpf', None)
+
         # Configurar opções de Centro de Custo
         if 'centro_custo' in self.fields:
             self.fields['centro_custo'].queryset = CentroCusto.objects.select_related('setor').all().order_by('codigo')

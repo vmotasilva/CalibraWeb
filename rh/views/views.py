@@ -37,6 +37,7 @@ SPECIAL_VIEW_ALL_COLABORADORES_PERM = 'core.nav_pessoas_ver_todos_colaboradores'
 SPECIAL_REGISTRAR_FERIAS_TODOS_PERM = 'core.nav_pessoas_registrar_ferias_todos'
 SPECIAL_PERFIL_RH_PERM = 'core.nav_pessoas_perfil_rh'
 SPECIAL_VER_SALARIO_PERM = 'core.nav_pessoas_ver_salario'
+SPECIAL_VER_CPF_PERM = 'core.nav_pessoas_ver_cpf'
 SPECIAL_FERIAS_CONFIGURACAO_PERM = 'core.nav_pessoas_ferias_configuracao'
 FERIAS_STATUS_PERM = 'core.nav_pessoas_ferias_status'
 
@@ -56,6 +57,37 @@ def _has_perfil_rh_perm(user):
 
 def _has_ver_salario_perm(user):
     return bool(user and user.has_perm(SPECIAL_VER_SALARIO_PERM))
+
+
+def _has_ver_cpf_perm(user):
+    return bool(user and user.has_perm(SPECIAL_VER_CPF_PERM))
+
+
+def can_user_see_cpf(user):
+    """
+    CPF é visível para: superusuário/staff, quem tem a permissão especial "Ver CPF",
+    e para quem já via antes (permissões de salário/ver todos, gerentes, diretores e RH/DP).
+    """
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff or _has_ver_cpf_perm(user):
+        return True
+    if _has_ver_salario_perm(user) or _has_special_view_all_colaboradores_perm(user):
+        return True
+    try:
+        colab = get_colaborador_for_user(user)
+    except Exception:
+        colab = None
+    if not colab:
+        return False
+    setor_nome = colab.setor.nome.upper() if colab.setor else ""
+    cargo_upper = str(colab.cargo).upper()
+    return bool(
+        "GERENTE" in cargo_upper
+        or "DIRETOR" in cargo_upper
+        or HierarquiaSetor.objects.filter(Q(gerente=colab) | Q(diretor=colab)).exists()
+        or any(k in setor_nome for k in ["RH", "DP"])
+    )
 
 
 def can_user_manage_ferias_for(request_user, target_colaborador=None):
@@ -573,6 +605,8 @@ def detalhe_colaborador_view(request, colab_id):
         ):
             can_see_salary = True
 
+    can_see_cpf = can_see_salary or _has_ver_cpf_perm(request.user)
+
     # Permissão: todos podem visualizar ocorrências
     can_register_occ = can_user_register_ocorrencia(request.user, alvo)
     can_edit_colaborador = _has_nav_view_access(request.user, 'editar_colaborador')
@@ -752,8 +786,9 @@ def detalhe_colaborador_view(request, colab_id):
     ctx = {
         "colaborador": usuario_logado,
         "alvo": alvo,
-        "colaborador_form": ColaboradorForm(instance=alvo),
+        "colaborador_form": ColaboradorForm(instance=alvo, pode_ver_cpf=can_see_cpf),
         "can_see_salary": can_see_salary,
+        "can_see_cpf": can_see_cpf,
         "can_register_occ": can_register_occ,
         "can_edit_colaborador": can_edit_colaborador,
         "can_register_ferias": can_register_ferias,
@@ -802,7 +837,7 @@ def editar_colaborador_view(request, colab_id):
         pass
 
     if request.method == "POST":
-        form = ColaboradorForm(request.POST, request.FILES, instance=alvo)
+        form = ColaboradorForm(request.POST, request.FILES, instance=alvo, pode_ver_cpf=can_user_see_cpf(request.user))
         if form.is_valid():
             form.save()
             messages.success(request, "Colaborador atualizado com sucesso!")
@@ -810,7 +845,7 @@ def editar_colaborador_view(request, colab_id):
         else:
             messages.error(request, "Erro ao salvar.")
     else:
-        form = ColaboradorForm(instance=alvo)
+        form = ColaboradorForm(instance=alvo, pode_ver_cpf=can_user_see_cpf(request.user))
     
     return render(
         request,
@@ -1992,7 +2027,7 @@ def api_ferias_detail(request, ferias_id):
         'colaborador': ferias.colaborador.nome_completo,
         'colab_id': ferias.colaborador.id,
         'matricula_global': ferias.colaborador.matricula_global or '',
-        'cpf': ferias.colaborador.cpf_formatado or '',
+        'cpf': (ferias.colaborador.cpf_formatado or '') if can_user_see_cpf(request.user) else '',
         'setor': ferias.colaborador.setor.nome if ferias.colaborador.setor else '—',
         'turno': ferias.colaborador.turno or '—',
         'lider': ferias.colaborador.lider.nome_abreviado if ferias.colaborador.lider else None,
