@@ -89,6 +89,7 @@ urlpatterns = [
     # Auditoria Livre: Plano de Ação (CAPA)
     path("livre/<int:pk>/capa/", views_livre_capa.livre_capa, name="livre_capa"),
     path("livre/<int:pk>/api/capa/gerar-link/", views_livre_capa.api_livre_capa_gerar_link, name="api_livre_capa_gerar_link"),
+    path("livre/api/capa/links/<int:pk>/enviar/", views_livre_capa.api_livre_capa_enviar_link, name="api_livre_capa_enviar_link"),
     path("livre/api/capa/links/<int:pk>/revogar/", views_livre_capa.api_livre_capa_revogar_link, name="api_livre_capa_revogar_link"),
     path("livre/api/capa/<int:pk>/salvar/", views_livre_capa.api_livre_capa_salvar, name="api_livre_capa_salvar"),
     path("livre/api/capa/<int:pk>/revisar/", views_livre_capa.api_livre_capa_revisar, name="api_livre_capa_revisar"),

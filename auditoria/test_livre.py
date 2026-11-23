@@ -462,3 +462,160 @@ class AuditoriaLivreCapaTests(TestCase):
             self.assertEqual(M[f"auditoria:{nome}"]["perm"], "core.nav_auditoria_iso_lista")
         for nome in ("livre_capa_portal", "api_livre_capa_responder_publico", "livre_capa_anexo_publico"):
             self.assertNotIn(f"auditoria:{nome}", M)  # públicas: validadas pelo token
+
+
+class AuditoriaLivreEmailTests(TestCase):
+    def setUp(self):
+        from django.core import mail
+        self.mail = mail
+        self.user = get_user_model().objects.create_superuser(
+            "aud5", "auditor@example.com", "x", first_name="Maria", last_name="Auditora")
+        self.client.force_login(self.user)
+        self.aud = AuditoriaLivre.objects.create(titulo="Auditoria <b>Final</b>", data_inicio=date(2026, 11, 20))
+        self.nc = SolicitacaoLivre.objects.create(
+            auditoria=self.aud, solicitacao="Calibração vencida", conclusao="NC", topico="Metrologia", ordem=1)
+        self.gerar = reverse("auditoria:api_livre_capa_gerar_link", args=[self.aud.pk])
+
+    def _post(self, url, dados):
+        return self.client.post(url, json.dumps(dados), content_type="application/json")
+
+    def _link(self, emails="aud@empresa.com", **kw):
+        from .models import CapaLinkLivre
+        return CapaLinkLivre.objects.create(auditoria=self.aud, emails_destino=emails, **kw)
+
+    def _revisar(self, status="REJEITADO", parecer="Causa rasa", notificar=True):
+        self.nc.capa_status = "AGUARDANDO_REVISAO"
+        self.nc.save()
+        return self._post(reverse("auditoria:api_livre_capa_revisar", args=[self.nc.pk]),
+                          {"status": status, "parecer": parecer, "notificar": notificar})
+
+    def test_parse_emails(self):
+        from .services.notificacao_livre import parse_emails
+        validos, invalidos = parse_emails("A@x.com; b@x.com\nb@x.com, <c@x.com> semarroba, d@")
+        self.assertEqual(validos, ["a@x.com", "b@x.com", "c@x.com"])
+        self.assertEqual(invalidos, ["semarroba", "d@"])
+        self.assertEqual(parse_emails(None), ([], []))
+
+    def test_generate_link_sends_email(self):
+        j = self._post(self.gerar, {"emails": "um@empresa.com, dois@empresa.com", "mensagem": "Prazo curto <i>!</i>"}).json()
+        self.assertEqual(j["email"], {"enviados": 2, "falhas": 0})
+        self.assertEqual(len(self.mail.outbox), 2)
+        m = self.mail.outbox[0]
+        self.assertEqual(m.to, ["um@empresa.com"])  # um e-mail por pessoa: ninguém vê os outros
+        self.assertEqual(m.reply_to, ["auditor@example.com"])
+        self.assertIn(j["url"], m.body)
+        self.assertIn("Maria Auditora", m.body)
+        self.assertIn("Prazo curto", m.body)
+        html = m.alternatives[0][0]
+        self.assertIn(j["url"], html)
+        self.assertNotIn("<b>Final</b>", html)       # título escapado
+        self.assertNotIn("<i>!</i>", html)           # mensagem escapada
+        from .models import CapaLinkLivre
+        self.assertEqual(CapaLinkLivre.objects.get().lista_emails, ["um@empresa.com", "dois@empresa.com"])
+
+    def test_generate_link_without_emails_sends_nothing(self):
+        j = self._post(self.gerar, {}).json()
+        self.assertTrue(j["success"])
+        self.assertIsNone(j["email"])
+        self.assertEqual(len(self.mail.outbox), 0)
+
+    def test_generate_link_rejects_bad_emails_without_creating_link(self):
+        from .models import CapaLinkLivre
+        self.assertEqual(self._post(self.gerar, {"emails": "ok@x.com, invalido"}).status_code, 400)
+        many = ",".join(f"p{n}@x.com" for n in range(21))
+        self.assertEqual(self._post(self.gerar, {"emails": many}).status_code, 400)
+        self.assertEqual(CapaLinkLivre.objects.count(), 0)
+        self.assertEqual(len(self.mail.outbox), 0)
+
+    def test_smtp_failure_does_not_break_the_action(self):
+        from unittest.mock import patch
+        from django.core.mail import EmailMultiAlternatives
+        with patch.object(EmailMultiAlternatives, "send", side_effect=OSError("smtp fora")):
+            j = self._post(self.gerar, {"emails": "um@empresa.com"}).json()
+        self.assertTrue(j["success"])
+        self.assertEqual(j["email"], {"enviados": 0, "falhas": 1})
+        from .models import CapaLinkLivre
+        self.assertEqual(CapaLinkLivre.objects.count(), 1)
+        with patch.object(EmailMultiAlternatives, "send", side_effect=OSError("smtp fora")):
+            self.assertEqual(self._revisar(notificar=True).status_code, 200)  # revisão grava mesmo assim
+        self.nc.refresh_from_db()
+        self.assertEqual(self.nc.capa_status, "REJEITADO")
+
+    def test_header_injection_in_title_is_neutralized(self):
+        self.aud.titulo = "Normal\nBcc: vitima@x.com"
+        self.aud.save()
+        self._post(self.gerar, {"emails": "um@empresa.com"})
+        m = self.mail.outbox[0]
+        self.assertNotIn("\n", m.subject)
+        self.assertEqual(m.bcc, [])
+
+    def test_resend_link(self):
+        link = self._link(emails="velho@empresa.com")
+        url = reverse("auditoria:api_livre_capa_enviar_link", args=[link.pk])
+        self.assertEqual(self._post(url, {}).json()["email"], {"enviados": 1, "falhas": 0})  # usa os salvos
+        self.assertEqual(self.mail.outbox[-1].to, ["velho@empresa.com"])
+        self._post(url, {"emails": "novo@empresa.com"})
+        link.refresh_from_db()
+        self.assertEqual(link.lista_emails, ["novo@empresa.com"])
+        self.assertEqual(self._post(url, {"emails": "ruim"}).status_code, 400)
+        link.emails_destino = ""
+        link.save()
+        self.assertEqual(self._post(url, {}).status_code, 400)  # sem e-mails
+        link.ativo = False
+        link.save()
+        self.assertEqual(self._post(url, {"emails": "a@x.com"}).status_code, 400)  # revogado
+        self.client.logout()
+        self.assertEqual(self.client.post(url).status_code, 302)
+
+    def test_review_notifies_auditee(self):
+        self._link(emails="aud@empresa.com")
+        j = self._revisar("REJEITADO", "Causa rasa").json()
+        self.assertEqual(j["email"], {"enviados": 1, "falhas": 0, "destinatarios": 1})
+        m = self.mail.outbox[0]
+        self.assertEqual(m.to, ["aud@empresa.com"])
+        self.assertIn("Causa rasa", m.body)
+        self.assertIn("/livre/capa/responder/", m.body)  # link para corrigir
+        self.assertIn("Ajuste necessário", m.subject)
+        self.mail.outbox.clear()
+        j = self._revisar("APROVADO", "Ótimo").json()
+        m = self.mail.outbox[0]
+        self.assertIn("aprovado", m.subject.lower())
+        self.assertIn("Ótimo", m.body)
+        self.assertNotIn("/livre/capa/responder/", m.body)  # aprovado: nada mais a fazer
+
+    def test_review_notification_scope_and_opt_out(self):
+        from django.utils import timezone
+        self._link(emails="a@empresa.com")
+        self.assertIsNone(self._revisar(notificar=False).json()["email"])
+        self.assertEqual(len(self.mail.outbox), 0)
+        # fora do escopo: tópico diferente, link revogado, expirado, sem e-mails, OM sem incluir_om
+        self._link(emails="topico@x.com", topico="Produção")
+        self._link(emails="revogado@x.com", ativo=False)
+        self._link(emails="expirado@x.com", expira_em=timezone.now() - timezone.timedelta(days=1))
+        self._link(emails="")
+        r = self._revisar().json()["email"]
+        self.assertEqual({m.to[0] for m in self.mail.outbox}, {"a@empresa.com"})
+        self.assertEqual(r["destinatarios"], 1)
+        # OM só notifica se o link incluir OM
+        self.mail.outbox.clear()
+        self.nc.conclusao = "OM"
+        self.nc.save()
+        self._revisar()
+        self.assertEqual(len(self.mail.outbox), 0)
+        self._link(emails="om@empresa.com", incluir_om=True)
+        self._revisar()
+        self.assertEqual({m.to[0] for m in self.mail.outbox}, {"om@empresa.com"})
+
+    def test_review_dedupes_recipients_across_links(self):
+        self._link(emails="mesmo@empresa.com")
+        self._link(emails="mesmo@empresa.com\noutro@empresa.com")
+        self.assertEqual(self._revisar().json()["email"]["destinatarios"], 2)
+        self.assertEqual(len(self.mail.outbox), 2)
+
+    def test_panel_shows_recipients_and_permission_mapping(self):
+        link = self._link(emails="aud@empresa.com")
+        r = self.client.get(reverse("auditoria:livre_capa", args=[self.aud.pk]))
+        self.assertContains(r, "aud@empresa.com")
+        self.assertContains(r, f'class="btn btn-sm btn-outline-secondary rounded-pill btn-enviar" data-id="{link.pk}"')
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        self.assertEqual(M["auditoria:api_livre_capa_enviar_link"]["perm"], "core.nav_auditoria_iso_lista")
