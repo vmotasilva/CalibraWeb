@@ -11,14 +11,14 @@ from datetime import date
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Max
+from django.db.models import Max, Prefetch
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
-from .models import AuditoriaLivre, SolicitacaoLivre
+from .models import AuditoriaLivre, ImagemSolicitacaoLivre, SolicitacaoLivre
 
 CLASSIFICACOES = dict(SolicitacaoLivre.CLASSIFICACAO_CHOICES)
 
@@ -39,6 +39,15 @@ def _next_url(request, default):
     return default
 
 
+def _imagens_prefetch():
+    """Prefetch das fotos sem trazer a coluna base64 (a página usa a URL servida)."""
+    return Prefetch("imagens", queryset=ImagemSolicitacaoLivre.objects.defer("arquivo_base64"))
+
+
+def _serialize_imagem(img):
+    return {"id": img.id, "url": img.url, "legenda": img.legenda, "nome": img.nome_arquivo}
+
+
 def _serialize(sol):
     return {
         "id": sol.id,
@@ -48,6 +57,7 @@ def _serialize(sol):
         "conclusao": sol.conclusao,
         "grau_nc": sol.grau_nc or "",
         "observacao": sol.observacao,
+        "imagens": [_serialize_imagem(i) for i in sol.imagens.all()],
     }
 
 
@@ -143,7 +153,7 @@ def livre_execucao(request, pk):
     if aud.status == "PLANEJADA":
         aud.status = "EM_ANDAMENTO"
         aud.save(update_fields=["status", "atualizado_em"])
-    solicitacoes = [_serialize(s) for s in aud.solicitacoes.all()]
+    solicitacoes = [_serialize(s) for s in aud.solicitacoes.prefetch_related(_imagens_prefetch())]
     topicos = sorted(
         {s["topico"] for s in solicitacoes if s["topico"]}, key=str.casefold
     )
@@ -291,6 +301,37 @@ def livre_delete(request, pk):
 
 # ------------------------------------------------------------------- Excel
 
+def _aba_fotos(wb, solicitacoes):
+    """Aba "Fotos": cada foto (miniatura) ao lado da evidência a que pertence."""
+    import base64
+    from openpyxl.drawing.image import Image as XlImage
+    from openpyxl.styles import Alignment, Font
+
+    com_fotos = [(i, s) for i, s in enumerate(solicitacoes, start=1) if s.imagens.all()]
+    if not com_fotos:
+        return
+    ws = wb.create_sheet("Fotos")
+    for col, (titulo, w) in enumerate([("#", 5), ("Evidência solicitada", 45), ("Legenda", 35), ("Foto", 48)], start=1):
+        ws.cell(row=1, column=col, value=titulo).font = Font(bold=True)
+        ws.column_dimensions[chr(64 + col)].width = w
+    linha = 2
+    for n, sol in com_fotos:
+        ids = [im.id for im in sol.imagens.all()]
+        for img in ImagemSolicitacaoLivre.objects.filter(id__in=ids):
+            ws.cell(row=linha, column=1, value=n)
+            ws.cell(row=linha, column=2, value=sol.solicitacao).alignment = Alignment(wrap_text=True, vertical="top")
+            ws.cell(row=linha, column=3, value=img.legenda or img.nome_arquivo).alignment = Alignment(wrap_text=True, vertical="top")
+            try:
+                xl = XlImage(io.BytesIO(base64.b64decode(img.arquivo_base64)))
+                escala = 300 / max(xl.width, xl.height, 1)
+                xl.width, xl.height = int(xl.width * escala), int(xl.height * escala)
+                ws.add_image(xl, f"D{linha}")
+                ws.row_dimensions[linha].height = xl.height * 0.75 + 6
+            except Exception:
+                ws.cell(row=linha, column=4, value="(foto indisponível)")
+            linha += 1
+
+
 @login_required
 def livre_export_excel(request, pk):
     from openpyxl import Workbook
@@ -328,25 +369,27 @@ def livre_export_excel(request, pk):
     ws.column_dimensions["B"].width = 90
 
     ws2 = wb.create_sheet("Evidências")
-    cab = ["#", "Tópico", "Evidência solicitada", "Evidência apresentada", "Classificação", "Grau NC", "Observação"]
+    cab = ["#", "Tópico", "Evidência solicitada", "Evidência apresentada", "Classificação", "Grau NC", "Observação", "Fotos"]
     fill = PatternFill("solid", fgColor="1F2937")
     for col, titulo in enumerate(cab, start=1):
         c = ws2.cell(row=1, column=col, value=titulo)
         c.font = Font(bold=True, color="FFFFFF")
         c.fill = fill
     cores = {"C": "D1FAE5", "NC": "FEE2E2", "OM": "FEF3C7", "NA": "E5E7EB", "P": "FFFFFF"}
-    for i, s in enumerate(aud.solicitacoes.all(), start=1):
+    solicitacoes = list(aud.solicitacoes.prefetch_related(_imagens_prefetch()))
+    for i, s in enumerate(solicitacoes, start=1):
         valores = [
             i, s.topico, s.solicitacao, s.evidencia, s.get_conclusao_display(),
-            s.get_grau_nc_display() if s.grau_nc else "", s.observacao,
+            s.get_grau_nc_display() if s.grau_nc else "", s.observacao, len(s.imagens.all()),
         ]
         for col, v in enumerate(valores, start=1):
             c = ws2.cell(row=i + 1, column=col, value=v)
             c.alignment = Alignment(wrap_text=True, vertical="top")
         ws2.cell(row=i + 1, column=5).fill = PatternFill("solid", fgColor=cores.get(s.conclusao, "FFFFFF"))
-    for col, w in enumerate([5, 24, 50, 50, 24, 12, 40], start=1):
+    for col, w in enumerate([5, 24, 50, 50, 24, 12, 40, 8], start=1):
         ws2.column_dimensions[get_column_letter(col)].width = w
     ws2.freeze_panes = "A2"
+    _aba_fotos(wb, solicitacoes)
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -356,4 +399,108 @@ def livre_export_excel(request, pk):
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     resp["Content-Disposition"] = f'attachment; filename="Auditoria_Livre_{nome}_{aud.pk}.xlsx"'
+    return resp
+
+
+# -------------------------------------------------------------------- fotos
+
+MAX_FOTOS_POR_SOLICITACAO = 12
+MAX_BYTES_UPLOAD = 20 * 1024 * 1024  # por arquivo, antes do redimensionamento
+LADO_MAXIMO_PX = 1920
+
+
+def _processar_foto(arquivo):
+    """Valida que é imagem de verdade e devolve JPEG redimensionado (bytes). Levanta ValueError."""
+    from PIL import Image, ImageOps, UnidentifiedImageError
+
+    if arquivo.size > MAX_BYTES_UPLOAD:
+        raise ValueError(f"'{arquivo.name}' excede 20 MB.")
+    try:
+        img = Image.open(arquivo)
+        img.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        raise ValueError(f"'{arquivo.name}' não é uma imagem válida.")
+    img = ImageOps.exif_transpose(img)  # respeita a orientação da câmera do celular
+    if img.mode in ("RGBA", "LA", "P"):
+        fundo = Image.new("RGB", img.size, (255, 255, 255))
+        rgba = img.convert("RGBA")
+        fundo.paste(rgba, mask=rgba.split()[-1])
+        img = fundo
+    else:
+        img = img.convert("RGB")
+    img.thumbnail((LADO_MAXIMO_PX, LADO_MAXIMO_PX))
+    saida = io.BytesIO()
+    img.save(saida, format="JPEG", quality=85, optimize=True)
+    return saida.getvalue()
+
+
+@login_required
+@require_POST
+def api_livre_imagem_upload(request, pk):
+    import base64
+
+    sol = get_object_or_404(SolicitacaoLivre, pk=pk)
+    arquivos = request.FILES.getlist("imagem") or request.FILES.getlist("imagens")
+    if not arquivos:
+        return JsonResponse({"success": False, "error": "Nenhuma imagem enviada."}, status=400)
+    legenda = (request.POST.get("legenda") or "").strip()[:255]
+    restante = MAX_FOTOS_POR_SOLICITACAO - sol.imagens.count()
+    if restante <= 0:
+        return JsonResponse(
+            {"success": False, "error": f"Limite de {MAX_FOTOS_POR_SOLICITACAO} fotos por evidência."}, status=400
+        )
+
+    criadas, erros = [], []
+    for arq in arquivos[:restante]:
+        try:
+            jpeg = _processar_foto(arq)
+        except ValueError as e:
+            erros.append(str(e))
+            continue
+        nome = re.sub(r"\.[^.]+$", "", arq.name or "foto")[:200] + ".jpg"
+        criadas.append(ImagemSolicitacaoLivre.objects.create(
+            solicitacao=sol, nome_arquivo=nome, legenda=legenda,
+            arquivo_base64=base64.b64encode(jpeg).decode("ascii"),
+        ))
+    if len(arquivos) > restante:
+        erros.append(f"Apenas {restante} foto(s) cabiam no limite de {MAX_FOTOS_POR_SOLICITACAO} por evidência.")
+    if not criadas:
+        return JsonResponse({"success": False, "error": " ".join(erros)}, status=400)
+    return JsonResponse({"success": True, "imagens": [_serialize_imagem(i) for i in criadas], "avisos": erros})
+
+
+@login_required
+@require_POST
+def api_livre_imagem_delete(request, pk):
+    get_object_or_404(ImagemSolicitacaoLivre, pk=pk).delete()
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def api_livre_imagem_legenda(request, pk):
+    img = get_object_or_404(ImagemSolicitacaoLivre, pk=pk)
+    data = _json_body(request)
+    if data is None:
+        return JsonResponse({"success": False, "error": "Requisição inválida."}, status=400)
+    img.legenda = str(data.get("legenda") or "").strip()[:255]
+    img.save(update_fields=["legenda"])
+    return JsonResponse({"success": True})
+
+
+@login_required
+def livre_imagem_arquivo(request, pk):
+    import base64
+    from django.http import Http404
+
+    img = get_object_or_404(ImagemSolicitacaoLivre, pk=pk)
+    try:
+        conteudo = base64.b64decode(img.arquivo_base64 or "")
+    except Exception:
+        conteudo = b""
+    if not conteudo:
+        raise Http404("Arquivo não encontrado.")
+    resp = HttpResponse(conteudo, content_type="image/jpeg")
+    resp["Cache-Control"] = "private, max-age=31536000, immutable"  # o conteúdo de um id não muda
+    resp["X-Content-Type-Options"] = "nosniff"
     return resp

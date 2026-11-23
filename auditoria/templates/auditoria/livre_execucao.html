@@ -21,6 +21,11 @@
     .sol-card[data-c="OM"] { border-left-color:#ffc107; }
     .sol-card[data-c="NA"] { border-left-color:#adb5bd; }
     .sol-card textarea { resize: vertical; }
+    .sol-card.drag-over { outline: 3px dashed #0d6efd; outline-offset: 2px; }
+    .foto-item { width: 104px; }
+    .foto-item .foto-img { width: 104px; height: 104px; object-fit: cover; border-radius: 10px; border: 1px solid #dee2e6; display: block; }
+    .foto-item .foto-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; line-height: 1; border-radius: 50%; }
+    .foto-item input { font-size: .72rem; padding: 2px 6px; margin-top: 4px; }
     .btn-grau { font-size:.75rem; padding:2px 10px; font-weight:700; border-radius:12px; }
     #save-indicator { position:fixed; bottom:20px; right:20px; padding:8px 18px; border-radius:20px; color:#fff;
         font-weight:700; opacity:0; transition:opacity .3s; box-shadow:0 4px 10px rgba(0,0,0,.2); z-index:10090; background:#27ae60; }
@@ -129,6 +134,9 @@
     const URL_CRIAR = "{% url 'auditoria:api_livre_sol_create' aud.pk %}";
     const URL_CONCLUSAO = "{% url 'auditoria:api_livre_conclusao_salvar' aud.pk %}";
     const URL_EDIT = id => `{% url 'auditoria:api_livre_sol_update' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_FOTO_UP = id => `{% url 'auditoria:api_livre_imagem_upload' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_FOTO_DEL = id => `{% url 'auditoria:api_livre_imagem_delete' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_FOTO_LEG = id => `{% url 'auditoria:api_livre_imagem_legenda' 0 %}`.replace('/0/', `/${id}/`);
     const URL_DEL = id => `{% url 'auditoria:api_livre_sol_delete' 0 %}`.replace('/0/', `/${id}/`);
     const CSRF = "{{ csrf_token }}";
     const CLASSES = [["C","Conforme"],["NC","Não Conformidade"],["OM","Oportunidade de Melhoria"],["NA","N/A"],["P","Pendente"]];
@@ -148,6 +156,14 @@
         const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF }, body: JSON.stringify(payload || {}) });
         let j = {}; try { j = await r.json(); } catch (e) {}
         if (!r.ok || !j.success) throw new Error(j.error || 'Falha ao salvar.');
+        return j;
+    }
+    async function apiUpload(url, arquivos) {
+        const fd = new FormData();
+        arquivos.forEach(f => fd.append('imagem', f));
+        const r = await fetch(url, { method: 'POST', headers: { 'X-CSRFToken': CSRF }, body: fd });
+        let j = {}; try { j = await r.json(); } catch (e) {}
+        if (!r.ok || !j.success) throw new Error(j.error || 'Falha ao enviar a foto.');
         return j;
     }
     function el(tag, attrs = {}, ...kids) {
@@ -227,6 +243,46 @@
             onclick: () => { obsWrap.classList.toggle('d-none'); if (!obsWrap.classList.contains('d-none')) obs.focus(); } },
             el('i', { class: 'bi bi-chat-left-text me-1' }), 'Observação');
 
+        // fotos
+        item.imagens = item.imagens || [];
+        const fotos = el('div', { class: 'd-flex flex-wrap gap-2 align-items-start mb-2' });
+        function miniatura(img) {
+            const leg = el('input', { class: 'form-control', maxlength: 255, placeholder: 'Legenda', value: img.legenda || '' });
+            leg.addEventListener('change', () => api(URL_FOTO_LEG(img.id), { legenda: leg.value.trim() }).then(() => { img.legenda = leg.value.trim(); aviso('Salvo'); }).catch(e => aviso(e.message, true)));
+            const wrap = el('div', { class: 'foto-item position-relative' },
+                el('a', { href: img.url, target: '_blank', rel: 'noopener' }, el('img', { class: 'foto-img', src: img.url, alt: img.legenda || img.nome || 'Foto', loading: 'lazy' })),
+                el('button', { type: 'button', class: 'btn btn-sm btn-danger foto-del', title: 'Remover foto',
+                    onclick: async () => {
+                        if (!confirm('Remover esta foto?')) return;
+                        try { await api(URL_FOTO_DEL(img.id)); item.imagens = item.imagens.filter(x => x.id !== img.id); wrap.remove(); aviso('Foto removida'); }
+                        catch (e) { aviso(e.message, true); }
+                    } }, el('i', { class: 'bi bi-x' })),
+                leg);
+            return wrap;
+        }
+        item.imagens.forEach(i => fotos.append(miniatura(i)));
+        async function enviarFotos(lista) {
+            const arqs = [...lista].filter(f => f.type.startsWith('image/'));
+            if (!arqs.length) { aviso('Selecione arquivos de imagem.', true); return; }
+            aviso('Enviando…');
+            try {
+                const j = await apiUpload(URL_FOTO_UP(item.id), arqs);
+                j.imagens.forEach(i => { item.imagens.push(i); fotos.append(miniatura(i)); });
+                aviso(j.avisos && j.avisos.length ? j.avisos.join(' ') : 'Foto anexada', !!(j.avisos && j.avisos.length));
+            } catch (e) { aviso(e.message, true); }
+        }
+        const inputFoto = el('input', { type: 'file', accept: 'image/*', multiple: 'multiple', class: 'd-none' });
+        inputFoto.addEventListener('change', () => { enviarFotos(inputFoto.files); inputFoto.value = ''; });
+        const btnFoto = el('button', { type: 'button', class: 'btn btn-sm btn-outline-secondary rounded-pill', onclick: () => inputFoto.click() },
+            el('i', { class: 'bi bi-camera me-1' }), 'Anexar foto');
+        card.addEventListener('paste', e => {
+            const arqs = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
+            if (arqs.length) { e.preventDefault(); enviarFotos(arqs); }
+        });
+        card.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); card.classList.add('drag-over'); } });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', e => { card.classList.remove('drag-over'); if (e.dataTransfer?.files?.length) { e.preventDefault(); enviarFotos(e.dataTransfer.files); } });
+
         // classificação
         const grupoGrau = el('span', { class: 'ms-2' });
         const botoes = {};
@@ -253,10 +309,10 @@
                 } }, nome);
             botoes[c] = b; linhaClasse.append(b);
         });
-        linhaClasse.append(grupoGrau, obsBtn);
+        linhaClasse.append(grupoGrau, obsBtn, btnFoto, inputFoto);
         pintar();
 
-        body.append(sol, evi, linhaClasse, obsWrap);
+        body.append(sol, evi, fotos, linhaClasse, obsWrap);
         card.append(body);
         requestAnimationFrame(() => { autosize(sol); autosize(evi); if (item.observacao) autosize(obs); });
         return card;

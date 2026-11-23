@@ -1889,3 +1889,24 @@ class SolicitacaoLivre(models.Model):
 
     def __str__(self):
         return f"{self.solicitacao[:40]} ({self.conclusao})"
+
+
+class ImagemSolicitacaoLivre(models.Model):
+    """Foto anexada a uma evidência da Auditoria Livre (guardada no banco, como na ISO)."""
+    solicitacao = models.ForeignKey(SolicitacaoLivre, on_delete=models.CASCADE, related_name="imagens")
+    arquivo_base64 = models.TextField(blank=True, default="", help_text="JPEG em base64 (já redimensionado).")
+    nome_arquivo = models.CharField(max_length=255, blank=True, default="")
+    legenda = models.CharField(max_length=255, blank=True, default="")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Foto da Evidência (Auditoria Livre)"
+        verbose_name_plural = "Fotos das Evidências (Auditoria Livre)"
+        ordering = ["criado_em", "id"]
+
+    def __str__(self):
+        return f"Foto {self.pk} - {self.nome_arquivo}"
+
+    @property
+    def url(self):
+        return reverse("auditoria:livre_imagem_arquivo", args=[self.pk])
