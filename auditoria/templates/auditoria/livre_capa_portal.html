@@ -44,7 +44,7 @@
     <div class="card border-0 shadow-sm rounded-4 mb-3 item {% if i.conclusao == 'OM' %}om{% endif %}" data-id="{{ i.id }}">
         <div class="card-body">
             <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
-                <div class="fw-bold">#{{ i.numero }}{% if i.topico %} · {{ i.topico }}{% endif %}
+                <div class="fw-bold">#{{ i.numero }}{% if i.topico %} · {{ i.topico }}{% endif %}{% if i.auditado %} · <i class="bi bi-person"></i> {{ i.auditado }}{% endif %}
                     <span class="badge {% if i.conclusao == 'NC' %}bg-danger{% else %}bg-warning text-dark{% endif %} ms-1">{{ i.conclusao_display }}{% if i.grau_nc %} · {{ i.grau_nc }}{% endif %}</span></div>
                 <span class="badge status {% if i.capa_status == 'APROVADO' %}bg-success{% elif i.capa_status == 'REJEITADO' %}bg-danger{% elif i.capa_status == 'AGUARDANDO_REVISAO' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">{{ i.capa_status_display }}</span>
             </div>

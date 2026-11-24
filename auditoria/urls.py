@@ -82,6 +82,7 @@ urlpatterns = [
     path("livre/<int:pk>/api/conclusao/", views_livre.api_livre_conclusao_salvar, name="api_livre_conclusao_salvar"),
     path("livre/api/solicitacoes/<int:pk>/editar/", views_livre.api_livre_sol_update, name="api_livre_sol_update"),
     path("livre/api/solicitacoes/<int:pk>/deletar/", views_livre.api_livre_sol_delete, name="api_livre_sol_delete"),
+    path("livre/api/colaboradores/buscar/", views_livre.api_livre_colaboradores_buscar, name="api_livre_colaboradores_buscar"),
     path("livre/api/solicitacoes/<int:pk>/itens/criar/", views_livre.api_livre_item_create, name="api_livre_item_create"),
     path("livre/api/solicitacoes/<int:pk>/grupo/deletar/", views_livre.api_livre_grupo_delete, name="api_livre_grupo_delete"),
     path("livre/api/solicitacoes/<int:pk>/imagens/upload/", views_livre.api_livre_imagem_upload, name="api_livre_imagem_upload"),
