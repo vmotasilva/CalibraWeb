@@ -179,7 +179,7 @@ class AuditoriaLivreFotosTests(TestCase):
         self._post = lambda u, d: self.client.post(u, json.dumps(d), content_type="application/json")
         self._post(reverse("auditoria:api_livre_imagem_legenda", args=[img_id]), {"legenda": "Piso"})
         r = self.client.get(reverse("auditoria:livre_execucao", args=[self.sol.auditoria_id]))
-        self.assertEqual(r.context["solicitacoes_json"][0]["imagens"][0]["legenda"], "Piso")
+        self.assertEqual(r.context["grupos_json"][0]["itens"][0]["imagens"][0]["legenda"], "Piso")
         self.client.post(reverse("auditoria:api_livre_imagem_delete", args=[img_id]))
         self.assertEqual(self.sol.imagens.count(), 0)
         self.assertEqual(self.client.get(reverse("auditoria:livre_imagem_arquivo", args=[img_id])).status_code, 404)
@@ -442,7 +442,7 @@ class AuditoriaLivreCapaTests(TestCase):
         self._resp(self.nc)
         r = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk]))
         self.assertContains(r, reverse("auditoria:livre_capa", args=[self.aud.pk]))
-        self.assertEqual(r.context["solicitacoes_json"][0]["capa_status"], "AGUARDANDO_REVISAO")
+        self.assertEqual(r.context["grupos_json"][0]["itens"][0]["capa_status"], "AGUARDANDO_REVISAO")
         wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
         linha = [c.value for c in wb["Evidências"][2]]
         self.assertEqual(linha[8:11], ["Aguardando Revisão", "João", "31/12/2026"])
@@ -619,3 +619,120 @@ class AuditoriaLivreEmailTests(TestCase):
         self.assertContains(r, f'class="btn btn-sm btn-outline-secondary rounded-pill btn-enviar" data-id="{link.pk}"')
         from shared.permissions import VIEW_NAME_TO_PERMISSION as M
         self.assertEqual(M["auditoria:api_livre_capa_enviar_link"]["perm"], "core.nav_auditoria_iso_lista")
+
+
+class AuditoriaLivreItensTests(TestCase):
+    """Uma solicitação com vários itens, cada um com a sua evidência e classificação."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser("aud6", "aud6@example.com", "x")
+        self.client.force_login(self.user)
+        self.aud = AuditoriaLivre.objects.create(titulo="Itens", data_inicio=date(2026, 11, 20))
+        self.sol = SolicitacaoLivre.objects.create(
+            auditoria=self.aud, solicitacao="Quais máquinas estão sinalizadas?", topico="Máquinas", ordem=1,
+            evidencia="PRA 03", conclusao="C")
+        self.outra = SolicitacaoLivre.objects.create(auditoria=self.aud, solicitacao="Outra", ordem=2)
+
+    def _post(self, nome, pk, dados=None):
+        return self.client.post(reverse(f"auditoria:{nome}", args=[pk]), json.dumps(dados or {}),
+                                content_type="application/json")
+
+    def _add_item(self, pk=None):
+        return self._post("api_livre_item_create", pk or self.sol.pk).json()["item"]
+
+    def test_add_item_copies_request_and_keeps_group_together(self):
+        item = self._add_item()
+        novo = SolicitacaoLivre.objects.get(pk=item["id"])
+        self.assertEqual((novo.pai_id, novo.solicitacao, novo.topico, novo.ordem),
+                         (self.sol.pk, "Quais máquinas estão sinalizadas?", "Máquinas", 1))
+        self.assertEqual((novo.conclusao, novo.evidencia), ("P", ""))
+        # adicionar a partir de um item extra também liga à original
+        self.assertEqual(SolicitacaoLivre.objects.get(pk=self._add_item(novo.pk)["id"]).pai_id, self.sol.pk)
+        # a numeração dos relatórios mantém os itens junto da solicitação: #1,#2,#3 e só depois a outra
+        ordem = list(self.aud.solicitacoes.order_by("ordem", "id").values_list("solicitacao", flat=True))
+        self.assertEqual(ordem, ["Quais máquinas estão sinalizadas?"] * 3 + ["Outra"])
+
+    def test_each_item_has_its_own_classification_and_counts_separately(self):
+        a, b = self._add_item(), self._add_item()
+        self._post("api_livre_sol_update", a["id"], {"evidencia": "VFTOrbit 03", "conclusao": "OM"})
+        r = self._post("api_livre_sol_update", b["id"], {"evidencia": "DLP 04", "conclusao": "NC", "grau_nc": "MAIOR"})
+        self.assertEqual(r.json()["resumo"], {"P": 1, "C": 1, "NC": 1, "OM": 1, "NA": 0, "total": 4})
+        self.sol.refresh_from_db()
+        self.assertEqual(self.sol.conclusao, "C")  # o item original não muda
+
+    def test_request_text_and_topic_are_shared_by_all_items(self):
+        a = self._add_item()
+        self._post("api_livre_sol_update", a["id"], {"solicitacao": "Texto novo", "topico": "Linha 2"})
+        for s in SolicitacaoLivre.objects.filter(pk__in=[self.sol.pk, a["id"]]):
+            self.assertEqual((s.solicitacao, s.topico), ("Texto novo", "Linha 2"))
+        self.outra.refresh_from_db()
+        self.assertEqual(self.outra.solicitacao, "Outra")  # outras solicitações não são afetadas
+        # editar só a evidência de um item não mexe nos demais
+        self._post("api_livre_sol_update", a["id"], {"evidencia": "só deste"})
+        self.sol.refresh_from_db()
+        self.assertEqual(self.sol.evidencia, "PRA 03")
+
+    def test_page_groups_items_by_request(self):
+        a = self._add_item()
+        grupos = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])).context["grupos_json"]
+        self.assertEqual(len(grupos), 2)
+        self.assertEqual([i["id"] for i in grupos[0]["itens"]], [self.sol.pk, a["id"]])
+        self.assertEqual(grupos[0]["solicitacao"], "Quais máquinas estão sinalizadas?")
+        self.assertEqual(len(grupos[1]["itens"]), 1)
+
+    def test_delete_original_item_promotes_next_one(self):
+        a, b = self._add_item(), self._add_item()
+        self._post("api_livre_sol_delete", self.sol.pk)
+        self.assertFalse(SolicitacaoLivre.objects.filter(pk=self.sol.pk).exists())
+        nova_raiz = SolicitacaoLivre.objects.get(pk=a["id"])
+        self.assertIsNone(nova_raiz.pai_id)
+        self.assertEqual(SolicitacaoLivre.objects.get(pk=b["id"]).pai_id, a["id"])
+        grupos = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])).context["grupos_json"]
+        self.assertEqual([len(g["itens"]) for g in grupos], [2, 1])  # a solicitação continua com os outros itens
+
+    def test_delete_extra_item_and_whole_request(self):
+        a = self._add_item()
+        self._post("api_livre_sol_delete", a["id"])
+        self.assertEqual(SolicitacaoLivre.objects.filter(pai=self.sol).count(), 0)
+        self.assertTrue(SolicitacaoLivre.objects.filter(pk=self.sol.pk).exists())
+        b, c = self._add_item(), self._add_item()
+        r = self._post("api_livre_grupo_delete", c["id"])  # a partir de qualquer item
+        self.assertEqual(r.json()["resumo"]["total"], 1)  # sobrou só "Outra"
+        self.assertFalse(SolicitacaoLivre.objects.filter(pk__in=[self.sol.pk, b["id"], c["id"]]).exists())
+
+    def test_items_have_own_photos_and_capa_and_flow_into_reports(self):
+        from io import BytesIO
+        from docx import Document
+        from openpyxl import load_workbook
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        a = self._add_item()
+        self._post("api_livre_sol_update", a["id"], {"evidencia": "DLP 04", "conclusao": "NC"})
+        buf = BytesIO()
+        Image.new("RGB", (40, 40), (1, 2, 3)).save(buf, "PNG")
+        self.client.post(reverse("auditoria:api_livre_imagem_upload", args=[a["id"]]),
+                         {"imagem": SimpleUploadedFile("f.png", buf.getvalue(), content_type="image/png")})
+        self.assertEqual(self.sol.imagens.count(), 0)  # foto só do item certo
+        # CAPA: só o item NC aparece no painel
+        r = self.client.get(reverse("auditoria:livre_capa", args=[self.aud.pk]))
+        self.assertEqual([i["id"] for i in r.context["itens"]], [a["id"]])
+        self.assertEqual(r.context["itens"][0]["numero"], 2)  # #2: logo depois do item original
+        # relatórios: uma linha por item
+        wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
+        linhas = [[c.value for c in row] for row in wb["Evidências"].iter_rows(min_row=2)]
+        self.assertEqual([(l[1], l[3], l[4]) for l in linhas[:2]],
+                         [("Máquinas", "PRA 03", "Conforme"), ("Máquinas", "DLP 04", "Não Conformidade")])
+        doc = Document(BytesIO(self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk])).content))
+        texto = "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
+        self.assertIn("DLP 04", texto)
+        self.assertIn("PRA 03", texto)
+
+    def test_endpoints_require_login_and_post(self):
+        url = reverse("auditoria:api_livre_item_create", args=[self.sol.pk])
+        self.assertEqual(self.client.get(url).status_code, 405)
+        self.client.logout()
+        self.assertEqual(self.client.post(url).status_code, 302)
+        self.assertEqual(self.client.post(reverse("auditoria:api_livre_grupo_delete", args=[self.sol.pk])).status_code, 302)
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        for nome in ("api_livre_item_create", "api_livre_grupo_delete"):
+            self.assertEqual(M[f"auditoria:{nome}"]["perm"], "core.nav_auditoria_iso_lista")
