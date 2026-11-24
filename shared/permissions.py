@@ -1351,7 +1351,7 @@ NAV_STRUCTURE = [
                             "auditoria:livre_edit", "auditoria:livre_toggle_conclusao", "auditoria:livre_arquivar",
                             "auditoria:livre_delete", "auditoria:livre_export_excel", "auditoria:livre_export_docx",
                             "auditoria:api_livre_sol_create", "auditoria:api_livre_conclusao_salvar",
-                            "auditoria:api_livre_sol_update", "auditoria:api_livre_sol_delete",
+                            "auditoria:api_livre_sol_update", "auditoria:api_livre_sol_delete", "auditoria:api_livre_item_create", "auditoria:api_livre_grupo_delete",
                             "auditoria:api_livre_imagem_upload", "auditoria:api_livre_imagem_delete",
                             "auditoria:api_livre_imagem_legenda", "auditoria:livre_imagem_arquivo",
                             "auditoria:livre_capa", "auditoria:api_livre_capa_gerar_link",

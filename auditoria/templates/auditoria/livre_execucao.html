@@ -15,13 +15,13 @@
     .btn-class[data-c="NA"].active { background:#6c757d; color:#fff; }
     .btn-class[data-c="P"]  { color:#495057; border-color:#ced4da; background:transparent; }
     .btn-class[data-c="P"].active  { background:#495057; color:#fff; }
-    .sol-card { border-left: 6px solid #ced4da; transition: border-color .2s; }
-    .sol-card[data-c="C"]  { border-left-color:#198754; }
-    .sol-card[data-c="NC"] { border-left-color:#dc3545; }
-    .sol-card[data-c="OM"] { border-left-color:#ffc107; }
-    .sol-card[data-c="NA"] { border-left-color:#adb5bd; }
-    .sol-card textarea { resize: vertical; }
-    .sol-card.drag-over { outline: 3px dashed #0d6efd; outline-offset: 2px; }
+    .item-box { border-left: 6px solid #ced4da; background: #fcfcfd; border-radius: 12px; padding: 14px; transition: border-color .2s; }
+    .item-box[data-c="C"]  { border-left-color:#198754; }
+    .item-box[data-c="NC"] { border-left-color:#dc3545; }
+    .item-box[data-c="OM"] { border-left-color:#ffc107; }
+    .item-box[data-c="NA"] { border-left-color:#adb5bd; }
+    .grupo-card textarea { resize: vertical; }
+    .item-box.drag-over { outline: 3px dashed #0d6efd; outline-offset: 2px; }
     .foto-item { width: 104px; }
     .foto-item .foto-img { width: 104px; height: 104px; object-fit: cover; border-radius: 10px; border: 1px solid #dee2e6; display: block; }
     .foto-item .foto-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; line-height: 1; border-radius: 50%; }
@@ -127,7 +127,7 @@
 </div>
 
 <div id="save-indicator"></div>
-{{ solicitacoes_json|json_script:"dados-solicitacoes" }}
+{{ grupos_json|json_script:"dados-grupos" }}
 {{ resumo|json_script:"dados-resumo" }}
 
 <script>
@@ -139,11 +139,15 @@
     const URL_FOTO_UP = id => `{% url 'auditoria:api_livre_imagem_upload' 0 %}`.replace('/0/', `/${id}/`);
     const URL_FOTO_DEL = id => `{% url 'auditoria:api_livre_imagem_delete' 0 %}`.replace('/0/', `/${id}/`);
     const URL_FOTO_LEG = id => `{% url 'auditoria:api_livre_imagem_legenda' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_ITEM = id => `{% url 'auditoria:api_livre_item_create' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_GRUPO_DEL = id => `{% url 'auditoria:api_livre_grupo_delete' 0 %}`.replace('/0/', `/${id}/`);
     const URL_DEL = id => `{% url 'auditoria:api_livre_sol_delete' 0 %}`.replace('/0/', `/${id}/`);
     const CSRF = "{{ csrf_token }}";
     const CLASSES = [["C","Conforme"],["NC","Não Conformidade"],["OM","Oportunidade de Melhoria"],["NA","N/A"],["P","Pendente"]];
 
-    let itens = JSON.parse(document.getElementById('dados-solicitacoes').textContent);
+    // Uma solicitação (grupo) tem um ou mais itens; cada item tem a sua evidência e classificação.
+    let grupos = JSON.parse(document.getElementById('dados-grupos').textContent);
+    const todos = () => grupos.flatMap(g => g.itens);
     let filtroClasse = "", filtroTopico = "";
     const $ = id => document.getElementById(id);
 
@@ -183,55 +187,60 @@
 
     // ---------- contadores / filtros
     function contarLocal() {
-        const r = { total: itens.length, C: 0, NC: 0, OM: 0, NA: 0, P: 0 };
-        itens.forEach(i => r[i.conclusao]++);
+        const r = { total: 0, C: 0, NC: 0, OM: 0, NA: 0, P: 0 };
+        todos().forEach(i => { r.total++; r[i.conclusao]++; });
         document.querySelectorAll('[data-n]').forEach(b => b.textContent = r[b.dataset.n] ?? 0);
     }
     function atualizarTopicos() {
-        const ts = [...new Set(itens.map(i => i.topico).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+        const ts = [...new Set(grupos.map(g => g.topico).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
         $('listaTopicos').replaceChildren(...ts.map(t => el('option', { value: t })));
         const sel = $('filtroTopico'), atual = sel.value;
         sel.replaceChildren(el('option', { value: '' }, 'Todos os tópicos'), ...ts.map(t => el('option', { value: t }, t)));
         sel.value = ts.includes(atual) ? atual : ''; filtroTopico = sel.value;
     }
-    function visivel(i) {
-        return (!filtroClasse || i.conclusao === filtroClasse) && (!filtroTopico || i.topico === filtroTopico);
-    }
     function aplicarFiltro() {
         let n = 0;
-        document.querySelectorAll('.sol-card').forEach(c => {
-            const i = itens.find(x => x.id == c.dataset.id);
-            const v = i && visivel(i); c.classList.toggle('d-none', !v); if (v) n++;
+        document.querySelectorAll('.grupo-card').forEach(card => {
+            const g = card._grupo;
+            const topicoOk = !filtroTopico || g.topico === filtroTopico;
+            let visiveis = 0;
+            card.querySelectorAll('.item-box').forEach(box => {
+                const ok = topicoOk && (!filtroClasse || box._item.conclusao === filtroClasse);
+                box.classList.toggle('d-none', !ok); if (ok) visiveis++;
+            });
+            card.classList.toggle('d-none', visiveis === 0);
+            if (visiveis) n++;
         });
         $('vazio').classList.toggle('d-none', n > 0);
-        $('vazioTxt').textContent = itens.length ? 'Nenhuma solicitação neste filtro.' : 'Nenhuma evidência solicitada ainda. Comece pelo campo acima.';
+        $('vazioTxt').textContent = grupos.length ? 'Nenhuma solicitação neste filtro.' : 'Nenhuma evidência solicitada ainda. Comece pelo campo acima.';
     }
 
-    // ---------- card
+    // ---------- salvar campos
     function salvarCampo(item, campo, valor) {
         item[campo] = valor;
         return api(URL_EDIT(item.id), { [campo]: valor }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true));
     }
-    function montarCard(item) {
-        const card = el('div', { class: 'card border-0 shadow-sm rounded-4 mb-3 sol-card', 'data-id': item.id, 'data-c': item.conclusao });
-        const body = el('div', { class: 'card-body' });
 
-        const topico = el('input', { class: 'form-control form-control-sm', list: 'listaTopicos', maxlength: 255, placeholder: 'Tópico (opcional)', value: item.topico });
-        topico.addEventListener('change', () => { salvarCampo(item, 'topico', topico.value.trim()).then(atualizarTopicos); });
-        const btnDel = el('button', { class: 'btn btn-sm btn-outline-danger rounded-circle', title: 'Remover solicitação', type: 'button',
+    // ---------- item (evidência + classificação + fotos + plano de ação)
+    const rotulosCapa = { PENDENTE: 'Plano pendente', AGUARDANDO_REVISAO: 'Plano em revisão', APROVADO: 'Plano aprovado', REJEITADO: 'Plano rejeitado' };
+    const coresCapa = { PENDENTE: 'text-bg-secondary', AGUARDANDO_REVISAO: 'text-bg-warning', APROVADO: 'text-bg-success', REJEITADO: 'text-bg-danger' };
+
+    function montarItem(grupo, item, card) {
+        const box = el('div', { class: 'item-box mb-3', 'data-c': item.conclusao });
+        box._item = item;
+        const titulo = el('div', { class: 'small fw-bold text-muted mb-1' });
+        const btnRemover = el('button', { class: 'btn btn-sm btn-outline-danger rounded-pill ms-auto py-0', type: 'button', title: 'Remover este item',
             onclick: async () => {
-                if (!confirm('Remover esta solicitação?')) return;
-                try { await api(URL_DEL(item.id)); itens = itens.filter(x => x.id !== item.id); card.remove(); contarLocal(); atualizarTopicos(); aplicarFiltro(); aviso('Removida'); }
-                catch (e) { aviso(e.message, true); }
-            } }, el('i', { class: 'bi bi-trash' }));
-        body.append(el('div', { class: 'd-flex gap-2 align-items-center mb-2' }, el('div', { class: 'flex-grow-1' }, topico), btnDel));
+                if (!confirm('Remover este item?')) return;
+                try {
+                    await api(URL_DEL(item.id));
+                    grupo.itens = grupo.itens.filter(x => x.id !== item.id); box.remove();
+                    card._reindexar(); contarLocal(); aplicarFiltro(); aviso('Item removido');
+                } catch (e) { aviso(e.message, true); }
+            } }, el('i', { class: 'bi bi-x-lg me-1' }), 'Remover item');
+        const cabecalho = el('div', { class: 'd-flex align-items-center gap-2' }, titulo, btnRemover);
 
-        const sol = el('textarea', { class: 'form-control fw-semibold mb-2', rows: 1, placeholder: 'Evidência solicitada' });
-        sol.value = item.solicitacao;
-        const salvaSol = debounce(() => { if (sol.value.trim()) salvarCampo(item, 'solicitacao', sol.value.trim()); }, 800);
-        sol.addEventListener('input', () => { autosize(sol); salvaSol(); });
-
-        const evi = el('textarea', { class: 'form-control mb-2', rows: 2, placeholder: 'Evidência apresentada / o que foi verificado' });
+        const evi = el('textarea', { class: 'form-control mb-2', rows: 2, placeholder: 'Item / evidência apresentada (ex.: o que foi verificado)' });
         evi.value = item.evidencia;
         const salvaEvi = debounce(() => salvarCampo(item, 'evidencia', evi.value.trim()), 800);
         evi.addEventListener('input', () => { autosize(evi); salvaEvi(); });
@@ -277,26 +286,29 @@
         inputFoto.addEventListener('change', () => { enviarFotos(inputFoto.files); inputFoto.value = ''; });
         const btnFoto = el('button', { type: 'button', class: 'btn btn-sm btn-outline-secondary rounded-pill', onclick: () => inputFoto.click() },
             el('i', { class: 'bi bi-camera me-1' }), 'Anexar foto');
-        card.addEventListener('paste', e => {
+        box.addEventListener('paste', e => {
             const arqs = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
             if (arqs.length) { e.preventDefault(); enviarFotos(arqs); }
         });
-        card.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); card.classList.add('drag-over'); } });
-        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
-        card.addEventListener('drop', e => { card.classList.remove('drag-over'); if (e.dataTransfer?.files?.length) { e.preventDefault(); enviarFotos(e.dataTransfer.files); } });
+        box.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); box.classList.add('drag-over'); } });
+        box.addEventListener('dragleave', () => box.classList.remove('drag-over'));
+        box.addEventListener('drop', e => { box.classList.remove('drag-over'); if (e.dataTransfer?.files?.length) { e.preventDefault(); enviarFotos(e.dataTransfer.files); } });
 
         // classificação
         const grupoGrau = el('span', { class: 'ms-2' });
         const botoes = {};
+        const capaBadge = el('a', { href: "{% url 'auditoria:livre_capa' aud.pk %}", class: 'badge text-decoration-none ms-1' });
         function pintar() {
-            card.dataset.c = item.conclusao;
-            if (typeof pintarCapa === 'function') pintarCapa();
+            box.dataset.c = item.conclusao;
             Object.entries(botoes).forEach(([c, b]) => b.classList.toggle('active', c === item.conclusao));
             grupoGrau.classList.toggle('d-none', item.conclusao !== 'NC');
             grupoGrau.querySelectorAll('.btn-grau').forEach(b => {
                 const ativo = b.dataset.g === item.grau_nc;
                 b.className = 'btn btn-grau ' + (ativo ? (b.dataset.g === 'MAIOR' ? 'btn-danger' : 'btn-outline-danger active') : 'btn-outline-secondary');
             });
+            const aplica = item.conclusao === 'NC' || item.conclusao === 'OM';
+            capaBadge.className = 'badge text-decoration-none ms-1 ' + (coresCapa[item.capa_status] || 'text-bg-secondary') + (aplica ? '' : ' d-none');
+            capaBadge.textContent = rotulosCapa[item.capa_status] || 'Plano pendente';
         }
         ['MENOR', 'MAIOR'].forEach(g => grupoGrau.append(el('button', { type: 'button', 'data-g': g, class: 'btn btn-grau btn-outline-secondary me-1',
             onclick: async () => { item.grau_nc = item.grau_nc === g ? '' : g; pintar();
@@ -312,25 +324,75 @@
                 } }, nome);
             botoes[c] = b; linhaClasse.append(b);
         });
-        const rotulosCapa = { PENDENTE: 'Plano pendente', AGUARDANDO_REVISAO: 'Plano em revisão', APROVADO: 'Plano aprovado', REJEITADO: 'Plano rejeitado' };
-        const coresCapa = { PENDENTE: 'text-bg-secondary', AGUARDANDO_REVISAO: 'text-bg-warning', APROVADO: 'text-bg-success', REJEITADO: 'text-bg-danger' };
-        const capaBadge = el('a', { href: "{% url 'auditoria:livre_capa' aud.pk %}", class: 'badge text-decoration-none ms-1' });
-        function pintarCapa() {
-            const aplica = item.conclusao === 'NC' || item.conclusao === 'OM';
-            capaBadge.classList.toggle('d-none', !aplica);
-            capaBadge.className = 'badge text-decoration-none ms-1 ' + (coresCapa[item.capa_status] || 'text-bg-secondary') + (aplica ? '' : ' d-none');
-            capaBadge.textContent = rotulosCapa[item.capa_status] || 'Plano pendente';
-        }
         linhaClasse.append(grupoGrau, obsBtn, btnFoto, inputFoto, capaBadge);
-        pintar(); pintarCapa();
+        pintar();
 
-        body.append(sol, evi, fotos, linhaClasse, obsWrap);
+        box.append(cabecalho, evi, fotos, linhaClasse, obsWrap);
+        box._titulo = titulo; box._remover = btnRemover; box._evi = evi;
+        requestAnimationFrame(() => { autosize(evi); if (item.observacao) autosize(obs); });
+        return box;
+    }
+
+    // ---------- solicitação (grupo): tópico + texto + itens
+    function montarGrupo(grupo) {
+        const card = el('div', { class: 'card border-0 shadow-sm rounded-4 mb-3 grupo-card' });
+        card._grupo = grupo;
+        const body = el('div', { class: 'card-body' });
+        const idGrupo = () => grupo.itens[0].id;  // qualquer item identifica a solicitação no servidor
+
+        const topico = el('input', { class: 'form-control form-control-sm', list: 'listaTopicos', maxlength: 255, placeholder: 'Tópico (opcional)', value: grupo.topico });
+        topico.addEventListener('change', () => {
+            grupo.topico = topico.value.trim();
+            api(URL_EDIT(idGrupo()), { topico: grupo.topico }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true));
+            atualizarTopicos(); aplicarFiltro();
+        });
+        const btnDel = el('button', { class: 'btn btn-sm btn-outline-danger rounded-circle', title: 'Remover a solicitação inteira', type: 'button',
+            onclick: async () => {
+                const n = grupo.itens.length;
+                if (!confirm(n > 1 ? `Remover esta solicitação e os seus ${n} itens?` : 'Remover esta solicitação?')) return;
+                try { await api(URL_GRUPO_DEL(idGrupo())); grupos = grupos.filter(g => g !== grupo); card.remove(); contarLocal(); atualizarTopicos(); aplicarFiltro(); aviso('Removida'); }
+                catch (e) { aviso(e.message, true); }
+            } }, el('i', { class: 'bi bi-trash' }));
+        body.append(el('div', { class: 'd-flex gap-2 align-items-center mb-2' }, el('div', { class: 'flex-grow-1' }, topico), btnDel));
+
+        const sol = el('textarea', { class: 'form-control fw-semibold mb-3', rows: 1, placeholder: 'Evidência solicitada' });
+        sol.value = grupo.solicitacao;
+        const salvaSol = debounce(() => {
+            const t = sol.value.trim(); if (!t) return;
+            grupo.solicitacao = t;
+            api(URL_EDIT(idGrupo()), { solicitacao: t }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true));
+        }, 800);
+        sol.addEventListener('input', () => { autosize(sol); salvaSol(); });
+        body.append(sol);
+
+        const itensEl = el('div');
+        grupo.itens.forEach(i => itensEl.append(montarItem(grupo, i, card)));
+        body.append(itensEl);
+
+        // "Item 1/2" só aparece quando há mais de um; remover item só com mais de um
+        card._reindexar = () => {
+            const boxes = [...itensEl.querySelectorAll('.item-box')], varios = boxes.length > 1;
+            boxes.forEach((bx, n) => { bx._titulo.textContent = varios ? `Item ${n + 1}` : ''; bx._titulo.classList.toggle('d-none', !varios); bx._remover.classList.toggle('d-none', !varios); });
+        };
+        const btnItem = el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary rounded-pill',
+            onclick: async () => {
+                btnItem.disabled = true;
+                try {
+                    const j = await api(URL_ITEM(idGrupo()));
+                    grupo.itens.push(j.item);
+                    const box = montarItem(grupo, j.item, card); itensEl.append(box);
+                    card._reindexar(); contarLocal(); aplicarFiltro(); box._evi.focus(); aviso('Item adicionado');
+                } catch (e) { aviso(e.message, true); }
+                btnItem.disabled = false;
+            } }, el('i', { class: 'bi bi-plus-lg me-1' }), 'Adicionar item');
+        body.append(el('div', {}, btnItem));
         card.append(body);
-        requestAnimationFrame(() => { autosize(sol); autosize(evi); if (item.observacao) autosize(obs); });
+        card._reindexar();
+        requestAnimationFrame(() => autosize(sol));
         return card;
     }
     function renderTudo() {
-        $('lista').replaceChildren(...[...itens].reverse().map(montarCard));
+        $('lista').replaceChildren(...[...grupos].reverse().map(montarGrupo));
         contarLocal(); atualizarTopicos(); aplicarFiltro();
     }
 
@@ -341,8 +403,9 @@
         const btn = $('btnSolicitar'); btn.disabled = true;
         try {
             const j = await api(URL_CRIAR, { solicitacao: txt, topico: $('novoTopico').value.trim() });
-            itens.push(j.solicitacao);
-            $('lista').prepend(montarCard(j.solicitacao));
+            const g = { topico: j.solicitacao.topico, solicitacao: j.solicitacao.solicitacao, itens: [j.solicitacao] };
+            grupos.push(g);
+            $('lista').prepend(montarGrupo(g));
             $('novaSolicitacao').value = ''; $('novaSolicitacao').focus();
             contarLocal(); atualizarTopicos(); aplicarFiltro(); aviso('Evidência solicitada');
         } catch (e) { aviso(e.message, true); }

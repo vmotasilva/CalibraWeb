@@ -11,7 +11,8 @@ from datetime import date
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Max, Prefetch
+from django.db import transaction
+from django.db.models import Max, Prefetch, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -46,6 +47,16 @@ def _imagens_prefetch():
 
 def _serialize_imagem(img):
     return {"id": img.id, "url": img.url, "legenda": img.legenda, "nome": img.nome_arquivo}
+
+
+def _raiz_id(sol):
+    return sol.pai_id or sol.pk
+
+
+def _grupo_qs(sol):
+    """Todas as linhas (itens) da mesma solicitação: a original e os itens extras."""
+    raiz = _raiz_id(sol)
+    return SolicitacaoLivre.objects.filter(Q(pk=raiz) | Q(pai_id=raiz))
 
 
 def _serialize(sol):
@@ -155,13 +166,18 @@ def livre_execucao(request, pk):
     if aud.status == "PLANEJADA":
         aud.status = "EM_ANDAMENTO"
         aud.save(update_fields=["status", "atualizado_em"])
-    solicitacoes = [_serialize(s) for s in aud.solicitacoes.prefetch_related(_imagens_prefetch())]
-    topicos = sorted(
-        {s["topico"] for s in solicitacoes if s["topico"]}, key=str.casefold
-    )
+    # Agrupa os itens por solicitação, na ordem de criação (itens extras vêm logo após a original).
+    grupos, por_raiz = [], {}
+    for s in aud.solicitacoes.prefetch_related(_imagens_prefetch()):
+        raiz = _raiz_id(s)
+        if raiz not in por_raiz:
+            por_raiz[raiz] = {"topico": s.topico, "solicitacao": s.solicitacao, "itens": []}
+            grupos.append(por_raiz[raiz])
+        por_raiz[raiz]["itens"].append(_serialize(s))
+    topicos = sorted({g["topico"] for g in grupos if g["topico"]}, key=str.casefold)
     return render(request, "auditoria/livre_execucao.html", {
         "aud": aud,
-        "solicitacoes_json": solicitacoes,
+        "grupos_json": grupos,
         "topicos": topicos,
         "classificacoes": SolicitacaoLivre.CLASSIFICACAO_CHOICES,
         "resumo": aud.resumo(),
@@ -229,16 +245,51 @@ def api_livre_sol_update(request, pk):
     erro = _aplicar(sol, data)
     if erro:
         return JsonResponse({"success": False, "error": erro}, status=400)
-    sol.save()
+    with transaction.atomic():
+        sol.save()
+        if "solicitacao" in data or "topico" in data:  # texto e tópico são da solicitação: vale para todos os itens
+            _grupo_qs(sol).exclude(pk=sol.pk).update(solicitacao=sol.solicitacao, topico=sol.topico)
     return JsonResponse({"success": True, "solicitacao": _serialize(sol), "resumo": sol.auditoria.resumo()})
 
 
 @login_required
 @require_POST
+def api_livre_item_create(request, pk):
+    """Adiciona mais um item (nova evidência/classificação) à mesma solicitação de `pk`."""
+    base = get_object_or_404(SolicitacaoLivre, pk=pk)
+    raiz = base if not base.pai_id else base.pai
+    item = SolicitacaoLivre.objects.create(
+        auditoria=base.auditoria, pai=raiz, topico=raiz.topico, solicitacao=raiz.solicitacao,
+        ordem=raiz.ordem,  # mesma ordem da original: o item fica junto dela na numeração e nos relatórios
+        criado_por=request.user,
+    )
+    return JsonResponse({"success": True, "item": _serialize(item), "resumo": base.auditoria.resumo()})
+
+
+@login_required
+@require_POST
 def api_livre_sol_delete(request, pk):
+    """Remove um item. Se for a linha original e houver outros itens, o próximo assume o lugar dela."""
     sol = get_object_or_404(SolicitacaoLivre, pk=pk)
     aud = sol.auditoria
-    sol.delete()
+    with transaction.atomic():
+        if not sol.pai_id:
+            extras = list(sol.itens_extras.order_by("id"))
+            if extras:
+                novo, resto = extras[0], extras[1:]
+                SolicitacaoLivre.objects.filter(pk=novo.pk).update(pai=None)
+                SolicitacaoLivre.objects.filter(pk__in=[e.pk for e in resto]).update(pai=novo)
+        sol.delete()
+    return JsonResponse({"success": True, "resumo": aud.resumo()})
+
+
+@login_required
+@require_POST
+def api_livre_grupo_delete(request, pk):
+    """Remove a solicitação inteira, com todos os itens."""
+    sol = get_object_or_404(SolicitacaoLivre, pk=pk)
+    aud = sol.auditoria
+    _grupo_qs(sol).delete()
     return JsonResponse({"success": True, "resumo": aud.resumo()})
 
 
