@@ -1874,6 +1874,11 @@ class SolicitacaoLivre(models.Model):
         verbose_name="Tópico / Área / Requisito",
         help_text="Agrupador livre (ex.: Recebimento, 7.5.1, Treinamentos).",
     )
+    auditado = models.CharField(
+        max_length=255, blank=True, default="",
+        verbose_name="Colaborador auditado",
+        help_text="Quem está sendo auditado neste tópico. Texto livre (pode ser alguém de fora do RH).",
+    )
     solicitacao = models.TextField(verbose_name="Evidência Solicitada")
     evidencia = models.TextField(blank=True, default="", verbose_name="Evidência Apresentada")
     conclusao = models.CharField(max_length=4, choices=CLASSIFICACAO_CHOICES, default="P")

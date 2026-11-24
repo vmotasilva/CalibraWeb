@@ -120,7 +120,7 @@ class AuditoriaLivreTests(TestCase):
         self.assertEqual(wb.sheetnames, ["Resumo", "Evidências"])
         linhas = list(wb["Evidências"].iter_rows(values_only=True))
         self.assertEqual(len(linhas), 3)
-        self.assertEqual(linhas[2][4:6], ("Não Conformidade", "NC Menor"))
+        self.assertEqual(linhas[2][5:7], ("Não Conformidade", "NC Menor"))
 
     def test_navigation_permission_mapping(self):
         from shared.permissions import VIEW_NAME_TO_PERMISSION
@@ -198,7 +198,7 @@ class AuditoriaLivreFotosTests(TestCase):
         r = self.client.get(reverse("auditoria:livre_export_excel", args=[self.sol.auditoria_id]))
         wb = load_workbook(BytesIO(r.content))
         self.assertEqual(wb.sheetnames, ["Resumo", "Evidências", "Fotos"])
-        self.assertEqual(wb["Evidências"]["H2"].value, 1)
+        self.assertEqual(wb["Evidências"]["I2"].value, 1)
         self.assertEqual(len(wb["Fotos"]._images), 1)
 
 
@@ -445,8 +445,8 @@ class AuditoriaLivreCapaTests(TestCase):
         self.assertEqual(r.context["grupos_json"][0]["itens"][0]["capa_status"], "AGUARDANDO_REVISAO")
         wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
         linha = [c.value for c in wb["Evidências"][2]]
-        self.assertEqual(linha[8:11], ["Aguardando Revisão", "João", "31/12/2026"])
-        self.assertFalse(wb["Evidências"]["I5"].value)  # conforme não tem plano
+        self.assertEqual(linha[9:12], ["Aguardando Revisão", "João", "31/12/2026"])
+        self.assertFalse(wb["Evidências"]["J5"].value)  # conforme não tem plano
         doc = Document(BytesIO(self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk])).content))
         texto = "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
         for esperado in ("Falta de rotina", "Criar agenda", "31/12/2026", "Plano de ação — situação"):
@@ -720,7 +720,7 @@ class AuditoriaLivreItensTests(TestCase):
         # relatórios: uma linha por item
         wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
         linhas = [[c.value for c in row] for row in wb["Evidências"].iter_rows(min_row=2)]
-        self.assertEqual([(l[1], l[3], l[4]) for l in linhas[:2]],
+        self.assertEqual([(l[1], l[4], l[5]) for l in linhas[:2]],
                          [("Máquinas", "PRA 03", "Conforme"), ("Máquinas", "DLP 04", "Não Conformidade")])
         doc = Document(BytesIO(self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk])).content))
         texto = "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
@@ -736,3 +736,102 @@ class AuditoriaLivreItensTests(TestCase):
         from shared.permissions import VIEW_NAME_TO_PERMISSION as M
         for nome in ("api_livre_item_create", "api_livre_grupo_delete"):
             self.assertEqual(M[f"auditoria:{nome}"]["perm"], "core.nav_auditoria_iso_lista")
+
+
+class AuditoriaLivreAuditadoETopicoTests(TestCase):
+    """Colaborador auditado junto ao tópico e relatório agrupado por tópico."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser("aud7", "aud7@example.com", "x")
+        self.client.force_login(self.user)
+        self.aud = AuditoriaLivre.objects.create(titulo="Por tópico", data_inicio=date(2026, 11, 20))
+        mk = lambda **kw: SolicitacaoLivre.objects.create(auditoria=self.aud, **kw)
+        self.s1 = mk(solicitacao="Calibração", topico="Metrologia", auditado="João Silva", conclusao="NC", grau_nc="MAIOR", ordem=1)
+        self.s2 = mk(solicitacao="Treinamento", topico="RH", auditado="Maria Souza", conclusao="C", ordem=2)
+        self.s3 = mk(solicitacao="Registros", topico="Metrologia", auditado="Pedro Lima", conclusao="OM", ordem=3)
+        self.s4 = mk(solicitacao="Geral", conclusao="P", ordem=4)
+
+    def _post(self, nome, pk, dados=None):
+        return self.client.post(reverse(f"auditoria:{nome}", args=[pk]), json.dumps(dados or {}),
+                                content_type="application/json")
+
+    def test_auditado_saved_cleaned_and_copied_to_new_items(self):
+        r = self._post("api_livre_sol_update", self.s1.pk, {"auditado": "  Ana   Paula  Costa "})
+        self.assertEqual(r.json()["solicitacao"]["auditado"], "Ana Paula Costa")
+        item = self._post("api_livre_item_create", self.s1.pk).json()["item"]
+        self.assertEqual(item["auditado"], "Ana Paula Costa")
+        self._post("api_livre_sol_update", item["id"], {"auditado": "Bruno"})  # vale para a solicitação inteira
+        self.s1.refresh_from_db()
+        self.assertEqual(self.s1.auditado, "Bruno")
+        self.s3.refresh_from_db()
+        self.assertEqual(self.s3.auditado, "Pedro Lima")  # outras solicitações do mesmo tópico não mudam
+        self._post("api_livre_sol_update", self.s1.pk, {"auditado": "x" * 400})
+        self.s1.refresh_from_db()
+        self.assertEqual(len(self.s1.auditado), 255)
+
+    def test_create_with_auditado_and_page_payload(self):
+        r = self._post("api_livre_sol_create", self.aud.pk, {"solicitacao": "Nova", "topico": "TI", "auditado": "Carla"})
+        self.assertEqual(r.json()["solicitacao"]["auditado"], "Carla")
+        grupos = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])).context["grupos_json"]
+        self.assertEqual({g["solicitacao"]: g["auditado"] for g in grupos}["Nova"], "Carla")
+        self.assertContains(self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])), 'id="agruparTopico"')
+
+    def test_collaborator_suggestions(self):
+        from rh.models import Colaborador
+        Colaborador.objects.create(matricula="123", nome_completo="Fernanda Oliveira", grupo="G", is_active=True)
+        Colaborador.objects.create(matricula="124", nome_completo="Fernando Lima", grupo="G", is_active=True)
+        Colaborador.objects.create(matricula="125", nome_completo="Fernanda Inativa", grupo="G", is_active=False)
+        url = reverse("auditoria:api_livre_colaboradores_buscar")
+        nomes = [c["nome"] for c in self.client.get(url, {"q": "fernan"}).json()["results"]]
+        self.assertEqual(nomes, ["Fernanda Oliveira", "Fernando Lima"])  # ativos, em ordem alfabética
+        self.assertEqual(self.client.get(url, {"q": "fernanda oli"}).json()["results"], [{"nome": "Fernanda Oliveira"}])
+        self.assertEqual(self.client.get(url, {"q": "123"}).json()["results"], [{"nome": "Fernanda Oliveira"}])  # matrícula
+        self.assertEqual(self.client.get(url, {"q": "f"}).json()["results"], [])  # mínimo de 2 letras
+        self.client.logout()
+        self.assertEqual(self.client.get(url, {"q": "fernan"}).status_code, 302)
+
+    def _docx_texto(self, agrupar=None):
+        from io import BytesIO
+        from docx import Document
+        extra = {"agrupar": agrupar} if agrupar else {}
+        r = self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk]), extra)
+        self.assertEqual(r.status_code, 200)
+        doc = Document(BytesIO(r.content))
+        return [p.text for p in doc.paragraphs], "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
+
+    def test_word_default_shows_auditado_in_each_finding(self):
+        paragrafos, tabelas = self._docx_texto()
+        self.assertIn("#1  ·  Metrologia  ·  Auditado: João Silva", tabelas)
+        self.assertIn("Não Conformidades (1)", paragrafos)  # continua agrupado por classificação
+
+    def test_word_grouped_by_topic(self):
+        paragrafos, tabelas = self._docx_texto("topico")
+        # tópicos em ordem alfabética, "sem tópico" por último
+        ordem = [p for p in paragrafos if p in ("Metrologia", "RH", "Sem tópico")]
+        self.assertEqual(ordem, ["Metrologia", "RH", "Sem tópico"])
+        self.assertIn("2 itens: 1 NC, 1 OM  ·  Auditado(s): João Silva, Pedro Lima", paragrafos)
+        self.assertIn("1 item: 1 conformes  ·  Auditado(s): Maria Souza", paragrafos)
+        self.assertIn("1 item: 1 pendentes", paragrafos)
+        self.assertNotIn("Não Conformidades (1)", paragrafos)
+        # a numeração da auditoria é mantida dentro dos blocos
+        self.assertLess(tabelas.index("#1  ·"), tabelas.index("#3  ·"))
+        self.assertLess(tabelas.index("#3  ·"), tabelas.index("#2  ·"))
+
+    def test_excel_has_auditado_column_and_capa_shows_it(self):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
+        cab = [c.value for c in wb["Evidências"][1]]
+        self.assertEqual(cab[1:3], ["Tópico", "Auditado"])
+        self.assertEqual([wb["Evidências"].cell(row=r, column=3).value for r in (2, 3)], ["João Silva", "Maria Souza"])
+        r = self.client.get(reverse("auditoria:livre_capa", args=[self.aud.pk]))
+        self.assertContains(r, "João Silva")
+        from .models import CapaLinkLivre
+        from django.test import Client
+        link = CapaLinkLivre.objects.create(auditoria=self.aud)
+        portal = Client().get(reverse("auditoria:livre_capa_portal", args=[link.token]))
+        self.assertContains(portal, "João Silva")
+
+    def test_permission_mapping(self):
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        self.assertEqual(M["auditoria:api_livre_colaboradores_buscar"]["perm"], "core.nav_auditoria_iso_lista")
