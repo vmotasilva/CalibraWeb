@@ -16,11 +16,10 @@ from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
 from core.models import TURNOS_CHOICES
-from organization.models import GrupoEquipe, GrupoEquipeTurno, Setor
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor
 from rh.models import Colaborador
 from rh.services.estrutura_import import PlanilhaInvalida, ler_planilha, monta_previa, normaliza
 from rh.views.estrutura_equipes import (
-    SITUACOES_SEM_TITULAR,
     TURNOS_VALIDOS,
     _erro,
     _negado,
@@ -78,9 +77,12 @@ def api_estrutura_equipes_importar_previa(request):
     monta_previa(dados, setor_id)
 
     for bloco in dados["blocos"]:
-        existente = GrupoEquipe.objects.filter(parent__isnull=True, nome__iexact=bloco["nome"]).first()
+        existente = (
+            GrupoEquipe.objects.filter(parent__isnull=True, setor_id=setor_id, nome__iexact=bloco["nome"]).first()
+            if setor_id else None
+        )
         bloco["existe"] = bool(existente)
-        bloco["setor_existente"] = existente.setor.nome if existente and existente.setor_id else ""
+        bloco["setor_existente"] = ""
         postos_db = (
             {normaliza(n) for n in existente.subgrupos.values_list("nome", flat=True)} if existente else set()
         )
@@ -167,26 +169,14 @@ def api_estrutura_equipes_importar_confirmar(request):
     if ids_pessoas - ativos:
         return _erro("Há titular que não existe mais ou está inativo. Refaça a prévia.")
 
-    # blocos já existentes em outro setor não são movidos silenciosamente
-    if setor:
-        for nome_b, _ in plano:
-            ex = GrupoEquipe.objects.filter(parent__isnull=True, nome__iexact=nome_b).exclude(setor=setor).first()
-            if ex:
-                return _erro(f'O bloco "{nome_b}" já existe no setor "{ex.setor.nome if ex.setor_id else "—"}".')
-
-    associar = bool(data.get("associar"))
     r = {"blocos_criados": 0, "postos_criados": 0, "postos_atualizados": 0,
-         "titulares": 0, "vagos": 0, "reservas": 0, "parados": 0, "associados": 0, "mantidos_em_outro_posto": 0}
+         "colaboradores": 0, "vagos": 0, "reservas": 0, "postos_parados": 0}
     try:
         with transaction.atomic():
             if setor is None:
                 setor, _ = Setor.objects.get_or_create(nome=setor_novo)
-                for nome_b, _p in plano:
-                    ex = GrupoEquipe.objects.filter(parent__isnull=True, nome__iexact=nome_b).exclude(setor=setor).first()
-                    if ex:
-                        raise ValueError(f'O bloco "{nome_b}" já existe no setor "{ex.setor.nome if ex.setor_id else "—"}".')
             for ordem_b, (nome_b, postos) in enumerate(plano, start=1):
-                bloco = GrupoEquipe.objects.filter(parent__isnull=True, nome__iexact=nome_b).first()
+                bloco = GrupoEquipe.objects.filter(parent__isnull=True, setor=setor, nome__iexact=nome_b).first()
                 if bloco is None:
                     bloco = GrupoEquipe(nome=nome_b, setor=setor, ordem=ordem_b)
                     bloco.clean()
@@ -203,25 +193,20 @@ def api_estrutura_equipes_importar_confirmar(request):
                         r["postos_atualizados"] += 1
                     for t, tipo, valor in turnos:
                         if tipo == "pessoa":
-                            situacao, resp = "ATIVO", valor
-                            r["titulares"] += 1
-                        else:
-                            situacao, resp = valor, None
-                            r[{"VAGO": "vagos", "RESERVA": "reservas", "PARADO": "parados"}[valor]] += 1
-                        if situacao in SITUACOES_SEM_TITULAR:
-                            resp = None
-                        GrupoEquipeTurno.objects.update_or_create(
-                            grupo=posto, turno=t,
-                            defaults={"responsavel_id": resp, "situacao": situacao},
-                        )
-                        if associar and resp:
-                            colab = Colaborador.objects.get(pk=resp)
-                            if colab.equipe_id is None:
-                                colab.equipe = posto
-                                colab.save(update_fields=["equipe"])
-                                r["associados"] += 1
-                            elif colab.equipe_id != posto.pk:
-                                r["mantidos_em_outro_posto"] += 1
+                            _, criou = AlocacaoPosto.objects.get_or_create(
+                                posto=posto, turno=t, colaborador_id=valor, defaults={"tipo": "PESSOA"}
+                            )
+                            r["colaboradores"] += criou
+                        elif valor in ("VAGO", "RESERVA"):
+                            # garante ao menos uma vaga/reserva no turno (reimportar não duplica)
+                            if not AlocacaoPosto.objects.filter(posto=posto, turno=t, tipo=valor).exists():
+                                AlocacaoPosto.objects.create(posto=posto, turno=t, tipo=valor)
+                                r["vagos" if valor == "VAGO" else "reservas"] += 1
+                        else:  # PARADO: o posto inteiro fica inativo
+                            if posto.ativo:
+                                posto.ativo = False
+                                posto.save(update_fields=["ativo"])
+                                r["postos_parados"] += 1
     except ValueError as exc:
         return _erro(str(exc))
     except Exception:

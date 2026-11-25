@@ -70,7 +70,10 @@ from rh.views.estrutura_equipes import (
     api_estrutura_equipes_membros,
     api_estrutura_equipes_salvar,
     api_estrutura_equipes_excluir,
-    api_estrutura_equipes_membros_atualizar,
+    api_estrutura_equipes_setor_criar,
+    api_estrutura_equipes_alocacoes_criar,
+    api_estrutura_equipes_alocacoes_atualizar,
+    api_estrutura_equipes_alocacoes_excluir,
 )
 
 from rh.views.estrutura_equipes_importar import (
@@ -123,7 +126,10 @@ urlpatterns = [
     path('api/estrutura-equipes/membros/', api_estrutura_equipes_membros, name='api_estrutura_equipes_membros'),
     path('api/estrutura-equipes/salvar/', api_estrutura_equipes_salvar, name='api_estrutura_equipes_salvar'),
     path('api/estrutura-equipes/excluir/', api_estrutura_equipes_excluir, name='api_estrutura_equipes_excluir'),
-    path('api/estrutura-equipes/membros/atualizar/', api_estrutura_equipes_membros_atualizar, name='api_estrutura_equipes_membros_atualizar'),
+    path('api/estrutura-equipes/setor/criar/', api_estrutura_equipes_setor_criar, name='api_estrutura_equipes_setor_criar'),
+    path('api/estrutura-equipes/alocacoes/criar/', api_estrutura_equipes_alocacoes_criar, name='api_estrutura_equipes_alocacoes_criar'),
+    path('api/estrutura-equipes/alocacoes/atualizar/', api_estrutura_equipes_alocacoes_atualizar, name='api_estrutura_equipes_alocacoes_atualizar'),
+    path('api/estrutura-equipes/alocacoes/excluir/', api_estrutura_equipes_alocacoes_excluir, name='api_estrutura_equipes_alocacoes_excluir'),
 
     path('estrutura-equipes/importar/', estrutura_equipes_importar_view, name='importar_estrutura_equipes'),
     path('api/estrutura-equipes/importar/previa/', api_estrutura_equipes_importar_previa, name='api_importar_estrutura_equipes_previa'),

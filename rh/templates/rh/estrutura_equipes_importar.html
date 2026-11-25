@@ -51,11 +51,7 @@
       </div>
       <div class="card-body">
         <div id="im-avisos" class="alert alert-warning d-none"></div>
-        <p class="small text-muted mb-2">Corrija nomes se precisar. Onde a planilha traz só um nome curto (ex.: "Rogerio"), escolha a pessoa certa na lista. Postos sem pessoa ficam como <b>Vago</b> (contratar) ou <b>Reserva</b> (equipamento reserva).</p>
-        <div class="form-check mb-2">
-          <input class="form-check-input" type="checkbox" id="im-associar" checked>
-          <label class="form-check-label" for="im-associar">Associar também cada titular ao seu posto (só quem ainda está sem posto)</label>
-        </div>
+        <p class="small text-muted mb-2">Corrija nomes se precisar. Onde a planilha traz só um nome curto (ex.: "Rogerio"), escolha a pessoa certa na lista. Postos sem pessoa ficam como <b>Vago</b> (contratar) ou <b>Reserva</b> (equipamento reserva); <b>Parado</b> deixa o posto inativo.</p>
       </div>
     </div>
     <div id="im-blocos"></div>
@@ -123,7 +119,7 @@
     (cel.candidatos || []).forEach(c => {
       h += '<option value="c:' + c.id + '"' + (cel.decisao === 'c:' + c.id ? ' selected' : '') + '>' + esc(c.nome + ' · ' + c.matricula + (c.setor ? ' · ' + c.setor : '')) + '</option>';
     });
-    [['s:VAGO', 'VAGO (contratar)'], ['s:RESERVA', 'RESERVA (equip. reserva)'], ['s:PARADO', 'PARADO']].forEach(([v, t]) => {
+    [['s:VAGO', 'VAGO (contratar)'], ['s:RESERVA', 'RESERVA (equip. reserva)'], ['s:PARADO', 'PARADO (posto inativo)']].forEach(([v, t]) => {
       h += '<option value="' + v + '"' + (cel.decisao === v ? ' selected' : '') + '>' + t + '</option>';
     });
     return h;
@@ -210,7 +206,7 @@
   async function confirmar() {
     limpaAviso();
     const setor = $('im-setor').value;
-    const payload = { associar: $('im-associar').checked, blocos: [] };
+    const payload = { blocos: [] };
     if (setor === '__novo__') payload.setor_novo = $('im-setor-novo').value.trim(); else payload.setor_id = setor;
     dados.blocos.forEach(b => {
       const postos = b.postos.filter(p => !p.ignorar).map(p => ({
@@ -227,10 +223,9 @@
       const itens = [
         s.blocos_criados + ' bloco(s) criado(s) no setor ' + j.setor,
         s.postos_criados + ' posto(s) criado(s) e ' + s.postos_atualizados + ' atualizado(s)',
-        s.titulares + ' titular(es) definido(s)',
-        s.vagos + ' vago(s) · ' + s.reservas + ' reserva(s) · ' + s.parados + ' parado(s)',
+        s.colaboradores + ' colaborador(es) alocado(s)',
+        s.vagos + ' vaga(s) · ' + s.reservas + ' reserva(s) · ' + s.postos_parados + ' posto(s) marcado(s) como inativo (parado)',
       ];
-      if (payload.associar) itens.push(s.associados + ' pessoa(s) associada(s) ao posto' + (s.mantidos_em_outro_posto ? ' (' + s.mantidos_em_outro_posto + ' já estavam em outro posto e foram mantidas)' : ''));
       $('im-resultado').innerHTML = itens.map(i => '<li>' + esc(i) + '</li>').join('');
       $('im-etapa2').classList.add('d-none'); $('im-etapa3').classList.remove('d-none');
     } catch (e) { aviso(e.message); validar(); }

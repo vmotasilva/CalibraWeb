@@ -16,6 +16,8 @@ Alterações que ainda não foram lançadas em uma versão oficial.
 - Posto sem pessoa associada é marcado como **VAGO** (necessário contratar) ou **RESERVA** (equipamento reserva instalado); aba "Quadro por turno" com resumo de vagas e reservas
 - Movimentação em lote de pessoas entre postos, com ajuste opcional de turno; efetivo planejado x atual por turno
 - Novas permissões de navegação: visualizar e editar a estrutura
+- **Construção livre da estrutura**: criar Setor, Bloco e Posto de trabalho direto na tela (botões "+" em cada nível) e, em cada posto, alocar por turno **Colaborador**, **VAGO** (necessário contratar) ou **Reserva** (equipamento reserva instalado), em qualquer quantidade; o mesmo colaborador pode atuar em vários postos. Uma VAGO vira colaborador ao editar a alocação (contratação)
+- Correção: a tela ficava vazia para quem pode editar (modais do Bootstrap eram criados antes do script ser carregado)
 - **Importação por planilha (.xlsx)** da estrutura (bloco, posto e titular por turno), em duas etapas: prévia editável com revisão de nomes e escolha da pessoa em casos ambíguos, e gravação só após confirmar (tudo ou nada)
 
 ### 🐛 Corrigido (Módulo de Fornecedores)
