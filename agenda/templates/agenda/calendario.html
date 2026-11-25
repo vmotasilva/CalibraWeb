@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+
+{% block title %}Agenda - Calibra QMS{% endblock %}
+{% block header_title %}Agenda{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ag-toolbar { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .ag-title { font-size:1.25rem; font-weight:600; text-transform:capitalize; margin:0 .5rem; }
+    .ag-grid-month { display:grid; grid-template-columns:repeat(7,1fr); border-top:1px solid #dee2e6; border-left:1px solid #dee2e6; background:#fff; }
+    .ag-dow { background:#f1f3f5; font-size:.75rem; font-weight:600; text-align:center; padding:.35rem 0; border-right:1px solid #dee2e6; border-bottom:1px solid #dee2e6; text-transform:uppercase; }
+    .ag-cell { min-height:105px; padding:.25rem; border-right:1px solid #dee2e6; border-bottom:1px solid #dee2e6; cursor:pointer; overflow:hidden; }
+    .ag-cell:hover { background:#f8f9fa; }
+    .ag-cell.fora { background:#fafafa; color:#adb5bd; }
+    .ag-cell.hoje .ag-num { background:#0d6efd; color:#fff; border-radius:50%; }
+    .ag-num { display:inline-block; width:1.6rem; height:1.6rem; line-height:1.6rem; text-align:center; font-size:.8rem; }
+    .ag-ev { display:block; font-size:.74rem; color:#fff; border-radius:4px; padding:1px 5px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+    .ag-ev.feito { opacity:.55; text-decoration:line-through; }
+    .ag-more { font-size:.72rem; color:#6c757d; }
+    .ag-cols { display:grid; border-top:1px solid #dee2e6; border-left:1px solid #dee2e6; background:#fff; }
+    .ag-colhead { background:#f1f3f5; text-align:center; font-weight:600; font-size:.8rem; padding:.4rem; border-right:1px solid #dee2e6; border-bottom:1px solid #dee2e6; cursor:pointer; }
+    .ag-colhead.hoje { color:#0d6efd; }
+    .ag-col { min-height:260px; padding:.35rem; border-right:1px solid #dee2e6; border-bottom:1px solid #dee2e6; cursor:pointer; }
+    .ag-col .ag-ev { font-size:.8rem; padding:3px 6px; }
+    .ag-tag-com { font-size:.65rem; }
+    @media (max-width: 767px) { .ag-cell { min-height:70px; } .ag-ev { font-size:.65rem; } .ag-cols { grid-template-columns:1fr !important; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="ag-toolbar">
+        <div class="d-flex align-items-center gap-1">
+            <button class="btn btn-sm btn-outline-secondary" id="agPrev" title="Anterior"><i class="bi bi-chevron-left"></i></button>
+            <button class="btn btn-sm btn-outline-secondary" id="agHoje">Hoje</button>
+            <button class="btn btn-sm btn-outline-secondary" id="agNext" title="Próximo"><i class="bi bi-chevron-right"></i></button>
+            <span class="ag-title" id="agTitulo"></span>
+        </div>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="btn-group btn-group-sm" role="group" id="agViews">
+                <button class="btn btn-outline-primary" data-view="mes">Mês</button>
+                <button class="btn btn-outline-primary" data-view="semana">Semana</button>
+                <button class="btn btn-outline-primary" data-view="dia">Dia</button>
+            </div>
+            <div class="btn-group btn-group-sm" role="group" id="agFiltro">
+                <button class="btn btn-outline-secondary active" data-f="todas">Todas</button>
+                <button class="btn btn-outline-secondary" data-f="pessoal">Pessoal</button>
+                <button class="btn btn-outline-secondary" data-f="comum">Comum</button>
+            </div>
+            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
+            <button class="btn btn-sm btn-primary" id="agNovo"><i class="bi bi-plus-lg me-1"></i>Novo evento</button>
+        </div>
+    </div>
+    <div id="agCalendario"></div>
+</div>
+
+<div class="modal fade" id="agModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="agModalTitulo">Novo evento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="agErro" class="alert alert-danger d-none"></div>
+        <div id="agConvite" class="alert alert-info d-none align-items-center justify-content-between">
+            <span>Você foi convidado para este evento.</span>
+            <span><button class="btn btn-sm btn-success me-1" data-resp="aceito">Aceitar</button><button class="btn btn-sm btn-outline-danger" data-resp="recusado">Recusar</button></span>
+        </div>
+        <input type="hidden" id="fId">
+        <div class="row g-3">
+            <div class="col-12"><label class="form-label">Título</label><input class="form-control" id="fTitulo" maxlength="200"></div>
+            <div class="col-md-6">
+                <label class="form-label">Agenda</label>
+                <select class="form-select" id="fEscopo">
+                    <option value="pessoal">Pessoal (só eu e convidados)</option>
+                    {% if pode_criar_comum %}<option value="comum">Comum (todos veem)</option>{% endif %}
+                </select>
+            </div>
+            <div class="col-md-6 d-flex align-items-end gap-3">
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="fDiaInteiro"><label class="form-check-label" for="fDiaInteiro">Dia inteiro</label></div>
+                <div class="form-check"><input class="form-check-input" type="checkbox" id="fChecklist"><label class="form-check-label" for="fChecklist">Entra no checklist diário</label></div>
+            </div>
+            <div class="col-md-6"><label class="form-label">Início</label><input type="datetime-local" class="form-control" id="fInicio"></div>
+            <div class="col-md-6"><label class="form-label">Fim</label><input type="datetime-local" class="form-control" id="fFim"></div>
+            <div class="col-md-6">
+                <label class="form-label">Repetição</label>
+                <select class="form-select" id="fRec">
+                    <option value="nenhuma">Não repete</option><option value="diaria">Todos os dias</option>
+                    <option value="semanal">Toda semana</option><option value="mensal">Todo mês</option>
+                </select>
+            </div>
+            <div class="col-md-6"><label class="form-label">Repetir até</label><input type="date" class="form-control" id="fRecAte"></div>
+            <div class="col-md-6">
+                <label class="form-label">Lembrete</label>
+                <select class="form-select" id="fLembrete">
+                    <option value="">Sem lembrete</option><option value="0">No horário</option><option value="15">15 min antes</option>
+                    <option value="60">1 hora antes</option><option value="1440">1 dia antes</option>
+                </select>
+            </div>
+            <div class="col-md-3"><label class="form-label">Cor</label><input type="color" class="form-control form-control-color" id="fCor" value="#0d6efd"></div>
+            <div class="col-md-3"><label class="form-label">Local</label><input class="form-control" id="fLocal" maxlength="200"></div>
+            <div class="col-12"><label class="form-label">Descrição</label><textarea class="form-control" id="fDescricao" rows="3"></textarea></div>
+            <div class="col-12">
+                <label class="form-label">Convidados</label>
+                <input class="form-control form-control-sm mb-1" id="fBuscaPart" placeholder="Filtrar usuários...">
+                <div class="border rounded p-2" id="fPartLista" style="max-height:150px; overflow:auto;"></div>
+                <div class="form-text" id="fRespostas"></div>
+            </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-danger me-auto d-none" id="agExcluir"><i class="bi bi-trash me-1"></i>Excluir</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button class="btn btn-primary" id="agSalvar">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ usuarios|json_script:"agUsuarios" }}
+<script>
+(function () {
+    const URLS = {
+        eventos: "{% url 'agenda:api_eventos' %}",
+        salvar: "{% url 'agenda:evento_salvar' %}",
+        detalhe: id => "{% url 'agenda:api_evento_detalhe' 0 %}".replace(/0\/$/, id + "/"),
+        excluir: id => "{% url 'agenda:evento_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/"),
+        convite: id => "{% url 'agenda:api_responder_convite' 0 %}".replace(/0\/convite\/$/, id + "/convite/"),
+    };
+    const CSRF = "{{ csrf_token }}";
+    const USUARIOS = JSON.parse(document.getElementById("agUsuarios").textContent);
+    const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+    const DOW = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+    const $ = id => document.getElementById(id);
+    const iso = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    const addDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+    let view = localStorage.getItem("agView") || "mes", ref = new Date(), filtro = "todas", eventos = [];
+    ref.setHours(0,0,0,0);
+
+    function intervalo() {
+        if (view === "dia") return [ref, ref];
+        if (view === "semana") { const ini = addDias(ref, -ref.getDay()); return [ini, addDias(ini, 6)]; }
+        const p = new Date(ref.getFullYear(), ref.getMonth(), 1), u = new Date(ref.getFullYear(), ref.getMonth()+1, 0);
+        return [addDias(p, -p.getDay()), addDias(u, 6 - u.getDay())];
+    }
+
+    async function carregar() {
+        const [a, b] = intervalo();
+        const r = await fetch(URLS.eventos + "?inicio=" + iso(a) + "&fim=" + iso(b), {credentials: "same-origin"});
+        const j = await r.json();
+        eventos = j.success ? j.eventos : [];
+        desenhar();
+    }
+
+    function chip(e) {
+        const hora = e.hora_inicio ? e.hora_inicio + " " : "";
+        const ck = e.checklist ? (e.feito ? "✔ " : "☐ ") : "";
+        return `<span class="ag-ev ${e.feito ? "feito" : ""}" style="background:${esc(e.cor)}" data-id="${e.id}" title="${esc(e.titulo)}${e.escopo === "comum" ? " (comum)" : ""}">${ck}${esc(hora)}${esc(e.titulo)}</span>`;
+    }
+
+    function desenhar() {
+        const [a, b] = intervalo(), hoje = iso(new Date());
+        const lista = eventos.filter(e => filtro === "todas" || e.escopo === filtro);
+        const porDia = {};
+        lista.forEach(e => (porDia[e.dia] = porDia[e.dia] || []).push(e));
+        let html = "";
+        if (view === "mes") {
+            $("agTitulo").textContent = MESES[ref.getMonth()] + " " + ref.getFullYear();
+            html = '<div class="ag-grid-month">' + DOW.map(d => `<div class="ag-dow">${d}</div>`).join("");
+            for (let d = new Date(a); d <= b; d = addDias(d, 1)) {
+                const k = iso(d), evs = porDia[k] || [];
+                html += `<div class="ag-cell ${d.getMonth() !== ref.getMonth() ? "fora" : ""} ${k === hoje ? "hoje" : ""}" data-dia="${k}"><span class="ag-num">${d.getDate()}</span>` +
+                    evs.slice(0, 3).map(chip).join("") + (evs.length > 3 ? `<div class="ag-more" data-goto="${k}">+${evs.length - 3} mais</div>` : "") + "</div>";
+            }
+            html += "</div>";
+        } else {
+            const dias = []; for (let d = new Date(a); d <= b; d = addDias(d, 1)) dias.push(new Date(d));
+            $("agTitulo").textContent = view === "dia"
+                ? dias[0].getDate() + " de " + MESES[dias[0].getMonth()] + " de " + dias[0].getFullYear()
+                : dias[0].getDate() + "/" + (dias[0].getMonth()+1) + " – " + dias[6].getDate() + "/" + (dias[6].getMonth()+1) + "/" + dias[6].getFullYear();
+            html = `<div class="ag-cols" style="grid-template-columns:repeat(${dias.length},1fr)">` +
+                dias.map(d => `<div class="ag-colhead ${iso(d) === hoje ? "hoje" : ""}" data-goto="${iso(d)}">${DOW[d.getDay()]} ${d.getDate()}</div>`).join("") +
+                dias.map(d => `<div class="ag-col" data-dia="${iso(d)}">${(porDia[iso(d)] || []).map(chip).join("") || '<span class="text-muted small">Sem eventos</span>'}</div>`).join("") + "</div>";
+        }
+        $("agCalendario").innerHTML = html;
+        document.querySelectorAll("#agViews button").forEach(x => x.classList.toggle("active", x.dataset.view === view));
+    }
+
+    function mover(n) {
+        if (view === "mes") ref = new Date(ref.getFullYear(), ref.getMonth() + n, 1);
+        else ref = addDias(ref, n * (view === "semana" ? 7 : 1));
+        carregar();
+    }
+
+    // --- modal ---
+    const modal = new bootstrap.Modal($("agModal"));
+    let convidados = new Set(), respostas = {};
+
+    function desenharParticipantes() {
+        const q = $("fBuscaPart").value.toLowerCase();
+        $("fPartLista").innerHTML = USUARIOS.filter(u => u.nome.toLowerCase().includes(q) || convidados.has(u.id)).map(u =>
+            `<div class="form-check"><input class="form-check-input" type="checkbox" id="u${u.id}" value="${u.id}" ${convidados.has(u.id) ? "checked" : ""}><label class="form-check-label" for="u${u.id}">${esc(u.nome)}</label></div>`).join("") || '<span class="text-muted small">Nenhum usuário</span>';
+    }
+
+    function abrir(ev, diaPadrao) {
+        $("agErro").classList.add("d-none");
+        $("agModalTitulo").textContent = ev ? "Evento" : "Novo evento";
+        $("fId").value = ev ? ev.id : "";
+        $("fTitulo").value = ev ? ev.titulo : "";
+        $("fEscopo").value = ev ? ev.escopo : "pessoal";
+        $("fDiaInteiro").checked = ev ? ev.dia_inteiro : false;
+        $("fChecklist").checked = ev ? ev.checklist : false;
+        const d0 = diaPadrao || iso(new Date());
+        $("fInicio").value = ev ? ev.inicio : d0 + "T09:00";
+        $("fFim").value = ev ? ev.fim : "";
+        $("fRec").value = ev ? ev.recorrencia : "nenhuma";
+        $("fRecAte").value = ev ? ev.recorrencia_ate : "";
+        $("fLembrete").value = ev && ev.lembrete_minutos !== null ? String(ev.lembrete_minutos) : "";
+        $("fCor").value = ev ? ev.cor : "#0d6efd";
+        $("fLocal").value = ev ? ev.local : "";
+        $("fDescricao").value = ev ? ev.descricao : "";
+        $("fBuscaPart").value = "";
+        convidados = new Set(ev ? ev.participantes.map(p => p.id) : []);
+        respostas = {}; (ev ? ev.participantes : []).forEach(p => respostas[p.id] = p.resposta);
+        $("fRespostas").textContent = ev && ev.participantes.length
+            ? ev.participantes.map(p => p.nome + ": " + p.resposta).join(" · ") : "";
+        const editavel = !ev || ev.editavel;
+        document.querySelectorAll("#agModal input, #agModal select, #agModal textarea").forEach(x => x.disabled = !editavel);
+        $("agSalvar").classList.toggle("d-none", !editavel);
+        $("agExcluir").classList.toggle("d-none", !(ev && ev.editavel));
+        const conv = $("agConvite");
+        conv.classList.toggle("d-none", !(ev && ev.minha_resposta)); conv.classList.toggle("d-flex", !!(ev && ev.minha_resposta));
+        if (ev && ev.minha_resposta) conv.dataset.id = ev.id;
+        desenharParticipantes();
+        modal.show();
+    }
+
+    async function post(url, corpo) {
+        const r = await fetch(url, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify(corpo || {})});
+        return r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+    }
+
+    $("fPartLista").addEventListener("change", e => { const id = Number(e.target.value); e.target.checked ? convidados.add(id) : convidados.delete(id); });
+    $("fBuscaPart").addEventListener("input", desenharParticipantes);
+
+    $("agSalvar").addEventListener("click", async () => {
+        const j = await post(URLS.salvar, {
+            id: $("fId").value || null, titulo: $("fTitulo").value, escopo: $("fEscopo").value,
+            dia_inteiro: $("fDiaInteiro").checked, checklist: $("fChecklist").checked,
+            inicio: $("fInicio").value, fim: $("fFim").value, recorrencia: $("fRec").value, recorrencia_ate: $("fRecAte").value,
+            lembrete_minutos: $("fLembrete").value, cor: $("fCor").value, local: $("fLocal").value,
+            descricao: $("fDescricao").value, participantes: [...convidados],
+        });
+        if (!j.success) { $("agErro").textContent = j.error || "Não foi possível salvar."; $("agErro").classList.remove("d-none"); return; }
+        modal.hide(); carregar();
+    });
+
+    $("agExcluir").addEventListener("click", async () => {
+        if (!confirm("Excluir este evento (todas as repetições)?")) return;
+        const j = await post(URLS.excluir($("fId").value));
+        if (j.success) { modal.hide(); carregar(); }
+    });
+
+    $("agConvite").addEventListener("click", async e => {
+        const resp = e.target.dataset.resp; if (!resp) return;
+        const j = await post(URLS.convite($("agConvite").dataset.id), {resposta: resp});
+        if (j.success) { modal.hide(); carregar(); }
+    });
+
+    async function abrirPorId(id) {
+        const r = await fetch(URLS.detalhe(id), {credentials: "same-origin"}); const j = await r.json();
+        if (j.success) abrir(j.evento);
+    }
+
+    $("agCalendario").addEventListener("click", e => {
+        const ev = e.target.closest(".ag-ev"), goto = e.target.closest("[data-goto]"), cel = e.target.closest("[data-dia]");
+        if (ev) return abrirPorId(ev.dataset.id);
+        if (goto) { const [y, m, d] = goto.dataset.goto.split("-").map(Number); ref = new Date(y, m-1, d); view = "dia"; localStorage.setItem("agView", view); return carregar(); }
+        if (cel) abrir(null, cel.dataset.dia);
+    });
+
+    $("agPrev").onclick = () => mover(-1); $("agNext").onclick = () => mover(1);
+    $("agHoje").onclick = () => { ref = new Date(); ref.setHours(0,0,0,0); carregar(); };
+    $("agNovo").onclick = () => abrir(null);
+    $("agViews").addEventListener("click", e => { if (e.target.dataset.view) { view = e.target.dataset.view; localStorage.setItem("agView", view); carregar(); } });
+    $("agFiltro").addEventListener("click", e => {
+        if (!e.target.dataset.f) return; filtro = e.target.dataset.f;
+        document.querySelectorAll("#agFiltro button").forEach(b => b.classList.toggle("active", b === e.target)); desenhar();
+    });
+    carregar();
+})();
+</script>
+{% endblock %}

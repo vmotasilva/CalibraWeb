@@ -1001,6 +1001,77 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
     except Exception:
         pass
 
+    # =========================================================================
+    # 9. AGENDA: checklist de hoje, lembretes e convites pendentes
+    # =========================================================================
+    try:
+        if _can(user, "agenda", "agenda:calendario"):
+            from agenda.models import EventoParticipante
+            from agenda.services import ocorrencias as agenda_ocorrencias
+
+            agora = timezone.localtime()
+            hoje_local = agora.date()
+            url_agenda = reverse("agenda:calendario")
+            url_checklist = reverse("agenda:checklist")
+            for o in agenda_ocorrencias(user, hoje_local, hoje_local):
+                if o["checklist"] and not o["feito"]:
+                    items.append(
+                        InboxItem(
+                            id=f"agenda_check_{o['id']}_{o['dia']}",
+                            title=f"Checklist: {o['titulo']}",
+                            description="Dia inteiro" if not o["hora_inicio"] else f"Hoje às {o['hora_inicio']:%H:%M}",
+                            module="Agenda",
+                            icon="bi-check2-square",
+                            url=url_checklist,
+                            action_text="Marcar",
+                            date=hoje_local,
+                            is_urgent=False,
+                            sub_type="Checklist do dia",
+                        )
+                    )
+                elif not o["checklist"] and o["hora_inicio"]:
+                    from agenda.models import Evento
+
+                    lembrete = Evento.objects.filter(pk=o["id"]).values_list("lembrete_minutos", flat=True).first()
+                    if lembrete is None:
+                        continue
+                    inicio_ocorr = timezone.make_aware(datetime.combine(o["dia"], o["hora_inicio"]))
+                    if inicio_ocorr - timedelta(minutes=lembrete) <= agora <= inicio_ocorr + timedelta(hours=1):
+                        items.append(
+                            InboxItem(
+                                id=f"agenda_lembrete_{o['id']}_{o['dia']}",
+                                title=f"Lembrete: {o['titulo']}",
+                                description=f"Hoje às {o['hora_inicio']:%H:%M}" + (f" · {o['local']}" if o["local"] else ""),
+                                module="Agenda",
+                                icon="bi-alarm",
+                                url=url_agenda,
+                                action_text="Abrir",
+                                date=hoje_local,
+                                is_urgent=inicio_ocorr <= agora + timedelta(minutes=15),
+                                sub_type="Lembretes",
+                            )
+                        )
+            for c in EventoParticipante.objects.filter(
+                usuario=user, resposta=EventoParticipante.PENDENTE, evento__inicio__gte=agora - timedelta(days=1)
+            ).select_related("evento", "evento__criado_por"):
+                quem = c.evento.criado_por.get_full_name() or c.evento.criado_por.username
+                items.append(
+                    InboxItem(
+                        id=f"agenda_convite_{c.evento_id}",
+                        title=f"Convite: {c.evento.titulo}",
+                        description=f"De {quem} · {timezone.localtime(c.evento.inicio):%d/%m %H:%M}",
+                        module="Agenda",
+                        icon="bi-envelope-open",
+                        url=url_agenda,
+                        action_text="Responder",
+                        date=timezone.localtime(c.evento.criado_em).date(),
+                        is_urgent=False,
+                        sub_type="Convites",
+                    )
+                )
+    except Exception:
+        pass
+
     # Sort items: oldest date first (most urgent)
     items.sort(key=lambda x: x.date if x.date else date.max)
 

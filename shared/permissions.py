@@ -186,6 +186,50 @@ NAV_STRUCTURE = [
         ]
     },
     {
+        "key": "agenda",
+        "nome": "Agenda",
+        "cor": "success",
+        "icone": "bi bi-calendar3",
+        "module_perm": "core.nav_mod_agenda",
+        "blocos": [
+            {
+                "key": "calendario",
+                "nome": "Calendário (Pessoal e Comum)",
+                "perm": "core.nav_agenda_calendario_bloco",
+                "funcoes": [
+                    {"nome": "Acessar Calendário", "view_name": "agenda:calendario", "perm": "core.nav_agenda_calendario"},
+                    {"nome": "Listar Eventos (API do calendário)", "view_name": "agenda:api_eventos", "perm": "core.nav_agenda_eventos_listar"},
+                    {"nome": "Detalhe do Evento", "view_name": "agenda:api_evento_detalhe", "perm": "core.nav_agenda_evento_detalhe"},
+                    {"nome": "Criar e Editar Evento", "view_name": "agenda:evento_salvar", "perm": "core.nav_agenda_evento_salvar"},
+                    {"nome": "Excluir Evento", "view_name": "agenda:evento_excluir", "perm": "core.nav_agenda_evento_excluir"},
+                    {"nome": "Responder Convite", "view_name": "agenda:api_responder_convite", "perm": "core.nav_agenda_convite"},
+                ],
+            },
+            {
+                "key": "checklist",
+                "nome": "Checklist Diário",
+                "perm": "core.nav_agenda_checklist_bloco",
+                "funcoes": [
+                    {"nome": "Acessar Checklist do Dia", "view_name": "agenda:checklist", "perm": "core.nav_agenda_checklist"},
+                    {"nome": "Marcar Item do Checklist", "view_name": "agenda:api_checklist_toggle", "perm": "core.nav_agenda_checklist_toggle"},
+                ],
+            },
+            {
+                "key": "especiais",
+                "nome": "PERMISSÕES ESPECIAIS",
+                "especial": True,
+                "perm": None,
+                "funcoes": [
+                    {
+                        "nome": "Criar Eventos na Agenda Comum",
+                        "perm": "core.nav_agenda_criar_comum",
+                        "descricao": "Permite publicar eventos na Agenda Comum, visível a todos os usuários com acesso à Agenda. Sem isto, o usuário só cria eventos pessoais.",
+                    },
+                ],
+            },
+        ],
+    },
+    {
         "key": "diagramas",
         "nome": "Diagramas",
         "cor": "dark",
@@ -1964,7 +2008,7 @@ NAV_GROUP_PERMS = {
 GESTAO_SECOES = ("Ferramentas Auxiliares", "KPI", "Processos", "Qualidade")
 # Módulos cujos blocos (campo "grupo") aparecem dentro de uma seção de Gestão.
 GESTAO_MODULOS_COM_SECAO = ("laboratorio", "kpi", "pcp", "perdas", "decide")
-GESTAO_MODULES = {"boards": "Ferramentas Auxiliares", "diagramas": "Ferramentas Auxiliares"}
+GESTAO_MODULES = {"boards": "Ferramentas Auxiliares", "diagramas": "Ferramentas Auxiliares", "agenda": "Ferramentas Auxiliares"}
 
 
 def _group_paths(module_key: str, grupo: str | None) -> list[str]:
