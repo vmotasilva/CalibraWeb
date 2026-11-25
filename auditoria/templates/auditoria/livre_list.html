@@ -53,7 +53,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start gap-2">
                         <div class="min-w-0">
-                            <h5 class="fw-bold mb-1">{{ a.titulo }}</h5>
+                            <h5 class="fw-bold mb-1">{{ a.titulo }}{% if a.execucao > 1 or a.proxima %} <span class="badge text-bg-dark align-middle fs-6">Execução {{ a.execucao }}</span>{% endif %}</h5>
                             <div class="small text-muted">
                                 <i class="bi bi-calendar3 me-1"></i>{{ a.data_inicio|date:"d/m/Y" }}{% if a.data_fim %} a {{ a.data_fim|date:"d/m/Y" }}{% endif %}
                                 {% if a.local %} · <i class="bi bi-geo-alt me-1"></i>{{ a.local }}{% endif %}
@@ -75,6 +75,25 @@
                         <a href="{% url 'auditoria:livre_execucao' a.pk %}" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold">
                             <i class="bi bi-play-circle me-1"></i> {% if a.status == 'CONCLUIDA' %}Abrir{% else %}Conduzir{% endif %}
                         </a>
+                        {% if a.anterior_id %}
+                        <a href="{% url 'auditoria:livre_comparar' a.pk %}" class="btn btn-sm btn-outline-dark rounded-pill px-3"><i class="bi bi-graph-up-arrow me-1"></i> Evolução</a>
+                        {% endif %}
+                        {% if a.proxima %}
+                        <a href="{% url 'auditoria:livre_execucao' a.proxima.pk %}" class="btn btn-sm btn-outline-dark rounded-pill px-3"><i class="bi bi-arrow-right-circle me-1"></i> Execução {{ a.proxima.execucao }}</a>
+                        {% elif a.pode_nova_execucao %}
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-dark rounded-pill px-3 dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-arrow-repeat me-1"></i> Nova execução</button>
+                            <div class="dropdown-menu p-2" style="min-width:270px;">
+                                <form method="post" action="{% url 'auditoria:livre_nova_execucao' a.pk %}" onsubmit="return confirm('Abrir uma nova execução com todos os itens?');">
+                                    {% csrf_token %}<button class="dropdown-item rounded"><strong>Todos os itens</strong><br><span class="small text-muted">Reavalia tudo do zero</span></button>
+                                </form>
+                                <form method="post" action="{% url 'auditoria:livre_nova_execucao' a.pk %}" onsubmit="return confirm('Abrir uma nova execução só com os itens NC, OM ou pendentes?');">
+                                    {% csrf_token %}<input type="hidden" name="somente_pendencias" value="1">
+                                    <button class="dropdown-item rounded"><strong>Só NC, OM e pendentes</strong><br><span class="small text-muted">Reavalia apenas o que não estava conforme</span></button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endif %}
                         <a href="{% url 'auditoria:livre_edit' a.pk %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">
                             <i class="bi bi-pencil me-1"></i> Editar
                         </a>

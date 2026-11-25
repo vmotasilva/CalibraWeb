@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .kpi { border-radius: 16px; border: 0; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .kpi .valor { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+    .kpi .seta { font-weight: 700; }
+    .chip-cat { border-radius: 30px; font-weight: 600; font-size: .85rem; padding: 5px 14px; }
+    .chip-cat.active { box-shadow: 0 3px 10px rgba(0,0,0,.18); transform: scale(1.04); }
+    .tab-comp td { vertical-align: top; }
+    .bar-label { font-size: 11px; fill: #475569; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-4" style="max-width: 1200px;">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-3">
+        <div>
+            <h3 class="fw-bold text-dark mb-1"><i class="bi bi-graph-up-arrow text-primary me-2"></i>Evolução entre execuções</h3>
+            <div class="text-muted">{{ aud.titulo }}{% if comp %} · Execução {{ base.execucao }} → Execução {{ aud.execucao }}{% endif %}</div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'auditoria:livre_execucao' aud.pk %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-left me-1"></i> Voltar à auditoria</a>
+            {% if comp %}
+            <a href="{% url 'auditoria:livre_comparar_excel' aud.pk %}?com={{ base.pk }}" class="btn btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel comparativo</a>
+            <a href="{% url 'auditoria:livre_comparar_docx' aud.pk %}?com={{ base.pk }}" class="btn btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-word me-1"></i> Word comparativo</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if messages %}{% for m in messages %}<div class="alert alert-{% if m.tags == 'error' %}danger{% else %}{{ m.tags }}{% endif %} py-2">{{ m }}</div>{% endfor %}{% endif %}
+
+    {% if not comp %}
+    <div class="card border-0 shadow-sm rounded-4"><div class="card-body text-center py-5">
+        <i class="bi bi-1-circle display-4 text-muted d-block mb-3"></i>
+        <h5 class="fw-bold">Esta é a primeira execução</h5>
+        <p class="text-muted mb-3">Quando você abrir uma nova execução a partir de uma auditoria concluída, a comparação aparece aqui.</p>
+        {% if proxima %}<a href="{% url 'auditoria:livre_comparar' proxima.pk %}" class="btn btn-primary rounded-pill px-4"><i class="bi bi-graph-up-arrow me-1"></i> Ver evolução até a execução {{ proxima.execucao }}</a>{% endif %}
+    </div></div>
+    {% else %}
+
+    {% if anteriores|length > 1 %}
+    <form method="get" class="d-flex align-items-center gap-2 mb-3">
+        <label class="small fw-semibold text-muted mb-0" for="com">Comparar com:</label>
+        <select name="com" id="com" class="form-select form-select-sm" style="max-width:300px;" onchange="this.form.submit()">
+            {% for a in anteriores %}<option value="{{ a.pk }}" {% if a.pk == base.pk %}selected{% endif %}>Execução {{ a.execucao }} ({{ a.data_inicio|date:"d/m/Y" }})</option>{% endfor %}
+        </select>
+    </form>
+    {% endif %}
+
+    <div class="alert alert-light border rounded-4 py-2 mb-3"><i class="bi bi-lightbulb me-1"></i> <strong>Saldo:</strong> {{ frase }}
+        {% if aud.somente_pendencias %}<span class="badge text-bg-secondary ms-1">Reavaliou só NC, OM e pendentes</span>{% endif %}</div>
+
+    <!-- Indicadores -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3"><div class="card kpi h-100"><div class="card-body">
+            <div class="small text-muted fw-semibold">Índice de conformidade</div>
+            <div class="valor">{% if comp.res_base.indice is not None %}{{ comp.res_base.indice }}%{% else %}—{% endif %} <span class="seta text-muted">→</span> {% if comp.res_atual.indice is not None %}{{ comp.res_atual.indice }}%{% else %}—{% endif %}</div>
+            {% if comp.deltas.indice is not None %}<div class="small fw-bold {% if comp.deltas.indice > 0 %}text-success{% elif comp.deltas.indice < 0 %}text-danger{% else %}text-muted{% endif %}">{% if comp.deltas.indice > 0 %}▲ +{{ comp.deltas.indice }}{% elif comp.deltas.indice < 0 %}▼ {{ comp.deltas.indice }}{% else %}= 0{% endif %} p.p.</div>{% endif %}
+        </div></div></div>
+        <div class="col-6 col-lg-3"><div class="card kpi h-100"><div class="card-body">
+            <div class="small text-muted fw-semibold">Não conformidades</div>
+            <div class="valor">{{ comp.res_base.NC }} <span class="seta text-muted">→</span> {{ comp.res_atual.NC }}</div>
+            <div class="small fw-bold {% if comp.deltas.NC < 0 %}text-success{% elif comp.deltas.NC > 0 %}text-danger{% else %}text-muted{% endif %}">{% if comp.deltas.NC < 0 %}▼ {{ comp.deltas.NC }}{% elif comp.deltas.NC > 0 %}▲ +{{ comp.deltas.NC }}{% else %}= 0{% endif %}</div>
+        </div></div></div>
+        <div class="col-6 col-lg-3"><div class="card kpi h-100"><div class="card-body">
+            <div class="small text-muted fw-semibold">Oportunidades de melhoria</div>
+            <div class="valor">{{ comp.res_base.OM }} <span class="seta text-muted">→</span> {{ comp.res_atual.OM }}</div>
+            <div class="small fw-bold {% if comp.deltas.OM < 0 %}text-success{% elif comp.deltas.OM > 0 %}text-danger{% else %}text-muted{% endif %}">{% if comp.deltas.OM < 0 %}▼ {{ comp.deltas.OM }}{% elif comp.deltas.OM > 0 %}▲ +{{ comp.deltas.OM }}{% else %}= 0{% endif %}</div>
+        </div></div></div>
+        <div class="col-6 col-lg-3"><div class="card kpi h-100"><div class="card-body">
+            <div class="small text-muted fw-semibold">Conformes</div>
+            <div class="valor">{{ comp.res_base.C }} <span class="seta text-muted">→</span> {{ comp.res_atual.C }}</div>
+            <div class="small fw-bold {% if comp.deltas.C > 0 %}text-success{% elif comp.deltas.C < 0 %}text-danger{% else %}text-muted{% endif %}">{% if comp.deltas.C > 0 %}▲ +{{ comp.deltas.C }}{% elif comp.deltas.C < 0 %}▼ {{ comp.deltas.C }}{% else %}= 0{% endif %}</div>
+        </div></div></div>
+    </div>
+
+    <!-- Gráfico da série -->
+    {% if serie|length > 1 %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body">
+        <h6 class="fw-bold mb-2"><i class="bi bi-bar-chart me-1"></i> Índice de conformidade por execução</h6>
+        <div id="grafico" class="w-100" style="overflow-x:auto;"></div>
+    </div></div>
+    {% endif %}
+
+    <!-- Por tópico -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="bi bi-diagram-3 me-1"></i> Evolução por tópico</h6>
+        <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Tópico / auditado(s)</th><th class="text-center">NC</th><th class="text-center">OM</th><th class="text-center">Conformes</th><th class="text-center">Itens</th></tr></thead>
+            <tbody>
+            {% for t in comp.topicos %}
+            <tr>
+                <td><strong>{{ t.topico|default:"Sem tópico" }}</strong>{% if t.auditados %}<div class="small text-muted"><i class="bi bi-person"></i> {{ t.auditados|join:", " }}</div>{% endif %}</td>
+                <td class="text-center">{{ t.antes.NC }} → <strong class="{% if t.depois.NC < t.antes.NC %}text-success{% elif t.depois.NC > t.antes.NC %}text-danger{% endif %}">{{ t.depois.NC }}</strong></td>
+                <td class="text-center">{{ t.antes.OM }} → <strong class="{% if t.depois.OM < t.antes.OM %}text-success{% elif t.depois.OM > t.antes.OM %}text-danger{% endif %}">{{ t.depois.OM }}</strong></td>
+                <td class="text-center">{{ t.antes.C }} → <strong class="{% if t.depois.C > t.antes.C %}text-success{% elif t.depois.C < t.antes.C %}text-danger{% endif %}">{{ t.depois.C }}</strong></td>
+                <td class="text-center">{{ t.antes.total }} → {{ t.depois.total }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+    </div></div>
+
+    <!-- Item a item -->
+    <div class="card border-0 shadow-sm rounded-4 mb-4"><div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="bi bi-list-check me-1"></i> Evolução item a item</h6>
+        <div class="d-flex flex-wrap gap-2 mb-3" id="chips">
+            <button class="btn btn-sm btn-dark chip-cat active" data-cat="">Todos <span class="badge bg-light text-dark ms-1">{{ comp.itens|length }}</span></button>
+            {% for cod, rotulo, cor, n in comp.categorias %}{% if n %}
+            <button class="btn btn-sm btn-outline-{% if cor == 'light' %}secondary{% else %}{{ cor }}{% endif %} chip-cat" data-cat="{{ cod }}">{{ rotulo }} <span class="badge text-bg-{{ cor }} ms-1">{{ n }}</span></button>
+            {% endif %}{% endfor %}
+        </div>
+        <div class="table-responsive"><table class="table align-middle tab-comp">
+            <thead><tr><th style="width:34%">Item</th><th style="width:25%">Execução {{ base.execucao }}</th><th style="width:25%">Execução {{ aud.execucao }}</th><th>Evolução</th></tr></thead>
+            <tbody>
+            {% for i in comp.itens %}
+            {% with ref=i.atual|default:i.base %}
+            <tr data-cat="{{ i.categoria }}">
+                <td><div class="fw-semibold">{{ ref.solicitacao|linebreaksbr }}</div>
+                    <div class="small text-muted">{% if ref.topico %}{{ ref.topico }}{% endif %}{% if ref.auditado %} · <i class="bi bi-person"></i> {{ ref.auditado }}{% endif %}</div></td>
+                <td>{% include "auditoria/partials/_livre_classe_badge.html" with linha=i.base %}{% if i.base.evidencia %}<div class="small text-secondary mt-1">{{ i.base.evidencia|linebreaksbr }}</div>{% endif %}</td>
+                <td>{% include "auditoria/partials/_livre_classe_badge.html" with linha=i.atual %}{% if i.atual.evidencia %}<div class="small text-secondary mt-1">{{ i.atual.evidencia|linebreaksbr }}</div>{% endif %}</td>
+                <td><span class="badge text-bg-{{ i.cor }} {% if i.cor == 'light' %}border{% endif %}">{{ i.rotulo }}</span></td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+            </tbody>
+        </table></div>
+    </div></div>
+    {% endif %}
+</div>
+
+{% if serie|length > 1 %}
+{{ serie_json|json_script:"dados-serie" }}
+{% endif %}
+<script>
+(() => {
+    // filtro por tipo de evolução
+    const chips = document.getElementById('chips');
+    if (chips) chips.addEventListener('click', e => {
+        const b = e.target.closest('.chip-cat'); if (!b) return;
+        chips.querySelectorAll('.chip-cat').forEach(x => x.classList.toggle('active', x === b));
+        document.querySelectorAll('tr[data-cat]').forEach(tr => tr.classList.toggle('d-none', !!b.dataset.cat && tr.dataset.cat !== b.dataset.cat));
+    });
+    // gráfico de barras (SVG) do índice de conformidade por execução
+    const alvo = document.getElementById('grafico'), dados = document.getElementById('dados-serie');
+    if (!alvo || !dados) return;
+    const serie = JSON.parse(dados.textContent);
+    const W = Math.max(420, serie.length * 120), H = 220, base = H - 40, topo = 24, larg = 54;
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Índice de conformidade por execução');
+    const add = (tag, attrs, texto) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (texto !== undefined) e.textContent = texto; svg.appendChild(e); return e; };
+    [0, 50, 100].forEach(v => { const y = base - (base - topo) * v / 100; add('line', { x1: 36, x2: W - 8, y1: y, y2: y, stroke: '#e2e8f0' }); add('text', { x: 30, y: y + 4, 'text-anchor': 'end', class: 'bar-label' }, v + '%'); });
+    serie.forEach((s, i) => {
+        const x = 60 + i * ((W - 80) / serie.length) + ((W - 80) / serie.length - larg) / 2;
+        const v = s.indice, h = v === null ? 0 : (base - topo) * v / 100;
+        add('rect', { x, y: base - h, width: larg, height: Math.max(h, v === null ? 0 : 2), rx: 6, fill: s.atual ? '#2563eb' : '#94a3b8' });
+        add('text', { x: x + larg / 2, y: base - h - 6, 'text-anchor': 'middle', class: 'bar-label', 'font-weight': 700 }, v === null ? 'sem dados' : String(v).replace('.', ',') + '%');
+        add('text', { x: x + larg / 2, y: base + 16, 'text-anchor': 'middle', class: 'bar-label' }, 'Exec. ' + s.execucao);
+        add('text', { x: x + larg / 2, y: base + 30, 'text-anchor': 'middle', class: 'bar-label' }, s.data + ' · NC ' + s.nc);
+    });
+    alvo.appendChild(svg);
+})();
+</script>
+{% endblock %}
