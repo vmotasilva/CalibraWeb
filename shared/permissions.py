@@ -1384,12 +1384,16 @@ NAV_STRUCTURE = [
                 "grupo": "Auditoria Livre",
                 "perm": "core.nav_auditoria_livre_bloco",
                 "funcoes": [
-                    {"nome": "Lista de Auditorias Livres", "view_name": "auditoria:livre_list", "perm": "core.nav_auditoria_livre_lista"},
                     {
-                        "nome": "Criar, Editar, Arquivar e Excluir Auditoria",
+                        "nome": "Lista de Auditorias Livres e Comparação de Execuções",
+                        "view_name": ["auditoria:livre_list", "auditoria:livre_comparar"],
+                        "perm": "core.nav_auditoria_livre_lista",
+                    },
+                    {
+                        "nome": "Criar, Editar, Arquivar, Excluir e Abrir Nova Execução",
                         "view_name": [
                             "auditoria:livre_create", "auditoria:livre_edit",
-                            "auditoria:livre_arquivar", "auditoria:livre_delete",
+                            "auditoria:livre_arquivar", "auditoria:livre_delete", "auditoria:livre_nova_execucao",
                         ],
                         "perm": "core.nav_auditoria_livre_gerenciar",
                     },
@@ -1417,8 +1421,11 @@ NAV_STRUCTURE = [
                         "perm": "core.nav_auditoria_livre_capa",
                     },
                     {
-                        "nome": "Exportar Relatórios (Excel/Word)",
-                        "view_name": ["auditoria:livre_export_excel", "auditoria:livre_export_docx"],
+                        "nome": "Exportar Relatórios (Excel/Word) e Comparativos",
+                        "view_name": [
+                            "auditoria:livre_export_excel", "auditoria:livre_export_docx",
+                            "auditoria:livre_comparar_excel", "auditoria:livre_comparar_docx",
+                        ],
                         "perm": "core.nav_auditoria_livre_export",
                     },
                 ],

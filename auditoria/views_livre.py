@@ -20,6 +20,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .models import AuditoriaLivre, ImagemSolicitacaoLivre, SolicitacaoLivre
+from .services.evolucao_livre import pode_criar_nova_execucao
 
 CLASSIFICACOES = dict(SolicitacaoLivre.CLASSIFICACAO_CHOICES)
 
@@ -59,6 +60,15 @@ def _grupo_qs(sol):
     return SolicitacaoLivre.objects.filter(Q(pk=raiz) | Q(pai_id=raiz))
 
 
+def _serialize_anterior(ant):
+    """Resultado do mesmo item na execução anterior, para o auditor ter de referência enquanto reavalia."""
+    return {
+        "conclusao": ant.conclusao,
+        "rotulo": ant.get_conclusao_display() + (f" ({ant.get_grau_nc_display()})" if ant.grau_nc else ""),
+        "evidencia": ant.evidencia,
+    }
+
+
 def _serialize(sol):
     return {
         "id": sol.id,
@@ -71,6 +81,7 @@ def _serialize(sol):
         "observacao": sol.observacao,
         "capa_status": sol.capa_status,
         "capa_status_display": sol.get_capa_status_display(),
+        "anterior": _serialize_anterior(sol.anterior) if sol.anterior_id else None,
         "imagens": [_serialize_imagem(i) for i in sol.imagens.all()],
     }
 
@@ -81,9 +92,11 @@ def _serialize(sol):
 def livre_list(request):
     mostrar_arquivadas = request.GET.get("arquivadas") == "1"
     total_arquivadas = AuditoriaLivre.objects.filter(arquivada=True).count()
-    auditorias = list(AuditoriaLivre.objects.filter(arquivada=mostrar_arquivadas))
+    auditorias = list(AuditoriaLivre.objects.filter(arquivada=mostrar_arquivadas).select_related("anterior"))
     for aud in auditorias:
         aud.res = aud.resumo()
+        aud.proxima = aud.proximas.order_by("id").first()
+        aud.pode_nova_execucao = pode_criar_nova_execucao(aud)[0]
     return render(request, "auditoria/livre_list.html", {
         "auditorias": auditorias,
         "mostrar_arquivadas": mostrar_arquivadas,
@@ -169,7 +182,7 @@ def livre_execucao(request, pk):
         aud.save(update_fields=["status", "atualizado_em"])
     # Agrupa os itens por solicitação, na ordem de criação (itens extras vêm logo após a original).
     grupos, por_raiz = [], {}
-    for s in aud.solicitacoes.prefetch_related(_imagens_prefetch()):
+    for s in aud.solicitacoes.select_related("anterior").prefetch_related(_imagens_prefetch()):
         raiz = _raiz_id(s)
         if raiz not in por_raiz:
             por_raiz[raiz] = {"topico": s.topico, "auditado": s.auditado, "solicitacao": s.solicitacao, "itens": []}
@@ -182,6 +195,8 @@ def livre_execucao(request, pk):
         "topicos": topicos,
         "classificacoes": SolicitacaoLivre.CLASSIFICACAO_CHOICES,
         "resumo": aud.resumo(),
+        "proxima": aud.proximas.order_by("id").first(),
+        "pode_nova_execucao": pode_criar_nova_execucao(aud)[0],
     })
 
 
@@ -430,6 +445,7 @@ def livre_export_excel(request, pk):
         ("Auditados", aud.auditados),
         ("Período", f"{aud.data_inicio:%d/%m/%Y}" + (f" a {aud.data_fim:%d/%m/%Y}" if aud.data_fim else "")),
         ("Status", aud.get_status_display()),
+        ("Execução", aud.execucao),
         ("", ""),
         ("Total de solicitações", resumo["total"]),
     ] + [(label, resumo[cod]) for cod, label in SolicitacaoLivre.CLASSIFICACAO_CHOICES] + [
