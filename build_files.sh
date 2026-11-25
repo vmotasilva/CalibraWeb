@@ -4,14 +4,21 @@ python3 -m pip install -r requirements.txt --break-system-packages
 
 # Preview que aponta para o banco de PRODUCAO nao pode alterar esse banco no build
 # (migrate, permissoes e superusuario). Use um banco proprio no Preview para migrar la.
+# Ambiente: VERCEL_ENV; se a Vercel nao expuser, deduz pela branch (VERCEL_GIT_COMMIT_REF).
+AMBIENTE="${VERCEL_ENV:-${VERCEL_TARGET_ENV:-}}"
+if [ -z "$AMBIENTE" ] && [ -n "$VERCEL_GIT_COMMIT_REF" ]; then
+    if [ "$VERCEL_GIT_COMMIT_REF" = "main" ]; then AMBIENTE="production"; else AMBIENTE="preview"; fi
+fi
+echo "==> [db-guard] ambiente do build: ${AMBIENTE:-desconhecido}"
 PULAR_BANCO=0
-if [ "$VERCEL_ENV" = "preview" ]; then
-    python3 scripts/db_compartilhado_com_producao.py
-    if [ $? -eq 0 ]; then
-        PULAR_BANCO=1
-        echo "==> AVISO: este preview usa o MESMO banco da producao. Migracoes, permissoes e superusuario foram PULADOS."
-        echo "==>        Configure um banco proprio em DATABASE_URL (ambiente Preview) para testar migracoes. Ver docs/DEPLOY_BANCO_PREVIEW.md"
-    fi
+python3 scripts/db_compartilhado_com_producao.py
+GUARD_RC=$?
+if [ "$AMBIENTE" = "preview" ] && [ $GUARD_RC -eq 0 ]; then
+    PULAR_BANCO=1
+    echo "==> AVISO: este preview usa o MESMO banco da producao. Migracoes, permissoes e superusuario foram PULADOS."
+    echo "==>        Configure um banco proprio em DATABASE_URL (ambiente Preview) para testar migracoes. Ver docs/DEPLOY_BANCO_PREVIEW.md"
+elif [ -z "$AMBIENTE" ] && [ $GUARD_RC -eq 0 ]; then
+    echo "==> AVISO: nao foi possivel identificar o ambiente do build; o banco coincide com o da producao e as migracoes seguem normalmente."
 fi
 
 # Run migrations (only if database environment variables are set)

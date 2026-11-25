@@ -17,6 +17,10 @@ Alterações que ainda não foram lançadas em uma versão oficial.
 - Movimentação em lote de pessoas entre postos, com ajuste opcional de turno; efetivo planejado x atual por turno
 - Novas permissões de navegação: visualizar e editar a estrutura
 - **Construção livre da estrutura**: criar Setor, Bloco e Posto de trabalho direto na tela (botões "+" em cada nível) e, em cada posto, alocar por turno **Colaborador**, **VAGO** (necessário contratar) ou **Reserva** (equipamento reserva instalado), em qualquer quantidade; o mesmo colaborador pode atuar em vários postos. Uma VAGO vira colaborador ao editar a alocação (contratação)
+- Estrutura de Equipes: **ordenação automática** por nome (sem diferenciar acento/maiúsculas e com números em ordem natural: DLP 2 antes de DLP 10); o campo "Ordem" saiu do formulário
+- Estrutura de Equipes: turnos limitados a Administrativo, Turno 01, 02 e 03 (12x36 removido desta tela; o cadastro de colaboradores não muda)
+- Estrutura de Equipes: **filtro por setor** (vale para a árvore, o Quadro por turno e a lista de colaboradores) e aba **Colaboradores** para filtrar, selecionar vários e alocá-los em um posto/turno; o Quadro por turno ganhou "+ alocar" em cada célula e edição direta dos itens
+- Build: o aviso/proteção de preview sobre o banco de produção agora deduz o ambiente pela branch quando a Vercel não informa `VERCEL_ENV` e registra um diagnóstico sem segredos
 - Correção: a tela ficava vazia para quem pode editar (modais do Bootstrap eram criados antes do script ser carregado)
 - **Importação por planilha (.xlsx)** da estrutura (bloco, posto e titular por turno), em duas etapas: prévia editável com revisão de nomes e escolha da pessoa em casos ambíguos, e gravação só após confirmar (tudo ou nada)
 

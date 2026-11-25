@@ -15,11 +15,11 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
-from core.models import TURNOS_CHOICES
 from organization.models import AlocacaoPosto, GrupoEquipe, Setor
 from rh.models import Colaborador
 from rh.services.estrutura_import import PlanilhaInvalida, ler_planilha, monta_previa, normaliza
 from rh.views.estrutura_equipes import (
+    TURNOS_ESTRUTURA,
     TURNOS_VALIDOS,
     _erro,
     _negado,
@@ -39,7 +39,7 @@ def estrutura_equipes_importar_view(request):
     return render(
         request,
         "rh/estrutura_equipes_importar.html",
-        {"setores": Setor.objects.order_by("nome"), "turnos": TURNOS_CHOICES},
+        {"setores": Setor.objects.order_by("nome"), "turnos": TURNOS_ESTRUTURA},
     )
 
 
@@ -175,17 +175,17 @@ def api_estrutura_equipes_importar_confirmar(request):
         with transaction.atomic():
             if setor is None:
                 setor, _ = Setor.objects.get_or_create(nome=setor_novo)
-            for ordem_b, (nome_b, postos) in enumerate(plano, start=1):
+            for nome_b, postos in plano:
                 bloco = GrupoEquipe.objects.filter(parent__isnull=True, setor=setor, nome__iexact=nome_b).first()
                 if bloco is None:
-                    bloco = GrupoEquipe(nome=nome_b, setor=setor, ordem=ordem_b)
+                    bloco = GrupoEquipe(nome=nome_b, setor=setor)
                     bloco.clean()
                     bloco.save()
                     r["blocos_criados"] += 1
-                for ordem_p, (nome_p, turnos) in enumerate(postos, start=1):
+                for nome_p, turnos in postos:
                     posto = bloco.subgrupos.filter(nome__iexact=nome_p).first()
                     if posto is None:
-                        posto = GrupoEquipe(nome=nome_p, parent=bloco, ordem=ordem_p)
+                        posto = GrupoEquipe(nome=nome_p, parent=bloco)
                         posto.clean()
                         posto.save()
                         r["postos_criados"] += 1

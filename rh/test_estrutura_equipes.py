@@ -129,7 +129,7 @@ class EstruturaEquipesTests(TestCase):
         self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": pid, "turno": "TURNO_1", "tipo": "PESSOA", "colaborador_ids": [c.id]})
         j = self.client.get(reverse("rh:api_estrutura_equipes_membros"), {"q": "maria"}).json()
         self.assertEqual([m["nome"] for m in j["membros"]], ["Maria Joaquina"])
-        self.assertEqual(j["membros"][0]["postos"], ["P"])
+        self.assertEqual(j["membros"][0]["postos"], ["Blocagem › P"])
 
     def test_excluir_bloco_so_sem_postos_e_posto_remove_alocacoes(self):
         bid = self.bloco("Bloco")
@@ -172,3 +172,77 @@ class MigracaoDadosAntigosTests(TestCase):
             migracao.copiar_dados_antigos(apps, None)
         rows = {(x.turno, x.tipo, x.colaborador_id) for x in AlocacaoPosto.objects.filter(posto=posto)}
         self.assertEqual(rows, {("TURNO_1", "PESSOA", a.id), ("TURNO_2", "VAGO", None), ("TURNO_3", "RESERVA", None), ("TURNO_2", "PESSOA", b.id)})
+
+
+class TurnosDaEstruturaTests(TestCase):
+    def setUp(self):
+        self.client.force_login(User.objects.create_superuser("adm2", "b@b.com", "x"))
+
+    def post(self, name, payload):
+        return self.client.post(reverse(f"rh:{name}"), json.dumps(payload), content_type="application/json")
+
+    def test_somente_administrativo_e_turnos_1_a_3(self):
+        d = self.client.get(reverse("rh:api_estrutura_equipes_dados")).json()
+        self.assertEqual([(t["codigo"], t["nome"]) for t in d["turnos"]], [("ADM", "Administrativo"), ("TURNO_1", "Turno 01"), ("TURNO_2", "Turno 02"), ("TURNO_3", "Turno 03")])
+        self.assertNotIn("12X36", [t["codigo"] for t in d["turnos"]])
+        self.assertEqual(d["turno_labels"]["12X36"], "12x36")  # só para exibir o turno do cadastro
+        r = self.client.get(reverse("rh:estrutura_equipes"))
+        self.assertNotContains(r, "12x36")
+
+    def test_12x36_nao_aceita_alocacao(self):
+        sid = self.post("api_estrutura_equipes_setor_criar", {"nome": "S"}).json()["id"]
+        bid = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": sid}).json()["id"]
+        pid = self.post("api_estrutura_equipes_salvar", {"nome": "P", "parent_id": bid}).json()["id"]
+        for turno in ("12X36", "12x36"):
+            self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": pid, "turno": turno, "tipo": "VAGO"}).status_code, 400)
+        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": pid, "turno": "ADM", "tipo": "VAGO"}).status_code, 200)
+        a = AlocacaoPosto.objects.get(posto_id=pid)
+        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_atualizar", {"id": a.id, "turno": "12X36"}).status_code, 400)
+
+    def test_editar_sem_informar_ordem_nao_zera(self):
+        sid = self.post("api_estrutura_equipes_setor_criar", {"nome": "S"}).json()["id"]
+        bid = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": sid, "ordem": 7}).json()["id"]
+        self.post("api_estrutura_equipes_salvar", {"id": bid, "nome": "B2", "setor_id": sid})
+        self.assertEqual(GrupoEquipe.objects.get(pk=bid).ordem, 7)
+
+
+class ColaboradoresNaTelaTests(TestCase):
+    def setUp(self):
+        self.client.force_login(User.objects.create_superuser("adm3", "c@c.com", "x"))
+        self.s1 = Setor.objects.create(nome="Laboratório")
+        self.s2 = Setor.objects.create(nome="Qualidade")
+
+    def post(self, name, payload):
+        return self.client.post(reverse(f"rh:{name}"), json.dumps(payload), content_type="application/json")
+
+    def colab(self, mat, nome, setor, turno="TURNO_1"):
+        return Colaborador.objects.create(matricula=mat, nome_completo=nome, grupo="M", setor=setor, turno=turno)
+
+    def test_filtros_de_setor_e_sem_posto_e_limite(self):
+        a = self.colab("1", "Ana Lab", self.s1)
+        b = self.colab("2", "Bia Lab", self.s1, "12X36")
+        c = self.colab("3", "Caio Qual", self.s2)
+        bloco = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": self.s1.id}).json()["id"]
+        posto = self.post("api_estrutura_equipes_salvar", {"nome": "P", "parent_id": bloco}).json()["id"]
+        self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": posto, "turno": "TURNO_1", "tipo": "PESSOA", "colaborador_ids": [a.id]})
+        url = reverse("rh:api_estrutura_equipes_membros")
+        nomes = lambda **p: [m["nome"] for m in self.client.get(url, p).json()["membros"]]
+        self.assertEqual(nomes(setor_id=self.s1.id), ["Ana Lab", "Bia Lab"])
+        self.assertEqual(nomes(setor_id=self.s2.id), ["Caio Qual"])
+        self.assertEqual(nomes(setor_id=self.s1.id, sem_posto="1"), ["Bia Lab"])
+        self.assertEqual(nomes(turno="12X36"), ["Bia Lab"])  # o cadastro pode ter 12x36; só a estrutura não usa
+        j = self.client.get(url, {"limite": 1}).json()
+        self.assertEqual((len(j["membros"]), j["total"], j["truncado"]), (1, 3, True))
+        j = self.client.get(url, {"setor_id": self.s1.id}).json()
+        ana = next(m for m in j["membros"] if m["nome"] == "Ana Lab")
+        self.assertEqual(ana["postos"], ["B › P"])
+        self.assertEqual(self.client.get(url, {"setor_id": "abc"}).status_code, 400)
+        self.assertEqual(self.client.get(url, {"limite": "9999"}).status_code, 200)  # limitado a 200, não falha
+
+    def test_alocar_varios_de_uma_vez(self):
+        cs = [self.colab(str(i), f"Pessoa {i}", self.s1) for i in range(5)]
+        bloco = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": self.s1.id}).json()["id"]
+        posto = self.post("api_estrutura_equipes_salvar", {"nome": "P", "parent_id": bloco}).json()["id"]
+        r = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": posto, "turno": "TURNO_2", "tipo": "PESSOA", "colaborador_ids": [c.id for c in cs]})
+        self.assertEqual(r.json()["criadas"], 5)
+        self.assertEqual(AlocacaoPosto.objects.filter(posto_id=posto, turno="TURNO_2").count(), 5)

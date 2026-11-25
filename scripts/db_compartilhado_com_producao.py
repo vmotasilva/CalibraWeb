@@ -6,7 +6,7 @@ Saida 0 = o banco ATUAL e o da producao (compartilhado); 1 = e um banco diferent
 2 = nao foi possivel comparar (sem URL de banco).
 
 Compara host (sem o sufixo "-pooler") e nome do banco, ignorando usuario e senha.
-Nenhuma URL e impressa, para nao vazar segredos nos logs.
+Nenhuma URL e impressa (so impressoes digitais curtas), para nao vazar segredos nos logs.
 """
 import os
 import sys
@@ -34,6 +34,30 @@ def identidade(url):
     return (host, banco) if host and banco else None
 
 
+def _marca(valor):
+    """Impressão digital curta (não reversível) só para comparar nos logs; nunca a URL."""
+    import hashlib
+
+    return hashlib.sha256(str(valor).encode()).hexdigest()[:6]
+
+
+def diagnostico(env=os.environ):
+    """Linha de log sem segredos: quais variáveis existem e se host/banco coincidem."""
+    atual_var = next((v for v in VARS_ATUAIS if env.get(v)), None)
+    atual = identidade(env[atual_var]) if atual_var else None
+    prod = {v: identidade(env[v]) for v in VARS_PRODUCAO if env.get(v)}
+    partes = [
+        f"atual={atual_var or 'ausente'}",
+        f"host#{_marca(atual[0]) if atual else '-'}",
+        f"db#{_marca(atual[1]) if atual else '-'}",
+    ]
+    for nome, ident in prod.items():
+        partes.append(f"{nome}=host#{_marca(ident[0]) if ident else '-'}/db#{_marca(ident[1]) if ident else '-'}")
+    if not prod:
+        partes.append("STORAGE_*=ausentes")
+    return " ".join(partes)
+
+
 def main(env=os.environ):
     atual = next((env[v] for v in VARS_ATUAIS if env.get(v)), None)
     if not atual:
@@ -46,4 +70,5 @@ def main(env=os.environ):
 
 
 if __name__ == "__main__":
+    print("[db-guard]", diagnostico())
     sys.exit(main())
