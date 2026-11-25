@@ -3136,8 +3136,15 @@ def registro_delete(request, pk):
 
 @login_required
 def dashboard_auditoria(request):
-    inicio = request.GET.get("inicio")
-    fim = request.GET.get("fim")
+    def _data_valida(valor):
+        """Filtro de data só vale se for AAAA-MM-DD; texto inválido é ignorado (antes quebrava com erro 500)."""
+        try:
+            return valor if valor and dt_date.fromisoformat(valor.strip()) else None
+        except ValueError:
+            return None
+
+    inicio = _data_valida(request.GET.get("inicio"))
+    fim = _data_valida(request.GET.get("fim"))
     modelo_id = request.GET.get("modelo")
     responsavel_id = request.GET.get("responsavel")
 
@@ -3230,6 +3237,10 @@ def dashboard_auditoria(request):
         "responsaveis": responsaveis,
         "responsavel_selecionado": responsavel_selecionado,
     }
+    # Evolução das Auditorias Livres: só para quem tem acesso a elas (o filtro de datas vale; modelo/responsável não se aplicam)
+    if has_view_access(request.user, "auditoria:livre_list"):
+        from .services.evolucao_livre import dados_dashboard
+        context["livre"] = dados_dashboard(inicio, fim)
     return render(request, "auditoria/dashboard_auditoria.html", context)
 
 

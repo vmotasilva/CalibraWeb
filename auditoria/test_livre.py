@@ -1227,3 +1227,105 @@ class AuditoriaLivreExecucoesTests(TestCase):
         self.client.logout()
         for nome in esperado:
             self.assertEqual(self.client.post(reverse(f"auditoria:{nome}", args=[self.aud.pk])).status_code, 302, nome)
+
+
+class AuditoriaLivreDashboardTests(TestCase):
+    """Gráficos de evolução da Auditoria Livre no Dashboard Auditoria."""
+
+    def setUp(self):
+        self.admin = get_user_model().objects.create_superuser("dash", "dash@example.com", "x")
+        self.client.force_login(self.admin)
+        self.url = reverse("auditoria:dashboard")
+
+    def _aud(self, titulo, data, status="CONCLUIDA", anterior=None, execucao=1, **itens):
+        aud = AuditoriaLivre.objects.create(titulo=titulo, data_inicio=data, status=status,
+                                            anterior=anterior, execucao=execucao)
+        for cod, n in itens.items():
+            for k in range(n):
+                SolicitacaoLivre.objects.create(auditoria=aud, solicitacao=f"{cod}{k}", conclusao=cod, ordem=k + 1)
+        return aud
+
+    def _serie_pcp(self):
+        e1 = self._aud("PCP - HMC", date(2026, 11, 1), C=1, NC=1, OM=2)            # índice 25,0
+        e2 = self._aud("PCP - HMC", date(2026, 11, 15), anterior=e1, execucao=2, C=3, NC=1)  # 75,0
+        e3 = self._aud("PCP - HMC", date(2026, 12, 1), anterior=e2, execucao=3, C=4, P=1)    # 100,0
+        return e1, e2, e3
+
+    def test_service_builds_one_series_per_audit_with_indexes(self):
+        from .services.evolucao_livre import dados_dashboard
+        e1, e2, e3 = self._serie_pcp()
+        unica = self._aud("Recebimento", date(2026, 11, 5), C=2, NC=2)             # 50,0
+        d = dados_dashboard()
+        self.assertEqual([s["titulo"] for s in d["series"]], ["PCP - HMC", "Recebimento"])
+        pcp = d["series"][0]
+        self.assertEqual([e["execucao"] for e in pcp["execucoes"]], [1, 2, 3])
+        self.assertEqual([e["indice"] for e in pcp["execucoes"]], [25.0, 75.0, 100.0])
+        self.assertEqual([e["NC"] for e in pcp["execucoes"]], [1, 1, 0])
+        self.assertEqual((pcp["execucoes"][0]["data"], pcp["ultima_id"], pcp["variacao"]), ("01/11/2026", e3.pk, 75.0))
+        self.assertIsNone(d["series"][1]["variacao"])  # uma execução só: sem evolução
+        self.assertEqual(d["kpis"], {"auditorias": 2, "execucoes": 4, "com_evolucao": 1,
+                                     "indice_medio": 75.0, "variacao_media": 75.0, "nc_abertas": 2})
+
+    def test_service_filters_by_date_ignores_invalid_and_excludes_archived(self):
+        from .services.evolucao_livre import dados_dashboard
+        e1, e2, e3 = self._serie_pcp()
+        d = dados_dashboard("2026-11-10", "2026-11-30")  # só a 2ª execução cai no período
+        self.assertEqual([e["execucao"] for e in d["series"][0]["execucoes"]], [2])
+        self.assertIsNone(d["series"][0]["variacao"])
+        self.assertEqual(dados_dashboard("2027-01-01")["series"], [])
+        self.assertEqual(len(dados_dashboard("não é data", "")["series"][0]["execucoes"]), 3)  # inválido: sem filtro
+        e1.arquivada = True  # a 1ª arquivada: a 2ª passa a abrir a série, sem quebrar nada
+        e1.save()
+        self.assertEqual([e["execucao"] for e in dados_dashboard()["series"][0]["execucoes"]], [2, 3])
+        for e in (e2, e3):
+            e.arquivada = True
+            e.save()
+        self.assertEqual(dados_dashboard()["series"], [])
+        self.assertEqual(dados_dashboard()["kpis"]["indice_medio"], None)
+
+    def test_dashboard_shows_charts_and_table(self):
+        self._serie_pcp()
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "Auditoria Livre — Evolução")
+        self.assertContains(r, 'id="chartLivreIndice"')
+        self.assertContains(r, 'id="chartLivreComposicao"')
+        self.assertContains(r, 'id="livre-series"')
+        self.assertContains(r, "PCP - HMC")
+        self.assertContains(r, "▲ +75,0 p.p.")  # número em pt-BR
+        self.assertContains(r, reverse("auditoria:livre_comparar", args=[r.context["livre"]["series"][0]["ultima_id"]]))
+        self.assertEqual(r.context["livre"]["kpis"]["com_evolucao"], 1)
+
+    def test_dashboard_date_filter_applies_to_livre_section(self):
+        self._serie_pcp()
+        r = self.client.get(self.url, {"inicio": "2026-12-01", "fim": "2026-12-31"})
+        self.assertEqual([e["execucao"] for e in r.context["livre"]["series"][0]["execucoes"]], [3])
+        self.assertEqual(self.client.get(self.url, {"inicio": "lixo"}).status_code, 200)
+
+    def test_dashboard_without_livre_data_shows_empty_message(self):
+        r = self.client.get(self.url)
+        self.assertContains(r, "Auditoria Livre — Evolução")
+        self.assertContains(r, "Nenhuma auditoria livre no período")
+        self.assertNotContains(r, 'id="chartLivreIndice"')
+
+    def test_section_only_for_users_with_livre_access(self):
+        from django.contrib.auth.models import Permission
+        self._serie_pcp()
+        base = ["nav_mod_auditoria", "nav_auditoria_analise", "nav_auditoria_dashboard"]
+
+        def usuario(nome, extras):
+            u = get_user_model().objects.create_user(nome, password="x")
+            for cod in base + extras:
+                u.user_permissions.add(Permission.objects.get(content_type__app_label="core", codename=cod))
+            return u
+
+        sem = usuario("semlivre", [])
+        self.client.force_login(sem)
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 200)
+        self.assertNotContains(r, "Auditoria Livre — Evolução")  # dados da Livre não vazam sem permissão
+        self.assertNotContains(r, "PCP - HMC")
+        self.assertIsNone(r.context.get("livre"))
+        com = usuario("comlivre", ["nav_auditoria_livre_grupo", "nav_auditoria_livre_bloco", "nav_auditoria_livre_lista"])
+        self.client.force_login(com)
+        self.assertContains(self.client.get(self.url), "Auditoria Livre — Evolução")
