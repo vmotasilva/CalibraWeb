@@ -1826,6 +1826,17 @@ class AuditoriaLivre(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PLANEJADA")
     conclusao_texto = models.TextField(blank=True, default="", verbose_name="Conclusão / Parecer Final")
     arquivada = models.BooleanField(default=False)
+    # Execuções: uma auditoria concluída pode gerar uma nova execução (novo ciclo, dados novos), que fica
+    # ligada à anterior para comparar a evolução. Só uma execução segue a outra (série linear).
+    anterior = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.SET_NULL, related_name="proximas",
+        verbose_name="Execução anterior",
+    )
+    execucao = models.PositiveIntegerField(default=1, verbose_name="Nº da execução")
+    somente_pendencias = models.BooleanField(
+        default=False,
+        help_text="Esta execução reavalia apenas o que estava NC, OM ou pendente na anterior.",
+    )
     criado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
         related_name="auditorias_livres_criadas",
@@ -1840,6 +1851,18 @@ class AuditoriaLivre(models.Model):
 
     def __str__(self):
         return f"{self.titulo} ({self.data_inicio:%d/%m/%Y})"
+
+    def cadeia(self):
+        """Todas as execuções da série (da primeira à última), incluindo esta."""
+        raiz, vistos = self, set()
+        while raiz.anterior_id and raiz.pk not in vistos:
+            vistos.add(raiz.pk)
+            raiz = raiz.anterior
+        serie, atual = [], raiz
+        while atual and atual.pk not in {a.pk for a in serie}:
+            serie.append(atual)
+            atual = atual.proximas.order_by("id").first()
+        return serie
 
     def resumo(self):
         """Contagem de solicitações por classificação."""
@@ -1869,6 +1892,8 @@ class SolicitacaoLivre(models.Model):
     # uma linha completa (fotos, plano de ação…); os itens extras apontam para a linha original em `pai`
     # e repetem o texto/tópico dela (mantidos em sincronia pela API).
     pai = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE, related_name="itens_extras")
+    # Item correspondente na execução anterior da auditoria (permite comparar a evolução item a item).
+    anterior = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL, related_name="seguintes")
     topico = models.CharField(
         max_length=255, blank=True, default="",
         verbose_name="Tópico / Área / Requisito",

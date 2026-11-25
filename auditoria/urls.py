@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import apresentacao, views, views_livre, views_livre_capa
+from . import apresentacao, views, views_livre, views_livre_capa, views_livre_evolucao
 from shared.views import auditoria_hub_view
 
 app_name = "auditoria"
@@ -76,6 +76,10 @@ urlpatterns = [
     path("livre/<int:pk>/concluir/", views_livre.livre_toggle_conclusao, name="livre_toggle_conclusao"),
     path("livre/<int:pk>/arquivar/", views_livre.livre_arquivar, name="livre_arquivar"),
     path("livre/<int:pk>/excluir/", views_livre.livre_delete, name="livre_delete"),
+    path("livre/<int:pk>/nova-execucao/", views_livre_evolucao.livre_nova_execucao, name="livre_nova_execucao"),
+    path("livre/<int:pk>/comparar/", views_livre_evolucao.livre_comparar, name="livre_comparar"),
+    path("livre/<int:pk>/comparar/excel/", views_livre_evolucao.livre_comparar_excel, name="livre_comparar_excel"),
+    path("livre/<int:pk>/comparar/docx/", views_livre_evolucao.livre_comparar_docx, name="livre_comparar_docx"),
     path("livre/<int:pk>/exportar-excel/", views_livre.livre_export_excel, name="livre_export_excel"),
     path("livre/<int:pk>/exportar-docx/", views_livre.livre_export_docx, name="livre_export_docx"),
     path("livre/<int:pk>/api/solicitacoes/criar/", views_livre.api_livre_sol_create, name="api_livre_sol_create"),

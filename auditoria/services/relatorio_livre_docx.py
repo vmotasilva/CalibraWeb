@@ -247,6 +247,7 @@ def gerar_relatorio_livre_docx(auditoria, solicitacoes, agrupar="classificacao")
         ("Auditores", _texto(auditores)),
         ("Auditados / Entrevistados", _texto(auditoria.auditados)),
         ("Situação", auditoria.get_status_display()),
+        ("Execução", str(auditoria.execucao)),
     ])
 
     contagem = {c: 0 for c, _ in GRUPOS}

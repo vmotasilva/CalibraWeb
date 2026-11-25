@@ -961,3 +961,269 @@ class AuditoriaLivreSecaoPropriaTests(TestCase):
         self.assertIn("Auditoria Livre", titulos)
         busca = {f["view_name"] for f in SYSTEM_FEATURES_CATALOG}
         self.assertTrue({"auditoria:livre_list", "auditoria:livre_create"} <= busca)
+
+
+class AuditoriaLivreExecucoesTests(TestCase):
+    """Nova execução a partir de uma auditoria concluída e comparação da evolução."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser("aud8", "aud8@example.com", "x")
+        self.client.force_login(self.user)
+        self.aud = AuditoriaLivre.objects.create(
+            titulo="PCP - HMC", objetivo="Verificar PCP", escopo="HMC", criterio="PRO-1", local="HMC",
+            auditor_lider="Maria", auditados="João", data_inicio=date(2026, 11, 20), data_fim=date(2026, 11, 21),
+            status="CONCLUIDA", conclusao_texto="Parecer da 1ª execução")
+        self.aud.auditores.add(self.user)
+        mk = lambda **kw: SolicitacaoLivre.objects.create(auditoria=self.aud, **kw)
+        # solicitação 1 com três itens: PRA 03 conforme, VFTOrbit 03 OM, DLP 04 NC
+        self.r1 = mk(solicitacao="Quais máquinas?", topico="Máquinas", auditado="João", ordem=1, evidencia="PRA 03", conclusao="C")
+        self.r1b = mk(solicitacao="Quais máquinas?", topico="Máquinas", auditado="João", ordem=1, pai=self.r1,
+                      evidencia="VFTOrbit 03", conclusao="OM")
+        self.r1c = mk(solicitacao="Quais máquinas?", topico="Máquinas", auditado="João", ordem=1, pai=self.r1,
+                      evidencia="DLP 04", conclusao="NC", grau_nc="MAIOR", capa_status="APROVADO", capa_causa_raiz="x")
+        self.r2 = mk(solicitacao="Registros", topico="Pessoas", auditado="Maria", ordem=2, evidencia="ok", conclusao="C")
+        self.r3 = mk(solicitacao="Treinamento", topico="Pessoas", auditado="Maria", ordem=3, evidencia="falta", conclusao="NC")
+
+    def _nova(self, aud=None, pendencias=False):
+        aud = aud or self.aud
+        r = self.client.post(reverse("auditoria:livre_nova_execucao", args=[aud.pk]),
+                             {"somente_pendencias": "1"} if pendencias else {})
+        return r, AuditoriaLivre.objects.filter(anterior=aud).order_by("-id").first()
+
+    def _linha(self, nova, anterior):
+        return SolicitacaoLivre.objects.get(auditoria=nova, anterior=anterior)
+
+    def _set(self, nova, anterior, conclusao, **kw):
+        SolicitacaoLivre.objects.filter(auditoria=nova, anterior=anterior).update(conclusao=conclusao, **kw)
+
+    # ------------------------------------------------------------------ criar
+    def test_new_execution_copies_structure_with_clean_data(self):
+        r, nova = self._nova()
+        self.assertRedirects(r, reverse("auditoria:livre_execucao", args=[nova.pk]))
+        self.assertEqual((nova.execucao, nova.anterior_id, nova.status, nova.somente_pendencias), (2, self.aud.pk, "PLANEJADA", False))
+        self.assertEqual((nova.titulo, nova.objetivo, nova.escopo, nova.criterio, nova.local, nova.auditor_lider, nova.auditados),
+                         ("PCP - HMC", "Verificar PCP", "HMC", "PRO-1", "HMC", "Maria", "João"))
+        self.assertEqual(list(nova.auditores.all()), [self.user])
+        self.assertEqual((nova.data_inicio, nova.data_fim, nova.conclusao_texto), (date.today(), None, ""))
+        linhas = list(nova.solicitacoes.order_by("ordem", "id"))
+        self.assertEqual(len(linhas), 5)
+        for l in linhas:
+            self.assertEqual((l.evidencia, l.conclusao, l.grau_nc, l.observacao, l.capa_status, l.capa_causa_raiz),
+                             ("", "P", None, "", "PENDENTE", ""))
+            self.assertEqual(l.imagens.count(), 0)
+        # estrutura: a solicitação com 3 itens continua com 3 itens ligados à mesma linha original
+        p1 = self._linha(nova, self.r1)
+        self.assertIsNone(p1.pai_id)
+        self.assertEqual(self._linha(nova, self.r1b).pai_id, p1.pk)
+        self.assertEqual(self._linha(nova, self.r1c).pai_id, p1.pk)
+        self.assertEqual((p1.topico, p1.auditado, p1.solicitacao, p1.ordem), ("Máquinas", "João", "Quais máquinas?", 1))
+        self.assertEqual([self._linha(nova, x).ordem for x in (self.r1, self.r2, self.r3)], [1, 2, 3])
+        # a execução original não muda
+        self.aud.refresh_from_db()
+        self.assertEqual((self.aud.status, self.aud.conclusao_texto), ("CONCLUIDA", "Parecer da 1ª execução"))
+        self.assertEqual(self.r1c.__class__.objects.get(pk=self.r1c.pk).conclusao, "NC")
+
+    def test_only_concluded_and_only_one_successor(self):
+        self.aud.status = "EM_ANDAMENTO"
+        self.aud.save()
+        r, nova = self._nova()
+        self.assertIsNone(nova)
+        self.assertEqual(AuditoriaLivre.objects.count(), 1)
+        self.aud.status = "CONCLUIDA"
+        self.aud.save()
+        _, nova = self._nova()
+        self.assertIsNotNone(nova)
+        r, outra = self._nova()  # já existe a próxima
+        self.assertEqual(AuditoriaLivre.objects.count(), 2)
+        self.assertRedirects(r, reverse("auditoria:livre_execucao", args=[nova.pk]))
+        self.assertEqual(self.client.get(reverse("auditoria:livre_nova_execucao", args=[self.aud.pk])).status_code, 405)
+
+    def test_only_pendencias_keeps_open_items_and_promotes_a_root(self):
+        r, nova = self._nova(pendencias=True)
+        self.assertTrue(nova.somente_pendencias)
+        anteriores = set(nova.solicitacoes.values_list("anterior_id", flat=True))
+        self.assertEqual(anteriores, {self.r1b.pk, self.r1c.pk, self.r3.pk})  # conformes não entram
+        # a linha original (conforme) ficou de fora: o primeiro item que entrou virou a original
+        raiz = self._linha(nova, self.r1b)
+        self.assertIsNone(raiz.pai_id)
+        self.assertEqual(self._linha(nova, self.r1c).pai_id, raiz.pk)
+        self.assertEqual([self._linha(nova, x).ordem for x in (self.r1b, self.r3)], [1, 2])
+
+    def test_execution_page_shows_previous_result_per_item(self):
+        _, nova = self._nova()
+        r = self.client.get(reverse("auditoria:livre_execucao", args=[nova.pk]))
+        self.assertContains(r, "Execução 2")
+        itens = {i["id"]: i for g in r.context["grupos_json"] for i in g["itens"]}
+        ant = itens[self._linha(nova, self.r1c).pk]["anterior"]
+        self.assertEqual((ant["conclusao"], ant["rotulo"], ant["evidencia"]), ("NC", "Não Conformidade (NC Maior)", "DLP 04"))
+        self.assertContains(self.client.get(reverse("auditoria:livre_list")), "Execução 2")
+        # na lista: a execução 1 oferece ir para a 2; a 2 oferece a evolução
+        html = self.client.get(reverse("auditoria:livre_list")).content.decode()
+        self.assertIn(reverse("auditoria:livre_comparar", args=[nova.pk]), html)
+        self.assertIn(reverse("auditoria:livre_execucao", args=[nova.pk]), html)
+
+    def test_new_execution_button_only_for_concluded_without_next(self):
+        html = self.client.get(reverse("auditoria:livre_list")).content.decode()
+        self.assertIn(reverse("auditoria:livre_nova_execucao", args=[self.aud.pk]), html)
+        self.assertIn("Nova execução", self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])).content.decode())
+        self._nova()
+        self.assertNotIn(reverse("auditoria:livre_nova_execucao", args=[self.aud.pk]),
+                         self.client.get(reverse("auditoria:livre_list")).content.decode())
+
+    # --------------------------------------------------------------- comparar
+    def _segunda_execucao(self):
+        """Resultados da 2ª execução cobrindo todas as categorias de evolução."""
+        _, nova = self._nova()
+        self._set(nova, self.r1, "C", evidencia="PRA 03 ok")            # C  -> C   Mantido
+        self._set(nova, self.r1b, "C", evidencia="corrigido")           # OM -> C   Resolvido
+        self._set(nova, self.r1c, "OM", evidencia="melhorou")           # NC -> OM  Melhorou
+        self._set(nova, self.r2, "NC", evidencia="piorou")              # C  -> NC  Piorou
+        self._set(nova, self.r3, "NC", evidencia="continua")            # NC -> NC  Persiste
+        novo = SolicitacaoLivre.objects.create(auditoria=nova, solicitacao="Extra", ordem=9, conclusao="C")      # Novo
+        pend = SolicitacaoLivre.objects.create(auditoria=nova, solicitacao="Falta", ordem=10, conclusao="P", anterior=None)
+        return nova, novo, pend
+
+    def test_service_classifies_every_category_and_counts(self):
+        from .services.evolucao_livre import comparar
+        nova, novo, _ = self._segunda_execucao()
+        comp = comparar(nova, self.aud)
+        cat = {(i["base"].pk if i["base"] else None, i["atual"].solicitacao if i["atual"] else None): i["categoria"] for i in comp["itens"]}
+        self.assertEqual(cat[(self.r1.pk, "Quais máquinas?")], "MANTIDO")
+        self.assertEqual(cat[(self.r1b.pk, "Quais máquinas?")], "RESOLVIDO")
+        self.assertEqual(cat[(self.r1c.pk, "Quais máquinas?")], "MELHOROU")
+        self.assertEqual(cat[(self.r2.pk, "Registros")], "PIOROU")
+        self.assertEqual(cat[(self.r3.pk, "Treinamento")], "PERSISTE")
+        self.assertEqual(cat[(None, "Extra")], "NOVO")
+        self.assertEqual(cat[(None, "Falta")], "NOVO")
+        self.assertEqual(comp["contagem"]["NOVO"], 2)
+        # contagens e índice: antes C2 NC2 OM1 -> índice 40; depois C3 NC2 OM1 P1 -> 50
+        self.assertEqual((comp["res_base"]["C"], comp["res_base"]["NC"], comp["res_base"]["OM"], comp["res_base"]["indice"]), (2, 2, 1, 40.0))
+        self.assertEqual((comp["res_atual"]["C"], comp["res_atual"]["NC"], comp["res_atual"]["OM"], comp["res_atual"]["indice"]), (3, 2, 1, 50.0))
+        self.assertEqual((comp["deltas"]["C"], comp["deltas"]["NC"], comp["deltas"]["total"], comp["deltas"]["indice"]), (1, 0, 2, 10.0))
+        # piores primeiro; nomes de tópicos e auditados
+        self.assertEqual(comp["itens"][0]["categoria"], "PIOROU")
+        pessoas = next(t for t in comp["topicos"] if t["topico"] == "Pessoas")
+        self.assertEqual((pessoas["antes"]["NC"], pessoas["depois"]["NC"], pessoas["auditados"]), (1, 2, ["Maria"]))
+        self.assertEqual(comp["topicos"][-1]["topico"], "")  # "sem tópico" por último
+
+    def test_pending_removed_and_not_reevaluated(self):
+        from .services.evolucao_livre import comparar
+        _, nova = self._nova()  # todos pendentes
+        comp = comparar(nova, self.aud)
+        self.assertEqual({i["categoria"] for i in comp["itens"]}, {"PENDENTE"})
+        self.assertIsNone(comp["res_atual"]["indice"])
+        self.assertIsNone(comp["deltas"]["indice"])
+        SolicitacaoLivre.objects.filter(auditoria=nova, anterior=self.r3).delete()  # item removido da nova execução
+        self.assertEqual(comparar(nova, self.aud)["contagem"]["REMOVIDO"], 1)
+        # execução só pendências: o que estava conforme é "não reavaliado", não "removido"
+        self.aud.proximas.all().delete()
+        _, so = self._nova(pendencias=True)
+        c = comparar(so, self.aud)["contagem"]
+        self.assertEqual((c["NAO_REAVALIADO"], c["REMOVIDO"]), (2, 0))  # PRA 03 e "Registros"
+
+    def test_comparing_non_adjacent_executions_follows_the_chain(self):
+        from .services.evolucao_livre import comparar
+        nova, _, _ = self._segunda_execucao()
+        nova.status = "CONCLUIDA"
+        nova.save()
+        _, terceira = self._nova(nova)
+        self.assertEqual(terceira.execucao, 3)
+        self.assertEqual([a.execucao for a in terceira.cadeia()], [1, 2, 3])
+        self.assertEqual([a.execucao for a in self.aud.cadeia()], [1, 2, 3])
+        self._set(terceira, self._linha(nova, self.r3), "C", evidencia="resolvido")  # r3 ficou NC -> C na 3ª
+        comp = comparar(terceira, self.aud)  # 3ª contra a 1ª, passando pela 2ª
+        item = next(i for i in comp["itens"] if i["base"] and i["base"].pk == self.r3.pk)
+        self.assertEqual((item["categoria"], item["atual"].conclusao), ("RESOLVIDO", "C"))
+        from .services.evolucao_livre import ExecucaoInvalida
+        with self.assertRaises(ExecucaoInvalida):
+            comparar(self.aud, terceira)  # só se compara com uma execução anterior
+
+    def test_compare_view_and_selector(self):
+        nova, _, _ = self._segunda_execucao()
+        r = self.client.get(reverse("auditoria:livre_comparar", args=[nova.pk]))
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.context["base"], self.aud)
+        self.assertContains(r, "Evolução item a item")
+        self.assertContains(r, "Piorou")
+        self.assertContains(r, "Resolvido")
+        self.assertContains(r, 'id="grafico"')
+        # primeira execução: mensagem + atalho para a próxima
+        r = self.client.get(reverse("auditoria:livre_comparar", args=[self.aud.pk]))
+        self.assertIsNone(r.context["comp"])
+        self.assertContains(r, "primeira execução")
+        self.assertContains(r, reverse("auditoria:livre_comparar", args=[nova.pk]))
+        # ?com= de outra série/inválido é ignorado
+        outra = AuditoriaLivre.objects.create(titulo="Outra", data_inicio=date(2026, 1, 1))
+        for com in (outra.pk, "abc", nova.pk):
+            r = self.client.get(reverse("auditoria:livre_comparar", args=[nova.pk]), {"com": com})
+            self.assertEqual(r.context["base"], self.aud)
+
+    def test_deleting_previous_execution_does_not_break_the_next(self):
+        nova, _, _ = self._segunda_execucao()
+        self.aud.arquivada = True
+        self.aud.save()
+        self.client.post(reverse("auditoria:livre_delete", args=[self.aud.pk]))
+        nova.refresh_from_db()
+        self.assertIsNone(nova.anterior_id)
+        self.assertEqual(self.client.get(reverse("auditoria:livre_execucao", args=[nova.pk])).status_code, 200)
+        self.assertIsNone(self.client.get(reverse("auditoria:livre_comparar", args=[nova.pk])).context["comp"])
+
+    # ------------------------------------------------------------ relatórios
+    def test_comparative_excel_and_word(self):
+        from io import BytesIO
+        from docx import Document
+        from openpyxl import load_workbook
+        nova, _, _ = self._segunda_execucao()
+        nova.conclusao_texto = "Parecer da 2ª execução"
+        nova.save()
+        wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_comparar_excel", args=[nova.pk])).content))
+        self.assertEqual(wb.sheetnames, ["Resumo", "Evolução da série", "Itens", "Tópicos"])
+        resumo = {row[0].value: [c.value for c in row[1:4]] for row in wb["Resumo"].iter_rows(min_row=6, max_row=12)}
+        self.assertEqual(resumo["Conforme"][:2], [2, 3])
+        self.assertEqual(resumo["Índice de conformidade"][:2], ["40,0%", "50,0%"])
+        evol = [[c.value for c in row] for row in wb["Evolução da série"].iter_rows(min_row=2)]
+        self.assertEqual([e[0] for e in evol], [1, 2])
+        itens = [[c.value for c in row] for row in wb["Itens"].iter_rows(min_row=2)]
+        self.assertEqual(itens[0][7], "Piorou")  # piores primeiro
+        self.assertIn(["Pessoas", "Maria", "Registros", "ok", "Conforme", "piorou", "Não Conformidade", "Piorou"], itens)
+        r = self.client.get(reverse("auditoria:livre_comparar_docx", args=[nova.pk]))
+        self.assertIn("wordprocessingml", r["Content-Type"])
+        doc = Document(BytesIO(r.content))
+        paragrafos = [p.text for p in doc.paragraphs]
+        texto = "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells) + "\n".join(paragrafos)
+        for esperado in ("RELATÓRIO COMPARATIVO DE AUDITORIA", "Execução 1 (20/11/2026)", "Piorou (1)", "Resolvido (1)",
+                         "Persiste (1)", "Item novo (2)", "Parecer da 1ª execução", "Parecer da 2ª execução",
+                         "40,0%", "50,0%", "+10,0 p.p.", "Registros", "piorou"):
+            self.assertIn(esperado, texto)
+
+    def test_summary_sentence_uses_singular_and_plural(self):
+        from .services.comparativo_livre_export import frase_resumo
+        base = {c: 0 for c in ("RESOLVIDO", "MELHOROU", "PERSISTE", "PIOROU", "NOVO", "PENDENTE")}
+        self.assertEqual(frase_resumo({"contagem": {**base, "RESOLVIDO": 1, "PERSISTE": 2, "PIOROU": 1}}),
+                         "1 resolvido, 2 persistem, 1 piorou.")
+        self.assertEqual(frase_resumo({"contagem": base}), "Sem itens para comparar.")
+
+    def test_exports_for_first_execution_redirect_with_message(self):
+        for nome in ("livre_comparar_excel", "livre_comparar_docx"):
+            r = self.client.get(reverse(f"auditoria:{nome}", args=[self.aud.pk]))
+            self.assertRedirects(r, reverse("auditoria:livre_execucao", args=[self.aud.pk]))
+
+    def test_single_audit_reports_show_execution_number(self):
+        from io import BytesIO
+        from docx import Document
+        nova, _, _ = self._segunda_execucao()
+        doc = Document(BytesIO(self.client.get(reverse("auditoria:livre_export_docx", args=[nova.pk])).content))
+        celulas = [c.text for t in doc.tables for row in t.rows for c in row.cells]
+        self.assertIn("Execução", celulas)
+        self.assertIn("2", celulas)
+
+    # ------------------------------------------------------------ permissões
+    def test_login_required_and_permission_mapping(self):
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        esperado = {"livre_nova_execucao": "gerenciar", "livre_comparar": "lista",
+                    "livre_comparar_excel": "export", "livre_comparar_docx": "export"}
+        for nome, fim in esperado.items():
+            self.assertEqual(M[f"auditoria:{nome}"]["perm"], f"core.nav_auditoria_livre_{fim}", nome)
+        self.client.logout()
+        for nome in esperado:
+            self.assertEqual(self.client.post(reverse(f"auditoria:{nome}", args=[self.aud.pk])).status_code, 302, nome)

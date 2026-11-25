@@ -49,6 +49,7 @@
             <h3 class="fw-bold text-dark mb-1">
                 <i class="bi bi-journal-check text-primary me-2"></i>{{ aud.titulo }}
                 <span class="badge rounded-pill fs-6 align-middle {% if aud.status == 'CONCLUIDA' %}bg-success{% else %}bg-primary{% endif %}">{{ aud.get_status_display }}</span>
+                {% if aud.execucao > 1 or proxima %}<span class="badge rounded-pill fs-6 align-middle text-bg-dark">Execução {{ aud.execucao }}</span>{% endif %}
             </h3>
             <div class="small text-muted">
                 <i class="bi bi-calendar3 me-1"></i>{{ aud.data_inicio|date:"d/m/Y" }}{% if aud.data_fim %} a {{ aud.data_fim|date:"d/m/Y" }}{% endif %}
@@ -70,6 +71,25 @@
                 </ul>
             </div>
             <a href="{% url 'auditoria:livre_capa' aud.pk %}" class="btn btn-outline-danger rounded-pill px-3"><i class="bi bi-clipboard2-check me-1"></i> Plano de Ação</a>
+            {% if aud.anterior_id %}
+            <a href="{% url 'auditoria:livre_comparar' aud.pk %}" class="btn btn-outline-dark rounded-pill px-3"><i class="bi bi-graph-up-arrow me-1"></i> Evolução</a>
+            {% endif %}
+            {% if proxima %}
+            <a href="{% url 'auditoria:livre_execucao' proxima.pk %}" class="btn btn-outline-dark rounded-pill px-3"><i class="bi bi-arrow-right-circle me-1"></i> Execução {{ proxima.execucao }}</a>
+            {% elif pode_nova_execucao %}
+            <div class="btn-group">
+                <button type="button" class="btn btn-dark rounded-pill px-3 fw-bold dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-arrow-repeat me-1"></i> Nova execução</button>
+                <div class="dropdown-menu dropdown-menu-end p-2" style="min-width:290px;">
+                    <form method="post" action="{% url 'auditoria:livre_nova_execucao' aud.pk %}" onsubmit="return confirm('Abrir uma nova execução com todos os itens? Os dados desta execução permanecem como estão.');">
+                        {% csrf_token %}<button class="dropdown-item rounded"><strong>Todos os itens</strong><br><span class="small text-muted">Reavalia tudo do zero</span></button>
+                    </form>
+                    <form method="post" action="{% url 'auditoria:livre_nova_execucao' aud.pk %}" onsubmit="return confirm('Abrir uma nova execução só com os itens NC, OM ou pendentes?');">
+                        {% csrf_token %}<input type="hidden" name="somente_pendencias" value="1">
+                        <button class="dropdown-item rounded"><strong>Só NC, OM e pendentes</strong><br><span class="small text-muted">Reavalia apenas o que não estava conforme</span></button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
             <form method="post" action="{% url 'auditoria:livre_toggle_conclusao' aud.pk %}" class="d-inline">
                 {% csrf_token %}
                 <button class="btn {% if aud.status == 'CONCLUIDA' %}btn-outline-primary{% else %}btn-success{% endif %} rounded-pill px-3 fw-bold">
@@ -169,6 +189,7 @@
     const URL_GRUPO_DEL = id => `{% url 'auditoria:api_livre_grupo_delete' 0 %}`.replace('/0/', `/${id}/`);
     const URL_DEL = id => `{% url 'auditoria:api_livre_sol_delete' 0 %}`.replace('/0/', `/${id}/`);
     const CSRF = "{{ csrf_token }}";
+    const EXEC_ANTERIOR = "{% if aud.anterior_id %}Execução {{ aud.anterior.execucao }} ({{ aud.anterior.data_inicio|date:'d/m/Y' }}){% else %}Execução anterior{% endif %}";
     const CLASSES = [["C","Conforme"],["NC","Não Conformidade"],["OM","Oportunidade de Melhoria"],["NA","N/A"],["P","Pendente"]];
 
     // Uma solicitação (grupo) tem um ou mais itens; cada item tem a sua evidência e classificação.
@@ -326,6 +347,15 @@
             } }, el('i', { class: 'bi bi-x-lg me-1' }), 'Remover item');
         const cabecalho = el('div', { class: 'd-flex align-items-center gap-2' }, titulo, btnRemover);
 
+        // resultado do mesmo item na execução anterior (referência enquanto reavalia)
+        const refAnterior = item.anterior ? (() => {
+            const cores = { C: 'text-bg-success', NC: 'text-bg-danger', OM: 'text-bg-warning', NA: 'text-bg-secondary', P: 'text-bg-light' };
+            return el('div', { class: 'small border rounded-3 bg-white px-2 py-1 mb-2', style: 'border-style:dashed !important;' },
+                el('i', { class: 'bi bi-clock-history me-1 text-muted' }),
+                el('span', { class: 'text-muted' }, EXEC_ANTERIOR + ': '),
+                el('span', { class: 'badge ' + (cores[item.anterior.conclusao] || 'text-bg-light') + ' me-1' }, item.anterior.rotulo),
+                item.anterior.evidencia ? el('span', { class: 'text-secondary' }, item.anterior.evidencia) : '');
+        })() : '';
         const evi = el('textarea', { class: 'form-control mb-2', rows: 2, placeholder: 'Item / evidência apresentada (ex.: o que foi verificado)' });
         evi.value = item.evidencia;
         const salvaEvi = debounce(() => salvarCampo(item, 'evidencia', evi.value.trim()), 800);
@@ -413,7 +443,7 @@
         linhaClasse.append(grupoGrau, obsBtn, btnFoto, inputFoto, capaBadge);
         pintar();
 
-        box.append(cabecalho, evi, fotos, linhaClasse, obsWrap);
+        box.append(cabecalho, refAnterior, evi, fotos, linhaClasse, obsWrap);
         box._titulo = titulo; box._remover = btnRemover; box._evi = evi;
         requestAnimationFrame(() => { autosize(evi); if (item.observacao) autosize(obs); });
         return box;
