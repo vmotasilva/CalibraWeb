@@ -23,10 +23,15 @@ from shared.permissions import has_view_access
 
 logger = logging.getLogger(__name__)
 
-TURNOS_VALIDOS = {codigo for codigo, _ in TURNOS_CHOICES}
-TURNO_LABEL = dict(TURNOS_CHOICES)
+# Turnos usados nesta estrutura (o cadastro de colaboradores pode ter outros, como 12x36).
+TURNOS_ESTRUTURA = [("ADM", "Administrativo"), ("TURNO_1", "Turno 01"), ("TURNO_2", "Turno 02"), ("TURNO_3", "Turno 03")]
+TURNOS_VALIDOS = {codigo for codigo, _ in TURNOS_ESTRUTURA}
+TURNOS_CADASTRO_VALIDOS = {codigo for codigo, _ in TURNOS_CHOICES}
+# Rótulos para exibir também o turno do cadastro do colaborador (inclui os que não são da estrutura).
+TURNO_LABEL = {**dict(TURNOS_CHOICES), **dict(TURNOS_ESTRUTURA)}
 TIPOS_VALIDOS = {c for c, _ in AlocacaoPosto.TIPO_CHOICES}
 LIMITE_BUSCA = 30
+LIMITE_MAXIMO = 200
 LIMITE_QUANTIDADE = 20
 
 VIEW_PERM = "rh:estrutura_equipes"
@@ -74,7 +79,7 @@ def estrutura_equipes_view(request):
     return render(
         request,
         "rh/estrutura_equipes.html",
-        {"turnos": TURNOS_CHOICES, "pode_editar": _pode_editar(request.user)},
+        {"turnos": TURNOS_ESTRUTURA, "pode_editar": _pode_editar(request.user)},
     )
 
 
@@ -103,12 +108,17 @@ def api_estrutura_equipes_dados(request):
     if not _pode_ver(request.user):
         return _negado()
     grupos = GrupoEquipe.objects.select_related("setor").order_by("ordem", "nome")
-    alocacoes = AlocacaoPosto.objects.select_related("colaborador").order_by("turno", "tipo", "colaborador__nome_completo", "id")
+    alocacoes = (
+        AlocacaoPosto.objects.filter(turno__in=TURNOS_VALIDOS)
+        .select_related("colaborador")
+        .order_by("turno", "tipo", "colaborador__nome_completo", "id")
+    )
     return JsonResponse(
         {
             "success": True,
             "pode_editar": _pode_editar(request.user),
-            "turnos": [{"codigo": c, "nome": n} for c, n in TURNOS_CHOICES],
+            "turnos": [{"codigo": c, "nome": n} for c, n in TURNOS_ESTRUTURA],
+            "turno_labels": TURNO_LABEL,
             "setores": [{"id": s.id, "nome": s.nome} for s in Setor.objects.order_by("nome")],
             "grupos": [
                 {
@@ -132,21 +142,37 @@ def api_estrutura_equipes_dados(request):
 @login_required
 @require_GET
 def api_estrutura_equipes_membros(request):
-    """Busca de colaboradores ativos para alocar. ?q= &turno= (turno do cadastro, opcional)."""
+    """Colaboradores ativos, para consultar e alocar.
+
+    ?q= (nome/matrícula)  &setor_id= (setor do cadastro)  &turno= (turno do cadastro)
+    &sem_posto=1 (só quem não está alocado em nenhum posto)  &limite= (padrão 30, máx. 200)
+    """
     if not _pode_ver(request.user):
         return _negado()
     q = (request.GET.get("q") or "").strip()
     turno = (request.GET.get("turno") or "").strip()
-    qs = Colaborador.objects.filter(is_active=True).select_related("setor").prefetch_related("alocacoes_posto__posto")
+    try:
+        setor_id = _int_ou_none(request.GET.get("setor_id"))
+        limite = min(max(_int_ou_none(request.GET.get("limite")) or LIMITE_BUSCA, 1), LIMITE_MAXIMO)
+    except ValueError:
+        return _erro("Parâmetros inválidos.")
+    qs = Colaborador.objects.filter(is_active=True).select_related("setor").prefetch_related("alocacoes_posto__posto__parent")
     if turno:
-        if turno not in TURNOS_VALIDOS:
+        if turno not in TURNOS_CADASTRO_VALIDOS:
             return _erro("Turno inválido.")
         qs = qs.filter(turno=turno)
+    if setor_id:
+        qs = qs.filter(setor_id=setor_id)
+    if request.GET.get("sem_posto") == "1":
+        qs = qs.filter(alocacoes_posto__isnull=True)
     if q:
         qs = qs.filter(Q(nome_completo__icontains=q) | Q(matricula__icontains=q))
     total = qs.count()
     membros = []
-    for c in qs.order_by("nome_completo")[:LIMITE_BUSCA]:
+    for c in qs.order_by("nome_completo")[:limite]:
+        postos = sorted(
+            {f"{a.posto.parent.nome} › {a.posto.nome}" if a.posto.parent_id else a.posto.nome for a in c.alocacoes_posto.all()}
+        )
         membros.append(
             {
                 "id": c.id,
@@ -156,7 +182,9 @@ def api_estrutura_equipes_membros(request):
                 "setor": c.setor.nome if c.setor_id else "",
                 "turno": c.turno,
                 "turno_label": TURNO_LABEL.get(c.turno, c.turno),
-                "postos": sorted({a.posto.nome for a in c.alocacoes_posto.all()}),
+                "afastado": bool(c.afastado),
+                "em_ferias": bool(c.em_ferias),
+                "postos": postos,
             }
         )
     return JsonResponse({"success": True, "total": total, "truncado": total > len(membros), "membros": membros})
@@ -202,10 +230,10 @@ def api_estrutura_equipes_salvar(request):
         grupo_id = _int_ou_none(data.get("id"))
         parent_id = _int_ou_none(data.get("parent_id"))
         setor_id = _int_ou_none(data.get("setor_id"))
-        ordem = _int_ou_none(data.get("ordem")) or 0
+        ordem = _int_ou_none(data.get("ordem"))
     except ValueError:
         return _erro("Dados numéricos inválidos.")
-    if ordem < 0:
+    if ordem is not None and ordem < 0:
         return _erro("A ordem não pode ser negativa.")
 
     grupo = None
@@ -237,7 +265,8 @@ def api_estrutura_equipes_salvar(request):
             grupo.parent_id = parent_id
             grupo.setor_id = setor_id
             grupo.descricao = str(data.get("descricao") or "").strip()[:255]
-            grupo.ordem = ordem
+            if ordem is not None:
+                grupo.ordem = ordem  # a tela ordena sempre por nome; "ordem" fica só por compatibilidade
             grupo.ativo = bool(data.get("ativo", True))
             grupo.clean()
             grupo.save()

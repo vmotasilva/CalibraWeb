@@ -83,7 +83,7 @@
     confirmar: "{% url 'rh:api_importar_estrutura_equipes_confirmar' %}",
     membros: "{% url 'rh:api_estrutura_equipes_membros' %}",
   };
-  const TURNO_NOME = { TURNO_1: 'Turno 1', TURNO_2: 'Turno 2', TURNO_3: 'Turno 3' };
+  const TURNO_NOME = { ADM: 'Administrativo', TURNO_1: 'Turno 01', TURNO_2: 'Turno 02', TURNO_3: 'Turno 03' };
   const csrf = () => app.querySelector('[name=csrfmiddlewaretoken]').value;
   const $ = id => document.getElementById(id);
   let dados = null;

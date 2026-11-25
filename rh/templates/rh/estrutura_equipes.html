@@ -40,6 +40,11 @@
 
   <div id="ee-alert" class="alert d-none" role="alert"></div>
 
+  <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
+    <span class="text-muted small me-1">Setor:</span>
+    <select class="form-select form-select-sm w-auto" id="ee-filtro-setor" aria-label="Filtrar por setor"></select>
+  </div>
+
   <div class="d-flex flex-wrap gap-2 mb-3 align-items-center" id="ee-turnos-filtro" aria-label="Filtro por turno">
     <span class="text-muted small me-1">Turno:</span>
   </div>
@@ -47,11 +52,42 @@
   <ul class="nav nav-pills mb-3" id="ee-abas">
     <li class="nav-item"><button type="button" class="nav-link active" data-aba="estrutura"><i class="bi bi-diagram-3 me-1"></i>Estrutura</button></li>
     <li class="nav-item"><button type="button" class="nav-link" data-aba="quadro"><i class="bi bi-grid-3x3-gap me-1"></i>Quadro por turno</button></li>
+    <li class="nav-item"><button type="button" class="nav-link" data-aba="pessoas"><i class="bi bi-people me-1"></i>Colaboradores</button></li>
   </ul>
 
   <div class="card border-0 shadow-sm d-none" id="ee-quadro">
     <div class="card-body p-0"><div class="table-responsive"><table class="table table-bordered align-middle mb-0" id="ee-quadro-tabela"></table></div></div>
     <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Cada linha é um posto; cada coluna, um turno.</div>
+  </div>
+
+  <div class="card border-0 shadow-sm d-none" id="ee-pessoas">
+    <div class="card-header bg-white d-flex flex-wrap gap-2 justify-content-between align-items-center">
+      <span class="fw-bold">Colaboradores <span class="badge bg-secondary" id="ee-p-total">0</span></span>
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <input type="search" class="form-control form-control-sm" id="ee-p-busca" placeholder="Buscar nome ou matrícula" style="width:15rem" aria-label="Buscar colaborador">
+        <div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="ee-p-sem"><label class="form-check-label small" for="ee-p-sem">Somente sem posto</label></div>
+      </div>
+    </div>
+    {% if pode_editar %}
+    <div class="card-body border-bottom py-2 d-none" id="ee-p-acoes">
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="small fw-semibold"><span id="ee-p-selcount">0</span> selecionado(s) →</span>
+        <select class="form-select form-select-sm w-auto" id="ee-p-posto" aria-label="Posto de destino"></select>
+        <select class="form-select form-select-sm w-auto" id="ee-p-turno" aria-label="Turno de destino"></select>
+        <button type="button" class="btn btn-sm btn-primary" id="ee-p-alocar">Alocar no posto</button>
+      </div>
+    </div>
+    {% endif %}
+    <div class="table-responsive ee-lista" style="max-height:62vh">
+      <table class="table table-sm table-hover align-middle mb-0">
+        <thead class="table-light" style="position:sticky;top:0"><tr>
+          {% if pode_editar %}<th style="width:2rem"><input type="checkbox" class="form-check-input" id="ee-p-todos" aria-label="Selecionar todos"></th>{% endif %}
+          <th>Nome</th><th>Matrícula</th><th>Cargo</th><th>Setor</th><th>Turno (cadastro)</th><th>Alocado em</th></tr></thead>
+        <tbody id="ee-p-body"></tbody>
+      </table>
+      <div class="text-muted small p-3 d-none" id="ee-p-vazio">Nenhum colaborador encontrado.</div>
+    </div>
+    <div class="card-footer bg-white small text-muted d-none" id="ee-p-aviso"></div>
   </div>
 
   <div class="row g-3" id="ee-estrutura">
@@ -98,10 +134,6 @@
           <div class="col-md-6" id="ee-f-parent-wrap">
             <label class="form-label fw-semibold" for="ee-f-parent">Bloco *</label>
             <select class="form-select" id="ee-f-parent"></select>
-          </div>
-          <div class="col-md-6" id="ee-f-ordem-wrap">
-            <label class="form-label fw-semibold" for="ee-f-ordem">Ordem</label>
-            <input type="number" class="form-control" id="ee-f-ordem" min="0" value="0">
           </div>
           <div class="col-12" id="ee-f-desc-wrap">
             <label class="form-label fw-semibold" for="ee-f-desc">Descrição</label>
@@ -203,14 +235,22 @@
   // O bootstrap.bundle.js é carregado DEPOIS deste bloco (base_desktop.html): modais só são criados no uso.
   const modal = id => bootstrap.Modal.getOrCreateInstance($(id));
 
-  const state = { setores: [], grupos: [], alocs: [], turnos: [], turno: '', sel: null, abertos: new Set(), tudoAberto: true };
-  const turnoNome = c => (state.turnos.find(t => t.codigo === c) || {}).nome || c;
+  const state = { setor: '', labels: {}, setores: [], grupos: [], alocs: [], turnos: [], turno: '', sel: null, abertos: new Set(), tudoAberto: true };
+  const turnoNome = c => (state.turnos.find(t => t.codigo === c) || {}).nome || state.labels[c] || c;
   const setorDe = id => state.setores.find(s => s.id === id);
   const grupo = id => state.grupos.find(g => g.id === id);
-  const ordena = (a, b) => a.ordem - b.ordem || a.nome.localeCompare(b.nome);
+  // Ordenação automática por nome: sem diferenciar maiúsculas/acentos e com números em ordem natural (DLP 2 antes de DLP 10).
+  const cmp = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' }).compare;
+  const ordena = (a, b) => cmp(a.nome, b.nome);
+  const ordemTipo = { PESSOA: 0, RESERVA: 1, VAGO: 2 };
   const blocosDe = sid => state.grupos.filter(g => !g.parent_id && g.setor_id === sid).sort(ordena);
   const postosDe = bid => state.grupos.filter(g => g.parent_id === bid).sort(ordena);
   const key = (t, id) => t + id;
+  const setoresVisiveis = () => state.setor ? state.setores.filter(s => s.id === +state.setor) : state.setores;
+  const postoVisivel = p => !state.setor || p.setor_id === +state.setor;
+  const alocsVisiveis = () => state.alocs.filter(a => { const p = grupo(a.posto_id); return p && postoVisivel(p); });
+  const guarda = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const le = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
 
   function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
   function aviso(msg, tipo = 'success') {
@@ -247,7 +287,7 @@
   // ---------------------------------------------------------- carga
   async function carregar() {
     const j = await api(URLS.dados);
-    state.setores = j.setores; state.grupos = j.grupos; state.alocs = j.alocacoes; state.turnos = j.turnos;
+    state.setores = j.setores.sort(ordena); state.grupos = j.grupos; state.labels = j.turno_labels || {}; state.alocs = j.alocacoes; state.turnos = j.turnos;
     if (state.tudoAberto && state.abertos.size === 0) {
       state.setores.forEach(s => state.abertos.add(key('s', s.id))); state.grupos.filter(g => !g.parent_id).forEach(g => state.abertos.add(key('g', g.id)));
     }
@@ -255,14 +295,33 @@
       const ok = state.sel.t === 'setor' ? setorDe(state.sel.id) : grupo(state.sel.id);
       if (!ok) state.sel = null;
     }
-    renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro();
+    if (state.setor && !setorDe(+state.setor)) state.setor = '';
+    renderFiltroSetor(); renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); renderPessoasAcoes();
+    if (!$('ee-pessoas').classList.contains('d-none')) carregarPessoas();
+  }
+
+  function renderFiltroSetor() {
+    const sel = $('ee-filtro-setor'); sel.innerHTML = '';
+    sel.add(new Option('Todos os setores', ''));
+    state.setores.forEach(s => sel.add(new Option(s.nome, s.id)));
+    sel.value = state.setor;
+  }
+  function aplicaFiltroSetor() {
+    guarda('ee-setor', state.setor);
+    // some a seleção se ela ficar fora do setor visível
+    if (state.sel) {
+      const sid = state.sel.t === 'setor' ? state.sel.id : (grupo(state.sel.id) || {}).setor_id;
+      if (state.setor && sid !== +state.setor) state.sel = null;
+    }
+    renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); renderPessoasAcoes();
+    if (!$('ee-pessoas').classList.contains('d-none')) carregarPessoas();
   }
 
   function renderFiltro() {
     const box = $('ee-turnos-filtro'); box.querySelectorAll('.ee-turno-pill').forEach(e => e.remove());
     const itens = [{ codigo: '', nome: 'Todos' }].concat(state.turnos);
     itens.forEach(t => {
-      const n = state.alocs.filter(a => !t.codigo || a.turno === t.codigo).length;
+      const n = alocsVisiveis().filter(a => !t.codigo || a.turno === t.codigo).length;
       const b = document.createElement('button'); b.type = 'button';
       b.className = 'btn btn-sm ee-turno-pill ' + (state.turno === t.codigo ? 'btn-primary' : 'btn-outline-secondary');
       b.innerHTML = esc(t.nome) + ' <span class="badge bg-light text-dark">' + n + '</span>';
@@ -288,8 +347,8 @@
 
   function renderArvore() {
     const ul = $('ee-tree'); ul.innerHTML = '';
-    $('ee-tree-vazio').classList.toggle('d-none', state.setores.length > 0);
-    state.setores.forEach(s => {
+    $('ee-tree-vazio').classList.toggle('d-none', setoresVisiveis().length > 0);
+    setoresVisiveis().forEach(s => {
       const blocos = blocosDe(s.id); const ks = key('s', s.id); const ab = state.abertos.has(ks);
       const li = noArvore('setor', s.id, '<i class="bi bi-building text-dark"></i>', s.nome, badgesCont(cont(alocsDe(idsPostosDoNo({ t: 'setor', id: s.id })))), true,
         () => selecionar('setor', s.id), () => abrirGrupo({ tipo: 'bloco', setorId: s.id }), 'Novo bloco neste setor', blocos.length > 0, ab, () => alterna(ks));
@@ -370,7 +429,7 @@
     if (!turnos.length) return h + '<div class="text-muted">Nenhuma alocação' + (state.turno ? ' neste turno' : '') + '. ' + (PODE_EDITAR ? 'Aloque um colaborador, uma vaga ou uma reserva.' : '') + '</div>';
     h += '<div class="row g-3">';
     turnos.forEach(t => {
-      const lista = todas.filter(a => a.turno === t.codigo);
+      const lista = todas.filter(a => a.turno === t.codigo).sort((a, b) => ordemTipo[a.tipo] - ordemTipo[b.tipo] || cmp(a.nome, b.nome) || a.id - b.id);
       h += '<div class="col-md-6"><div class="border rounded"><div class="bg-light px-2 py-1 fw-semibold d-flex justify-content-between"><span>' + esc(t.nome) + '</span><span>' + badgesCont(cont(lista)) + '</span></div>';
       lista.forEach(a => {
         const quem = a.tipo === 'PESSOA' ? esc(a.nome) + ' <span class="text-muted small">' + esc(a.matricula) + '</span>' + (a.afastado ? ' <span class="badge bg-warning text-dark">afastado</span>' : '') + (a.em_ferias ? ' <span class="badge bg-info text-dark">férias</span>' : '') + (a.turno_cadastro && a.turno_cadastro !== a.turno ? ' <span class="badge bg-light text-dark border" title="O turno no cadastro do colaborador é diferente deste">cadastro: ' + esc(turnoNome(a.turno_cadastro)) + '</span>' : '')
@@ -386,11 +445,11 @@
   // ---------------------------------------------------------- quadro
   function renderQuadro() {
     const t = $('ee-quadro-tabela');
-    const turnos = state.turnos.filter(tn => (!state.turno || tn.codigo === state.turno) && state.alocs.some(a => a.turno === tn.codigo));
+    const turnos = state.turnos.filter(tn => (!state.turno || tn.codigo === state.turno) && alocsVisiveis().some(a => a.turno === tn.codigo));
     const cols = turnos.length ? turnos : state.turnos.filter(tn => !state.turno || tn.codigo === state.turno);
     let h = '<thead class="table-light"><tr><th>Posto de trabalho</th>' + cols.map(c => '<th>' + esc(c.nome) + '</th>').join('') + '</tr></thead><tbody>';
     let vagas = 0, reservas = 0;
-    state.setores.forEach(s => {
+    setoresVisiveis().forEach(s => {
       const blocos = blocosDe(s.id); if (!blocos.length) return;
       h += '<tr class="table-dark"><td colspan="' + (cols.length + 1) + '" class="fw-bold"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</td></tr>';
       blocos.forEach(b => {
@@ -400,19 +459,24 @@
           cols.forEach(c => {
             const l = state.alocs.filter(a => a.posto_id === p.id && a.turno === c.codigo);
             vagas += l.filter(a => a.tipo === 'VAGO').length; reservas += l.filter(a => a.tipo === 'RESERVA').length;
-            h += '<td>' + (l.length ? l.map(a => a.tipo === 'PESSOA' ? '<div>' + esc(a.nome) + '</div>' : a.tipo === 'VAGO' ? '<div><span class="badge bg-danger">VAGO</span></div>' : '<div><span class="badge bg-info text-dark">RESERVA</span></div>').join('') : '<span class="text-muted">—</span>') + '</td>';
+            l.sort((x, y) => ordemTipo[x.tipo] - ordemTipo[y.tipo] || cmp(x.nome, y.nome) || x.id - y.id);
+            const itens = l.map(a => { const rot = a.tipo === 'PESSOA' ? esc(a.nome) : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span>' : '<span class="badge bg-info text-dark">RESERVA</span>'; return '<div>' + (PODE_EDITAR ? '<a href="#" class="ee-q-edit text-decoration-none text-reset" data-aloc="' + a.id + '" title="Editar / mover">' + rot + '</a>' : rot) + '</div>'; }).join('');
+            h += '<td>' + (itens || '<span class="text-muted">—</span>') + (PODE_EDITAR ? '<button type="button" class="btn btn-sm btn-link p-0 ee-q-add" data-posto="' + p.id + '" data-turno="' + c.codigo + '" title="Alocar neste posto e turno">+ alocar</button>' : '') + '</td>';
           });
           h += '</tr>';
         });
       });
     });
-    if (!state.setores.length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Nada cadastrado.</td></tr>';
+    if (!setoresVisiveis().length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Nada cadastrado.</td></tr>';
     t.innerHTML = h + '</tbody>';
+    t.querySelectorAll('.ee-q-add').forEach(b => b.onclick = () => abrirAloc({ postoId: +b.dataset.posto, turno: b.dataset.turno }));
+    t.querySelectorAll('.ee-q-edit').forEach(a => a.onclick = e => { e.preventDefault(); abrirAloc({ alocId: +a.dataset.aloc }); });
     $('ee-quadro-resumo').innerHTML = '<span class="badge bg-danger">' + vagas + ' vaga(s) a contratar</span> <span class="badge bg-info text-dark">' + reservas + ' reserva(s)</span>';
   }
   function trocaAba(aba) {
     document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.classList.toggle('active', b.dataset.aba === aba));
-    $('ee-quadro').classList.toggle('d-none', aba !== 'quadro'); $('ee-estrutura').classList.toggle('d-none', aba === 'quadro');
+    $('ee-quadro').classList.toggle('d-none', aba !== 'quadro'); $('ee-estrutura').classList.toggle('d-none', aba !== 'estrutura'); $('ee-pessoas').classList.toggle('d-none', aba !== 'pessoas');
+    if (aba === 'pessoas') carregarPessoas();
   }
 
   // ---------------------------------------------------------- setor / bloco / posto (modal)
@@ -423,15 +487,15 @@
     modo = { tipo, editId };
     $('ee-modal-erro').classList.add('d-none');
     $('ee-modal-titulo').textContent = (g ? 'Editar ' : 'Novo ') + { setor: 'setor', bloco: 'bloco', posto: 'posto de trabalho' }[tipo];
-    $('ee-f-nome').value = g ? g.nome : ''; $('ee-f-ordem').value = g ? g.ordem : 0; $('ee-f-desc').value = g ? g.descricao : ''; $('ee-f-ativo').checked = g ? g.ativo : true;
+    $('ee-f-nome').value = g ? g.nome : ''; $('ee-f-desc').value = g ? g.descricao : ''; $('ee-f-ativo').checked = g ? g.ativo : true;
     const sSel = $('ee-f-setor'); sSel.innerHTML = ''; state.setores.forEach(s => sSel.add(new Option(s.nome, s.id)));
     sSel.value = g ? (g.setor_id || '') : (setorId || (state.sel && state.sel.t === 'setor' ? state.sel.id : '') || (state.setores[0] || {}).id || '');
     const pSel = $('ee-f-parent'); pSel.innerHTML = '';
-    state.grupos.filter(x => !x.parent_id).sort((a, b) => a.nome.localeCompare(b.nome)).forEach(x => pSel.add(new Option(x.setor_nome + ' › ' + x.nome, x.id)));
+    state.grupos.filter(x => !x.parent_id).sort((a, b) => cmp(a.setor_nome + ' ' + a.nome, b.setor_nome + ' ' + b.nome)).forEach(x => pSel.add(new Option(x.setor_nome + ' › ' + x.nome, x.id)));
     pSel.value = g ? (g.parent_id || '') : (parentId || '');
     $('ee-f-setor-wrap').classList.toggle('d-none', tipo !== 'bloco');
     $('ee-f-parent-wrap').classList.toggle('d-none', tipo !== 'posto');
-    ['ee-f-ordem-wrap', 'ee-f-desc-wrap', 'ee-f-ativo-wrap'].forEach(i => $(i).classList.toggle('d-none', tipo === 'setor'));
+    ['ee-f-desc-wrap', 'ee-f-ativo-wrap'].forEach(i => $(i).classList.toggle('d-none', tipo === 'setor'));
     modal('ee-modal-grupo').show();
     setTimeout(() => $('ee-f-nome').focus(), 300);
   }
@@ -443,7 +507,7 @@
         j = await api(URLS.setor, { nome: $('ee-f-nome').value });
         state.abertos.add(key('s', j.id)); state.sel = { t: 'setor', id: j.id };
       } else {
-        const body = { id: modo.editId, nome: $('ee-f-nome').value, ordem: $('ee-f-ordem').value, descricao: $('ee-f-desc').value, ativo: $('ee-f-ativo').checked };
+        const body = { id: modo.editId, nome: $('ee-f-nome').value, descricao: $('ee-f-desc').value, ativo: $('ee-f-ativo').checked };
         if (modo.tipo === 'bloco') body.setor_id = $('ee-f-setor').value; else body.parent_id = $('ee-f-parent').value;
         j = await api(URLS.salvar, body);
         if (modo.tipo === 'posto') state.abertos.add(key('g', +$('ee-f-parent').value)); else state.abertos.add(key('s', +$('ee-f-setor').value));
@@ -463,17 +527,17 @@
   // ---------------------------------------------------------- alocação (colaborador / vago / reserva)
   let am = null; // {postoId, alocId, escolhidos:Set, unico}
   const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-  function abrirAloc({ postoId = null, alocId = null, tipo = 'PESSOA' }) {
+  function abrirAloc({ postoId = null, alocId = null, tipo = 'PESSOA', turno = null }) {
     const a = alocId ? state.alocs.find(x => x.id === alocId) : null;
     am = { postoId: a ? a.posto_id : postoId, alocId, escolhidos: new Set(a && a.colaborador_id ? [a.colaborador_id] : []), unico: !!a };
     $('ee-aloc-erro').classList.add('d-none');
     $('ee-aloc-titulo').textContent = a ? 'Editar alocação' : 'Alocar em ' + ((grupo(postoId) || {}).nome || 'posto');
     $('ee-a-tipo').value = a ? a.tipo : tipo;
-    $('ee-a-turno').value = a ? a.turno : (state.turno || 'TURNO_1');
+    $('ee-a-turno').value = a ? a.turno : (turno || state.turno || 'TURNO_1');
     $('ee-a-obs').value = a ? a.observacao : '';
     $('ee-a-qtd').value = 1; $('ee-a-busca').value = '';
     $('ee-a-posto-wrap').classList.toggle('d-none', !a);
-    if (a) { const ps = $('ee-a-posto'); ps.innerHTML = ''; state.grupos.filter(g => g.parent_id).forEach(p => ps.add(new Option(caminhoPosto(p.id), p.id))); ps.value = a.posto_id; }
+    if (a) { const ps = $('ee-a-posto'); ps.innerHTML = ''; state.grupos.filter(g => g.parent_id).map(p => [caminhoPosto(p.id), p.id]).sort((a, b) => cmp(a[0], b[0])).forEach(([t, id]) => ps.add(new Option(t, id))); ps.value = a.posto_id; }
     ajustaTipo(); modal('ee-modal-aloc').show(); if ($('ee-a-tipo').value === 'PESSOA') buscarPessoas();
   }
   function ajustaTipo() {
@@ -521,14 +585,72 @@
     try { await api(URLS.alocExcluir, { ids: [id] }); await carregar(); aviso('Removido.'); } catch (e) { aviso(e.message, 'danger'); }
   }
 
+  // ---------------------------------------------------------- colaboradores (relacionar a postos)
+  const pe = { sel: new Set(), dados: [] };
+  function renderPessoasAcoes() {
+    const ps = $('ee-p-posto'); if (!ps) return;
+    const atual = ps.value; ps.innerHTML = '';
+    ps.add(new Option('— escolha o posto —', ''));
+    state.grupos.filter(g => g.parent_id && postoVisivel(g)).map(g => [caminhoPosto(g.id), g.id]).sort((a, b) => cmp(a[0], b[0])).forEach(([t, id]) => ps.add(new Option(t, id)));
+    ps.value = atual;
+    const ts = $('ee-p-turno'); ts.innerHTML = ''; state.turnos.forEach(t => ts.add(new Option(t.nome, t.codigo))); ts.value = 'TURNO_1';
+  }
+  async function carregarPessoas() {
+    const p = new URLSearchParams({ limite: 200 });
+    const q = $('ee-p-busca').value.trim(); if (q) p.set('q', q);
+    if (state.setor) p.set('setor_id', state.setor);
+    if ($('ee-p-sem').checked) p.set('sem_posto', '1');
+    try {
+      const j = await api(URLS.membros + '?' + p);
+      pe.dados = j.membros.sort((a, b) => cmp(a.nome, b.nome)); pe.sel.clear();
+      $('ee-p-total').textContent = j.total;
+      $('ee-p-aviso').classList.toggle('d-none', !j.truncado);
+      $('ee-p-aviso').textContent = 'Mostrando os primeiros ' + pe.dados.length + ' de ' + j.total + '. Refine pela busca, pelo setor ou por "Somente sem posto".';
+      $('ee-p-vazio').classList.toggle('d-none', pe.dados.length > 0);
+      const tb = $('ee-p-body'); tb.innerHTML = '';
+      pe.dados.forEach(m => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = (PODE_EDITAR ? '<td><input type="checkbox" class="form-check-input ee-p-chk" data-id="' + m.id + '" aria-label="Selecionar ' + esc(m.nome) + '"></td>' : '') +
+          '<td>' + esc(m.nome) + (m.afastado ? ' <span class="badge bg-warning text-dark">afastado</span>' : '') + (m.em_ferias ? ' <span class="badge bg-info text-dark">férias</span>' : '') + '</td><td>' + esc(m.matricula) + '</td><td>' + esc(m.cargo) + '</td><td>' + esc(m.setor) + '</td><td>' + esc(m.turno_label) + '</td>' +
+          '<td>' + (m.postos.length ? '<span class="small">' + esc(m.postos.join(' · ')) + '</span>' : '<span class="badge bg-warning text-dark">sem posto</span>') + '</td>';
+        tb.appendChild(tr);
+      });
+      tb.querySelectorAll('.ee-p-chk').forEach(c => c.onchange = () => { c.checked ? pe.sel.add(+c.dataset.id) : pe.sel.delete(+c.dataset.id); pessoasSel(); });
+      const todos = $('ee-p-todos'); if (todos) todos.checked = false;
+      pessoasSel();
+    } catch (e) { aviso(e.message, 'danger'); }
+  }
+  function pessoasSel() {
+    const box = $('ee-p-acoes'); if (!box) return;
+    box.classList.toggle('d-none', pe.sel.size === 0); $('ee-p-selcount').textContent = pe.sel.size;
+    // sugere o turno do cadastro quando todos os selecionados têm o mesmo
+    const turnos = new Set(pe.dados.filter(m => pe.sel.has(m.id)).map(m => m.turno));
+    if (turnos.size === 1) { const t = [...turnos][0]; if (state.turnos.some(x => x.codigo === t)) $('ee-p-turno').value = t; }
+  }
+  async function alocarPessoas() {
+    const posto = $('ee-p-posto').value; if (!posto) return aviso('Escolha o posto de destino.', 'warning');
+    if (!pe.sel.size) return;
+    try {
+      const j = await api(URLS.alocCriar, { posto_id: +posto, turno: $('ee-p-turno').value, tipo: 'PESSOA', colaborador_ids: [...pe.sel] });
+      aviso(j.criadas + ' colaborador(es) alocado(s) em ' + caminhoPosto(+posto) + ' (' + turnoNome($('ee-p-turno').value) + ')' + (j.ja_existiam ? '; ' + j.ja_existiam + ' já estava(m) neste posto e turno' : '') + '.');
+      await carregar();
+    } catch (e) { aviso(e.message, 'danger'); }
+  }
+
   // ---------------------------------------------------------- eventos
   document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.onclick = () => trocaAba(b.dataset.aba));
+  state.setor = le('ee-setor');
+  $('ee-filtro-setor').onchange = e => { state.setor = e.target.value; aplicaFiltroSetor(); };
+  $('ee-p-busca').addEventListener('input', debounce(carregarPessoas));
+  $('ee-p-sem').onchange = carregarPessoas;
   $('ee-btn-expandir').onclick = () => {
     state.tudoAberto = !state.tudoAberto; state.abertos = new Set();
     if (state.tudoAberto) { state.setores.forEach(s => state.abertos.add(key('s', s.id))); state.grupos.filter(g => !g.parent_id).forEach(g => state.abertos.add(key('g', g.id))); }
     renderArvore();
   };
   if (PODE_EDITAR) {
+    $('ee-p-alocar').onclick = alocarPessoas;
+    $('ee-p-todos').onchange = e => { document.querySelectorAll('.ee-p-chk').forEach(c => { c.checked = e.target.checked; e.target.checked ? pe.sel.add(+c.dataset.id) : pe.sel.delete(+c.dataset.id); }); pessoasSel(); };
     $('ee-btn-novo-setor').onclick = () => abrirGrupo({ tipo: 'setor' });
     $('ee-btn-salvar').onclick = salvarGrupo;
     $('ee-f-nome').addEventListener('keydown', e => { if (e.key === 'Enter') salvarGrupo(); });
