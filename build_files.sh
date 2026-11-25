@@ -2,23 +2,22 @@
 # Install dependencies
 python3 -m pip install -r requirements.txt --break-system-packages
 
-# Preview que aponta para o banco de PRODUCAO nao pode alterar esse banco no build
-# (migrate, permissoes e superusuario). Use um banco proprio no Preview para migrar la.
+# Build de PREVIEW nunca altera o banco (migrate, permissoes e superusuario), porque nao ha como saber, de
+# dentro do preview, se o DATABASE_URL dele e o da producao (ja aconteceu: um preview migrou o banco de
+# producao). Para migrar em preview, crie um banco proprio, configure o DATABASE_URL do ambiente Preview
+# e defina PREVIEW_DB_PROPRIO=1 (ver docs/DEPLOY_BANCO_PREVIEW.md).
 # Ambiente: VERCEL_ENV; se a Vercel nao expuser, deduz pela branch (VERCEL_GIT_COMMIT_REF).
 AMBIENTE="${VERCEL_ENV:-${VERCEL_TARGET_ENV:-}}"
 if [ -z "$AMBIENTE" ] && [ -n "$VERCEL_GIT_COMMIT_REF" ]; then
     if [ "$VERCEL_GIT_COMMIT_REF" = "main" ]; then AMBIENTE="production"; else AMBIENTE="preview"; fi
 fi
 echo "==> [db-guard] ambiente do build: ${AMBIENTE:-desconhecido}"
+python3 scripts/db_compartilhado_com_producao.py || true   # so diagnostico (sem segredos)
 PULAR_BANCO=0
-python3 scripts/db_compartilhado_com_producao.py
-GUARD_RC=$?
-if [ "$AMBIENTE" = "preview" ] && [ $GUARD_RC -eq 0 ]; then
+if [ "$AMBIENTE" = "preview" ] && [ "${PREVIEW_DB_PROPRIO:-0}" != "1" ]; then
     PULAR_BANCO=1
-    echo "==> AVISO: este preview usa o MESMO banco da producao. Migracoes, permissoes e superusuario foram PULADOS."
-    echo "==>        Configure um banco proprio em DATABASE_URL (ambiente Preview) para testar migracoes. Ver docs/DEPLOY_BANCO_PREVIEW.md"
-elif [ -z "$AMBIENTE" ] && [ $GUARD_RC -eq 0 ]; then
-    echo "==> AVISO: nao foi possivel identificar o ambiente do build; o banco coincide com o da producao e as migracoes seguem normalmente."
+    echo "==> AVISO: build de PREVIEW sem PREVIEW_DB_PROPRIO=1: migracoes, permissoes e superusuario foram PULADOS para nao alterar o banco de producao."
+    echo "==>        Para migrar em preview, use um banco proprio. Ver docs/DEPLOY_BANCO_PREVIEW.md"
 fi
 
 # Run migrations (only if database environment variables are set)

@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Diz se o banco configurado neste build e o mesmo da producao (integracao Neon).
+"""Diagnostico (sem segredos) do banco configurado neste build, comparado com as variaveis STORAGE_* da integracao Neon.
+
+A decisao de migrar ou nao NAO depende mais deste script (ver build_files.sh): ele so imprime impressoes
+digitais para conferencia, ja que o DATABASE_URL pode apontar para um banco diferente do STORAGE_*.
+
+Explicacao original: diz se o banco configurado neste build e o mesmo da producao (integracao Neon).
 
 Uso (no build da Vercel):  python3 scripts/db_compartilhado_com_producao.py
 Saida 0 = o banco ATUAL e o da producao (compartilhado); 1 = e um banco diferente;
