@@ -11,7 +11,8 @@ from datetime import date
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.db.models import Max, Prefetch
+from django.db import transaction
+from django.db.models import Max, Prefetch, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -48,10 +49,21 @@ def _serialize_imagem(img):
     return {"id": img.id, "url": img.url, "legenda": img.legenda, "nome": img.nome_arquivo}
 
 
+def _raiz_id(sol):
+    return sol.pai_id or sol.pk
+
+
+def _grupo_qs(sol):
+    """Todas as linhas (itens) da mesma solicitação: a original e os itens extras."""
+    raiz = _raiz_id(sol)
+    return SolicitacaoLivre.objects.filter(Q(pk=raiz) | Q(pai_id=raiz))
+
+
 def _serialize(sol):
     return {
         "id": sol.id,
         "topico": sol.topico,
+        "auditado": sol.auditado,
         "solicitacao": sol.solicitacao,
         "evidencia": sol.evidencia,
         "conclusao": sol.conclusao,
@@ -155,13 +167,18 @@ def livre_execucao(request, pk):
     if aud.status == "PLANEJADA":
         aud.status = "EM_ANDAMENTO"
         aud.save(update_fields=["status", "atualizado_em"])
-    solicitacoes = [_serialize(s) for s in aud.solicitacoes.prefetch_related(_imagens_prefetch())]
-    topicos = sorted(
-        {s["topico"] for s in solicitacoes if s["topico"]}, key=str.casefold
-    )
+    # Agrupa os itens por solicitação, na ordem de criação (itens extras vêm logo após a original).
+    grupos, por_raiz = [], {}
+    for s in aud.solicitacoes.prefetch_related(_imagens_prefetch()):
+        raiz = _raiz_id(s)
+        if raiz not in por_raiz:
+            por_raiz[raiz] = {"topico": s.topico, "auditado": s.auditado, "solicitacao": s.solicitacao, "itens": []}
+            grupos.append(por_raiz[raiz])
+        por_raiz[raiz]["itens"].append(_serialize(s))
+    topicos = sorted({g["topico"] for g in grupos if g["topico"]}, key=str.casefold)
     return render(request, "auditoria/livre_execucao.html", {
         "aud": aud,
-        "solicitacoes_json": solicitacoes,
+        "grupos_json": grupos,
         "topicos": topicos,
         "classificacoes": SolicitacaoLivre.CLASSIFICACAO_CHOICES,
         "resumo": aud.resumo(),
@@ -182,6 +199,8 @@ def _aplicar(sol, data):
     """Aplica campos válidos do payload. Retorna mensagem de erro ou None."""
     if "topico" in data:
         sol.topico = str(data["topico"] or "").strip()[:255]
+    if "auditado" in data:
+        sol.auditado = re.sub(r"\s+", " ", str(data["auditado"] or "")).strip()[:255]
     if "solicitacao" in data:
         texto = str(data["solicitacao"] or "").strip()
         if not texto:
@@ -229,17 +248,71 @@ def api_livre_sol_update(request, pk):
     erro = _aplicar(sol, data)
     if erro:
         return JsonResponse({"success": False, "error": erro}, status=400)
-    sol.save()
+    with transaction.atomic():
+        sol.save()
+        if "solicitacao" in data or "topico" in data or "auditado" in data:
+            # texto, tópico e auditado são da solicitação: valem para todos os itens
+            _grupo_qs(sol).exclude(pk=sol.pk).update(
+                solicitacao=sol.solicitacao, topico=sol.topico, auditado=sol.auditado)
     return JsonResponse({"success": True, "solicitacao": _serialize(sol), "resumo": sol.auditoria.resumo()})
 
 
 @login_required
 @require_POST
+def api_livre_item_create(request, pk):
+    """Adiciona mais um item (nova evidência/classificação) à mesma solicitação de `pk`."""
+    base = get_object_or_404(SolicitacaoLivre, pk=pk)
+    raiz = base if not base.pai_id else base.pai
+    item = SolicitacaoLivre.objects.create(
+        auditoria=base.auditoria, pai=raiz, topico=raiz.topico, auditado=raiz.auditado,
+        solicitacao=raiz.solicitacao,
+        ordem=raiz.ordem,  # mesma ordem da original: o item fica junto dela na numeração e nos relatórios
+        criado_por=request.user,
+    )
+    return JsonResponse({"success": True, "item": _serialize(item), "resumo": base.auditoria.resumo()})
+
+
+@login_required
+@require_POST
 def api_livre_sol_delete(request, pk):
+    """Remove um item. Se for a linha original e houver outros itens, o próximo assume o lugar dela."""
     sol = get_object_or_404(SolicitacaoLivre, pk=pk)
     aud = sol.auditoria
-    sol.delete()
+    with transaction.atomic():
+        if not sol.pai_id:
+            extras = list(sol.itens_extras.order_by("id"))
+            if extras:
+                novo, resto = extras[0], extras[1:]
+                SolicitacaoLivre.objects.filter(pk=novo.pk).update(pai=None)
+                SolicitacaoLivre.objects.filter(pk__in=[e.pk for e in resto]).update(pai=novo)
+        sol.delete()
     return JsonResponse({"success": True, "resumo": aud.resumo()})
+
+
+@login_required
+@require_POST
+def api_livre_grupo_delete(request, pk):
+    """Remove a solicitação inteira, com todos os itens."""
+    sol = get_object_or_404(SolicitacaoLivre, pk=pk)
+    aud = sol.auditoria
+    _grupo_qs(sol).delete()
+    return JsonResponse({"success": True, "resumo": aud.resumo()})
+
+
+@login_required
+def api_livre_colaboradores_buscar(request):
+    """Sugestões de colaboradores ativos (RH) para o campo "Auditado". O campo aceita texto livre também."""
+    from rh.models import Colaborador
+
+    q = (request.GET.get("q") or "").strip()
+    if len(q) < 2:
+        return JsonResponse({"results": []})
+    qs = Colaborador.objects.filter(is_active=True)
+    for termo in q.split():
+        qs = qs.filter(Q(nome_completo__icontains=termo) | Q(matricula__icontains=termo))
+    return JsonResponse({"results": [
+        {"nome": c.nome_completo} for c in qs.order_by("nome_completo")[:15] if c.nome_completo
+    ]})
 
 
 @login_required
@@ -371,7 +444,7 @@ def livre_export_excel(request, pk):
     ws.column_dimensions["B"].width = 90
 
     ws2 = wb.create_sheet("Evidências")
-    cab = ["#", "Tópico", "Evidência solicitada", "Evidência apresentada", "Classificação", "Grau NC", "Observação", "Fotos", "Plano de ação", "Responsável", "Prazo"]
+    cab = ["#", "Tópico", "Auditado", "Evidência solicitada", "Evidência apresentada", "Classificação", "Grau NC", "Observação", "Fotos", "Plano de ação", "Responsável", "Prazo"]
     fill = PatternFill("solid", fgColor="1F2937")
     for col, titulo in enumerate(cab, start=1):
         c = ws2.cell(row=1, column=col, value=titulo)
@@ -381,7 +454,7 @@ def livre_export_excel(request, pk):
     solicitacoes = list(aud.solicitacoes.prefetch_related(_imagens_prefetch()))
     for i, s in enumerate(solicitacoes, start=1):
         valores = [
-            i, s.topico, s.solicitacao, s.evidencia, s.get_conclusao_display(),
+            i, s.topico, s.auditado, s.solicitacao, s.evidencia, s.get_conclusao_display(),
             s.get_grau_nc_display() if s.grau_nc else "", s.observacao, len(s.imagens.all()),
             s.get_capa_status_display() if s.conclusao in ("NC", "OM") else "",
             s.capa_responsavel if s.conclusao in ("NC", "OM") else "",
@@ -390,8 +463,8 @@ def livre_export_excel(request, pk):
         for col, v in enumerate(valores, start=1):
             c = ws2.cell(row=i + 1, column=col, value=v)
             c.alignment = Alignment(wrap_text=True, vertical="top")
-        ws2.cell(row=i + 1, column=5).fill = PatternFill("solid", fgColor=cores.get(s.conclusao, "FFFFFF"))
-    for col, w in enumerate([5, 24, 50, 50, 24, 12, 40, 8, 22, 24, 12], start=1):
+        ws2.cell(row=i + 1, column=6).fill = PatternFill("solid", fgColor=cores.get(s.conclusao, "FFFFFF"))
+    for col, w in enumerate([5, 24, 24, 50, 50, 24, 12, 40, 8, 22, 24, 12], start=1):
         ws2.column_dimensions[get_column_letter(col)].width = w
     ws2.freeze_panes = "A2"
     _aba_fotos(wb, solicitacoes)
@@ -519,7 +592,8 @@ def livre_export_docx(request, pk):
 
     aud = get_object_or_404(AuditoriaLivre, pk=pk)
     solicitacoes = list(aud.solicitacoes.prefetch_related("imagens"))
-    buf = gerar_relatorio_livre_docx(aud, solicitacoes)
+    agrupar = "topico" if request.GET.get("agrupar") == "topico" else "classificacao"
+    buf = gerar_relatorio_livre_docx(aud, solicitacoes, agrupar=agrupar)
     nome = re.sub(r"[^a-zA-Z0-9_-]+", "_", aud.titulo).strip("_")[:60] or "auditoria"
     resp = HttpResponse(
         buf.getvalue(),

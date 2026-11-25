@@ -134,7 +134,9 @@ def _achado(doc, numero, sol):
     cab = doc.add_table(rows=1, cols=2)
     set_table_borders(cab)
     c0, c1 = cab.rows[0].cells
-    _celula(c0, f"#{numero}" + (f"  ·  {sol.topico}" if sol.topico else ""), negrito=True, cor=cor_texto)
+    titulo = f"#{numero}" + (f"  ·  {sol.topico}" if sol.topico else "") + (
+        f"  ·  Auditado: {sol.auditado}" if sol.auditado else "")
+    _celula(c0, titulo, negrito=True, cor=cor_texto)
     _celula(c1, rotulo, negrito=True, cor=cor_texto)
     c1.paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.RIGHT
     for c in (c0, c1):
@@ -165,8 +167,53 @@ def _achado(doc, numero, sol):
         doc.add_paragraph()
 
 
-def gerar_relatorio_livre_docx(auditoria, solicitacoes):
-    """Retorna um BytesIO com o relatório. `solicitacoes` em ordem cronológica, com imagens prefetch."""
+def _resumo_topico(itens):
+    """Ex.: "4 itens: 1 NC, 1 OM, 2 conformes" para o cabeçalho de um tópico."""
+    c = {cod: 0 for cod, _ in GRUPOS}
+    for _, s in itens:
+        c[s.conclusao] += 1
+    partes = [f"{c[cod]} {rot}" for cod, rot in (("NC", "NC"), ("OM", "OM"), ("C", "conformes"), ("NA", "N/A"), ("P", "pendentes")) if c[cod]]
+    return f"{len(itens)} {'item' if len(itens) == 1 else 'itens'}: " + ", ".join(partes)
+
+
+def _achados_por_topico(doc, numeradas):
+    """Achados agrupados por tópico (cada um com os auditados), mantendo a numeração da auditoria."""
+    topicos, ordem = {}, []
+    for n, s in numeradas:
+        chave = s.topico or ""
+        if chave not in topicos:
+            topicos[chave] = []
+            ordem.append(chave)
+        topicos[chave].append((n, s))
+    # tópicos em ordem alfabética; "sem tópico" por último
+    for chave in sorted(ordem, key=lambda t: (t == "", t.casefold())):
+        itens = topicos[chave]
+        auditados = []
+        for _, s in itens:
+            if s.auditado and s.auditado not in auditados:
+                auditados.append(s.auditado)
+        p = doc.add_paragraph()
+        p.paragraph_format.keep_with_next = True
+        p.paragraph_format.space_before = Pt(10)
+        run = p.add_run(chave or "Sem tópico")
+        run.bold = True
+        run.font.size = Pt(13)
+        run.font.color.rgb = RGBColor(0x1F, 0x29, 0x37)
+        info = doc.add_paragraph()
+        info.paragraph_format.keep_with_next = True
+        txt = _resumo_topico(itens) + (f"  ·  Auditado(s): {', '.join(auditados)}" if auditados else "")
+        r = info.add_run(txt)
+        r.italic = True
+        r.font.size = Pt(9)
+        for n, s in itens:
+            _achado(doc, n, s)
+
+
+def gerar_relatorio_livre_docx(auditoria, solicitacoes, agrupar="classificacao"):
+    """Retorna um BytesIO com o relatório. `solicitacoes` em ordem cronológica, com imagens prefetch.
+
+    agrupar: "classificacao" (NC, OM, Conformes…) ou "topico" (um bloco por tópico, com o auditado).
+    """
     doc = Document()
     sec = doc.sections[0]
     sec.left_margin = sec.right_margin = Inches(1)
@@ -237,18 +284,22 @@ def gerar_relatorio_livre_docx(auditoria, solicitacoes):
     _titulo_secao(doc, "4. Achados")
     if not numeradas:
         doc.add_paragraph("Nenhuma evidência foi solicitada nesta auditoria.")
-    for cod, nome in GRUPOS:
-        grupo = [(n, s) for n, s in numeradas if s.conclusao == cod]
-        if not grupo:
-            continue
-        p = doc.add_paragraph()
-        p.paragraph_format.keep_with_next = True
-        run = p.add_run(f"{nome} ({len(grupo)})")
-        run.bold = True
-        run.font.size = Pt(12)
-        run.font.color.rgb = RGBColor.from_string(COR_CLASSE[cod][0])
-        for n, s in grupo:
-            _achado(doc, n, s)
+    if agrupar == "topico":
+        _achados_por_topico(doc, numeradas)
+    else:
+        for cod, nome in GRUPOS:
+            grupo = [(n, s) for n, s in numeradas if s.conclusao == cod]
+            if not grupo:
+                continue
+            p = doc.add_paragraph()
+            p.paragraph_format.keep_with_next = True
+            run = p.add_run(f"{nome} ({len(grupo)})")
+            run.bold = True
+            run.font.size = Pt(12)
+            run.font.color.rgb = RGBColor.from_string(COR_CLASSE[cod][0])
+            for n, s in grupo:
+                _achado(doc, n, s)
+
 
     saida = io.BytesIO()
     doc.save(saida)

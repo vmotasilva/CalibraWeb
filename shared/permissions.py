@@ -1345,22 +1345,6 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Modo Entrevista (Lista de Auditorias)", "view_name": "auditoria:iso_auditoria_list", "perm": "core.nav_auditoria_iso_lista"},
                     {
-                        "nome": "Auditoria Livre (qualquer objetivo/cenário)",
-                        "view_name": [
-                            "auditoria:livre_list", "auditoria:livre_create", "auditoria:livre_execucao",
-                            "auditoria:livre_edit", "auditoria:livre_toggle_conclusao", "auditoria:livre_arquivar",
-                            "auditoria:livre_delete", "auditoria:livre_export_excel", "auditoria:livre_export_docx",
-                            "auditoria:api_livre_sol_create", "auditoria:api_livre_conclusao_salvar",
-                            "auditoria:api_livre_sol_update", "auditoria:api_livre_sol_delete",
-                            "auditoria:api_livre_imagem_upload", "auditoria:api_livre_imagem_delete",
-                            "auditoria:api_livre_imagem_legenda", "auditoria:livre_imagem_arquivo",
-                            "auditoria:livre_capa", "auditoria:api_livre_capa_gerar_link",
-                            "auditoria:api_livre_capa_revogar_link", "auditoria:api_livre_capa_enviar_link", "auditoria:api_livre_capa_salvar",
-                            "auditoria:api_livre_capa_revisar", "auditoria:livre_capa_anexo",
-                        ],
-                        "perm": "core.nav_auditoria_iso_lista",
-                    },
-                    {
                         "nome": "Execução da Entrevista",
                         "view_name": [
                             "auditoria:iso_entrevista_view",
@@ -1392,6 +1376,51 @@ NAV_STRUCTURE = [
                     {"nome": "Avaliação do Auditor & Feedback", "view_name": ["auditoria:api_iso_avaliacao_resumo", "auditoria:api_iso_avaliacao_gerar_link", "auditoria:api_iso_avaliacao_perguntas_list_create", "auditoria:api_iso_avaliacao_salvar_como_padrao", "auditoria:api_iso_avaliacao_perguntas_global_list_create", "auditoria:api_iso_avaliacao_pergunta_update_delete", "auditoria:api_iso_avaliacao_restaurar_padroes", "auditoria:api_iso_avaliacao_restaurar_padroes_global"], "perm": "core.nav_auditoria_iso_avaliacao"},
                     {"nome": "Analytics Executivo Global", "view_name": ["auditoria:iso_analytics_global", "auditoria:api_iso_analytics_global_data"], "perm": "core.nav_auditoria_iso_analytics"},
                     {"nome": "Exportar Relatórios (Excel/Word)", "view_name": ["auditoria:iso_auditoria_export_excel", "auditoria:iso_auditoria_export_docx", "auditoria:api_auditoria_exportar_planilha"], "perm": "core.nav_auditoria_iso_export"},
+                ],
+            },
+            {
+                "key": "auditoria_livre",
+                "nome": "Auditoria Livre (qualquer objetivo/cenário)",
+                "grupo": "Auditoria Livre",
+                "perm": "core.nav_auditoria_livre_bloco",
+                "funcoes": [
+                    {"nome": "Lista de Auditorias Livres", "view_name": "auditoria:livre_list", "perm": "core.nav_auditoria_livre_lista"},
+                    {
+                        "nome": "Criar, Editar, Arquivar e Excluir Auditoria",
+                        "view_name": [
+                            "auditoria:livre_create", "auditoria:livre_edit",
+                            "auditoria:livre_arquivar", "auditoria:livre_delete",
+                        ],
+                        "perm": "core.nav_auditoria_livre_gerenciar",
+                    },
+                    {
+                        "nome": "Condução (Solicitações, Itens e Fotos)",
+                        "view_name": [
+                            "auditoria:livre_execucao", "auditoria:livre_toggle_conclusao",
+                            "auditoria:api_livre_sol_create", "auditoria:api_livre_sol_update",
+                            "auditoria:api_livre_sol_delete", "auditoria:api_livre_item_create",
+                            "auditoria:api_livre_grupo_delete", "auditoria:api_livre_conclusao_salvar",
+                            "auditoria:api_livre_colaboradores_buscar",
+                            "auditoria:api_livre_imagem_upload", "auditoria:api_livre_imagem_delete",
+                            "auditoria:api_livre_imagem_legenda", "auditoria:livre_imagem_arquivo",
+                        ],
+                        "perm": "core.nav_auditoria_livre_conducao",
+                    },
+                    {
+                        "nome": "Plano de Ação (CAPA), Links e E-mails ao Auditado",
+                        "view_name": [
+                            "auditoria:livre_capa", "auditoria:api_livre_capa_gerar_link",
+                            "auditoria:api_livre_capa_enviar_link", "auditoria:api_livre_capa_revogar_link",
+                            "auditoria:api_livre_capa_salvar", "auditoria:api_livre_capa_revisar",
+                            "auditoria:livre_capa_anexo",
+                        ],
+                        "perm": "core.nav_auditoria_livre_capa",
+                    },
+                    {
+                        "nome": "Exportar Relatórios (Excel/Word)",
+                        "view_name": ["auditoria:livre_export_excel", "auditoria:livre_export_docx"],
+                        "perm": "core.nav_auditoria_livre_export",
+                    },
                 ],
             },
             {
@@ -1921,6 +1950,7 @@ NAV_GROUP_PERMS = {
     "Qualidade": "core.nav_gestao_qualidade",
     "Qualidade > Homologações": "core.nav_gestao_homologacoes",
     "ISO 13485": "core.nav_auditoria_iso_grupo",
+    "Auditoria Livre": "core.nav_auditoria_livre_grupo",
     "Ocorrências Gerais": "core.nav_laboratorio_grupo_ocorrencias_gerais",
     "Ocorrências Gerais > Configurações": "core.nav_laboratorio_grupo_ocorrencias_config",
     "Ocorrências Gerais > Configurações > Máquinas": "core.nav_laboratorio_grupo_maquinas",

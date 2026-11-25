@@ -120,14 +120,12 @@ class AuditoriaLivreTests(TestCase):
         self.assertEqual(wb.sheetnames, ["Resumo", "Evidências"])
         linhas = list(wb["Evidências"].iter_rows(values_only=True))
         self.assertEqual(len(linhas), 3)
-        self.assertEqual(linhas[2][4:6], ("Não Conformidade", "NC Menor"))
+        self.assertEqual(linhas[2][5:7], ("Não Conformidade", "NC Menor"))
 
     def test_navigation_permission_mapping(self):
         from shared.permissions import VIEW_NAME_TO_PERMISSION
         for nome in ("livre_list", "livre_execucao", "api_livre_sol_update", "livre_export_excel"):
-            self.assertEqual(
-                VIEW_NAME_TO_PERMISSION[f"auditoria:{nome}"]["perm"], "core.nav_auditoria_iso_lista"
-            )
+            self.assertTrue(VIEW_NAME_TO_PERMISSION[f"auditoria:{nome}"]["perm"].startswith("core.nav_auditoria_livre_"))
 
 
 class AuditoriaLivreFotosTests(TestCase):
@@ -179,7 +177,7 @@ class AuditoriaLivreFotosTests(TestCase):
         self._post = lambda u, d: self.client.post(u, json.dumps(d), content_type="application/json")
         self._post(reverse("auditoria:api_livre_imagem_legenda", args=[img_id]), {"legenda": "Piso"})
         r = self.client.get(reverse("auditoria:livre_execucao", args=[self.sol.auditoria_id]))
-        self.assertEqual(r.context["solicitacoes_json"][0]["imagens"][0]["legenda"], "Piso")
+        self.assertEqual(r.context["grupos_json"][0]["itens"][0]["imagens"][0]["legenda"], "Piso")
         self.client.post(reverse("auditoria:api_livre_imagem_delete", args=[img_id]))
         self.assertEqual(self.sol.imagens.count(), 0)
         self.assertEqual(self.client.get(reverse("auditoria:livre_imagem_arquivo", args=[img_id])).status_code, 404)
@@ -198,7 +196,7 @@ class AuditoriaLivreFotosTests(TestCase):
         r = self.client.get(reverse("auditoria:livre_export_excel", args=[self.sol.auditoria_id]))
         wb = load_workbook(BytesIO(r.content))
         self.assertEqual(wb.sheetnames, ["Resumo", "Evidências", "Fotos"])
-        self.assertEqual(wb["Evidências"]["H2"].value, 1)
+        self.assertEqual(wb["Evidências"]["I2"].value, 1)
         self.assertEqual(len(wb["Fotos"]._images), 1)
 
 
@@ -442,11 +440,11 @@ class AuditoriaLivreCapaTests(TestCase):
         self._resp(self.nc)
         r = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk]))
         self.assertContains(r, reverse("auditoria:livre_capa", args=[self.aud.pk]))
-        self.assertEqual(r.context["solicitacoes_json"][0]["capa_status"], "AGUARDANDO_REVISAO")
+        self.assertEqual(r.context["grupos_json"][0]["itens"][0]["capa_status"], "AGUARDANDO_REVISAO")
         wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
         linha = [c.value for c in wb["Evidências"][2]]
-        self.assertEqual(linha[8:11], ["Aguardando Revisão", "João", "31/12/2026"])
-        self.assertFalse(wb["Evidências"]["I5"].value)  # conforme não tem plano
+        self.assertEqual(linha[9:12], ["Aguardando Revisão", "João", "31/12/2026"])
+        self.assertFalse(wb["Evidências"]["J5"].value)  # conforme não tem plano
         doc = Document(BytesIO(self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk])).content))
         texto = "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
         for esperado in ("Falta de rotina", "Criar agenda", "31/12/2026", "Plano de ação — situação"):
@@ -459,7 +457,7 @@ class AuditoriaLivreCapaTests(TestCase):
     def test_permission_mapping_covers_auditor_views_only(self):
         from shared.permissions import VIEW_NAME_TO_PERMISSION as M
         for nome in ("livre_capa", "api_livre_capa_salvar", "api_livre_capa_revisar", "livre_capa_anexo"):
-            self.assertEqual(M[f"auditoria:{nome}"]["perm"], "core.nav_auditoria_iso_lista")
+            self.assertTrue(M[f"auditoria:{nome}"]["perm"].startswith("core.nav_auditoria_livre_"))
         for nome in ("livre_capa_portal", "api_livre_capa_responder_publico", "livre_capa_anexo_publico"):
             self.assertNotIn(f"auditoria:{nome}", M)  # públicas: validadas pelo token
 
@@ -618,4 +616,348 @@ class AuditoriaLivreEmailTests(TestCase):
         self.assertContains(r, "aud@empresa.com")
         self.assertContains(r, f'class="btn btn-sm btn-outline-secondary rounded-pill btn-enviar" data-id="{link.pk}"')
         from shared.permissions import VIEW_NAME_TO_PERMISSION as M
-        self.assertEqual(M["auditoria:api_livre_capa_enviar_link"]["perm"], "core.nav_auditoria_iso_lista")
+        self.assertTrue(M["auditoria:api_livre_capa_enviar_link"]["perm"].startswith("core.nav_auditoria_livre_"))
+
+
+class AuditoriaLivreItensTests(TestCase):
+    """Uma solicitação com vários itens, cada um com a sua evidência e classificação."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser("aud6", "aud6@example.com", "x")
+        self.client.force_login(self.user)
+        self.aud = AuditoriaLivre.objects.create(titulo="Itens", data_inicio=date(2026, 11, 20))
+        self.sol = SolicitacaoLivre.objects.create(
+            auditoria=self.aud, solicitacao="Quais máquinas estão sinalizadas?", topico="Máquinas", ordem=1,
+            evidencia="PRA 03", conclusao="C")
+        self.outra = SolicitacaoLivre.objects.create(auditoria=self.aud, solicitacao="Outra", ordem=2)
+
+    def _post(self, nome, pk, dados=None):
+        return self.client.post(reverse(f"auditoria:{nome}", args=[pk]), json.dumps(dados or {}),
+                                content_type="application/json")
+
+    def _add_item(self, pk=None):
+        return self._post("api_livre_item_create", pk or self.sol.pk).json()["item"]
+
+    def test_add_item_copies_request_and_keeps_group_together(self):
+        item = self._add_item()
+        novo = SolicitacaoLivre.objects.get(pk=item["id"])
+        self.assertEqual((novo.pai_id, novo.solicitacao, novo.topico, novo.ordem),
+                         (self.sol.pk, "Quais máquinas estão sinalizadas?", "Máquinas", 1))
+        self.assertEqual((novo.conclusao, novo.evidencia), ("P", ""))
+        # adicionar a partir de um item extra também liga à original
+        self.assertEqual(SolicitacaoLivre.objects.get(pk=self._add_item(novo.pk)["id"]).pai_id, self.sol.pk)
+        # a numeração dos relatórios mantém os itens junto da solicitação: #1,#2,#3 e só depois a outra
+        ordem = list(self.aud.solicitacoes.order_by("ordem", "id").values_list("solicitacao", flat=True))
+        self.assertEqual(ordem, ["Quais máquinas estão sinalizadas?"] * 3 + ["Outra"])
+
+    def test_each_item_has_its_own_classification_and_counts_separately(self):
+        a, b = self._add_item(), self._add_item()
+        self._post("api_livre_sol_update", a["id"], {"evidencia": "VFTOrbit 03", "conclusao": "OM"})
+        r = self._post("api_livre_sol_update", b["id"], {"evidencia": "DLP 04", "conclusao": "NC", "grau_nc": "MAIOR"})
+        self.assertEqual(r.json()["resumo"], {"P": 1, "C": 1, "NC": 1, "OM": 1, "NA": 0, "total": 4})
+        self.sol.refresh_from_db()
+        self.assertEqual(self.sol.conclusao, "C")  # o item original não muda
+
+    def test_request_text_and_topic_are_shared_by_all_items(self):
+        a = self._add_item()
+        self._post("api_livre_sol_update", a["id"], {"solicitacao": "Texto novo", "topico": "Linha 2"})
+        for s in SolicitacaoLivre.objects.filter(pk__in=[self.sol.pk, a["id"]]):
+            self.assertEqual((s.solicitacao, s.topico), ("Texto novo", "Linha 2"))
+        self.outra.refresh_from_db()
+        self.assertEqual(self.outra.solicitacao, "Outra")  # outras solicitações não são afetadas
+        # editar só a evidência de um item não mexe nos demais
+        self._post("api_livre_sol_update", a["id"], {"evidencia": "só deste"})
+        self.sol.refresh_from_db()
+        self.assertEqual(self.sol.evidencia, "PRA 03")
+
+    def test_page_groups_items_by_request(self):
+        a = self._add_item()
+        grupos = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])).context["grupos_json"]
+        self.assertEqual(len(grupos), 2)
+        self.assertEqual([i["id"] for i in grupos[0]["itens"]], [self.sol.pk, a["id"]])
+        self.assertEqual(grupos[0]["solicitacao"], "Quais máquinas estão sinalizadas?")
+        self.assertEqual(len(grupos[1]["itens"]), 1)
+
+    def test_delete_original_item_promotes_next_one(self):
+        a, b = self._add_item(), self._add_item()
+        self._post("api_livre_sol_delete", self.sol.pk)
+        self.assertFalse(SolicitacaoLivre.objects.filter(pk=self.sol.pk).exists())
+        nova_raiz = SolicitacaoLivre.objects.get(pk=a["id"])
+        self.assertIsNone(nova_raiz.pai_id)
+        self.assertEqual(SolicitacaoLivre.objects.get(pk=b["id"]).pai_id, a["id"])
+        grupos = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])).context["grupos_json"]
+        self.assertEqual([len(g["itens"]) for g in grupos], [2, 1])  # a solicitação continua com os outros itens
+
+    def test_delete_extra_item_and_whole_request(self):
+        a = self._add_item()
+        self._post("api_livre_sol_delete", a["id"])
+        self.assertEqual(SolicitacaoLivre.objects.filter(pai=self.sol).count(), 0)
+        self.assertTrue(SolicitacaoLivre.objects.filter(pk=self.sol.pk).exists())
+        b, c = self._add_item(), self._add_item()
+        r = self._post("api_livre_grupo_delete", c["id"])  # a partir de qualquer item
+        self.assertEqual(r.json()["resumo"]["total"], 1)  # sobrou só "Outra"
+        self.assertFalse(SolicitacaoLivre.objects.filter(pk__in=[self.sol.pk, b["id"], c["id"]]).exists())
+
+    def test_items_have_own_photos_and_capa_and_flow_into_reports(self):
+        from io import BytesIO
+        from docx import Document
+        from openpyxl import load_workbook
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        a = self._add_item()
+        self._post("api_livre_sol_update", a["id"], {"evidencia": "DLP 04", "conclusao": "NC"})
+        buf = BytesIO()
+        Image.new("RGB", (40, 40), (1, 2, 3)).save(buf, "PNG")
+        self.client.post(reverse("auditoria:api_livre_imagem_upload", args=[a["id"]]),
+                         {"imagem": SimpleUploadedFile("f.png", buf.getvalue(), content_type="image/png")})
+        self.assertEqual(self.sol.imagens.count(), 0)  # foto só do item certo
+        # CAPA: só o item NC aparece no painel
+        r = self.client.get(reverse("auditoria:livre_capa", args=[self.aud.pk]))
+        self.assertEqual([i["id"] for i in r.context["itens"]], [a["id"]])
+        self.assertEqual(r.context["itens"][0]["numero"], 2)  # #2: logo depois do item original
+        # relatórios: uma linha por item
+        wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
+        linhas = [[c.value for c in row] for row in wb["Evidências"].iter_rows(min_row=2)]
+        self.assertEqual([(l[1], l[4], l[5]) for l in linhas[:2]],
+                         [("Máquinas", "PRA 03", "Conforme"), ("Máquinas", "DLP 04", "Não Conformidade")])
+        doc = Document(BytesIO(self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk])).content))
+        texto = "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
+        self.assertIn("DLP 04", texto)
+        self.assertIn("PRA 03", texto)
+
+    def test_endpoints_require_login_and_post(self):
+        url = reverse("auditoria:api_livre_item_create", args=[self.sol.pk])
+        self.assertEqual(self.client.get(url).status_code, 405)
+        self.client.logout()
+        self.assertEqual(self.client.post(url).status_code, 302)
+        self.assertEqual(self.client.post(reverse("auditoria:api_livre_grupo_delete", args=[self.sol.pk])).status_code, 302)
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        for nome in ("api_livre_item_create", "api_livre_grupo_delete"):
+            self.assertTrue(M[f"auditoria:{nome}"]["perm"].startswith("core.nav_auditoria_livre_"))
+
+
+class AuditoriaLivreAuditadoETopicoTests(TestCase):
+    """Colaborador auditado junto ao tópico e relatório agrupado por tópico."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser("aud7", "aud7@example.com", "x")
+        self.client.force_login(self.user)
+        self.aud = AuditoriaLivre.objects.create(titulo="Por tópico", data_inicio=date(2026, 11, 20))
+        mk = lambda **kw: SolicitacaoLivre.objects.create(auditoria=self.aud, **kw)
+        self.s1 = mk(solicitacao="Calibração", topico="Metrologia", auditado="João Silva", conclusao="NC", grau_nc="MAIOR", ordem=1)
+        self.s2 = mk(solicitacao="Treinamento", topico="RH", auditado="Maria Souza", conclusao="C", ordem=2)
+        self.s3 = mk(solicitacao="Registros", topico="Metrologia", auditado="Pedro Lima", conclusao="OM", ordem=3)
+        self.s4 = mk(solicitacao="Geral", conclusao="P", ordem=4)
+
+    def _post(self, nome, pk, dados=None):
+        return self.client.post(reverse(f"auditoria:{nome}", args=[pk]), json.dumps(dados or {}),
+                                content_type="application/json")
+
+    def test_auditado_saved_cleaned_and_copied_to_new_items(self):
+        r = self._post("api_livre_sol_update", self.s1.pk, {"auditado": "  Ana   Paula  Costa "})
+        self.assertEqual(r.json()["solicitacao"]["auditado"], "Ana Paula Costa")
+        item = self._post("api_livre_item_create", self.s1.pk).json()["item"]
+        self.assertEqual(item["auditado"], "Ana Paula Costa")
+        self._post("api_livre_sol_update", item["id"], {"auditado": "Bruno"})  # vale para a solicitação inteira
+        self.s1.refresh_from_db()
+        self.assertEqual(self.s1.auditado, "Bruno")
+        self.s3.refresh_from_db()
+        self.assertEqual(self.s3.auditado, "Pedro Lima")  # outras solicitações do mesmo tópico não mudam
+        self._post("api_livre_sol_update", self.s1.pk, {"auditado": "x" * 400})
+        self.s1.refresh_from_db()
+        self.assertEqual(len(self.s1.auditado), 255)
+
+    def test_create_with_auditado_and_page_payload(self):
+        r = self._post("api_livre_sol_create", self.aud.pk, {"solicitacao": "Nova", "topico": "TI", "auditado": "Carla"})
+        self.assertEqual(r.json()["solicitacao"]["auditado"], "Carla")
+        grupos = self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])).context["grupos_json"]
+        self.assertEqual({g["solicitacao"]: g["auditado"] for g in grupos}["Nova"], "Carla")
+        self.assertContains(self.client.get(reverse("auditoria:livre_execucao", args=[self.aud.pk])), 'id="agruparTopico"')
+
+    def test_collaborator_suggestions(self):
+        from rh.models import Colaborador
+        Colaborador.objects.create(matricula="123", nome_completo="Fernanda Oliveira", grupo="G", is_active=True)
+        Colaborador.objects.create(matricula="124", nome_completo="Fernando Lima", grupo="G", is_active=True)
+        Colaborador.objects.create(matricula="125", nome_completo="Fernanda Inativa", grupo="G", is_active=False)
+        url = reverse("auditoria:api_livre_colaboradores_buscar")
+        nomes = [c["nome"] for c in self.client.get(url, {"q": "fernan"}).json()["results"]]
+        self.assertEqual(nomes, ["Fernanda Oliveira", "Fernando Lima"])  # ativos, em ordem alfabética
+        self.assertEqual(self.client.get(url, {"q": "fernanda oli"}).json()["results"], [{"nome": "Fernanda Oliveira"}])
+        self.assertEqual(self.client.get(url, {"q": "123"}).json()["results"], [{"nome": "Fernanda Oliveira"}])  # matrícula
+        self.assertEqual(self.client.get(url, {"q": "f"}).json()["results"], [])  # mínimo de 2 letras
+        self.client.logout()
+        self.assertEqual(self.client.get(url, {"q": "fernan"}).status_code, 302)
+
+    def _docx_texto(self, agrupar=None):
+        from io import BytesIO
+        from docx import Document
+        extra = {"agrupar": agrupar} if agrupar else {}
+        r = self.client.get(reverse("auditoria:livre_export_docx", args=[self.aud.pk]), extra)
+        self.assertEqual(r.status_code, 200)
+        doc = Document(BytesIO(r.content))
+        return [p.text for p in doc.paragraphs], "\n".join(c.text for t in doc.tables for row in t.rows for c in row.cells)
+
+    def test_word_default_shows_auditado_in_each_finding(self):
+        paragrafos, tabelas = self._docx_texto()
+        self.assertIn("#1  ·  Metrologia  ·  Auditado: João Silva", tabelas)
+        self.assertIn("Não Conformidades (1)", paragrafos)  # continua agrupado por classificação
+
+    def test_word_grouped_by_topic(self):
+        paragrafos, tabelas = self._docx_texto("topico")
+        # tópicos em ordem alfabética, "sem tópico" por último
+        ordem = [p for p in paragrafos if p in ("Metrologia", "RH", "Sem tópico")]
+        self.assertEqual(ordem, ["Metrologia", "RH", "Sem tópico"])
+        self.assertIn("2 itens: 1 NC, 1 OM  ·  Auditado(s): João Silva, Pedro Lima", paragrafos)
+        self.assertIn("1 item: 1 conformes  ·  Auditado(s): Maria Souza", paragrafos)
+        self.assertIn("1 item: 1 pendentes", paragrafos)
+        self.assertNotIn("Não Conformidades (1)", paragrafos)
+        # a numeração da auditoria é mantida dentro dos blocos
+        self.assertLess(tabelas.index("#1  ·"), tabelas.index("#3  ·"))
+        self.assertLess(tabelas.index("#3  ·"), tabelas.index("#2  ·"))
+
+    def test_excel_has_auditado_column_and_capa_shows_it(self):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        wb = load_workbook(BytesIO(self.client.get(reverse("auditoria:livre_export_excel", args=[self.aud.pk])).content))
+        cab = [c.value for c in wb["Evidências"][1]]
+        self.assertEqual(cab[1:3], ["Tópico", "Auditado"])
+        self.assertEqual([wb["Evidências"].cell(row=r, column=3).value for r in (2, 3)], ["João Silva", "Maria Souza"])
+        r = self.client.get(reverse("auditoria:livre_capa", args=[self.aud.pk]))
+        self.assertContains(r, "João Silva")
+        from .models import CapaLinkLivre
+        from django.test import Client
+        link = CapaLinkLivre.objects.create(auditoria=self.aud)
+        portal = Client().get(reverse("auditoria:livre_capa_portal", args=[link.token]))
+        self.assertContains(portal, "João Silva")
+
+    def test_permission_mapping(self):
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        self.assertTrue(M["auditoria:api_livre_colaboradores_buscar"]["perm"].startswith("core.nav_auditoria_livre_"))
+
+
+class AuditoriaLivreSecaoPropriaTests(TestCase):
+    """A Auditoria Livre é uma seção própria do menu, com permissões próprias (independentes da ISO 13485)."""
+
+    LIVRE = ["livre_list", "livre_create", "livre_edit", "livre_arquivar", "livre_delete", "livre_execucao",
+             "livre_export_excel", "livre_export_docx", "livre_capa"]
+    PUBLICAS = ["livre_capa_portal", "api_livre_capa_responder_publico", "api_livre_capa_remover_anexo_publico",
+                "livre_capa_anexo_publico", "livre_capa_imagem_publico"]
+
+    def test_every_auditor_route_is_mapped_and_public_ones_are_not(self):
+        import re
+        from django.urls import get_resolver
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        nomes = set()
+
+        def walk(patterns):
+            for p in patterns:
+                if hasattr(p, "url_patterns"):
+                    walk(p.url_patterns)
+                elif getattr(p, "name", None) and re.match(r"^(api_)?livre", p.name):
+                    nomes.add(p.name)
+        walk(get_resolver().url_patterns)
+        auditor = nomes - set(self.PUBLICAS)
+        self.assertGreater(len(auditor), 20)
+        for nome in sorted(auditor):
+            self.assertIn(f"auditoria:{nome}", M, f"rota {nome} da Auditoria Livre sem permissão mapeada")
+            self.assertTrue(M[f"auditoria:{nome}"]["perm"].startswith("core.nav_auditoria_livre_"), nome)
+        for nome in self.PUBLICAS:
+            self.assertNotIn(f"auditoria:{nome}", M)
+
+    def test_functions_split_by_permission(self):
+        from shared.permissions import VIEW_NAME_TO_PERMISSION as M
+        esperado = {
+            "livre_list": "lista", "livre_create": "gerenciar", "livre_delete": "gerenciar",
+            "livre_execucao": "conducao", "api_livre_sol_update": "conducao", "api_livre_imagem_upload": "conducao",
+            "livre_capa": "capa", "api_livre_capa_revisar": "capa", "api_livre_capa_enviar_link": "capa",
+            "livre_export_excel": "export", "livre_export_docx": "export",
+        }
+        for nome, fim in esperado.items():
+            self.assertEqual(M[f"auditoria:{nome}"]["perm"], f"core.nav_auditoria_livre_{fim}", nome)
+        # e a seção de grupo exigida é a própria, não a da ISO 13485
+        grupos = M["auditoria:livre_list"].get("grupos")
+        self.assertEqual(grupos, ["core.nav_auditoria_livre_grupo"])
+
+    def _usuario(self, nome, perms):
+        from django.contrib.auth.models import Permission
+        u = get_user_model().objects.create_user(nome, password="x")
+        for cod in perms:
+            u.user_permissions.add(Permission.objects.get(content_type__app_label="core", codename=cod))
+        return get_user_model().objects.get(pk=u.pk)
+
+    def test_access_is_independent_from_iso_and_needs_the_new_permissions(self):
+        from shared.permissions import has_view_access
+        base = ["nav_mod_auditoria"]
+        so_iso = self._usuario("soiso", base + ["nav_auditoria_iso_bloco", "nav_auditoria_iso_lista", "nav_auditoria_iso_grupo"])
+        self.assertFalse(has_view_access(so_iso, "auditoria:livre_list"))   # ISO sozinha não abre a Livre
+        livre = self._usuario("livre", base + ["nav_auditoria_livre_grupo", "nav_auditoria_livre_bloco", "nav_auditoria_livre_lista"])
+        self.assertTrue(has_view_access(livre, "auditoria:livre_list"))
+        self.assertFalse(has_view_access(livre, "auditoria:iso_auditoria_list"))  # e a Livre não abre a ISO
+        self.assertFalse(has_view_access(livre, "auditoria:livre_execucao"))      # cada função é separada
+        sem_secao = self._usuario("semsecao", base + ["nav_auditoria_livre_bloco", "nav_auditoria_livre_lista"])
+        self.assertFalse(has_view_access(sem_secao, "auditoria:livre_list"))      # flag da seção desligada
+
+    def test_menu_shows_own_section_only_to_those_with_access(self):
+        url = reverse("auditoria:hub")
+        com = self._usuario("comlivre", ["nav_mod_auditoria", "nav_auditoria_livre_grupo", "nav_auditoria_livre_bloco",
+                                          "nav_auditoria_livre_lista", "nav_auditoria_livre_gerenciar"])
+        self.client.force_login(com)
+        html = self.client.get(url).content.decode()
+        self.assertIn("AUDITORIA LIVRE", html)
+        self.assertIn(reverse("auditoria:livre_list"), html)
+        self.assertIn(reverse("auditoria:livre_create"), html)
+        self.assertNotIn("Modo Entrevista", html)  # a seção ISO não aparece sem permissão da ISO
+        sem = self._usuario("semlivre", ["nav_mod_auditoria", "nav_auditoria_iso_bloco", "nav_auditoria_iso_lista", "nav_auditoria_iso_grupo"])
+        self.client.force_login(sem)
+        html = self.client.get(url).content.decode()
+        self.assertNotIn("AUDITORIA LIVRE", html)
+        self.assertIn("Modo Entrevista", html)
+
+    def test_admin_sees_everything_and_livre_is_not_inside_iso_section(self):
+        admin = get_user_model().objects.create_superuser("adm", "adm@example.com", "x")
+        self.client.force_login(admin)
+        html = self.client.get(reverse("auditoria:hub")).content.decode()
+        i, j = html.index("collapseISO"), html.index("collapseLIVRE")
+        self.assertLess(i, j)
+        secao_iso = html[i:j]
+        self.assertNotIn(reverse("auditoria:livre_list"), secao_iso)  # o item saiu da seção da ISO
+
+    def test_migration_keeps_access_of_current_users(self):
+        from importlib import import_module
+        from django.apps import apps as django_apps
+        from django.contrib.auth.models import Group, Permission
+        from shared.permissions import has_view_access
+        antigas = ["nav_mod_auditoria", "nav_auditoria_iso_bloco", "nav_auditoria_iso_lista", "nav_auditoria_iso_grupo"]
+        direto = self._usuario("direto", antigas)
+        so_lista = self._usuario("solista", ["nav_mod_auditoria", "nav_auditoria_iso_lista"])  # sem a seção ISO: não acessava
+        # permissões core.nav_* herdadas de grupo nunca valeram no sistema: não podem virar acesso novo
+        grupo = Group.objects.create(name="Auditores")
+        for cod in antigas:
+            grupo.permissions.add(Permission.objects.get(content_type__app_label="core", codename=cod))
+        por_grupo = self._usuario("porgrupo", [])
+        por_grupo.groups.add(grupo)
+        inativo = self._usuario("inativo", antigas)
+        inativo.is_active = False
+        inativo.save()
+        antes = {n: has_view_access(get_user_model().objects.get(username=n), "auditoria:livre_list")
+                 for n in ("direto", "solista", "porgrupo")}
+        self.assertEqual(antes["porgrupo"], False)
+        import_module("core.migrations.0069_nav_auditoria_livre_dados").forwards(django_apps, None)
+        dir_ = get_user_model().objects.get(username="direto")
+        self.assertTrue(has_view_access(dir_, "auditoria:livre_list"))
+        self.assertTrue(has_view_access(dir_, "auditoria:livre_export_docx"))
+        for nome in ("solista", "porgrupo", "inativo"):
+            u = get_user_model().objects.get(username=nome)
+            self.assertFalse(u.user_permissions.filter(codename__startswith="nav_auditoria_livre_").exists(), nome)
+        self.assertFalse(has_view_access(get_user_model().objects.get(username="porgrupo"), "auditoria:livre_list"))
+        self.assertEqual(grupo.permissions.filter(codename__startswith="nav_auditoria_livre_").count(), 0)  # grupos intactos
+        # idempotente: rodar de novo não duplica nem quebra
+        import_module("core.migrations.0069_nav_auditoria_livre_dados").forwards(django_apps, None)
+        self.assertEqual(dir_.user_permissions.filter(codename__startswith="nav_auditoria_livre_").count(), 7)
+
+    def test_hub_card_and_search_entries(self):
+        from shared.views.views import MODULE_HUBS_CONFIG, SYSTEM_FEATURES_CATALOG
+        titulos = [a["title"] for a in MODULE_HUBS_CONFIG["auditoria"]["activities"]]
+        self.assertIn("Auditoria Livre", titulos)
+        busca = {f["view_name"] for f in SYSTEM_FEATURES_CATALOG}
+        self.assertTrue({"auditoria:livre_list", "auditoria:livre_create"} <= busca)

@@ -1865,10 +1865,19 @@ class SolicitacaoLivre(models.Model):
     ]
 
     auditoria = models.ForeignKey(AuditoriaLivre, on_delete=models.CASCADE, related_name="solicitacoes")
+    # Uma solicitação pode ter vários itens, cada um com a sua evidência e classificação. Cada item é
+    # uma linha completa (fotos, plano de ação…); os itens extras apontam para a linha original em `pai`
+    # e repetem o texto/tópico dela (mantidos em sincronia pela API).
+    pai = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE, related_name="itens_extras")
     topico = models.CharField(
         max_length=255, blank=True, default="",
         verbose_name="Tópico / Área / Requisito",
         help_text="Agrupador livre (ex.: Recebimento, 7.5.1, Treinamentos).",
+    )
+    auditado = models.CharField(
+        max_length=255, blank=True, default="",
+        verbose_name="Colaborador auditado",
+        help_text="Quem está sendo auditado neste tópico. Texto livre (pode ser alguém de fora do RH).",
     )
     solicitacao = models.TextField(verbose_name="Evidência Solicitada")
     evidencia = models.TextField(blank=True, default="", verbose_name="Evidência Apresentada")

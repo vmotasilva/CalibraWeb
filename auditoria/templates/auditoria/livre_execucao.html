@@ -15,13 +15,21 @@
     .btn-class[data-c="NA"].active { background:#6c757d; color:#fff; }
     .btn-class[data-c="P"]  { color:#495057; border-color:#ced4da; background:transparent; }
     .btn-class[data-c="P"].active  { background:#495057; color:#fff; }
-    .sol-card { border-left: 6px solid #ced4da; transition: border-color .2s; }
-    .sol-card[data-c="C"]  { border-left-color:#198754; }
-    .sol-card[data-c="NC"] { border-left-color:#dc3545; }
-    .sol-card[data-c="OM"] { border-left-color:#ffc107; }
-    .sol-card[data-c="NA"] { border-left-color:#adb5bd; }
-    .sol-card textarea { resize: vertical; }
-    .sol-card.drag-over { outline: 3px dashed #0d6efd; outline-offset: 2px; }
+    .item-box { border-left: 6px solid #ced4da; background: #fcfcfd; border-radius: 12px; padding: 14px; transition: border-color .2s; }
+    .item-box[data-c="C"]  { border-left-color:#198754; }
+    .item-box[data-c="NC"] { border-left-color:#dc3545; }
+    .item-box[data-c="OM"] { border-left-color:#ffc107; }
+    .item-box[data-c="NA"] { border-left-color:#adb5bd; }
+    .grupo-card textarea { resize: vertical; }
+    .secao-topico { margin-bottom: 18px; }
+    .secao-cab { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:10px 14px; background:#1f2937; color:#fff;
+        border-radius:12px; cursor:pointer; margin-bottom:10px; user-select:none; }
+    .secao-cab .secao-nome { font-weight:700; font-size:1.05rem; }
+    .secao-cab .secao-aud { font-size:.85rem; opacity:.85; }
+    .secao-cab .badge { font-weight:600; }
+    .secao-cab .seta { transition: transform .15s; }
+    .secao-topico.fechada .seta { transform: rotate(-90deg); }
+    .item-box.drag-over { outline: 3px dashed #0d6efd; outline-offset: 2px; }
     .foto-item { width: 104px; }
     .foto-item .foto-img { width: 104px; height: 104px; object-fit: cover; border-radius: 10px; border: 1px solid #dee2e6; display: block; }
     .foto-item .foto-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; line-height: 1; border-radius: 50%; }
@@ -53,7 +61,14 @@
             <a href="{% url 'auditoria:livre_list' %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-left me-1"></i> Lista</a>
             <a href="{% url 'auditoria:livre_edit' aud.pk %}" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-pencil me-1"></i> Dados</a>
             <a href="{% url 'auditoria:livre_export_excel' aud.pk %}" class="btn btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a>
-            <a href="{% url 'auditoria:livre_export_docx' aud.pk %}" class="btn btn-outline-primary rounded-pill px-3"><i class="bi bi-file-earmark-word me-1"></i> Word</a>
+            <div class="btn-group">
+                <a href="{% url 'auditoria:livre_export_docx' aud.pk %}" class="btn btn-outline-primary rounded-start-pill ps-3"><i class="bi bi-file-earmark-word me-1"></i> Word</a>
+                <button type="button" class="btn btn-outline-primary rounded-end-pill dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false"><span class="visually-hidden">Opções do relatório</span></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'auditoria:livre_export_docx' aud.pk %}">Agrupado por classificação</a></li>
+                    <li><a class="dropdown-item" href="{% url 'auditoria:livre_export_docx' aud.pk %}?agrupar=topico">Agrupado por tópico</a></li>
+                </ul>
+            </div>
             <a href="{% url 'auditoria:livre_capa' aud.pk %}" class="btn btn-outline-danger rounded-pill px-3"><i class="bi bi-clipboard2-check me-1"></i> Plano de Ação</a>
             <form method="post" action="{% url 'auditoria:livre_toggle_conclusao' aud.pk %}" class="d-inline">
                 {% csrf_token %}
@@ -88,9 +103,12 @@
             <textarea id="novaSolicitacao" class="form-control mb-2" rows="2"
                       placeholder="O que você precisa ver? (ex.: registro de treinamento do operador, última calibração do equipamento…)"></textarea>
             <div class="d-flex flex-column flex-md-row gap-2">
-                <input id="novoTopico" class="form-control" list="listaTopicos" maxlength="255"
+<input id="novoTopico" class="form-control" list="listaTopicos" maxlength="255"
                        placeholder="Tópico / área / requisito (opcional)">
+                <input id="novoAuditado" class="form-control" list="listaColab" maxlength="255" autocomplete="off"
+                       placeholder="Colaborador auditado (opcional)">
                 <datalist id="listaTopicos">{% for t in topicos %}<option value="{{ t }}">{% endfor %}</datalist>
+                <datalist id="listaColab"></datalist>
                 <button id="btnSolicitar" class="btn btn-dark rounded-pill px-4 fw-bold text-nowrap">
                     <i class="bi bi-send me-1"></i> Solicitar <span class="small opacity-75">(Ctrl+Enter)</span>
                 </button>
@@ -106,8 +124,15 @@
         <button class="btn btn-sm btn-outline-danger chip-filtro" data-f="NC">NC <span class="badge bg-danger ms-1" data-n="NC">0</span></button>
         <button class="btn btn-sm btn-outline-warning chip-filtro" data-f="OM">Oport. Melhoria <span class="badge bg-warning text-dark ms-1" data-n="OM">0</span></button>
         <button class="btn btn-sm btn-outline-secondary chip-filtro" data-f="NA">N/A <span class="badge bg-secondary ms-1" data-n="NA">0</span></button>
-        <select id="filtroTopico" class="form-select form-select-sm ms-md-auto" style="max-width:260px;">
+<div class="form-check form-switch ms-md-auto mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="agruparTopico">
+            <label class="form-check-label fw-semibold" for="agruparTopico">Agrupar por tópico</label>
+        </div>
+        <select id="filtroTopico" class="form-select form-select-sm" style="max-width:220px;">
             <option value="">Todos os tópicos</option>
+        </select>
+        <select id="filtroAuditado" class="form-select form-select-sm" style="max-width:220px;">
+            <option value="">Todos os auditados</option>
         </select>
     </div>
 
@@ -127,7 +152,7 @@
 </div>
 
 <div id="save-indicator"></div>
-{{ solicitacoes_json|json_script:"dados-solicitacoes" }}
+{{ grupos_json|json_script:"dados-grupos" }}
 {{ resumo|json_script:"dados-resumo" }}
 
 <script>
@@ -139,12 +164,19 @@
     const URL_FOTO_UP = id => `{% url 'auditoria:api_livre_imagem_upload' 0 %}`.replace('/0/', `/${id}/`);
     const URL_FOTO_DEL = id => `{% url 'auditoria:api_livre_imagem_delete' 0 %}`.replace('/0/', `/${id}/`);
     const URL_FOTO_LEG = id => `{% url 'auditoria:api_livre_imagem_legenda' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_COLAB = "{% url 'auditoria:api_livre_colaboradores_buscar' %}";
+    const URL_ITEM = id => `{% url 'auditoria:api_livre_item_create' 0 %}`.replace('/0/', `/${id}/`);
+    const URL_GRUPO_DEL = id => `{% url 'auditoria:api_livre_grupo_delete' 0 %}`.replace('/0/', `/${id}/`);
     const URL_DEL = id => `{% url 'auditoria:api_livre_sol_delete' 0 %}`.replace('/0/', `/${id}/`);
     const CSRF = "{{ csrf_token }}";
     const CLASSES = [["C","Conforme"],["NC","Não Conformidade"],["OM","Oportunidade de Melhoria"],["NA","N/A"],["P","Pendente"]];
 
-    let itens = JSON.parse(document.getElementById('dados-solicitacoes').textContent);
-    let filtroClasse = "", filtroTopico = "";
+    // Uma solicitação (grupo) tem um ou mais itens; cada item tem a sua evidência e classificação.
+    let grupos = JSON.parse(document.getElementById('dados-grupos').textContent);
+    const todos = () => grupos.flatMap(g => g.itens);
+    let filtroClasse = "", filtroTopico = "", filtroAuditado = "";
+    let agrupar = false;
+    try { agrupar = localStorage.getItem('livre_agrupar_topico') === '1'; } catch (e) {}
     const $ = id => document.getElementById(id);
 
     // ---------- util
@@ -183,55 +215,118 @@
 
     // ---------- contadores / filtros
     function contarLocal() {
-        const r = { total: itens.length, C: 0, NC: 0, OM: 0, NA: 0, P: 0 };
-        itens.forEach(i => r[i.conclusao]++);
+        const r = { total: 0, C: 0, NC: 0, OM: 0, NA: 0, P: 0 };
+        todos().forEach(i => { r.total++; r[i.conclusao]++; });
         document.querySelectorAll('[data-n]').forEach(b => b.textContent = r[b.dataset.n] ?? 0);
+        atualizarSecoes();
     }
     function atualizarTopicos() {
-        const ts = [...new Set(itens.map(i => i.topico).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+        const ts = [...new Set(grupos.map(g => g.topico).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
         $('listaTopicos').replaceChildren(...ts.map(t => el('option', { value: t })));
         const sel = $('filtroTopico'), atual = sel.value;
         sel.replaceChildren(el('option', { value: '' }, 'Todos os tópicos'), ...ts.map(t => el('option', { value: t }, t)));
         sel.value = ts.includes(atual) ? atual : ''; filtroTopico = sel.value;
-    }
-    function visivel(i) {
-        return (!filtroClasse || i.conclusao === filtroClasse) && (!filtroTopico || i.topico === filtroTopico);
+        const as = [...new Set(grupos.map(g => g.auditado).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt'));
+        const selA = $('filtroAuditado'), atualA = selA.value;
+        selA.replaceChildren(el('option', { value: '' }, 'Todos os auditados'), ...as.map(t => el('option', { value: t }, t)));
+        selA.value = as.includes(atualA) ? atualA : ''; filtroAuditado = selA.value;
     }
     function aplicarFiltro() {
         let n = 0;
-        document.querySelectorAll('.sol-card').forEach(c => {
-            const i = itens.find(x => x.id == c.dataset.id);
-            const v = i && visivel(i); c.classList.toggle('d-none', !v); if (v) n++;
+        document.querySelectorAll('.grupo-card').forEach(card => {
+            const g = card._grupo;
+            const grupoOk = (!filtroTopico || g.topico === filtroTopico) && (!filtroAuditado || g.auditado === filtroAuditado);
+            let visiveis = 0;
+            card.querySelectorAll('.item-box').forEach(box => {
+                const ok = grupoOk && (!filtroClasse || box._item.conclusao === filtroClasse);
+                box.classList.toggle('d-none', !ok); if (ok) visiveis++;
+            });
+            card.classList.toggle('d-none', visiveis === 0);
+            if (visiveis) n++;
         });
+        document.querySelectorAll('.secao-topico').forEach(sec =>
+            sec.classList.toggle('d-none', !sec.querySelector('.grupo-card:not(.d-none)')));
         $('vazio').classList.toggle('d-none', n > 0);
-        $('vazioTxt').textContent = itens.length ? 'Nenhuma solicitação neste filtro.' : 'Nenhuma evidência solicitada ainda. Comece pelo campo acima.';
+        $('vazioTxt').textContent = grupos.length ? 'Nenhuma solicitação neste filtro.' : 'Nenhuma evidência solicitada ainda. Comece pelo campo acima.';
     }
 
-    // ---------- card
+    // ---------- agrupamento por tópico (seções)
+    const SEM_TOPICO = 'Sem tópico';
+    function criarSecao(topico) {
+        const nome = el('span', { class: 'secao-nome' }), aud = el('span', { class: 'secao-aud' }), cont = el('span', { class: 'ms-auto d-flex gap-1 flex-wrap' });
+        const cab = el('div', { class: 'secao-cab', title: 'Clique para recolher/expandir' },
+            el('i', { class: 'bi bi-chevron-down seta' }), nome, aud, cont);
+        const corpo = el('div', { class: 'secao-corpo' });
+        const sec = el('div', { class: 'secao-topico', 'data-topico': topico }, cab, corpo);
+        cab.addEventListener('click', () => { sec.classList.toggle('fechada'); corpo.classList.toggle('d-none'); });
+        sec._corpo = corpo; sec._nome = nome; sec._aud = aud; sec._cont = cont;
+        nome.textContent = topico || SEM_TOPICO;
+        return sec;
+    }
+    function secaoDe(topico) {
+        let sec = [...$('lista').children].find(c => c.classList.contains('secao-topico') && c.dataset.topico === (topico || ''));
+        if (sec) return sec;
+        sec = criarSecao(topico || '');
+        // ordem alfabética, "Sem tópico" por último
+        const outras = [...$('lista').children].filter(c => c.classList.contains('secao-topico'));
+        const depois = outras.find(o => topico ? (o.dataset.topico === '' || o.dataset.topico.localeCompare(topico, 'pt') > 0) : false);
+        $('lista').insertBefore(sec, depois || null);
+        return sec;
+    }
+    function inserirCard(card, noTopo) {
+        const g = card._grupo;
+        if (!agrupar) { noTopo ? $('lista').prepend(card) : $('lista').append(card); return; }
+        const corpo = secaoDe(g.topico)._corpo;
+        noTopo ? corpo.prepend(card) : corpo.append(card);
+    }
+    function reposicionar(card) {  // tópico mudou: leva o cartão para a seção certa sem refazer a tela
+        if (!agrupar) return;
+        const antiga = card.closest('.secao-topico');
+        secaoDe(card._grupo.topico)._corpo.prepend(card);
+        if (antiga && !antiga.querySelector('.grupo-card')) antiga.remove();
+    }
+    function atualizarSecoes() {
+        if (!agrupar) return;
+        document.querySelectorAll('.secao-topico').forEach(sec => {
+            const gs = [...sec.querySelectorAll('.grupo-card')].map(c => c._grupo);
+            const itens = gs.flatMap(g => g.itens);
+            const c = { NC: 0, OM: 0, C: 0, NA: 0, P: 0 };
+            itens.forEach(i => c[i.conclusao]++);
+            const auds = [...new Set(gs.map(g => g.auditado).filter(Boolean))];
+            sec._aud.innerHTML = '';
+            if (auds.length) { sec._aud.append(el('i', { class: 'bi bi-person me-1' }), 'Auditado: ' + auds.join(', ')); }
+            const defs = [['NC', 'text-bg-danger'], ['OM', 'text-bg-warning'], ['C', 'text-bg-success'], ['NA', 'text-bg-secondary'], ['P', 'text-bg-light']];
+            sec._cont.replaceChildren(el('span', { class: 'badge text-bg-dark border' }, `${itens.length} ${itens.length === 1 ? 'item' : 'itens'}`),
+                ...defs.filter(([k]) => c[k]).map(([k, cls]) => el('span', { class: 'badge ' + cls }, `${c[k]} ${k === 'P' ? 'pend.' : k}`)));
+        });
+    }
+
+    // ---------- salvar campos
     function salvarCampo(item, campo, valor) {
         item[campo] = valor;
         return api(URL_EDIT(item.id), { [campo]: valor }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true));
     }
-    function montarCard(item) {
-        const card = el('div', { class: 'card border-0 shadow-sm rounded-4 mb-3 sol-card', 'data-id': item.id, 'data-c': item.conclusao });
-        const body = el('div', { class: 'card-body' });
 
-        const topico = el('input', { class: 'form-control form-control-sm', list: 'listaTopicos', maxlength: 255, placeholder: 'Tópico (opcional)', value: item.topico });
-        topico.addEventListener('change', () => { salvarCampo(item, 'topico', topico.value.trim()).then(atualizarTopicos); });
-        const btnDel = el('button', { class: 'btn btn-sm btn-outline-danger rounded-circle', title: 'Remover solicitação', type: 'button',
+    // ---------- item (evidência + classificação + fotos + plano de ação)
+    const rotulosCapa = { PENDENTE: 'Plano pendente', AGUARDANDO_REVISAO: 'Plano em revisão', APROVADO: 'Plano aprovado', REJEITADO: 'Plano rejeitado' };
+    const coresCapa = { PENDENTE: 'text-bg-secondary', AGUARDANDO_REVISAO: 'text-bg-warning', APROVADO: 'text-bg-success', REJEITADO: 'text-bg-danger' };
+
+    function montarItem(grupo, item, card) {
+        const box = el('div', { class: 'item-box mb-3', 'data-c': item.conclusao });
+        box._item = item;
+        const titulo = el('div', { class: 'small fw-bold text-muted mb-1' });
+        const btnRemover = el('button', { class: 'btn btn-sm btn-outline-danger rounded-pill ms-auto py-0', type: 'button', title: 'Remover este item',
             onclick: async () => {
-                if (!confirm('Remover esta solicitação?')) return;
-                try { await api(URL_DEL(item.id)); itens = itens.filter(x => x.id !== item.id); card.remove(); contarLocal(); atualizarTopicos(); aplicarFiltro(); aviso('Removida'); }
-                catch (e) { aviso(e.message, true); }
-            } }, el('i', { class: 'bi bi-trash' }));
-        body.append(el('div', { class: 'd-flex gap-2 align-items-center mb-2' }, el('div', { class: 'flex-grow-1' }, topico), btnDel));
+                if (!confirm('Remover este item?')) return;
+                try {
+                    await api(URL_DEL(item.id));
+                    grupo.itens = grupo.itens.filter(x => x.id !== item.id); box.remove();
+                    card._reindexar(); contarLocal(); aplicarFiltro(); aviso('Item removido');
+                } catch (e) { aviso(e.message, true); }
+            } }, el('i', { class: 'bi bi-x-lg me-1' }), 'Remover item');
+        const cabecalho = el('div', { class: 'd-flex align-items-center gap-2' }, titulo, btnRemover);
 
-        const sol = el('textarea', { class: 'form-control fw-semibold mb-2', rows: 1, placeholder: 'Evidência solicitada' });
-        sol.value = item.solicitacao;
-        const salvaSol = debounce(() => { if (sol.value.trim()) salvarCampo(item, 'solicitacao', sol.value.trim()); }, 800);
-        sol.addEventListener('input', () => { autosize(sol); salvaSol(); });
-
-        const evi = el('textarea', { class: 'form-control mb-2', rows: 2, placeholder: 'Evidência apresentada / o que foi verificado' });
+        const evi = el('textarea', { class: 'form-control mb-2', rows: 2, placeholder: 'Item / evidência apresentada (ex.: o que foi verificado)' });
         evi.value = item.evidencia;
         const salvaEvi = debounce(() => salvarCampo(item, 'evidencia', evi.value.trim()), 800);
         evi.addEventListener('input', () => { autosize(evi); salvaEvi(); });
@@ -277,26 +372,29 @@
         inputFoto.addEventListener('change', () => { enviarFotos(inputFoto.files); inputFoto.value = ''; });
         const btnFoto = el('button', { type: 'button', class: 'btn btn-sm btn-outline-secondary rounded-pill', onclick: () => inputFoto.click() },
             el('i', { class: 'bi bi-camera me-1' }), 'Anexar foto');
-        card.addEventListener('paste', e => {
+        box.addEventListener('paste', e => {
             const arqs = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith('image/'));
             if (arqs.length) { e.preventDefault(); enviarFotos(arqs); }
         });
-        card.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); card.classList.add('drag-over'); } });
-        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
-        card.addEventListener('drop', e => { card.classList.remove('drag-over'); if (e.dataTransfer?.files?.length) { e.preventDefault(); enviarFotos(e.dataTransfer.files); } });
+        box.addEventListener('dragover', e => { if ([...(e.dataTransfer?.types || [])].includes('Files')) { e.preventDefault(); box.classList.add('drag-over'); } });
+        box.addEventListener('dragleave', () => box.classList.remove('drag-over'));
+        box.addEventListener('drop', e => { box.classList.remove('drag-over'); if (e.dataTransfer?.files?.length) { e.preventDefault(); enviarFotos(e.dataTransfer.files); } });
 
         // classificação
         const grupoGrau = el('span', { class: 'ms-2' });
         const botoes = {};
+        const capaBadge = el('a', { href: "{% url 'auditoria:livre_capa' aud.pk %}", class: 'badge text-decoration-none ms-1' });
         function pintar() {
-            card.dataset.c = item.conclusao;
-            if (typeof pintarCapa === 'function') pintarCapa();
+            box.dataset.c = item.conclusao;
             Object.entries(botoes).forEach(([c, b]) => b.classList.toggle('active', c === item.conclusao));
             grupoGrau.classList.toggle('d-none', item.conclusao !== 'NC');
             grupoGrau.querySelectorAll('.btn-grau').forEach(b => {
                 const ativo = b.dataset.g === item.grau_nc;
                 b.className = 'btn btn-grau ' + (ativo ? (b.dataset.g === 'MAIOR' ? 'btn-danger' : 'btn-outline-danger active') : 'btn-outline-secondary');
             });
+            const aplica = item.conclusao === 'NC' || item.conclusao === 'OM';
+            capaBadge.className = 'badge text-decoration-none ms-1 ' + (coresCapa[item.capa_status] || 'text-bg-secondary') + (aplica ? '' : ' d-none');
+            capaBadge.textContent = rotulosCapa[item.capa_status] || 'Plano pendente';
         }
         ['MENOR', 'MAIOR'].forEach(g => grupoGrau.append(el('button', { type: 'button', 'data-g': g, class: 'btn btn-grau btn-outline-secondary me-1',
             onclick: async () => { item.grau_nc = item.grau_nc === g ? '' : g; pintar();
@@ -312,27 +410,102 @@
                 } }, nome);
             botoes[c] = b; linhaClasse.append(b);
         });
-        const rotulosCapa = { PENDENTE: 'Plano pendente', AGUARDANDO_REVISAO: 'Plano em revisão', APROVADO: 'Plano aprovado', REJEITADO: 'Plano rejeitado' };
-        const coresCapa = { PENDENTE: 'text-bg-secondary', AGUARDANDO_REVISAO: 'text-bg-warning', APROVADO: 'text-bg-success', REJEITADO: 'text-bg-danger' };
-        const capaBadge = el('a', { href: "{% url 'auditoria:livre_capa' aud.pk %}", class: 'badge text-decoration-none ms-1' });
-        function pintarCapa() {
-            const aplica = item.conclusao === 'NC' || item.conclusao === 'OM';
-            capaBadge.classList.toggle('d-none', !aplica);
-            capaBadge.className = 'badge text-decoration-none ms-1 ' + (coresCapa[item.capa_status] || 'text-bg-secondary') + (aplica ? '' : ' d-none');
-            capaBadge.textContent = rotulosCapa[item.capa_status] || 'Plano pendente';
-        }
         linhaClasse.append(grupoGrau, obsBtn, btnFoto, inputFoto, capaBadge);
-        pintar(); pintarCapa();
+        pintar();
 
-        body.append(sol, evi, fotos, linhaClasse, obsWrap);
+        box.append(cabecalho, evi, fotos, linhaClasse, obsWrap);
+        box._titulo = titulo; box._remover = btnRemover; box._evi = evi;
+        requestAnimationFrame(() => { autosize(evi); if (item.observacao) autosize(obs); });
+        return box;
+    }
+
+    // ---------- solicitação (grupo): tópico + texto + itens
+    function montarGrupo(grupo) {
+        const card = el('div', { class: 'card border-0 shadow-sm rounded-4 mb-3 grupo-card' });
+        card._grupo = grupo;
+        const body = el('div', { class: 'card-body' });
+        const idGrupo = () => grupo.itens[0].id;  // qualquer item identifica a solicitação no servidor
+
+        const topico = el('input', { class: 'form-control form-control-sm', list: 'listaTopicos', maxlength: 255, placeholder: 'Tópico (opcional)', value: grupo.topico });
+        topico.addEventListener('change', () => {
+            grupo.topico = topico.value.trim();
+            api(URL_EDIT(idGrupo()), { topico: grupo.topico }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true));
+            reposicionar(card); atualizarTopicos(); aplicarFiltro(); atualizarSecoes();
+        });
+        const auditado = el('input', { class: 'form-control form-control-sm', list: 'listaColab', maxlength: 255, autocomplete: 'off',
+            placeholder: 'Colaborador auditado (opcional)', value: grupo.auditado || '' });
+        auditado.addEventListener('input', () => sugerirColaboradores(auditado.value));
+        auditado.addEventListener('change', () => {
+            grupo.auditado = auditado.value.replace(/\s+/g, ' ').trim(); auditado.value = grupo.auditado;
+            api(URL_EDIT(idGrupo()), { auditado: grupo.auditado }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true));
+            atualizarTopicos(); aplicarFiltro(); atualizarSecoes();
+        });
+        const btnDel = el('button', { class: 'btn btn-sm btn-outline-danger rounded-circle', title: 'Remover a solicitação inteira', type: 'button',
+            onclick: async () => {
+                const n = grupo.itens.length;
+                if (!confirm(n > 1 ? `Remover esta solicitação e os seus ${n} itens?` : 'Remover esta solicitação?')) return;
+                try { await api(URL_GRUPO_DEL(idGrupo())); grupos = grupos.filter(g => g !== grupo); const sec = card.closest('.secao-topico'); card.remove();
+                    if (sec && !sec.querySelector('.grupo-card')) sec.remove();
+                    contarLocal(); atualizarTopicos(); aplicarFiltro(); aviso('Removida'); }
+                catch (e) { aviso(e.message, true); }
+            } }, el('i', { class: 'bi bi-trash' }));
+        body.append(el('div', { class: 'd-flex flex-wrap gap-2 align-items-center mb-2' },
+            el('div', { class: 'flex-grow-1', style: 'min-width:200px' }, topico),
+            el('div', { class: 'flex-grow-1', style: 'min-width:200px' }, auditado), btnDel));
+
+        const sol = el('textarea', { class: 'form-control fw-semibold mb-3', rows: 1, placeholder: 'Evidência solicitada' });
+        sol.value = grupo.solicitacao;
+        const salvaSol = debounce(() => {
+            const t = sol.value.trim(); if (!t) return;
+            grupo.solicitacao = t;
+            api(URL_EDIT(idGrupo()), { solicitacao: t }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true));
+        }, 800);
+        sol.addEventListener('input', () => { autosize(sol); salvaSol(); });
+        body.append(sol);
+
+        const itensEl = el('div');
+        grupo.itens.forEach(i => itensEl.append(montarItem(grupo, i, card)));
+        body.append(itensEl);
+
+        // "Item 1/2" só aparece quando há mais de um; remover item só com mais de um
+        card._reindexar = () => {
+            const boxes = [...itensEl.querySelectorAll('.item-box')], varios = boxes.length > 1;
+            boxes.forEach((bx, n) => { bx._titulo.textContent = varios ? `Item ${n + 1}` : ''; bx._titulo.classList.toggle('d-none', !varios); bx._remover.classList.toggle('d-none', !varios); });
+        };
+        const btnItem = el('button', { type: 'button', class: 'btn btn-sm btn-outline-primary rounded-pill',
+            onclick: async () => {
+                btnItem.disabled = true;
+                try {
+                    const j = await api(URL_ITEM(idGrupo()));
+                    grupo.itens.push(j.item);
+                    const box = montarItem(grupo, j.item, card); itensEl.append(box);
+                    card._reindexar(); contarLocal(); aplicarFiltro(); box._evi.focus(); aviso('Item adicionado');
+                } catch (e) { aviso(e.message, true); }
+                btnItem.disabled = false;
+            } }, el('i', { class: 'bi bi-plus-lg me-1' }), 'Adicionar item');
+        body.append(el('div', {}, btnItem));
         card.append(body);
-        requestAnimationFrame(() => { autosize(sol); autosize(evi); if (item.observacao) autosize(obs); });
+        card._reindexar();
+        requestAnimationFrame(() => autosize(sol));
         return card;
     }
     function renderTudo() {
-        $('lista').replaceChildren(...[...itens].reverse().map(montarCard));
+        $('lista').replaceChildren();
+        // mais recentes primeiro; dentro de cada tópico, também
+        [...grupos].reverse().forEach(g => inserirCard(montarGrupo(g), false));
         contarLocal(); atualizarTopicos(); aplicarFiltro();
     }
+
+    // ---------- sugestões de colaboradores (campo aceita texto livre também)
+    const sugerirColaboradores = debounce(async (q) => {
+        q = (q || '').trim(); if (q.length < 2) return;
+        try {
+            const r = await fetch(URL_COLAB + '?q=' + encodeURIComponent(q));
+            if (!r.ok) return;
+            const j = await r.json();
+            $('listaColab').replaceChildren(...j.results.map(c => el('option', { value: c.nome })));
+        } catch (e) {}
+    }, 250);
 
     // ---------- nova solicitação
     async function solicitar() {
@@ -340,16 +513,19 @@
         if (!txt) { $('novaSolicitacao').focus(); return; }
         const btn = $('btnSolicitar'); btn.disabled = true;
         try {
-            const j = await api(URL_CRIAR, { solicitacao: txt, topico: $('novoTopico').value.trim() });
-            itens.push(j.solicitacao);
-            $('lista').prepend(montarCard(j.solicitacao));
+            const j = await api(URL_CRIAR, { solicitacao: txt, topico: $('novoTopico').value.trim(), auditado: $('novoAuditado').value.trim() });
+            const g = { topico: j.solicitacao.topico, auditado: j.solicitacao.auditado, solicitacao: j.solicitacao.solicitacao, itens: [j.solicitacao] };
+            grupos.push(g);
+            inserirCard(montarGrupo(g), true);
             $('novaSolicitacao').value = ''; $('novaSolicitacao').focus();
             contarLocal(); atualizarTopicos(); aplicarFiltro(); aviso('Evidência solicitada');
         } catch (e) { aviso(e.message, true); }
         btn.disabled = false;
     }
     $('btnSolicitar').addEventListener('click', solicitar);
-    $('novaSolicitacao').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); solicitar(); } });
+    ['novaSolicitacao', 'novoTopico', 'novoAuditado'].forEach(id => $(id).addEventListener('keydown', e => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); solicitar(); }
+    }));
 
     // ---------- filtros
     $('filtros').addEventListener('click', e => {
@@ -359,6 +535,20 @@
         aplicarFiltro();
     });
     $('filtroTopico').addEventListener('change', e => { filtroTopico = e.target.value; aplicarFiltro(); });
+    $('filtroAuditado').addEventListener('change', e => { filtroAuditado = e.target.value; aplicarFiltro(); });
+    $('agruparTopico').checked = agrupar;
+    $('agruparTopico').addEventListener('change', e => {
+        agrupar = e.target.checked;
+        try { localStorage.setItem('livre_agrupar_topico', agrupar ? '1' : '0'); } catch (err) {}
+        renderTudo();
+    });
+    // ao escolher um tópico que já tem auditado definido, sugere o mesmo auditado
+    $('novoAuditado').addEventListener('input', () => sugerirColaboradores($('novoAuditado').value));
+    $('novoTopico').addEventListener('change', () => {
+        if ($('novoAuditado').value.trim()) return;
+        const g = [...grupos].reverse().find(x => x.topico === $('novoTopico').value.trim() && x.auditado);
+        if (g) $('novoAuditado').value = g.auditado;
+    });
 
     // ---------- conclusão
     const salvaConclusao = debounce(() => api(URL_CONCLUSAO, { conclusao_texto: $('conclusaoTexto').value }).then(() => aviso('Salvo')).catch(e => aviso(e.message, true)), 900);

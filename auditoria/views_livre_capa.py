@@ -66,6 +66,7 @@ def _itens_capa(solicitacoes_qs, numeros, token=None):
             "id": s.id,
             "numero": numeros.get(s.id, 0),
             "topico": s.topico,
+            "auditado": s.auditado,
             "solicitacao": s.solicitacao,
             "evidencia": s.evidencia,
             "observacao": s.observacao,

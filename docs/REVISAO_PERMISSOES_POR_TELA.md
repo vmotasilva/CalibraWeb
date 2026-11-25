@@ -215,6 +215,7 @@ Especiais: nenhuma.
 | ISO — Setup: Modelos e Blocos | 🆕 `iso_modelos_bloco` | ♻️ `iso_modelos` · 🆕 `iso_modelos_delete` |
 | ISO — Setup: Planejamento e Agendas | ♻️ `iso_setup_bloco` | ✅ Painel de Setup · ♻️ `iso_agendas` (+ `api_iso_auditoria_editar_planejamento`, `iso_agenda_toggle_conclusao`, `iso_auditoria_toggle_conclusao`) · 🆕 `iso_agendas_delete` |
 | ISO — Modo Entrevista | ♻️ `iso_bloco` | ✅ Lista · ✅ Execução (+ `api_iso_autosave_resposta`, `api_iso_marcar_nao_aplicavel`, pontos fortes) · 🆕 Solicitações/Evidências `iso_solicitacoes` (CRUD, transferir, imagens, legenda) · ✅ Revisão · ✅ Matriz · ✅ Cronograma · ✅ Síntese · ✅ Fechamento · ✅ Amostras · ✅ CAPA · ✅ Avaliação do Auditor · ✅ Analytics · ✅ Exportar |
+| *Grupo Auditoria Livre* — Auditoria Livre | 🆕 `auditoria_livre_bloco` (seção própria `nav_auditoria_livre_grupo`) | 🆕 Lista `livre_lista` · 🆕 Criar/Editar/Arquivar/Excluir `livre_gerenciar` · 🆕 Condução (solicitações, itens, fotos) `livre_conducao` · 🆕 Plano de Ação (CAPA), links e e-mails `livre_capa` · 🆕 Exportar Excel/Word `livre_export`. O portal público do auditado (`livre_capa_portal` e rotas `*_publico`) não usa permissão: é validado pelo token do link. A migration `core/0069` concede as permissões novas a quem tinha `iso_lista` + a seção ISO. |
 
 Públicos por token (ficam de fora de propósito): `capa_portal_publico`, `api_capa_*_publica`, `avaliacao_portal_publico`, `api_avaliacao_salvar_resposta_publica`.
 
