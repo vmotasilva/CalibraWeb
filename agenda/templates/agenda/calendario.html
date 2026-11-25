@@ -198,7 +198,8 @@
     }
 
     // --- modal ---
-    const modal = new bootstrap.Modal($("agModal"));
+    let _modal = null;
+    const modal = { show() { (_modal = _modal || new bootstrap.Modal($("agModal"))).show(); }, hide() { if (_modal) _modal.hide(); } };
     let convidados = new Set(), respostas = {};
 
     function desenharParticipantes() {
