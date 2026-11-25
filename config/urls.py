@@ -254,6 +254,9 @@ urlpatterns = [
     # 10. Boards app URLs
     path("boards/", include("boards.urls")),
 
+    # 10b. Agenda (ferramenta auxiliar)
+    path("agenda/", include("agenda.urls")),
+
     # 11. KPI (indicadores)
     path("kpi/", include("kpi.urls")),
     path("pcp/", include("pcp.urls")),

@@ -125,6 +125,7 @@ INSTALLED_APPS = [
     "laboratorio.apps.LaboratorioConfig",
     "maquinas",
     "boards.apps.BoardsConfig",
+    "agenda.apps.AgendaConfig",
     "kpi.apps.KpiConfig",
     "pcp.apps.PcpConfig",
     # Módulo legado (compatibilidade - mantém 3 cross-app models: SolicitacaoInstrumento, OcorrenciaInstrumento, ImportJob)

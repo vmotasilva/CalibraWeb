@@ -63,6 +63,20 @@ class NavigationPermission(models.Model):
             ("nav_boards_archive", "NAV: Quadros / Arquivar Quadro"),
             ("nav_boards_gerenciar_todos", "NAV: Quadros / Permissão Especial: Gerenciar Todos os Quadros"),
 
+            # --- AGENDA ---
+            ("nav_mod_agenda", "NAV: Módulo Agenda"),
+            ("nav_agenda_calendario_bloco", "NAV: Agenda / Bloco Calendário"),
+            ("nav_agenda_calendario", "NAV: Agenda / Acessar Calendário"),
+            ("nav_agenda_eventos_listar", "NAV: Agenda / Listar Eventos (API do calendário)"),
+            ("nav_agenda_evento_detalhe", "NAV: Agenda / Detalhe do Evento"),
+            ("nav_agenda_evento_salvar", "NAV: Agenda / Criar e Editar Evento"),
+            ("nav_agenda_evento_excluir", "NAV: Agenda / Excluir Evento"),
+            ("nav_agenda_convite", "NAV: Agenda / Responder Convite"),
+            ("nav_agenda_checklist_bloco", "NAV: Agenda / Bloco Checklist Diário"),
+            ("nav_agenda_checklist", "NAV: Agenda / Acessar Checklist do Dia"),
+            ("nav_agenda_checklist_toggle", "NAV: Agenda / Marcar Item do Checklist"),
+            ("nav_agenda_criar_comum", "NAV: Agenda / Permissão Especial: Criar Eventos na Agenda Comum"),
+
             # --- DIAGRAMAS E FLUXOGRAMAS ---
             ("nav_mod_diagramas", "NAV: Módulo Diagramas"),
             ("nav_diagramas_fluxos_bloco", "NAV: Diagramas / Bloco Fluxogramas (DOC.071)"),
