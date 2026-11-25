@@ -12,7 +12,10 @@
             <a class="btn btn-sm btn-outline-secondary" href="?data={{ proximo|date:'Y-m-d' }}" title="Próximo dia"><i class="bi bi-chevron-right"></i></a>
             <h5 class="mb-0 ms-2">{{ dia|date:"l, d \d\e F \d\e Y" }}</h5>
         </div>
-        <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklists' %}"><i class="bi bi-list-check me-1"></i>Meus checklists</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
+        </div>
     </div>
 
     <div class="progress mb-3" style="height: 10px;">
@@ -22,8 +25,23 @@
 
     <ul class="list-group shadow-sm" id="ckLista">
     {% for i in itens %}
+        {% if i.itens %}
+        <li class="list-group-item bg-light">
+            <div class="d-flex align-items-center gap-2">
+                <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ i.cor }}"></span>
+                <div class="fw-semibold flex-grow-1">{{ i.titulo }}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}
+                    <span class="text-muted small fw-normal"> · {{ i.checklist_titulo }}{% if i.hora_inicio %} · {{ i.hora_inicio|time:"H:i" }}{% endif %}</span></div>
+            </div>
+        </li>
+        {% for x in i.itens %}
+        <li class="list-group-item d-flex align-items-center gap-3 ps-4">
+            <input class="form-check-input mt-0 ck-box" type="checkbox" style="width:1.2rem;height:1.2rem;" data-evento="{{ i.id }}" data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
+            <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}</div>
+        </li>
+        {% endfor %}
+        {% else %}
         <li class="list-group-item d-flex align-items-center gap-3">
-            <input class="form-check-input mt-0 ck-box" type="checkbox" style="width:1.3rem;height:1.3rem;" data-id="{{ i.id }}" {% if i.feito %}checked{% endif %}>
+            <input class="form-check-input mt-0 ck-box" type="checkbox" style="width:1.3rem;height:1.3rem;" data-evento="{{ i.id }}" {% if i.feito %}checked{% endif %}>
             <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ i.cor }}"></span>
             <div class="flex-grow-1 {% if i.feito %}text-decoration-line-through text-muted{% endif %}">
                 <div class="fw-semibold">{{ i.titulo }}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}</div>
@@ -32,8 +50,9 @@
                 </div>
             </div>
         </li>
+        {% endif %}
     {% empty %}
-        <li class="list-group-item text-muted text-center py-4">Nenhum item de checklist para este dia. Crie um evento na <a href="{% url 'agenda:calendario' %}">Agenda</a> marcando "Entra no checklist diário".</li>
+        <li class="list-group-item text-muted text-center py-4">Nenhum item de checklist para este dia. Crie um <a href="{% url 'agenda:checklists' %}">checklist</a> e associe a um evento na <a href="{% url 'agenda:calendario' %}">Agenda</a>.</li>
     {% endfor %}
     </ul>
 </div>
@@ -43,14 +62,17 @@
 <script>
 (function () {
     const DIA = "{{ dia|date:'Y-m-d' }}", CSRF = "{{ csrf_token }}", TOTAL = {{ total }};
-    const url = id => "{% url 'agenda:api_checklist_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
+    const urlEv = id => "{% url 'agenda:api_checklist_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
+    const urlItem = (ev, it) => "{% url 'agenda:api_item_toggle' 0 0 %}".replace(/0\/item\/0\/toggle\/$/, ev + "/item/" + it + "/toggle/");
     document.querySelectorAll(".ck-box").forEach(box => box.addEventListener("change", async () => {
-        const r = await fetch(url(box.dataset.id), {method: "POST", credentials: "same-origin",
+        const url = box.dataset.item ? urlItem(box.dataset.evento, box.dataset.item) : urlEv(box.dataset.evento);
+        const r = await fetch(url, {method: "POST", credentials: "same-origin",
             headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify({data: DIA})});
         const j = await r.json().catch(() => ({success: false}));
         if (!j.success) { box.checked = !box.checked; return; }
-        box.closest("li").querySelector(".flex-grow-1").classList.toggle("text-decoration-line-through", j.feito);
-        box.closest("li").querySelector(".flex-grow-1").classList.toggle("text-muted", j.feito);
+        const alvo = box.closest("li").querySelector(".flex-grow-1");
+        alvo.classList.toggle("text-decoration-line-through", j.feito);
+        alvo.classList.toggle("text-muted", j.feito);
         const feitos = document.querySelectorAll(".ck-box:checked").length;
         document.getElementById("ckFeitos").textContent = feitos;
         document.getElementById("ckBarra").style.width = (TOTAL ? Math.round(100 * feitos / TOTAL) : 0) + "%";

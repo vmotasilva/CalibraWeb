@@ -212,6 +212,18 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Acessar Checklist do Dia", "view_name": "agenda:checklist", "perm": "core.nav_agenda_checklist"},
                     {"nome": "Marcar Item do Checklist", "view_name": "agenda:api_checklist_toggle", "perm": "core.nav_agenda_checklist_toggle"},
+                    {"nome": "Marcar Item de Checklist Associado", "view_name": "agenda:api_item_toggle", "perm": "core.nav_agenda_item_toggle"},
+                ],
+            },
+            {
+                "key": "modelos",
+                "nome": "Meus Checklists (Modelos)",
+                "perm": "core.nav_agenda_modelos_bloco",
+                "funcoes": [
+                    {"nome": "Acessar Meus Checklists", "view_name": "agenda:checklists", "perm": "core.nav_agenda_modelos_listar"},
+                    {"nome": "Detalhe do Checklist", "view_name": "agenda:api_checklist_detalhe", "perm": "core.nav_agenda_modelo_detalhe"},
+                    {"nome": "Criar e Editar Checklist", "view_name": "agenda:checklist_salvar", "perm": "core.nav_agenda_modelo_salvar"},
+                    {"nome": "Excluir Checklist", "view_name": "agenda:checklist_excluir", "perm": "core.nav_agenda_modelo_excluir"},
                 ],
             },
             {

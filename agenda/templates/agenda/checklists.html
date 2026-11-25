@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Meus Checklists - Agenda - Calibra QMS{% endblock %}
+{% block header_title %}Meus Checklists{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 900px;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <p class="text-muted mb-0">Crie listas de itens e associe a um evento ou rotina da Agenda. Em cada dia da rotina, os itens aparecem no Checklist do dia.</p>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
+            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
+            <button class="btn btn-sm btn-primary" id="ckNovo"><i class="bi bi-plus-lg me-1"></i>Novo checklist</button>
+        </div>
+    </div>
+
+    <div class="row g-3" id="ckCards">
+    {% for c in checklists %}
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h6 class="card-title mb-1">{{ c.titulo }}</h6>
+                        <span class="badge text-bg-secondary">{{ c.itens.all|length }} iten{{ c.itens.all|length|pluralize:"s" }}</span>
+                    </div>
+                    {% if c.descricao %}<p class="small text-muted mb-2">{{ c.descricao|truncatechars:120 }}</p>{% endif %}
+                    <ul class="small mb-3 ps-3">
+                        {% for i in c.itens.all|slice:":4" %}<li>{{ i.texto }}</li>{% endfor %}
+                        {% if c.itens.all|length > 4 %}<li class="text-muted">+{{ c.itens.all|length|add:"-4" }} mais</li>{% endif %}
+                    </ul>
+                    <button class="btn btn-sm btn-outline-primary ck-editar" data-id="{{ c.id }}"><i class="bi bi-pencil me-1"></i>Editar</button>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12"><div class="alert alert-light border text-center mb-0">Você ainda não tem checklists. Clique em <strong>Novo checklist</strong>.</div></div>
+    {% endfor %}
+    </div>
+</div>
+
+<div class="modal fade" id="ckModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="ckModalTitulo">Novo checklist</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+      <div class="modal-body">
+        <div id="ckErro" class="alert alert-danger d-none"></div>
+        <input type="hidden" id="ckId">
+        <div class="mb-3"><label class="form-label">Título</label><input class="form-control" id="ckTitulo" maxlength="200" placeholder="Ex.: Abertura do laboratório"></div>
+        <div class="mb-3"><label class="form-label">Descrição (opcional)</label><textarea class="form-control" id="ckDescricao" rows="2"></textarea></div>
+        <label class="form-label">Itens</label>
+        <div id="ckItens" class="d-grid gap-2 mb-2"></div>
+        <div class="input-group">
+            <input class="form-control" id="ckNovoItem" maxlength="300" placeholder="Novo item (Enter para adicionar)">
+            <button class="btn btn-outline-secondary" id="ckAddItem" type="button"><i class="bi bi-plus-lg"></i></button>
+        </div>
+        <div id="ckEventos" class="form-text mt-2"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-danger me-auto d-none" id="ckExcluir"><i class="bi bi-trash me-1"></i>Excluir</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button class="btn btn-primary" id="ckSalvar">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const CSRF = "{{ csrf_token }}";
+    const U = {
+        salvar: "{% url 'agenda:checklist_salvar' %}",
+        detalhe: id => "{% url 'agenda:api_checklist_detalhe' 0 %}".replace(/0\/$/, id + "/"),
+        excluir: id => "{% url 'agenda:checklist_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/"),
+    };
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    let _modal = null, itens = [];
+    const modal = { show() { (_modal = _modal || new bootstrap.Modal($("ckModal"))).show(); }, hide() { if (_modal) _modal.hide(); } };
+
+    async function post(url, corpo) {
+        const r = await fetch(url, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify(corpo || {})});
+        return r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+    }
+
+    function desenhar() {
+        $("ckItens").innerHTML = itens.map((it, i) =>
+            `<div class="input-group input-group-sm" data-i="${i}">
+                <span class="input-group-text">${i + 1}</span>
+                <input class="form-control ck-texto" value="${esc(it.texto)}" maxlength="300">
+                <button class="btn btn-outline-secondary ck-up" type="button" ${i === 0 ? "disabled" : ""} title="Subir"><i class="bi bi-arrow-up"></i></button>
+                <button class="btn btn-outline-secondary ck-down" type="button" ${i === itens.length - 1 ? "disabled" : ""} title="Descer"><i class="bi bi-arrow-down"></i></button>
+                <button class="btn btn-outline-danger ck-del" type="button" title="Remover"><i class="bi bi-x-lg"></i></button>
+            </div>`).join("") || '<div class="text-muted small">Nenhum item ainda.</div>';
+    }
+
+    function abrir(c) {
+        $("ckErro").classList.add("d-none");
+        $("ckModalTitulo").textContent = c ? "Editar checklist" : "Novo checklist";
+        $("ckId").value = c ? c.id : "";
+        $("ckTitulo").value = c ? c.titulo : "";
+        $("ckDescricao").value = c ? c.descricao : "";
+        itens = c ? c.itens.map(i => ({id: i.id, texto: i.texto})) : [];
+        $("ckNovoItem").value = "";
+        $("ckExcluir").classList.toggle("d-none", !c);
+        $("ckEventos").textContent = c && c.eventos.length ? "Usado em: " + c.eventos.map(e => e.titulo).join(", ") : "";
+        desenhar(); modal.show();
+    }
+
+    function adicionar() {
+        const t = $("ckNovoItem").value.trim(); if (!t) return;
+        itens.push({id: null, texto: t}); $("ckNovoItem").value = ""; desenhar(); $("ckNovoItem").focus();
+    }
+    function sincronizarTextos() { document.querySelectorAll("#ckItens .ck-texto").forEach((inp, i) => { if (itens[i]) itens[i].texto = inp.value; }); }
+
+    $("ckNovoItem").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); adicionar(); } });
+    $("ckAddItem").onclick = adicionar;
+    $("ckItens").addEventListener("click", e => {
+        const row = e.target.closest("[data-i]"); if (!row) return;
+        const i = Number(row.dataset.i); sincronizarTextos();
+        if (e.target.closest(".ck-del")) itens.splice(i, 1);
+        else if (e.target.closest(".ck-up") && i > 0) [itens[i-1], itens[i]] = [itens[i], itens[i-1]];
+        else if (e.target.closest(".ck-down") && i < itens.length - 1) [itens[i+1], itens[i]] = [itens[i], itens[i+1]];
+        else return;
+        desenhar();
+    });
+    $("ckNovo").onclick = () => abrir(null);
+    document.querySelectorAll(".ck-editar").forEach(b => b.addEventListener("click", async () => {
+        const r = await fetch(U.detalhe(b.dataset.id), {credentials: "same-origin"}); const j = await r.json();
+        if (j.success) abrir(j.checklist);
+    }));
+    $("ckSalvar").onclick = async () => {
+        sincronizarTextos(); adicionar();
+        const j = await post(U.salvar, {id: $("ckId").value || null, titulo: $("ckTitulo").value, descricao: $("ckDescricao").value, itens});
+        if (!j.success) { $("ckErro").textContent = j.error || "Não foi possível salvar."; $("ckErro").classList.remove("d-none"); return; }
+        location.reload();
+    };
+    $("ckExcluir").onclick = async () => {
+        if (!confirm("Excluir este checklist? Os eventos que o usam ficam sem checklist.")) return;
+        const j = await post(U.excluir($("ckId").value)); if (j.success) location.reload();
+    };
+})();
+</script>
+{% endblock %}

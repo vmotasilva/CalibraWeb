@@ -145,6 +145,11 @@ class ViewsTests(TestCase):
 
 
 class InboxTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()  # a inbox é cacheada por pk de usuário (reaproveitado entre testes)
+
     def test_checklist_pendente_e_convite_na_inbox(self):
         from shared.inbox import get_user_inbox_items
 
@@ -157,3 +162,141 @@ class InboxTests(TestCase):
         self.assertIn("Checklist: Rotina", titulos)
         titulos_b = [i.title for i in get_user_inbox_items(b) if i.module == "Agenda"]
         self.assertIn("Convite: Rotina", titulos_b)
+
+
+class ChecklistModeloTests(TestCase):
+    def setUp(self):
+        from agenda.models import Checklist, ChecklistItem  # noqa: F401
+
+        self.a = User.objects.create_superuser("adm", "a@a.com", "x")
+        self.b = User.objects.create_user("b", password="x")
+        self.client.force_login(self.a)
+
+    def _criar(self, **extra):
+        corpo = {"titulo": "Abertura", "itens": [{"texto": "Ligar equipamentos"}, {"texto": "Conferir EPIs"}, {"texto": "  "}]}
+        corpo.update(extra)
+        return self.client.post(reverse("agenda:checklist_salvar"), json.dumps(corpo), content_type="application/json")
+
+    def _evento_com_modelo(self, checklist_id, **extra):
+        corpo = {
+            "titulo": "Rotina de abertura", "inicio": "2026-05-04T08:00", "escopo": "pessoal",
+            "recorrencia": "diaria", "checklist_modelo": checklist_id,
+        }
+        corpo.update(extra)
+        return self.client.post(reverse("agenda:evento_salvar"), json.dumps(corpo), content_type="application/json")
+
+    def test_criar_checklist_ignora_itens_vazios_e_exige_item(self):
+        from agenda.models import Checklist
+
+        r = self._criar()
+        self.assertTrue(r.json()["success"])
+        c = Checklist.objects.get()
+        self.assertEqual([i.texto for i in c.itens.all()], ["Ligar equipamentos", "Conferir EPIs"])
+        self.assertEqual(self._criar(titulo=" ").status_code, 400)
+        self.assertEqual(self._criar(itens=[{"texto": ""}]).status_code, 400)
+
+    def test_editar_preserva_itens_existentes_e_remove_os_retirados(self):
+        from agenda.models import Checklist
+
+        self._criar()
+        c = Checklist.objects.get()
+        a, b = list(c.itens.all())
+        self._criar(id=c.id, itens=[{"id": b.id, "texto": "EPIs conferidos"}, {"texto": "Novo"}])
+        c.refresh_from_db()
+        textos = [i.texto for i in c.itens.all()]
+        self.assertEqual(textos, ["EPIs conferidos", "Novo"])
+        self.assertTrue(c.itens.filter(id=b.id).exists())
+        self.assertFalse(c.itens.filter(id=a.id).exists())
+
+    def test_so_o_dono_ve_e_edita_o_checklist(self):
+        from agenda.models import Checklist
+
+        self._criar()
+        c = Checklist.objects.get()
+        self.client.force_login(self.b)
+        self.assertEqual(self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).status_code, 404)
+        self.assertEqual(self.client.post(reverse("agenda:checklist_excluir", args=[c.id])).status_code, 404)
+        self.assertEqual(self._criar(id=c.id).status_code, 404)
+        self.assertNotContains(self.client.get(reverse("agenda:checklists")), "Conferir EPIs")
+
+    def test_nao_associa_checklist_de_outro_usuario(self):
+        self._criar()
+        from agenda.models import Checklist
+
+        cid = Checklist.objects.get().id
+        self.client.force_login(self.b)
+        self.assertEqual(self._evento_com_modelo(cid).status_code, 400)
+
+    def test_marcar_itens_por_dia_e_progresso(self):
+        from agenda.models import Checklist, ItemConclusao
+
+        self._criar()
+        c = Checklist.objects.get()
+        self.assertTrue(self._evento_com_modelo(c.id).json()["success"])
+        ev = Evento.objects.get()
+        i1, i2 = list(c.itens.all())
+        url = lambda it: reverse("agenda:api_item_toggle", args=[ev.id, it.id])  # noqa: E731
+        dia = {"data": "2026-05-06"}
+        self.assertTrue(self.client.post(url(i1), json.dumps(dia), content_type="application/json").json()["feito"])
+        occ = ocorrencias(self.a, date(2026, 5, 6), date(2026, 5, 7), so_checklist=True)
+        self.assertEqual([o["feito"] for o in occ], [False, False])  # só 1 de 2 itens
+        self.assertEqual([x["feito"] for x in occ[0]["itens"]], [True, False])
+        self.client.post(url(i2), json.dumps(dia), content_type="application/json")
+        occ = ocorrencias(self.a, date(2026, 5, 6), date(2026, 5, 7), so_checklist=True)
+        self.assertEqual([o["feito"] for o in occ], [True, False])  # completo só no dia 6
+        self.assertEqual(ItemConclusao.objects.count(), 2)
+        # desmarca
+        self.assertFalse(self.client.post(url(i1), json.dumps(dia), content_type="application/json").json()["feito"])
+        # data fora da rotina e item de outro checklist
+        antes = self.client.post(url(i1), json.dumps({"data": "2026-05-01"}), content_type="application/json")
+        self.assertEqual(antes.status_code, 400)
+
+    def test_marcacao_e_por_usuario(self):
+        from agenda.models import Checklist
+
+        self._criar()
+        c = Checklist.objects.get()
+        self._evento_com_modelo(c.id, escopo="comum")
+        ev = Evento.objects.get()
+        item = c.itens.first()
+        self.client.post(
+            reverse("agenda:api_item_toggle", args=[ev.id, item.id]), json.dumps({"data": "2026-05-04"}), content_type="application/json"
+        )
+        itens_b = ocorrencias(self.b, date(2026, 5, 4), date(2026, 5, 4), so_checklist=True)[0]["itens"]
+        self.assertEqual([i["feito"] for i in itens_b], [False, False])
+
+    def test_excluir_checklist_mantem_evento(self):
+        from agenda.models import Checklist
+
+        self._criar()
+        c = Checklist.objects.get()
+        self._evento_com_modelo(c.id)
+        self.assertTrue(self.client.post(reverse("agenda:checklist_excluir", args=[c.id])).json()["success"])
+        ev = Evento.objects.get()
+        self.assertIsNone(ev.checklist_modelo_id)
+
+    def test_paginas_e_dia_renderizam_itens(self):
+        from agenda.models import Checklist
+
+        self._criar()
+        self._evento_com_modelo(Checklist.objects.get().id, inicio="2026-05-04T08:00")
+        self.assertEqual(self.client.get(reverse("agenda:checklists")).status_code, 200)
+        r = self.client.get(reverse("agenda:checklist"), {"data": "2026-05-04"})
+        self.assertContains(r, "Ligar equipamentos")
+        self.assertContains(r, '<span id="ckFeitos">0</span> de 2 concluídos')
+
+    def test_inbox_mostra_progresso_do_checklist_associado(self):
+        from django.core.cache import cache
+
+        from agenda.models import Checklist
+        from shared.inbox import get_user_inbox_items
+
+        cache.clear()
+        self._criar()
+        c = Checklist.objects.get()
+        corpo = {"titulo": "Rotina", "inicio": (timezone.localtime() - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M"),
+                 "recorrencia": "diaria", "dia_inteiro": True, "checklist_modelo": c.id}
+        self.client.post(reverse("agenda:evento_salvar"), json.dumps(corpo), content_type="application/json")
+        itens = [i for i in get_user_inbox_items(self.a) if i.module == "Agenda" and i.title == "Checklist: Rotina"]
+        self.assertEqual(len(itens), 1)
+        self.assertEqual(itens[0].description, "0 de 2 itens")

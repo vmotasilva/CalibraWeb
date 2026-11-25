@@ -4,7 +4,9 @@ from datetime import date, datetime, timedelta
 
 from django.utils import timezone
 
-from agenda.models import Evento, EventoConclusao
+from django.db.models import Q
+
+from agenda.models import Evento, EventoConclusao, ItemConclusao
 
 LIMITE_OCORRENCIAS = 1000  # proteção contra intervalos gigantes
 
@@ -45,9 +47,9 @@ def datas_do_evento(evento: Evento, de: date, ate: date):
 
 def ocorrencias(user, de: date, ate: date, so_checklist=False):
     """Lista de dicts (um por dia/ocorrência) visíveis para o usuário no intervalo."""
-    qs = Evento.visiveis_para(user).select_related("criado_por")
+    qs = Evento.visiveis_para(user).select_related("criado_por", "checklist_modelo").prefetch_related("checklist_modelo__itens")
     if so_checklist:
-        qs = qs.filter(checklist=True)
+        qs = qs.filter(Q(checklist=True) | Q(checklist_modelo__isnull=False))
     # só eventos que podem tocar o intervalo: sem recorrência até o fim, ou recorrentes ainda vigentes
     fim_dt = timezone.make_aware(datetime.combine(ate, datetime.min.time())) + timedelta(days=1)
     qs = qs.filter(inicio__lt=fim_dt)
@@ -57,11 +59,22 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False):
             "evento_id", "data"
         )
     )
+    itens_feitos = {}
+    for ev_id, item_id, dia in ItemConclusao.objects.filter(
+        usuario=user, data__gte=de, data__lte=ate, evento__in=eventos
+    ).values_list("evento_id", "item_id", "data"):
+        itens_feitos.setdefault((ev_id, dia), set()).add(item_id)
     saida = []
     for ev in eventos:
+        modelo = ev.checklist_modelo
+        itens_modelo = list(modelo.itens.all()) if modelo else []
         inicio_local = timezone.localtime(ev.inicio)
         duracao = (ev.fim - ev.inicio) if ev.fim else None
         for dia, base in datas_do_evento(ev, de, ate):
+            marcados = itens_feitos.get((ev.id, dia), set())
+            itens = [{"id": i.id, "texto": i.texto, "feito": i.id in marcados} for i in itens_modelo]
+            # com modelo associado, a ocorrência só está "feita" quando todos os itens estão marcados
+            feito = (bool(itens) and all(i["feito"] for i in itens)) if modelo else (ev.id, dia) in feitos
             saida.append(
                 {
                     "id": ev.id,
@@ -78,8 +91,10 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False):
                         else (inicio_local + duracao).time()
                     ),
                     "dia_inteiro": ev.dia_inteiro,
-                    "checklist": ev.checklist,
-                    "feito": (ev.id, dia) in feitos,
+                    "checklist": ev.checklist or modelo is not None,
+                    "checklist_titulo": modelo.titulo if modelo else "",
+                    "itens": itens,
+                    "feito": feito,
                     "recorrente": ev.recorrencia != Evento.REC_NENHUMA,
                     "editavel": ev.pode_editar(user),
                 }

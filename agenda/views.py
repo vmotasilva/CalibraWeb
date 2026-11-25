@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from agenda.models import Evento, EventoConclusao, EventoParticipante
+from agenda.models import Checklist, ChecklistItem, Evento, EventoConclusao, EventoParticipante, ItemConclusao
 from agenda.services import ocorrencias
 from shared.permissions import user_has_nav_perm
 
@@ -42,6 +42,9 @@ def _serializa(o):
         "hora_fim": o["hora_fim"].strftime("%H:%M") if o["hora_fim"] else None,
         "dia_inteiro": o["dia_inteiro"],
         "checklist": o["checklist"],
+        "checklist_titulo": o["checklist_titulo"],
+        "itens_total": len(o["itens"]),
+        "itens_feitos": sum(1 for i in o["itens"] if i["feito"]),
         "feito": o["feito"],
         "recorrente": o["recorrente"],
         "editavel": o["editavel"],
@@ -57,6 +60,9 @@ def calendario_view(request):
         {
             "usuarios": [{"id": u.id, "nome": _nome(u)} for u in usuarios],
             "pode_criar_comum": user_has_nav_perm(request.user, PERM_CRIAR_COMUM),
+            "checklists": [
+                {"id": c.id, "titulo": c.titulo} for c in Checklist.objects.filter(criado_por=request.user)
+            ],
         },
     )
 
@@ -93,6 +99,7 @@ def api_evento_detalhe(request, evento_id):
                 "recorrencia": ev.recorrencia,
                 "recorrencia_ate": ev.recorrencia_ate.isoformat() if ev.recorrencia_ate else "",
                 "checklist": ev.checklist,
+                "checklist_modelo": ev.checklist_modelo_id,
                 "lembrete_minutos": ev.lembrete_minutos,
                 "cor": ev.cor,
                 "criador": _nome(ev.criado_por),
@@ -146,6 +153,12 @@ def evento_salvar(request):
     lembrete = int(lembrete) if str(lembrete or "").isdigit() else None
     cor = d.get("cor") if isinstance(d.get("cor"), str) and len(d["cor"]) == 7 and d["cor"].startswith("#") else "#0d6efd"
 
+    modelo = None
+    if d.get("checklist_modelo"):
+        modelo = Checklist.objects.filter(pk=d["checklist_modelo"], criado_por=request.user).first()
+        if not modelo:
+            return JsonResponse({"success": False, "error": "Checklist inválido."}, status=400)
+
     ev_id = d.get("id")
     if ev_id:
         ev = get_object_or_404(Evento, pk=ev_id)
@@ -164,6 +177,7 @@ def evento_salvar(request):
         ev.dia_inteiro = bool(d.get("dia_inteiro"))
         ev.recorrencia, ev.recorrencia_ate = recorrencia, rec_ate if recorrencia != Evento.REC_NENHUMA else None
         ev.checklist, ev.lembrete_minutos, ev.cor = bool(d.get("checklist")), lembrete, cor
+        ev.checklist_modelo = modelo
         ev.save()
 
         ids = {int(i) for i in (d.get("participantes") or []) if str(i).isdigit()} - {request.user.id}
@@ -215,8 +229,8 @@ def checklist_view(request):
             "proximo": dia + timedelta(days=1),
             "eh_hoje": dia == timezone.localdate(),
             "itens": itens,
-            "total": len(itens),
-            "feitos": sum(1 for i in itens if i["feito"]),
+            "total": sum(len(i["itens"]) or 1 for i in itens),
+            "feitos": sum(sum(1 for x in i["itens"] if x["feito"]) if i["itens"] else int(i["feito"]) for i in itens),
         },
     )
 
@@ -224,7 +238,7 @@ def checklist_view(request):
 @login_required
 @require_POST
 def api_checklist_toggle(request, evento_id):
-    ev = get_object_or_404(Evento.visiveis_para(request.user), pk=evento_id, checklist=True)
+    ev = get_object_or_404(Evento.visiveis_para(request.user), pk=evento_id, checklist=True, checklist_modelo__isnull=True)
     try:
         dia = _parse_data(json.loads(request.body or "{}").get("data"))
     except ValueError:
@@ -239,6 +253,106 @@ def api_checklist_toggle(request, evento_id):
         obj.delete()
     _invalida_inbox(None, request.user)
     return JsonResponse({"success": True, "feito": criado})
+
+
+@login_required
+@require_POST
+def api_item_toggle(request, evento_id, item_id):
+    """Marca/desmarca um item do checklist associado a um evento, numa ocorrência (dia)."""
+    ev = get_object_or_404(Evento.visiveis_para(request.user), pk=evento_id, checklist_modelo__isnull=False)
+    item = get_object_or_404(ChecklistItem, pk=item_id, checklist_id=ev.checklist_modelo_id)
+    try:
+        dia = _parse_data(json.loads(request.body or "{}").get("data"))
+    except ValueError:
+        dia = None
+    if not dia:
+        return JsonResponse({"success": False, "error": "Data inválida."}, status=400)
+    if not any(o["id"] == ev.id for o in ocorrencias(request.user, dia, dia, so_checklist=True)):
+        return JsonResponse({"success": False, "error": "O item não ocorre nesta data."}, status=400)
+    obj, criado = ItemConclusao.objects.get_or_create(evento=ev, item=item, usuario=request.user, data=dia)
+    if not criado:
+        obj.delete()
+    _invalida_inbox(None, request.user)
+    return JsonResponse({"success": True, "feito": criado})
+
+
+# ----------------------------------------------------------------------------------------------
+# Checklists (modelos): criados direto e depois associados a eventos/rotinas
+# ----------------------------------------------------------------------------------------------
+@login_required
+def checklists_view(request):
+    qs = Checklist.objects.prefetch_related("itens").all() if request.user.is_superuser else Checklist.objects.prefetch_related("itens").filter(criado_por=request.user)
+    return render(request, "agenda/checklists.html", {"checklists": qs})
+
+
+def _checklist_do_usuario(request, checklist_id):
+    qs = Checklist.objects.all() if request.user.is_superuser else Checklist.objects.filter(criado_por=request.user)
+    return get_object_or_404(qs, pk=checklist_id)
+
+
+@login_required
+@require_GET
+def api_checklist_detalhe(request, checklist_id):
+    c = _checklist_do_usuario(request, checklist_id)
+    return JsonResponse(
+        {
+            "success": True,
+            "checklist": {
+                "id": c.id,
+                "titulo": c.titulo,
+                "descricao": c.descricao,
+                "itens": [{"id": i.id, "texto": i.texto} for i in c.itens.all()],
+                "eventos": [{"id": e.id, "titulo": e.titulo} for e in c.eventos.all()],
+            },
+        }
+    )
+
+
+@login_required
+@require_POST
+def checklist_salvar(request):
+    try:
+        d = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "JSON inválido."}, status=400)
+    titulo = (d.get("titulo") or "").strip()
+    if not titulo:
+        return JsonResponse({"success": False, "error": "Informe o título do checklist."}, status=400)
+    itens = [{"id": i.get("id"), "texto": (i.get("texto") or "").strip()} for i in (d.get("itens") or []) if isinstance(i, dict)]
+    itens = [i for i in itens if i["texto"]]
+    if not itens:
+        return JsonResponse({"success": False, "error": "Adicione pelo menos um item."}, status=400)
+    if len(itens) > 100 or any(len(i["texto"]) > 300 for i in itens):
+        return JsonResponse({"success": False, "error": "Máximo de 100 itens de até 300 caracteres."}, status=400)
+
+    with transaction.atomic():
+        if d.get("id"):
+            c = _checklist_do_usuario(request, d["id"])
+        else:
+            c = Checklist(criado_por=request.user)
+        c.titulo, c.descricao = titulo[:200], (d.get("descricao") or "").strip()
+        c.save()
+        existentes = {i.id: i for i in c.itens.all()}
+        mantidos = set()
+        for ordem, i in enumerate(itens):
+            item = existentes.get(int(i["id"])) if str(i["id"] or "").isdigit() else None
+            if item:
+                item.texto, item.ordem = i["texto"], ordem
+                item.save(update_fields=["texto", "ordem"])
+                mantidos.add(item.id)
+            else:
+                ChecklistItem.objects.create(checklist=c, texto=i["texto"], ordem=ordem)
+        c.itens.exclude(id__in=mantidos).filter(id__in=existentes.keys()).delete()
+    return JsonResponse({"success": True, "id": c.id})
+
+
+@login_required
+@require_POST
+def checklist_excluir(request, checklist_id):
+    c = _checklist_do_usuario(request, checklist_id)
+    c.delete()  # eventos associados ficam sem checklist (SET_NULL)
+    _invalida_inbox(None, request.user)
+    return JsonResponse({"success": True})
 
 
 def _invalida_inbox(evento, user=None):

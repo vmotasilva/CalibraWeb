@@ -48,6 +48,7 @@
                 <button class="btn btn-outline-secondary" data-f="comum">Comum</button>
             </div>
             <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklists' %}"><i class="bi bi-list-check me-1"></i>Meus checklists</a>
             <button class="btn btn-sm btn-primary" id="agNovo"><i class="bi bi-plus-lg me-1"></i>Novo evento</button>
         </div>
     </div>
@@ -91,6 +92,14 @@
                 </select>
             </div>
             <div class="col-md-6"><label class="form-label">Repetir até</label><input type="date" class="form-control" id="fRecAte"></div>
+            <div class="col-12">
+                <label class="form-label">Checklist associado <span class="text-muted small">(os itens aparecem no Checklist do dia em cada ocorrência)</span></label>
+                <select class="form-select" id="fModelo">
+                    <option value="">Nenhum</option>
+                    {% for c in checklists %}<option value="{{ c.id }}">{{ c.titulo }}</option>{% endfor %}
+                </select>
+                {% if not checklists %}<div class="form-text">Você ainda não criou checklists. <a href="{% url 'agenda:checklists' %}">Criar agora</a>.</div>{% endif %}
+            </div>
             <div class="col-md-6">
                 <label class="form-label">Lembrete</label>
                 <select class="form-select" id="fLembrete">
@@ -159,8 +168,9 @@
 
     function chip(e) {
         const hora = e.hora_inicio ? e.hora_inicio + " " : "";
+        const prog = e.itens_total ? " (" + e.itens_feitos + "/" + e.itens_total + ")" : "";
         const ck = e.checklist ? (e.feito ? "✔ " : "☐ ") : "";
-        return `<span class="ag-ev ${e.feito ? "feito" : ""}" style="background:${esc(e.cor)}" data-id="${e.id}" title="${esc(e.titulo)}${e.escopo === "comum" ? " (comum)" : ""}">${ck}${esc(hora)}${esc(e.titulo)}</span>`;
+        return `<span class="ag-ev ${e.feito ? "feito" : ""}" style="background:${esc(e.cor)}" data-id="${e.id}" title="${esc(e.titulo)}${e.escopo === "comum" ? " (comum)" : ""}">${ck}${esc(hora)}${esc(e.titulo)}${prog}</span>`;
     }
 
     function desenhar() {
@@ -216,6 +226,7 @@
         $("fEscopo").value = ev ? ev.escopo : "pessoal";
         $("fDiaInteiro").checked = ev ? ev.dia_inteiro : false;
         $("fChecklist").checked = ev ? ev.checklist : false;
+        $("fModelo").value = ev && ev.checklist_modelo ? String(ev.checklist_modelo) : "";
         const d0 = diaPadrao || iso(new Date());
         $("fInicio").value = ev ? ev.inicio : d0 + "T09:00";
         $("fFim").value = ev ? ev.fim : "";
@@ -252,7 +263,7 @@
     $("agSalvar").addEventListener("click", async () => {
         const j = await post(URLS.salvar, {
             id: $("fId").value || null, titulo: $("fTitulo").value, escopo: $("fEscopo").value,
-            dia_inteiro: $("fDiaInteiro").checked, checklist: $("fChecklist").checked,
+            dia_inteiro: $("fDiaInteiro").checked, checklist: $("fChecklist").checked, checklist_modelo: $("fModelo").value || null,
             inicio: $("fInicio").value, fim: $("fFim").value, recorrencia: $("fRec").value, recorrencia_ate: $("fRecAte").value,
             lembrete_minutos: $("fLembrete").value, cor: $("fCor").value, local: $("fLocal").value,
             descricao: $("fDescricao").value, participantes: [...convidados],

@@ -3,6 +3,37 @@ from django.db import models
 from django.db.models import Q
 
 
+class Checklist(models.Model):
+    """Modelo de checklist (lista de itens) criado direto pelo usuário e associável a eventos/rotinas da Agenda."""
+
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField(blank=True)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_checklists")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["titulo"]
+
+    def __str__(self):
+        return self.titulo
+
+    def pode_editar(self, user):
+        return user.is_superuser or self.criado_por_id == user.id
+
+
+class ChecklistItem(models.Model):
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name="itens")
+    texto = models.CharField(max_length=300)
+    ordem = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["ordem", "id"]
+
+    def __str__(self):
+        return self.texto
+
+
 class Evento(models.Model):
     ESCOPO_PESSOAL = "pessoal"
     ESCOPO_COMUM = "comum"
@@ -30,6 +61,14 @@ class Evento(models.Model):
     recorrencia_ate = models.DateField(null=True, blank=True)
     checklist = models.BooleanField(
         default=False, help_text="Aparece no checklist diário e pode ser marcado como feito em cada dia."
+    )
+    checklist_modelo = models.ForeignKey(
+        Checklist,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="eventos",
+        help_text="Checklist cujos itens aparecem no checklist diário em cada ocorrência deste evento.",
     )
     lembrete_minutos = models.PositiveIntegerField(
         null=True, blank=True, help_text="Avisar este número de minutos antes do início (nas notificações)."
@@ -84,3 +123,16 @@ class EventoConclusao(models.Model):
 
     class Meta:
         unique_together = [("evento", "usuario", "data")]
+
+
+class ItemConclusao(models.Model):
+    """Item de um checklist associado, marcado como feito por um usuário numa ocorrência (dia) do evento."""
+
+    evento = models.ForeignKey(Evento, on_delete=models.CASCADE, related_name="itens_concluidos")
+    item = models.ForeignKey(ChecklistItem, on_delete=models.CASCADE, related_name="conclusoes")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_itens_concluidos")
+    data = models.DateField()
+    concluido_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("evento", "item", "usuario", "data")]

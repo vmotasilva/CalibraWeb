@@ -1019,7 +1019,11 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                         InboxItem(
                             id=f"agenda_check_{o['id']}_{o['dia']}",
                             title=f"Checklist: {o['titulo']}",
-                            description="Dia inteiro" if not o["hora_inicio"] else f"Hoje às {o['hora_inicio']:%H:%M}",
+                            description=(
+                                f"{sum(1 for x in o['itens'] if x['feito'])} de {len(o['itens'])} itens"
+                                if o["itens"]
+                                else ("Dia inteiro" if not o["hora_inicio"] else f"Hoje às {o['hora_inicio']:%H:%M}")
+                            ),
                             module="Agenda",
                             icon="bi-check2-square",
                             url=url_checklist,

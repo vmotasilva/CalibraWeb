@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from agenda.models import Evento, EventoConclusao, EventoParticipante
+from agenda.models import Checklist, ChecklistItem, Evento, EventoConclusao, EventoParticipante
 
 
 class ParticipanteInline(admin.TabularInline):
@@ -17,3 +17,15 @@ class EventoAdmin(admin.ModelAdmin):
 
 
 admin.site.register(EventoConclusao)
+
+
+class ChecklistItemInline(admin.TabularInline):
+    model = ChecklistItem
+    extra = 0
+
+
+@admin.register(Checklist)
+class ChecklistAdmin(admin.ModelAdmin):
+    list_display = ("titulo", "criado_por", "atualizado_em")
+    search_fields = ("titulo",)
+    inlines = [ChecklistItemInline]

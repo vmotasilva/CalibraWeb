@@ -75,6 +75,12 @@ class NavigationPermission(models.Model):
             ("nav_agenda_checklist_bloco", "NAV: Agenda / Bloco Checklist Diário"),
             ("nav_agenda_checklist", "NAV: Agenda / Acessar Checklist do Dia"),
             ("nav_agenda_checklist_toggle", "NAV: Agenda / Marcar Item do Checklist"),
+            ("nav_agenda_item_toggle", "NAV: Agenda / Marcar Item de Checklist Associado"),
+            ("nav_agenda_modelos_bloco", "NAV: Agenda / Bloco Meus Checklists (Modelos)"),
+            ("nav_agenda_modelos_listar", "NAV: Agenda / Acessar Meus Checklists"),
+            ("nav_agenda_modelo_detalhe", "NAV: Agenda / Detalhe do Checklist"),
+            ("nav_agenda_modelo_salvar", "NAV: Agenda / Criar e Editar Checklist"),
+            ("nav_agenda_modelo_excluir", "NAV: Agenda / Excluir Checklist"),
             ("nav_agenda_criar_comum", "NAV: Agenda / Permissão Especial: Criar Eventos na Agenda Comum"),
 
             # --- DIAGRAMAS E FLUXOGRAMAS ---
