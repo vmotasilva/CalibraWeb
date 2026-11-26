@@ -212,6 +212,32 @@ NAV_STRUCTURE = [
                 "funcoes": [
                     {"nome": "Acessar Checklist do Dia", "view_name": "agenda:checklist", "perm": "core.nav_agenda_checklist"},
                     {"nome": "Marcar Item do Checklist", "view_name": "agenda:api_checklist_toggle", "perm": "core.nav_agenda_checklist_toggle"},
+                    {"nome": "Marcar Item de Checklist Associado", "view_name": "agenda:api_item_toggle", "perm": "core.nav_agenda_item_toggle"},
+                    {"nome": "Marcar Item de Checklist Diário", "view_name": "agenda:api_diario_toggle", "perm": "core.nav_agenda_diario_toggle"},
+                ],
+            },
+            {
+                "key": "modelos",
+                "nome": "Meus Checklists (Modelos)",
+                "perm": "core.nav_agenda_modelos_bloco",
+                "funcoes": [
+                    {"nome": "Acessar Meus Checklists", "view_name": "agenda:checklists", "perm": "core.nav_agenda_modelos_listar"},
+                    {"nome": "Detalhe do Checklist", "view_name": "agenda:api_checklist_detalhe", "perm": "core.nav_agenda_modelo_detalhe"},
+                    {"nome": "Criar e Editar Checklist", "view_name": "agenda:checklist_salvar", "perm": "core.nav_agenda_modelo_salvar"},
+                    {"nome": "Excluir Checklist", "view_name": "agenda:checklist_excluir", "perm": "core.nav_agenda_modelo_excluir"},
+                ],
+            },
+            {
+                "key": "equipe",
+                "nome": "Equipe (Vistoria dos Liderados)",
+                "perm": "core.nav_agenda_equipe_bloco",
+                "funcoes": [
+                    {
+                        "nome": "Acessar Equipe",
+                        "view_name": "agenda:equipe",
+                        "perm": "core.nav_agenda_equipe",
+                        "descricao": "Painel da chefia (Líder, Vice-Líder, Supervisor, Gerente): situação diária dos checklists e da agenda dos liderados, com acesso para vistoriar e ajustar. Os liderados vêm do cadastro de pessoas.",
+                    },
                 ],
             },
             {
