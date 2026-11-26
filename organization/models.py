@@ -106,6 +106,22 @@ class HierarquiaSetor(models.Model):
         unique_together = ("setor", "turno")
 
 
+class SetorEquipe(models.Model):
+    """Setor da estrutura de equipes: cadastro próprio desta tela, independente do cadastro de setores da empresa
+    (``Setor``). Criar, renomear ou excluir aqui não altera nada fora da estrutura de equipes."""
+
+    nome = models.CharField(max_length=100, unique=True, verbose_name="Nome do Setor")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nome
+
+    class Meta:
+        verbose_name = "Setor da Estrutura de Equipes"
+        verbose_name_plural = "Setores da Estrutura de Equipes"
+        ordering = ["nome"]
+
+
 class GrupoEquipe(models.Model):
     """Estrutura de trabalho: Setor > Bloco (nível 1) > Posto de trabalho (nível 2).
 
@@ -127,7 +143,15 @@ class GrupoEquipe(models.Model):
         null=True,
         blank=True,
         related_name="grupos_equipe",
-        verbose_name="Setor",
+        verbose_name="Setor (obsoleto)",
+    )
+    setor_estrutura = models.ForeignKey(
+        SetorEquipe,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="blocos",
+        verbose_name="Setor da estrutura",
     )
     descricao = models.CharField(max_length=255, blank=True, default="", verbose_name="Descrição")
     ordem = models.PositiveIntegerField(default=0, verbose_name="Ordem")
@@ -180,15 +204,15 @@ class GrupoEquipe(models.Model):
                 raise ValidationError("Um posto de trabalho só pode ficar dentro de um bloco (não de outro posto).")
             if self.pk and self.subgrupos.exists():
                 raise ValidationError("Este bloco possui postos de trabalho e não pode virar posto de outro bloco.")
-        elif not self.setor_id:
+        elif not self.setor_estrutura_id:
             raise ValidationError("Informe o setor do bloco.")
 
     def save(self, *args, **kwargs):
         if self.parent_id:  # o posto sempre herda o setor do bloco
-            self.setor_id = self.parent.setor_id
+            self.setor_estrutura_id = self.parent.setor_estrutura_id
         super().save(*args, **kwargs)
         if not self.parent_id:
-            self.subgrupos.exclude(setor_id=self.setor_id).update(setor_id=self.setor_id)
+            self.subgrupos.exclude(setor_estrutura_id=self.setor_estrutura_id).update(setor_estrutura_id=self.setor_estrutura_id)
 
     class Meta:
         verbose_name = "Grupo de Equipe"

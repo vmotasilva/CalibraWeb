@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from organization.models import AlocacaoPosto, GrupoEquipe, Setor
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe
 from rh.models import Colaborador
 
 
@@ -64,7 +64,7 @@ class EstruturaEquipesTests(TestCase):
         self.assertEqual(self.post("api_estrutura_equipes_salvar", {"nome": "A", "setor_id": self.setor("Outro")}).status_code, 200)
         novo = self.setor("Novo")
         self.post("api_estrutura_equipes_salvar", {"id": bid, "nome": "A", "setor_id": novo})
-        self.assertEqual(GrupoEquipe.objects.get(pk=pid).setor_id, novo)  # posto herda o setor
+        self.assertEqual(GrupoEquipe.objects.get(pk=pid).setor_estrutura_id, novo)  # posto herda o setor
 
     def test_alocar_colaborador_vago_e_reserva(self):
         pid = self.posto()
@@ -209,8 +209,9 @@ class TurnosDaEstruturaTests(TestCase):
 class ColaboradoresNaTelaTests(TestCase):
     def setUp(self):
         self.client.force_login(User.objects.create_superuser("adm3", "c@c.com", "x"))
-        self.s1 = Setor.objects.create(nome="Laboratório")
+        self.s1 = Setor.objects.create(nome="Laboratório")  # cadastro da empresa
         self.s2 = Setor.objects.create(nome="Qualidade")
+        self.se = SetorEquipe.objects.create(nome="Estrutura")  # setor da estrutura (independente)
 
     def post(self, name, payload):
         return self.client.post(reverse(f"rh:{name}"), json.dumps(payload), content_type="application/json")
@@ -222,84 +223,103 @@ class ColaboradoresNaTelaTests(TestCase):
         a = self.colab("1", "Ana Lab", self.s1)
         b = self.colab("2", "Bia Lab", self.s1, "12X36")
         c = self.colab("3", "Caio Qual", self.s2)
-        bloco = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": self.s1.id}).json()["id"]
+        bloco = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": self.se.id}).json()["id"]
         posto = self.post("api_estrutura_equipes_salvar", {"nome": "P", "parent_id": bloco}).json()["id"]
         self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": posto, "turno": "TURNO_1", "tipo": "PESSOA", "colaborador_ids": [a.id]})
         url = reverse("rh:api_estrutura_equipes_membros")
         nomes = lambda **p: [m["nome"] for m in self.client.get(url, p).json()["membros"]]
-        self.assertEqual(nomes(setor_id=self.s1.id), ["Ana Lab", "Bia Lab"])
-        self.assertEqual(nomes(setor_id=self.s2.id), ["Caio Qual"])
-        self.assertEqual(nomes(setor_id=self.s1.id, sem_posto="1"), ["Bia Lab"])
+        self.assertEqual(nomes(setor_cadastro_id=self.s1.id), ["Ana Lab", "Bia Lab"])
+        self.assertEqual(nomes(setor_cadastro_id=self.s2.id), ["Caio Qual"])
+        self.assertEqual(nomes(setor_cadastro_id=self.s1.id, sem_posto="1"), ["Bia Lab"])
         self.assertEqual(nomes(turno="12X36"), ["Bia Lab"])  # o cadastro pode ter 12x36; só a estrutura não usa
         j = self.client.get(url, {"limite": 1}).json()
         self.assertEqual((len(j["membros"]), j["total"], j["truncado"]), (1, 3, True))
-        j = self.client.get(url, {"setor_id": self.s1.id}).json()
+        j = self.client.get(url, {"setor_cadastro_id": self.s1.id}).json()
         ana = next(m for m in j["membros"] if m["nome"] == "Ana Lab")
         self.assertEqual(ana["postos"], ["B › P"])
-        self.assertEqual(self.client.get(url, {"setor_id": "abc"}).status_code, 400)
+        self.assertEqual(self.client.get(url, {"setor_cadastro_id": "abc"}).status_code, 400)
         self.assertEqual(self.client.get(url, {"limite": "9999"}).status_code, 200)  # limitado a 200, não falha
 
     def test_alocar_varios_de_uma_vez(self):
         cs = [self.colab(str(i), f"Pessoa {i}", self.s1) for i in range(5)]
-        bloco = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": self.s1.id}).json()["id"]
+        bloco = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": self.se.id}).json()["id"]
         posto = self.post("api_estrutura_equipes_salvar", {"nome": "P", "parent_id": bloco}).json()["id"]
         r = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": posto, "turno": "TURNO_2", "tipo": "PESSOA", "colaborador_ids": [c.id for c in cs]})
         self.assertEqual(r.json()["criadas"], 5)
         self.assertEqual(AlocacaoPosto.objects.filter(posto_id=posto, turno="TURNO_2").count(), 5)
 
 
-class RenomearSetorTests(TestCase):
+class SetoresIndependentesTests(TestCase):
+    """Os setores da estrutura são um cadastro próprio, independente do cadastro de setores da empresa."""
+
     def setUp(self):
         self.client.force_login(User.objects.create_superuser("adm4", "d@d.com", "x"))
-
-    def post(self, payload):
-        return self.client.post(reverse("rh:api_estrutura_equipes_setor_criar"), json.dumps(payload), content_type="application/json")
-
-    def test_renomear_setor(self):
-        a = self.post({"nome": "Qualidade"}).json()["id"]
-        self.post({"nome": "Produção"})
-        r = self.post({"id": a, "nome": "Qualidade Total"})
-        self.assertEqual((r.status_code, r.json()["criado"]), (200, False))
-        self.assertEqual(Setor.objects.get(pk=a).nome, "Qualidade Total")
-        self.assertEqual(Setor.objects.filter(nome__icontains="Qualidade").count(), 1)  # renomeou, não criou outro
-        self.assertEqual(self.post({"id": a, "nome": "produção"}).status_code, 400)  # nome de outro setor
-        self.assertEqual(self.post({"id": a, "nome": "QUALIDADE TOTAL"}).status_code, 200)  # mudar só a caixa do próprio nome
-        self.assertEqual(self.post({"id": 999999, "nome": "X"}).status_code, 404)
-        self.assertEqual(self.post({"id": a, "nome": "  "}).status_code, 400)
-
-
-class AlocarEmVariosTurnosTests(TestCase):
-    def setUp(self):
-        self.client.force_login(User.objects.create_superuser("adm5", "e@e.com", "x"))
-        sid = self.post("api_estrutura_equipes_setor_criar", {"nome": "S"}).json()["id"]
-        bid = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": sid}).json()["id"]
-        self.posto = self.post("api_estrutura_equipes_salvar", {"nome": "P", "parent_id": bid}).json()["id"]
-        setor = Setor.objects.get(pk=sid)
-        self.a = Colaborador.objects.create(matricula="1", nome_completo="Ana", grupo="M", setor=setor)
-        self.b = Colaborador.objects.create(matricula="2", nome_completo="Bia", grupo="M", setor=setor)
 
     def post(self, name, payload):
         return self.client.post(reverse(f"rh:{name}"), json.dumps(payload), content_type="application/json")
 
-    def test_colaboradores_em_varios_turnos(self):
-        r = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": self.posto, "turnos": ["TURNO_1", "TURNO_2", "TURNO_2"], "tipo": "PESSOA", "colaborador_ids": [self.a.id, self.b.id]})
-        j = r.json()
-        self.assertEqual((j["criadas"], j["ja_existiam"], j["turnos"]), (4, 0, 2))  # 2 pessoas x 2 turnos (repetido ignorado)
-        # repetir: só o que falta
-        j = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": self.posto, "turnos": ["TURNO_1", "TURNO_3"], "tipo": "PESSOA", "colaborador_ids": [self.a.id]}).json()
-        self.assertEqual((j["criadas"], j["ja_existiam"]), (1, 1))
-        self.assertEqual(AlocacaoPosto.objects.filter(colaborador=self.a).count(), 3)
+    def test_tela_nao_lista_setores_do_cadastro_da_empresa(self):
+        Setor.objects.create(nome="ALMOXARIFADO")
+        Setor.objects.create(nome="ATENDIMENTO")
+        d = self.client.get(reverse("rh:api_estrutura_equipes_dados")).json()
+        self.assertEqual(d["setores"], [])  # nada pré-cadastrado: só o que o usuário criar aqui
+        self.assertEqual(sorted(x["nome"] for x in d["setores_cadastro"]), ["ALMOXARIFADO", "ATENDIMENTO"])  # só p/ filtrar pessoas
 
-    def test_vagos_e_reservas_por_turno(self):
-        j = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": self.posto, "turnos": ["ADM", "TURNO_1", "TURNO_2"], "tipo": "VAGO", "quantidade": 2}).json()
-        self.assertEqual(j["criadas"], 6)  # 2 por turno
-        self.assertEqual(AlocacaoPosto.objects.filter(posto_id=self.posto, tipo="VAGO", turno="TURNO_2").count(), 2)
+    def test_criar_e_renomear_nao_toca_no_cadastro_da_empresa(self):
+        reg = Setor.objects.create(nome="Qualidade")
+        sid = self.post("api_estrutura_equipes_setor_criar", {"nome": "Qualidade"}).json()["id"]  # mesmo nome do cadastro: permitido
+        self.assertEqual(Setor.objects.count(), 1)
+        r = self.post("api_estrutura_equipes_setor_criar", {"id": sid, "nome": "Qualidade Total"})
+        self.assertEqual((r.status_code, r.json()["criado"]), (200, False))
+        self.assertEqual(SetorEquipe.objects.get(pk=sid).nome, "Qualidade Total")
+        reg.refresh_from_db()
+        self.assertEqual(reg.nome, "Qualidade")  # o cadastro da empresa não mudou
+        outro = self.post("api_estrutura_equipes_setor_criar", {"nome": "Produção"}).json()["id"]
+        self.assertEqual(self.post("api_estrutura_equipes_setor_criar", {"id": sid, "nome": "produção"}).status_code, 400)  # nome de outro
+        self.assertEqual(self.post("api_estrutura_equipes_setor_criar", {"id": sid, "nome": "QUALIDADE TOTAL"}).status_code, 200)
+        self.assertEqual(self.post("api_estrutura_equipes_setor_criar", {"id": 999999, "nome": "X"}).status_code, 404)
+        self.assertEqual(self.post("api_estrutura_equipes_setor_criar", {"id": sid, "nome": "  "}).status_code, 400)
+        self.assertTrue(SetorEquipe.objects.filter(pk=outro).exists())
 
-    def test_validacoes_e_compatibilidade(self):
-        base = {"posto_id": self.posto, "tipo": "RESERVA"}
-        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {**base, "turnos": []}).status_code, 400)
-        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {**base}).status_code, 400)
-        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {**base, "turnos": ["TURNO_1", "12X36"]}).status_code, 400)
-        self.assertEqual(AlocacaoPosto.objects.count(), 0)  # nada é criado se algum turno é inválido
-        # formato antigo (um turno) continua valendo
-        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {**base, "turno": "TURNO_3"}).json()["criadas"], 1)
+    def test_excluir_setor_so_sem_blocos(self):
+        reg = Setor.objects.create(nome="Do cadastro")
+        sid = self.post("api_estrutura_equipes_setor_criar", {"nome": "Vazio"}).json()["id"]
+        com = self.post("api_estrutura_equipes_setor_criar", {"nome": "Com bloco"}).json()["id"]
+        self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": com})
+        self.assertEqual(self.post("api_estrutura_equipes_setor_excluir", {"id": com}).status_code, 400)
+        self.assertEqual(self.post("api_estrutura_equipes_setor_excluir", {"id": sid}).status_code, 200)
+        self.assertFalse(SetorEquipe.objects.filter(pk=sid).exists())
+        self.assertEqual(self.post("api_estrutura_equipes_setor_excluir", {"id": 999999}).status_code, 404)
+        self.assertTrue(Setor.objects.filter(pk=reg.pk).exists())  # cadastro da empresa intacto
+
+    def test_bloco_exige_setor_da_estrutura(self):
+        reg = Setor.objects.create(nome="Só no cadastro")
+        r = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": reg.id})  # id do cadastro não vale aqui
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(self.post("api_estrutura_equipes_salvar", {"nome": "B"}).status_code, 400)
+
+    def test_sem_permissao(self):
+        self.client.force_login(User.objects.create_user("u2", "u2@u.com", "x"))
+        self.assertEqual(self.post("api_estrutura_equipes_setor_excluir", {"id": 1}).status_code, 403)
+
+
+class MigracaoSetoresTests(TestCase):
+    """A migração organization.0007 cria os setores da estrutura a partir dos blocos já existentes."""
+
+    def test_copia_so_setores_com_blocos_e_e_idempotente(self):
+        import importlib
+
+        from django.apps import apps
+
+        migracao = importlib.import_module("organization.migrations.0007_copiar_setores_equipe")
+        usado = Setor.objects.create(nome="SURFAÇAGEM")
+        Setor.objects.create(nome="ALMOXARIFADO")  # sem blocos: não deve aparecer na estrutura
+        bloco = GrupoEquipe.objects.create(nome="Corte", setor=usado)
+        posto = GrupoEquipe.objects.create(nome="VFT 01", parent=bloco)
+        for _ in range(2):
+            migracao.copiar_setores(apps, None)
+        self.assertEqual(list(SetorEquipe.objects.values_list("nome", flat=True)), ["SURFAÇAGEM"])
+        bloco.refresh_from_db()
+        posto.refresh_from_db()
+        self.assertEqual(bloco.setor_estrutura.nome, "SURFAÇAGEM")
+        self.assertEqual(posto.setor_estrutura_id, bloco.setor_estrutura_id)

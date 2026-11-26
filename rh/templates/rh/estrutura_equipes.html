@@ -65,6 +65,7 @@
     <div class="card-header bg-white d-flex flex-wrap gap-2 justify-content-between align-items-center">
       <span class="fw-bold">Colaboradores <span class="badge bg-secondary" id="ee-p-total">0</span></span>
       <div class="d-flex flex-wrap gap-2 align-items-center">
+        <select class="form-select form-select-sm w-auto" id="ee-p-setor" aria-label="Setor no cadastro do colaborador" title="Setor no cadastro do colaborador (independente dos setores desta estrutura)"></select>
         <input type="search" class="form-control form-control-sm" id="ee-p-busca" placeholder="Buscar nome ou matrícula" style="width:15rem" aria-label="Buscar colaborador">
         <div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="ee-p-sem"><label class="form-check-label small" for="ee-p-sem">Somente sem posto</label></div>
       </div>
@@ -229,6 +230,7 @@
     salvar: "{% url 'rh:api_estrutura_equipes_salvar' %}",
     excluir: "{% url 'rh:api_estrutura_equipes_excluir' %}",
     setor: "{% url 'rh:api_estrutura_equipes_setor_criar' %}",
+    setorExcluir: "{% url 'rh:api_estrutura_equipes_setor_excluir' %}",
     alocCriar: "{% url 'rh:api_estrutura_equipes_alocacoes_criar' %}",
     alocAtualizar: "{% url 'rh:api_estrutura_equipes_alocacoes_atualizar' %}",
     alocExcluir: "{% url 'rh:api_estrutura_equipes_alocacoes_excluir' %}",
@@ -238,7 +240,7 @@
   // O bootstrap.bundle.js é carregado DEPOIS deste bloco (base_desktop.html): modais só são criados no uso.
   const modal = id => bootstrap.Modal.getOrCreateInstance($(id));
 
-  const state = { setor: '', labels: {}, setores: [], grupos: [], alocs: [], turnos: [], turno: '', sel: null, abertos: new Set(), tudoAberto: true };
+  const state = { setoresCadastro: [], setor: '', labels: {}, setores: [], grupos: [], alocs: [], turnos: [], turno: '', sel: null, abertos: new Set(), tudoAberto: true };
   const turnoNome = c => (state.turnos.find(t => t.codigo === c) || {}).nome || state.labels[c] || c;
   const setorDe = id => state.setores.find(s => s.id === id);
   const grupo = id => state.grupos.find(g => g.id === id);
@@ -290,7 +292,7 @@
   // ---------------------------------------------------------- carga
   async function carregar() {
     const j = await api(URLS.dados);
-    state.setores = j.setores.sort(ordena); state.grupos = j.grupos; state.labels = j.turno_labels || {}; state.alocs = j.alocacoes; state.turnos = j.turnos;
+    state.setores = j.setores.sort(ordena); state.setoresCadastro = j.setores_cadastro || []; state.grupos = j.grupos; state.labels = j.turno_labels || {}; state.alocs = j.alocacoes; state.turnos = j.turnos;
     if (state.tudoAberto && state.abertos.size === 0) {
       state.setores.forEach(s => state.abertos.add(key('s', s.id))); state.grupos.filter(g => !g.parent_id).forEach(g => state.abertos.add(key('g', g.id)));
     }
@@ -299,8 +301,15 @@
       if (!ok) state.sel = null;
     }
     if (state.setor && !setorDe(+state.setor)) state.setor = '';
-    renderFiltroSetor(); renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); renderPessoasAcoes();
+    renderFiltroSetor(); renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); renderPessoasAcoes(); renderPessoasSetor();
     if (!$('ee-pessoas').classList.contains('d-none')) carregarPessoas();
+  }
+
+  function renderPessoasSetor() {
+    const sel = $('ee-p-setor'); const atual = sel.value; sel.innerHTML = '';
+    sel.add(new Option('Setor do colaborador: todos', ''));
+    state.setoresCadastro.slice().sort((a, b) => cmp(a.nome, b.nome)).forEach(x => sel.add(new Option(x.nome, x.id)));
+    sel.value = atual;
   }
 
   function renderFiltroSetor() {
@@ -317,7 +326,6 @@
       if (state.setor && sid !== +state.setor) state.sel = null;
     }
     renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); renderPessoasAcoes();
-    if (!$('ee-pessoas').classList.contains('d-none')) carregarPessoas();
   }
 
   function renderFiltro() {
@@ -383,7 +391,7 @@
     let titulo, tipoTxt, rota, botoes = '', corpo = '';
     if (sel.t === 'setor') {
       const s = setorDe(sel.id); titulo = s.nome; tipoTxt = 'Setor'; rota = '';
-      if (PODE_EDITAR) botoes = '<button class="btn btn-sm btn-primary" data-acao="novo-bloco"><i class="bi bi-plus-circle me-1"></i>Novo bloco</button>';
+      if (PODE_EDITAR) botoes = '<button class="btn btn-sm btn-primary" data-acao="novo-bloco"><i class="bi bi-plus-circle me-1"></i>Novo bloco</button><button class="btn btn-sm btn-outline-secondary" data-acao="editar-setor"><i class="bi bi-pencil me-1"></i>Renomear</button><button class="btn btn-sm btn-outline-danger" data-acao="excluir-setor"><i class="bi bi-trash me-1"></i>Excluir</button>';
       corpo = tabelaPostos(blocosDe(s.id).flatMap(b => [b, ...postosDe(b.id)]), true);
     } else {
       const g = grupo(sel.id); titulo = g.nome; tipoTxt = g.nivel === 1 ? 'Bloco' : 'Posto de trabalho';
@@ -406,6 +414,8 @@
   function acaoDetalhe(ac) {
     const sel = state.sel;
     if (ac === 'novo-bloco') abrirGrupo({ tipo: 'bloco', setorId: sel.id });
+    else if (ac === 'editar-setor') abrirGrupo({ tipo: 'setor', setorEditId: sel.id });
+    else if (ac === 'excluir-setor') excluirSetor(setorDe(sel.id));
     else if (ac === 'novo-posto') abrirGrupo({ tipo: 'posto', parentId: sel.id });
     else if (ac === 'editar') abrirGrupo({ editId: sel.id });
     else if (ac === 'excluir') excluirGrupo(grupo(sel.id));
@@ -523,6 +533,13 @@
       modal('ee-modal-grupo').hide(); await carregar(); aviso(j.criado === false ? 'Atualizado com sucesso.' : 'Criado com sucesso.');
     } catch (e) { erro.textContent = e.message; erro.classList.remove('d-none'); }
   }
+  async function excluirSetor(s) {
+    const n = blocosDe(s.id).length;
+    if (n) return aviso('Exclua ou mova os ' + n + ' bloco(s) deste setor antes de excluí-lo.', 'warning');
+    if (!confirm('Excluir o setor "' + s.nome + '"? Isso só afeta esta estrutura de equipes.')) return;
+    try { await api(URLS.setorExcluir, { id: s.id }); state.sel = null; await carregar(); aviso('Setor excluído.'); }
+    catch (e) { aviso(e.message, 'danger'); }
+  }
   async function excluirGrupo(g) {
     const n = alocsDe([g.id], '').length;
     if (g.nivel === 1 && postosDe(g.id).length) return aviso('Exclua ou mova os ' + postosDe(g.id).length + ' posto(s) deste bloco antes de excluí-lo.', 'warning');
@@ -620,7 +637,7 @@
   async function carregarPessoas() {
     const p = new URLSearchParams({ limite: 200 });
     const q = $('ee-p-busca').value.trim(); if (q) p.set('q', q);
-    if (state.setor) p.set('setor_id', state.setor);
+    if ($('ee-p-setor').value) p.set('setor_cadastro_id', $('ee-p-setor').value);
     if ($('ee-p-sem').checked) p.set('sem_posto', '1');
     try {
       const j = await api(URLS.membros + '?' + p);
@@ -666,6 +683,7 @@
   $('ee-filtro-setor').onchange = e => { state.setor = e.target.value; aplicaFiltroSetor(); };
   $('ee-p-busca').addEventListener('input', debounce(carregarPessoas));
   $('ee-p-sem').onchange = carregarPessoas;
+  $('ee-p-setor').onchange = carregarPessoas;
   $('ee-btn-expandir').onclick = () => {
     state.tudoAberto = !state.tudoAberto; state.abertos = new Set();
     if (state.tudoAberto) { state.setores.forEach(s => state.abertos.add(key('s', s.id))); state.grupos.filter(g => !g.parent_id).forEach(g => state.abertos.add(key('g', g.id))); }

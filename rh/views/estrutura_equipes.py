@@ -17,7 +17,7 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
 from core.models import TURNOS_CHOICES
-from organization.models import AlocacaoPosto, GrupoEquipe, Setor
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe
 from rh.models import Colaborador
 from shared.permissions import has_view_access
 
@@ -107,7 +107,7 @@ def _serializa_alocacao(a):
 def api_estrutura_equipes_dados(request):
     if not _pode_ver(request.user):
         return _negado()
-    grupos = GrupoEquipe.objects.select_related("setor").order_by("ordem", "nome")
+    grupos = GrupoEquipe.objects.select_related("setor_estrutura").order_by("ordem", "nome")
     alocacoes = (
         AlocacaoPosto.objects.filter(turno__in=TURNOS_VALIDOS)
         .select_related("colaborador")
@@ -119,14 +119,17 @@ def api_estrutura_equipes_dados(request):
             "pode_editar": _pode_editar(request.user),
             "turnos": [{"codigo": c, "nome": n} for c, n in TURNOS_ESTRUTURA],
             "turno_labels": TURNO_LABEL,
-            "setores": [{"id": s.id, "nome": s.nome} for s in Setor.objects.order_by("nome")],
+            # Setores da estrutura: cadastro próprio desta tela (independente do cadastro de setores da empresa).
+            "setores": [{"id": s.id, "nome": s.nome} for s in SetorEquipe.objects.order_by("nome")],
+            # Setores do cadastro de colaboradores: só para filtrar pessoas na aba Colaboradores.
+            "setores_cadastro": [{"id": s.id, "nome": s.nome} for s in Setor.objects.order_by("nome")],
             "grupos": [
                 {
                     "id": g.id,
                     "nome": g.nome,
                     "parent_id": g.parent_id,
-                    "setor_id": g.setor_id,
-                    "setor_nome": g.setor.nome if g.setor_id else "",
+                    "setor_id": g.setor_estrutura_id,
+                    "setor_nome": g.setor_estrutura.nome if g.setor_estrutura_id else "",
                     "descricao": g.descricao,
                     "ordem": g.ordem,
                     "ativo": g.ativo,
@@ -144,7 +147,7 @@ def api_estrutura_equipes_dados(request):
 def api_estrutura_equipes_membros(request):
     """Colaboradores ativos, para consultar e alocar.
 
-    ?q= (nome/matrícula)  &setor_id= (setor do cadastro)  &turno= (turno do cadastro)
+    ?q= (nome/matrícula)  &setor_cadastro_id= (setor no cadastro do colaborador)  &turno= (turno do cadastro)
     &sem_posto=1 (só quem não está alocado em nenhum posto)  &limite= (padrão 30, máx. 200)
     """
     if not _pode_ver(request.user):
@@ -152,7 +155,7 @@ def api_estrutura_equipes_membros(request):
     q = (request.GET.get("q") or "").strip()
     turno = (request.GET.get("turno") or "").strip()
     try:
-        setor_id = _int_ou_none(request.GET.get("setor_id"))
+        setor_id = _int_ou_none(request.GET.get("setor_cadastro_id"))
         limite = min(max(_int_ou_none(request.GET.get("limite")) or LIMITE_BUSCA, 1), LIMITE_MAXIMO)
     except ValueError:
         return _erro("Parâmetros inválidos.")
@@ -194,7 +197,7 @@ def api_estrutura_equipes_membros(request):
 @login_required
 @require_POST
 def api_estrutura_equipes_setor_criar(request):
-    """Cria um Setor (cadastro de setores da empresa) ou, com ``id``, renomeia um setor existente."""
+    """Cria um setor da estrutura ou, com ``id``, renomeia um existente (cadastro próprio, independente do da empresa)."""
     if not _pode_editar(request.user):
         return _negado("Sem permissão para editar a estrutura de equipes.")
     data = _body(request)
@@ -211,10 +214,10 @@ def api_estrutura_equipes_setor_criar(request):
         return _erro("Setor inválido.")
     setor = None
     if setor_id:
-        setor = Setor.objects.filter(pk=setor_id).first()
+        setor = SetorEquipe.objects.filter(pk=setor_id).first()
         if not setor:
             return _erro("Setor não encontrado.", 404)
-    duplicado = Setor.objects.filter(nome__iexact=nome)
+    duplicado = SetorEquipe.objects.filter(nome__iexact=nome)
     if setor:
         duplicado = duplicado.exclude(pk=setor.pk)
     if duplicado.exists():
@@ -223,8 +226,29 @@ def api_estrutura_equipes_setor_criar(request):
         setor.nome = nome
         setor.save(update_fields=["nome"])
         return JsonResponse({"success": True, "id": setor.id, "criado": False})
-    setor = Setor.objects.create(nome=nome)
+    setor = SetorEquipe.objects.create(nome=nome)
     return JsonResponse({"success": True, "id": setor.id, "criado": True})
+
+
+@login_required
+@require_POST
+def api_estrutura_equipes_setor_excluir(request):
+    """Exclui um setor da estrutura. Só é possível sem blocos dentro dele."""
+    if not _pode_editar(request.user):
+        return _negado("Sem permissão para editar a estrutura de equipes.")
+    data = _body(request)
+    if data is None:
+        return _erro("Requisição inválida.")
+    try:
+        setor = SetorEquipe.objects.filter(pk=_int_ou_none(data.get("id"))).first()
+    except ValueError:
+        setor = None
+    if not setor:
+        return _erro("Setor não encontrado.", 404)
+    if setor.blocos.exists():
+        return _erro("Este setor ainda possui blocos. Exclua ou mova os blocos antes de excluí-lo.")
+    setor.delete()
+    return JsonResponse({"success": True})
 
 
 @login_required
@@ -259,14 +283,14 @@ def api_estrutura_equipes_salvar(request):
             return _erro("Grupo não encontrado.", 404)
     if parent_id and not GrupoEquipe.objects.filter(pk=parent_id).exists():
         return _erro("Bloco não encontrado.")
-    if setor_id and not Setor.objects.filter(pk=setor_id).exists():
+    if setor_id and not SetorEquipe.objects.filter(pk=setor_id).exists():
         return _erro("Setor não encontrado.")
     if not parent_id and not setor_id:
         return _erro("Informe o setor do bloco.")
 
     irmaos = GrupoEquipe.objects.filter(parent_id=parent_id, nome__iexact=nome)
     if not parent_id:
-        irmaos = irmaos.filter(setor_id=setor_id)  # blocos de setores diferentes podem ter o mesmo nome
+        irmaos = irmaos.filter(setor_estrutura_id=setor_id)  # blocos de setores diferentes podem ter o mesmo nome
     if grupo:
         irmaos = irmaos.exclude(pk=grupo.pk)
     if irmaos.exists():
@@ -279,7 +303,7 @@ def api_estrutura_equipes_salvar(request):
                 grupo = GrupoEquipe()
             grupo.nome = nome
             grupo.parent_id = parent_id
-            grupo.setor_id = setor_id
+            grupo.setor_estrutura_id = setor_id
             grupo.descricao = str(data.get("descricao") or "").strip()[:255]
             if ordem is not None:
                 grupo.ordem = ordem  # a tela ordena sempre por nome; "ordem" fica só por compatibilidade

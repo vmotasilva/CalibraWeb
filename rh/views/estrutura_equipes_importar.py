@@ -15,7 +15,7 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
-from organization.models import AlocacaoPosto, GrupoEquipe, Setor
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe
 from rh.models import Colaborador
 from rh.services.estrutura_import import PlanilhaInvalida, ler_planilha, monta_previa, normaliza
 from rh.views.estrutura_equipes import (
@@ -39,7 +39,7 @@ def estrutura_equipes_importar_view(request):
     return render(
         request,
         "rh/estrutura_equipes_importar.html",
-        {"setores": Setor.objects.order_by("nome"), "turnos": TURNOS_ESTRUTURA},
+        {"setores": SetorEquipe.objects.order_by("nome"), "turnos": TURNOS_ESTRUTURA},
     )
 
 
@@ -63,7 +63,7 @@ def api_estrutura_equipes_importar_previa(request):
             setor_id = int(request.POST["setor_id"])
         except ValueError:
             return _erro("Setor inválido.")
-        if not Setor.objects.filter(pk=setor_id).exists():
+        if not SetorEquipe.objects.filter(pk=setor_id).exists():
             return _erro("Setor não encontrado.")
 
     try:
@@ -74,11 +74,16 @@ def api_estrutura_equipes_importar_previa(request):
         logger.exception("Erro ao ler planilha de estrutura")
         return _erro("Não foi possível ler a planilha.", 500)
 
-    monta_previa(dados, setor_id)
+    # Para sugerir pessoas, prefere quem tem no cadastro um setor de mesmo nome (os setores da estrutura são independentes).
+    setor_cadastro = None
+    if setor_id:
+        nome_setor = SetorEquipe.objects.get(pk=setor_id).nome
+        setor_cadastro = Setor.objects.filter(nome__iexact=nome_setor).values_list("pk", flat=True).first()
+    monta_previa(dados, setor_cadastro)
 
     for bloco in dados["blocos"]:
         existente = (
-            GrupoEquipe.objects.filter(parent__isnull=True, setor_id=setor_id, nome__iexact=bloco["nome"]).first()
+            GrupoEquipe.objects.filter(parent__isnull=True, setor_estrutura_id=setor_id, nome__iexact=bloco["nome"]).first()
             if setor_id else None
         )
         bloco["existe"] = bool(existente)
@@ -119,7 +124,7 @@ def api_estrutura_equipes_importar_confirmar(request):
     setor = None
     if data.get("setor_id"):
         try:
-            setor = Setor.objects.filter(pk=int(data["setor_id"])).first()
+            setor = SetorEquipe.objects.filter(pk=int(data["setor_id"])).first()
         except (ValueError, TypeError):
             setor = None
         if not setor:
@@ -174,11 +179,11 @@ def api_estrutura_equipes_importar_confirmar(request):
     try:
         with transaction.atomic():
             if setor is None:
-                setor, _ = Setor.objects.get_or_create(nome=setor_novo)
+                setor = SetorEquipe.objects.filter(nome__iexact=setor_novo).first() or SetorEquipe.objects.create(nome=setor_novo)
             for nome_b, postos in plano:
-                bloco = GrupoEquipe.objects.filter(parent__isnull=True, setor=setor, nome__iexact=nome_b).first()
+                bloco = GrupoEquipe.objects.filter(parent__isnull=True, setor_estrutura=setor, nome__iexact=nome_b).first()
                 if bloco is None:
-                    bloco = GrupoEquipe(nome=nome_b, setor=setor)
+                    bloco = GrupoEquipe(nome=nome_b, setor_estrutura=setor)
                     bloco.clean()
                     bloco.save()
                     r["blocos_criados"] += 1

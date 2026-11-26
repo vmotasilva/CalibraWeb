@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from openpyxl import Workbook
 
-from organization.models import AlocacaoPosto, GrupoEquipe, Setor
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe
 from rh.models import Colaborador
 from rh.services.estrutura_import import PlanilhaInvalida, ler_planilha
 
@@ -71,7 +71,8 @@ class ImportacaoTests(TestCase):
     def setUp(self):
         self.admin = User.objects.create_superuser("adm", "a@a.com", "x")
         self.client.force_login(self.admin)
-        self.setor = Setor.objects.create(nome="Laboratório")
+        self.setor = Setor.objects.create(nome="Laboratório")  # cadastro (colaboradores)
+        self.setor_eq = SetorEquipe.objects.create(nome="Laboratório")  # setor da estrutura
         self.rogerio = _colab("1", "Rogerio Silva", self.setor)
         self.ramon = _colab("2", "Ramon Souza", self.setor)
         self.ryan = _colab("3", "Ryan Lima", self.setor)
@@ -88,7 +89,7 @@ class ImportacaoTests(TestCase):
 
     def test_pagina_e_previa_nao_gravam(self):
         self.assertEqual(self.client.get(reverse("rh:importar_estrutura_equipes")).status_code, 200)
-        r = self.previa(setor_id=self.setor.id)
+        r = self.previa(setor_id=self.setor_eq.id)
         self.assertEqual(r.status_code, 200, r.content)
         j = r.json()
         cel = j["blocos"][0]["postos"][0]["turnos"]["TURNO_1"]
@@ -102,7 +103,7 @@ class ImportacaoTests(TestCase):
         _colab("9", "Rogerio Alves", Setor.objects.create(nome="Outro"))
         _colab("10", "Rogerio Costa", self.setor, turno="TURNO_2")
         linhas = [[None, None, "Turno 01"], ["B", "P1", "Rogerio"], [None, "P2", "Fulano Inexistente"]]
-        j = self.previa(linhas, setor_id=self.setor.id).json()
+        j = self.previa(linhas, setor_id=self.setor_eq.id).json()
         amb = j["blocos"][0]["postos"][0]["turnos"]["TURNO_1"]
         self.assertEqual((amb["status"], amb["decisao"]), ("ambiguo", ""))  # 2 no setor + 1 fora
         self.assertGreaterEqual(len(amb["candidatos"]), 3)
@@ -111,7 +112,7 @@ class ImportacaoTests(TestCase):
 
     def payload(self, **extra):
         base = {
-            "setor_id": self.setor.id,
+            "setor_id": self.setor_eq.id,
             "blocos": [
                 {"nome": "CÁLCULO", "postos": [
                     {"nome": "Calculo Siol", "turnos": [{"turno": "TURNO_1", "decisao": f"c:{self.rogerio.id}"}, {"turno": "TURNO_2", "decisao": "s:VAGO"}]},
@@ -131,7 +132,7 @@ class ImportacaoTests(TestCase):
         res = r.json()["resumo"]
         self.assertEqual((res["blocos_criados"], res["postos_criados"], res["colaboradores"], res["vagos"], res["reservas"]), (2, 3, 2, 1, 1))
         siol = GrupoEquipe.objects.get(nome="Calculo Siol")
-        self.assertEqual((siol.parent.nome, siol.setor_id), ("CÁLCULO", self.setor.id))
+        self.assertEqual((siol.parent.nome, siol.setor_estrutura_id), ("CÁLCULO", self.setor_eq.id))
         t1 = AlocacaoPosto.objects.get(posto=siol, turno="TURNO_1")
         self.assertEqual((t1.tipo, t1.colaborador_id), ("PESSOA", self.rogerio.id))
         t2 = AlocacaoPosto.objects.get(posto=siol, turno="TURNO_2")
@@ -163,9 +164,10 @@ class ImportacaoTests(TestCase):
     def test_setor_novo_e_mesmo_bloco_em_outro_setor(self):
         r = self.confirmar(self.payload(setor_id=None, setor_novo="Produção"))
         self.assertEqual(r.status_code, 200, r.content)
-        self.assertTrue(Setor.objects.filter(nome="Produção").exists())
+        self.assertTrue(SetorEquipe.objects.filter(nome="Produção").exists())
+        self.assertFalse(Setor.objects.filter(nome="Produção").exists())  # o cadastro da empresa não é tocado
         # o mesmo nome de bloco em outro setor é um bloco diferente (não move nem reaproveita o existente)
-        outro = Setor.objects.create(nome="Outro")
+        outro = SetorEquipe.objects.create(nome="Outro")
         r = self.confirmar(self.payload(setor_id=outro.id))
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.json()["resumo"]["blocos_criados"], 2)
