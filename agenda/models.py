@@ -16,6 +16,25 @@ class Checklist(models.Model):
     dias_semana = models.CharField(
         max_length=13, default="0,1,2,3,4,5,6", help_text="Dias da semana (0=segunda ... 6=domingo), separados por vírgula."
     )
+    PER_DIARIA, PER_SEMANAL, PER_QUINZENAL = "diaria", "semanal", "quinzenal"
+    PER_MENSAL, PER_BIMESTRAL, PER_TRIMESTRAL = "mensal", "bimestral", "trimestral"
+    PER_SEMESTRAL, PER_ANUAL = "semestral", "anual"
+    PERIODICIDADES = [
+        (PER_DIARIA, "Diária (dias da semana)"),
+        (PER_SEMANAL, "Semanal"),
+        (PER_QUINZENAL, "Quinzenal (a cada 2 semanas)"),
+        (PER_MENSAL, "Mensal"),
+        (PER_BIMESTRAL, "Bimestral"),
+        (PER_TRIMESTRAL, "Trimestral"),
+        (PER_SEMESTRAL, "Semestral"),
+        (PER_ANUAL, "Anual"),
+    ]
+    # meses entre ocorrências nas periodicidades por dia do mês
+    MESES_PASSO = {PER_MENSAL: 1, PER_BIMESTRAL: 2, PER_TRIMESTRAL: 3, PER_SEMESTRAL: 6, PER_ANUAL: 12}
+    periodicidade = models.CharField(max_length=10, choices=PERIODICIDADES, default=PER_DIARIA)
+    dia_mes = models.PositiveSmallIntegerField(
+        null=True, blank=True, help_text="Dia do mês (1-31) das periodicidades mensal ou maior; meses curtos usam o último dia."
+    )
     hora = models.TimeField(null=True, blank=True, help_text="Horário de referência (opcional).")
     na_agenda = models.BooleanField(default=False, help_text="Mostra o checklist no calendário como atividade fixa.")
     cor = models.CharField(max_length=7, default="#20c997")
@@ -47,6 +66,10 @@ class Checklist(models.Model):
         from agenda.hierarquia import pode_gerir
 
         return pode_gerir(user, self.criado_por)
+
+    @property
+    def periodicidade_label(self):
+        return dict(self.PERIODICIDADES).get(self.periodicidade, "Diária").split(" (")[0]
 
     @property
     def dias_set(self):
