@@ -17,18 +17,18 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
 from core.models import TURNOS_CHOICES
-from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe, TurnoEquipe
 from rh.models import Colaborador
 from shared.permissions import has_view_access
 
 logger = logging.getLogger(__name__)
 
-# Turnos usados nesta estrutura (o cadastro de colaboradores pode ter outros, como 12x36).
-TURNOS_ESTRUTURA = [("ADM", "Administrativo"), ("TURNO_1", "Turno 01"), ("TURNO_2", "Turno 02"), ("TURNO_3", "Turno 03")]
-TURNOS_VALIDOS = {codigo for codigo, _ in TURNOS_ESTRUTURA}
+# Os turnos DESTA tela são cadastrados por setor (TurnoEquipe). Os códigos abaixo são só os do cadastro de
+# colaboradores (outro módulo), usados para filtrar/exibir o turno do cadastro de uma pessoa.
 TURNOS_CADASTRO_VALIDOS = {codigo for codigo, _ in TURNOS_CHOICES}
-# Rótulos para exibir também o turno do cadastro do colaborador (inclui os que não são da estrutura).
-TURNO_LABEL = {**dict(TURNOS_CHOICES), **dict(TURNOS_ESTRUTURA)}
+TURNO_LABEL = dict(TURNOS_CHOICES)
+LIMITE_TURNOS_SETOR = 12
+TAMANHO_NOME_TURNO = 50
 TIPOS_VALIDOS = {c for c, _ in AlocacaoPosto.TIPO_CHOICES}
 LIMITE_BUSCA = 30
 LIMITE_MAXIMO = 200
@@ -79,7 +79,7 @@ def estrutura_equipes_view(request):
     return render(
         request,
         "rh/estrutura_equipes.html",
-        {"turnos": TURNOS_ESTRUTURA, "pode_editar": _pode_editar(request.user)},
+        {"pode_editar": _pode_editar(request.user)},
     )
 
 
@@ -89,7 +89,7 @@ def _serializa_alocacao(a):
     return {
         "id": a.id,
         "posto_id": a.posto_id,
-        "turno": a.turno,
+        "turno_id": a.turno_estrutura_id,
         "tipo": a.tipo,
         "colaborador_id": a.colaborador_id,
         "nome": c.nome_completo if c else "",
@@ -109,18 +109,21 @@ def api_estrutura_equipes_dados(request):
         return _negado()
     grupos = GrupoEquipe.objects.select_related("setor_estrutura").order_by("ordem", "nome")
     alocacoes = (
-        AlocacaoPosto.objects.filter(turno__in=TURNOS_VALIDOS)
+        AlocacaoPosto.objects.filter(turno_estrutura__isnull=False)
         .select_related("colaborador")
-        .order_by("turno", "tipo", "colaborador__nome_completo", "id")
+        .order_by("tipo", "colaborador__nome_completo", "id")
     )
+    setores = SetorEquipe.objects.order_by("nome").prefetch_related("turnos")
     return JsonResponse(
         {
             "success": True,
             "pode_editar": _pode_editar(request.user),
-            "turnos": [{"codigo": c, "nome": n} for c, n in TURNOS_ESTRUTURA],
             "turno_labels": TURNO_LABEL,
-            # Setores da estrutura: cadastro próprio desta tela (independente do cadastro de setores da empresa).
-            "setores": [{"id": s.id, "nome": s.nome} for s in SetorEquipe.objects.order_by("nome")],
+            # Setores da estrutura: cadastro próprio desta tela, cada um com os seus turnos.
+            "setores": [
+                {"id": s.id, "nome": s.nome, "turnos": [{"id": t.id, "nome": t.nome} for t in s.turnos.all()]}
+                for s in setores
+            ],
             # Setores do cadastro de colaboradores: só para filtrar pessoas na aba Colaboradores.
             "setores_cadastro": [{"id": s.id, "nome": s.nome} for s in Setor.objects.order_by("nome")],
             "grupos": [
@@ -194,10 +197,78 @@ def api_estrutura_equipes_membros(request):
 
 
 # ------------------------------------------------------------------ setor / bloco / posto
+class ErroValidacao(Exception):
+    """Erro de validação de entrada, mostrado ao usuário."""
+
+
+def _normaliza_turnos(lista):
+    """Valida a lista de turnos enviada: [{id?, nome}] (ou só nomes). Devolve [(id|None, nome)]."""
+    if not isinstance(lista, list):
+        raise ErroValidacao("Turnos inválidos.")
+    if len(lista) > LIMITE_TURNOS_SETOR:
+        raise ErroValidacao(f"Um setor pode ter no máximo {LIMITE_TURNOS_SETOR} turnos.")
+    saida, vistos = [], set()
+    for item in lista:
+        if isinstance(item, str):
+            item = {"nome": item}
+        if not isinstance(item, dict):
+            raise ErroValidacao("Turnos inválidos.")
+        nome = str(item.get("nome") or "").strip()
+        if not nome:
+            raise ErroValidacao("Há turno sem nome.")
+        if len(nome) > TAMANHO_NOME_TURNO:
+            raise ErroValidacao(f"Nome de turno muito longo (máx. {TAMANHO_NOME_TURNO} caracteres): {nome[:20]}…")
+        chave = nome.casefold()
+        if chave in vistos:
+            raise ErroValidacao(f'Turno repetido: "{nome}".')
+        vistos.add(chave)
+        try:
+            tid = _int_ou_none(item.get("id"))
+        except ValueError:
+            raise ErroValidacao("Turno inválido.")
+        saida.append((tid, nome))
+    return saida
+
+
+def _aplica_turnos(setor, lista):
+    """Sincroniza os turnos do setor com a lista: renomeia, cria e remove (só sem alocações)."""
+    existentes = {t.id: t for t in setor.turnos.all()}
+    enviados = {tid for tid, _ in lista if tid}
+    if enviados - set(existentes):
+        raise ErroValidacao("Turno não encontrado neste setor.")
+    for tid, turno in existentes.items():
+        if tid not in enviados:
+            n = turno.alocacoes.count()
+            if n:
+                raise ErroValidacao(
+                    f'O turno "{turno.nome}" tem {n} alocação(ões). Remova-as antes de excluir o turno.'
+                )
+            turno.delete()
+    # renomeia em duas fases (evita conflito temporário ao trocar nomes entre turnos)
+    mudar = [(existentes[tid], nome) for tid, nome in lista if tid and existentes[tid].nome != nome]
+    for turno, _ in mudar:
+        turno.nome = f"~{turno.id}"
+        turno.save(update_fields=["nome"])
+    for turno, nome in mudar:
+        turno.nome = nome
+        turno.save(update_fields=["nome"])
+    for tid, nome in lista:
+        if not tid:
+            TurnoEquipe.objects.create(setor=setor, nome=nome)
+
+
+def _serializa_turnos(setor):
+    return [{"id": t.id, "nome": t.nome} for t in setor.turnos.all()]
+
+
 @login_required
 @require_POST
 def api_estrutura_equipes_setor_criar(request):
-    """Cria um setor da estrutura ou, com ``id``, renomeia um existente (cadastro próprio, independente do da empresa)."""
+    """Cria um setor da estrutura ou, com ``id``, edita um existente; ``turnos`` define os turnos do setor.
+
+    Cadastro próprio, independente do de setores da empresa e dos turnos de outros módulos.
+    Body: {id?, nome, turnos?: [{id?, nome}]}  (sem ``turnos`` na edição, os turnos não mudam)
+    """
     if not _pode_editar(request.user):
         return _negado("Sem permissão para editar a estrutura de equipes.")
     data = _body(request)
@@ -212,6 +283,10 @@ def api_estrutura_equipes_setor_criar(request):
         setor_id = _int_ou_none(data.get("id"))
     except ValueError:
         return _erro("Setor inválido.")
+    try:
+        turnos = _normaliza_turnos(data["turnos"]) if "turnos" in data else None
+    except ErroValidacao as exc:
+        return _erro(str(exc))
     setor = None
     if setor_id:
         setor = SetorEquipe.objects.filter(pk=setor_id).first()
@@ -222,12 +297,19 @@ def api_estrutura_equipes_setor_criar(request):
         duplicado = duplicado.exclude(pk=setor.pk)
     if duplicado.exists():
         return _erro("Já existe um setor com esse nome.")
-    if setor:
-        setor.nome = nome
-        setor.save(update_fields=["nome"])
-        return JsonResponse({"success": True, "id": setor.id, "criado": False})
-    setor = SetorEquipe.objects.create(nome=nome)
-    return JsonResponse({"success": True, "id": setor.id, "criado": True})
+    try:
+        with transaction.atomic():
+            criado = setor is None
+            if criado:
+                setor = SetorEquipe.objects.create(nome=nome)
+            else:
+                setor.nome = nome
+                setor.save(update_fields=["nome"])
+            if turnos is not None:
+                _aplica_turnos(setor, turnos)
+    except ErroValidacao as exc:
+        return _erro(str(exc))
+    return JsonResponse({"success": True, "id": setor.id, "criado": criado, "turnos": _serializa_turnos(setor)})
 
 
 @login_required
@@ -346,10 +428,9 @@ def api_estrutura_equipes_excluir(request):
 @login_required
 @require_POST
 def api_estrutura_equipes_alocacoes_criar(request):
-    """Aloca em um posto, em um ou mais turnos: colaboradores (colaborador_ids), VAGO ou RESERVA (quantidade).
+    """Aloca em um posto, em um ou mais turnos do SETOR do posto: colaboradores, VAGO ou RESERVA.
 
-    Body: {posto_id, turnos: [..] (ou turno: "..."), tipo: PESSOA|VAGO|RESERVA,
-           colaborador_ids?, quantidade?, observacao?}
+    Body: {posto_id, turno_ids: [..], tipo: PESSOA|VAGO|RESERVA, colaborador_ids?, quantidade?, observacao?}
     A quantidade de vagas/reservas vale para cada turno marcado.
     """
     if not _pode_editar(request.user):
@@ -368,14 +449,17 @@ def api_estrutura_equipes_alocacoes_criar(request):
     tipo = data.get("tipo")
     if tipo not in TIPOS_VALIDOS:
         return _erro("Tipo inválido.")
-    turnos = data.get("turnos")
-    if turnos is None and data.get("turno"):
-        turnos = [data["turno"]]  # compatibilidade: um único turno
-    if not isinstance(turnos, list) or not turnos:
+    ids_turno = data.get("turno_ids")
+    if not isinstance(ids_turno, list) or not ids_turno:
         return _erro("Marque ao menos um turno.")
-    if any(t not in TURNOS_VALIDOS for t in turnos):
+    try:
+        ids_turno = list(dict.fromkeys(int(i) for i in ids_turno))
+    except (ValueError, TypeError):
         return _erro("Turno inválido.")
-    turnos = list(dict.fromkeys(turnos))  # sem repetir, mantendo a ordem
+    turnos_ok = {t.id: t for t in TurnoEquipe.objects.filter(setor_id=posto.setor_estrutura_id, id__in=ids_turno)}
+    if len(turnos_ok) != len(ids_turno):
+        return _erro("Turno inválido para o setor deste posto.")
+    turnos = [turnos_ok[i] for i in ids_turno]
     obs = str(data.get("observacao") or "").strip()[:255]
 
     criadas = ja_existiam = 0
@@ -396,7 +480,8 @@ def api_estrutura_equipes_alocacoes_criar(request):
             for turno in turnos:
                 for cid in ids:
                     _, criou = AlocacaoPosto.objects.get_or_create(
-                        posto=posto, turno=turno, colaborador_id=cid, defaults={"tipo": "PESSOA", "observacao": obs}
+                        posto=posto, turno_estrutura=turno, colaborador_id=cid,
+                        defaults={"tipo": "PESSOA", "observacao": obs},
                     )
                     criadas += criou
                     ja_existiam += (not criou)
@@ -408,7 +493,7 @@ def api_estrutura_equipes_alocacoes_criar(request):
             if not 1 <= qtd <= LIMITE_QUANTIDADE:
                 return _erro(f"A quantidade deve ficar entre 1 e {LIMITE_QUANTIDADE}.")
             AlocacaoPosto.objects.bulk_create(
-                [AlocacaoPosto(posto=posto, turno=t, tipo=tipo, observacao=obs) for t in turnos for _ in range(qtd)]
+                [AlocacaoPosto(posto=posto, turno_estrutura=t, tipo=tipo, observacao=obs) for t in turnos for _ in range(qtd)]
             )
             criadas = qtd * len(turnos)
     return JsonResponse({"success": True, "criadas": criadas, "ja_existiam": ja_existiam, "turnos": len(turnos)})
@@ -417,24 +502,25 @@ def api_estrutura_equipes_alocacoes_criar(request):
 @login_required
 @require_POST
 def api_estrutura_equipes_alocacoes_atualizar(request):
-    """Edita uma alocação: turno, posto, tipo/colaborador (ex.: VAGO vira colaborador contratado) e observação."""
+    """Edita uma alocação: turno (do setor do posto), posto, tipo/colaborador (VAGO vira contratado) e observação."""
     if not _pode_editar(request.user):
         return _negado("Sem permissão para editar a estrutura de equipes.")
     data = _body(request)
     if data is None:
         return _erro("Requisição inválida.")
     try:
-        aloc = AlocacaoPosto.objects.select_related("posto").filter(pk=_int_ou_none(data.get("id"))).first()
+        aloc = AlocacaoPosto.objects.select_related("posto", "turno_estrutura").filter(pk=_int_ou_none(data.get("id"))).first()
     except ValueError:
         aloc = None
     if not aloc:
         return _erro("Alocação não encontrada.", 404)
 
     try:
-        if "turno" in data:
-            if data["turno"] not in TURNOS_VALIDOS:
+        if "turno_id" in data:
+            turno = TurnoEquipe.objects.filter(pk=_int_ou_none(data["turno_id"])).first()
+            if not turno:
                 return _erro("Turno inválido.")
-            aloc.turno = data["turno"]
+            aloc.turno_estrutura = turno
         if "posto_id" in data:
             posto = GrupoEquipe.objects.filter(pk=_int_ou_none(data["posto_id"])).first()
             if not posto:

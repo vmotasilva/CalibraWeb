@@ -51,6 +51,7 @@
       </div>
       <div class="card-body">
         <div id="im-avisos" class="alert alert-warning d-none"></div>
+        <div id="im-turnos" class="small mb-2"></div>
         <p class="small text-muted mb-2">Corrija nomes se precisar. Onde a planilha traz só um nome curto (ex.: "Rogerio"), escolha a pessoa certa na lista. Postos sem pessoa ficam como <b>Vago</b> (contratar) ou <b>Reserva</b> (equipamento reserva); <b>Parado</b> deixa o posto inativo.</p>
       </div>
     </div>
@@ -129,6 +130,7 @@
     const box = $('im-blocos'); box.innerHTML = '';
     $('im-avisos').classList.toggle('d-none', !dados.avisos.length);
     $('im-avisos').innerHTML = dados.avisos.map(esc).join('<br>');
+    $('im-turnos').innerHTML = '<span class="text-muted">Turnos da planilha neste setor:</span> ' + (dados.turnos_planilha || []).map(t => '<span class="badge ' + (t.existe ? 'text-bg-light border' : 'bg-success') + '">' + esc(t.nome) + (t.existe ? ' (já existe)' : ' (será criado)') + '</span>').join(' ');
     const turnos = dados.turnos;
     dados.blocos.forEach((b, bi) => {
       const card = document.createElement('div'); card.className = 'card border-0 shadow-sm mb-3';
@@ -223,6 +225,7 @@
       const itens = [
         s.blocos_criados + ' bloco(s) criado(s) no setor ' + j.setor,
         s.postos_criados + ' posto(s) criado(s) e ' + s.postos_atualizados + ' atualizado(s)',
+        s.turnos_criados + ' turno(s) criado(s) no setor',
         s.colaboradores + ' colaborador(es) alocado(s)',
         s.vagos + ' vaga(s) · ' + s.reservas + ' reserva(s) · ' + s.postos_parados + ' posto(s) marcado(s) como inativo (parado)',
       ];

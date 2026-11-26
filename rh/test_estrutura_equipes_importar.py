@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 from openpyxl import Workbook
 
-from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe, TurnoEquipe
 from rh.models import Colaborador
 from rh.services.estrutura_import import PlanilhaInvalida, ler_planilha
 
@@ -98,6 +98,8 @@ class ImportacaoTests(TestCase):
         self.assertEqual(j["blocos"][0]["existe"], False)
         self.assertEqual(GrupoEquipe.objects.count(), 0)
         self.assertEqual(AlocacaoPosto.objects.count(), 0)
+        self.assertEqual(TurnoEquipe.objects.count(), 0)  # a prévia não cria nada
+        self.assertEqual([(t["nome"], t["existe"]) for t in j["turnos_planilha"]], [("Turno 01", False), ("Turno 02", False), ("Turno 03", False)])
 
     def test_nome_ambiguo_e_nao_encontrado_ficam_para_revisao(self):
         _colab("9", "Rogerio Alves", Setor.objects.create(nome="Outro"))
@@ -133,11 +135,15 @@ class ImportacaoTests(TestCase):
         self.assertEqual((res["blocos_criados"], res["postos_criados"], res["colaboradores"], res["vagos"], res["reservas"]), (2, 3, 2, 1, 1))
         siol = GrupoEquipe.objects.get(nome="Calculo Siol")
         self.assertEqual((siol.parent.nome, siol.setor_estrutura_id), ("CÁLCULO", self.setor_eq.id))
-        t1 = AlocacaoPosto.objects.get(posto=siol, turno="TURNO_1")
+        t1 = AlocacaoPosto.objects.get(posto=siol, turno_estrutura__nome="Turno 01")
         self.assertEqual((t1.tipo, t1.colaborador_id), ("PESSOA", self.rogerio.id))
-        t2 = AlocacaoPosto.objects.get(posto=siol, turno="TURNO_2")
+        t2 = AlocacaoPosto.objects.get(posto=siol, turno_estrutura__nome="Turno 02")
         self.assertEqual((t2.tipo, t2.colaborador_id), ("VAGO", None))
         self.assertEqual(AlocacaoPosto.objects.get(posto__nome="PRA 01").tipo, "RESERVA")
+        # os turnos da planilha são criados dentro do setor escolhido (e só nele)
+        self.assertEqual(res["turnos_criados"], 2)
+        self.assertEqual(sorted(TurnoEquipe.objects.filter(setor=self.setor_eq).values_list("nome", flat=True)), ["Turno 01", "Turno 02"])
+        self.assertEqual(AlocacaoPosto.objects.get(posto=siol, turno_estrutura__nome="Turno 02").turno_estrutura.setor_id, self.setor_eq.id)
 
     def test_reimportar_nao_duplica_e_parado_inativa_o_posto(self):
         self.confirmar(self.payload())
