@@ -33,6 +33,10 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('core', '0010_alter_navigationpermission_options'),
+        # Permission.name só passa a caber 255 caracteres na auth.0002; sem esta dependência, num banco novo
+        # (PostgreSQL) esta migration podia rodar antes e falhar com "value too long for type character varying(50)".
+        ('auth', '0002_alter_permission_name_max_length'),
+        ('contenttypes', '0002_remove_content_type_name'),
     ]
 
     operations = [
