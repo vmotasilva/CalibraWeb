@@ -17,6 +17,9 @@ Alterações que ainda não foram lançadas em uma versão oficial.
 - Movimentação em lote de pessoas entre postos, com ajuste opcional de turno; efetivo planejado x atual por turno
 - Novas permissões de navegação: visualizar e editar a estrutura
 - **Construção livre da estrutura**: criar Setor, Bloco e Posto de trabalho direto na tela (botões "+" em cada nível) e, em cada posto, alocar por turno **Colaborador**, **VAGO** (necessário contratar) ou **Reserva** (equipamento reserva instalado), em qualquer quantidade; o mesmo colaborador pode atuar em vários postos. Uma VAGO vira colaborador ao editar a alocação (contratação)
+- Estrutura de Equipes: **setores próprios da tela**, independentes do cadastro de setores da empresa (criar, renomear e excluir setor aqui não altera nada fora da estrutura); a árvore deixa de listar os setores do cadastro. Os setores que já tinham blocos foram migrados. A aba Colaboradores ganhou um filtro separado pelo setor do cadastro do colaborador
+- Estrutura de Equipes: **alocar em um ou mais turnos de uma vez** (caixas de seleção de turnos) no formulário de alocação e na aba Colaboradores; a quantidade de vagas/reservas vale para cada turno marcado
+- Estrutura de Equipes: **botão de edição (lápis) em cada linha da árvore** (setor, bloco e posto); editar setor renomeia o setor
 - Estrutura de Equipes: **ordenação automática** por nome (sem diferenciar acento/maiúsculas e com números em ordem natural: DLP 2 antes de DLP 10); o campo "Ordem" saiu do formulário
 - Estrutura de Equipes: turnos limitados a Administrativo, Turno 01, 02 e 03 (12x36 removido desta tela; o cadastro de colaboradores não muda)
 - Estrutura de Equipes: **filtro por setor** (vale para a árvore, o Quadro por turno e a lista de colaboradores) e aba **Colaboradores** para filtrar, selecionar vários e alocá-los em um posto/turno; o Quadro por turno ganhou "+ alocar" em cada célula e edição direta dos itens
