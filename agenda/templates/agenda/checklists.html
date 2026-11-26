@@ -6,7 +6,7 @@
 {% block content %}
 <div class="container py-3" style="max-width: 900px;">
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <p class="text-muted mb-0">Crie listas de itens e associe a um evento ou rotina da Agenda. Em cada dia da rotina, os itens aparecem no Checklist do dia.</p>
+        <p class="text-muted mb-0">Crie seus checklists. Marque como <strong>diário</strong> para que apareça todo dia no Checklist do dia (e, se quiser, no calendário como atividade fixa), ou associe a um evento da Agenda.</p>
         <div class="d-flex gap-2">
             <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
             <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
@@ -23,6 +23,9 @@
                         <h6 class="card-title mb-1">{{ c.titulo }}</h6>
                         <span class="badge text-bg-secondary">{{ c.itens.all|length }} iten{{ c.itens.all|length|pluralize:"s" }}</span>
                     </div>
+                    {% if c.diario %}<div class="mb-2"><span class="badge text-bg-success"><i class="bi bi-arrow-repeat me-1"></i>Diário</span>
+                        {% if c.hora %}<span class="badge text-bg-light border">{{ c.hora|time:"H:i" }}</span>{% endif %}
+                        {% if c.na_agenda %}<span class="badge text-bg-light border"><i class="bi bi-calendar3 me-1"></i>Na agenda</span>{% endif %}</div>{% endif %}
                     {% if c.descricao %}<p class="small text-muted mb-2">{{ c.descricao|truncatechars:120 }}</p>{% endif %}
                     <ul class="small mb-3 ps-3">
                         {% for i in c.itens.all|slice:":4" %}<li>{{ i.texto }}</li>{% endfor %}
@@ -47,6 +50,19 @@
         <input type="hidden" id="ckId">
         <div class="mb-3"><label class="form-label">Título</label><input class="form-control" id="ckTitulo" maxlength="200" placeholder="Ex.: Abertura do laboratório"></div>
         <div class="mb-3"><label class="form-label">Descrição (opcional)</label><textarea class="form-control" id="ckDescricao" rows="2"></textarea></div>
+        <div class="border rounded p-3 mb-3 bg-light">
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="ckDiario"><label class="form-check-label fw-semibold" for="ckDiario">Checklist diário (aparece todo dia no Checklist do dia)</label>
+            </div>
+            <div id="ckDiarioOpc" class="d-none">
+                <div class="mb-2" id="ckDias"></div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-sm-5"><label class="form-label small mb-1">Horário (opcional)</label><input type="time" class="form-control form-control-sm" id="ckHora"></div>
+                    <div class="col-sm-3"><label class="form-label small mb-1">Cor</label><input type="color" class="form-control form-control-color form-control-sm" id="ckCor" value="#20c997"></div>
+                </div>
+                <div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="ckNaAgenda"><label class="form-check-label" for="ckNaAgenda">Mostrar no calendário como atividade fixa</label></div>
+            </div>
+        </div>
         <label class="form-label">Itens</label>
         <div id="ckItens" class="d-grid gap-2 mb-2"></div>
         <div class="input-group">
@@ -76,6 +92,7 @@
     };
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const DIAS = [[0,'Seg'],[1,'Ter'],[2,'Qua'],[3,'Qui'],[4,'Sex'],[5,'Sáb'],[6,'Dom']];
     let _modal = null, itens = [];
     const modal = { show() { (_modal = _modal || new bootstrap.Modal($("ckModal"))).show(); }, hide() { if (_modal) _modal.hide(); } };
 
@@ -95,6 +112,12 @@
             </div>`).join("") || '<div class="text-muted small">Nenhum item ainda.</div>';
     }
 
+    function desenharDias(sel) {
+        $("ckDias").innerHTML = DIAS.map(([n, r]) => `<div class="form-check form-check-inline"><input class="form-check-input ck-dia" type="checkbox" id="ckd${n}" value="${n}" ${sel.includes(n) ? "checked" : ""}><label class="form-check-label small" for="ckd${n}">${r}</label></div>`).join("");
+    }
+    function atualizarDiario() { $("ckDiarioOpc").classList.toggle("d-none", !$("ckDiario").checked); }
+    $("ckDiario").addEventListener("change", atualizarDiario);
+
     function abrir(c) {
         $("ckErro").classList.add("d-none");
         $("ckModalTitulo").textContent = c ? "Editar checklist" : "Novo checklist";
@@ -102,6 +125,10 @@
         $("ckTitulo").value = c ? c.titulo : "";
         $("ckDescricao").value = c ? c.descricao : "";
         itens = c ? c.itens.map(i => ({id: i.id, texto: i.texto})) : [];
+        $("ckDiario").checked = c ? c.diario : false;
+        desenharDias(c ? c.dias_semana : [0,1,2,3,4,5,6]);
+        $("ckHora").value = c ? c.hora : ""; $("ckCor").value = c ? c.cor : "#20c997"; $("ckNaAgenda").checked = c ? c.na_agenda : false;
+        atualizarDiario();
         $("ckNovoItem").value = "";
         $("ckExcluir").classList.toggle("d-none", !c);
         $("ckEventos").textContent = c && c.eventos.length ? "Usado em: " + c.eventos.map(e => e.titulo).join(", ") : "";
@@ -132,7 +159,9 @@
     }));
     $("ckSalvar").onclick = async () => {
         sincronizarTextos(); adicionar();
-        const j = await post(U.salvar, {id: $("ckId").value || null, titulo: $("ckTitulo").value, descricao: $("ckDescricao").value, itens});
+        const j = await post(U.salvar, {id: $("ckId").value || null, titulo: $("ckTitulo").value, descricao: $("ckDescricao").value, itens,
+            diario: $("ckDiario").checked, dias_semana: [...document.querySelectorAll(".ck-dia:checked")].map(x => Number(x.value)),
+            hora: $("ckHora").value, cor: $("ckCor").value, na_agenda: $("ckNaAgenda").checked});
         if (!j.success) { $("ckErro").textContent = j.error || "Não foi possível salvar."; $("ckErro").classList.remove("d-none"); return; }
         location.reload();
     };

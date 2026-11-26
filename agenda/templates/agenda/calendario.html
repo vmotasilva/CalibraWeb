@@ -15,6 +15,7 @@
     .ag-cell.hoje .ag-num { background:#0d6efd; color:#fff; border-radius:50%; }
     .ag-num { display:inline-block; width:1.6rem; height:1.6rem; line-height:1.6rem; text-align:center; font-size:.8rem; }
     .ag-ev { display:block; font-size:.74rem; color:#fff; border-radius:4px; padding:1px 5px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+    .ag-ev.fixo { border:1px dashed rgba(255,255,255,.85); }
     .ag-ev.feito { opacity:.55; text-decoration:line-through; }
     .ag-more { font-size:.72rem; color:#6c757d; }
     .ag-cols { display:grid; border-top:1px solid #dee2e6; border-left:1px solid #dee2e6; background:#fff; }
@@ -135,6 +136,7 @@
     const URLS = {
         eventos: "{% url 'agenda:api_eventos' %}",
         salvar: "{% url 'agenda:evento_salvar' %}",
+        checklistDia: "{% url 'agenda:checklist' %}",
         detalhe: id => "{% url 'agenda:api_evento_detalhe' 0 %}".replace(/0\/$/, id + "/"),
         excluir: id => "{% url 'agenda:evento_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/"),
         convite: id => "{% url 'agenda:api_responder_convite' 0 %}".replace(/0\/convite\/$/, id + "/convite/"),
@@ -170,7 +172,8 @@
         const hora = e.hora_inicio ? e.hora_inicio + " " : "";
         const prog = e.itens_total ? " (" + e.itens_feitos + "/" + e.itens_total + ")" : "";
         const ck = e.checklist ? (e.feito ? "✔ " : "☐ ") : "";
-        return `<span class="ag-ev ${e.feito ? "feito" : ""}" style="background:${esc(e.cor)}" data-id="${e.id}" title="${esc(e.titulo)}${e.escopo === "comum" ? " (comum)" : ""}">${ck}${esc(hora)}${esc(e.titulo)}${prog}</span>`;
+        const fixo = e.tipo === "checklist_diario";
+        return `<span class="ag-ev ${e.feito ? "feito" : ""} ${fixo ? "fixo" : ""}" style="background:${esc(e.cor)}" data-id="${e.id}" data-fixo="${fixo ? e.dia : ""}" title="${esc(e.titulo)}${e.escopo === "comum" ? " (comum)" : ""}">${ck}${esc(hora)}${esc(e.titulo)}${prog}</span>`;
     }
 
     function desenhar() {
@@ -291,6 +294,7 @@
 
     $("agCalendario").addEventListener("click", e => {
         const ev = e.target.closest(".ag-ev"), goto = e.target.closest("[data-goto]"), cel = e.target.closest("[data-dia]");
+        if (ev && ev.dataset.fixo) { location.href = URLS.checklistDia + "?data=" + ev.dataset.fixo; return; }  // atividade fixa = checklist diário
         if (ev) return abrirPorId(ev.dataset.id);
         if (goto) { const [y, m, d] = goto.dataset.goto.split("-").map(Number); ref = new Date(y, m-1, d); view = "dia"; localStorage.setItem("agView", view); return carregar(); }
         if (cel) abrir(null, cel.dataset.dia);

@@ -300,3 +300,99 @@ class ChecklistModeloTests(TestCase):
         itens = [i for i in get_user_inbox_items(self.a) if i.module == "Agenda" and i.title == "Checklist: Rotina"]
         self.assertEqual(len(itens), 1)
         self.assertEqual(itens[0].description, "0 de 2 itens")
+
+
+class ChecklistDiarioTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.a = User.objects.create_superuser("adm", "a@a.com", "x")
+        self.b = User.objects.create_user("b", password="x")
+        self.client.force_login(self.a)
+
+    def _criar(self, **extra):
+        corpo = {
+            "titulo": "Abertura", "itens": [{"texto": "Ligar equipamentos"}, {"texto": "Conferir EPIs"}],
+            "diario": True, "dias_semana": [0, 1, 2, 3, 4], "hora": "08:00", "na_agenda": True,
+        }
+        corpo.update(extra)
+        return self.client.post(reverse("agenda:checklist_salvar"), json.dumps(corpo), content_type="application/json")
+
+    def test_diario_aparece_nos_dias_validos_sem_evento(self):
+        from agenda.models import Checklist
+        from agenda.services import checklists_diarios
+
+        self.assertTrue(self._criar().json()["success"])
+        c = Checklist.objects.get()
+        self.assertEqual(c.diario_desde, timezone.localdate())
+        self.assertEqual(Evento.objects.count(), 0)  # independe da agenda
+        hoje = timezone.localdate()
+        seg = hoje + timedelta(days=(7 - hoje.weekday()) % 7 or 7)  # próxima segunda
+        occ = checklists_diarios(self.a, seg, seg + timedelta(days=6))
+        self.assertEqual([o["dia"].weekday() for o in occ], [0, 1, 2, 3, 4])  # sem sáb/dom
+        self.assertEqual(occ[0]["tipo"], "checklist_diario")
+        self.assertEqual(len(occ[0]["itens"]), 2)
+
+    def test_nao_retroage_antes_de_diario_desde(self):
+        from agenda.services import checklists_diarios
+
+        self._criar(dias_semana=[0, 1, 2, 3, 4, 5, 6])
+        ontem = timezone.localdate() - timedelta(days=1)
+        self.assertEqual(checklists_diarios(self.a, ontem, ontem), [])
+
+    def test_na_agenda_controla_o_calendario_mas_nao_o_checklist_do_dia(self):
+        hoje = timezone.localdate()
+        self._criar(na_agenda=False, dias_semana=[0, 1, 2, 3, 4, 5, 6])
+        r = self.client.get(reverse("agenda:api_eventos"), {"inicio": hoje.isoformat(), "fim": hoje.isoformat()})
+        self.assertEqual(r.json()["eventos"], [])  # fora do calendário
+        self.assertContains(self.client.get(reverse("agenda:checklist")), "Ligar equipamentos")  # mas no checklist do dia
+        from agenda.models import Checklist
+
+        c = Checklist.objects.get()
+        self._criar(id=c.id, na_agenda=True, dias_semana=[0, 1, 2, 3, 4, 5, 6])
+        r = self.client.get(reverse("agenda:api_eventos"), {"inicio": hoje.isoformat(), "fim": hoje.isoformat()})
+        ev = r.json()["eventos"]
+        self.assertEqual([(e["tipo"], e["titulo"]) for e in ev], [("checklist_diario", "Abertura")])
+
+    def test_marcar_itens_do_diario(self):
+        from agenda.models import Checklist, ChecklistDiarioConclusao
+
+        self._criar(dias_semana=[0, 1, 2, 3, 4, 5, 6])
+        c = Checklist.objects.get()
+        i1, i2 = list(c.itens.all())
+        hoje = timezone.localdate().isoformat()
+        url = lambda it: reverse("agenda:api_diario_toggle", args=[c.id, it.id])  # noqa: E731
+        self.assertTrue(self.client.post(url(i1), json.dumps({"data": hoje}), content_type="application/json").json()["feito"])
+        self.client.post(url(i2), json.dumps({"data": hoje}), content_type="application/json")
+        self.assertEqual(ChecklistDiarioConclusao.objects.count(), 2)
+        self.assertContains(self.client.get(reverse("agenda:checklist")), '<span id="ckFeitos">2</span> de 2 concluídos')
+        self.assertFalse(self.client.post(url(i1), json.dumps({"data": hoje}), content_type="application/json").json()["feito"])
+        # data antes de começar a valer
+        antes = (timezone.localdate() - timedelta(days=3)).isoformat()
+        self.assertEqual(self.client.post(url(i1), json.dumps({"data": antes}), content_type="application/json").status_code, 400)
+
+    def test_marcacao_e_por_usuario_e_so_do_dono(self):
+        from agenda.models import Checklist
+
+        self._criar(dias_semana=[0, 1, 2, 3, 4, 5, 6])
+        c = Checklist.objects.get()
+        item = c.itens.first()
+        self.client.force_login(self.b)
+        r = self.client.post(
+            reverse("agenda:api_diario_toggle", args=[c.id, item.id]),
+            json.dumps({"data": timezone.localdate().isoformat()}), content_type="application/json",
+        )
+        self.assertEqual(r.status_code, 404)  # checklist é do outro usuário
+
+    def test_validacoes_do_diario(self):
+        self.assertEqual(self._criar(dias_semana=[]).status_code, 400)
+        self.assertEqual(self._criar(hora="25:99").status_code, 400)
+        self.assertTrue(self._criar(diario=False, dias_semana=[]).json()["success"])  # sem diário, dias são ignorados
+
+    def test_inbox_tem_checklist_diario_pendente(self):
+        from shared.inbox import get_user_inbox_items
+
+        self._criar(dias_semana=[0, 1, 2, 3, 4, 5, 6])
+        itens = [i for i in get_user_inbox_items(self.a) if i.module == "Agenda"]
+        self.assertEqual([(i.title, i.description) for i in itens], [("Checklist: Abertura", "0 de 2 itens")])

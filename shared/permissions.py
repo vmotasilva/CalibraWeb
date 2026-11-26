@@ -213,6 +213,7 @@ NAV_STRUCTURE = [
                     {"nome": "Acessar Checklist do Dia", "view_name": "agenda:checklist", "perm": "core.nav_agenda_checklist"},
                     {"nome": "Marcar Item do Checklist", "view_name": "agenda:api_checklist_toggle", "perm": "core.nav_agenda_checklist_toggle"},
                     {"nome": "Marcar Item de Checklist Associado", "view_name": "agenda:api_item_toggle", "perm": "core.nav_agenda_item_toggle"},
+                    {"nome": "Marcar Item de Checklist Diário", "view_name": "agenda:api_diario_toggle", "perm": "core.nav_agenda_diario_toggle"},
                 ],
             },
             {

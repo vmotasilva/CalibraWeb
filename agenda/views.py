@@ -9,8 +9,16 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from agenda.models import Checklist, ChecklistItem, Evento, EventoConclusao, EventoParticipante, ItemConclusao
-from agenda.services import ocorrencias
+from agenda.models import (
+    Checklist,
+    ChecklistDiarioConclusao,
+    ChecklistItem,
+    Evento,
+    EventoConclusao,
+    EventoParticipante,
+    ItemConclusao,
+)
+from agenda.services import agenda_do_periodo, checklist_do_dia, checklists_diarios, ocorrencias
 from shared.permissions import user_has_nav_perm
 
 User = get_user_model()
@@ -31,6 +39,7 @@ def _parse_data(valor, padrao=None):
 
 def _serializa(o):
     return {
+        "tipo": o["tipo"],
         "id": o["id"],
         "titulo": o["titulo"],
         "descricao": o["descricao"],
@@ -75,7 +84,7 @@ def api_eventos(request):
     ate = _parse_data(request.GET.get("fim"), de + timedelta(days=30))
     if ate < de or (ate - de).days > MAX_INTERVALO_DIAS:
         return JsonResponse({"success": False, "error": "Intervalo inválido."}, status=400)
-    return JsonResponse({"success": True, "eventos": [_serializa(o) for o in ocorrencias(request.user, de, ate)]})
+    return JsonResponse({"success": True, "eventos": [_serializa(o) for o in agenda_do_periodo(request.user, de, ate)]})
 
 
 @login_required
@@ -219,7 +228,7 @@ def api_responder_convite(request, evento_id):
 @login_required
 def checklist_view(request):
     dia = _parse_data(request.GET.get("data"), timezone.localdate())
-    itens = ocorrencias(request.user, dia, dia, so_checklist=True)
+    itens = checklist_do_dia(request.user, dia)
     return render(
         request,
         "agenda/checklist.html",
@@ -285,6 +294,27 @@ def checklists_view(request):
     return render(request, "agenda/checklists.html", {"checklists": qs})
 
 
+@login_required
+@require_POST
+def api_diario_toggle(request, checklist_id, item_id):
+    """Marca/desmarca um item de checklist diário (independe de evento) num dia."""
+    c = get_object_or_404(Checklist, pk=checklist_id, criado_por=request.user, diario=True)
+    item = get_object_or_404(ChecklistItem, pk=item_id, checklist=c)
+    try:
+        dia = _parse_data(json.loads(request.body or "{}").get("data"))
+    except ValueError:
+        dia = None
+    if not dia:
+        return JsonResponse({"success": False, "error": "Data inválida."}, status=400)
+    if not any(o["checklist_id"] == c.id for o in checklists_diarios(request.user, dia, dia)):
+        return JsonResponse({"success": False, "error": "O checklist não vale nesta data."}, status=400)
+    obj, criado = ChecklistDiarioConclusao.objects.get_or_create(item=item, usuario=request.user, data=dia)
+    if not criado:
+        obj.delete()
+    _invalida_inbox(None, request.user)
+    return JsonResponse({"success": True, "feito": criado})
+
+
 def _checklist_do_usuario(request, checklist_id):
     qs = Checklist.objects.all() if request.user.is_superuser else Checklist.objects.filter(criado_por=request.user)
     return get_object_or_404(qs, pk=checklist_id)
@@ -301,6 +331,11 @@ def api_checklist_detalhe(request, checklist_id):
                 "id": c.id,
                 "titulo": c.titulo,
                 "descricao": c.descricao,
+                "diario": c.diario,
+                "dias_semana": sorted(c.dias_set),
+                "hora": c.hora.strftime("%H:%M") if c.hora else "",
+                "na_agenda": c.na_agenda,
+                "cor": c.cor,
                 "itens": [{"id": i.id, "texto": i.texto} for i in c.itens.all()],
                 "eventos": [{"id": e.id, "titulo": e.titulo} for e in c.eventos.all()],
             },
@@ -325,12 +360,29 @@ def checklist_salvar(request):
     if len(itens) > 100 or any(len(i["texto"]) > 300 for i in itens):
         return JsonResponse({"success": False, "error": "Máximo de 100 itens de até 300 caracteres."}, status=400)
 
+    dias = sorted({int(x) for x in (d.get("dias_semana") or []) if str(x).isdigit() and 0 <= int(x) <= 6})
+    if d.get("diario") and not dias:
+        return JsonResponse({"success": False, "error": "Escolha pelo menos um dia da semana."}, status=400)
+    try:
+        hora = datetime.strptime(d["hora"], "%H:%M").time() if d.get("hora") else None
+    except ValueError:
+        return JsonResponse({"success": False, "error": "Horário inválido."}, status=400)
+    cor = d.get("cor") if isinstance(d.get("cor"), str) and len(d["cor"]) == 7 and d["cor"].startswith("#") else "#20c997"
+
     with transaction.atomic():
         if d.get("id"):
             c = _checklist_do_usuario(request, d["id"])
         else:
             c = Checklist(criado_por=request.user)
         c.titulo, c.descricao = titulo[:200], (d.get("descricao") or "").strip()
+        eram_diario = c.diario
+        c.diario = bool(d.get("diario"))
+        c.dias_semana = ",".join(str(x) for x in dias)
+        c.hora = hora
+        c.na_agenda = c.diario and bool(d.get("na_agenda"))
+        c.cor = cor
+        if c.diario and (not eram_diario or not c.diario_desde):
+            c.diario_desde = timezone.localdate()  # vale a partir de hoje; dias passados não viram pendência
         c.save()
         existentes = {i.id: i for i in c.itens.all()}
         mantidos = set()

@@ -1055,6 +1055,24 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                                 sub_type="Lembretes",
                             )
                         )
+            from agenda.services import checklists_diarios
+
+            for o in checklists_diarios(user, hoje_local, hoje_local):
+                if not o["feito"]:
+                    items.append(
+                        InboxItem(
+                            id=f"agenda_diario_{o['id']}_{o['dia']}",
+                            title=f"Checklist: {o['titulo']}",
+                            description=f"{sum(1 for x in o['itens'] if x['feito'])} de {len(o['itens'])} itens",
+                            module="Agenda",
+                            icon="bi-check2-square",
+                            url=url_checklist,
+                            action_text="Marcar",
+                            date=hoje_local,
+                            is_urgent=False,
+                            sub_type="Checklist do dia",
+                        )
+                    )
             for c in EventoParticipante.objects.filter(
                 usuario=user, resposta=EventoParticipante.PENDENTE, evento__inicio__gte=agora - timedelta(days=1)
             ).select_related("evento", "evento__criado_por"):

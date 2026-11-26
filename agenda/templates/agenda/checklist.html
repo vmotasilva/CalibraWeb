@@ -29,13 +29,13 @@
         <li class="list-group-item bg-light">
             <div class="d-flex align-items-center gap-2">
                 <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ i.cor }}"></span>
-                <div class="fw-semibold flex-grow-1">{{ i.titulo }}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}
-                    <span class="text-muted small fw-normal"> · {{ i.checklist_titulo }}{% if i.hora_inicio %} · {{ i.hora_inicio|time:"H:i" }}{% endif %}</span></div>
+                <div class="fw-semibold flex-grow-1">{% if i.tipo == 'checklist_diario' %}<i class="bi bi-arrow-repeat text-success me-1" title="Checklist diário"></i>{% endif %}{{ i.titulo }}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}
+                    <span class="text-muted small fw-normal">{% if i.tipo != 'checklist_diario' %} · {{ i.checklist_titulo }}{% endif %}{% if i.hora_inicio %} · {{ i.hora_inicio|time:"H:i" }}{% endif %}</span></div>
             </div>
         </li>
         {% for x in i.itens %}
         <li class="list-group-item d-flex align-items-center gap-3 ps-4">
-            <input class="form-check-input mt-0 ck-box" type="checkbox" style="width:1.2rem;height:1.2rem;" data-evento="{{ i.id }}" data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
+            <input class="form-check-input mt-0 ck-box" type="checkbox" style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
             <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}</div>
         </li>
         {% endfor %}
@@ -52,7 +52,7 @@
         </li>
         {% endif %}
     {% empty %}
-        <li class="list-group-item text-muted text-center py-4">Nenhum item de checklist para este dia. Crie um <a href="{% url 'agenda:checklists' %}">checklist</a> e associe a um evento na <a href="{% url 'agenda:calendario' %}">Agenda</a>.</li>
+        <li class="list-group-item text-muted text-center py-4">Nenhum item de checklist para este dia. Crie um <a href="{% url 'agenda:checklists' %}">checklist diário</a> ou associe um checklist a um evento na <a href="{% url 'agenda:calendario' %}">Agenda</a>.</li>
     {% endfor %}
     </ul>
 </div>
@@ -63,9 +63,11 @@
 (function () {
     const DIA = "{{ dia|date:'Y-m-d' }}", CSRF = "{{ csrf_token }}", TOTAL = {{ total }};
     const urlEv = id => "{% url 'agenda:api_checklist_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
+    const urlDiario = (ck, it) => "{% url 'agenda:api_diario_toggle' 0 0 %}".replace(/0\/item\/0\/diario\/$/, ck + "/item/" + it + "/diario/");
     const urlItem = (ev, it) => "{% url 'agenda:api_item_toggle' 0 0 %}".replace(/0\/item\/0\/toggle\/$/, ev + "/item/" + it + "/toggle/");
     document.querySelectorAll(".ck-box").forEach(box => box.addEventListener("change", async () => {
-        const url = box.dataset.item ? urlItem(box.dataset.evento, box.dataset.item) : urlEv(box.dataset.evento);
+        const url = box.dataset.checklist ? urlDiario(box.dataset.checklist, box.dataset.item)
+            : box.dataset.item ? urlItem(box.dataset.evento, box.dataset.item) : urlEv(box.dataset.evento);
         const r = await fetch(url, {method: "POST", credentials: "same-origin",
             headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify({data: DIA})});
         const j = await r.json().catch(() => ({success: false}));

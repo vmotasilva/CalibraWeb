@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from django.db.models import Q
 
-from agenda.models import Evento, EventoConclusao, ItemConclusao
+from agenda.models import Checklist, ChecklistDiarioConclusao, Evento, EventoConclusao, ItemConclusao
 
 LIMITE_OCORRENCIAS = 1000  # proteção contra intervalos gigantes
 
@@ -77,6 +77,8 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False):
             feito = (bool(itens) and all(i["feito"] for i in itens)) if modelo else (ev.id, dia) in feitos
             saida.append(
                 {
+                    "tipo": "evento",
+                    "checklist_id": None,
                     "id": ev.id,
                     "titulo": ev.titulo,
                     "descricao": ev.descricao,
@@ -101,3 +103,70 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False):
             )
     saida.sort(key=lambda o: (o["dia"], o["hora_inicio"] or datetime.min.time(), o["titulo"]))
     return saida
+
+
+def checklists_diarios(user, de: date, ate: date, so_agenda=False):
+    """Ocorrências dos checklists diários do usuário (um por dia válido), no mesmo formato de `ocorrencias`.
+
+    so_agenda=True devolve só os que o usuário quis mostrar no calendário como atividade fixa.
+    """
+    qs = Checklist.objects.filter(criado_por=user, diario=True).prefetch_related("itens")
+    if so_agenda:
+        qs = qs.filter(na_agenda=True)
+    checklists = list(qs)
+    if not checklists:
+        return []
+    marcados = {}
+    for item_id, dia, ck_id in ChecklistDiarioConclusao.objects.filter(
+        usuario=user, data__gte=de, data__lte=ate, item__checklist__in=checklists
+    ).values_list("item_id", "data", "item__checklist_id"):
+        marcados.setdefault((ck_id, dia), set()).add(item_id)
+    saida = []
+    for c in checklists:
+        dias_validos = c.dias_set
+        itens_modelo = list(c.itens.all())
+        dia, n = max(de, c.diario_desde) if c.diario_desde else de, 0
+        while dia <= ate and n < LIMITE_OCORRENCIAS:
+            if dia.weekday() in dias_validos:
+                feitos = marcados.get((c.id, dia), set())
+                itens = [{"id": i.id, "texto": i.texto, "feito": i.id in feitos} for i in itens_modelo]
+                saida.append(
+                    {
+                        "tipo": "checklist_diario",
+                        "checklist_id": c.id,
+                        "id": c.id,
+                        "titulo": c.titulo,
+                        "descricao": c.descricao,
+                        "local": "",
+                        "escopo": Evento.ESCOPO_PESSOAL,
+                        "cor": c.cor,
+                        "dia": dia,
+                        "hora_inicio": c.hora,
+                        "hora_fim": None,
+                        "dia_inteiro": c.hora is None,
+                        "checklist": True,
+                        "checklist_titulo": c.titulo,
+                        "itens": itens,
+                        "feito": bool(itens) and all(i["feito"] for i in itens),
+                        "recorrente": True,
+                        "editavel": True,
+                    }
+                )
+                n += 1
+            dia += timedelta(days=1)
+    saida.sort(key=lambda o: (o["dia"], o["hora_inicio"] or datetime.min.time(), o["titulo"]))
+    return saida
+
+
+def agenda_do_periodo(user, de: date, ate: date):
+    """Eventos + checklists diários marcados para aparecer na agenda (atividades fixas)."""
+    todos = ocorrencias(user, de, ate) + checklists_diarios(user, de, ate, so_agenda=True)
+    todos.sort(key=lambda o: (o["dia"], o["hora_inicio"] or datetime.min.time(), o["titulo"]))
+    return todos
+
+
+def checklist_do_dia(user, dia: date):
+    """Tudo o que entra no Checklist do dia: eventos com checklist + checklists diários (com ou sem agenda)."""
+    todos = ocorrencias(user, dia, dia, so_checklist=True) + checklists_diarios(user, dia, dia)
+    todos.sort(key=lambda o: (o["hora_inicio"] or datetime.min.time(), o["titulo"]))
+    return todos
