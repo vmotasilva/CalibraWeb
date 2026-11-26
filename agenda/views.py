@@ -3,8 +3,9 @@ from datetime import date, datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -18,6 +19,7 @@ from agenda.models import (
     EventoParticipante,
     ItemConclusao,
 )
+from agenda.hierarquia import equipe_de, nome_do_usuario, pode_gerir, papel_sobre
 from agenda.services import agenda_do_periodo, checklist_do_dia, checklists_diarios, ocorrencias
 from shared.permissions import user_has_nav_perm
 
@@ -28,6 +30,39 @@ MAX_INTERVALO_DIAS = 62
 
 def _nome(u):
     return u.get_full_name() or u.username
+
+
+def _alvo(request, valor=None):
+    """Usuário cuja agenda/checklists estão em foco: o próprio ou um liderado (para quem é chefia)."""
+    bruto = valor if valor is not None else request.GET.get("usuario")
+    if not str(bruto or "").isdigit() or int(bruto) == request.user.pk:
+        return request.user
+    alvo = User.objects.filter(pk=int(bruto), is_active=True).first()
+    if not alvo or not pode_gerir(request.user, alvo):
+        raise PermissionDenied
+    return alvo
+
+
+def _ctx_alvo(request, alvo):
+    """Contexto comum das telas: de quem é a agenda e se o usuário é chefia (para o banner e links)."""
+    gerindo = alvo.pk != request.user.pk
+    return {
+        "alvo": alvo,
+        "alvo_nome": nome_do_usuario(alvo),
+        "gerindo": gerindo,
+        "alvo_papel": papel_sobre(request.user, alvo) if gerindo else "",
+        "alvo_qs": f"?usuario={alvo.pk}" if gerindo else "",
+        "alvo_id": alvo.pk if gerindo else "",
+        "eh_chefia": request.user.is_superuser or bool(equipe_de(request.user)),
+    }
+
+
+def _ajuste(obj, request):
+    """Registra que a chefia criou/ajustou em nome do dono (e limpa quando o próprio dono edita)."""
+    if request.user.pk != obj.criado_por_id:
+        obj.ajustado_por, obj.ajustado_em = request.user, timezone.now()
+    else:
+        obj.ajustado_por, obj.ajustado_em = None, None
 
 
 def _parse_data(valor, padrao=None):
@@ -62,16 +97,16 @@ def _serializa(o):
 
 @login_required
 def calendario_view(request):
-    usuarios = User.objects.filter(is_active=True).exclude(pk=request.user.pk).order_by("first_name", "username")
+    alvo = _alvo(request)
+    usuarios = User.objects.filter(is_active=True).exclude(pk=alvo.pk).order_by("first_name", "username")
     return render(
         request,
         "agenda/calendario.html",
         {
             "usuarios": [{"id": u.id, "nome": _nome(u)} for u in usuarios],
             "pode_criar_comum": user_has_nav_perm(request.user, PERM_CRIAR_COMUM),
-            "checklists": [
-                {"id": c.id, "titulo": c.titulo} for c in Checklist.objects.filter(criado_por=request.user)
-            ],
+            "checklists": [{"id": c.id, "titulo": c.titulo} for c in Checklist.objects.filter(criado_por=alvo)],
+            **_ctx_alvo(request, alvo),
         },
     )
 
@@ -84,13 +119,14 @@ def api_eventos(request):
     ate = _parse_data(request.GET.get("fim"), de + timedelta(days=30))
     if ate < de or (ate - de).days > MAX_INTERVALO_DIAS:
         return JsonResponse({"success": False, "error": "Intervalo inválido."}, status=400)
-    return JsonResponse({"success": True, "eventos": [_serializa(o) for o in agenda_do_periodo(request.user, de, ate)]})
+    return JsonResponse({"success": True, "eventos": [_serializa(o) for o in agenda_do_periodo(_alvo(request), de, ate, editor=request.user)]})
 
 
 @login_required
 @require_GET
 def api_evento_detalhe(request, evento_id):
-    ev = get_object_or_404(Evento.visiveis_para(request.user), pk=evento_id)
+    alvo = _alvo(request)
+    ev = get_object_or_404(Evento.visiveis_para(alvo), pk=evento_id)
     inicio = timezone.localtime(ev.inicio)
     fim = timezone.localtime(ev.fim) if ev.fim else None
     return JsonResponse(
@@ -112,13 +148,15 @@ def api_evento_detalhe(request, evento_id):
                 "lembrete_minutos": ev.lembrete_minutos,
                 "cor": ev.cor,
                 "criador": _nome(ev.criado_por),
+                "ajustado_por": _nome(ev.ajustado_por) if ev.ajustado_por_id else "",
+                "ajustado_em": timezone.localtime(ev.ajustado_em).strftime("%d/%m/%Y %H:%M") if ev.ajustado_em else "",
                 "editavel": ev.pode_editar(request.user),
                 "participantes": [
                     {"id": c.usuario_id, "nome": _nome(c.usuario), "resposta": c.resposta}
                     for c in ev.convites.select_related("usuario")
                 ],
                 "minha_resposta": next(
-                    (c.resposta for c in ev.convites.all() if c.usuario_id == request.user.id), None
+                    (c.resposta for c in ev.convites.all() if c.usuario_id == alvo.id and alvo.id == request.user.id), None
                 ),
             },
         }
@@ -162,19 +200,19 @@ def evento_salvar(request):
     lembrete = int(lembrete) if str(lembrete or "").isdigit() else None
     cor = d.get("cor") if isinstance(d.get("cor"), str) and len(d["cor"]) == 7 and d["cor"].startswith("#") else "#0d6efd"
 
-    modelo = None
-    if d.get("checklist_modelo"):
-        modelo = Checklist.objects.filter(pk=d["checklist_modelo"], criado_por=request.user).first()
-        if not modelo:
-            return JsonResponse({"success": False, "error": "Checklist inválido."}, status=400)
-
     ev_id = d.get("id")
     if ev_id:
         ev = get_object_or_404(Evento, pk=ev_id)
         if not ev.pode_editar(request.user):
-            return JsonResponse({"success": False, "error": "Só o criador pode editar este evento."}, status=403)
+            return JsonResponse({"success": False, "error": "Só o criador ou a chefia dele pode editar este evento."}, status=403)
     else:
-        ev = Evento(criado_por=request.user)
+        ev = Evento(criado_por=_alvo(request, d.get("usuario") or ""))  # chefia cria direto na agenda do liderado
+
+    modelo = None
+    if d.get("checklist_modelo"):
+        modelo = Checklist.objects.filter(pk=d["checklist_modelo"], criado_por=ev.criado_por).first()
+        if not modelo:
+            return JsonResponse({"success": False, "error": "Checklist inválido."}, status=400)
     if escopo == Evento.ESCOPO_COMUM and ev.escopo != Evento.ESCOPO_COMUM and not user_has_nav_perm(
         request.user, PERM_CRIAR_COMUM
     ):
@@ -187,9 +225,10 @@ def evento_salvar(request):
         ev.recorrencia, ev.recorrencia_ate = recorrencia, rec_ate if recorrencia != Evento.REC_NENHUMA else None
         ev.checklist, ev.lembrete_minutos, ev.cor = bool(d.get("checklist")), lembrete, cor
         ev.checklist_modelo = modelo
+        _ajuste(ev, request)
         ev.save()
 
-        ids = {int(i) for i in (d.get("participantes") or []) if str(i).isdigit()} - {request.user.id}
+        ids = {int(i) for i in (d.get("participantes") or []) if str(i).isdigit()} - {ev.criado_por_id}
         validos = set(User.objects.filter(pk__in=ids, is_active=True).values_list("pk", flat=True))
         ev.convites.exclude(usuario_id__in=validos).delete()
         for uid in validos:
@@ -201,9 +240,11 @@ def evento_salvar(request):
 @login_required
 @require_POST
 def evento_excluir(request, evento_id):
-    ev = get_object_or_404(Evento.visiveis_para(request.user), pk=evento_id)
+    ev = get_object_or_404(Evento, pk=evento_id)
     if not ev.pode_editar(request.user):
-        return JsonResponse({"success": False, "error": "Só o criador pode excluir este evento."}, status=403)
+        if not Evento.visiveis_para(request.user).filter(pk=ev.pk).exists():
+            return JsonResponse({"success": False, "error": "Evento não encontrado."}, status=404)
+        return JsonResponse({"success": False, "error": "Só o criador ou a chefia dele pode excluir este evento."}, status=403)
     _invalida_inbox(ev)
     ev.delete()
     return JsonResponse({"success": True})
@@ -227,12 +268,15 @@ def api_responder_convite(request, evento_id):
 
 @login_required
 def checklist_view(request):
+    alvo = _alvo(request)
     dia = _parse_data(request.GET.get("data"), timezone.localdate())
-    itens = checklist_do_dia(request.user, dia)
+    itens = checklist_do_dia(alvo, dia)
     return render(
         request,
         "agenda/checklist.html",
         {
+            **_ctx_alvo(request, alvo),
+            "somente_leitura": alvo.pk != request.user.pk,
             "dia": dia,
             "anterior": dia - timedelta(days=1),
             "proximo": dia + timedelta(days=1),
@@ -289,9 +333,64 @@ def api_item_toggle(request, evento_id, item_id):
 # Checklists (modelos): criados direto e depois associados a eventos/rotinas
 # ----------------------------------------------------------------------------------------------
 @login_required
+def equipe_view(request):
+    """Vistoria da chefia: situação do dia (checklists e agenda) de cada liderado."""
+    dia = _parse_data(request.GET.get("data"), timezone.localdate())
+    linhas = []
+    for m in equipe_de(request.user):
+        itens = checklist_do_dia(m["usuario"], dia)
+        total = sum(len(i["itens"]) or 1 for i in itens)
+        feitos = sum(sum(1 for x in i["itens"] if x["feito"]) if i["itens"] else int(i["feito"]) for i in itens)
+        eventos = [o for o in agenda_do_periodo(m["usuario"], dia, dia) if o["tipo"] == "evento"]
+        if not total:
+            situacao = "sem"
+        elif feitos == total:
+            situacao = "completo"
+        elif feitos:
+            situacao = "andamento"
+        else:
+            situacao = "pendente"
+        linhas.append(
+            {
+                "usuario": m["usuario"],
+                "nome": m["colaborador"].nome_completo,
+                "cargo": m["colaborador"].cargo or "",
+                "setor": getattr(m["colaborador"].setor, "nome", "") if m["colaborador"].setor_id else "",
+                "papel": m["papel"],
+                "checklists": len(itens),
+                "total": total,
+                "feitos": feitos,
+                "pct": round(100 * feitos / total) if total else 0,
+                "eventos": len(eventos),
+                "situacao": situacao,
+            }
+        )
+    com_checklist = [l for l in linhas if l["total"]]
+    return render(
+        request,
+        "agenda/equipe.html",
+        {
+            "dia": dia,
+            "anterior": dia - timedelta(days=1),
+            "proximo": dia + timedelta(days=1),
+            "eh_hoje": dia == timezone.localdate(),
+            "linhas": linhas,
+            "resumo": {
+                "pessoas": len(linhas),
+                "completos": sum(1 for l in linhas if l["situacao"] == "completo"),
+                "pendentes": sum(1 for l in linhas if l["situacao"] in ("pendente", "andamento")),
+                "sem": sum(1 for l in linhas if l["situacao"] == "sem"),
+                "pct_geral": round(100 * sum(l["feitos"] for l in com_checklist) / sum(l["total"] for l in com_checklist)) if com_checklist else 0,
+            },
+        },
+    )
+
+
+@login_required
 def checklists_view(request):
-    qs = Checklist.objects.prefetch_related("itens").all() if request.user.is_superuser else Checklist.objects.prefetch_related("itens").filter(criado_por=request.user)
-    return render(request, "agenda/checklists.html", {"checklists": qs})
+    alvo = _alvo(request)
+    qs = Checklist.objects.prefetch_related("itens").select_related("ajustado_por").filter(criado_por=alvo)
+    return render(request, "agenda/checklists.html", {"checklists": qs, **_ctx_alvo(request, alvo)})
 
 
 @login_required
@@ -316,8 +415,11 @@ def api_diario_toggle(request, checklist_id, item_id):
 
 
 def _checklist_do_usuario(request, checklist_id):
-    qs = Checklist.objects.all() if request.user.is_superuser else Checklist.objects.filter(criado_por=request.user)
-    return get_object_or_404(qs, pk=checklist_id)
+    """Checklist que o usuário pode ajustar: o próprio, de liderado (chefia) ou qualquer um (superusuário)."""
+    c = get_object_or_404(Checklist, pk=checklist_id)
+    if not c.pode_editar(request.user):
+        raise Http404
+    return c
 
 
 @login_required
@@ -336,6 +438,7 @@ def api_checklist_detalhe(request, checklist_id):
                 "hora": c.hora.strftime("%H:%M") if c.hora else "",
                 "na_agenda": c.na_agenda,
                 "cor": c.cor,
+                "ajustado_por": _nome(c.ajustado_por) if c.ajustado_por_id else "",
                 "itens": [{"id": i.id, "texto": i.texto} for i in c.itens.all()],
                 "eventos": [{"id": e.id, "titulo": e.titulo} for e in c.eventos.all()],
             },
@@ -373,7 +476,7 @@ def checklist_salvar(request):
         if d.get("id"):
             c = _checklist_do_usuario(request, d["id"])
         else:
-            c = Checklist(criado_por=request.user)
+            c = Checklist(criado_por=_alvo(request, d.get("usuario") or ""))  # chefia cria para o liderado
         c.titulo, c.descricao = titulo[:200], (d.get("descricao") or "").strip()
         eram_diario = c.diario
         c.diario = bool(d.get("diario"))
@@ -383,6 +486,7 @@ def checklist_salvar(request):
         c.cor = cor
         if c.diario and (not eram_diario or not c.diario_desde):
             c.diario_desde = timezone.localdate()  # vale a partir de hoje; dias passados não viram pendência
+        _ajuste(c, request)
         c.save()
         existentes = {i.id: i for i in c.itens.all()}
         mantidos = set()

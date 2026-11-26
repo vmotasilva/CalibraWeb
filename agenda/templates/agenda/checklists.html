@@ -5,11 +5,12 @@
 
 {% block content %}
 <div class="container py-3" style="max-width: 900px;">
+    {% include "agenda/_alvo_banner.html" %}
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <p class="text-muted mb-0">Crie seus checklists. Marque como <strong>diário</strong> para que apareça todo dia no Checklist do dia (e, se quiser, no calendário como atividade fixa), ou associe a um evento da Agenda.</p>
         <div class="d-flex gap-2">
-            <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
-            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}{{ alvo_qs }}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
+            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}{{ alvo_qs }}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
             <button class="btn btn-sm btn-primary" id="ckNovo"><i class="bi bi-plus-lg me-1"></i>Novo checklist</button>
         </div>
     </div>
@@ -26,6 +27,7 @@
                     {% if c.diario %}<div class="mb-2"><span class="badge text-bg-success"><i class="bi bi-arrow-repeat me-1"></i>Diário</span>
                         {% if c.hora %}<span class="badge text-bg-light border">{{ c.hora|time:"H:i" }}</span>{% endif %}
                         {% if c.na_agenda %}<span class="badge text-bg-light border"><i class="bi bi-calendar3 me-1"></i>Na agenda</span>{% endif %}</div>{% endif %}
+                    {% if c.ajustado_por_id %}<div class="small text-muted mb-1"><i class="bi bi-person-badge me-1"></i>Ajustado por {{ c.ajustado_por.get_full_name|default:c.ajustado_por.username }}{% if c.ajustado_em %} em {{ c.ajustado_em|date:"d/m/Y H:i" }}{% endif %}</div>{% endif %}
                     {% if c.descricao %}<p class="small text-muted mb-2">{{ c.descricao|truncatechars:120 }}</p>{% endif %}
                     <ul class="small mb-3 ps-3">
                         {% for i in c.itens.all|slice:":4" %}<li>{{ i.texto }}</li>{% endfor %}
@@ -84,10 +86,10 @@
 {% block extra_js %}
 <script>
 (function () {
-    const CSRF = "{{ csrf_token }}";
+    const CSRF = "{{ csrf_token }}", ALVO = "{{ alvo_id }}";
     const U = {
         salvar: "{% url 'agenda:checklist_salvar' %}",
-        detalhe: id => "{% url 'agenda:api_checklist_detalhe' 0 %}".replace(/0\/$/, id + "/"),
+        detalhe: id => "{% url 'agenda:api_checklist_detalhe' 0 %}".replace(/0\/$/, id + "/") + (ALVO ? "?usuario=" + ALVO : ""),
         excluir: id => "{% url 'agenda:checklist_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/"),
     };
     const $ = id => document.getElementById(id);
@@ -159,7 +161,7 @@
     }));
     $("ckSalvar").onclick = async () => {
         sincronizarTextos(); adicionar();
-        const j = await post(U.salvar, {id: $("ckId").value || null, titulo: $("ckTitulo").value, descricao: $("ckDescricao").value, itens,
+        const j = await post(U.salvar, {id: $("ckId").value || null, usuario: ALVO || null, titulo: $("ckTitulo").value, descricao: $("ckDescricao").value, itens,
             diario: $("ckDiario").checked, dias_semana: [...document.querySelectorAll(".ck-dia:checked")].map(x => Number(x.value)),
             hora: $("ckHora").value, cor: $("ckCor").value, na_agenda: $("ckNaAgenda").checked});
         if (!j.success) { $("ckErro").textContent = j.error || "Não foi possível salvar."; $("ckErro").classList.remove("d-none"); return; }

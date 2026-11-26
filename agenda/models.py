@@ -20,6 +20,15 @@ class Checklist(models.Model):
     na_agenda = models.BooleanField(default=False, help_text="Mostra o checklist no calendário como atividade fixa.")
     cor = models.CharField(max_length=7, default="#20c997")
     diario_desde = models.DateField(null=True, blank=True, help_text="Primeiro dia em que o checklist diário vale.")
+    ajustado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Chefia que criou ou ajustou este checklist em nome do dono (vazio = o próprio dono).",
+    )
+    ajustado_em = models.DateTimeField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 
@@ -30,7 +39,10 @@ class Checklist(models.Model):
         return self.titulo
 
     def pode_editar(self, user):
-        return user.is_superuser or self.criado_por_id == user.id
+        """O dono, o superusuário ou a chefia (líder, vice-líder, supervisor, gerente) do dono."""
+        from agenda.hierarquia import pode_gerir
+
+        return pode_gerir(user, self.criado_por)
 
     @property
     def dias_set(self):
@@ -90,6 +102,15 @@ class Evento(models.Model):
     )
     cor = models.CharField(max_length=7, default="#0d6efd")
     criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_eventos")
+    ajustado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Chefia que criou ou ajustou este evento em nome do dono (vazio = o próprio dono).",
+    )
+    ajustado_em = models.DateTimeField(null=True, blank=True)
     participantes = models.ManyToManyField(
         settings.AUTH_USER_MODEL, through="EventoParticipante", related_name="agenda_convites", blank=True
     )
@@ -111,7 +132,10 @@ class Evento(models.Model):
         ).distinct()
 
     def pode_editar(self, user):
-        return user.is_superuser or self.criado_por_id == user.id
+        """O criador, o superusuário ou a chefia (líder, vice-líder, supervisor, gerente) do criador."""
+        from agenda.hierarquia import pode_gerir
+
+        return pode_gerir(user, self.criado_por)
 
 
 class EventoParticipante(models.Model):

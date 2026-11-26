@@ -45,8 +45,12 @@ def datas_do_evento(evento: Evento, de: date, ate: date):
     return saida
 
 
-def ocorrencias(user, de: date, ate: date, so_checklist=False):
-    """Lista de dicts (um por dia/ocorrência) visíveis para o usuário no intervalo."""
+def ocorrencias(user, de: date, ate: date, so_checklist=False, editor=None):
+    """Lista de dicts (um por dia/ocorrência) visíveis para o usuário no intervalo.
+
+    `editor` é quem está olhando (a chefia, ao vistoriar um liderado): define o campo "editavel".
+    """
+    editor = editor or user
     qs = Evento.visiveis_para(user).select_related("criado_por", "checklist_modelo").prefetch_related("checklist_modelo__itens")
     if so_checklist:
         qs = qs.filter(Q(checklist=True) | Q(checklist_modelo__isnull=False))
@@ -98,7 +102,7 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False):
                     "itens": itens,
                     "feito": feito,
                     "recorrente": ev.recorrencia != Evento.REC_NENHUMA,
-                    "editavel": ev.pode_editar(user),
+                    "editavel": ev.pode_editar(editor),
                 }
             )
     saida.sort(key=lambda o: (o["dia"], o["hora_inicio"] or datetime.min.time(), o["titulo"]))
@@ -158,9 +162,9 @@ def checklists_diarios(user, de: date, ate: date, so_agenda=False):
     return saida
 
 
-def agenda_do_periodo(user, de: date, ate: date):
+def agenda_do_periodo(user, de: date, ate: date, editor=None):
     """Eventos + checklists diários marcados para aparecer na agenda (atividades fixas)."""
-    todos = ocorrencias(user, de, ate) + checklists_diarios(user, de, ate, so_agenda=True)
+    todos = ocorrencias(user, de, ate, editor=editor) + checklists_diarios(user, de, ate, so_agenda=True)
     todos.sort(key=lambda o: (o["dia"], o["hora_inicio"] or datetime.min.time(), o["titulo"]))
     return todos
 

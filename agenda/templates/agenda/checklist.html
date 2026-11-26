@@ -5,16 +5,17 @@
 
 {% block content %}
 <div class="container py-3" style="max-width: 760px;">
+    {% include "agenda/_alvo_banner.html" %}
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div class="d-flex align-items-center gap-1">
-            <a class="btn btn-sm btn-outline-secondary" href="?data={{ anterior|date:'Y-m-d' }}" title="Dia anterior"><i class="bi bi-chevron-left"></i></a>
-            {% if not eh_hoje %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklist' %}">Hoje</a>{% endif %}
-            <a class="btn btn-sm btn-outline-secondary" href="?data={{ proximo|date:'Y-m-d' }}" title="Próximo dia"><i class="bi bi-chevron-right"></i></a>
+            <a class="btn btn-sm btn-outline-secondary" href="?data={{ anterior|date:'Y-m-d' }}{% if alvo_id %}&usuario={{ alvo_id }}{% endif %}" title="Dia anterior"><i class="bi bi-chevron-left"></i></a>
+            {% if not eh_hoje %}<a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklist' %}{{ alvo_qs }}">Hoje</a>{% endif %}
+            <a class="btn btn-sm btn-outline-secondary" href="?data={{ proximo|date:'Y-m-d' }}{% if alvo_id %}&usuario={{ alvo_id }}{% endif %}" title="Próximo dia"><i class="bi bi-chevron-right"></i></a>
             <h5 class="mb-0 ms-2">{{ dia|date:"l, d \d\e F \d\e Y" }}</h5>
         </div>
         <div class="d-flex gap-2">
-            <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklists' %}"><i class="bi bi-list-check me-1"></i>Meus checklists</a>
-            <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklists' %}{{ alvo_qs }}"><i class="bi bi-list-check me-1"></i>{% if gerindo %}Checklists dele(a){% else %}Meus checklists{% endif %}</a>
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}{{ alvo_qs }}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
         </div>
     </div>
 
@@ -35,13 +36,13 @@
         </li>
         {% for x in i.itens %}
         <li class="list-group-item d-flex align-items-center gap-3 ps-4">
-            <input class="form-check-input mt-0 ck-box" type="checkbox" style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
+            <input class="form-check-input mt-0 ck-box" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
             <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}</div>
         </li>
         {% endfor %}
         {% else %}
         <li class="list-group-item d-flex align-items-center gap-3">
-            <input class="form-check-input mt-0 ck-box" type="checkbox" style="width:1.3rem;height:1.3rem;" data-evento="{{ i.id }}" {% if i.feito %}checked{% endif %}>
+            <input class="form-check-input mt-0 ck-box" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.3rem;height:1.3rem;" data-evento="{{ i.id }}" {% if i.feito %}checked{% endif %}>
             <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ i.cor }}"></span>
             <div class="flex-grow-1 {% if i.feito %}text-decoration-line-through text-muted{% endif %}">
                 <div class="fw-semibold">{{ i.titulo }}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}</div>

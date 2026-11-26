@@ -429,6 +429,7 @@ CONFIGURAÇÕES <i class="bi bi-chevron-down transition-transform"></i>
 {% can_nav_view user 'agenda:calendario' 'agenda' as nav_agenda_cal %}
 {% can_nav_view user 'agenda:checklist' 'agenda' as nav_agenda_chk %}
 {% can_nav_view user 'agenda:checklists' 'agenda' as nav_agenda_mod %}
+{% can_nav_view user 'agenda:equipe' 'agenda' as nav_agenda_eqp %}
                 {% can_nav_block user 'laboratorio' 'homologacoes' as nav_lab_homol %}
                 {% can_nav_view user 'laboratorio:homologacoes_resumo' 'laboratorio' as nav_homol_resumo %}
                 {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos or nav_boards_list or nav_diagramas_list or nav_laboratorio and nav_lab_homol and nav_homol_resumo or user.is_authenticated %}
@@ -913,7 +914,7 @@ ENVIOS EQC <i class="bi bi-chevron-down transition-transform"></i>
                 <!-- Ferramentas Auxiliares (TMS, Quadros, Diagramas) -->
                 {% can_nav_group user 'Ferramentas Auxiliares' as nav_grp_ferr %}
                 {% if nav_grp_ferr %}
-                {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos or nav_boards_list or nav_diagramas_list or nav_agenda_cal or nav_agenda_chk or nav_agenda_mod %}
+                {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos or nav_boards_list or nav_diagramas_list or nav_agenda_cal or nav_agenda_chk or nav_agenda_mod or nav_agenda_eqp %}
                 <div class="dropdown d-inline-block me-2">
                     <button class="btn btn-sm btn-outline-light position-relative" type="button" id="ferramentasDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Ferramentas Auxiliares">
                         <i class="bi bi-wrench-adjustable"></i>
@@ -923,11 +924,12 @@ ENVIOS EQC <i class="bi bi-chevron-down transition-transform"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="ferramentasDropdown" style="min-width: 260px;">
                         <li><h6 class="dropdown-header text-muted">FERRAMENTAS AUXILIARES</h6></li>
-                        {% if nav_agenda_cal or nav_agenda_chk or nav_agenda_mod %}
+                        {% if nav_agenda_cal or nav_agenda_chk or nav_agenda_mod or nav_agenda_eqp %}
                         <li><h6 class="dropdown-header text-white" style="background-color: #14284b !important; color: #fff !important;">AGENDA</h6></li>
                         {% if nav_agenda_cal %}<li><a class="dropdown-item" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3"></i> Calendário</a></li>{% endif %}
                         {% if nav_agenda_chk %}<li><a class="dropdown-item" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square"></i> Checklist do dia</a></li>{% endif %}
                         {% if nav_agenda_mod %}<li><a class="dropdown-item" href="{% url 'agenda:checklists' %}"><i class="bi bi-list-check"></i> Meus checklists</a></li>{% endif %}
+                        {% if nav_agenda_eqp %}<li><a class="dropdown-item" href="{% url 'agenda:equipe' %}"><i class="bi bi-people"></i> Equipe (vistoria)</a></li>{% endif %}
                         {% endif %}
                         {% if nav_laboratorio and nav_lab_tms and nav_tms_dash or nav_laboratorio and nav_lab_tms and nav_tms_fluxos %}
                         <li><h6 class="dropdown-header text-white" style="background-color: #14284b !important; color: #fff !important;">TEMPOS E MOVIMENTOS (TMS)</h6></li>

@@ -12,6 +12,7 @@ urlpatterns = [
     path("api/eventos/<int:evento_id>/", views.api_evento_detalhe, name="api_evento_detalhe"),
     path("api/eventos/<int:evento_id>/excluir/", views.evento_excluir, name="evento_excluir"),
     path("api/eventos/<int:evento_id>/convite/", views.api_responder_convite, name="api_responder_convite"),
+    path("equipe/", views.equipe_view, name="equipe"),
     path("checklists/", views.checklists_view, name="checklists"),
     path("api/checklists/salvar/", views.checklist_salvar, name="checklist_salvar"),
     path("api/checklists/<int:checklist_id>/", views.api_checklist_detalhe, name="api_checklist_detalhe"),

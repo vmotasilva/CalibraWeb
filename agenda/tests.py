@@ -396,3 +396,174 @@ class ChecklistDiarioTests(TestCase):
         self._criar(dias_semana=[0, 1, 2, 3, 4, 5, 6])
         itens = [i for i in get_user_inbox_items(self.a) if i.module == "Agenda"]
         self.assertEqual([(i.title, i.description) for i in itens], [("Checklist: Abertura", "0 de 2 itens")])
+
+
+class HierarquiaTests(TestCase):
+    """Líder, Vice-Líder, Supervisor e Gerente (vínculos do Colaborador) ajustam e vistoriam os liderados."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        from rh.models import Colaborador
+
+        cache.clear()
+        self.cont = 0
+
+        def mk(login, **vinc):
+            self.cont += 1
+            u = User.objects.create_user(login, password="x", first_name=login.title())
+            c = Colaborador.objects.create(
+                user_django=u, matricula=f"M{self.cont}", nome_completo=f"Pessoa {login}", grupo="G", **vinc
+            )
+            return u, c
+
+        self.gerente, cg = mk("gerente")
+        self.sup, cs = mk("sup", gerente=cg)
+        self.vice, cv = mk("vice", gerente=cg, supervisor=cs)
+        self.lider, cl = mk("lider", gerente=cg, supervisor=cs)
+        self.ana, _ = mk("ana", lider=cl, vice_lider=cv, supervisor=cs, gerente=cg)
+        self.bia, _ = mk("bia", lider=cl, supervisor=cs, gerente=cg)
+        self.estranho, _ = mk("estranho")
+        self.admin = User.objects.create_superuser("adm", "a@a.com", "x")
+
+    def _post(self, nome, corpo):
+        return self.client.post(reverse(nome), json.dumps(corpo), content_type="application/json")
+
+    def _evento_da_ana(self, **extra):
+        corpo = {"titulo": "Reunião 1:1", "inicio": "2026-05-04T10:00", "usuario": self.ana.id}
+        corpo.update(extra)
+        return self._post("agenda:evento_salvar", corpo)
+
+    def test_equipe_e_papeis(self):
+        from agenda.hierarquia import equipe_de, papel_sobre
+
+        por_login = lambda u: {m["usuario"].username: m["papel"] for m in equipe_de(u)}  # noqa: E731
+        self.assertEqual(por_login(self.lider), {"ana": "Líder", "bia": "Líder"})
+        self.assertEqual(por_login(self.vice), {"ana": "Vice-Líder"})
+        self.assertEqual(por_login(self.sup)["ana"], "Supervisor")
+        g = por_login(self.gerente)
+        self.assertEqual(g["ana"], "Gerente")
+        self.assertEqual(g["lider"], "Gerente")  # gerente enxerga também quem tem o vínculo direto com ele
+        self.assertNotIn("gerente", g)  # não aparece como liderado de si mesmo
+        self.assertEqual(por_login(self.estranho), {})
+        self.assertEqual(por_login(self.ana), {})
+        self.assertEqual(papel_sobre(self.lider, self.ana), "Líder")
+
+    def test_colaborador_inativo_nao_entra_na_equipe(self):
+        from agenda.hierarquia import equipe_de
+        from rh.models import Colaborador
+
+        Colaborador.objects.filter(user_django=self.bia).update(is_active=False)
+        self.assertEqual([m["usuario"].username for m in equipe_de(self.lider)], ["ana"])
+
+    def test_chefia_ve_a_agenda_do_liderado_e_estranho_nao(self):
+        self.client.force_login(self.ana)
+        self._post("agenda:evento_salvar", {"titulo": "Pessoal da Ana", "inicio": "2026-05-04T09:00"})
+        q = {"inicio": "2026-05-01", "fim": "2026-05-31"}
+        self.client.force_login(self.lider)
+        r = self.client.get(reverse("agenda:api_eventos"), {**q, "usuario": self.ana.id})
+        self.assertEqual([(e["titulo"], e["editavel"]) for e in r.json()["eventos"]], [("Pessoal da Ana", True)])
+        self.assertEqual(self.client.get(reverse("agenda:api_eventos"), q).json()["eventos"], [])  # a minha segue vazia
+        self.client.force_login(self.estranho)
+        self.assertEqual(self.client.get(reverse("agenda:api_eventos"), {**q, "usuario": self.ana.id}).status_code, 403)
+        self.assertEqual(self.client.get(reverse("agenda:calendario"), {"usuario": self.ana.id}).status_code, 403)
+
+    def test_vice_supervisor_e_gerente_tambem_vistoriam(self):
+        for u in (self.vice, self.sup, self.gerente):
+            self.client.force_login(u)
+            self.assertEqual(self.client.get(reverse("agenda:calendario"), {"usuario": self.ana.id}).status_code, 200, u.username)
+
+    def test_chefia_cria_evento_na_agenda_do_liderado_com_auditoria(self):
+        from agenda.models import Evento
+
+        self.client.force_login(self.lider)
+        self.assertTrue(self._evento_da_ana().json()["success"])
+        ev = Evento.objects.get()
+        self.assertEqual(ev.criado_por, self.ana)
+        self.assertEqual(ev.ajustado_por, self.lider)
+        self.assertIsNotNone(ev.ajustado_em)
+        # o próprio liderado vê e, ao editar, a marca de ajuste some
+        self.client.force_login(self.ana)
+        det = self.client.get(reverse("agenda:api_evento_detalhe", args=[ev.id])).json()["evento"]
+        self.assertEqual(det["ajustado_por"], "Lider")
+        self._post("agenda:evento_salvar", {"id": ev.id, "titulo": "Reunião 1:1 (ajustada)", "inicio": "2026-05-04T10:00"})
+        ev.refresh_from_db()
+        self.assertIsNone(ev.ajustado_por)
+
+    def test_chefia_edita_e_exclui_evento_do_liderado_mas_estranho_nao(self):
+        from agenda.models import Evento
+
+        self.client.force_login(self.ana)
+        self._post("agenda:evento_salvar", {"titulo": "Da Ana", "inicio": "2026-05-04T09:00"})
+        ev = Evento.objects.get()
+        self.client.force_login(self.estranho)
+        self.assertEqual(self._post("agenda:evento_salvar", {"id": ev.id, "titulo": "X", "inicio": "2026-05-04T09:00"}).status_code, 403)
+        self.assertEqual(self.client.post(reverse("agenda:evento_excluir", args=[ev.id])).status_code, 404)  # nem sabe que existe
+        self.client.force_login(self.lider)
+        self.assertTrue(self._post("agenda:evento_salvar", {"id": ev.id, "titulo": "Ajustado pelo líder", "inicio": "2026-05-04T09:30"}).json()["success"])
+        ev.refresh_from_db()
+        self.assertEqual((ev.titulo, ev.criado_por, ev.ajustado_por), ("Ajustado pelo líder", self.ana, self.lider))
+        self.assertTrue(self.client.post(reverse("agenda:evento_excluir", args=[ev.id])).json()["success"])
+        self.assertEqual(Evento.objects.count(), 0)
+
+    def test_chefia_cria_e_ajusta_checklist_do_liderado(self):
+        from agenda.models import Checklist
+
+        self.client.force_login(self.lider)
+        corpo = {"titulo": "Abertura", "usuario": self.ana.id, "itens": [{"texto": "Ligar"}], "diario": True,
+                 "dias_semana": [0, 1, 2, 3, 4, 5, 6]}
+        self.assertTrue(self._post("agenda:checklist_salvar", corpo).json()["success"])
+        c = Checklist.objects.get()
+        self.assertEqual((c.criado_por, c.ajustado_por), (self.ana, self.lider))
+        # aparece na lista da Ana e na visão da chefia sobre a Ana, mas não na lista da própria chefia
+        self.assertContains(self.client.get(reverse("agenda:checklists"), {"usuario": self.ana.id}), "Abertura")
+        self.assertNotContains(self.client.get(reverse("agenda:checklists")), "Ligar")
+        self.assertTrue(self._post("agenda:checklist_salvar", {**corpo, "id": c.id, "titulo": "Abertura v2"}).json()["success"])
+        self.client.force_login(self.estranho)
+        self.assertEqual(self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).status_code, 404)
+        self.assertEqual(self._post("agenda:checklist_salvar", {**corpo, "id": c.id}).status_code, 404)
+        self.assertEqual(self._post("agenda:checklist_salvar", {**corpo, "usuario": self.ana.id}).status_code, 403)
+
+    def test_marcacao_continua_sendo_do_liderado(self):
+        from agenda.models import Checklist
+
+        self.client.force_login(self.ana)
+        self._post("agenda:checklist_salvar", {"titulo": "Rotina", "itens": [{"texto": "A"}], "diario": True, "dias_semana": [0, 1, 2, 3, 4, 5, 6]})
+        c = Checklist.objects.get()
+        item = c.itens.first()
+        hoje = timezone.localdate().isoformat()
+        self.client.force_login(self.lider)
+        r = self.client.post(
+            reverse("agenda:api_diario_toggle", args=[c.id, item.id]), json.dumps({"data": hoje}), content_type="application/json"
+        )
+        self.assertEqual(r.status_code, 404)  # a chefia vistoria, mas não marca pelo liderado
+
+    def test_checklist_do_dia_do_liderado_e_somente_leitura_para_a_chefia(self):
+        self.client.force_login(self.ana)
+        self._post("agenda:checklist_salvar", {"titulo": "Rotina", "itens": [{"texto": "Item A"}], "diario": True, "dias_semana": [0, 1, 2, 3, 4, 5, 6]})
+        self.client.force_login(self.lider)
+        r = self.client.get(reverse("agenda:checklist"), {"usuario": self.ana.id})
+        self.assertContains(r, "Item A")
+        self.assertContains(r, "vistoriando")
+        self.assertContains(r, "disabled")
+
+    def test_pagina_equipe(self):
+        self.client.force_login(self.ana)
+        self._post("agenda:checklist_salvar", {"titulo": "Rotina", "itens": [{"texto": "A"}, {"texto": "B"}], "diario": True, "dias_semana": [0, 1, 2, 3, 4, 5, 6]})
+        self.client.force_login(self.lider)
+        r = self.client.get(reverse("agenda:equipe"))
+        self.assertEqual(r.status_code, 200)
+        linhas = {l["nome"]: l for l in r.context["linhas"]}
+        self.assertEqual(set(linhas), {"Pessoa ana", "Pessoa bia"})
+        self.assertEqual((linhas["Pessoa ana"]["total"], linhas["Pessoa ana"]["feitos"], linhas["Pessoa ana"]["situacao"]), (2, 0, "pendente"))
+        self.assertEqual(linhas["Pessoa bia"]["situacao"], "sem")
+        self.client.force_login(self.estranho)
+        self.assertContains(self.client.get(reverse("agenda:equipe")), "Nenhum liderado encontrado")
+
+    def test_superusuario_ve_todos(self):
+        from agenda.hierarquia import equipe_de
+
+        logins = {m["usuario"].username for m in equipe_de(self.admin)}
+        self.assertTrue({"ana", "bia", "gerente", "estranho"} <= logins)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse("agenda:calendario"), {"usuario": self.ana.id}).status_code, 200)

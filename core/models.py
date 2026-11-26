@@ -82,6 +82,8 @@ class NavigationPermission(models.Model):
             ("nav_agenda_modelo_detalhe", "NAV: Agenda / Detalhe do Checklist"),
             ("nav_agenda_modelo_salvar", "NAV: Agenda / Criar e Editar Checklist"),
             ("nav_agenda_modelo_excluir", "NAV: Agenda / Excluir Checklist"),
+            ("nav_agenda_equipe_bloco", "NAV: Agenda / Bloco Equipe (Vistoria dos Liderados)"),
+            ("nav_agenda_equipe", "NAV: Agenda / Acessar Equipe"),
             ("nav_agenda_criar_comum", "NAV: Agenda / Permissão Especial: Criar Eventos na Agenda Comum"),
 
             # --- DIAGRAMAS E FLUXOGRAMAS ---

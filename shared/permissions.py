@@ -228,6 +228,19 @@ NAV_STRUCTURE = [
                 ],
             },
             {
+                "key": "equipe",
+                "nome": "Equipe (Vistoria dos Liderados)",
+                "perm": "core.nav_agenda_equipe_bloco",
+                "funcoes": [
+                    {
+                        "nome": "Acessar Equipe",
+                        "view_name": "agenda:equipe",
+                        "perm": "core.nav_agenda_equipe",
+                        "descricao": "Painel da chefia (Líder, Vice-Líder, Supervisor, Gerente): situação diária dos checklists e da agenda dos liderados, com acesso para vistoriar e ajustar. Os liderados vêm do cadastro de pessoas.",
+                    },
+                ],
+            },
+            {
                 "key": "especiais",
                 "nome": "PERMISSÕES ESPECIAIS",
                 "especial": True,

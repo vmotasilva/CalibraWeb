@@ -30,6 +30,7 @@
 
 {% block content %}
 <div class="container-fluid py-3">
+    {% include "agenda/_alvo_banner.html" %}
     <div class="ag-toolbar">
         <div class="d-flex align-items-center gap-1">
             <button class="btn btn-sm btn-outline-secondary" id="agPrev" title="Anterior"><i class="bi bi-chevron-left"></i></button>
@@ -48,8 +49,8 @@
                 <button class="btn btn-outline-secondary" data-f="pessoal">Pessoal</button>
                 <button class="btn btn-outline-secondary" data-f="comum">Comum</button>
             </div>
-            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
-            <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklists' %}"><i class="bi bi-list-check me-1"></i>Meus checklists</a>
+            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}{{ alvo_qs }}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklists' %}{{ alvo_qs }}"><i class="bi bi-list-check me-1"></i>{% if gerindo %}Checklists dele(a){% else %}Meus checklists{% endif %}</a>
             <button class="btn btn-sm btn-primary" id="agNovo"><i class="bi bi-plus-lg me-1"></i>Novo evento</button>
         </div>
     </div>
@@ -75,7 +76,7 @@
             <div class="col-md-6">
                 <label class="form-label">Agenda</label>
                 <select class="form-select" id="fEscopo">
-                    <option value="pessoal">Pessoal (só eu e convidados)</option>
+                    <option value="pessoal">Pessoal ({% if gerindo %}só {{ alvo_nome }} e convidados{% else %}só eu e convidados{% endif %})</option>
                     {% if pode_criar_comum %}<option value="comum">Comum (todos veem)</option>{% endif %}
                 </select>
             </div>
@@ -137,11 +138,11 @@
         eventos: "{% url 'agenda:api_eventos' %}",
         salvar: "{% url 'agenda:evento_salvar' %}",
         checklistDia: "{% url 'agenda:checklist' %}",
-        detalhe: id => "{% url 'agenda:api_evento_detalhe' 0 %}".replace(/0\/$/, id + "/"),
+        detalhe: id => "{% url 'agenda:api_evento_detalhe' 0 %}".replace(/0\/$/, id + "/") + (ALVO ? "?usuario=" + ALVO : ""),
         excluir: id => "{% url 'agenda:evento_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/"),
         convite: id => "{% url 'agenda:api_responder_convite' 0 %}".replace(/0\/convite\/$/, id + "/convite/"),
     };
-    const CSRF = "{{ csrf_token }}";
+    const CSRF = "{{ csrf_token }}", ALVO = "{{ alvo_id }}";
     const USUARIOS = JSON.parse(document.getElementById("agUsuarios").textContent);
     const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
     const DOW = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
@@ -162,7 +163,7 @@
 
     async function carregar() {
         const [a, b] = intervalo();
-        const r = await fetch(URLS.eventos + "?inicio=" + iso(a) + "&fim=" + iso(b), {credentials: "same-origin"});
+        const r = await fetch(URLS.eventos + "?inicio=" + iso(a) + "&fim=" + iso(b) + (ALVO ? "&usuario=" + ALVO : ""), {credentials: "same-origin"});
         const j = await r.json();
         eventos = j.success ? j.eventos : [];
         desenhar();
@@ -242,8 +243,9 @@
         $("fBuscaPart").value = "";
         convidados = new Set(ev ? ev.participantes.map(p => p.id) : []);
         respostas = {}; (ev ? ev.participantes : []).forEach(p => respostas[p.id] = p.resposta);
-        $("fRespostas").textContent = ev && ev.participantes.length
-            ? ev.participantes.map(p => p.nome + ": " + p.resposta).join(" · ") : "";
+        $("fRespostas").textContent = (ev && ev.participantes.length
+            ? ev.participantes.map(p => p.nome + ": " + p.resposta).join(" · ") : "")
+            + (ev && ev.ajustado_por ? "  ·  Ajustado por " + ev.ajustado_por + " em " + ev.ajustado_em : "");
         const editavel = !ev || ev.editavel;
         document.querySelectorAll("#agModal input, #agModal select, #agModal textarea").forEach(x => x.disabled = !editavel);
         $("agSalvar").classList.toggle("d-none", !editavel);
@@ -265,7 +267,7 @@
 
     $("agSalvar").addEventListener("click", async () => {
         const j = await post(URLS.salvar, {
-            id: $("fId").value || null, titulo: $("fTitulo").value, escopo: $("fEscopo").value,
+            id: $("fId").value || null, usuario: ALVO || null, titulo: $("fTitulo").value, escopo: $("fEscopo").value,
             dia_inteiro: $("fDiaInteiro").checked, checklist: $("fChecklist").checked, checklist_modelo: $("fModelo").value || null,
             inicio: $("fInicio").value, fim: $("fFim").value, recorrencia: $("fRec").value, recorrencia_ate: $("fRecAte").value,
             lembrete_minutos: $("fLembrete").value, cor: $("fCor").value, local: $("fLocal").value,
@@ -294,7 +296,7 @@
 
     $("agCalendario").addEventListener("click", e => {
         const ev = e.target.closest(".ag-ev"), goto = e.target.closest("[data-goto]"), cel = e.target.closest("[data-dia]");
-        if (ev && ev.dataset.fixo) { location.href = URLS.checklistDia + "?data=" + ev.dataset.fixo; return; }  // atividade fixa = checklist diário
+        if (ev && ev.dataset.fixo) { location.href = URLS.checklistDia + "?data=" + ev.dataset.fixo + (ALVO ? "&usuario=" + ALVO : ""); return; }  // atividade fixa = checklist diário
         if (ev) return abrirPorId(ev.dataset.id);
         if (goto) { const [y, m, d] = goto.dataset.goto.split("-").map(Number); ref = new Date(y, m-1, d); view = "dia"; localStorage.setItem("agView", view); return carregar(); }
         if (cel) abrir(null, cel.dataset.dia);
