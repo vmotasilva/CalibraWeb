@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}{{ lista.titulo }} - Checklist compartilhado - Calibra QMS{% endblock %}
+{% block header_title %}Checklist compartilhado{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 1000px;">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-3">
+        <div>
+            <h4 class="mb-0" style="border-left: 6px solid {{ lista.cor }}; padding-left: .6rem;">{{ lista.titulo }}</h4>
+            <div class="text-muted small mt-1">Criado por {{ criador_nome }}{% if lista.descricao %} · {{ lista.descricao }}{% endif %}</div>
+        </div>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:compartilhados' %}"><i class="bi bi-arrow-left me-1"></i>Todos</a>
+            {% if pode_editar %}<a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:compartilhados' %}?editar={{ lista.id }}"><i class="bi bi-pencil me-1"></i>Editar</a>{% endif %}
+        </div>
+    </div>
+
+    {% if not eh_membro %}<div class="alert alert-warning py-2"><i class="bi bi-eye me-1"></i>Você está só vistoriando este checklist: apenas os membros concluem e cobram as itens.</div>{% endif %}
+
+    <div class="d-flex align-items-center gap-2 mb-1">
+        <div class="progress flex-grow-1" style="height:10px;"><div class="progress-bar bg-success" id="cdBarra" style="width: {{ pct }}%"></div></div>
+        <span class="small text-nowrap">{{ feitas }}/{{ total }} itens{% if atrasadas %} · <span class="text-danger fw-semibold">{{ atrasadas }} atrasado{{ atrasadas|pluralize }}</span>{% endif %}</span>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-lg-8">
+            <ul class="list-group shadow-sm">
+            {% for g in grupos %}
+            {% if g.nome %}<li class="list-group-item py-2 bg-light d-flex justify-content-between fw-semibold"><span><i class="bi bi-folder2-open me-1"></i>{{ g.nome }}</span><span class="small text-muted">{{ g.feitas }}/{{ g.total }}</span></li>{% endif %}
+            {% for t in g.tarefas %}
+                <li class="list-group-item {% if t.obj.concluida %}bg-light{% endif %}">
+                    <div class="d-flex align-items-start gap-3">
+                        <input class="form-check-input mt-1 cd-box" type="checkbox" style="width:1.3rem;height:1.3rem;" data-id="{{ t.obj.id }}" {% if t.obj.concluida %}checked{% endif %} {% if not eh_membro %}disabled{% endif %}>
+                        <div class="flex-grow-1">
+                            <div class="fw-semibold {% if t.obj.concluida %}text-decoration-line-through text-muted{% endif %}">{{ t.obj.texto }}</div>
+                            <div class="small mt-1 d-flex flex-wrap gap-1 align-items-center">
+                                {% if t.responsavel_nome %}<span class="badge {% if t.minha %}text-bg-primary{% else %}text-bg-secondary{% endif %}"><i class="bi bi-person me-1"></i>{{ t.responsavel_nome }}{% if t.minha %} (você){% endif %}</span>{% else %}<span class="badge text-bg-light border">Sem responsável</span>{% endif %}
+                                {% if t.obj.prazo %}<span class="badge {% if t.atrasada %}text-bg-danger{% else %}text-bg-light border{% endif %}"><i class="bi bi-calendar-event me-1"></i>{{ t.obj.prazo|date:"d/m/Y" }}{% if t.atrasada %} · atrasado{% endif %}</span>{% endif %}
+                                {% if t.obj.concluida %}<span class="text-success"><i class="bi bi-check2-circle me-1"></i>{{ t.concluida_por_nome }} · {{ t.obj.concluida_em|date:"d/m H:i" }}</span>{% endif %}
+                            </div>
+                        </div>
+                        {% if t.pode_cobrar %}
+                            {% if t.ja_cobrou %}<span class="badge text-bg-light border align-self-center">Cobrado hoje</span>
+                            {% else %}<button class="btn btn-sm btn-outline-warning cd-cobrar" data-id="{{ t.obj.id }}" title="Mandar um lembrete a {{ t.responsavel_nome }}"><i class="bi bi-megaphone me-1"></i>Cobrar</button>{% endif %}
+                        {% endif %}
+                    </div>
+                </li>
+            {% endfor %}
+            {% empty %}
+                <li class="list-group-item text-muted text-center py-4">Nenhum item neste checklist.</li>
+            {% endfor %}
+            </ul>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-people me-1"></i>Pendências por pessoa</div>
+                <ul class="list-group list-group-flush">
+                {% for m in membros %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ m.nome }}</span>
+                        <span>{% if m.pendentes %}<span class="badge text-bg-warning">{{ m.pendentes }}</span>{% if m.atrasadas %} <span class="badge text-bg-danger">{{ m.atrasadas }} atras.</span>{% endif %}{% else %}<span class="text-success small"><i class="bi bi-check2"></i> em dia</span>{% endif %}</span>
+                    </li>
+                {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const CSRF = "{{ csrf_token }}";
+    const url = (tipo, id) => (tipo === "toggle" ? "{% url 'agenda:api_tarefa_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/") : "{% url 'agenda:api_tarefa_cobrar' 0 %}".replace(/0\/cobrar\/$/, id + "/cobrar/"));
+    async function post(u) {
+        const r = await fetch(u, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: "{}"});
+        return r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+    }
+    document.querySelectorAll(".cd-box").forEach(b => b.addEventListener("change", async () => {
+        const j = await post(url("toggle", b.dataset.id));
+        if (!j.success) { b.checked = !b.checked; alert(j.error || "Não foi possível atualizar."); return; }
+        location.reload();
+    }));
+    document.querySelectorAll(".cd-cobrar").forEach(b => b.addEventListener("click", async () => {
+        const j = await post(url("cobrar", b.dataset.id));
+        if (!j.success) { alert(j.error || "Não foi possível cobrar."); return; }
+        location.reload();
+    }));
+})();
+</script>
+{% endblock %}
