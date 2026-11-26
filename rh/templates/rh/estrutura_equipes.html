@@ -28,7 +28,7 @@
   <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
     <div>
       <h1 class="h3 mb-0"><i class="bi bi-diagram-3-fill text-primary me-2"></i>Estrutura de Equipes e Turnos</h1>
-      <p class="text-muted small mt-1 mb-0">Monte a estrutura livremente: <b>Setor › Bloco › Posto de trabalho</b> e, em cada posto, aloque por turno <b>colaboradores</b>, <b>VAGO</b> (necessário contratar) ou <b>Reserva</b> (equipamento reserva instalado).</p>
+      <p class="text-muted small mt-1 mb-0">Monte a estrutura livremente: <b>Setor</b> (com os <b>turnos</b> dele) › <b>Bloco</b> › <b>Posto de trabalho</b> e, em cada posto, aloque por turno <b>colaboradores</b>, <b>VAGO</b> (necessário contratar) ou <b>Reserva</b> (equipamento reserva instalado). Setores e turnos são cadastrados aqui, independentes de outros módulos.</p>
     </div>
     <div class="d-flex gap-2">
       {% if pode_editar %}
@@ -57,8 +57,8 @@
   </ul>
 
   <div class="card border-0 shadow-sm d-none" id="ee-quadro">
-    <div class="card-body p-0"><div class="table-responsive"><table class="table table-bordered align-middle mb-0" id="ee-quadro-tabela"></table></div></div>
-    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Cada linha é um posto; cada coluna, um turno.</div>
+    <div class="card-body p-0" id="ee-quadro-conteudo"></div>
+    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Uma tabela por setor: cada linha é um posto e cada coluna, um turno daquele setor.</div>
   </div>
 
   <div class="card border-0 shadow-sm d-none" id="ee-pessoas">
@@ -117,7 +117,7 @@
 {% if pode_editar %}
 <!-- Modal: setor / bloco / posto -->
 <div class="modal fade" id="ee-modal-grupo" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="ee-modal-titulo">Novo</h5>
@@ -146,6 +146,15 @@
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="ee-f-ativo" checked>
               <label class="form-check-label" for="ee-f-ativo">Ativo</label>
+            </div>
+          </div>
+          <div class="col-12" id="ee-f-turnos-wrap">
+            <label class="form-label fw-semibold">Turnos deste setor</label>
+            <div class="small text-muted mb-2">Cada setor tem os seus próprios turnos. Escreva o nome de cada um (ex.: Administrativo, Turno 01).</div>
+            <div id="ee-f-turnos-lista" class="d-grid gap-1"></div>
+            <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+              <button type="button" class="btn btn-sm btn-outline-primary" id="ee-f-turno-add"><i class="bi bi-plus-circle me-1"></i>Adicionar turno</button>
+              <span class="small text-muted ms-2">Sugestões:</span><span id="ee-f-turno-sug" class="d-flex flex-wrap gap-1"></span>
             </div>
           </div>
         </div>
@@ -179,9 +188,7 @@
           </div>
           <div class="col-md-5">
             <label class="form-label fw-semibold" id="ee-a-turno-label" for="ee-a-turno">Turno *</label>
-            <select class="form-select" id="ee-a-turno">
-              {% for cod, nome in turnos %}<option value="{{ cod }}">{{ nome }}</option>{% endfor %}
-            </select>
+            <select class="form-select" id="ee-a-turno"></select>
             <div id="ee-a-turnos" class="d-flex flex-wrap gap-3 pt-1 d-none" role="group" aria-labelledby="ee-a-turno-label"></div>
           </div>
           <div class="col-md-3 d-none" id="ee-a-posto-wrap">
@@ -235,19 +242,23 @@
     alocAtualizar: "{% url 'rh:api_estrutura_equipes_alocacoes_atualizar' %}",
     alocExcluir: "{% url 'rh:api_estrutura_equipes_alocacoes_excluir' %}",
   };
+  const SUGESTOES_TURNO = ['Administrativo', 'Turno 01', 'Turno 02', 'Turno 03'];
   const $ = id => document.getElementById(id);
   const csrf = () => app.querySelector('[name=csrfmiddlewaretoken]').value;
   // O bootstrap.bundle.js é carregado DEPOIS deste bloco (base_desktop.html): modais só são criados no uso.
   const modal = id => bootstrap.Modal.getOrCreateInstance($(id));
 
-  const state = { setoresCadastro: [], setor: '', labels: {}, setores: [], grupos: [], alocs: [], turnos: [], turno: '', sel: null, abertos: new Set(), tudoAberto: true };
-  const turnoNome = c => (state.turnos.find(t => t.codigo === c) || {}).nome || state.labels[c] || c;
-  const setorDe = id => state.setores.find(s => s.id === id);
-  const grupo = id => state.grupos.find(g => g.id === id);
+  const state = { setoresCadastro: [], setor: '', labels: {}, setores: [], grupos: [], alocs: [], turnoMap: {}, turno: '', sel: null, abertos: new Set(), tudoAberto: true };
+  const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   // Ordenação automática por nome: sem diferenciar maiúsculas/acentos e com números em ordem natural (DLP 2 antes de DLP 10).
   const cmp = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' }).compare;
   const ordena = (a, b) => cmp(a.nome, b.nome);
   const ordemTipo = { PESSOA: 0, RESERVA: 1, VAGO: 2 };
+  const setorDe = id => state.setores.find(s => s.id === id);
+  const grupo = id => state.grupos.find(g => g.id === id);
+  const turnoNome = id => (state.turnoMap[id] || {}).nome || '';
+  // Os turnos são de cada setor (cadastro próprio desta tela).
+  const turnosDoSetor = sid => ((setorDe(sid) || {}).turnos || []).slice().sort(ordena);
   const blocosDe = sid => state.grupos.filter(g => !g.parent_id && g.setor_id === sid).sort(ordena);
   const postosDe = bid => state.grupos.filter(g => g.parent_id === bid).sort(ordena);
   const key = (t, id) => t + id;
@@ -277,7 +288,18 @@
     if (sel.t === 'bloco') return postosDe(sel.id).map(p => p.id);
     return blocosDe(sel.id).flatMap(b => postosDe(b.id).map(p => p.id));
   };
-  const alocsDe = (idsPostos, turno = state.turno) => state.alocs.filter(a => idsPostos.includes(a.posto_id) && (!turno || a.turno === turno));
+  // Filtro de turno: por NOME (o mesmo nome vale em qualquer setor que o tenha).
+  const passaTurno = a => !state.turno || norm(turnoNome(a.turno_id)) === state.turno;
+  const alocsDe = idsPostos => state.alocs.filter(a => idsPostos.includes(a.posto_id) && passaTurno(a));
+  const alocsTodas = idsPostos => state.alocs.filter(a => idsPostos.includes(a.posto_id));
+  const alocsNoTurno = (idsPostos, turnoId) => state.alocs.filter(a => idsPostos.includes(a.posto_id) && a.turno_id === turnoId);
+  // colunas de um setor, respeitando o filtro de turno
+  const colunasDoSetor = sid => turnosDoSetor(sid).filter(t => !state.turno || norm(t.nome) === state.turno);
+  function turnosVisiveis() {
+    const m = new Map();
+    setoresVisiveis().forEach(s => s.turnos.forEach(t => { if (!m.has(norm(t.nome))) m.set(norm(t.nome), t.nome); }));
+    return [...m.entries()].map(([chave, nome]) => ({ chave, nome })).sort((a, b) => cmp(a.nome, b.nome));
+  }
   function cont(alocs) { return { p: alocs.filter(a => a.tipo === 'PESSOA').length, v: alocs.filter(a => a.tipo === 'VAGO').length, r: alocs.filter(a => a.tipo === 'RESERVA').length }; }
   function badgesCont(c, vazioTxt = '') {
     if (!c.p && !c.v && !c.r) return vazioTxt ? '<span class="text-muted small">' + vazioTxt + '</span>' : '';
@@ -292,7 +314,9 @@
   // ---------------------------------------------------------- carga
   async function carregar() {
     const j = await api(URLS.dados);
-    state.setores = j.setores.sort(ordena); state.setoresCadastro = j.setores_cadastro || []; state.grupos = j.grupos; state.labels = j.turno_labels || {}; state.alocs = j.alocacoes; state.turnos = j.turnos;
+    state.setores = j.setores.sort(ordena); state.setoresCadastro = j.setores_cadastro || []; state.grupos = j.grupos; state.labels = j.turno_labels || {}; state.alocs = j.alocacoes;
+    state.turnoMap = {};
+    state.setores.forEach(s => s.turnos.forEach(t => { state.turnoMap[t.id] = { id: t.id, nome: t.nome, setor_id: s.id }; }));
     if (state.tudoAberto && state.abertos.size === 0) {
       state.setores.forEach(s => state.abertos.add(key('s', s.id))); state.grupos.filter(g => !g.parent_id).forEach(g => state.abertos.add(key('g', g.id)));
     }
@@ -330,15 +354,18 @@
 
   function renderFiltro() {
     const box = $('ee-turnos-filtro'); box.querySelectorAll('.ee-turno-pill').forEach(e => e.remove());
-    const itens = [{ codigo: '', nome: 'Todos' }].concat(state.turnos);
+    const nomes = turnosVisiveis();
+    if (state.turno && !nomes.some(t => t.chave === state.turno)) state.turno = '';
+    const itens = [{ chave: '', nome: 'Todos' }].concat(nomes);
     itens.forEach(t => {
-      const n = alocsVisiveis().filter(a => !t.codigo || a.turno === t.codigo).length;
+      const n = alocsVisiveis().filter(a => !t.chave || norm(turnoNome(a.turno_id)) === t.chave).length;
       const b = document.createElement('button'); b.type = 'button';
-      b.className = 'btn btn-sm ee-turno-pill ' + (state.turno === t.codigo ? 'btn-primary' : 'btn-outline-secondary');
+      b.className = 'btn btn-sm ee-turno-pill ' + (state.turno === t.chave ? 'btn-primary' : 'btn-outline-secondary');
       b.innerHTML = esc(t.nome) + ' <span class="badge bg-light text-dark">' + n + '</span>';
-      b.onclick = () => { state.turno = t.codigo; renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); };
+      b.onclick = () => { state.turno = t.chave; renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); };
       box.appendChild(b);
     });
+    if (!nomes.length) { const m = document.createElement('span'); m.className = 'ee-turno-pill small text-muted'; m.textContent = 'nenhum turno cadastrado — defina os turnos ao criar ou editar um setor'; box.appendChild(m); }
   }
 
   // ---------------------------------------------------------- árvore
@@ -388,11 +415,13 @@
   function renderDetalhe() {
     const box = $('ee-detalhe'); const sel = state.sel;
     if (!sel) { box.innerHTML = '<div class="card-body text-muted">Selecione um setor, bloco ou posto à esquerda.</div>'; return; }
-    let titulo, tipoTxt, rota, botoes = '', corpo = '';
+    let titulo, tipoTxt, rota, botoes = '', corpo = '', extra = '';
     if (sel.t === 'setor') {
       const s = setorDe(sel.id); titulo = s.nome; tipoTxt = 'Setor'; rota = '';
-      if (PODE_EDITAR) botoes = '<button class="btn btn-sm btn-primary" data-acao="novo-bloco"><i class="bi bi-plus-circle me-1"></i>Novo bloco</button><button class="btn btn-sm btn-outline-secondary" data-acao="editar-setor"><i class="bi bi-pencil me-1"></i>Renomear</button><button class="btn btn-sm btn-outline-danger" data-acao="excluir-setor"><i class="bi bi-trash me-1"></i>Excluir</button>';
-      corpo = tabelaPostos(blocosDe(s.id).flatMap(b => [b, ...postosDe(b.id)]), true);
+      if (PODE_EDITAR) botoes = '<button class="btn btn-sm btn-primary" data-acao="novo-bloco"><i class="bi bi-plus-circle me-1"></i>Novo bloco</button><button class="btn btn-sm btn-outline-secondary" data-acao="editar-setor"><i class="bi bi-pencil me-1"></i>Editar setor e turnos</button><button class="btn btn-sm btn-outline-danger" data-acao="excluir-setor"><i class="bi bi-trash me-1"></i>Excluir</button>';
+      const ts = turnosDoSetor(s.id);
+      extra = '<div class="small mt-1"><span class="text-muted">Turnos deste setor:</span> ' + (ts.length ? ts.map(t => '<span class="badge text-bg-light border">' + esc(t.nome) + '</span>').join(' ') : '<span class="text-danger">nenhum' + (PODE_EDITAR ? ' — use "Editar setor e turnos" para definir' : '') + '</span>') + '</div>';
+      corpo = tabelaPostos(blocosDe(s.id).flatMap(b => [b, ...postosDe(b.id)]), true, s.id);
     } else {
       const g = grupo(sel.id); titulo = g.nome; tipoTxt = g.nivel === 1 ? 'Bloco' : 'Posto de trabalho';
       rota = [(setorDe(g.setor_id) || {}).nome, g.parent_id ? (grupo(g.parent_id) || {}).nome : null].filter(Boolean).join(' › ');
@@ -400,11 +429,11 @@
         if (g.nivel === 1) botoes += '<button class="btn btn-sm btn-primary" data-acao="novo-posto"><i class="bi bi-plus-circle me-1"></i>Novo posto</button>';
         botoes += '<button class="btn btn-sm btn-outline-secondary" data-acao="editar"><i class="bi bi-pencil me-1"></i>Editar</button><button class="btn btn-sm btn-outline-danger" data-acao="excluir"><i class="bi bi-trash me-1"></i>Excluir</button>';
       }
-      corpo = g.nivel === 1 ? tabelaPostos(postosDe(g.id), false) : painelPosto(g);
+      corpo = g.nivel === 1 ? tabelaPostos(postosDe(g.id), false, g.setor_id) : painelPosto(g);
     }
     box.innerHTML = '<div class="card-body"><div class="d-flex justify-content-between flex-wrap gap-2 mb-3"><div>' +
       '<h5 class="mb-1"><span class="badge text-bg-light me-1">' + tipoTxt + '</span>' + esc(titulo) + (sel.t !== 'setor' && !grupo(sel.id).ativo ? ' <span class="badge bg-secondary">inativo</span>' : '') + '</h5>' +
-      (rota ? '<div class="small text-muted">' + esc(rota) + '</div>' : '') + (sel.t !== 'setor' && grupo(sel.id).descricao ? '<div class="small mt-1">' + esc(grupo(sel.id).descricao) + '</div>' : '') +
+      (rota ? '<div class="small text-muted">' + esc(rota) + '</div>' : '') + (sel.t !== 'setor' && grupo(sel.id).descricao ? '<div class="small mt-1">' + esc(grupo(sel.id).descricao) + '</div>' : '') + extra +
       '</div><div class="d-flex gap-2 align-items-start flex-wrap">' + botoes + '</div></div>' + corpo + '</div>';
     box.querySelectorAll('[data-acao]').forEach(b => b.onclick = () => acaoDetalhe(b.dataset.acao));
     box.querySelectorAll('[data-ir]').forEach(a => a.onclick = e => { e.preventDefault(); const [t, id] = a.dataset.ir.split(':'); if (t === 'bloco') state.abertos.add(key('g', +id)); selecionar(t, +id); });
@@ -421,15 +450,16 @@
     else if (ac === 'excluir') excluirGrupo(grupo(sel.id));
   }
 
-  // Visão geral de um setor/bloco: uma linha por posto, resumo por turno
-  function tabelaPostos(itens, comBlocos) {
+  // Visão geral de um setor/bloco: uma linha por posto, resumo por turno (os turnos são os do setor)
+  function tabelaPostos(itens, comBlocos, setorId) {
     if (!itens.length) return '<div class="text-muted">Ainda não há ' + (comBlocos ? 'blocos' : 'postos') + ' aqui. ' + (PODE_EDITAR ? 'Use o botão acima para criar.' : '') + '</div>';
-    const turnos = state.turnos.filter(t => !state.turno || t.codigo === state.turno);
+    const turnos = colunasDoSetor(setorId);
+    if (!turnos.length) return '<div class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : '') + '.</div>';
     let h = '<div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th>' + (comBlocos ? 'Bloco / Posto' : 'Posto') + '</th>' + turnos.map(t => '<th>' + esc(t.nome) + '</th>').join('') + '</tr></thead><tbody>';
     itens.forEach(g => {
       const eBloco = g.nivel === 1; const ids = eBloco ? postosDe(g.id).map(p => p.id) : [g.id];
       h += '<tr class="' + (eBloco && comBlocos ? 'table-light fw-bold' : '') + '"><td style="padding-left:' + (eBloco ? 0.5 : 1.8) + 'rem"><a href="#" data-ir="' + (eBloco ? 'bloco' : 'posto') + ':' + g.id + '" class="text-decoration-none">' + esc(g.nome) + '</a></td>';
-      turnos.forEach(t => { h += '<td>' + badgesCont(cont(alocsDe(ids, t.codigo)), '—') + '</td>'; });
+      turnos.forEach(t => { h += '<td>' + badgesCont(cont(alocsNoTurno(ids, t.id)), '—') + '</td>'; });
       h += '</tr>';
     });
     return h + '</tbody></table></div>';
@@ -439,15 +469,16 @@
   function painelPosto(g) {
     let h = '';
     if (PODE_EDITAR) h += '<div class="d-flex flex-wrap gap-2 mb-3"><button class="btn btn-sm btn-outline-primary" data-add="PESSOA"><i class="bi bi-person-plus me-1"></i>Colaborador</button><button class="btn btn-sm btn-outline-danger" data-add="VAGO"><i class="bi bi-person-exclamation me-1"></i>VAGO</button><button class="btn btn-sm btn-outline-info" data-add="RESERVA"><i class="bi bi-hdd-stack me-1"></i>Reserva</button></div>';
-    const todas = alocsDe([g.id], '');
-    const turnos = state.turnos.filter(t => (!state.turno || t.codigo === state.turno) && todas.some(a => a.turno === t.codigo));
+    if (!turnosDoSetor(g.setor_id).length) return h + '<div class="text-danger">O setor deste posto ainda não tem turnos. ' + (PODE_EDITAR ? 'Edite o setor (lápis na árvore) e defina os turnos para poder alocar.' : '') + '</div>';
+    const todas = alocsTodas([g.id]);
+    const turnos = colunasDoSetor(g.setor_id).filter(t => todas.some(a => a.turno_id === t.id));
     if (!turnos.length) return h + '<div class="text-muted">Nenhuma alocação' + (state.turno ? ' neste turno' : '') + '. ' + (PODE_EDITAR ? 'Aloque um colaborador, uma vaga ou uma reserva.' : '') + '</div>';
     h += '<div class="row g-3">';
     turnos.forEach(t => {
-      const lista = todas.filter(a => a.turno === t.codigo).sort((a, b) => ordemTipo[a.tipo] - ordemTipo[b.tipo] || cmp(a.nome, b.nome) || a.id - b.id);
+      const lista = todas.filter(a => a.turno_id === t.id).sort((a, b) => ordemTipo[a.tipo] - ordemTipo[b.tipo] || cmp(a.nome, b.nome) || a.id - b.id);
       h += '<div class="col-md-6"><div class="border rounded"><div class="bg-light px-2 py-1 fw-semibold d-flex justify-content-between"><span>' + esc(t.nome) + '</span><span>' + badgesCont(cont(lista)) + '</span></div>';
       lista.forEach(a => {
-        const quem = a.tipo === 'PESSOA' ? esc(a.nome) + ' <span class="text-muted small">' + esc(a.matricula) + '</span>' + (a.afastado ? ' <span class="badge bg-warning text-dark">afastado</span>' : '') + (a.em_ferias ? ' <span class="badge bg-info text-dark">férias</span>' : '') + (a.turno_cadastro && a.turno_cadastro !== a.turno ? ' <span class="badge bg-light text-dark border" title="O turno no cadastro do colaborador é diferente deste">cadastro: ' + esc(turnoNome(a.turno_cadastro)) + '</span>' : '')
+        const quem = a.tipo === 'PESSOA' ? esc(a.nome) + ' <span class="text-muted small">' + esc(a.matricula) + '</span>' + (a.afastado ? ' <span class="badge bg-warning text-dark">afastado</span>' : '') + (a.em_ferias ? ' <span class="badge bg-info text-dark">férias</span>' : '')
           : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span> <span class="small text-muted">necessário contratar</span>' : '<span class="badge bg-info text-dark">RESERVA</span> <span class="small text-muted">equipamento reserva</span>';
         h += '<div class="ee-aloc"><div class="ee-quem">' + quem + (a.observacao ? '<div class="small text-muted">' + esc(a.observacao) + '</div>' : '') + '</div>' +
           (PODE_EDITAR ? '<button class="btn btn-sm btn-outline-secondary" data-aloc="editar:' + a.id + '" title="Editar / mover"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-outline-danger" data-aloc="remover:' + a.id + '" title="Remover"><i class="bi bi-x-lg"></i></button>' : '') + '</div>';
@@ -457,35 +488,34 @@
     return h + '</div>';
   }
 
-  // ---------------------------------------------------------- quadro
+  // ---------------------------------------------------------- quadro (uma tabela por setor, com os turnos dele)
   function renderQuadro() {
-    const t = $('ee-quadro-tabela');
-    const turnos = state.turnos.filter(tn => (!state.turno || tn.codigo === state.turno) && alocsVisiveis().some(a => a.turno === tn.codigo));
-    const cols = turnos.length ? turnos : state.turnos.filter(tn => !state.turno || tn.codigo === state.turno);
-    let h = '<thead class="table-light"><tr><th>Posto de trabalho</th>' + cols.map(c => '<th>' + esc(c.nome) + '</th>').join('') + '</tr></thead><tbody>';
-    let vagas = 0, reservas = 0;
+    let h = '', vagas = 0, reservas = 0;
     setoresVisiveis().forEach(s => {
-      const blocos = blocosDe(s.id); if (!blocos.length) return;
-      h += '<tr class="table-dark"><td colspan="' + (cols.length + 1) + '" class="fw-bold"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</td></tr>';
+      const cols = colunasDoSetor(s.id); const blocos = blocosDe(s.id);
+      h += '<div class="table-responsive mb-3"><table class="table table-bordered align-middle mb-0"><thead><tr class="table-dark"><th colspan="' + (cols.length + 1) + '"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</th></tr>';
+      if (!cols.length) { h += '</thead><tbody><tr><td class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : ' — edite o setor para definir os turnos') + '.</td></tr></tbody></table></div>'; return; }
+      h += '<tr class="table-light"><th>Posto de trabalho</th>' + cols.map(c => '<th>' + esc(c.nome) + '</th>').join('') + '</tr></thead><tbody>';
       blocos.forEach(b => {
         h += '<tr class="table-light"><td colspan="' + (cols.length + 1) + '" class="fw-bold">' + esc(b.nome) + '</td></tr>';
         postosDe(b.id).forEach(p => {
           h += '<tr' + (p.ativo ? '' : ' class="text-muted"') + '><td style="padding-left:1.6rem">' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</td>';
           cols.forEach(c => {
-            const l = state.alocs.filter(a => a.posto_id === p.id && a.turno === c.codigo);
+            const l = alocsNoTurno([p.id], c.id).sort((x, y) => ordemTipo[x.tipo] - ordemTipo[y.tipo] || cmp(x.nome, y.nome) || x.id - y.id);
             vagas += l.filter(a => a.tipo === 'VAGO').length; reservas += l.filter(a => a.tipo === 'RESERVA').length;
-            l.sort((x, y) => ordemTipo[x.tipo] - ordemTipo[y.tipo] || cmp(x.nome, y.nome) || x.id - y.id);
             const itens = l.map(a => { const rot = a.tipo === 'PESSOA' ? esc(a.nome) : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span>' : '<span class="badge bg-info text-dark">RESERVA</span>'; return '<div>' + (PODE_EDITAR ? '<a href="#" class="ee-q-edit text-decoration-none text-reset" data-aloc="' + a.id + '" title="Editar / mover">' + rot + '</a>' : rot) + '</div>'; }).join('');
-            h += '<td>' + (itens || '<span class="text-muted">—</span>') + (PODE_EDITAR ? '<button type="button" class="btn btn-sm btn-link p-0 ee-q-add" data-posto="' + p.id + '" data-turno="' + c.codigo + '" title="Alocar neste posto e turno">+ alocar</button>' : '') + '</td>';
+            h += '<td>' + (itens || '<span class="text-muted">—</span>') + (PODE_EDITAR ? '<button type="button" class="btn btn-sm btn-link p-0 ee-q-add" data-posto="' + p.id + '" data-turno="' + c.id + '" title="Alocar neste posto e turno">+ alocar</button>' : '') + '</td>';
           });
           h += '</tr>';
         });
       });
+      if (!blocos.length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Este setor ainda não tem blocos.</td></tr>';
+      h += '</tbody></table></div>';
     });
-    if (!setoresVisiveis().length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Nada cadastrado.</td></tr>';
-    t.innerHTML = h + '</tbody>';
-    t.querySelectorAll('.ee-q-add').forEach(b => b.onclick = () => abrirAloc({ postoId: +b.dataset.posto, turno: b.dataset.turno }));
-    t.querySelectorAll('.ee-q-edit').forEach(a => a.onclick = e => { e.preventDefault(); abrirAloc({ alocId: +a.dataset.aloc }); });
+    if (!setoresVisiveis().length) h = '<div class="p-3 text-muted">Nada cadastrado.</div>';
+    const box = $('ee-quadro-conteudo'); box.innerHTML = h;
+    box.querySelectorAll('.ee-q-add').forEach(b => b.onclick = () => abrirAloc({ postoId: +b.dataset.posto, turnoId: +b.dataset.turno }));
+    box.querySelectorAll('.ee-q-edit').forEach(a => a.onclick = e => { e.preventDefault(); abrirAloc({ alocId: +a.dataset.aloc }); });
     $('ee-quadro-resumo').innerHTML = '<span class="badge bg-danger">' + vagas + ' vaga(s) a contratar</span> <span class="badge bg-info text-dark">' + reservas + ' reserva(s)</span>';
   }
   function trocaAba(aba) {
@@ -495,7 +525,26 @@
   }
 
   // ---------------------------------------------------------- setor / bloco / posto (modal)
-  let modo = null; // {tipo:'setor'|'bloco'|'posto', editId}
+  let modo = null; // {tipo:'setor'|'bloco'|'posto', editId, setorEditId}
+  // Editor de turnos do setor: uma linha por turno (nome editável; linhas existentes guardam o id)
+  function addLinhaTurno(nome = '', id = '', foco = false) {
+    const row = document.createElement('div'); row.className = 'input-group input-group-sm ee-turno-row'; row.dataset.id = id;
+    row.innerHTML = '<input type="text" class="form-control ee-turno-nome" maxlength="50" placeholder="Nome do turno" aria-label="Nome do turno" value="' + esc(nome) + '"><button type="button" class="btn btn-outline-danger ee-turno-del" title="Remover turno" aria-label="Remover turno">×</button>';
+    row.querySelector('.ee-turno-del').onclick = () => { row.remove(); renderSugestoes(); };
+    const inp = row.querySelector('.ee-turno-nome');
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addLinhaTurno('', '', true); } });
+    inp.addEventListener('input', renderSugestoes);
+    $('ee-f-turnos-lista').appendChild(row); if (foco) inp.focus();
+  }
+  const coletaTurnos = () => [...document.querySelectorAll('#ee-f-turnos-lista .ee-turno-row')].map(r => ({ id: r.dataset.id ? +r.dataset.id : null, nome: r.querySelector('.ee-turno-nome').value.trim() })).filter(t => t.nome);
+  function renderSugestoes() {
+    const usados = coletaTurnos().map(t => norm(t.nome)); const box = $('ee-f-turno-sug'); box.innerHTML = '';
+    SUGESTOES_TURNO.filter(n => !usados.includes(norm(n))).forEach(n => {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn-sm btn-outline-secondary py-0'; b.textContent = '+ ' + n;
+      b.onclick = () => { const vazia = [...document.querySelectorAll('#ee-f-turnos-lista .ee-turno-nome')].find(i => !i.value.trim()); if (vazia) { vazia.value = n; renderSugestoes(); } else { addLinhaTurno(n); renderSugestoes(); } };
+      box.appendChild(b);
+    });
+  }
   function abrirGrupo({ tipo, editId = null, setorId = null, parentId = null, setorEditId = null }) {
     const g = editId ? grupo(editId) : null;
     const sEd = setorEditId ? setorDe(setorEditId) : null;
@@ -513,6 +562,9 @@
     $('ee-f-setor-wrap').classList.toggle('d-none', tipo !== 'bloco');
     $('ee-f-parent-wrap').classList.toggle('d-none', tipo !== 'posto');
     ['ee-f-desc-wrap', 'ee-f-ativo-wrap'].forEach(i => $(i).classList.toggle('d-none', tipo === 'setor'));
+    $('ee-f-turnos-wrap').classList.toggle('d-none', tipo !== 'setor');
+    $('ee-f-turnos-lista').innerHTML = '';
+    if (tipo === 'setor') { (sEd ? turnosDoSetor(sEd.id) : []).forEach(t => addLinhaTurno(t.nome, t.id)); renderSugestoes(); }
     modal('ee-modal-grupo').show();
     setTimeout(() => $('ee-f-nome').focus(), 300);
   }
@@ -521,7 +573,7 @@
     try {
       let j;
       if (modo.tipo === 'setor') {
-        j = await api(URLS.setor, { id: modo.setorEditId, nome: $('ee-f-nome').value });
+        j = await api(URLS.setor, { id: modo.setorEditId, nome: $('ee-f-nome').value, turnos: coletaTurnos() });
         state.abertos.add(key('s', j.id)); state.sel = { t: 'setor', id: j.id };
       } else {
         const body = { id: modo.editId, nome: $('ee-f-nome').value, descricao: $('ee-f-desc').value, ativo: $('ee-f-ativo').checked };
@@ -536,46 +588,54 @@
   async function excluirSetor(s) {
     const n = blocosDe(s.id).length;
     if (n) return aviso('Exclua ou mova os ' + n + ' bloco(s) deste setor antes de excluí-lo.', 'warning');
-    if (!confirm('Excluir o setor "' + s.nome + '"? Isso só afeta esta estrutura de equipes.')) return;
+    if (!confirm('Excluir o setor "' + s.nome + '" e os turnos dele? Isso só afeta esta estrutura de equipes.')) return;
     try { await api(URLS.setorExcluir, { id: s.id }); state.sel = null; await carregar(); aviso('Setor excluído.'); }
     catch (e) { aviso(e.message, 'danger'); }
   }
   async function excluirGrupo(g) {
-    const n = alocsDe([g.id], '').length;
+    const n = alocsTodas([g.id]).length;
     if (g.nivel === 1 && postosDe(g.id).length) return aviso('Exclua ou mova os ' + postosDe(g.id).length + ' posto(s) deste bloco antes de excluí-lo.', 'warning');
     if (!confirm('Excluir "' + g.nome + '"?' + (n ? '\n• ' + n + ' alocação(ões) deste posto serão removidas.' : ''))) return;
     try { await api(URLS.excluir, { id: g.id }); state.sel = g.parent_id ? { t: 'bloco', id: g.parent_id } : { t: 'setor', id: g.setor_id }; await carregar(); aviso('Excluído.'); }
     catch (e) { aviso(e.message, 'danger'); }
   }
 
-  // Caixas de seleção de turnos (um ou mais), usadas ao alocar.
-  function montaTurnos(id, marcados) {
+  // Caixas de seleção de turnos (um ou mais), usadas ao alocar. Os turnos vêm do setor do posto.
+  function montaTurnos(id, turnos, marcados) {
     const box = $(id); box.innerHTML = '';
-    state.turnos.forEach(t => {
+    if (!turnos.length) { box.innerHTML = '<span class="small text-danger">Este setor não tem turnos. Edite o setor e defina os turnos.</span>'; return; }
+    turnos.forEach(t => {
       const lb = document.createElement('label'); lb.className = 'form-check form-check-inline mb-0';
-      lb.innerHTML = '<input class="form-check-input ee-tchk" type="checkbox" value="' + t.codigo + '"' + (marcados.includes(t.codigo) ? ' checked' : '') + '> <span class="form-check-label">' + esc(t.nome) + '</span>';
+      lb.innerHTML = '<input class="form-check-input ee-tchk" type="checkbox" value="' + t.id + '"' + (marcados.includes(t.id) ? ' checked' : '') + '> <span class="form-check-label">' + esc(t.nome) + '</span>';
       box.appendChild(lb);
     });
   }
-  const turnosMarcados = id => [...$(id).querySelectorAll('.ee-tchk:checked')].map(c => c.value);
+  const turnosMarcados = id => [...$(id).querySelectorAll('.ee-tchk:checked')].map(c => +c.value);
+  const turnosAloc = postoId => { const p = grupo(postoId); return p ? turnosDoSetor(p.setor_id) : []; };
+  const turnoPadrao = turnos => (turnos.find(t => state.turno && norm(t.nome) === state.turno) || turnos[0] || {}).id;
 
   // ---------------------------------------------------------- alocação (colaborador / vago / reserva)
   let am = null; // {postoId, alocId, escolhidos:Set, unico}
   const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-  function abrirAloc({ postoId = null, alocId = null, tipo = 'PESSOA', turno = null }) {
+  function abrirAloc({ postoId = null, alocId = null, tipo = 'PESSOA', turnoId = null }) {
     const a = alocId ? state.alocs.find(x => x.id === alocId) : null;
     am = { postoId: a ? a.posto_id : postoId, alocId, escolhidos: new Set(a && a.colaborador_id ? [a.colaborador_id] : []), unico: !!a };
+    const turnos = turnosAloc(am.postoId);
     $('ee-aloc-erro').classList.add('d-none');
     $('ee-aloc-titulo').textContent = a ? 'Editar alocação' : 'Alocar em ' + ((grupo(postoId) || {}).nome || 'posto');
     $('ee-a-tipo').value = a ? a.tipo : tipo;
-    $('ee-a-turno').value = a ? a.turno : 'TURNO_1';
-    $('ee-a-turno').classList.toggle('d-none', !a); $('ee-a-turnos').classList.toggle('d-none', !!a);
+    const sel = $('ee-a-turno'); sel.innerHTML = '';
+    if (a) { turnos.forEach(t => sel.add(new Option(t.nome, t.id))); sel.value = a.turno_id; }
+    sel.classList.toggle('d-none', !a); $('ee-a-turnos').classList.toggle('d-none', !!a);
     $('ee-a-turno-label').textContent = a ? 'Turno *' : 'Turnos * (marque um ou mais)';
-    if (!a) montaTurnos('ee-a-turnos', [turno || state.turno || 'TURNO_1']);
+    if (!a) montaTurnos('ee-a-turnos', turnos, [turnoId || turnoPadrao(turnos)]);
     $('ee-a-obs').value = a ? a.observacao : '';
     $('ee-a-qtd').value = 1; $('ee-a-busca').value = '';
     $('ee-a-posto-wrap').classList.toggle('d-none', !a);
-    if (a) { const ps = $('ee-a-posto'); ps.innerHTML = ''; state.grupos.filter(g => g.parent_id).map(p => [caminhoPosto(p.id), p.id]).sort((a, b) => cmp(a[0], b[0])).forEach(([t, id]) => ps.add(new Option(t, id))); ps.value = a.posto_id; }
+    if (a) {  // mover: só entre postos do mesmo setor (os turnos são do setor)
+      const ps = $('ee-a-posto'); ps.innerHTML = ''; const sid = (grupo(a.posto_id) || {}).setor_id;
+      state.grupos.filter(g => g.parent_id && g.setor_id === sid).map(p => [caminhoPosto(p.id), p.id]).sort((x, y) => cmp(x[0], y[0])).forEach(([t, id]) => ps.add(new Option(t, id))); ps.value = a.posto_id;
+    }
     ajustaTipo(); modal('ee-modal-aloc').show(); if ($('ee-a-tipo').value === 'PESSOA') buscarPessoas();
   }
   function ajustaTipo() {
@@ -600,16 +660,17 @@
   }
   const infoSel = () => { $('ee-a-sel-info').textContent = am.escolhidos.size ? am.escolhidos.size + ' selecionado(s)' : ''; };
   async function salvarAloc() {
-    const erro = $('ee-aloc-erro'); const tipo = $('ee-a-tipo').value; const turno = $('ee-a-turno').value; const obs = $('ee-a-obs').value;
+    const erro = $('ee-aloc-erro'); const tipo = $('ee-a-tipo').value; const obs = $('ee-a-obs').value;
     try {
       let msg;
       if (am.alocId) {
-        const body = { id: am.alocId, turno, tipo, observacao: obs, posto_id: $('ee-a-posto').value };
+        const turno = +$('ee-a-turno').value; if (!turno) throw new Error('Este setor não tem turnos.');
+        const body = { id: am.alocId, turno_id: turno, tipo, observacao: obs, posto_id: $('ee-a-posto').value };
         if (tipo === 'PESSOA') { const c = [...am.escolhidos][0]; if (!c) throw new Error('Escolha o colaborador.'); body.colaborador_id = c; }
         await api(URLS.alocAtualizar, body); msg = 'Alocação atualizada.'; state.sel = { t: 'posto', id: +$('ee-a-posto').value };
       } else {
         const turnos = turnosMarcados('ee-a-turnos'); if (!turnos.length) throw new Error('Marque ao menos um turno.');
-        const body = { posto_id: am.postoId, turnos, tipo, observacao: obs };
+        const body = { posto_id: am.postoId, turno_ids: turnos, tipo, observacao: obs };
         if (tipo === 'PESSOA') { if (!am.escolhidos.size) throw new Error('Selecione ao menos um colaborador.'); body.colaborador_ids = [...am.escolhidos]; } else body.quantidade = $('ee-a-qtd').value;
         const j = await api(URLS.alocCriar, body);
         msg = j.criadas + ' alocação(ões) criada(s)' + (j.turnos > 1 ? ' em ' + j.turnos + ' turnos' : '') + (j.ja_existiam ? ' (' + j.ja_existiam + ' já existia(m) neste posto e turno)' : '') + '.';
@@ -620,7 +681,7 @@
   }
   async function removerAloc(id) {
     const a = state.alocs.find(x => x.id === id); if (!a) return;
-    if (!confirm('Remover ' + (a.tipo === 'PESSOA' ? a.nome : a.tipo === 'VAGO' ? 'a VAGA' : 'a RESERVA') + ' do ' + turnoNome(a.turno) + '?')) return;
+    if (!confirm('Remover ' + (a.tipo === 'PESSOA' ? a.nome : a.tipo === 'VAGO' ? 'a VAGA' : 'a RESERVA') + ' do ' + turnoNome(a.turno_id) + '?')) return;
     try { await api(URLS.alocExcluir, { ids: [id] }); await carregar(); aviso('Removido.'); } catch (e) { aviso(e.message, 'danger'); }
   }
 
@@ -632,7 +693,16 @@
     ps.add(new Option('— escolha o posto —', ''));
     state.grupos.filter(g => g.parent_id && postoVisivel(g)).map(g => [caminhoPosto(g.id), g.id]).sort((a, b) => cmp(a[0], b[0])).forEach(([t, id]) => ps.add(new Option(t, id)));
     ps.value = atual;
-    montaTurnos('ee-p-turnos', turnosMarcados('ee-p-turnos').length ? turnosMarcados('ee-p-turnos') : ['TURNO_1']);
+    atualizaTurnosPessoas();
+  }
+  // os turnos oferecidos dependem do setor do posto escolhido
+  function atualizaTurnosPessoas() {
+    const box = $('ee-p-turnos'); if (!box) return;
+    const posto = +$('ee-p-posto').value;
+    if (!posto) { box.innerHTML = '<span class="small text-muted">escolha o posto</span>'; return; }
+    const turnos = turnosAloc(posto);
+    const marcados = turnosMarcados('ee-p-turnos').filter(id => turnos.some(t => t.id === id));
+    montaTurnos('ee-p-turnos', turnos, marcados.length ? marcados : [turnoPadrao(turnos)]);
   }
   async function carregarPessoas() {
     const p = new URLSearchParams({ limite: 200 });
@@ -662,16 +732,13 @@
   function pessoasSel() {
     const box = $('ee-p-acoes'); if (!box) return;
     box.classList.toggle('d-none', pe.sel.size === 0); $('ee-p-selcount').textContent = pe.sel.size;
-    // sugere o turno do cadastro quando todos os selecionados têm o mesmo
-    const turnos = new Set(pe.dados.filter(m => pe.sel.has(m.id)).map(m => m.turno));
-    if (turnos.size === 1) { const t = [...turnos][0]; if (state.turnos.some(x => x.codigo === t)) montaTurnos('ee-p-turnos', [t]); }
   }
   async function alocarPessoas() {
     const posto = $('ee-p-posto').value; if (!posto) return aviso('Escolha o posto de destino.', 'warning');
     if (!pe.sel.size) return;
     const turnos = turnosMarcados('ee-p-turnos'); if (!turnos.length) return aviso('Marque ao menos um turno.', 'warning');
     try {
-      const j = await api(URLS.alocCriar, { posto_id: +posto, turnos, tipo: 'PESSOA', colaborador_ids: [...pe.sel] });
+      const j = await api(URLS.alocCriar, { posto_id: +posto, turno_ids: turnos, tipo: 'PESSOA', colaborador_ids: [...pe.sel] });
       aviso(j.criadas + ' alocação(ões) criada(s) em ' + caminhoPosto(+posto) + ' (' + turnos.map(turnoNome).join(', ') + ')' + (j.ja_existiam ? '; ' + j.ja_existiam + ' já existia(m) neste posto e turno' : '') + '.');
       await carregar();
     } catch (e) { aviso(e.message, 'danger'); }
@@ -690,9 +757,11 @@
     renderArvore();
   };
   if (PODE_EDITAR) {
+    $('ee-p-posto').onchange = atualizaTurnosPessoas;
     $('ee-p-alocar').onclick = alocarPessoas;
     $('ee-p-todos').onchange = e => { document.querySelectorAll('.ee-p-chk').forEach(c => { c.checked = e.target.checked; e.target.checked ? pe.sel.add(+c.dataset.id) : pe.sel.delete(+c.dataset.id); }); pessoasSel(); };
     $('ee-btn-novo-setor').onclick = () => abrirGrupo({ tipo: 'setor' });
+    $('ee-f-turno-add').onclick = () => { addLinhaTurno('', '', true); renderSugestoes(); };
     $('ee-btn-salvar').onclick = salvarGrupo;
     $('ee-f-nome').addEventListener('keydown', e => { if (e.key === 'Enter') salvarGrupo(); });
     $('ee-a-tipo').onchange = () => { ajustaTipo(); if ($('ee-a-tipo').value === 'PESSOA') buscarPessoas(); };

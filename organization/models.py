@@ -122,6 +122,24 @@ class SetorEquipe(models.Model):
         ordering = ["nome"]
 
 
+class TurnoEquipe(models.Model):
+    """Turno de um setor da estrutura de equipes. Cada setor define os seus próprios turnos (cadastro desta tela,
+    independente dos turnos usados em outros módulos do sistema)."""
+
+    setor = models.ForeignKey(SetorEquipe, on_delete=models.CASCADE, related_name="turnos", verbose_name="Setor")
+    nome = models.CharField(max_length=50, verbose_name="Nome do Turno")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.setor.nome} - {self.nome}"
+
+    class Meta:
+        verbose_name = "Turno da Estrutura de Equipes"
+        verbose_name_plural = "Turnos da Estrutura de Equipes"
+        ordering = ["nome"]
+        unique_together = ("setor", "nome")
+
+
 class GrupoEquipe(models.Model):
     """Estrutura de trabalho: Setor > Bloco (nível 1) > Posto de trabalho (nível 2).
 
@@ -277,7 +295,17 @@ class AlocacaoPosto(models.Model):
     posto = models.ForeignKey(
         GrupoEquipe, on_delete=models.CASCADE, related_name="alocacoes", verbose_name="Posto de trabalho"
     )
-    turno = models.CharField(max_length=20, choices=TURNOS_CHOICES, verbose_name="Turno")
+    turno = models.CharField(
+        max_length=20, choices=TURNOS_CHOICES, null=True, blank=True, verbose_name="Turno (obsoleto)"
+    )  # obsoleto: o turno agora é ``turno_estrutura`` (cadastro por setor)
+    turno_estrutura = models.ForeignKey(
+        TurnoEquipe,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="alocacoes",
+        verbose_name="Turno",
+    )
     tipo = models.CharField(max_length=10, choices=TIPO_CHOICES, default="PESSOA", verbose_name="Tipo")
     colaborador = models.ForeignKey(
         "rh.Colaborador",
@@ -299,19 +327,24 @@ class AlocacaoPosto(models.Model):
             raise ValidationError("Informe o colaborador.")
         if self.tipo != "PESSOA" and self.colaborador_id:
             raise ValidationError("Vaga e reserva não têm colaborador.")
+        if not self.turno_estrutura_id:
+            raise ValidationError("Informe o turno.")
+        if self.turno_estrutura.setor_id != self.posto.setor_estrutura_id:
+            raise ValidationError("O turno não pertence ao setor deste posto.")
 
     def __str__(self):
         quem = self.colaborador.nome_completo if self.colaborador_id else self.get_tipo_display()
-        return f"{self.posto.nome} / {self.get_turno_display()}: {quem}"
+        turno = self.turno_estrutura.nome if self.turno_estrutura_id else "sem turno"
+        return f"{self.posto.nome} / {turno}: {quem}"
 
     class Meta:
         verbose_name = "Alocação em Posto"
         verbose_name_plural = "Alocações em Postos"
-        ordering = ["turno", "tipo", "id"]
+        ordering = ["tipo", "id"]
         constraints = [
             models.UniqueConstraint(
-                fields=["posto", "turno", "colaborador"],
+                fields=["posto", "turno_estrutura", "colaborador"],
                 condition=models.Q(colaborador__isnull=False),
-                name="uniq_alocacao_pessoa_posto_turno",
+                name="uniq_alocacao_pessoa_posto_turnoeq",
             )
         ]

@@ -15,12 +15,10 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
 
-from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe
+from organization.models import AlocacaoPosto, GrupoEquipe, Setor, SetorEquipe, TurnoEquipe
 from rh.models import Colaborador
 from rh.services.estrutura_import import PlanilhaInvalida, ler_planilha, monta_previa, normaliza
 from rh.views.estrutura_equipes import (
-    TURNOS_ESTRUTURA,
-    TURNOS_VALIDOS,
     _erro,
     _negado,
     _pode_editar,
@@ -28,6 +26,8 @@ from rh.views.estrutura_equipes import (
 
 logger = logging.getLogger(__name__)
 
+# Colunas de turno da planilha -> nome do turno no setor (procurado ou criado ao gravar).
+TURNOS_PLANILHA = {"ADM": "Administrativo", "TURNO_1": "Turno 01", "TURNO_2": "Turno 02", "TURNO_3": "Turno 03"}
 TAMANHO_MAX = 5 * 1024 * 1024
 SITUACOES_DECISAO = {"VAGO", "RESERVA", "PARADO"}
 
@@ -39,7 +39,7 @@ def estrutura_equipes_importar_view(request):
     return render(
         request,
         "rh/estrutura_equipes_importar.html",
-        {"setores": SetorEquipe.objects.order_by("nome"), "turnos": TURNOS_ESTRUTURA},
+        {"setores": SetorEquipe.objects.order_by("nome")},
     )
 
 
@@ -93,6 +93,13 @@ def api_estrutura_equipes_importar_previa(request):
         )
         for posto in bloco["postos"]:
             posto["existe"] = normaliza(posto["nome"]) in postos_db
+    existentes = set()
+    if setor_id:
+        existentes = {n.casefold() for n in TurnoEquipe.objects.filter(setor_id=setor_id).values_list("nome", flat=True)}
+    dados["turnos_planilha"] = [
+        {"codigo": c, "nome": TURNOS_PLANILHA[c], "existe": TURNOS_PLANILHA[c].casefold() in existentes}
+        for c in dados["turnos"] if c in TURNOS_PLANILHA
+    ]
     return JsonResponse({"success": True, **dados})
 
 
@@ -155,7 +162,7 @@ def api_estrutura_equipes_importar_confirmar(request):
             turnos, vistos = [], set()
             for cel in (posto.get("turnos") or []):
                 t = (cel or {}).get("turno")
-                if t not in TURNOS_VALIDOS or t in vistos:
+                if t not in TURNOS_PLANILHA or t in vistos:
                     return _erro(f'"{nome_b} › {nome_p}": turno inválido ou repetido.')
                 vistos.add(t)
                 tipo, valor = _decisao_valida(cel.get("decisao"))
@@ -175,7 +182,20 @@ def api_estrutura_equipes_importar_confirmar(request):
         return _erro("Há titular que não existe mais ou está inativo. Refaça a prévia.")
 
     r = {"blocos_criados": 0, "postos_criados": 0, "postos_atualizados": 0,
-         "colaboradores": 0, "vagos": 0, "reservas": 0, "postos_parados": 0}
+         "colaboradores": 0, "vagos": 0, "reservas": 0, "postos_parados": 0, "turnos_criados": 0}
+    cache_turnos = {}
+
+    def turno_do_setor(codigo):
+        """Turno do setor com o nome da coluna da planilha; cria se ainda não existir."""
+        if codigo not in cache_turnos:
+            nome = TURNOS_PLANILHA[codigo]
+            turno = TurnoEquipe.objects.filter(setor=setor, nome__iexact=nome).first()
+            if turno is None:
+                turno = TurnoEquipe.objects.create(setor=setor, nome=nome)
+                r["turnos_criados"] += 1
+            cache_turnos[codigo] = turno
+        return cache_turnos[codigo]
+
     try:
         with transaction.atomic():
             if setor is None:
@@ -199,13 +219,14 @@ def api_estrutura_equipes_importar_confirmar(request):
                     for t, tipo, valor in turnos:
                         if tipo == "pessoa":
                             _, criou = AlocacaoPosto.objects.get_or_create(
-                                posto=posto, turno=t, colaborador_id=valor, defaults={"tipo": "PESSOA"}
+                                posto=posto, turno_estrutura=turno_do_setor(t), colaborador_id=valor,
+                                defaults={"tipo": "PESSOA"},
                             )
                             r["colaboradores"] += criou
                         elif valor in ("VAGO", "RESERVA"):
                             # garante ao menos uma vaga/reserva no turno (reimportar não duplica)
-                            if not AlocacaoPosto.objects.filter(posto=posto, turno=t, tipo=valor).exists():
-                                AlocacaoPosto.objects.create(posto=posto, turno=t, tipo=valor)
+                            if not AlocacaoPosto.objects.filter(posto=posto, turno_estrutura=turno_do_setor(t), tipo=valor).exists():
+                                AlocacaoPosto.objects.create(posto=posto, turno_estrutura=turno_do_setor(t), tipo=valor)
                                 r["vagos" if valor == "VAGO" else "reservas"] += 1
                         else:  # PARADO: o posto inteiro fica inativo
                             if posto.ativo:
