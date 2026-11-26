@@ -322,9 +322,11 @@ def api_estrutura_equipes_excluir(request):
 @login_required
 @require_POST
 def api_estrutura_equipes_alocacoes_criar(request):
-    """Aloca em um posto, num turno: colaboradores (colaborador_ids), VAGO ou RESERVA (quantidade).
+    """Aloca em um posto, em um ou mais turnos: colaboradores (colaborador_ids), VAGO ou RESERVA (quantidade).
 
-    Body: {posto_id, turno, tipo: PESSOA|VAGO|RESERVA, colaborador_ids?, quantidade?, observacao?}
+    Body: {posto_id, turnos: [..] (ou turno: "..."), tipo: PESSOA|VAGO|RESERVA,
+           colaborador_ids?, quantidade?, observacao?}
+    A quantidade de vagas/reservas vale para cada turno marcado.
     """
     if not _pode_editar(request.user):
         return _negado("Sem permissão para editar a estrutura de equipes.")
@@ -339,11 +341,17 @@ def api_estrutura_equipes_alocacoes_criar(request):
         return _erro("Posto não encontrado.", 404)
     if not posto.parent_id:
         return _erro("Aloque em um posto de trabalho (dentro de um bloco).")
-    turno, tipo = data.get("turno"), data.get("tipo")
-    if turno not in TURNOS_VALIDOS:
-        return _erro("Turno inválido.")
+    tipo = data.get("tipo")
     if tipo not in TIPOS_VALIDOS:
         return _erro("Tipo inválido.")
+    turnos = data.get("turnos")
+    if turnos is None and data.get("turno"):
+        turnos = [data["turno"]]  # compatibilidade: um único turno
+    if not isinstance(turnos, list) or not turnos:
+        return _erro("Marque ao menos um turno.")
+    if any(t not in TURNOS_VALIDOS for t in turnos):
+        return _erro("Turno inválido.")
+    turnos = list(dict.fromkeys(turnos))  # sem repetir, mantendo a ordem
     obs = str(data.get("observacao") or "").strip()[:255]
 
     criadas = ja_existiam = 0
@@ -361,12 +369,13 @@ def api_estrutura_equipes_alocacoes_criar(request):
             ativos = set(Colaborador.objects.filter(pk__in=ids, is_active=True).values_list("pk", flat=True))
             if len(ativos) != len(ids):
                 return _erro("Há colaborador inexistente ou inativo na seleção.")
-            for cid in ids:
-                _, criou = AlocacaoPosto.objects.get_or_create(
-                    posto=posto, turno=turno, colaborador_id=cid, defaults={"tipo": "PESSOA", "observacao": obs}
-                )
-                criadas += criou
-                ja_existiam += (not criou)
+            for turno in turnos:
+                for cid in ids:
+                    _, criou = AlocacaoPosto.objects.get_or_create(
+                        posto=posto, turno=turno, colaborador_id=cid, defaults={"tipo": "PESSOA", "observacao": obs}
+                    )
+                    criadas += criou
+                    ja_existiam += (not criou)
         else:
             try:
                 qtd = _int_ou_none(data.get("quantidade")) or 1
@@ -375,10 +384,10 @@ def api_estrutura_equipes_alocacoes_criar(request):
             if not 1 <= qtd <= LIMITE_QUANTIDADE:
                 return _erro(f"A quantidade deve ficar entre 1 e {LIMITE_QUANTIDADE}.")
             AlocacaoPosto.objects.bulk_create(
-                [AlocacaoPosto(posto=posto, turno=turno, tipo=tipo, observacao=obs) for _ in range(qtd)]
+                [AlocacaoPosto(posto=posto, turno=t, tipo=tipo, observacao=obs) for t in turnos for _ in range(qtd)]
             )
-            criadas = qtd
-    return JsonResponse({"success": True, "criadas": criadas, "ja_existiam": ja_existiam})
+            criadas = qtd * len(turnos)
+    return JsonResponse({"success": True, "criadas": criadas, "ja_existiam": ja_existiam, "turnos": len(turnos)})
 
 
 @login_required

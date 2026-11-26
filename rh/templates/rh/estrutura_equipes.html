@@ -74,7 +74,8 @@
       <div class="d-flex flex-wrap gap-2 align-items-center">
         <span class="small fw-semibold"><span id="ee-p-selcount">0</span> selecionado(s) →</span>
         <select class="form-select form-select-sm w-auto" id="ee-p-posto" aria-label="Posto de destino"></select>
-        <select class="form-select form-select-sm w-auto" id="ee-p-turno" aria-label="Turno de destino"></select>
+        <span class="small text-muted">nos turnos:</span>
+        <div id="ee-p-turnos" class="d-flex flex-wrap gap-3" role="group" aria-label="Turnos de destino"></div>
         <button type="button" class="btn btn-sm btn-primary" id="ee-p-alocar">Alocar no posto</button>
       </div>
     </div>
@@ -175,17 +176,18 @@
               <option value="RESERVA">Reserva (equip. reserva)</option>
             </select>
           </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold" for="ee-a-turno">Turno *</label>
+          <div class="col-md-5">
+            <label class="form-label fw-semibold" id="ee-a-turno-label" for="ee-a-turno">Turno *</label>
             <select class="form-select" id="ee-a-turno">
               {% for cod, nome in turnos %}<option value="{{ cod }}">{{ nome }}</option>{% endfor %}
             </select>
+            <div id="ee-a-turnos" class="d-flex flex-wrap gap-3 pt-1 d-none" role="group" aria-labelledby="ee-a-turno-label"></div>
           </div>
-          <div class="col-md-4 d-none" id="ee-a-posto-wrap">
+          <div class="col-md-3 d-none" id="ee-a-posto-wrap">
             <label class="form-label fw-semibold" for="ee-a-posto">Posto</label>
             <select class="form-select" id="ee-a-posto"></select>
           </div>
-          <div class="col-md-4 d-none" id="ee-a-qtd-wrap">
+          <div class="col-md-3 d-none" id="ee-a-qtd-wrap">
             <label class="form-label fw-semibold" for="ee-a-qtd">Quantidade</label>
             <input type="number" class="form-control" id="ee-a-qtd" min="1" max="20" value="1">
           </div>
@@ -529,6 +531,17 @@
     catch (e) { aviso(e.message, 'danger'); }
   }
 
+  // Caixas de seleção de turnos (um ou mais), usadas ao alocar.
+  function montaTurnos(id, marcados) {
+    const box = $(id); box.innerHTML = '';
+    state.turnos.forEach(t => {
+      const lb = document.createElement('label'); lb.className = 'form-check form-check-inline mb-0';
+      lb.innerHTML = '<input class="form-check-input ee-tchk" type="checkbox" value="' + t.codigo + '"' + (marcados.includes(t.codigo) ? ' checked' : '') + '> <span class="form-check-label">' + esc(t.nome) + '</span>';
+      box.appendChild(lb);
+    });
+  }
+  const turnosMarcados = id => [...$(id).querySelectorAll('.ee-tchk:checked')].map(c => c.value);
+
   // ---------------------------------------------------------- alocação (colaborador / vago / reserva)
   let am = null; // {postoId, alocId, escolhidos:Set, unico}
   const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
@@ -538,7 +551,10 @@
     $('ee-aloc-erro').classList.add('d-none');
     $('ee-aloc-titulo').textContent = a ? 'Editar alocação' : 'Alocar em ' + ((grupo(postoId) || {}).nome || 'posto');
     $('ee-a-tipo').value = a ? a.tipo : tipo;
-    $('ee-a-turno').value = a ? a.turno : (turno || state.turno || 'TURNO_1');
+    $('ee-a-turno').value = a ? a.turno : 'TURNO_1';
+    $('ee-a-turno').classList.toggle('d-none', !a); $('ee-a-turnos').classList.toggle('d-none', !!a);
+    $('ee-a-turno-label').textContent = a ? 'Turno *' : 'Turnos * (marque um ou mais)';
+    if (!a) montaTurnos('ee-a-turnos', [turno || state.turno || 'TURNO_1']);
     $('ee-a-obs').value = a ? a.observacao : '';
     $('ee-a-qtd').value = 1; $('ee-a-busca').value = '';
     $('ee-a-posto-wrap').classList.toggle('d-none', !a);
@@ -575,10 +591,11 @@
         if (tipo === 'PESSOA') { const c = [...am.escolhidos][0]; if (!c) throw new Error('Escolha o colaborador.'); body.colaborador_id = c; }
         await api(URLS.alocAtualizar, body); msg = 'Alocação atualizada.'; state.sel = { t: 'posto', id: +$('ee-a-posto').value };
       } else {
-        const body = { posto_id: am.postoId, turno, tipo, observacao: obs };
+        const turnos = turnosMarcados('ee-a-turnos'); if (!turnos.length) throw new Error('Marque ao menos um turno.');
+        const body = { posto_id: am.postoId, turnos, tipo, observacao: obs };
         if (tipo === 'PESSOA') { if (!am.escolhidos.size) throw new Error('Selecione ao menos um colaborador.'); body.colaborador_ids = [...am.escolhidos]; } else body.quantidade = $('ee-a-qtd').value;
         const j = await api(URLS.alocCriar, body);
-        msg = j.criadas + ' alocação(ões) criada(s)' + (j.ja_existiam ? ' (' + j.ja_existiam + ' já existia(m) neste posto e turno)' : '') + '.';
+        msg = j.criadas + ' alocação(ões) criada(s)' + (j.turnos > 1 ? ' em ' + j.turnos + ' turnos' : '') + (j.ja_existiam ? ' (' + j.ja_existiam + ' já existia(m) neste posto e turno)' : '') + '.';
         state.sel = { t: 'posto', id: am.postoId };
       }
       modal('ee-modal-aloc').hide(); await carregar(); aviso(msg);
@@ -598,7 +615,7 @@
     ps.add(new Option('— escolha o posto —', ''));
     state.grupos.filter(g => g.parent_id && postoVisivel(g)).map(g => [caminhoPosto(g.id), g.id]).sort((a, b) => cmp(a[0], b[0])).forEach(([t, id]) => ps.add(new Option(t, id)));
     ps.value = atual;
-    const ts = $('ee-p-turno'); ts.innerHTML = ''; state.turnos.forEach(t => ts.add(new Option(t.nome, t.codigo))); ts.value = 'TURNO_1';
+    montaTurnos('ee-p-turnos', turnosMarcados('ee-p-turnos').length ? turnosMarcados('ee-p-turnos') : ['TURNO_1']);
   }
   async function carregarPessoas() {
     const p = new URLSearchParams({ limite: 200 });
@@ -630,14 +647,15 @@
     box.classList.toggle('d-none', pe.sel.size === 0); $('ee-p-selcount').textContent = pe.sel.size;
     // sugere o turno do cadastro quando todos os selecionados têm o mesmo
     const turnos = new Set(pe.dados.filter(m => pe.sel.has(m.id)).map(m => m.turno));
-    if (turnos.size === 1) { const t = [...turnos][0]; if (state.turnos.some(x => x.codigo === t)) $('ee-p-turno').value = t; }
+    if (turnos.size === 1) { const t = [...turnos][0]; if (state.turnos.some(x => x.codigo === t)) montaTurnos('ee-p-turnos', [t]); }
   }
   async function alocarPessoas() {
     const posto = $('ee-p-posto').value; if (!posto) return aviso('Escolha o posto de destino.', 'warning');
     if (!pe.sel.size) return;
+    const turnos = turnosMarcados('ee-p-turnos'); if (!turnos.length) return aviso('Marque ao menos um turno.', 'warning');
     try {
-      const j = await api(URLS.alocCriar, { posto_id: +posto, turno: $('ee-p-turno').value, tipo: 'PESSOA', colaborador_ids: [...pe.sel] });
-      aviso(j.criadas + ' colaborador(es) alocado(s) em ' + caminhoPosto(+posto) + ' (' + turnoNome($('ee-p-turno').value) + ')' + (j.ja_existiam ? '; ' + j.ja_existiam + ' já estava(m) neste posto e turno' : '') + '.');
+      const j = await api(URLS.alocCriar, { posto_id: +posto, turnos, tipo: 'PESSOA', colaborador_ids: [...pe.sel] });
+      aviso(j.criadas + ' alocação(ões) criada(s) em ' + caminhoPosto(+posto) + ' (' + turnos.map(turnoNome).join(', ') + ')' + (j.ja_existiam ? '; ' + j.ja_existiam + ' já existia(m) neste posto e turno' : '') + '.');
       await carregar();
     } catch (e) { aviso(e.message, 'danger'); }
   }

@@ -266,3 +266,40 @@ class RenomearSetorTests(TestCase):
         self.assertEqual(self.post({"id": a, "nome": "QUALIDADE TOTAL"}).status_code, 200)  # mudar só a caixa do próprio nome
         self.assertEqual(self.post({"id": 999999, "nome": "X"}).status_code, 404)
         self.assertEqual(self.post({"id": a, "nome": "  "}).status_code, 400)
+
+
+class AlocarEmVariosTurnosTests(TestCase):
+    def setUp(self):
+        self.client.force_login(User.objects.create_superuser("adm5", "e@e.com", "x"))
+        sid = self.post("api_estrutura_equipes_setor_criar", {"nome": "S"}).json()["id"]
+        bid = self.post("api_estrutura_equipes_salvar", {"nome": "B", "setor_id": sid}).json()["id"]
+        self.posto = self.post("api_estrutura_equipes_salvar", {"nome": "P", "parent_id": bid}).json()["id"]
+        setor = Setor.objects.get(pk=sid)
+        self.a = Colaborador.objects.create(matricula="1", nome_completo="Ana", grupo="M", setor=setor)
+        self.b = Colaborador.objects.create(matricula="2", nome_completo="Bia", grupo="M", setor=setor)
+
+    def post(self, name, payload):
+        return self.client.post(reverse(f"rh:{name}"), json.dumps(payload), content_type="application/json")
+
+    def test_colaboradores_em_varios_turnos(self):
+        r = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": self.posto, "turnos": ["TURNO_1", "TURNO_2", "TURNO_2"], "tipo": "PESSOA", "colaborador_ids": [self.a.id, self.b.id]})
+        j = r.json()
+        self.assertEqual((j["criadas"], j["ja_existiam"], j["turnos"]), (4, 0, 2))  # 2 pessoas x 2 turnos (repetido ignorado)
+        # repetir: só o que falta
+        j = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": self.posto, "turnos": ["TURNO_1", "TURNO_3"], "tipo": "PESSOA", "colaborador_ids": [self.a.id]}).json()
+        self.assertEqual((j["criadas"], j["ja_existiam"]), (1, 1))
+        self.assertEqual(AlocacaoPosto.objects.filter(colaborador=self.a).count(), 3)
+
+    def test_vagos_e_reservas_por_turno(self):
+        j = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": self.posto, "turnos": ["ADM", "TURNO_1", "TURNO_2"], "tipo": "VAGO", "quantidade": 2}).json()
+        self.assertEqual(j["criadas"], 6)  # 2 por turno
+        self.assertEqual(AlocacaoPosto.objects.filter(posto_id=self.posto, tipo="VAGO", turno="TURNO_2").count(), 2)
+
+    def test_validacoes_e_compatibilidade(self):
+        base = {"posto_id": self.posto, "tipo": "RESERVA"}
+        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {**base, "turnos": []}).status_code, 400)
+        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {**base}).status_code, 400)
+        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {**base, "turnos": ["TURNO_1", "12X36"]}).status_code, 400)
+        self.assertEqual(AlocacaoPosto.objects.count(), 0)  # nada é criado se algum turno é inválido
+        # formato antigo (um turno) continua valendo
+        self.assertEqual(self.post("api_estrutura_equipes_alocacoes_criar", {**base, "turno": "TURNO_3"}).json()["criadas"], 1)
