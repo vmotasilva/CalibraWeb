@@ -13,8 +13,9 @@
   .ee-node.inativo .ee-nome { text-decoration: line-through; opacity: .6; }
   .ee-toggle { width: 1.2rem; text-align: center; color: #6c757d; flex: 0 0 auto; }
   .ee-nome { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ee-add { border: 0; background: transparent; color: #0d6efd; padding: 0 .25rem; line-height: 1; }
-  .ee-add:hover { background: rgba(13,110,253,.15); border-radius: .3rem; }
+  .ee-add, .ee-edit { border: 0; background: transparent; color: #0d6efd; padding: 0 .25rem; line-height: 1; }
+  .ee-edit { color: #6c757d; }
+  .ee-add:hover, .ee-edit:hover { background: rgba(13,110,253,.15); border-radius: .3rem; }
   .ee-turno-pill { cursor: pointer; }
   .ee-aloc { display: flex; align-items: center; gap: .4rem; padding: .3rem .5rem; border-bottom: 1px solid rgba(0,0,0,.06); }
   .ee-aloc:last-child { border-bottom: 0; }
@@ -331,16 +332,18 @@
   }
 
   // ---------------------------------------------------------- árvore
-  function noArvore(tipo, id, icone, nome, contagem, ativo, aoClicar, aoAdd, tituloAdd, temFilhos, aberto, aoAlternar) {
+  function noArvore(tipo, id, icone, nome, contagem, ativo, aoClicar, aoAdd, tituloAdd, temFilhos, aberto, aoAlternar, aoEditar) {
     const li = document.createElement('li');
     const row = document.createElement('div');
     row.className = 'ee-node' + (state.sel && state.sel.t === tipo && state.sel.id === id ? ' active' : '') + (ativo ? '' : ' inativo');
     row.innerHTML = '<span class="ee-toggle">' + (temFilhos ? '<i class="bi bi-chevron-' + (aberto ? 'down' : 'right') + '"></i>' : '') + '</span>' + icone +
       '<span class="ee-nome" title="' + esc(nome) + '">' + esc(nome) + '</span><span>' + contagem + '</span>' +
+      (PODE_EDITAR && aoEditar ? '<button type="button" class="ee-edit" title="Editar" aria-label="Editar ' + esc(nome) + '"><i class="bi bi-pencil"></i></button>' : '') +
       (PODE_EDITAR && aoAdd ? '<button type="button" class="ee-add" title="' + esc(tituloAdd) + '" aria-label="' + esc(tituloAdd) + '"><i class="bi bi-plus-lg"></i></button>' : '');
     row.querySelector('.ee-toggle').onclick = e => { e.stopPropagation(); if (temFilhos) aoAlternar(); };
     row.onclick = aoClicar;
     const add = row.querySelector('.ee-add'); if (add) add.onclick = e => { e.stopPropagation(); aoAdd(); };
+    const edit = row.querySelector('.ee-edit'); if (edit) edit.onclick = e => { e.stopPropagation(); aoEditar(); };
     li.appendChild(row); return li;
   }
   function alterna(k) { state.abertos.has(k) ? state.abertos.delete(k) : state.abertos.add(k); renderArvore(); }
@@ -351,17 +354,17 @@
     setoresVisiveis().forEach(s => {
       const blocos = blocosDe(s.id); const ks = key('s', s.id); const ab = state.abertos.has(ks);
       const li = noArvore('setor', s.id, '<i class="bi bi-building text-dark"></i>', s.nome, badgesCont(cont(alocsDe(idsPostosDoNo({ t: 'setor', id: s.id })))), true,
-        () => selecionar('setor', s.id), () => abrirGrupo({ tipo: 'bloco', setorId: s.id }), 'Novo bloco neste setor', blocos.length > 0, ab, () => alterna(ks));
+        () => selecionar('setor', s.id), () => abrirGrupo({ tipo: 'bloco', setorId: s.id }), 'Novo bloco neste setor', blocos.length > 0, ab, () => alterna(ks), () => abrirGrupo({ tipo: 'setor', setorEditId: s.id }));
       if (blocos.length && ab) {
         const ub = document.createElement('ul'); li.appendChild(ub);
         blocos.forEach(b => {
           const postos = postosDe(b.id); const kb = key('g', b.id); const abb = state.abertos.has(kb);
           const lb = noArvore('bloco', b.id, '<i class="bi bi-grid-3x3-gap text-primary"></i>', b.nome, badgesCont(cont(alocsDe(idsPostosDoNo({ t: 'bloco', id: b.id })))), b.ativo,
-            () => selecionar('bloco', b.id), () => abrirGrupo({ tipo: 'posto', parentId: b.id }), 'Novo posto neste bloco', postos.length > 0, abb, () => alterna(kb));
+            () => selecionar('bloco', b.id), () => abrirGrupo({ tipo: 'posto', parentId: b.id }), 'Novo posto neste bloco', postos.length > 0, abb, () => alterna(kb), () => abrirGrupo({ editId: b.id }));
           if (postos.length && abb) {
             const up = document.createElement('ul'); lb.appendChild(up);
             postos.forEach(p => up.appendChild(noArvore('posto', p.id, '<i class="bi bi-wrench-adjustable text-secondary"></i>', p.nome, badgesCont(cont(alocsDe([p.id]))), p.ativo,
-              () => selecionar('posto', p.id), () => abrirAloc({ postoId: p.id }), 'Alocar colaborador, vago ou reserva', false, false, null)));
+              () => selecionar('posto', p.id), () => abrirAloc({ postoId: p.id }), 'Alocar colaborador, vago ou reserva', false, false, null, () => abrirGrupo({ editId: p.id }))));
           }
           ub.appendChild(lb);
         });
@@ -481,13 +484,15 @@
 
   // ---------------------------------------------------------- setor / bloco / posto (modal)
   let modo = null; // {tipo:'setor'|'bloco'|'posto', editId}
-  function abrirGrupo({ tipo, editId = null, setorId = null, parentId = null }) {
+  function abrirGrupo({ tipo, editId = null, setorId = null, parentId = null, setorEditId = null }) {
     const g = editId ? grupo(editId) : null;
+    const sEd = setorEditId ? setorDe(setorEditId) : null;
     if (g) tipo = g.nivel === 1 ? 'bloco' : 'posto';
-    modo = { tipo, editId };
+    if (sEd) tipo = 'setor';
+    modo = { tipo, editId, setorEditId };
     $('ee-modal-erro').classList.add('d-none');
-    $('ee-modal-titulo').textContent = (g ? 'Editar ' : 'Novo ') + { setor: 'setor', bloco: 'bloco', posto: 'posto de trabalho' }[tipo];
-    $('ee-f-nome').value = g ? g.nome : ''; $('ee-f-desc').value = g ? g.descricao : ''; $('ee-f-ativo').checked = g ? g.ativo : true;
+    $('ee-modal-titulo').textContent = (g || sEd ? 'Editar ' : 'Novo ') + { setor: 'setor', bloco: 'bloco', posto: 'posto de trabalho' }[tipo];
+    $('ee-f-nome').value = g ? g.nome : (sEd ? sEd.nome : ''); $('ee-f-desc').value = g ? g.descricao : ''; $('ee-f-ativo').checked = g ? g.ativo : true;
     const sSel = $('ee-f-setor'); sSel.innerHTML = ''; state.setores.forEach(s => sSel.add(new Option(s.nome, s.id)));
     sSel.value = g ? (g.setor_id || '') : (setorId || (state.sel && state.sel.t === 'setor' ? state.sel.id : '') || (state.setores[0] || {}).id || '');
     const pSel = $('ee-f-parent'); pSel.innerHTML = '';
@@ -504,7 +509,7 @@
     try {
       let j;
       if (modo.tipo === 'setor') {
-        j = await api(URLS.setor, { nome: $('ee-f-nome').value });
+        j = await api(URLS.setor, { id: modo.setorEditId, nome: $('ee-f-nome').value });
         state.abertos.add(key('s', j.id)); state.sel = { t: 'setor', id: j.id };
       } else {
         const body = { id: modo.editId, nome: $('ee-f-nome').value, descricao: $('ee-f-desc').value, ativo: $('ee-f-ativo').checked };

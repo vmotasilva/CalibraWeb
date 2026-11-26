@@ -194,7 +194,7 @@ def api_estrutura_equipes_membros(request):
 @login_required
 @require_POST
 def api_estrutura_equipes_setor_criar(request):
-    """Cria um Setor (cadastro de setores da empresa)."""
+    """Cria um Setor (cadastro de setores da empresa) ou, com ``id``, renomeia um setor existente."""
     if not _pode_editar(request.user):
         return _negado("Sem permissão para editar a estrutura de equipes.")
     data = _body(request)
@@ -205,10 +205,26 @@ def api_estrutura_equipes_setor_criar(request):
         return _erro("Informe o nome do setor.")
     if len(nome) > 100:
         return _erro("Nome muito longo (máx. 100 caracteres).")
-    if Setor.objects.filter(nome__iexact=nome).exists():
+    try:
+        setor_id = _int_ou_none(data.get("id"))
+    except ValueError:
+        return _erro("Setor inválido.")
+    setor = None
+    if setor_id:
+        setor = Setor.objects.filter(pk=setor_id).first()
+        if not setor:
+            return _erro("Setor não encontrado.", 404)
+    duplicado = Setor.objects.filter(nome__iexact=nome)
+    if setor:
+        duplicado = duplicado.exclude(pk=setor.pk)
+    if duplicado.exists():
         return _erro("Já existe um setor com esse nome.")
+    if setor:
+        setor.nome = nome
+        setor.save(update_fields=["nome"])
+        return JsonResponse({"success": True, "id": setor.id, "criado": False})
     setor = Setor.objects.create(nome=nome)
-    return JsonResponse({"success": True, "id": setor.id})
+    return JsonResponse({"success": True, "id": setor.id, "criado": True})
 
 
 @login_required

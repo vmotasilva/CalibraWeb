@@ -246,3 +246,23 @@ class ColaboradoresNaTelaTests(TestCase):
         r = self.post("api_estrutura_equipes_alocacoes_criar", {"posto_id": posto, "turno": "TURNO_2", "tipo": "PESSOA", "colaborador_ids": [c.id for c in cs]})
         self.assertEqual(r.json()["criadas"], 5)
         self.assertEqual(AlocacaoPosto.objects.filter(posto_id=posto, turno="TURNO_2").count(), 5)
+
+
+class RenomearSetorTests(TestCase):
+    def setUp(self):
+        self.client.force_login(User.objects.create_superuser("adm4", "d@d.com", "x"))
+
+    def post(self, payload):
+        return self.client.post(reverse("rh:api_estrutura_equipes_setor_criar"), json.dumps(payload), content_type="application/json")
+
+    def test_renomear_setor(self):
+        a = self.post({"nome": "Qualidade"}).json()["id"]
+        self.post({"nome": "Produção"})
+        r = self.post({"id": a, "nome": "Qualidade Total"})
+        self.assertEqual((r.status_code, r.json()["criado"]), (200, False))
+        self.assertEqual(Setor.objects.get(pk=a).nome, "Qualidade Total")
+        self.assertEqual(Setor.objects.filter(nome__icontains="Qualidade").count(), 1)  # renomeou, não criou outro
+        self.assertEqual(self.post({"id": a, "nome": "produção"}).status_code, 400)  # nome de outro setor
+        self.assertEqual(self.post({"id": a, "nome": "QUALIDADE TOTAL"}).status_code, 200)  # mudar só a caixa do próprio nome
+        self.assertEqual(self.post({"id": 999999, "nome": "X"}).status_code, 404)
+        self.assertEqual(self.post({"id": a, "nome": "  "}).status_code, 400)
