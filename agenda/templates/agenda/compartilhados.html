@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Checklists compartilhados - Agenda - Calibra QMS{% endblock %}
+{% block header_title %}Checklists compartilhados{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 1000px;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <p class="text-muted mb-0">Um grupo, várias <strong>itens</strong>. Cada item tem responsável e prazo, o estado vale para todos e qualquer membro pode cobrar quem está pendente.</p>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3 me-1"></i>Calendário</a>
+            <button class="btn btn-sm btn-primary" id="cpNovo"><i class="bi bi-plus-lg me-1"></i>Novo checklist compartilhado</button>
+        </div>
+    </div>
+
+    <div class="row g-3">
+    {% for r in resumos %}
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100 {% if r.lista.arquivado %}opacity-50{% endif %}" style="border-left: 5px solid {{ r.lista.cor }};">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <h6 class="card-title mb-1"><a class="text-decoration-none" href="{% url 'agenda:compartilhado_detalhe' r.lista.id %}">{{ r.lista.titulo }}</a></h6>
+                        <span class="badge text-bg-secondary text-nowrap"><i class="bi bi-people me-1"></i>{{ r.membros }}</span>
+                    </div>
+                    <div class="small text-muted mb-2">Criado por {{ r.lista.criado_por.get_full_name|default:r.lista.criado_por.username }}</div>
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <div class="progress flex-grow-1" style="height:8px;"><div class="progress-bar bg-success" style="width: {{ r.pct }}%"></div></div>
+                        <span class="small text-nowrap">{{ r.feitas }}/{{ r.total }} itens</span>
+                    </div>
+                    <div class="mb-2">
+                        {% if r.minhas %}<span class="badge text-bg-warning">{{ r.minhas }} pendente{{ r.minhas|pluralize }} para mim</span>{% endif %}
+                        {% if r.atrasadas %}<span class="badge text-bg-danger">{{ r.atrasadas }} atrasado{{ r.atrasadas|pluralize }}</span>{% endif %}
+                    </div>
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'agenda:compartilhado_detalhe' r.lista.id %}"><i class="bi bi-box-arrow-up-right me-1"></i>Abrir</a>
+                    {% if r.pode_editar %}<button class="btn btn-sm btn-outline-secondary cp-editar" data-id="{{ r.lista.id }}"><i class="bi bi-pencil me-1"></i>Editar</button>{% endif %}
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12"><div class="alert alert-light border text-center mb-0">Você ainda não participa de nenhum checklist compartilhado. Clique em <strong>Novo checklist compartilhado</strong>.</div></div>
+    {% endfor %}
+    </div>
+</div>
+
+<div class="modal fade" id="cpModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="cpModalTitulo">Novo checklist compartilhado</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div>
+      <div class="modal-body">
+        <div id="cpErro" class="alert alert-danger d-none"></div>
+        <input type="hidden" id="cpId">
+        <div class="row g-3 mb-3">
+            <div class="col-md-9"><label class="form-label">Título</label><input class="form-control" id="cpTitulo" maxlength="200" placeholder="Ex.: Preparitem da auditoria"></div>
+            <div class="col-md-3"><label class="form-label">Cor</label><input type="color" class="form-control form-control-color" id="cpCor" value="#6f42c1"></div>
+            <div class="col-12"><label class="form-label">Descrição (opcional)</label><textarea class="form-control" id="cpDescricao" rows="2"></textarea></div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Membros <span class="text-muted small">(quem participa e pode concluir e cobrar os itens)</span></label>
+            <input class="form-control form-control-sm mb-1" id="cpBuscaMem" placeholder="Filtrar usuários...">
+            <div class="border rounded p-2" id="cpMembros" style="max-height:150px; overflow:auto;"></div>
+        </div>
+        <label class="form-label">Agrupamentos e itens <span class="text-muted small">(cada item com responsável e prazo, organizados em agrupamentos)</span></label>
+        <div id="cpGrupos" class="d-grid gap-3 mb-2"></div>
+        <button class="btn btn-sm btn-outline-secondary" id="cpAddGrupo" type="button"><i class="bi bi-folder-plus me-1"></i>Adicionar agrupamento</button>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline-danger me-auto d-none" id="cpExcluir"><i class="bi bi-trash me-1"></i>Excluir</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+        <button class="btn btn-primary" id="cpSalvar">Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ usuarios|json_script:"cpUsuarios" }}
+{{ eu|json_script:"cpEu" }}
+<script>
+(function () {
+    const CSRF = "{{ csrf_token }}";
+    const U = {
+        salvar: "{% url 'agenda:compartilhado_salvar' %}",
+        detalhe: id => "{% url 'agenda:api_compartilhado_detalhe' 0 %}".replace(/0\/$/, id + "/"),
+        excluir: id => "{% url 'agenda:compartilhado_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/"),
+    };
+    const USUARIOS = JSON.parse(document.getElementById("cpUsuarios").textContent);
+    const EU = JSON.parse(document.getElementById("cpEu").textContent);
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    let _modal = null, membros = new Set(), grupos = [{nome: "", tarefas: []}], dono = EU;
+    const modal = { show() { (_modal = _modal || new bootstrap.Modal($("cpModal"))).show(); }, hide() { if (_modal) _modal.hide(); } };
+    const nomeDe = id => id === dono.id ? dono.nome : (USUARIOS.find(u => u.id === id) || {nome: "?"}).nome;
+
+    async function post(url, corpo) {
+        const r = await fetch(url, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify(corpo || {})});
+        return r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+    }
+
+    function desenharMembros() {
+        const q = ($("cpBuscaMem").value || "").toLowerCase();
+        $("cpMembros").innerHTML = USUARIOS.filter(u => u.id !== dono.id && (u.nome.toLowerCase().includes(q) || membros.has(u.id))).map(u =>
+            `<div class="form-check"><input class="form-check-input cp-mem" type="checkbox" id="cm${u.id}" value="${u.id}" ${membros.has(u.id) ? "checked" : ""}><label class="form-check-label" for="cm${u.id}">${esc(u.nome)}</label></div>`).join("")
+            || '<span class="text-muted small">Nenhum usuário</span>';
+    }
+
+    function desenharTarefas() {
+        const opcoes = [dono.id, ...membros].map(id => [id, nomeDe(id)]);
+        $("cpGrupos").innerHTML = grupos.map((g, gi) =>
+            `<div class="border rounded p-2" data-g="${gi}">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-folder2-open"></i></span>
+                    <input class="form-control fw-semibold cp-gnome" value="${esc(g.nome)}" maxlength="120" placeholder="Nome do agrupamento (opcional)">
+                    <button class="btn btn-outline-secondary cp-gup" type="button" ${gi === 0 ? "disabled" : ""} title="Subir agrupamento"><i class="bi bi-arrow-up"></i></button>
+                    <button class="btn btn-outline-secondary cp-gdown" type="button" ${gi === grupos.length - 1 ? "disabled" : ""} title="Descer agrupamento"><i class="bi bi-arrow-down"></i></button>
+                    <button class="btn btn-outline-danger cp-gdel" type="button" title="Remover agrupamento"><i class="bi bi-trash"></i></button>
+                </div>
+                ${g.tarefas.map((t, i) =>
+                `<div class="row g-1 align-items-center mb-1 ps-2" data-i="${i}">
+                    <div class="col-md-5"><input class="form-control form-control-sm cp-texto" value="${esc(t.texto)}" maxlength="300" placeholder="Item"></div>
+                    <div class="col-md-3"><select class="form-select form-select-sm cp-resp"><option value="">Sem responsável</option>${opcoes.map(([id, n]) => `<option value="${id}" ${t.responsavel === id ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></div>
+                    <div class="col-md-2"><input type="date" class="form-control form-control-sm cp-prazo" value="${esc(t.prazo || "")}"></div>
+                    <div class="col-md-2 d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-secondary cp-up" type="button" ${i === 0 ? "disabled" : ""}><i class="bi bi-arrow-up"></i></button>
+                        <button class="btn btn-sm btn-outline-secondary cp-down" type="button" ${i === g.tarefas.length - 1 ? "disabled" : ""}><i class="bi bi-arrow-down"></i></button>
+                        <button class="btn btn-sm btn-outline-danger cp-del" type="button"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                </div>`).join("")}
+                <div class="input-group input-group-sm ps-2 mt-1">
+                    <input class="form-control cp-novo" maxlength="300" placeholder="Novo item neste agrupamento (Enter para adicionar)">
+                    <button class="btn btn-outline-secondary cp-add" type="button"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            </div>`).join("");
+    }
+    function sincronizar() {
+        document.querySelectorAll("#cpGrupos [data-g]").forEach(bloco => {
+            const g = grupos[Number(bloco.dataset.g)]; if (!g) return;
+            g.nome = bloco.querySelector(".cp-gnome").value;
+            bloco.querySelectorAll("[data-i]").forEach(row => {
+                const t = g.tarefas[Number(row.dataset.i)]; if (!t) return;
+                t.texto = row.querySelector(".cp-texto").value; t.prazo = row.querySelector(".cp-prazo").value;
+                const r = row.querySelector(".cp-resp").value; t.responsavel = r ? Number(r) : null;
+            });
+        });
+    }
+    function absorverNovos() {
+        document.querySelectorAll("#cpGrupos [data-g]").forEach(bloco => {
+            const t = bloco.querySelector(".cp-novo").value.trim();
+            if (t) grupos[Number(bloco.dataset.g)].tarefas.push({id: null, texto: t, responsavel: null, prazo: ""});
+        });
+    }
+
+    function abrir(l) {
+        $("cpErro").classList.add("d-none");
+        $("cpModalTitulo").textContent = l ? "Editar checklist compartilhado" : "Novo checklist compartilhado";
+        $("cpId").value = l ? l.id : "";
+        $("cpTitulo").value = l ? l.titulo : ""; $("cpDescricao").value = l ? l.descricao : ""; $("cpCor").value = l ? l.cor : "#6f42c1";
+        dono = l ? l.criador : EU;
+        membros = new Set(l ? l.membros.map(m => m.id) : []);
+        grupos = [];
+        (l ? l.tarefas : []).forEach(t => {  // agrupamentos na ordem em que aparecem
+            if (!grupos.length || grupos[grupos.length - 1].nome !== t.grupo) grupos.push({nome: t.grupo, tarefas: []});
+            grupos[grupos.length - 1].tarefas.push({id: t.id, texto: t.texto, responsavel: t.responsavel, prazo: t.prazo});
+        });
+        if (!grupos.length) grupos = [{nome: "", tarefas: []}];
+        $("cpBuscaMem").value = "";
+        $("cpExcluir").classList.toggle("d-none", !l);
+        desenharMembros(); desenharTarefas(); modal.show();
+    }
+    function adicionarNoGrupo(gi, bloco) {
+        const t = bloco.querySelector(".cp-novo").value.trim(); if (!t) return;
+        sincronizar(); grupos[gi].tarefas.push({id: null, texto: t, responsavel: null, prazo: ""}); desenharTarefas();
+        document.querySelectorAll("#cpGrupos [data-g]")[gi].querySelector(".cp-novo").focus();
+    }
+    $("cpMembros").addEventListener("change", e => {
+        sincronizar(); const id = Number(e.target.value);
+        if (e.target.checked) membros.add(id); else { membros.delete(id); grupos.forEach(g => g.tarefas.forEach(t => { if (t.responsavel === id) t.responsavel = null; })); }
+        desenharTarefas();
+    });
+    $("cpBuscaMem").addEventListener("input", desenharMembros);
+    $("cpGrupos").addEventListener("keydown", e => {
+        if (e.key === "Enter" && e.target.classList.contains("cp-novo")) { e.preventDefault(); const b = e.target.closest("[data-g]"); adicionarNoGrupo(Number(b.dataset.g), b); }
+    });
+    $("cpGrupos").addEventListener("click", e => {
+        const bloco = e.target.closest("[data-g]"); if (!bloco) return;
+        const gi = Number(bloco.dataset.g), row = e.target.closest("[data-i]"), btn = e.target.closest("button"); if (!btn) return;
+        sincronizar();
+        if (btn.classList.contains("cp-add")) return adicionarNoGrupo(gi, bloco);
+        if (row) {
+            const i = Number(row.dataset.i), ts = grupos[gi].tarefas;
+            if (btn.classList.contains("cp-del")) ts.splice(i, 1);
+            else if (btn.classList.contains("cp-up") && i > 0) [ts[i-1], ts[i]] = [ts[i], ts[i-1]];
+            else if (btn.classList.contains("cp-down") && i < ts.length - 1) [ts[i+1], ts[i]] = [ts[i], ts[i+1]];
+            else return;
+        } else if (btn.classList.contains("cp-gdel")) {
+            if (grupos[gi].tarefas.length && !confirm("Remover este agrupamento e os itens dele?")) return;
+            grupos.splice(gi, 1); if (!grupos.length) grupos = [{nome: "", tarefas: []}];
+        } else if (btn.classList.contains("cp-gup") && gi > 0) [grupos[gi-1], grupos[gi]] = [grupos[gi], grupos[gi-1]];
+        else if (btn.classList.contains("cp-gdown") && gi < grupos.length - 1) [grupos[gi+1], grupos[gi]] = [grupos[gi], grupos[gi+1]];
+        else return;
+        desenharTarefas();
+    });
+    $("cpAddGrupo").onclick = () => { sincronizar(); grupos.push({nome: "", tarefas: []}); desenharTarefas(); const b = document.querySelectorAll("#cpGrupos [data-g]"); b[b.length - 1].querySelector(".cp-gnome").focus(); };
+    $("cpNovo").onclick = () => abrir(null);
+    async function abrirPorId(id) {
+        const r = await fetch(U.detalhe(id), {credentials: "same-origin"}); const j = await r.json().catch(() => ({}));
+        if (j.success) abrir(j.lista);
+    }
+    document.querySelectorAll(".cp-editar").forEach(b => b.addEventListener("click", () => abrirPorId(b.dataset.id)));
+    $("cpSalvar").onclick = async () => {
+        sincronizar(); absorverNovos();
+        const tarefas = grupos.flatMap(g => g.tarefas.map(t => ({id: t.id, texto: t.texto, responsavel: t.responsavel, prazo: t.prazo, grupo: g.nome})));
+        const j = await post(U.salvar, {id: $("cpId").value || null, titulo: $("cpTitulo").value, descricao: $("cpDescricao").value, cor: $("cpCor").value, membros: [...membros], tarefas});
+        if (!j.success) { $("cpErro").textContent = j.error || "Não foi possível salvar."; $("cpErro").classList.remove("d-none"); return; }
+        location.href = "{% url 'agenda:compartilhado_detalhe' 0 %}".replace(/0\/$/, j.id + "/");
+    };
+    $("cpExcluir").onclick = async () => {
+        if (!confirm("Excluir este checklist compartilhado para todos os membros?")) return;
+        const j = await post(U.excluir($("cpId").value)); if (j.success) location.href = "{% url 'agenda:compartilhados' %}";
+    };
+    const editar = new URLSearchParams(location.search).get("editar"); if (editar) abrirPorId(editar);
+})();
+</script>
+{% endblock %}

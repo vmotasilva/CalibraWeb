@@ -20,6 +20,10 @@ class Checklist(models.Model):
     na_agenda = models.BooleanField(default=False, help_text="Mostra o checklist no calendário como atividade fixa.")
     cor = models.CharField(max_length=7, default="#20c997")
     diario_desde = models.DateField(null=True, blank=True, help_text="Primeiro dia em que o checklist diário vale.")
+    incluir_dono = models.BooleanField(
+        default=True,
+        help_text="Se desmarcado, o dono só distribui o checklist aos liderados e não o preenche.",
+    )
     ajustado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -52,6 +56,7 @@ class Checklist(models.Model):
 class ChecklistItem(models.Model):
     checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name="itens")
     texto = models.CharField(max_length=300)
+    grupo = models.CharField(max_length=120, blank=True, default="", help_text="Agrupamento do item (vazio = sem agrupamento).")
     ordem = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -189,3 +194,106 @@ class ChecklistDiarioConclusao(models.Model):
 
     class Meta:
         unique_together = [("item", "usuario", "data")]
+
+
+class ChecklistCompartilhamento(models.Model):
+    """Checklist diário enviado a um colaborador: ele preenche a sua própria folha (marcações por usuário e dia)."""
+
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name="compartilhamentos")
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_checklists_recebidos"
+    )
+    desde = models.DateField(help_text="Primeiro dia da folha do colaborador (não gera pendência retroativa).")
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("checklist", "usuario")]
+
+
+# ----------------------------------------------------------------------------------------------
+# Checklists compartilhados: tarefas com responsável e prazo, estado único para o grupo, com cobrança
+# ----------------------------------------------------------------------------------------------
+class ChecklistCompartilhado(models.Model):
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField(blank=True)
+    cor = models.CharField(max_length=7, default="#6f42c1")
+    criado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_compartilhados_criados"
+    )
+    arquivado = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["arquivado", "titulo"]
+
+    def __str__(self):
+        return self.titulo
+
+    @classmethod
+    def visiveis_para(cls, user):
+        """Os de que o usuário é membro, os que criou e (chefia/superusuário) os dos seus liderados."""
+        from agenda.hierarquia import liderados_ids
+
+        if user.is_superuser:
+            return cls.objects.all()
+        return cls.objects.filter(
+            models.Q(membros__usuario=user) | models.Q(criado_por=user) | models.Q(criado_por_id__in=liderados_ids(user))
+        ).distinct()
+
+    def pode_editar(self, user):
+        """Quem criou, o superusuário ou a chefia de quem criou (muda título, membros e tarefas)."""
+        from agenda.hierarquia import pode_gerir
+
+        return pode_gerir(user, self.criado_por)
+
+    def eh_membro(self, user):
+        return self.membros.filter(usuario=user).exists()
+
+
+class CompartilhadoMembro(models.Model):
+    lista = models.ForeignKey(ChecklistCompartilhado, on_delete=models.CASCADE, related_name="membros")
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_compartilhados"
+    )
+
+    class Meta:
+        unique_together = [("lista", "usuario")]
+
+
+class CompartilhadoTarefa(models.Model):
+    lista = models.ForeignKey(ChecklistCompartilhado, on_delete=models.CASCADE, related_name="tarefas")
+    texto = models.CharField(max_length=300)
+    grupo = models.CharField(max_length=120, blank=True, default="", help_text="Agrupamento do item (vazio = sem agrupamento).")
+    ordem = models.PositiveIntegerField(default=0)
+    responsavel = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="agenda_tarefas"
+    )
+    prazo = models.DateField(null=True, blank=True)
+    concluida = models.BooleanField(default=False)
+    concluida_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    concluida_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["ordem", "id"]
+
+    def __str__(self):
+        return self.texto
+
+    def atrasada(self, hoje):
+        return (not self.concluida) and self.prazo is not None and self.prazo < hoje
+
+
+class CompartilhadoCobranca(models.Model):
+    """Lembrete que um membro mandou ao responsável de uma tarefa pendente (aparece no sino dele)."""
+
+    tarefa = models.ForeignKey(CompartilhadoTarefa, on_delete=models.CASCADE, related_name="cobrancas")
+    de = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    para = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_cobrancas")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    lida = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-criado_em"]

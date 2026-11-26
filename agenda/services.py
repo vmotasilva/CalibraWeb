@@ -6,7 +6,14 @@ from django.utils import timezone
 
 from django.db.models import Q
 
-from agenda.models import Checklist, ChecklistDiarioConclusao, Evento, EventoConclusao, ItemConclusao
+from agenda.models import (
+    Checklist,
+    ChecklistCompartilhamento,
+    ChecklistDiarioConclusao,
+    Evento,
+    EventoConclusao,
+    ItemConclusao,
+)
 
 LIMITE_OCORRENCIAS = 1000  # proteção contra intervalos gigantes
 
@@ -45,6 +52,19 @@ def datas_do_evento(evento: Evento, de: date, ate: date):
     return saida
 
 
+def agrupar(itens):
+    """Itens (dicts com "grupo" e "feito") agrupados na ordem em que aparecem: [{nome, itens, feitos, total}]."""
+    grupos = []
+    for it in itens:
+        if not grupos or grupos[-1]["nome"] != it["grupo"]:
+            grupos.append({"nome": it["grupo"], "itens": []})
+        grupos[-1]["itens"].append(it)
+    for g in grupos:
+        g["total"] = len(g["itens"])
+        g["feitos"] = sum(1 for i in g["itens"] if i["feito"])
+    return grupos
+
+
 def ocorrencias(user, de: date, ate: date, so_checklist=False, editor=None):
     """Lista de dicts (um por dia/ocorrência) visíveis para o usuário no intervalo.
 
@@ -76,12 +96,13 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False, editor=None):
         duracao = (ev.fim - ev.inicio) if ev.fim else None
         for dia, base in datas_do_evento(ev, de, ate):
             marcados = itens_feitos.get((ev.id, dia), set())
-            itens = [{"id": i.id, "texto": i.texto, "feito": i.id in marcados} for i in itens_modelo]
+            itens = [{"id": i.id, "texto": i.texto, "grupo": i.grupo, "feito": i.id in marcados} for i in itens_modelo]
             # com modelo associado, a ocorrência só está "feita" quando todos os itens estão marcados
             feito = (bool(itens) and all(i["feito"] for i in itens)) if modelo else (ev.id, dia) in feitos
             saida.append(
                 {
                     "tipo": "evento",
+                    "origem": "",
                     "checklist_id": None,
                     "id": ev.id,
                     "titulo": ev.titulo,
@@ -100,6 +121,7 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False, editor=None):
                     "checklist": ev.checklist or modelo is not None,
                     "checklist_titulo": modelo.titulo if modelo else "",
                     "itens": itens,
+                    "grupos": agrupar(itens),
                     "feito": feito,
                     "recorrente": ev.recorrencia != Evento.REC_NENHUMA,
                     "editavel": ev.pode_editar(editor),
@@ -114,7 +136,13 @@ def checklists_diarios(user, de: date, ate: date, so_agenda=False):
 
     so_agenda=True devolve só os que o usuário quis mostrar no calendário como atividade fixa.
     """
-    qs = Checklist.objects.filter(criado_por=user, diario=True).prefetch_related("itens")
+    recebidos = dict(ChecklistCompartilhamento.objects.filter(usuario=user).values_list("checklist_id", "desde"))
+    qs = (
+        Checklist.objects.filter(diario=True)
+        .filter(Q(criado_por=user, incluir_dono=True) | Q(pk__in=recebidos.keys()))
+        .select_related("criado_por")
+        .prefetch_related("itens")
+    )
     if so_agenda:
         qs = qs.filter(na_agenda=True)
     checklists = list(qs)
@@ -129,17 +157,20 @@ def checklists_diarios(user, de: date, ate: date, so_agenda=False):
     for c in checklists:
         dias_validos = c.dias_set
         itens_modelo = list(c.itens.all())
-        dia, n = max(de, c.diario_desde) if c.diario_desde else de, 0
+        inicio = max(x for x in (de, c.diario_desde, recebidos.get(c.id)) if x)  # recebido: vale da data do envio
+        dia, n = inicio, 0
+        recebido = c.criado_por_id != user.pk
         while dia <= ate and n < LIMITE_OCORRENCIAS:
             if dia.weekday() in dias_validos:
                 feitos = marcados.get((c.id, dia), set())
-                itens = [{"id": i.id, "texto": i.texto, "feito": i.id in feitos} for i in itens_modelo]
+                itens = [{"id": i.id, "texto": i.texto, "grupo": i.grupo, "feito": i.id in feitos} for i in itens_modelo]
                 saida.append(
                     {
                         "tipo": "checklist_diario",
                         "checklist_id": c.id,
                         "id": c.id,
                         "titulo": c.titulo,
+                        "origem": (c.criado_por.get_full_name() or c.criado_por.username) if recebido else "",
                         "descricao": c.descricao,
                         "local": "",
                         "escopo": Evento.ESCOPO_PESSOAL,
@@ -151,9 +182,10 @@ def checklists_diarios(user, de: date, ate: date, so_agenda=False):
                         "checklist": True,
                         "checklist_titulo": c.titulo,
                         "itens": itens,
+                        "grupos": agrupar(itens),
                         "feito": bool(itens) and all(i["feito"] for i in itens),
                         "recorrente": True,
-                        "editavel": True,
+                        "editavel": not recebido,
                     }
                 )
                 n += 1

@@ -228,6 +228,20 @@ NAV_STRUCTURE = [
                 ],
             },
             {
+                "key": "compartilhados",
+                "nome": "Checklists Compartilhados",
+                "perm": "core.nav_agenda_compartilhados_bloco",
+                "funcoes": [
+                    {"nome": "Acessar Checklists Compartilhados", "view_name": "agenda:compartilhados", "perm": "core.nav_agenda_compartilhados"},
+                    {"nome": "Abrir Checklist Compartilhado", "view_name": "agenda:compartilhado_detalhe", "perm": "core.nav_agenda_compartilhado_detalhe"},
+                    {"nome": "Detalhe para Edição do Compartilhado", "view_name": "agenda:api_compartilhado_detalhe", "perm": "core.nav_agenda_compartilhado_dados"},
+                    {"nome": "Criar e Editar Checklist Compartilhado", "view_name": "agenda:compartilhado_salvar", "perm": "core.nav_agenda_compartilhado_salvar"},
+                    {"nome": "Excluir Checklist Compartilhado", "view_name": "agenda:compartilhado_excluir", "perm": "core.nav_agenda_compartilhado_excluir"},
+                    {"nome": "Concluir Item do Compartilhado", "view_name": "agenda:api_tarefa_toggle", "perm": "core.nav_agenda_tarefa_toggle"},
+                    {"nome": "Cobrar Item do Compartilhado", "view_name": "agenda:api_tarefa_cobrar", "perm": "core.nav_agenda_tarefa_cobrar"},
+                ],
+            },
+            {
                 "key": "equipe",
                 "nome": "Equipe (Vistoria dos Liderados)",
                 "perm": "core.nav_agenda_equipe_bloco",

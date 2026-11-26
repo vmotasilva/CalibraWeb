@@ -1073,6 +1073,44 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             sub_type="Checklist do dia",
                         )
                     )
+            from agenda.models import CompartilhadoCobranca, CompartilhadoTarefa
+
+            for cb in CompartilhadoCobranca.objects.filter(para=user, lida=False, tarefa__concluida=False).select_related(
+                "tarefa__lista", "de"
+            ):
+                quem = cb.de.get_full_name() or cb.de.username
+                items.append(
+                    InboxItem(
+                        id=f"agenda_cobranca_{cb.id}",
+                        title=f"Cobrança: {cb.tarefa.texto}",
+                        description=f"{quem} cobrou · {cb.tarefa.lista.titulo}",
+                        module="Agenda",
+                        icon="bi-megaphone",
+                        url=reverse("agenda:compartilhado_detalhe", args=[cb.tarefa.lista_id]),
+                        action_text="Abrir",
+                        date=timezone.localtime(cb.criado_em).date(),
+                        is_urgent=True,
+                        sub_type="Cobranças",
+                    )
+                )
+            for t in CompartilhadoTarefa.objects.filter(
+                responsavel=user, concluida=False, prazo__isnull=False, prazo__lte=hoje_local, lista__arquivado=False
+            ).select_related("lista"):
+                atrasada = t.prazo < hoje_local
+                items.append(
+                    InboxItem(
+                        id=f"agenda_tarefa_{t.id}",
+                        title=f"{'Item atrasado' if atrasada else 'Item para hoje'}: {t.texto}",
+                        description=f"{t.lista.titulo} · prazo {t.prazo:%d/%m}",
+                        module="Agenda",
+                        icon="bi-exclamation-circle" if atrasada else "bi-list-task",
+                        url=reverse("agenda:compartilhado_detalhe", args=[t.lista_id]),
+                        action_text="Abrir",
+                        date=t.prazo,
+                        is_urgent=atrasada,
+                        sub_type="Itens compartilhados",
+                    )
+                )
             for c in EventoParticipante.objects.filter(
                 usuario=user, resposta=EventoParticipante.PENDENTE, evento__inicio__gte=agora - timedelta(days=1)
             ).select_related("evento", "evento__criado_por"):
