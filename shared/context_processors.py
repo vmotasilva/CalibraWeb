@@ -79,6 +79,7 @@ def nav_notifications(request: Any) -> dict[str, Any]:
         "fornecedores": "bi-truck",
         "laboratorio": "bi-droplet-half",
         "pessoas": "bi-people",
+        "agenda": "bi-calendar3",
     }
 
     origins_map: dict[str, dict[str, Any]] = OrderedDict()
