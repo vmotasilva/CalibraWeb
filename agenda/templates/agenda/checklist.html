@@ -27,18 +27,21 @@
     <ul class="list-group shadow-sm" id="ckLista">
     {% for i in itens %}
         {% if i.itens %}
-        <li class="list-group-item bg-light">
+        <li class="list-group-item bg-light ck-ttl">
             <div class="d-flex align-items-center gap-2">
                 <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ i.cor }}"></span>
-                <div class="fw-semibold flex-grow-1">{% if i.tipo == 'checklist_diario' %}<i class="bi bi-arrow-repeat text-success me-1" title="Checklist diário"></i>{% endif %}{{ i.titulo }}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}
+                <div class="fw-semibold flex-grow-1">{% if i.tipo == 'checklist_diario' %}<i class="bi bi-arrow-repeat text-success me-1" title="Checklist diário"></i>{% endif %}{{ i.titulo }}{% if i.origem %} <span class="badge text-bg-info fw-normal">enviado por {{ i.origem }}</span>{% endif %}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}
                     <span class="text-muted small fw-normal">{% if i.tipo != 'checklist_diario' %} · {{ i.checklist_titulo }}{% endif %}{% if i.hora_inicio %} · {{ i.hora_inicio|time:"H:i" }}{% endif %}</span></div>
             </div>
         </li>
-        {% for x in i.itens %}
-        <li class="list-group-item d-flex align-items-center gap-3 ps-4">
+        {% for g in i.grupos %}
+        {% if g.nome %}<li class="list-group-item py-1 ps-4 small fw-semibold text-uppercase text-muted d-flex justify-content-between ck-ghdr" style="background:#fafbfc;"><span><i class="bi bi-folder2-open me-1"></i>{{ g.nome }}</span><span class="ck-gcont">{{ g.feitos }}/{{ g.total }}</span></li>{% endif %}
+        {% for x in g.itens %}
+        <li class="list-group-item d-flex align-items-center gap-3 {% if g.nome %}ps-5{% else %}ps-4{% endif %}">
             <input class="form-check-input mt-0 ck-box" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
             <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}</div>
         </li>
+        {% endfor %}
         {% endfor %}
         {% else %}
         <li class="list-group-item d-flex align-items-center gap-3">
@@ -66,6 +69,15 @@
     const urlEv = id => "{% url 'agenda:api_checklist_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
     const urlDiario = (ck, it) => "{% url 'agenda:api_diario_toggle' 0 0 %}".replace(/0\/item\/0\/diario\/$/, ck + "/item/" + it + "/diario/");
     const urlItem = (ev, it) => "{% url 'agenda:api_item_toggle' 0 0 %}".replace(/0\/item\/0\/toggle\/$/, ev + "/item/" + it + "/toggle/");
+    function atualizarGrupos() {  // contador "feitos/total" de cada agrupamento
+        let cur = null;
+        document.querySelectorAll("#ckLista > li").forEach(li => {
+            if (li.classList.contains("ck-ttl")) { cur = null; return; }
+            if (li.classList.contains("ck-ghdr")) { cur = {el: li, total: 0, feitos: 0}; return; }
+            const box = li.querySelector(".ck-box");
+            if (cur && box) { cur.total++; if (box.checked) cur.feitos++; cur.el.querySelector(".ck-gcont").textContent = cur.feitos + "/" + cur.total; }
+        });
+    }
     document.querySelectorAll(".ck-box").forEach(box => box.addEventListener("change", async () => {
         const url = box.dataset.checklist ? urlDiario(box.dataset.checklist, box.dataset.item)
             : box.dataset.item ? urlItem(box.dataset.evento, box.dataset.item) : urlEv(box.dataset.evento);
@@ -78,6 +90,7 @@
         alvo.classList.toggle("text-muted", j.feito);
         const feitos = document.querySelectorAll(".ck-box:checked").length;
         document.getElementById("ckFeitos").textContent = feitos;
+        atualizarGrupos();
         document.getElementById("ckBarra").style.width = (TOTAL ? Math.round(100 * feitos / TOTAL) : 0) + "%";
     }));
 })();

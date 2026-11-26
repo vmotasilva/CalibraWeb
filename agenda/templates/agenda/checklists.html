@@ -22,15 +22,17 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <h6 class="card-title mb-1">{{ c.titulo }}</h6>
-                        <span class="badge text-bg-secondary">{{ c.itens.all|length }} iten{{ c.itens.all|length|pluralize:"s" }}</span>
+                        <span class="badge text-bg-secondary">{{ c.itens.all|length }} item{{ c.itens.all|length|pluralize:"ns" }}</span>
                     </div>
                     {% if c.diario %}<div class="mb-2"><span class="badge text-bg-success"><i class="bi bi-arrow-repeat me-1"></i>Diário</span>
                         {% if c.hora %}<span class="badge text-bg-light border">{{ c.hora|time:"H:i" }}</span>{% endif %}
-                        {% if c.na_agenda %}<span class="badge text-bg-light border"><i class="bi bi-calendar3 me-1"></i>Na agenda</span>{% endif %}</div>{% endif %}
+                        {% if c.na_agenda %}<span class="badge text-bg-light border"><i class="bi bi-calendar3 me-1"></i>Na agenda</span>{% endif %}
+                        {% if c.compartilhamentos.all %}<span class="badge text-bg-info"><i class="bi bi-send me-1"></i>Enviado a {{ c.compartilhamentos.all|length }} liderado{{ c.compartilhamentos.all|length|pluralize }}</span>{% endif %}</div>
+                    {% if c.compartilhamentos.all %}<div class="small text-muted mb-1">{% for x in c.compartilhamentos.all|slice:":4" %}{{ x.usuario.get_full_name|default:x.usuario.username }}{% if not forloop.last %}, {% endif %}{% endfor %}{% if c.compartilhamentos.all|length > 4 %} e +{{ c.compartilhamentos.all|length|add:"-4" }}{% endif %}</div>{% endif %}{% endif %}
                     {% if c.ajustado_por_id %}<div class="small text-muted mb-1"><i class="bi bi-person-badge me-1"></i>Ajustado por {{ c.ajustado_por.get_full_name|default:c.ajustado_por.username }}{% if c.ajustado_em %} em {{ c.ajustado_em|date:"d/m/Y H:i" }}{% endif %}</div>{% endif %}
                     {% if c.descricao %}<p class="small text-muted mb-2">{{ c.descricao|truncatechars:120 }}</p>{% endif %}
                     <ul class="small mb-3 ps-3">
-                        {% for i in c.itens.all|slice:":4" %}<li>{{ i.texto }}</li>{% endfor %}
+                        {% for i in c.itens.all|slice:":4" %}<li>{% if i.grupo %}<span class="text-muted">{{ i.grupo }} ›</span> {% endif %}{{ i.texto }}</li>{% endfor %}
                         {% if c.itens.all|length > 4 %}<li class="text-muted">+{{ c.itens.all|length|add:"-4" }} mais</li>{% endif %}
                     </ul>
                     <button class="btn btn-sm btn-outline-primary ck-editar" data-id="{{ c.id }}"><i class="bi bi-pencil me-1"></i>Editar</button>
@@ -41,6 +43,20 @@
         <div class="col-12"><div class="alert alert-light border text-center mb-0">Você ainda não tem checklists. Clique em <strong>Novo checklist</strong>.</div></div>
     {% endfor %}
     </div>
+
+    {% if recebidos %}
+    <h6 class="mt-4 mb-2"><i class="bi bi-inbox me-1"></i>Recebidos de chefias</h6>
+    <div class="row g-3">
+    {% for c in recebidos %}
+        <div class="col-md-6"><div class="card border-info shadow-sm h-100"><div class="card-body">
+            <div class="d-flex justify-content-between"><h6 class="card-title mb-1">{{ c.titulo }}</h6><span class="badge text-bg-secondary">{{ c.itens.all|length }} item{{ c.itens.all|length|pluralize:"ns" }}</span></div>
+            <div class="small text-muted mb-2">Enviado por {{ c.criado_por.get_full_name|default:c.criado_por.username }}{% if c.hora %} · {{ c.hora|time:"H:i" }}{% endif %}</div>
+            <ul class="small mb-2 ps-3">{% for i in c.itens.all|slice:":4" %}<li>{{ i.texto }}</li>{% endfor %}{% if c.itens.all|length > 4 %}<li class="text-muted">+{{ c.itens.all|length|add:"-4" }} mais</li>{% endif %}</ul>
+            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square me-1"></i>Preencher hoje</a>
+        </div></div></div>
+    {% endfor %}
+    </div>
+    {% endif %}
 </div>
 
 <div class="modal fade" id="ckModal" tabindex="-1" aria-hidden="true">
@@ -63,14 +79,18 @@
                     <div class="col-sm-3"><label class="form-label small mb-1">Cor</label><input type="color" class="form-control form-control-color form-control-sm" id="ckCor" value="#20c997"></div>
                 </div>
                 <div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="ckNaAgenda"><label class="form-check-label" for="ckNaAgenda">Mostrar no calendário como atividade fixa</label></div>
+                {% if liderados %}
+                <hr class="my-2">
+                <div class="fw-semibold small mb-1"><i class="bi bi-send me-1"></i>Enviar para liderados <span class="text-muted fw-normal">(cada um preenche a sua folha)</span></div>
+                <input class="form-control form-control-sm mb-1" id="ckBuscaLid" placeholder="Filtrar liderados...">
+                <div class="border rounded p-2 bg-white" id="ckLiderados" style="max-height:140px; overflow:auto;"></div>
+                <div class="form-check mt-2"><input class="form-check-input" type="checkbox" id="ckIncluirDono" checked><label class="form-check-label" for="ckIncluirDono">Eu também preencho este checklist</label></div>
+                {% endif %}
             </div>
         </div>
-        <label class="form-label">Itens</label>
-        <div id="ckItens" class="d-grid gap-2 mb-2"></div>
-        <div class="input-group">
-            <input class="form-control" id="ckNovoItem" maxlength="300" placeholder="Novo item (Enter para adicionar)">
-            <button class="btn btn-outline-secondary" id="ckAddItem" type="button"><i class="bi bi-plus-lg"></i></button>
-        </div>
+        <label class="form-label">Agrupamentos e itens <span class="text-muted small">(cada agrupamento reúne os itens que serão acompanhados e marcados)</span></label>
+        <div id="ckGrupos" class="d-grid gap-3 mb-2"></div>
+        <button class="btn btn-sm btn-outline-secondary" id="ckAddGrupo" type="button"><i class="bi bi-folder-plus me-1"></i>Adicionar agrupamento</button>
         <div id="ckEventos" class="form-text mt-2"></div>
       </div>
       <div class="modal-footer">
@@ -84,6 +104,7 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ liderados|json_script:"ckLideradosJson" }}
 <script>
 (function () {
     const CSRF = "{{ csrf_token }}", ALVO = "{{ alvo_id }}";
@@ -95,7 +116,8 @@
     const $ = id => document.getElementById(id);
     const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const DIAS = [[0,'Seg'],[1,'Ter'],[2,'Qua'],[3,'Qui'],[4,'Sex'],[5,'Sáb'],[6,'Dom']];
-    let _modal = null, itens = [];
+    const LIDERADOS = JSON.parse(document.getElementById("ckLideradosJson").textContent);
+    let _modal = null, grupos = [{nome: "", itens: []}], compartilhar = new Set();
     const modal = { show() { (_modal = _modal || new bootstrap.Modal($("ckModal"))).show(); }, hide() { if (_modal) _modal.hide(); } };
 
     async function post(url, corpo) {
@@ -104,18 +126,43 @@
     }
 
     function desenhar() {
-        $("ckItens").innerHTML = itens.map((it, i) =>
-            `<div class="input-group input-group-sm" data-i="${i}">
-                <span class="input-group-text">${i + 1}</span>
-                <input class="form-control ck-texto" value="${esc(it.texto)}" maxlength="300">
-                <button class="btn btn-outline-secondary ck-up" type="button" ${i === 0 ? "disabled" : ""} title="Subir"><i class="bi bi-arrow-up"></i></button>
-                <button class="btn btn-outline-secondary ck-down" type="button" ${i === itens.length - 1 ? "disabled" : ""} title="Descer"><i class="bi bi-arrow-down"></i></button>
-                <button class="btn btn-outline-danger ck-del" type="button" title="Remover"><i class="bi bi-x-lg"></i></button>
-            </div>`).join("") || '<div class="text-muted small">Nenhum item ainda.</div>';
+        $("ckGrupos").innerHTML = grupos.map((g, gi) =>
+            `<div class="border rounded p-2" data-g="${gi}">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text"><i class="bi bi-folder2-open"></i></span>
+                    <input class="form-control fw-semibold ck-gnome" value="${esc(g.nome)}" maxlength="120" placeholder="Nome do agrupamento (opcional)">
+                    <button class="btn btn-outline-secondary ck-gup" type="button" ${gi === 0 ? "disabled" : ""} title="Subir agrupamento"><i class="bi bi-arrow-up"></i></button>
+                    <button class="btn btn-outline-secondary ck-gdown" type="button" ${gi === grupos.length - 1 ? "disabled" : ""} title="Descer agrupamento"><i class="bi bi-arrow-down"></i></button>
+                    <button class="btn btn-outline-danger ck-gdel" type="button" title="Remover agrupamento"><i class="bi bi-trash"></i></button>
+                </div>
+                ${g.itens.map((it, i) =>
+                `<div class="input-group input-group-sm mb-1 ps-3" data-i="${i}">
+                    <span class="input-group-text">${i + 1}</span>
+                    <input class="form-control ck-texto" value="${esc(it.texto)}" maxlength="300">
+                    <button class="btn btn-outline-secondary ck-up" type="button" ${i === 0 ? "disabled" : ""} title="Subir"><i class="bi bi-arrow-up"></i></button>
+                    <button class="btn btn-outline-secondary ck-down" type="button" ${i === g.itens.length - 1 ? "disabled" : ""} title="Descer"><i class="bi bi-arrow-down"></i></button>
+                    <button class="btn btn-outline-danger ck-del" type="button" title="Remover"><i class="bi bi-x-lg"></i></button>
+                </div>`).join("")}
+                <div class="input-group input-group-sm ps-3 mt-1">
+                    <input class="form-control ck-novo" maxlength="300" placeholder="Novo item neste agrupamento (Enter para adicionar)">
+                    <button class="btn btn-outline-secondary ck-add" type="button"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            </div>`).join("");
     }
 
     function desenharDias(sel) {
         $("ckDias").innerHTML = DIAS.map(([n, r]) => `<div class="form-check form-check-inline"><input class="form-check-input ck-dia" type="checkbox" id="ckd${n}" value="${n}" ${sel.includes(n) ? "checked" : ""}><label class="form-check-label small" for="ckd${n}">${r}</label></div>`).join("");
+    }
+    function desenharLiderados() {
+        const box = $("ckLiderados"); if (!box) return;
+        const q = ($("ckBuscaLid").value || "").toLowerCase();
+        box.innerHTML = LIDERADOS.filter(l => l.nome.toLowerCase().includes(q) || compartilhar.has(l.id)).map(l =>
+            `<div class="form-check"><input class="form-check-input ck-lid" type="checkbox" id="lid${l.id}" value="${l.id}" ${compartilhar.has(l.id) ? "checked" : ""}><label class="form-check-label small" for="lid${l.id}">${esc(l.nome)} <span class="text-muted">(${esc(l.papel)})</span></label></div>`).join("")
+            || '<span class="text-muted small">Nenhum liderado</span>';
+    }
+    if ($("ckLiderados")) {
+        $("ckLiderados").addEventListener("change", e => { const id = Number(e.target.value); e.target.checked ? compartilhar.add(id) : compartilhar.delete(id); });
+        $("ckBuscaLid").addEventListener("input", desenharLiderados);
     }
     function atualizarDiario() { $("ckDiarioOpc").classList.toggle("d-none", !$("ckDiario").checked); }
     $("ckDiario").addEventListener("change", atualizarDiario);
@@ -126,44 +173,78 @@
         $("ckId").value = c ? c.id : "";
         $("ckTitulo").value = c ? c.titulo : "";
         $("ckDescricao").value = c ? c.descricao : "";
-        itens = c ? c.itens.map(i => ({id: i.id, texto: i.texto})) : [];
+        grupos = [];
+        (c ? c.itens : []).forEach(i => {  // agrupamentos na ordem em que aparecem
+            if (!grupos.length || grupos[grupos.length - 1].nome !== i.grupo) grupos.push({nome: i.grupo, itens: []});
+            grupos[grupos.length - 1].itens.push({id: i.id, texto: i.texto});
+        });
+        if (!grupos.length) grupos = [{nome: "", itens: []}];
         $("ckDiario").checked = c ? c.diario : false;
         desenharDias(c ? c.dias_semana : [0,1,2,3,4,5,6]);
         $("ckHora").value = c ? c.hora : ""; $("ckCor").value = c ? c.cor : "#20c997"; $("ckNaAgenda").checked = c ? c.na_agenda : false;
+        compartilhar = new Set(c ? c.compartilhar_com : []);
+        if ($("ckIncluirDono")) $("ckIncluirDono").checked = c ? c.incluir_dono : true;
+        if ($("ckBuscaLid")) $("ckBuscaLid").value = "";
+        desenharLiderados();
         atualizarDiario();
-        $("ckNovoItem").value = "";
         $("ckExcluir").classList.toggle("d-none", !c);
         $("ckEventos").textContent = c && c.eventos.length ? "Usado em: " + c.eventos.map(e => e.titulo).join(", ") : "";
         desenhar(); modal.show();
     }
 
-    function adicionar() {
-        const t = $("ckNovoItem").value.trim(); if (!t) return;
-        itens.push({id: null, texto: t}); $("ckNovoItem").value = ""; desenhar(); $("ckNovoItem").focus();
+    function sincronizar() {
+        document.querySelectorAll("#ckGrupos [data-g]").forEach(bloco => {
+            const g = grupos[Number(bloco.dataset.g)]; if (!g) return;
+            g.nome = bloco.querySelector(".ck-gnome").value;
+            bloco.querySelectorAll("[data-i]").forEach(row => { const it = g.itens[Number(row.dataset.i)]; if (it) it.texto = row.querySelector(".ck-texto").value; });
+        });
     }
-    function sincronizarTextos() { document.querySelectorAll("#ckItens .ck-texto").forEach((inp, i) => { if (itens[i]) itens[i].texto = inp.value; }); }
-
-    $("ckNovoItem").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); adicionar(); } });
-    $("ckAddItem").onclick = adicionar;
-    $("ckItens").addEventListener("click", e => {
-        const row = e.target.closest("[data-i]"); if (!row) return;
-        const i = Number(row.dataset.i); sincronizarTextos();
-        if (e.target.closest(".ck-del")) itens.splice(i, 1);
-        else if (e.target.closest(".ck-up") && i > 0) [itens[i-1], itens[i]] = [itens[i], itens[i-1]];
-        else if (e.target.closest(".ck-down") && i < itens.length - 1) [itens[i+1], itens[i]] = [itens[i], itens[i+1]];
+    function absorverNovos() {  // itens digitados e ainda não adicionados (Enter/+) entram ao salvar
+        document.querySelectorAll("#ckGrupos [data-g]").forEach(bloco => {
+            const t = bloco.querySelector(".ck-novo").value.trim(); if (t) grupos[Number(bloco.dataset.g)].itens.push({id: null, texto: t});
+        });
+    }
+    function adicionarNoGrupo(gi, bloco) {
+        const inp = bloco.querySelector(".ck-novo"), t = inp.value.trim(); if (!t) return;
+        sincronizar(); grupos[gi].itens.push({id: null, texto: t}); desenhar();
+        document.querySelectorAll("#ckGrupos [data-g]")[gi].querySelector(".ck-novo").focus();
+    }
+    $("ckGrupos").addEventListener("keydown", e => {
+        if (e.key === "Enter" && e.target.classList.contains("ck-novo")) { e.preventDefault(); const b = e.target.closest("[data-g]"); adicionarNoGrupo(Number(b.dataset.g), b); }
+    });
+    $("ckGrupos").addEventListener("click", e => {
+        const bloco = e.target.closest("[data-g]"); if (!bloco) return;
+        const gi = Number(bloco.dataset.g), row = e.target.closest("[data-i]"), btn = e.target.closest("button"); if (!btn) return;
+        sincronizar();
+        if (btn.classList.contains("ck-add")) return adicionarNoGrupo(gi, bloco);
+        if (row) {
+            const i = Number(row.dataset.i), its = grupos[gi].itens;
+            if (btn.classList.contains("ck-del")) its.splice(i, 1);
+            else if (btn.classList.contains("ck-up") && i > 0) [its[i-1], its[i]] = [its[i], its[i-1]];
+            else if (btn.classList.contains("ck-down") && i < its.length - 1) [its[i+1], its[i]] = [its[i], its[i+1]];
+            else return;
+        } else if (btn.classList.contains("ck-gdel")) {
+            if (grupos[gi].itens.length && !confirm("Remover este agrupamento e os itens dele?")) return;
+            grupos.splice(gi, 1); if (!grupos.length) grupos = [{nome: "", itens: []}];
+        } else if (btn.classList.contains("ck-gup") && gi > 0) [grupos[gi-1], grupos[gi]] = [grupos[gi], grupos[gi-1]];
+        else if (btn.classList.contains("ck-gdown") && gi < grupos.length - 1) [grupos[gi+1], grupos[gi]] = [grupos[gi], grupos[gi+1]];
         else return;
         desenhar();
     });
+    $("ckAddGrupo").onclick = () => { sincronizar(); grupos.push({nome: "", itens: []}); desenhar(); const b = document.querySelectorAll("#ckGrupos [data-g]"); b[b.length - 1].querySelector(".ck-gnome").focus(); };
     $("ckNovo").onclick = () => abrir(null);
     document.querySelectorAll(".ck-editar").forEach(b => b.addEventListener("click", async () => {
         const r = await fetch(U.detalhe(b.dataset.id), {credentials: "same-origin"}); const j = await r.json();
         if (j.success) abrir(j.checklist);
     }));
     $("ckSalvar").onclick = async () => {
-        sincronizarTextos(); adicionar();
+        sincronizar(); absorverNovos();
+        const itens = grupos.flatMap(g => g.itens.map(it => ({id: it.id, texto: it.texto, grupo: g.nome})));
         const j = await post(U.salvar, {id: $("ckId").value || null, usuario: ALVO || null, titulo: $("ckTitulo").value, descricao: $("ckDescricao").value, itens,
             diario: $("ckDiario").checked, dias_semana: [...document.querySelectorAll(".ck-dia:checked")].map(x => Number(x.value)),
-            hora: $("ckHora").value, cor: $("ckCor").value, na_agenda: $("ckNaAgenda").checked});
+            hora: $("ckHora").value, cor: $("ckCor").value, na_agenda: $("ckNaAgenda").checked,
+            compartilhar_com: LIDERADOS.length && !ALVO ? [...compartilhar] : undefined,
+            incluir_dono: $("ckIncluirDono") ? $("ckIncluirDono").checked : true});
         if (!j.success) { $("ckErro").textContent = j.error || "Não foi possível salvar."; $("ckErro").classList.remove("d-none"); return; }
         location.reload();
     };

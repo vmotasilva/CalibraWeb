@@ -567,3 +567,373 @@ class HierarquiaTests(TestCase):
         self.assertTrue({"ana", "bia", "gerente", "estranho"} <= logins)
         self.client.force_login(self.admin)
         self.assertEqual(self.client.get(reverse("agenda:calendario"), {"usuario": self.ana.id}).status_code, 200)
+
+
+class _Base(TestCase):
+    """Pessoas com cadeia de liderança para os testes de compartilhamento."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        from rh.models import Colaborador
+
+        cache.clear()
+        self.cont = 0
+
+        def mk(login, **vinc):
+            self.cont += 1
+            u = User.objects.create_user(login, password="x", first_name=login.title())
+            c = Colaborador.objects.create(user_django=u, matricula=f"S{self.cont}", nome_completo=f"Pessoa {login}", grupo="G", **vinc)
+            return u, c
+
+        self.lider, cl = mk("lider")
+        self.ana, _ = mk("ana", lider=cl)
+        self.bia, _ = mk("bia", lider=cl)
+        self.outro, _ = mk("outro")  # fora da equipe do líder
+
+        # como no painel de permissões: acesso ao módulo Agenda (sem a especial "criar na Agenda Comum")
+        from django.contrib.auth.models import Permission
+
+        perms = Permission.objects.filter(content_type__app_label="core", codename__startswith="nav_").filter(
+            codename__regex=r"^nav_(mod_agenda|mod_gestao|gestao_ferramentas|agenda_(?!criar_comum))"
+        )
+        for u in (self.lider, self.ana, self.bia, self.outro):
+            u.user_permissions.add(*perms)
+        self.lider, self.ana, self.bia, self.outro = (User.objects.get(pk=u.pk) for u in (self.lider, self.ana, self.bia, self.outro))
+
+    def post(self, nome, corpo, args=None):
+        return self.client.post(reverse(nome, args=args or []), json.dumps(corpo), content_type="application/json")
+
+
+class ChecklistEnviadoALideradosTests(_Base):
+    def _enviar(self, para, **extra):
+        corpo = {"titulo": "Abertura", "itens": [{"texto": "Ligar"}, {"texto": "Conferir"}, {"texto": "Registrar"}],
+                 "diario": True, "dias_semana": [0, 1, 2, 3, 4, 5, 6], "compartilhar_com": [u.id for u in para], "incluir_dono": False}
+        corpo.update(extra)
+        return self.post("agenda:checklist_salvar", corpo)
+
+    def test_chefia_envia_e_cada_liderado_preenche_a_sua_folha(self):
+        from agenda.models import Checklist, ChecklistDiarioConclusao
+        from agenda.services import checklist_do_dia
+
+        self.client.force_login(self.lider)
+        self.assertTrue(self._enviar([self.ana, self.bia]).json()["success"])
+        c = Checklist.objects.get()
+        hoje = timezone.localdate()
+        self.assertEqual(checklist_do_dia(self.lider, hoje), [])  # não preenche (incluir_dono=False)
+        for u in (self.ana, self.bia):
+            occ = checklist_do_dia(u, hoje)
+            self.assertEqual((len(occ), len(occ[0]["itens"]), occ[0]["origem"]), (1, 3, "Lider"))
+            self.assertFalse(occ[0]["editavel"])
+        # a Ana marca; a folha da Bia continua vazia
+        item = c.itens.first()
+        self.client.force_login(self.ana)
+        r = self.post("agenda:api_diario_toggle", {"data": hoje.isoformat()}, [c.id, item.id])
+        self.assertTrue(r.json()["feito"])
+        self.assertEqual(ChecklistDiarioConclusao.objects.filter(usuario=self.ana).count(), 1)
+        self.assertEqual(sum(1 for x in checklist_do_dia(self.bia, hoje)[0]["itens"] if x["feito"]), 0)
+        # a chefia vê o andamento de cada um na tela Equipe
+        self.client.force_login(self.lider)
+        linhas = {l["nome"]: l for l in self.client.get(reverse("agenda:equipe")).context["linhas"]}
+        self.assertEqual((linhas["Pessoa ana"]["feitos"], linhas["Pessoa ana"]["total"]), (1, 3))
+        self.assertEqual((linhas["Pessoa bia"]["feitos"], linhas["Pessoa bia"]["total"]), (0, 3))
+
+    def test_nao_retroage_antes_do_envio(self):
+        from agenda.services import checklists_diarios
+
+        self.client.force_login(self.lider)
+        self._enviar([self.ana])
+        ontem = timezone.localdate() - timedelta(days=1)
+        self.assertEqual(checklists_diarios(self.ana, ontem, ontem), [])
+
+    def test_so_envia_para_liderados(self):
+        self.client.force_login(self.lider)
+        self.assertEqual(self._enviar([self.outro]).status_code, 403)  # fora da equipe
+        self.client.force_login(self.ana)  # quem não é chefia de ninguém
+        self.assertEqual(self._enviar([self.bia]).status_code, 403)
+
+    def test_enviar_exige_checklist_diario_e_dono_recebe_se_nao_ha_destinatario(self):
+        from agenda.models import Checklist
+
+        self.client.force_login(self.lider)
+        self.assertEqual(self._enviar([self.ana], diario=False).status_code, 400)
+        self.assertTrue(self._enviar([], incluir_dono=False).json()["success"])
+        self.assertTrue(Checklist.objects.get().incluir_dono)  # sem destinatários, volta a ser do dono
+
+    def test_retirar_destinatario_e_recebido_na_tela(self):
+        from agenda.models import Checklist, ChecklistCompartilhamento
+
+        self.client.force_login(self.lider)
+        self._enviar([self.ana, self.bia])
+        c = Checklist.objects.get()
+        self._enviar([self.ana], id=c.id)
+        self.assertEqual(list(ChecklistCompartilhamento.objects.values_list("usuario__username", flat=True)), ["ana"])
+        self.client.force_login(self.ana)
+        r = self.client.get(reverse("agenda:checklists"))
+        self.assertContains(r, "Recebidos de chefias")
+        self.assertContains(r, "Enviado por Lider")
+        # quem recebeu não edita a proposta da chefia
+        self.assertEqual(self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).status_code, 404)
+        self.assertEqual(self.post("agenda:checklist_salvar", {"id": c.id, "titulo": "X", "itens": [{"texto": "a"}]}).status_code, 404)
+
+    def test_inbox_do_liderado_mostra_a_proposta_em_acoes(self):
+        from shared.inbox import get_user_inbox_items
+
+        self.client.force_login(self.lider)
+        self._enviar([self.ana])
+        itens = [(i.title, i.description) for i in get_user_inbox_items(self.ana) if i.module == "Agenda"]
+        self.assertEqual(itens, [("Checklist: Abertura", "0 de 3 itens")])
+
+
+class ChecklistCompartilhadoTests(_Base):
+    def _criar(self, membros=None, **extra):
+        corpo = {
+            "titulo": "Preparar auditoria",
+            "membros": [u.id for u in (membros if membros is not None else [self.ana, self.bia])],
+            "tarefas": [
+                {"texto": "Reunir evidências", "responsavel": self.ana.id, "prazo": "2026-01-10"},
+                {"texto": "Revisar procedimentos", "responsavel": self.bia.id, "prazo": ""},
+                {"texto": "Sem dono"},
+            ],
+        }
+        corpo.update(extra)
+        return self.post("agenda:compartilhado_salvar", corpo)
+
+    def test_criar_com_varias_acoes_e_membros(self):
+        from agenda.models import ChecklistCompartilhado
+
+        self.client.force_login(self.lider)
+        self.assertTrue(self._criar().json()["success"])
+        lista = ChecklistCompartilhado.objects.get()
+        self.assertEqual(lista.tarefas.count(), 3)
+        self.assertEqual(set(lista.membros.values_list("usuario__username", flat=True)), {"lider", "ana", "bia"})  # criador é membro
+        self.assertEqual(self.post("agenda:compartilhado_salvar", {"titulo": "x", "tarefas": []}).status_code, 400)  # sem itens
+        self.assertEqual(self.post("agenda:compartilhado_salvar", {"titulo": " ", "tarefas": [{"texto": "a"}]}).status_code, 400)
+
+    def test_responsavel_precisa_ser_membro(self):
+        self.client.force_login(self.lider)
+        r = self._criar(membros=[self.ana])  # a Bia é responsável de uma item mas não é membro
+        self.assertEqual(r.status_code, 400)
+
+    def test_visibilidade(self):
+        from agenda.models import ChecklistCompartilhado
+
+        self.client.force_login(self.lider)
+        self._criar(membros=[self.ana])  # tarefa da Bia vai dar erro; ajusta
+        ChecklistCompartilhado.objects.all().delete()
+        self._criar(membros=[self.ana, self.bia])
+        lista = ChecklistCompartilhado.objects.get()
+        for u, esperado in ((self.lider, 200), (self.ana, 200), (self.bia, 200), (self.outro, 404)):
+            self.client.force_login(u)
+            self.assertEqual(self.client.get(reverse("agenda:compartilhado_detalhe", args=[lista.id])).status_code, esperado, u.username)
+        self.client.force_login(self.outro)
+        self.assertNotContains(self.client.get(reverse("agenda:compartilhados")), "Preparar auditoria")
+
+    def test_qualquer_membro_conclui_e_fica_registrado_quem(self):
+        from agenda.models import CompartilhadoTarefa
+
+        self.client.force_login(self.lider)
+        self._criar()
+        t = CompartilhadoTarefa.objects.get(texto="Reunir evidências")  # responsável: Ana
+        self.client.force_login(self.bia)  # a Bia (não é a responsável) conclui para o grupo
+        self.assertTrue(self.post("agenda:api_tarefa_toggle", {}, [t.id]).json()["concluida"])
+        t.refresh_from_db()
+        self.assertEqual((t.concluida, t.concluida_por), (True, self.bia))
+        self.assertIsNotNone(t.concluida_em)
+        self.assertContains(self.client.get(reverse("agenda:compartilhado_detalhe", args=[t.lista_id])), "Bia")
+        self.assertFalse(self.post("agenda:api_tarefa_toggle", {}, [t.id]).json()["concluida"])  # reabre
+        t.refresh_from_db()
+        self.assertIsNone(t.concluida_por)
+        self.client.force_login(self.outro)
+        self.assertEqual(self.post("agenda:api_tarefa_toggle", {}, [t.id]).status_code, 404)  # de fora não conclui
+
+    def test_cobrar_gera_aviso_no_sino_do_responsavel(self):
+        from agenda.models import CompartilhadoCobranca, CompartilhadoTarefa
+        from shared.inbox import get_user_inbox_items
+
+        self.client.force_login(self.lider)
+        self._criar()
+        t = CompartilhadoTarefa.objects.get(texto="Reunir evidências")  # responsável: Ana
+        self.client.force_login(self.bia)
+        self.assertTrue(self.post("agenda:api_tarefa_cobrar", {}, [t.id]).json()["success"])
+        self.assertEqual(self.post("agenda:api_tarefa_cobrar", {}, [t.id]).status_code, 429)  # uma cobrança por dia
+        self.assertEqual(CompartilhadoCobranca.objects.count(), 1)
+        titulos = [i.title for i in get_user_inbox_items(self.ana) if i.module == "Agenda"]
+        self.assertIn("Cobrança: Reunir evidências", titulos)
+        # a Ana abre o checklist: a cobrança sai do sino
+        self.client.force_login(self.ana)
+        self.client.get(reverse("agenda:compartilhado_detalhe", args=[t.lista_id]))
+        self.assertNotIn("Cobrança: Reunir evidências", [i.title for i in get_user_inbox_items(self.ana)])
+
+    def test_regras_de_cobranca(self):
+        from agenda.models import CompartilhadoTarefa
+
+        self.client.force_login(self.lider)
+        self._criar()
+        propria = CompartilhadoTarefa.objects.get(texto="Reunir evidências")  # da Ana
+        sem_dono = CompartilhadoTarefa.objects.get(texto="Sem dono")
+        self.client.force_login(self.ana)
+        self.assertEqual(self.post("agenda:api_tarefa_cobrar", {}, [propria.id]).status_code, 400)  # não cobra a si mesma
+        self.assertEqual(self.post("agenda:api_tarefa_cobrar", {}, [sem_dono.id]).status_code, 400)  # sem responsável
+        self.post("agenda:api_tarefa_toggle", {}, [propria.id])
+        self.client.force_login(self.bia)
+        self.assertEqual(self.post("agenda:api_tarefa_cobrar", {}, [propria.id]).status_code, 400)  # já concluída
+        self.client.force_login(self.outro)
+        self.assertEqual(self.post("agenda:api_tarefa_cobrar", {}, [propria.id]).status_code, 404)  # de fora
+
+    def test_aviso_automatico_de_acao_atrasada_e_do_dia(self):
+        from shared.inbox import get_user_inbox_items
+
+        hoje = timezone.localdate()
+        self.client.force_login(self.lider)
+        self.post("agenda:compartilhado_salvar", {"titulo": "L", "membros": [self.ana.id], "tarefas": [
+            {"texto": "Vencida", "responsavel": self.ana.id, "prazo": (hoje - timedelta(days=2)).isoformat()},
+            {"texto": "Hoje", "responsavel": self.ana.id, "prazo": hoje.isoformat()},
+            {"texto": "Futura", "responsavel": self.ana.id, "prazo": (hoje + timedelta(days=5)).isoformat()},
+        ]})
+        itens = {i.title: i.is_urgent for i in get_user_inbox_items(self.ana) if i.module == "Agenda"}
+        self.assertEqual(itens, {"Item atrasado: Vencida": True, "Item para hoje: Hoje": False})
+
+    def test_so_criador_ou_chefia_edita_e_exclui(self):
+        from agenda.models import ChecklistCompartilhado
+
+        self.client.force_login(self.ana)  # a Ana cria; o líder dela é chefia dela; a Bia é só membro
+        self.post("agenda:compartilhado_salvar", {"titulo": "Da Ana", "membros": [self.bia.id], "tarefas": [{"texto": "A"}]})
+        lista = ChecklistCompartilhado.objects.get()
+        self.client.force_login(self.bia)
+        self.assertEqual(self.post("agenda:compartilhado_salvar", {"id": lista.id, "titulo": "Hack", "tarefas": [{"texto": "x"}]}).status_code, 403)
+        self.assertEqual(self.post("agenda:compartilhado_excluir", {}, [lista.id]).status_code, 403)
+        self.assertEqual(self.client.get(reverse("agenda:api_compartilhado_detalhe", args=[lista.id])).status_code, 404)
+        self.client.force_login(self.lider)  # chefia da criadora ajusta
+        self.assertTrue(self.post("agenda:compartilhado_salvar", {"id": lista.id, "titulo": "Ajustado", "membros": [self.bia.id], "tarefas": [{"texto": "A"}]}).json()["success"])
+        self.assertTrue(self.post("agenda:compartilhado_excluir", {}, [lista.id]).json()["success"])
+        self.assertEqual(ChecklistCompartilhado.objects.count(), 0)
+
+    def test_editar_preserva_acoes_existentes_e_remove_retiradas(self):
+        from agenda.models import CompartilhadoTarefa
+
+        self.client.force_login(self.lider)
+        self._criar()
+        lista_id = CompartilhadoTarefa.objects.first().lista_id
+        a, b, c = list(CompartilhadoTarefa.objects.all())
+        self.post("agenda:compartilhado_salvar", {"id": lista_id, "titulo": "T", "membros": [self.ana.id, self.bia.id], "tarefas": [
+            {"id": b.id, "texto": "Revisar (ajustada)", "responsavel": self.bia.id}, {"texto": "Novo item"}]})
+        self.assertEqual(sorted(CompartilhadoTarefa.objects.values_list("texto", flat=True)), ["Novo item", "Revisar (ajustada)"])
+        self.assertTrue(CompartilhadoTarefa.objects.filter(id=b.id).exists())
+
+    def test_retirar_membro_limpa_responsavel_e_paginas_renderizam(self):
+        from agenda.models import CompartilhadoTarefa
+
+        self.client.force_login(self.lider)
+        self._criar()
+        lista_id = CompartilhadoTarefa.objects.first().lista_id
+        self.post("agenda:compartilhado_salvar", {"id": lista_id, "titulo": "T", "membros": [self.bia.id], "tarefas": [
+            {"texto": "X", "responsavel": self.bia.id}]})
+        self.assertEqual(self.client.get(reverse("agenda:compartilhados")).status_code, 200)
+        r = self.client.get(reverse("agenda:compartilhado_detalhe", args=[lista_id]))
+        self.assertContains(r, "Pendências por pessoa")
+        self.assertEqual(self.client.get(reverse("agenda:api_compartilhado_detalhe", args=[lista_id])).json()["lista"]["criador"]["id"], self.lider.id)
+
+    def test_equipe_mostra_acoes_pendentes_do_liderado(self):
+        hoje = timezone.localdate()
+        self.client.force_login(self.lider)
+        self.post("agenda:compartilhado_salvar", {"titulo": "L", "membros": [self.ana.id], "tarefas": [
+            {"texto": "Atrasada", "responsavel": self.ana.id, "prazo": (hoje - timedelta(days=1)).isoformat()},
+            {"texto": "No prazo", "responsavel": self.ana.id}]})
+        linhas = {l["nome"]: l for l in self.client.get(reverse("agenda:equipe")).context["linhas"]}
+        self.assertEqual((linhas["Pessoa ana"]["acoes_pendentes"], linhas["Pessoa ana"]["acoes_atrasadas"]), (2, 1))
+
+
+class AgrupamentosTests(_Base):
+    """Checklists têm agrupamentos e, dentro deles, os itens que são acompanhados e marcados."""
+
+    def _checklist(self, **extra):
+        corpo = {
+            "titulo": "Abertura do laboratório", "diario": True, "dias_semana": [0, 1, 2, 3, 4, 5, 6],
+            "itens": [
+                {"texto": "Ligar equipamentos", "grupo": "Equipamentos"},
+                {"texto": "Calibrar balança", "grupo": "Equipamentos"},
+                {"texto": "Conferir EPIs", "grupo": "Segurança"},
+                {"texto": "Item solto", "grupo": ""},
+            ],
+        }
+        corpo.update(extra)
+        return self.post("agenda:checklist_salvar", corpo)
+
+    def test_salva_e_devolve_agrupamentos_na_ordem(self):
+        from agenda.models import Checklist
+
+        self.client.force_login(self.ana)
+        self.assertTrue(self._checklist().json()["success"])
+        c = Checklist.objects.get()
+        self.assertEqual([(i.grupo, i.texto) for i in c.itens.all()],
+                         [("Equipamentos", "Ligar equipamentos"), ("Equipamentos", "Calibrar balança"), ("Segurança", "Conferir EPIs"), ("", "Item solto")])
+        det = self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).json()["checklist"]
+        self.assertEqual([i["grupo"] for i in det["itens"]], ["Equipamentos", "Equipamentos", "Segurança", ""])
+
+    def test_checklist_do_dia_agrupa_e_conta_por_agrupamento(self):
+        from agenda.models import Checklist
+        from agenda.services import checklist_do_dia
+
+        self.client.force_login(self.ana)
+        self._checklist()
+        c = Checklist.objects.get()
+        hoje = timezone.localdate()
+        for it in list(c.itens.all())[:2]:  # conclui os dois itens de "Equipamentos"
+            self.post("agenda:api_diario_toggle", {"data": hoje.isoformat()}, [c.id, it.id])
+        grupos = checklist_do_dia(self.ana, hoje)[0]["grupos"]
+        self.assertEqual([(g["nome"], g["feitos"], g["total"]) for g in grupos], [("Equipamentos", 2, 2), ("Segurança", 0, 1), ("", 0, 1)])
+        r = self.client.get(reverse("agenda:checklist"))
+        self.assertContains(r, "Equipamentos")
+        self.assertContains(r, "Segurança")
+        self.assertContains(r, '<span id="ckFeitos">2</span> de 4 concluídos')
+
+    def test_renomear_agrupamento_preserva_marcacoes(self):
+        from agenda.models import Checklist, ChecklistDiarioConclusao
+
+        self.client.force_login(self.ana)
+        self._checklist()
+        c = Checklist.objects.get()
+        item = c.itens.first()
+        self.post("agenda:api_diario_toggle", {"data": timezone.localdate().isoformat()}, [c.id, item.id])
+        itens = [{"id": i.id, "texto": i.texto, "grupo": "Máquinas" if i.grupo == "Equipamentos" else i.grupo} for i in c.itens.all()]
+        self._checklist(id=c.id, itens=itens)
+        self.assertEqual(ChecklistDiarioConclusao.objects.count(), 1)  # a marcação do item continua valendo
+        self.assertEqual(set(c.itens.values_list("grupo", flat=True)), {"Máquinas", "Segurança", ""})
+
+    def test_agrupamento_longo_e_cortado(self):
+        from agenda.models import Checklist
+
+        self.client.force_login(self.ana)
+        self._checklist(itens=[{"texto": "a", "grupo": "x" * 500}])
+        self.assertEqual(len(Checklist.objects.get().itens.get().grupo), 120)
+
+    def test_checklist_enviado_a_liderados_leva_os_agrupamentos(self):
+        from agenda.services import checklist_do_dia
+
+        self.client.force_login(self.lider)
+        self._checklist(compartilhar_com=[self.ana.id], incluir_dono=False)
+        grupos = checklist_do_dia(self.ana, timezone.localdate())[0]["grupos"]
+        self.assertEqual([g["nome"] for g in grupos], ["Equipamentos", "Segurança", ""])
+
+    def test_compartilhado_com_agrupamentos(self):
+        from agenda.models import ChecklistCompartilhado, CompartilhadoTarefa
+
+        self.client.force_login(self.lider)
+        corpo = {"titulo": "Auditoria", "membros": [self.ana.id], "tarefas": [
+            {"texto": "Reunir registros", "grupo": "Documentos", "responsavel": self.ana.id},
+            {"texto": "Revisar POPs", "grupo": "Documentos"},
+            {"texto": "Preparar sala", "grupo": "Logística", "responsavel": self.lider.id},
+        ]}
+        self.assertTrue(self.post("agenda:compartilhado_salvar", corpo).json()["success"])
+        lista = ChecklistCompartilhado.objects.get()
+        self.assertEqual([(t.grupo, t.texto) for t in lista.tarefas.all()],
+                         [("Documentos", "Reunir registros"), ("Documentos", "Revisar POPs"), ("Logística", "Preparar sala")])
+        det = self.client.get(reverse("agenda:api_compartilhado_detalhe", args=[lista.id])).json()["lista"]
+        self.assertEqual([t["grupo"] for t in det["tarefas"]], ["Documentos", "Documentos", "Logística"])
+        # conclui um item de "Documentos" e confere o progresso por agrupamento na página
+        t1 = CompartilhadoTarefa.objects.get(texto="Reunir registros")
+        self.post("agenda:api_tarefa_toggle", {}, [t1.id])
+        r = self.client.get(reverse("agenda:compartilhado_detalhe", args=[lista.id]))
+        self.assertEqual([(g["nome"], g["feitas"], g["total"]) for g in r.context["grupos"]], [("Documentos", 1, 2), ("Logística", 0, 1)])
+        self.assertContains(r, "Logística")
