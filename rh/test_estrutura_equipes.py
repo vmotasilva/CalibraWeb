@@ -413,3 +413,59 @@ class MigracaoDadosAntigosTests(TestCase):
         nomes = [AlocacaoPosto.objects.get(pk=a.pk).turno_estrutura.nome for a in antigas]
         self.assertEqual(nomes, ["Turno 02", "Administrativo", "12x36"])
         self.assertEqual(AlocacaoPosto.objects.count(), 3)
+
+
+class ExportacaoExcelTests(Base):
+    def setUp(self):
+        super().setUp()
+        self.sa = self.setor("Laboratório: A/B")
+        self.sb = self.setor("Qualidade")
+        self.pa = self.posto("PRA 01", self.bloco("Blocagem", self.sa))
+        self.pb = self.posto("Inspeção", self.bloco("Auditoria", self.sb))
+        ana = _colab("1", "Ana Souza")
+        self.alocar(self.pa, [self.turnos[("Laboratório: A/B", "Turno 01")]], "PESSOA", colaborador_ids=[ana.id])
+        self.alocar(self.pa, [self.turnos[("Laboratório: A/B", "Turno 02")]], "VAGO", quantidade=2, observacao="contratar")
+        self.alocar(self.pb, [self.turnos[("Qualidade", "Turno 01")]], "RESERVA")
+
+    def _wb(self, **params):
+        from io import BytesIO
+
+        from openpyxl import load_workbook
+
+        r = self.client.get(reverse("rh:exportar_estrutura_equipes"), params)
+        self.assertEqual(r.status_code, 200, r.content[:200])
+        self.assertIn("spreadsheetml", r["Content-Type"])
+        return load_workbook(BytesIO(r.content)), r
+
+    def test_uma_aba_por_setor_com_nomes_validos(self):
+        wb, r = self._wb()
+        self.assertEqual(wb.sheetnames, ["Laboratório A B", "Qualidade"])  # ':' e '/' viram espaço
+        self.assertIn("estrutura_equipes_", r["Content-Disposition"])
+
+    def test_conteudo_postos_por_bloco_e_turnos_do_setor(self):
+        wb, _ = self._wb()
+        ws = wb["Laboratório A B"]
+        cab = [c.value for c in ws[4]]
+        self.assertEqual(cab[:2], ["Bloco", "Posto de trabalho"])
+        self.assertIn("Turno 01", cab)
+        self.assertEqual((ws["A5"].value, ws["B5"].value), ("Blocagem", "PRA 01"))
+        col = {v: i for i, v in enumerate(cab, 1)}
+        self.assertEqual(ws.cell(row=5, column=col["Turno 01"]).value, "Ana Souza")
+        self.assertEqual(ws.cell(row=5, column=col["Turno 02"]).value, "VAGO (contratar)\nVAGO (contratar)")
+        self.assertEqual(ws.cell(row=6, column=col["Turno 01"]).value, "1 pessoa(s) · 0 vaga(s) · 0 reserva(s)")
+        self.assertEqual(ws.cell(row=6, column=col["Turno 02"]).value, "0 pessoa(s) · 2 vaga(s) · 0 reserva(s)")
+        wq = wb["Qualidade"]
+        colq = {c.value: i for i, c in enumerate(wq[4], 1)}
+        self.assertEqual(wq.cell(row=5, column=colq["Turno 01"]).value, "RESERVA")
+
+    def test_filtra_por_setor(self):
+        wb, r = self._wb(setor=self.sb)
+        self.assertEqual(wb.sheetnames, ["Qualidade"])
+        self.assertIn("qualidade", r["Content-Disposition"])
+        self.assertEqual(self.client.get(reverse("rh:exportar_estrutura_equipes"), {"setor": "abc"}).status_code, 400)
+        self.assertEqual(self.client.get(reverse("rh:exportar_estrutura_equipes"), {"setor": "99999"}).status_code, 404)
+
+    def test_sem_permissao(self):
+        self.client.force_login(User.objects.create_user("semperm", password="x"))
+        self.assertIn(self.client.get(reverse("rh:exportar_estrutura_equipes")).status_code, (302, 403))
+

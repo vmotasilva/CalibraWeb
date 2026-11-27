@@ -77,6 +77,7 @@ from rh.views.estrutura_equipes import (
     api_estrutura_equipes_alocacoes_excluir,
 )
 
+from rh.views.estrutura_equipes_exportar import exportar_estrutura_equipes
 from rh.views.estrutura_equipes_importar import (
     estrutura_equipes_importar_view,
     api_estrutura_equipes_importar_previa,
@@ -133,6 +134,7 @@ urlpatterns = [
     path('api/estrutura-equipes/alocacoes/atualizar/', api_estrutura_equipes_alocacoes_atualizar, name='api_estrutura_equipes_alocacoes_atualizar'),
     path('api/estrutura-equipes/alocacoes/excluir/', api_estrutura_equipes_alocacoes_excluir, name='api_estrutura_equipes_alocacoes_excluir'),
 
+    path('estrutura-equipes/exportar/', exportar_estrutura_equipes, name='exportar_estrutura_equipes'),
     path('estrutura-equipes/importar/', estrutura_equipes_importar_view, name='importar_estrutura_equipes'),
     path('api/estrutura-equipes/importar/previa/', api_estrutura_equipes_importar_previa, name='api_importar_estrutura_equipes_previa'),
     path('api/estrutura-equipes/importar/confirmar/', api_estrutura_equipes_importar_confirmar, name='api_importar_estrutura_equipes_confirmar'),
