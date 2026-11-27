@@ -21,6 +21,12 @@
   .ee-aloc:last-child { border-bottom: 0; }
   .ee-aloc .ee-quem { flex: 1 1 auto; min-width: 0; }
   .ee-lista { max-height: 50vh; overflow: auto; }
+  .ee-qc { cursor: grab; border-left: 3px solid #0d6efd; }
+  .ee-qc-vago { border-left-color: #dc3545; } .ee-qc-reserva { border-left-color: #0dcaf0; }
+  .ee-qc-sel { background: rgba(13,110,253,.1); box-shadow: 0 0 0 1px #0d6efd; }
+  .ee-qc-drag { opacity: .4; }
+  .ee-lane { min-height: 3.2rem; padding: .35rem; border: 1px dashed #ced4da; border-radius: .4rem; height: 100%; }
+  .ee-lane-over { background: rgba(25,135,84,.12); border-color: #198754; }
 </style>
 
 <div class="container-fluid py-4" id="ee-app" data-pode-editar="{{ pode_editar|yesno:'1,0' }}">
@@ -57,8 +63,14 @@
   </ul>
 
   <div class="card border-0 shadow-sm d-none" id="ee-quadro">
-    <div class="card-body p-0" id="ee-quadro-conteudo"></div>
-    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Uma tabela por setor: cada linha é um posto e cada coluna, um turno daquele setor.</div>
+    <div class="card-header bg-white d-flex flex-wrap gap-2 align-items-center">
+      <span class="small text-muted">Marque os cards e use <b>Remover selecionados</b> para tirá-los do posto. Arraste um card para outro turno, posto, bloco ou setor.</span>
+      <span class="small fw-semibold text-primary ms-auto" id="ee-q-sel-info"></span>
+      <button type="button" class="btn btn-sm btn-link d-none" id="ee-q-limpar-sel">Limpar seleção</button>
+      {% if pode_editar %}<button type="button" class="btn btn-sm btn-outline-danger" id="ee-q-remover" disabled><i class="bi bi-person-dash me-1"></i>Remover selecionados</button>{% else %}<button type="button" class="d-none" id="ee-q-remover" disabled></button>{% endif %}
+    </div>
+    <div class="card-body p-3" id="ee-quadro-conteudo"></div>
+    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Cards: Setor › Bloco › Posto de trabalho › turnos › colaboradores.</div>
   </div>
 
   <div class="card border-0 shadow-sm d-none" id="ee-pessoas">
@@ -507,35 +519,86 @@
     return h + '</div>';
   }
 
-  // ---------------------------------------------------------- quadro (uma tabela por setor, com os turnos dele)
+  // ---------------------------------------------------------- quadro em cards: Setor > Bloco > Posto > turnos > colaboradores
+  const qSel = new Set();  // alocações marcadas no quadro
+  function cardAloc(a) {
+    const rot = a.tipo === 'PESSOA' ? esc(a.nome) : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span>' : '<span class="badge bg-info text-dark">RESERVA</span>';
+    const marcado = qSel.has(a.id);
+    return '<div class="ee-qc card' + (marcado ? ' ee-qc-sel' : '') + (a.tipo !== 'PESSOA' ? ' ee-qc-' + a.tipo.toLowerCase() : '') + '" data-aloc="' + a.id + '"' + (PODE_EDITAR ? ' draggable="true"' : '') + '>' +
+      '<div class="card-body py-1 px-2 d-flex align-items-center gap-2">' +
+      (PODE_EDITAR ? '<input type="checkbox" class="form-check-input ee-qc-chk m-0" data-aloc="' + a.id + '"' + (marcado ? ' checked' : '') + ' aria-label="Selecionar">' : '') +
+      '<span class="flex-grow-1 small text-truncate" title="' + esc(a.nome || a.tipo) + '">' + (PODE_EDITAR ? '<a href="#" draggable="false" class="ee-q-edit text-decoration-none text-reset" data-aloc="' + a.id + '" title="Editar / mover">' + rot + '</a>' : rot) + '</span>' +
+      (PODE_EDITAR ? '<i class="bi bi-grip-vertical text-muted ee-qc-grip" title="Arraste para outro posto, turno, bloco ou setor"></i>' : '') +
+      '</div></div>';
+  }
   function renderQuadro() {
     let h = '', vagas = 0, reservas = 0;
     setoresVisiveis().forEach(s => {
       const cols = colunasDoSetor(s.id); const blocos = blocosDe(s.id);
-      h += '<div class="table-responsive mb-3"><table class="table table-bordered align-middle mb-0"><thead><tr class="table-dark"><th colspan="' + (cols.length + 1) + '"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</th></tr>';
-      if (!cols.length) { h += '</thead><tbody><tr><td class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : ' — edite o setor para definir os turnos') + '.</td></tr></tbody></table></div>'; return; }
-      h += '<tr class="table-light"><th>Posto de trabalho</th>' + cols.map(c => '<th>' + esc(c.nome) + '</th>').join('') + '</tr></thead><tbody>';
-      blocos.forEach(b => {
-        h += '<tr class="table-light"><td colspan="' + (cols.length + 1) + '" class="fw-bold">' + esc(b.nome) + '</td></tr>';
-        postosDe(b.id).forEach(p => {
-          h += '<tr' + (p.ativo ? '' : ' class="text-muted"') + '><td style="padding-left:1.6rem">' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</td>';
-          cols.forEach(c => {
-            const l = alocsNoTurno([p.id], c.id).sort((x, y) => ordemTipo[x.tipo] - ordemTipo[y.tipo] || cmp(x.nome, y.nome) || x.id - y.id);
-            vagas += l.filter(a => a.tipo === 'VAGO').length; reservas += l.filter(a => a.tipo === 'RESERVA').length;
-            const itens = l.map(a => { const rot = a.tipo === 'PESSOA' ? esc(a.nome) : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span>' : '<span class="badge bg-info text-dark">RESERVA</span>'; return '<div>' + (PODE_EDITAR ? '<a href="#" class="ee-q-edit text-decoration-none text-reset" data-aloc="' + a.id + '" title="Editar / mover">' + rot + '</a>' : rot) + '</div>'; }).join('');
-            h += '<td>' + (itens || '<span class="text-muted">—</span>') + (PODE_EDITAR ? '<button type="button" class="btn btn-sm btn-link p-0 ee-q-add" data-posto="' + p.id + '" data-turno="' + c.id + '" title="Alocar neste posto e turno">+ alocar</button>' : '') + '</td>';
-          });
-          h += '</tr>';
-        });
-      });
-      if (!blocos.length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Este setor ainda não tem blocos.</td></tr>';
-      h += '</tbody></table></div>';
+      h += '<div class="card ee-qs mb-3 shadow-sm"><div class="card-header bg-dark text-white fw-bold"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</div><div class="card-body bg-light">';
+      if (!cols.length) h += '<div class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : ' — edite o setor para definir os turnos') + '.</div>';
+      else if (!blocos.length) h += '<div class="text-muted">Este setor ainda não tem blocos.</div>';
+      else h += '<div class="row g-3">' + blocos.map(b => {
+        const postos = postosDe(b.id);
+        return '<div class="col-12 col-xxl-6"><div class="card ee-qb h-100"><div class="card-header fw-semibold bg-body-secondary"><i class="bi bi-boxes me-1"></i>' + esc(b.nome) + '</div><div class="card-body d-grid gap-2">' +
+          (postos.length ? postos.map(p => {
+            return '<div class="card ee-qp' + (p.ativo ? '' : ' opacity-50') + '"><div class="card-header py-1 small fw-semibold"><i class="bi bi-person-workspace me-1"></i>' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</div>' +
+              '<div class="card-body p-2"><div class="row g-2">' + cols.map(c => {
+                const l = alocsNoTurno([p.id], c.id).sort((x, y) => ordemTipo[x.tipo] - ordemTipo[y.tipo] || cmp(x.nome, y.nome) || x.id - y.id);
+                vagas += l.filter(a => a.tipo === 'VAGO').length; reservas += l.filter(a => a.tipo === 'RESERVA').length;
+                return '<div class="col-12 col-md"><div class="ee-lane" data-posto="' + p.id + '" data-turno="' + c.id + '"><div class="ee-lane-t small text-muted d-flex justify-content-between"><span>' + esc(c.nome) + '</span><span>' + (l.length || '') + '</span></div>' +
+                  '<div class="ee-lane-b d-grid gap-1">' + l.map(cardAloc).join('') + '</div>' +
+                  (PODE_EDITAR ? '<button type="button" class="btn btn-sm btn-link p-0 ee-q-add" data-posto="' + p.id + '" data-turno="' + c.id + '" title="Alocar neste posto e turno">+ alocar</button>' : '') + '</div></div>';
+              }).join('') + '</div></div></div>';
+          }).join('') : '<div class="text-muted small">Sem postos neste bloco.</div>') + '</div></div></div>';
+      }).join('') + '</div>';
+      h += '</div></div>';
     });
     if (!setoresVisiveis().length) h = '<div class="p-3 text-muted">Nada cadastrado.</div>';
     const box = $('ee-quadro-conteudo'); box.innerHTML = h;
     box.querySelectorAll('.ee-q-add').forEach(b => b.onclick = () => abrirAloc({ postoId: +b.dataset.posto, turnoId: +b.dataset.turno }));
     box.querySelectorAll('.ee-q-edit').forEach(a => a.onclick = e => { e.preventDefault(); abrirAloc({ alocId: +a.dataset.aloc }); });
+    box.querySelectorAll('.ee-qc-chk').forEach(c => c.onchange = () => { const id = +c.dataset.aloc; c.checked ? qSel.add(id) : qSel.delete(id); c.closest('.ee-qc').classList.toggle('ee-qc-sel', c.checked); infoQuadroSel(); });
+    box.querySelectorAll('.ee-qc[draggable="true"]').forEach(card => {
+      card.ondragstart = e => {
+        const id = +card.dataset.aloc;
+        const ids = qSel.has(id) ? [...qSel] : [id];  // arrastar um marcado leva todos os marcados
+        e.dataTransfer.setData('text/plain', JSON.stringify(ids)); e.dataTransfer.effectAllowed = 'move';
+        ids.forEach(i => { const el = box.querySelector('.ee-qc[data-aloc="' + i + '"]'); if (el) el.classList.add('ee-qc-drag'); });
+      };
+      card.ondragend = () => box.querySelectorAll('.ee-qc-drag').forEach(x => x.classList.remove('ee-qc-drag'));
+    });
+    box.querySelectorAll('.ee-lane').forEach(lane => {
+      lane.ondragover = e => { if (!PODE_EDITAR) return; e.preventDefault(); lane.classList.add('ee-lane-over'); };
+      lane.ondragleave = e => { if (!lane.contains(e.relatedTarget)) lane.classList.remove('ee-lane-over'); };
+      lane.ondrop = async e => {
+        e.preventDefault(); lane.classList.remove('ee-lane-over');
+        let ids; try { ids = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (_) { return; }
+        await moverAlocs(ids, +lane.dataset.posto, +lane.dataset.turno);
+      };
+    });
     $('ee-quadro-resumo').innerHTML = '<span class="badge bg-danger">' + vagas + ' vaga(s) a contratar</span> <span class="badge bg-info text-dark">' + reservas + ' reserva(s)</span>';
+    infoQuadroSel();
+  }
+  function infoQuadroSel() {
+    const n = qSel.size; $('ee-q-sel-info').textContent = n ? n + ' selecionado(s)' : '';
+    $('ee-q-remover').disabled = !n; $('ee-q-limpar-sel').classList.toggle('d-none', !n);
+  }
+  async function moverAlocs(ids, postoId, turnoId) {
+    const alvo = ids.map(i => state.alocs.find(a => a.id === i)).filter(a => a && !(a.posto_id === postoId && a.turno_id === turnoId));
+    if (!alvo.length) return;
+    let ok = 0; const erros = [];
+    for (const a of alvo) {
+      try { await api(URLS.alocAtualizar, { id: a.id, posto_id: postoId, turno_id: turnoId }); ok++; }
+      catch (e) { erros.push((a.nome || a.tipo) + ': ' + e.message); }
+    }
+    qSel.clear(); await carregar();
+    aviso((ok ? ok + ' alocação(ões) movida(s). ' : '') + erros.join(' | '), erros.length ? 'danger' : 'success');
+  }
+  async function removerSelecionados() {
+    const ids = [...qSel].filter(i => state.alocs.some(a => a.id === i)); if (!ids.length) return;
+    if (!confirm('Remover ' + ids.length + ' alocação(ões) selecionada(s)? O colaborador continua cadastrado; só sai do posto.')) return;
+    try { await api(URLS.alocExcluir, { ids }); qSel.clear(); await carregar(); aviso(ids.length + ' alocação(ões) removida(s).'); } catch (e) { aviso(e.message, 'danger'); }
   }
   function trocaAba(aba) {
     document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.classList.toggle('active', b.dataset.aba === aba));
@@ -802,6 +865,8 @@
   if (PODE_EDITAR) {
     $('ee-p-posto').onchange = atualizaTurnosPessoas;
     $('ee-p-alocar').onclick = alocarPessoas;
+    $('ee-q-remover').onclick = removerSelecionados;
+    $('ee-q-limpar-sel').onclick = () => { qSel.clear(); renderQuadro(); };
     $('ee-p-todos').onchange = e => { document.querySelectorAll('.ee-p-chk').forEach(c => { c.checked = e.target.checked; e.target.checked ? pe.sel.add(+c.dataset.id) : pe.sel.delete(+c.dataset.id); }); pessoasSel(); };
     $('ee-btn-novo-setor').onclick = () => abrirGrupo({ tipo: 'setor' });
     $('ee-f-turno-add').onclick = () => { addLinhaTurno('', '', true); renderSugestoes(); };
