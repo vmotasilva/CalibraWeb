@@ -905,7 +905,7 @@ ENVIOS EQC <i class="bi bi-chevron-down transition-transform"></i>
                             {% if nav_agenda_cal or nav_agenda_chk or nav_agenda_mod or nav_agenda_eqp or nav_agenda_cmp %}
                             <li><h6 class="dropdown-header text-white" style="background-color: #14284b !important; color: #fff !important;">AGENDA</h6></li>
                             {% if nav_agenda_cal %}<li><a class="dropdown-item" href="{% url 'agenda:calendario' %}"><i class="bi bi-calendar3"></i> Calendário</a></li>{% endif %}
-                            {% if nav_agenda_chk %}<li><a class="dropdown-item" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square"></i> Checklist do dia</a></li>{% endif %}
+                            {% if nav_agenda_chk %}<li><a class="dropdown-item" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square"></i> Meu checklist</a></li>{% endif %}
                             {% if nav_agenda_mod %}<li><a class="dropdown-item" href="{% url 'agenda:checklists' %}"><i class="bi bi-list-check"></i> Meus checklists</a></li>{% endif %}
                             {% if nav_agenda_cmp %}<li><a class="dropdown-item" href="{% url 'agenda:compartilhados' %}"><i class="bi bi-people-fill"></i> Checklists compartilhados</a></li>{% endif %}
                             {% if nav_agenda_eqp %}<li><a class="dropdown-item" href="{% url 'agenda:equipe' %}"><i class="bi bi-people"></i> Equipe (vistoria)</a></li>{% endif %}

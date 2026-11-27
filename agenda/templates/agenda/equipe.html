@@ -28,7 +28,7 @@
     <div class="card shadow-sm">
       <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-            <thead class="table-light"><tr><th>Liderado</th><th>Vínculo</th><th style="min-width:200px">Checklist do dia</th><th class="text-center">Eventos</th><th class="text-center" title="Itens pendentes em checklists compartilhados">Itens compartilhados</th><th class="text-end">Itens</th></tr></thead>
+            <thead class="table-light"><tr><th>Liderado</th><th>Vínculo</th><th style="min-width:200px">Meu checklist (dia)</th><th class="text-center">Eventos</th><th class="text-center" title="O que ficou sem marcar nos últimos 7 dias (só na visão de hoje)">Pendências anteriores</th><th class="text-center" title="Itens pendentes em checklists compartilhados">Itens compartilhados</th><th class="text-end">Itens</th></tr></thead>
             <tbody>
             {% for l in linhas %}
                 <tr>
@@ -45,6 +45,7 @@
                         {% else %}<span class="text-muted small">Sem checklist neste dia</span>{% endif %}
                     </td>
                     <td class="text-center">{{ l.eventos }}</td>
+                    <td class="text-center">{% if l.pendencias %}<span class="badge text-bg-warning">{{ l.pendencias }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
                     <td class="text-center">{% if l.acoes_pendentes %}<span class="badge text-bg-warning">{{ l.acoes_pendentes }} pendente{{ l.acoes_pendentes|pluralize }}</span>{% if l.acoes_atrasadas %} <span class="badge text-bg-danger">{{ l.acoes_atrasadas }} atrasado{{ l.acoes_atrasadas|pluralize }}</span>{% endif %}{% else %}<span class="text-muted">—</span>{% endif %}</td>
                     <td class="text-end text-nowrap">
                         <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}?usuario={{ l.usuario.pk }}&data={{ dia|date:'Y-m-d' }}" title="Vistoriar o checklist do dia"><i class="bi bi-check2-square"></i></a>

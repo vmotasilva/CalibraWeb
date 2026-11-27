@@ -1030,7 +1030,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             action_text="Marcar",
                             date=hoje_local,
                             is_urgent=False,
-                            sub_type="Checklist do dia",
+                            sub_type="Meu checklist",
                         )
                     )
                 elif not o["checklist"] and o["hora_inicio"]:
@@ -1070,7 +1070,7 @@ def get_user_inbox_items(user: Any, is_global: bool = False) -> list[InboxItem]:
                             action_text="Marcar",
                             date=hoje_local,
                             is_urgent=False,
-                            sub_type="Checklist do dia",
+                            sub_type="Meu checklist",
                         )
                     )
             from agenda.models import CompartilhadoCobranca, CompartilhadoTarefa
