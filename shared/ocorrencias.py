@@ -575,7 +575,7 @@ class OrigemMetrologia(_Origem):
 
 
 class OrigemKpi(_Origem):
-    """Cards de causa/análise dos indicadores fora da meta marcados como ocorrência (os relatos não entram)."""
+    """Ocorrências registradas nos cards de causa dos indicadores fora da meta (os comentários não entram)."""
     key, nome, icon = "kpi", "KPI", "bi-speedometer2"
     FILTROS = (("indicador", "Indicador"), ("periodo", "Período"))
 
@@ -586,7 +586,7 @@ class OrigemKpi(_Origem):
             return AnaliseItem.objects.none()
         return AnaliseItem.objects.filter(
             tipo=AnaliseItem.TIPO_OCORRENCIA, registro__indicador__ativo=True, registro__dispensada=False
-        ).select_related("registro__indicador", "registro__setor", "registro__registrado_por", "resolvido_por")
+        ).select_related("registro__indicador", "registro__setor", "registro__registrado_por", "resolvido_por", "pai")
 
     def aberta_q(self):
         return Q(status="ABERTA")
@@ -606,8 +606,9 @@ class OrigemKpi(_Origem):
         titulo = f"{reg.indicador.nome} — {_rotulo_longo(reg.granularidade, reg.periodo)}"
         if reg.setor_id:
             titulo += f" · {reg.setor.nome}"
-        principal = (it.acao or it.causa or it.analise or "").strip()
-        detalhes = [(rot, txt) for rot, txt in (("Causa", it.causa), ("Análise", it.analise)) if txt and txt != principal]
+        principal = (it.texto or it.acao or it.causa or it.analise or "").strip()
+        causa = it.pai.causa if it.pai_id else it.causa  # a ocorrência é uma nota do card; a causa fica no card
+        detalhes = [(rot, txt) for rot, txt in (("Causa", causa), ("Análise", it.analise)) if txt and txt != principal]
         historico = []
         if it.resolucao:
             historico.append((_fmt_dt(it.resolvido_em), _nome_user(it.resolvido_por), it.resolucao))

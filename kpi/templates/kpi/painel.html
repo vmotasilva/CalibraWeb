@@ -329,7 +329,7 @@
                         <div class="fw-semibold mb-2">Justificar os períodos selecionados com o mesmo texto</div>
                         <label class="form-label mb-1" for="anMCausa">Causa</label>
                         <textarea class="form-control mb-2" id="anMCausa" rows="3"></textarea>
-                        <label class="form-label mb-1" for="anMAnalise">Análise e ações</label>
+                        <label class="form-label mb-1" for="anMAnalise">Comentário (opcional)</label>
                         <textarea class="form-control mb-2" id="anMAnalise" rows="3"></textarea>
                         <div class="form-text mb-2">Períodos que já têm análise ou estão dispensados são mantidos como estão.</div>
                         <div class="d-flex justify-content-end gap-2">
@@ -972,7 +972,7 @@
         el('anMCancelar').addEventListener('click', function () { el('anMassaForm').classList.add('d-none'); });
         el('anMAplicar').addEventListener('click', function () {
             var causa = el('anMCausa').value, analise = el('anMAnalise').value;
-            if (!causa.trim() && !analise.trim()) { el('anMErro').textContent = 'Informe a causa ou a análise.'; return; }
+            if (!causa.trim() && !analise.trim()) { el('anMErro').textContent = 'Informe a causa ou o comentário.'; return; }
             aplicarMassa(URL_MASSA_SALVAR, {causa: causa, analise: analise}, 'Justificados').then(function (r) {
                 if (r.erro) { el('anMErro').textContent = r.erro; return; }
                 el('anMCausa').value = ''; el('anMAnalise').value = ''; el('anMassaForm').classList.add('d-none');
@@ -1019,15 +1019,60 @@
             Array.prototype.forEach.call(cards, function (c, i) { c.querySelector('.an-card-n').textContent = 'Card ' + (i + 1); });
         }
 
+        // Nota de um card: comentário (só texto) ou ocorrência (responsáveis, prazo, plano de ação e resolução).
+        function novaNota(card, dados, ro) {
+            dados = dados || {};
+            var ehOc = dados.tipo === 'ocorrencia';
+            var nota = document.createElement('div');
+            nota.className = 'border rounded p-2 mb-2 an-nota' + (ehOc ? ' border-warning' : '');
+            nota.dataset.tipo = ehOc ? 'ocorrencia' : 'comentario';
+            if (dados.id) nota.dataset.id = dados.id;
+            var estado = '';
+            if (ehOc && dados.id) {
+                estado = dados.status === 'RESOLVIDA'
+                    ? '<span class="badge text-bg-success">Resolvida' + (dados.resolvido_em ? ' em ' + esc(dados.resolvido_em) : '') + (dados.resolvido_por ? ' por ' + esc(dados.resolvido_por) : '') + '</span>' + (dados.resolucao ? ' <span class="text-muted small">— ' + esc(dados.resolucao) + '</span>' : '')
+                    : '<span class="badge text-bg-warning text-dark">Em aberto</span> <span class="text-muted small">acompanhada na Central de Ocorrências</span>';
+            }
+            nota.innerHTML =
+                '<div class="d-flex justify-content-between align-items-center mb-1"><span class="small fw-semibold">' +
+                (ehOc ? '<i class="bi bi-exclamation-triangle text-warning me-1"></i>Ocorrência' : '<i class="bi bi-chat-left-text me-1"></i>Comentário') + '</span>' +
+                '<span class="d-flex align-items-center gap-2">' + estado +
+                (ro ? '' : '<button type="button" class="btn btn-sm btn-link text-danger p-0 an-nota-rem" title="Remover"><i class="bi bi-x-lg"></i></button>') + '</span></div>' +
+                '<textarea class="form-control an-n-texto" rows="2" placeholder="' + (ehOc ? 'Descreva a ocorrência' : 'Escreva o comentário') + '"' + (ro ? ' readonly' : '') + '></textarea>' +
+                (ehOc ? '<div class="row g-2 mt-1">' +
+                    '<div class="col-md-8 an-nova-acao"><label class="form-label small mb-1">Responsáveis pela 1ª ação (busque pelo nome; pode ser mais de um)</label><div class="an-resp"></div></div>' +
+                    '<div class="col-md-4 an-nova-acao"><label class="form-label small mb-1">Prazo</label><input type="date" class="form-control form-control-sm an-prazo"' + (ro ? ' readonly' : '') + '></div>' +
+                    '<div class="col-12 an-plano d-none"></div></div>' : '');
+            nota.querySelector('.an-n-texto').value = dados.texto || '';
+            if (ehOc) {
+                var campo = CAMPOS[pk] || {};
+                var inicial = (dados.responsaveisInfo && dados.responsaveisInfo.length) ? dados.responsaveisInfo
+                    : (campo.resp_analise_id ? [{id: campo.resp_analise_id, nome: campo.resp_analise_colab}] : []);
+                nota._pick = ro ? null : PlanoAcao.picker(nota.querySelector('.an-resp'), {name: 'responsaveis', initial: inicial});
+                nota.querySelector('.an-prazo').value = dados.prazo || '';
+                if (dados.id) {   // ocorrência já criada: ações, responsáveis e prazos ficam no plano de ação
+                    nota.querySelectorAll('.an-nova-acao').forEach(function (x) { x.classList.add('d-none'); });
+                    var alvo = nota.querySelector('.an-plano');
+                    alvo.classList.remove('d-none');
+                    PlanoAcao.mount(alvo, {origem: 'kpi', id: dados.id});
+                }
+            }
+            var rem = nota.querySelector('.an-nota-rem');
+            if (rem) rem.addEventListener('click', function () {
+                if (nota.dataset.id && ehOc && !confirm('Esta ocorrência será excluída (inclusive a resolução registrada) ao salvar. Continuar?')) return;
+                nota.remove();
+            });
+            card.querySelector('.an-notas').appendChild(nota);
+            return nota;
+        }
+
         function novoCard(dados) {
             dados = dados || {};
             var ro = !PODE_ANALISAR, marcadas = {};
             (dados.ocorrencias || []).forEach(function (id) { marcadas[id] = 1; });
             var card = document.createElement('div');
-            var nome = 'antipo' + (++SEQ_CARD);
             card.className = 'border rounded p-3 mb-3 an-card';
             if (dados.id) card.dataset.id = dados.id;
-            card.dataset.status = dados.status || 'ABERTA';
             var ocs = (atual && atual.ocorrencias) || [];
             // ocorrências já vinculadas que saíram da janela do período continuam marcadas
             var conhecidas = {};
@@ -1045,54 +1090,19 @@
                 (ro ? '' : '<input type="checkbox" class="form-check-input me-2 an-card-sel" title="Selecionar para agrupar">') + '<strong class="an-card-n"></strong>' +
                 (dados.origem ? ' <span class="badge text-bg-light border text-muted fw-normal ms-1">Sugestão · ' + esc(dados.origem) + '</span>' : '') + '</span>' +
                 (ro ? '' : '<button type="button" class="btn btn-sm btn-link text-danger p-0 an-card-rem" title="Remover card"><i class="bi bi-trash"></i> Remover card</button>') + '</div>' +
-                '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">' +
-                '<div class="btn-group btn-group-sm" role="group" title="Relato: apenas registra o que aconteceu. Ocorrência: tem responsável e prazo e é acompanhada até a resolução na Central de Ocorrências.">' +
-                '<input type="radio" class="btn-check an-tipo" name="' + nome + '" id="' + nome + 'c" value="comentario" autocomplete="off"' + (ro ? ' disabled' : '') + '><label class="btn btn-outline-secondary" for="' + nome + 'c"><i class="bi bi-chat-left-text me-1"></i>Relato</label>' +
-                '<input type="radio" class="btn-check an-tipo" name="' + nome + '" id="' + nome + 'o" value="ocorrencia" autocomplete="off"' + (ro ? ' disabled' : '') + '><label class="btn btn-outline-warning" for="' + nome + 'o"><i class="bi bi-exclamation-triangle me-1"></i>Ocorrência</label></div>' +
-                '<span class="an-oc-estado small"></span></div>' +
-                '<div class="row g-2 mb-2 an-oc-campos d-none">' +
-                '<div class="col-md-8 an-nova-acao"><label class="form-label small mb-1">Responsáveis pela 1ª ação (busque pelo nome; pode ser mais de um)</label><div class="an-resp"></div></div>' +
-                '<div class="col-md-4 an-nova-acao"><label class="form-label small mb-1">Prazo</label><input type="date" class="form-control form-control-sm an-prazo"' + (ro ? ' readonly' : '') + '></div>' +
-                '<div class="col-12 an-plano d-none"></div>' +
-                '</div>' +
-                '<div class="row g-2">' +
-                '<div class="col-lg-4"><label class="form-label small mb-1">Causa</label><textarea class="form-control an-c" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
-                '<div class="col-lg-4"><label class="form-label small mb-1">Análise</label><textarea class="form-control an-a" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
-                '<div class="col-lg-4"><label class="form-label small mb-1">Ação</label><textarea class="form-control an-x" rows="4"' + (ro ? ' readonly' : '') + '></textarea></div>' +
-                '</div>' +
+                '<label class="form-label small mb-1">Causa</label><textarea class="form-control an-c" rows="3"' + (ro ? ' readonly' : '') + '></textarea>' +
+                '<div class="mt-3"><div class="small fw-semibold mb-1">Comentários e ocorrências</div><div class="an-notas"></div>' +
+                (ro ? '' : '<div class="d-flex flex-wrap gap-2"><button type="button" class="btn btn-sm btn-outline-secondary an-add-com"><i class="bi bi-chat-left-text me-1"></i>Comentário</button>' +
+                    '<button type="button" class="btn btn-sm btn-outline-warning an-add-oc" title="Tem responsável e prazo e é acompanhada até a resolução na Central de Ocorrências."><i class="bi bi-exclamation-triangle me-1"></i>Ocorrência</button></div>') + '</div>' +
                 '<details class="mt-2"><summary class="small text-primary an-oc-resumo" style="cursor:pointer;"></summary>' +
                 '<div class="mt-2 border rounded px-2" style="max-height: 220px; overflow:auto;">' +
                 (lista || '<div class="text-muted small py-2">Nenhuma ocorrência do laboratório esteve aberta neste período.</div>') + '</div>' +
                 '<div class="form-text">Marque as ocorrências que, na sua avaliação, afetaram o indicador neste período.</div></details>';
             card.querySelector('.an-c').value = dados.causa || '';
-            card.querySelector('.an-a').value = dados.analise || '';
-            card.querySelector('.an-x').value = dados.acao || '';
-            var ehOc = dados.tipo === 'ocorrencia';
-            card.querySelector('.an-tipo[value="' + (ehOc ? 'ocorrencia' : 'comentario') + '"]').checked = true;
-            var planoGerido = !!(dados.id && ehOc);   // ocorrência já criada: ações, responsáveis e prazos ficam no plano de ação
-            var campo = CAMPOS[pk] || {};
-            var inicial = (dados.responsaveisInfo && dados.responsaveisInfo.length) ? dados.responsaveisInfo
-                : (campo.resp_analise_id ? [{id: campo.resp_analise_id, nome: campo.resp_analise_colab}] : []);
-            card._pick = ro ? null : PlanoAcao.picker(card.querySelector('.an-resp'), {name: 'responsaveis', initial: inicial});
-            card.querySelector('.an-prazo').value = dados.prazo || '';
-            if (planoGerido) {
-                card.querySelectorAll('.an-nova-acao').forEach(function (x) { x.classList.add('d-none'); });
-                var alvo = card.querySelector('.an-plano');
-                alvo.classList.remove('d-none');
-                PlanoAcao.mount(alvo, {origem: 'kpi', id: dados.id});
-            }
-            function tipoMudou() {
-                var oc = card.querySelector('.an-tipo:checked').value === 'ocorrencia';
-                card.querySelector('.an-oc-campos').classList.toggle('d-none', !oc);
-                card.classList.toggle('border-warning', oc);
-                var est = card.querySelector('.an-oc-estado');
-                if (!oc) { est.innerHTML = ''; return; }
-                est.innerHTML = card.dataset.status === 'RESOLVIDA'
-                    ? '<span class="badge text-bg-success">Resolvida' + (dados.resolvido_em ? ' em ' + esc(dados.resolvido_em) : '') + (dados.resolvido_por ? ' por ' + esc(dados.resolvido_por) : '') + '</span>' + (dados.resolucao ? ' <span class="text-muted">— ' + esc(dados.resolucao) + '</span>' : '')
-                    : '<span class="badge text-bg-warning text-dark">Em aberto</span> <span class="text-muted">acompanhada na Central de Ocorrências</span>';
-            }
-            card.addEventListener('change', function (ev) { if (ev.target.classList.contains('an-tipo')) tipoMudou(); });
-            tipoMudou();
+            (dados.notas || []).forEach(function (n) { novaNota(card, n, ro); });
+            var addCom = card.querySelector('.an-add-com'), addOc = card.querySelector('.an-add-oc');
+            if (addCom) addCom.addEventListener('click', function () { novaNota(card, {tipo: 'comentario'}, ro).querySelector('.an-n-texto').focus(); });
+            if (addOc) addOc.addEventListener('click', function () { novaNota(card, {tipo: 'ocorrencia'}, ro).querySelector('.an-n-texto').focus(); });
             function resumo() {
                 var n = card.querySelectorAll('.an-oc:checked, .an-oc-extra').length;
                 card.querySelector('.an-oc-resumo').textContent = 'Ocorrências do laboratório que afetaram o indicador (' + n + ' vinculada' + (n === 1 ? '' : 's') + ')';
@@ -1101,7 +1111,7 @@
             resumo();
             var rem = card.querySelector('.an-card-rem');
             if (rem) rem.addEventListener('click', function () {
-                if (card.dataset.id && card.querySelector('.an-tipo:checked').value === 'ocorrencia' && !confirm('Esta ocorrência será excluída (inclusive a resolução registrada) ao salvar. Continuar?')) return;
+                if (card.querySelector('.an-nota[data-tipo="ocorrencia"][data-id]') && !confirm('Este card tem ocorrência(s) que serão excluídas (inclusive a resolução registrada) ao salvar. Continuar?')) return;
                 card.remove(); renumerarCards(); atualizarBarraAgrupar();
             });
             var selc = card.querySelector('.an-card-sel');
@@ -1136,29 +1146,35 @@
             var dados = coletarCardsDe(cards);
             var junto = {
                 causa: unicos(dados.map(function (d) { return d.causa; })).join('\n'),
-                analise: unicos(dados.map(function (d) { return d.analise; })).join('\n'),
-                acao: unicos(dados.map(function (d) { return d.acao; })).join('\n'),
                 ocorrencias: dados.reduce(function (a, d) { return a.concat(d.ocorrencias.filter(function (id) { return a.indexOf(id) === -1; })); }, []),
+                notas: dados.reduce(function (a, d) { return a.concat(d.notas); }, []),   // as notas (e os planos das ocorrências) vão junto
                 origem: 'agrupado de ' + cards.length + ' cards'
             };
-            var oc1 = dados.filter(function (d) { return d.tipo === 'ocorrencia'; })[0];
-            if (oc1) { junto.tipo = 'ocorrencia'; junto.id = oc1.id; junto.responsaveisInfo = oc1.responsaveisInfo; junto.prazo = oc1.prazo; }
+            var comId = dados.filter(function (d) { return d.id; })[0];
+            if (comId) junto.id = comId.id;
             var novo = novoCard(junto);                  // entra no fim; é reposicionado onde estava o primeiro selecionado
             el('anCards').insertBefore(novo, cards[0]);
             cards.forEach(function (c) { c.remove(); });
             renumerarCards();
             atualizarBarraAgrupar();
-            el('anAjudaRascunho').textContent = cards.length + ' cards agrupados em um. Escreva a análise e a ação comuns e salve.';
-            novo.querySelector('.an-a').focus();
+            el('anAjudaRascunho').textContent = cards.length + ' cards agrupados em um. Ajuste a causa comum e salve.';
+            novo.querySelector('.an-c').focus();
+        }
+
+        function coletarNotas(card) {
+            return Array.prototype.map.call(card.querySelectorAll('.an-nota'), function (nota) {
+                var oc = nota.dataset.tipo === 'ocorrencia';
+                return {id: nota.dataset.id || null, tipo: nota.dataset.tipo, texto: nota.querySelector('.an-n-texto').value,
+                        responsaveis: oc && nota._pick ? nota._pick.values() : [], responsaveisInfo: oc && nota._pick ? nota._pick.items() : [],
+                        prazo: oc ? nota.querySelector('.an-prazo').value : ''};
+            });
         }
 
         function coletarCardsDe(cards) {
             return Array.prototype.map.call(cards, function (card) {
                 var ocs = Array.prototype.map.call(card.querySelectorAll('.an-oc:checked'), function (c) { return Number(c.value); })
                     .concat(Array.prototype.map.call(card.querySelectorAll('.an-oc-extra'), function (c) { return Number(c.value); }));
-                return {id: card.dataset.id || null, tipo: card.querySelector('.an-tipo:checked').value,
-                        responsaveis: card._pick ? card._pick.values() : [], responsaveisInfo: card._pick ? card._pick.items() : [], prazo: card.querySelector('.an-prazo').value,
-                        causa: card.querySelector('.an-c').value, analise: card.querySelector('.an-a').value, acao: card.querySelector('.an-x').value, ocorrencias: ocs};
+                return {id: card.dataset.id || null, causa: card.querySelector('.an-c').value, notas: coletarNotas(card), ocorrencias: ocs};
             });
         }
 
@@ -1227,11 +1243,12 @@
         el('anDisp').addEventListener('change', lista);
         el('anRascunho').addEventListener('click', function () {
             if (!atual || !atual.sugeridos.length) { el('anAjudaRascunho').textContent = 'Não há registros do período para trazer.'; return; }
-            var existentes = coletarCards().map(function (c) { return (c.causa + '|' + c.analise + '|' + c.acao).trim(); });
-            var novos = atual.sugeridos.filter(function (c) { return existentes.indexOf((c.causa + '|' + c.analise + '|' + c.acao).trim()) === -1; });
+            function chave(c) { return (c.causa + '|' + (c.notas || []).map(function (n) { return n.texto; }).join('|')).trim(); }
+            var existentes = coletarCards().map(chave);
+            var novos = atual.sugeridos.filter(function (c) { return existentes.indexOf(chave(c)) === -1; });
             // remove o card em branco que sobrou antes de acrescentar as sugestões
             Array.prototype.slice.call(el('anCards').children).forEach(function (card) {
-                if (!card.querySelector('.an-c').value.trim() && !card.querySelector('.an-a').value.trim() && !card.querySelector('.an-x').value.trim() && !card.querySelectorAll('.an-oc:checked').length) card.remove();
+                if (!card.querySelector('.an-c').value.trim() && !card.querySelector('.an-n-texto') && !card.querySelectorAll('.an-oc:checked').length) card.remove();
             });
             novos.forEach(novoCard);
             renumerarCards();

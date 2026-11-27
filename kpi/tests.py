@@ -332,7 +332,7 @@ class KpiTests(TestCase):
         sug = j['cards_sugeridos']
         self.assertEqual([c['origem'] for c in sug], ['Motivo registrado', 'Dia 13/10'])
         self.assertEqual(sug[0]['causa'], 'Risco de garra (5)')  # soma dos dias, sem o consolidado duplicado
-        self.assertEqual((sug[1]['causa'], sug[1]['analise']), ('Troca de turno', 'Treinar'))
+        self.assertEqual((sug[1]['causa'], [n['texto'] for n in sug[1]['notas']]), ('Troca de turno', ['Treinar']))
         self.assertNotIn('Duplicado', ''.join(c['causa'] for c in sug))
         # o mês sugere os cards das semanas e só os dias cuja semana não tem análise
         self.client.post(salvar, {'gran': 'semanal', 'data': '2026-10-12', 'causa': 'Semana ruim'})
@@ -415,16 +415,20 @@ class KpiTests(TestCase):
         assuntos = {o['assunto'] for o in j['ocorrencias']}
         self.assertEqual(assuntos, {'Máquina parada', 'Ainda aberta'})  # só as que estiveram abertas no dia
         itens = [
-            {'causa': 'Máquina parada', 'analise': 'Quebra de correia', 'acao': 'Trocar correia', 'ocorrencias': [dentro.pk]},
-            {'causa': 'Falta de pessoal', 'analise': '', 'acao': 'Remanejar', 'ocorrencias': []},
-            {'causa': '', 'analise': '', 'acao': '', 'ocorrencias': []},  # card vazio é descartado
+            {'causa': 'Máquina parada', 'ocorrencias': [dentro.pk],
+             'notas': [{'tipo': 'comentario', 'texto': 'Quebra de correia'}, {'tipo': 'ocorrencia', 'texto': 'Trocar correia'}]},
+            {'causa': 'Falta de pessoal', 'ocorrencias': [], 'notas': [{'tipo': 'comentario', 'texto': 'Remanejar'}]},
+            {'causa': '', 'ocorrencias': [], 'notas': []},  # card vazio é descartado
         ]
         r = self.client.post(salvar, dict(base, itens=json.dumps(itens))).json()
         self.assertEqual((r['ok'], r['n'], r['c']), (True, 2, 'Máquina parada'))
         j = self.client.get(dados, base).json()
         self.assertEqual([i['causa'] for i in j['itens']], ['Máquina parada', 'Falta de pessoal'])
         self.assertEqual(j['itens'][0]['ocorrencias'], [dentro.pk])
-        self.assertEqual(j['itens'][0]['acao'], 'Trocar correia')
+        self.assertEqual([(n['tipo'], n['texto']) for n in j['itens'][0]['notas']],
+                         [('comentario', 'Quebra de correia'), ('ocorrencia', 'Trocar correia')])
+        self.assertEqual(ind.analises.get().itens.count(), 5)  # 2 cards + 3 notas
+        self.assertEqual((r['o'], r['n']), (1, 2))
         # regravar substitui os cards; sem nenhum card remove o registro
         self.client.post(salvar, dict(base, itens=json.dumps([{'causa': 'Só um', 'ocorrencias': [aberta.pk]}])))
         self.assertEqual(ind.analises.get().itens.count(), 1)
@@ -432,9 +436,10 @@ class KpiTests(TestCase):
         self.assertFalse(ind.analises.exists())
         self.assertEqual(self.client.post(salvar, dict(base, itens='{ruim')).status_code, 400)
         # o rascunho de uma semana enxerga os cards dos dias
-        self.client.post(salvar, dict(base, itens=json.dumps([{'causa': 'A', 'acao': 'B'}, {'causa': 'C'}])))
+        self.client.post(salvar, dict(base, itens=json.dumps([{'causa': 'A', 'notas': [{'tipo': 'comentario', 'texto': 'B'}]}, {'causa': 'C'}])))
         sem = self.client.get(dados, {'gran': 'semanal', 'data': '2026-10-14'}).json()['cards_sugeridos']
-        self.assertEqual([(c['origem'], c['causa'], c['acao']) for c in sem], [('Dia 14/10', 'A', 'B'), ('Dia 14/10', 'C', '')])
+        self.assertEqual([(c['origem'], c['causa'], [n['texto'] for n in c['notas']]) for c in sem],
+                         [('Dia 14/10', 'A', ['B']), ('Dia 14/10', 'C', [])])
         self.assertIsNotNone(fora.pk)
 
     def test_responsavel_pela_analise_geral_e_por_setor_com_cobranca(self):
