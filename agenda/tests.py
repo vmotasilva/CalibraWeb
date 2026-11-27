@@ -1757,3 +1757,185 @@ class AgruparItensTests(TestCase):
         grupos = agrupar([it("a", "Gerais", True), it("b", "KPI"), it("c", "Gerais"), it("d", "")], {"KPI": "no dia 5 do mês"})
         self.assertEqual([(g["nome"], [i["texto"] for i in g["itens"]], g["feitos"], g["total"], g["condicao"]) for g in grupos],
                          [("Gerais", ["a", "c"], 1, 2, ""), ("KPI", ["b"], 0, 1, "no dia 5 do mês"), ("", ["d"], 0, 1, "")])
+
+
+class ComentariosEOcorrenciasTests(_Base):
+    """Comentário por item/dia, ocorrência e conversão de comentário em ocorrência."""
+
+    def setUp(self):
+        super().setUp()
+        from agenda.models import Checklist, ChecklistItem
+
+        self.hoje = timezone.localdate()
+        self.c = Checklist.objects.create(titulo="Rotina QMS", criado_por=self.ana, diario=True, diario_desde=self.hoje - timedelta(days=3), dias_semana="0,1,2,3,4,5,6")
+        self.item = ChecklistItem.objects.create(checklist=self.c, texto="Verificar vencimentos", ordem=0)
+        self.client.force_login(self.ana)
+
+    def _ref(self, **extra):
+        base = {"tipo": "item", "ref": self.item.id, "data": self.hoje.isoformat()}
+        base.update(extra)
+        return base
+
+    def test_comentar_e_listar(self):
+        r = self.post("agenda:comentario_salvar", self._ref(texto="Estoque zerado hoje"))
+        self.assertTrue(r.json()["success"])
+        j = self.client.get(reverse("agenda:api_notas"), self._ref()).json()
+        self.assertEqual([c["texto"] for c in j["comentarios"]], ["Estoque zerado hoje"])
+        self.assertEqual(j["contexto"]["item"], "Verificar vencimentos")
+        self.assertFalse(j["somente_leitura"])
+        # outro dia não vê o comentário (é por item e por dia)
+        ontem = (self.hoje - timedelta(days=1)).isoformat()
+        j2 = self.client.get(reverse("agenda:api_notas"), self._ref(data=ontem)).json()
+        self.assertEqual(j2["comentarios"], [])
+
+    def test_validacoes_do_comentario(self):
+        self.assertEqual(self.post("agenda:comentario_salvar", self._ref(texto="  ")).status_code, 400)
+        self.assertEqual(self.post("agenda:comentario_salvar", self._ref(texto="x" * 2001)).status_code, 400)
+        self.assertEqual(self.post("agenda:comentario_salvar", self._ref(texto="ok", data="lixo")).status_code, 404)
+        self.assertEqual(self.post("agenda:comentario_salvar", self._ref(texto="ok", ref=999999)).status_code, 404)
+        self.assertEqual(self.post("agenda:comentario_salvar", self._ref(texto="ok", tipo="lixo")).status_code, 404)
+
+    def test_so_comenta_item_que_esta_na_folha_do_dia(self):
+        from agenda.models import Checklist, ChecklistItem
+
+        alheio = Checklist.objects.create(titulo="Da Bia", criado_por=self.bia, diario=True, diario_desde=self.hoje)
+        ch = ChecklistItem.objects.create(checklist=alheio, texto="x")
+        self.assertEqual(self.post("agenda:comentario_salvar", self._ref(texto="ok", ref=ch.id)).status_code, 404)
+        # item que ainda não valia no dia
+        novo = ChecklistItem.objects.create(checklist=self.c, texto="novo", valido_desde=self.hoje)
+        antes = (self.hoje - timedelta(days=2)).isoformat()
+        self.assertEqual(self.post("agenda:comentario_salvar", self._ref(texto="ok", ref=novo.id, data=antes)).status_code, 404)
+
+    def test_abrir_ocorrencia_direto_do_item(self):
+        from agenda.models import OcorrenciaChecklist
+
+        r = self.post("agenda:ocorrencia_criar", self._ref(titulo="Reagente vencido", descricao="Lote 123 venceu ontem"))
+        self.assertTrue(r.json()["success"])
+        oc = OcorrenciaChecklist.objects.get()
+        self.assertEqual((oc.titulo, oc.criado_por, oc.status, oc.data), ("Reagente vencido", self.ana, "aberta", self.hoje))
+        self.assertEqual((oc.checklist_titulo, oc.item_texto, oc.item), ("Rotina QMS", "Verificar vencimentos", self.item))
+        # título em branco usa o texto do item; descrição é obrigatória
+        self.post("agenda:ocorrencia_criar", self._ref(descricao="outra"))
+        self.assertEqual(OcorrenciaChecklist.objects.latest("id").titulo, "Verificar vencimentos")
+        self.assertEqual(self.post("agenda:ocorrencia_criar", self._ref(descricao=" ")).status_code, 400)
+
+    def test_converter_comentario_em_ocorrencia(self):
+        from agenda.models import ComentarioChecklist, OcorrenciaChecklist
+
+        self.post("agenda:comentario_salvar", self._ref(texto="Balança descalibrada"))
+        com = ComentarioChecklist.objects.get()
+        r = self.post("agenda:ocorrencia_criar", self._ref(comentario_id=com.id))
+        self.assertTrue(r.json()["success"])
+        com.refresh_from_db()
+        oc = OcorrenciaChecklist.objects.get()
+        self.assertEqual(com.ocorrencia, oc)
+        self.assertEqual(oc.descricao, "Balança descalibrada")  # o comentário vira a descrição
+        self.assertEqual(oc.titulo, "Balança descalibrada")  # e o começo dele, o título
+        # o comentário aparece como convertido e não converte duas vezes nem é excluído
+        j = self.client.get(reverse("agenda:api_notas"), self._ref()).json()
+        self.assertEqual(j["comentarios"][0]["ocorrencia_id"], oc.id)
+        self.assertEqual(self.post("agenda:ocorrencia_criar", self._ref(comentario_id=com.id)).status_code, 400)
+        self.assertEqual(self.post("agenda:comentario_excluir", {}, [com.id]).status_code, 400)
+
+    def test_excluir_comentario_so_do_dono_e_se_nao_virou_ocorrencia(self):
+        from agenda.models import ComentarioChecklist
+
+        self.post("agenda:comentario_salvar", self._ref(texto="apagar"))
+        com = ComentarioChecklist.objects.get()
+        self.client.force_login(self.bia)
+        self.assertEqual(self.post("agenda:comentario_excluir", {}, [com.id]).status_code, 404)
+        self.client.force_login(self.ana)
+        self.assertTrue(self.post("agenda:comentario_excluir", {}, [com.id]).json()["success"])
+        self.assertEqual(ComentarioChecklist.objects.count(), 0)
+
+    def test_so_converte_comentario_do_proprio_item_e_dia(self):
+        from agenda.models import ComentarioChecklist
+
+        self.post("agenda:comentario_salvar", self._ref(texto="x"))
+        com = ComentarioChecklist.objects.get()
+        ontem = (self.hoje - timedelta(days=1)).isoformat()
+        self.assertEqual(self.post("agenda:ocorrencia_criar", self._ref(data=ontem, comentario_id=com.id)).status_code, 404)
+        self.assertEqual(self.post("agenda:ocorrencia_criar", self._ref(comentario_id=999999)).status_code, 404)
+
+    def test_comentario_e_ocorrencia_em_item_compartilhado_e_em_evento_simples(self):
+        from agenda.models import ChecklistCompartilhado, CompartilhadoMembro, CompartilhadoTarefa, Evento
+
+        lista = ChecklistCompartilhado.objects.create(titulo="Auditoria", criado_por=self.lider)
+        for u in (self.lider, self.ana):
+            CompartilhadoMembro.objects.create(lista=lista, usuario=u)
+        t = CompartilhadoTarefa.objects.create(lista=lista, texto="Reunir evidências", responsavel=self.ana)
+        r = self.post("agenda:comentario_salvar", {"tipo": "tarefa", "ref": t.id, "data": self.hoje.isoformat(), "texto": "Falta o POP 12"})
+        self.assertTrue(r.json()["success"])
+        ev = Evento.objects.create(titulo="Backup", criado_por=self.ana, inicio=timezone.now(), dia_inteiro=True, checklist=True)
+        r = self.post("agenda:ocorrencia_criar", {"tipo": "evento", "ref": ev.id, "data": self.hoje.isoformat(), "descricao": "Falhou"})
+        self.assertTrue(r.json()["success"])
+        # quem não é membro não comenta
+        self.client.force_login(self.bia)
+        r = self.post("agenda:comentario_salvar", {"tipo": "tarefa", "ref": t.id, "data": self.hoje.isoformat(), "texto": "intruso"})
+        self.assertEqual(r.status_code, 404)
+
+    def test_contagens_aparecem_na_tela_e_no_servico(self):
+        from agenda.services import acompanhamento
+
+        self.post("agenda:comentario_salvar", self._ref(texto="a"))
+        self.post("agenda:comentario_salvar", self._ref(texto="b"))
+        self.post("agenda:ocorrencia_criar", self._ref(descricao="d"))
+        item = acompanhamento(self.ana, self.hoje)["itens"][0]["itens"][0]
+        self.assertEqual((item["n_coment"], item["n_ocorr"]), (2, 1))
+        html = self.client.get(reverse("agenda:checklist")).content.decode()
+        self.assertIn('class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota"', html)
+        self.assertIn('data-tipo="item"', html)
+        self.assertIn('id="ntModal"', html)
+
+    def test_pendencia_anterior_comenta_no_dia_de_origem(self):
+        from agenda.services import acompanhamento
+
+        ontem = (self.hoje - timedelta(days=1)).isoformat()
+        self.post("agenda:comentario_salvar", self._ref(data=ontem, texto="faltou ontem"))
+        pend = acompanhamento(self.ana, self.hoje)["pendencias"]
+        ontem_pend = next(p for p in pend if p["dia"].isoformat() == ontem)
+        self.assertEqual(ontem_pend["faltam"][0]["n_coment"], 1)
+
+    def test_chefia_le_as_notas_do_liderado_mas_nao_escreve(self):
+        self.post("agenda:comentario_salvar", self._ref(texto="privado da Ana"))
+        self.post("agenda:ocorrencia_criar", self._ref(descricao="problema"))
+        self.client.force_login(self.lider)
+        j = self.client.get(reverse("agenda:api_notas"), {**self._ref(), "usuario": self.ana.id}).json()
+        self.assertTrue(j["somente_leitura"])
+        self.assertEqual(len(j["comentarios"]), 1)
+        self.assertEqual(len(j["ocorrencias"]), 1)
+        # a chefia comentando "pela" Ana não é possível: o comentário só vale na própria folha
+        self.assertEqual(self.post("agenda:comentario_salvar", self._ref(texto="x")).status_code, 404)
+        # quem não é chefia não lê
+        self.client.force_login(self.bia)
+        self.assertEqual(self.client.get(reverse("agenda:api_notas"), {**self._ref(), "usuario": self.ana.id}).status_code, 403)
+
+    def test_ocorrencia_aparece_na_central_e_pode_ser_encerrada(self):
+        from agenda.models import OcorrenciaChecklist
+        from shared.ocorrencias import executar_acao, listar_ocorrencias
+
+        self.post("agenda:ocorrencia_criar", self._ref(titulo="Reagente vencido", descricao="Lote 123"))
+        oc = OcorrenciaChecklist.objects.get()
+        itens = [i for i in listar_ocorrencias(self.ana) if i.origem == "agenda"]
+        self.assertEqual([(i.titulo, i.status, i.papel) for i in itens], [("Reagente vencido", "aberta", "Autor")])
+        self.assertEqual({a.key for a in itens[0].acoes}, {"encerrar"})
+        self.assertIn(f"?data={self.hoje.isoformat()}", itens[0].url_origem)
+        # a chefia vê a ocorrência do liderado e pode tratá-la; quem não é chefia não vê
+        self.assertEqual(len([i for i in listar_ocorrencias(self.lider) if i.origem == "agenda"]), 1)
+        self.assertEqual([i for i in listar_ocorrencias(self.bia) if i.origem == "agenda"], [])
+        res = executar_acao(self.lider, f"agenda:{oc.pk}", "encerrar", {"texto": "Lote descartado"})
+        self.assertTrue(res.ok)
+        oc.refresh_from_db()
+        self.assertEqual((oc.status, oc.resolucao, oc.encerrada_por), ("encerrada", "Lote descartado", self.lider))
+        encerradas = [i for i in listar_ocorrencias(self.ana, status="encerradas") if i.origem == "agenda"]
+        self.assertEqual({a.key for a in encerradas[0].acoes}, {"reabrir"})
+        self.assertTrue(executar_acao(self.ana, f"agenda:{oc.pk}", "reabrir", {}).ok)
+        # quem não enxerga a ocorrência não consegue agir sobre ela
+        self.assertFalse(executar_acao(self.bia, f"agenda:{oc.pk}", "encerrar", {}).ok)
+
+    def test_contagem_da_central_inclui_a_origem_agenda(self):
+        from shared.ocorrencias import contar_ocorrencias, invalidar_counts
+
+        invalidar_counts()
+        self.post("agenda:ocorrencia_criar", self._ref(descricao="d"))
+        self.assertEqual(contar_ocorrencias(self.ana)["minhas"], 1)

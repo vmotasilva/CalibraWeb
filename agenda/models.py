@@ -401,3 +401,58 @@ class ChecklistGrupo(models.Model):
 
     class Meta:
         unique_together = [("checklist", "nome")]
+
+
+# ----------------------------------------------------------------------------------------------
+# Comentários e ocorrências no preenchimento do checklist
+# ----------------------------------------------------------------------------------------------
+class OcorrenciaChecklist(models.Model):
+    """Ocorrência aberta a partir de um item do checklist (aparece na Central de Ocorrências, origem "Agenda")."""
+
+    ABERTA = "aberta"
+    ENCERRADA = "encerrada"
+    STATUS = [(ABERTA, "Aberta"), (ENCERRADA, "Encerrada")]
+
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default=ABERTA)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_ocorrencias")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    data = models.DateField(help_text="Dia do checklist em que a ocorrência aconteceu.")
+    # origem (a ligação some se o item for apagado; os textos abaixo guardam o contexto)
+    checklist_titulo = models.CharField(max_length=200, blank=True)
+    item_texto = models.CharField(max_length=300, blank=True)
+    item = models.ForeignKey(ChecklistItem, null=True, blank=True, on_delete=models.SET_NULL, related_name="ocorrencias")
+    tarefa = models.ForeignKey(CompartilhadoTarefa, null=True, blank=True, on_delete=models.SET_NULL, related_name="ocorrencias")
+    evento = models.ForeignKey(Evento, null=True, blank=True, on_delete=models.SET_NULL, related_name="ocorrencias_checklist")
+    resolucao = models.TextField(blank=True)
+    encerrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    encerrada_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        indexes = [models.Index(fields=["criado_por", "data"])]
+
+    def __str__(self):
+        return self.titulo
+
+
+class ComentarioChecklist(models.Model):
+    """Comentário de quem preenche sobre um item numa data (da folha dele). Pode ser convertido em ocorrência."""
+
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_comentarios")
+    data = models.DateField(help_text="Dia do checklist a que o comentário se refere.")
+    # a que o comentário se refere: um dos três
+    item = models.ForeignKey(ChecklistItem, null=True, blank=True, on_delete=models.CASCADE, related_name="comentarios")
+    tarefa = models.ForeignKey(CompartilhadoTarefa, null=True, blank=True, on_delete=models.CASCADE, related_name="comentarios")
+    evento = models.ForeignKey(Evento, null=True, blank=True, on_delete=models.CASCADE, related_name="comentarios_checklist")
+    texto = models.TextField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ocorrencia = models.ForeignKey(
+        OcorrenciaChecklist, null=True, blank=True, on_delete=models.SET_NULL, related_name="comentarios",
+        help_text="Preenchido quando o comentário foi convertido em ocorrência.",
+    )
+
+    class Meta:
+        ordering = ["criado_em"]
+        indexes = [models.Index(fields=["usuario", "data"])]

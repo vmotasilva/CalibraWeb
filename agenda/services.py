@@ -320,6 +320,7 @@ def itens_compartilhados_do_usuario(user, dia: date, hoje: date):
                 "texto": t.texto,
                 "grupo": t.grupo,
                 "lista_id": t.lista_id,
+                "dia": dia,
                 "lista_titulo": t.lista.titulo,
                 "cor": t.lista.cor,
                 "prazo": t.prazo,
@@ -379,6 +380,9 @@ def acompanhamento(user, dia: date):
     itens = checklist_do_dia(user, dia)
     compartilhados = itens_compartilhados_do_usuario(user, dia, hoje)
     pendencias = pendencias_anteriores(user, hoje) if dia == hoje else []
+    from agenda.notas import anotar_contagens
+
+    anotar_contagens(user, itens, compartilhados, pendencias)  # n_coment/n_ocorr de cada item, para os ícones
     total_dia = sum(_contagem(o)[0] for o in itens)
     feitos_dia = sum(_contagem(o)[1] for o in itens)
     return {

@@ -8,6 +8,7 @@ from django.db import transaction
 from django.db.models import Max, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
@@ -18,6 +19,7 @@ from agenda.models import (
     ChecklistGrupo,
     ChecklistCompartilhado,
     ChecklistItem,
+    ComentarioChecklist,
     CompartilhadoCobranca,
     CompartilhadoMembro,
     CompartilhadoTarefa,
@@ -25,9 +27,11 @@ from agenda.models import (
     EventoConclusao,
     EventoParticipante,
     ItemConclusao,
+    OcorrenciaChecklist,
 )
 from agenda import regras
 from agenda.hierarquia import equipe_de, liderados_ids, nome_do_usuario, papel_sobre, pode_gerir
+from agenda.notas import resolver_ref
 from agenda.services import acompanhamento, agenda_do_periodo, checklist_do_dia, checklists_diarios, ocorrencias
 from shared.permissions import user_has_nav_perm
 
@@ -465,6 +469,127 @@ def api_diario_toggle(request, checklist_id, item_id):
         obj.delete()
     _invalida_inbox(None, request.user)
     return JsonResponse({"success": True, "feito": criado})
+
+
+def _dados_ref(request, d):
+    """(tipo, id, dia) lidos do pedido; dia inválido ou ausente = None."""
+    return d.get("tipo"), d.get("ref"), _parse_data(d.get("data"))
+
+
+@login_required
+@require_GET
+def api_notas(request):
+    """Comentários e ocorrências de um item numa data (da folha do usuário; a chefia lê a do liderado)."""
+    alvo = _alvo(request)
+    tipo, ref, dia = _dados_ref(request, request.GET)
+    info = resolver_ref(alvo, tipo, ref, dia) if dia else None
+    if not info:
+        return JsonResponse({"success": False, "error": "Item não encontrado nesta data."}, status=404)
+    filtro = {info["campo"]: info["obj"], "data": dia}
+    comentarios = ComentarioChecklist.objects.filter(usuario=alvo, **filtro).select_related("ocorrencia")
+    ocorrs = OcorrenciaChecklist.objects.filter(criado_por=alvo, **filtro)
+    return JsonResponse(
+        {
+            "success": True,
+            "somente_leitura": alvo.pk != request.user.pk,
+            "contexto": {"checklist": info["checklist_titulo"], "item": info["item_texto"], "data": dia.strftime("%d/%m/%Y")},
+            "comentarios": [
+                {
+                    "id": c.id,
+                    "texto": c.texto,
+                    "quando": timezone.localtime(c.criado_em).strftime("%d/%m %H:%M"),
+                    "ocorrencia_id": c.ocorrencia_id,
+                    "ocorrencia_status": c.ocorrencia.get_status_display() if c.ocorrencia_id else "",
+                }
+                for c in comentarios
+            ],
+            "ocorrencias": [
+                {
+                    "id": o.id,
+                    "titulo": o.titulo,
+                    "descricao": o.descricao,
+                    "status": o.status,
+                    "status_texto": o.get_status_display(),
+                    "quando": timezone.localtime(o.criado_em).strftime("%d/%m %H:%M"),
+                }
+                for o in ocorrs
+            ],
+            "url_central": reverse("ocorrencias_central"),
+        }
+    )
+
+
+@login_required
+@require_POST
+def comentario_salvar(request):
+    """Comenta um item da própria folha (só o dono da folha comenta)."""
+    try:
+        d = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "JSON inválido."}, status=400)
+    texto = (d.get("texto") or "").strip()
+    if not texto or len(texto) > 2000:
+        return JsonResponse({"success": False, "error": "Escreva o comentário (até 2000 caracteres)."}, status=400)
+    tipo, ref, dia = _dados_ref(request, d)
+    info = resolver_ref(request.user, tipo, ref, dia) if dia else None
+    if not info:
+        return JsonResponse({"success": False, "error": "Item não encontrado nesta data."}, status=404)
+    c = ComentarioChecklist.objects.create(usuario=request.user, data=dia, texto=texto, **{info["campo"]: info["obj"]})
+    return JsonResponse({"success": True, "id": c.id})
+
+
+@login_required
+@require_POST
+def comentario_excluir(request, comentario_id):
+    c = get_object_or_404(ComentarioChecklist, pk=comentario_id, usuario=request.user)
+    if c.ocorrencia_id:
+        return JsonResponse({"success": False, "error": "Este comentário já virou ocorrência e não pode ser excluído."}, status=400)
+    c.delete()
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def ocorrencia_criar(request):
+    """Abre uma ocorrência a partir de um item da própria folha; com `comentario_id`, converte o comentário em ocorrência."""
+    try:
+        d = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "JSON inválido."}, status=400)
+    tipo, ref, dia = _dados_ref(request, d)
+    info = resolver_ref(request.user, tipo, ref, dia) if dia else None
+    if not info:
+        return JsonResponse({"success": False, "error": "Item não encontrado nesta data."}, status=404)
+    comentario = None
+    if d.get("comentario_id"):
+        comentario = ComentarioChecklist.objects.filter(
+            pk=d["comentario_id"], usuario=request.user, data=dia, **{info["campo"]: info["obj"]}
+        ).first()
+        if not comentario:
+            return JsonResponse({"success": False, "error": "Comentário não encontrado."}, status=404)
+        if comentario.ocorrencia_id:
+            return JsonResponse({"success": False, "error": "Este comentário já foi convertido em ocorrência."}, status=400)
+    descricao = (d.get("descricao") or "").strip() or (comentario.texto if comentario else "")
+    titulo = (d.get("titulo") or "").strip()[:200]
+    if not titulo:  # convertida de um comentário: o começo do comentário diz mais que o nome do item
+        titulo = (comentario.texto.strip().splitlines()[0][:80] if comentario else info["item_texto"])[:200]
+    if not descricao:
+        return JsonResponse({"success": False, "error": "Descreva a ocorrência."}, status=400)
+    with transaction.atomic():
+        oc = OcorrenciaChecklist.objects.create(
+            titulo=titulo, descricao=descricao, criado_por=request.user, data=dia,
+            checklist_titulo=info["checklist_titulo"][:200], item_texto=info["item_texto"][:300], **{info["campo"]: info["obj"]},
+        )
+        if comentario:
+            comentario.ocorrencia = oc
+            comentario.save(update_fields=["ocorrencia"])
+    try:
+        from shared.ocorrencias import invalidar_counts
+
+        invalidar_counts()
+    except Exception:
+        pass
+    return JsonResponse({"success": True, "id": oc.id})
 
 
 AVULSOS_TITULO = "Itens avulsos"

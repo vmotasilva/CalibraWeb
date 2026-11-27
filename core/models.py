@@ -75,6 +75,8 @@ class NavigationPermission(models.Model):
             ("nav_agenda_checklist_bloco", "NAV: Agenda / Bloco Checklist Diário"),
             ("nav_agenda_checklist", "NAV: Agenda / Acessar Checklist do Dia"),
             ("nav_agenda_checklist_toggle", "NAV: Agenda / Marcar Item do Checklist"),
+            ("nav_agenda_comentarios", "NAV: Agenda / Comentar Itens do Meu Checklist"),
+            ("nav_agenda_ocorrencia", "NAV: Agenda / Abrir Ocorrência a partir do Meu Checklist"),
             ("nav_agenda_item_avulso", "NAV: Agenda / Adicionar e Remover Itens Avulsos no Meu Checklist"),
             ("nav_agenda_item_toggle", "NAV: Agenda / Marcar Item de Checklist Associado"),
             ("nav_agenda_diario_toggle", "NAV: Agenda / Marcar Item de Checklist Diário"),

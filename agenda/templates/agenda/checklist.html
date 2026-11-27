@@ -47,6 +47,7 @@
             <input class="form-check-input mt-0 ck-box ck-conta" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
             <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}
                 {% if x.avulso %}<span class="badge text-bg-info fw-normal ms-1">avulso{% if x.ate %} · até {{ x.ate|date:"d/m" }}{% endif %}</span>{% endif %}</div>
+<button class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota" type="button" data-tipo="item" data-ref="{{ x.id }}" data-dia="{{ dia|date:'Y-m-d' }}" data-titulo="{{ x.texto|escape }}" title="Comentários e ocorrências"><i class="bi bi-chat-left-text {% if x.n_coment %}text-primary{% else %}text-muted{% endif %}"></i>{% if x.n_coment %} <span class="small">{{ x.n_coment }}</span>{% endif %}{% if x.n_ocorr %} <span class="badge text-bg-danger fw-normal"><i class="bi bi-exclamation-triangle"></i> {{ x.n_ocorr }}</span>{% endif %}</button>
             {% if x.avulso and not somente_leitura %}<button class="btn btn-sm btn-link text-danger p-0 ck-avulso-del" data-item="{{ x.id }}" title="Remover item avulso"><i class="bi bi-x-lg"></i></button>{% endif %}
         </li>
         {% endfor %}
@@ -61,6 +62,7 @@
                     {% if i.hora_inicio %}{{ i.hora_inicio|time:"H:i" }}{% else %}Dia inteiro{% endif %}{% if i.local %} · {{ i.local }}{% endif %}{% if i.recorrente %} · <i class="bi bi-arrow-repeat"></i>{% endif %}
                 </div>
             </div>
+            <button class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota" type="button" data-tipo="evento" data-ref="{{ i.id }}" data-dia="{{ dia|date:'Y-m-d' }}" data-titulo="{{ i.titulo|escape }}" title="Comentários e ocorrências"><i class="bi bi-chat-left-text {% if i.n_coment %}text-primary{% else %}text-muted{% endif %}"></i>{% if i.n_coment %} <span class="small">{{ i.n_coment }}</span>{% endif %}{% if i.n_ocorr %} <span class="badge text-bg-danger fw-normal"><i class="bi bi-exclamation-triangle"></i> {{ i.n_ocorr }}</span>{% endif %}</button>
         </li>
         {% endif %}
     {% empty %}
@@ -85,6 +87,7 @@
                 {{ t.texto }}{% if t.grupo %} <span class="text-muted small">· {{ t.grupo }}</span>{% endif %}
             </div>
             {% if t.prazo %}<span class="badge {% if t.atrasada %}text-bg-danger{% else %}text-bg-light border{% endif %}"><i class="bi bi-calendar-event me-1"></i>{{ t.prazo|date:"d/m" }}{% if t.atrasada %} · atrasado{% endif %}</span>{% endif %}
+            <button class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota" type="button" data-tipo="tarefa" data-ref="{{ t.id }}" data-dia="{{ dia|date:'Y-m-d' }}" data-titulo="{{ t.texto|escape }}" title="Comentários e ocorrências"><i class="bi bi-chat-left-text {% if t.n_coment %}text-primary{% else %}text-muted{% endif %}"></i>{% if t.n_coment %} <span class="small">{{ t.n_coment }}</span>{% endif %}{% if t.n_ocorr %} <span class="badge text-bg-danger fw-normal"><i class="bi bi-exclamation-triangle"></i> {{ t.n_ocorr }}</span>{% endif %}</button>
         </li>
         {% endfor %}
     </ul>
@@ -127,11 +130,40 @@
                 {% if p.tipo == 'checklist_diario' %}data-checklist="{{ p.id }}" data-item="{{ x.id }}"{% elif x.id %}data-evento="{{ p.id }}" data-item="{{ x.id }}"{% else %}data-evento="{{ p.id }}"{% endif %}
                 {% if somente_leitura %}disabled{% endif %}>
             <div class="flex-grow-1">{{ x.texto }}{% if x.grupo %} <span class="text-muted small">· {{ x.grupo }}</span>{% endif %}</div>
+            <button class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota" type="button" data-tipo="{% if x.id %}item{% else %}evento{% endif %}" data-ref="{% if x.id %}{{ x.id }}{% else %}{{ p.id }}{% endif %}" data-dia="{{ p.dia|date:'Y-m-d' }}" data-titulo="{{ x.texto|escape }}" title="Comentários e ocorrências"><i class="bi bi-chat-left-text {% if x.n_coment %}text-primary{% else %}text-muted{% endif %}"></i>{% if x.n_coment %} <span class="small">{{ x.n_coment }}</span>{% endif %}{% if x.n_ocorr %} <span class="badge text-bg-danger fw-normal"><i class="bi bi-exclamation-triangle"></i> {{ x.n_ocorr }}</span>{% endif %}</button>
         </li>
         {% endfor %}
     {% endfor %}
     </ul>
     {% endif %}
+</div>
+
+<div class="modal fade" id="ntModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div><h5 class="modal-title mb-0">Comentários e ocorrências</h5><div class="small text-muted" id="ntContexto"></div></div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="ntErro" class="alert alert-danger d-none"></div>
+        <h6 class="mb-2"><i class="bi bi-chat-left-text me-1"></i>Comentários</h6>
+        <div id="ntComentarios" class="mb-2"></div>
+        <div id="ntFormComentario" class="mb-4">
+            <textarea class="form-control form-control-sm mb-1" id="ntTexto" rows="2" maxlength="2000" placeholder="Escreva um comentário sobre este item..."></textarea>
+            <button class="btn btn-sm btn-outline-primary" id="ntComentar" type="button"><i class="bi bi-plus-lg me-1"></i>Comentar</button>
+        </div>
+        <h6 class="mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Ocorrências deste item <a class="small fw-normal ms-2" id="ntCentral" href="#" target="_blank">Abrir a Central de Ocorrências</a></h6>
+        <div id="ntOcorrencias" class="mb-2"></div>
+        <div id="ntFormOcorrencia" class="border rounded p-2 bg-light">
+            <div class="fw-semibold small mb-1">Nova ocorrência</div>
+            <input class="form-control form-control-sm mb-1" id="ntOcTitulo" maxlength="200" placeholder="Título (padrão: o texto do item)">
+            <textarea class="form-control form-control-sm mb-1" id="ntOcDescricao" rows="2" placeholder="Descreva o que aconteceu"></textarea>
+            <button class="btn btn-sm btn-danger" id="ntOcAbrir" type="button"><i class="bi bi-exclamation-triangle me-1"></i>Abrir ocorrência</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -139,6 +171,56 @@
 <script>
 (function () {
     const DIA = "{{ dia|date:'Y-m-d' }}", CSRF = "{{ csrf_token }}", TOTAL = {{ total }};
+    // ---- comentários e ocorrências do item
+    const NT = {notas: "{% url 'agenda:api_notas' %}", comentar: "{% url 'agenda:comentario_salvar' %}", ocorrencia: "{% url 'agenda:ocorrencia_criar' %}",
+        excluir: id => "{% url 'agenda:comentario_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/")};
+    const ALVO = "{{ alvo_id }}", RO = {{ somente_leitura|yesno:"true,false" }};
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    let _nt = null, ntRef = null, ntMudou = false;
+    const ntModal = { show() { (_nt = _nt || new bootstrap.Modal(document.getElementById("ntModal"))).show(); } };
+    document.getElementById("ntModal").addEventListener("hidden.bs.modal", () => { if (ntMudou) location.reload(); });
+    async function ntCarregar() {
+        const q = new URLSearchParams({tipo: ntRef.tipo, ref: ntRef.ref, data: ntRef.data}); if (ALVO) q.set("usuario", ALVO);
+        const r = await fetch(NT.notas + "?" + q, {credentials: "same-origin"}); const j = await r.json().catch(() => ({success: false}));
+        if (!j.success) { document.getElementById("ntErro").textContent = j.error || "Não foi possível carregar."; document.getElementById("ntErro").classList.remove("d-none"); return; }
+        document.getElementById("ntErro").classList.add("d-none");
+        document.getElementById("ntContexto").textContent = j.contexto.checklist + " — " + j.contexto.item + " · " + j.contexto.data;
+        document.getElementById("ntCentral").href = j.url_central;
+        document.getElementById("ntComentarios").innerHTML = j.comentarios.map(c => `<div class="border rounded p-2 mb-1">
+            <div class="small text-muted d-flex justify-content-between"><span>${esc(c.quando)}${c.ocorrencia_id ? ` · <span class="badge text-bg-warning">virou ocorrência (${esc(c.ocorrencia_status)})</span>` : ""}</span>
+            <span>${!RO && !c.ocorrencia_id ? `<button class="btn btn-sm btn-link p-0 me-2 nt-converter" data-id="${c.id}"><i class="bi bi-arrow-up-right-square me-1"></i>Converter em ocorrência</button><button class="btn btn-sm btn-link text-danger p-0 nt-excluir" data-id="${c.id}"><i class="bi bi-trash"></i></button>` : ""}</span></div>
+            <div style="white-space:pre-wrap">${esc(c.texto)}</div></div>`).join("") || '<div class="text-muted small">Nenhum comentário.</div>';
+        document.getElementById("ntOcorrencias").innerHTML = j.ocorrencias.map(o => `<div class="border rounded p-2 mb-1">
+            <div class="d-flex justify-content-between"><span class="fw-semibold">${esc(o.titulo)}</span><span class="badge ${o.status === "aberta" ? "text-bg-danger" : "text-bg-success"}">${esc(o.status_texto)}</span></div>
+            <div class="small text-muted">${esc(o.quando)}</div><div style="white-space:pre-wrap">${esc(o.descricao)}</div></div>`).join("") || '<div class="text-muted small">Nenhuma ocorrência.</div>';
+        document.getElementById("ntFormComentario").classList.toggle("d-none", RO);
+        document.getElementById("ntFormOcorrencia").classList.toggle("d-none", RO);
+    }
+    document.querySelectorAll(".ck-nota").forEach(b => b.addEventListener("click", () => {
+        ntRef = {tipo: b.dataset.tipo, ref: b.dataset.ref, data: b.dataset.dia}; ntMudou = false;
+        document.getElementById("ntTexto").value = ""; document.getElementById("ntOcDescricao").value = "";
+        document.getElementById("ntOcTitulo").value = ""; document.getElementById("ntOcTitulo").placeholder = b.dataset.titulo || "Título";
+        ntModal.show(); ntCarregar();
+    }));
+    async function ntPost(url, corpo) {
+        const r = await fetch(url, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify(corpo)});
+        const j = await r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+        if (!j.success) { document.getElementById("ntErro").textContent = j.error || "Não foi possível concluir."; document.getElementById("ntErro").classList.remove("d-none"); return false; }
+        ntMudou = true; return true;
+    }
+    document.getElementById("ntComentar").addEventListener("click", async () => {
+        if (await ntPost(NT.comentar, {...ntRef, texto: document.getElementById("ntTexto").value})) { document.getElementById("ntTexto").value = ""; ntCarregar(); }
+    });
+    document.getElementById("ntOcAbrir").addEventListener("click", async () => {
+        if (await ntPost(NT.ocorrencia, {...ntRef, titulo: document.getElementById("ntOcTitulo").value, descricao: document.getElementById("ntOcDescricao").value})) {
+            document.getElementById("ntOcTitulo").value = ""; document.getElementById("ntOcDescricao").value = ""; ntCarregar();
+        }
+    });
+    document.getElementById("ntComentarios").addEventListener("click", async e => {
+        const conv = e.target.closest(".nt-converter"), exc = e.target.closest(".nt-excluir");
+        if (conv && await ntPost(NT.ocorrencia, {...ntRef, comentario_id: Number(conv.dataset.id)})) ntCarregar();
+        else if (exc && confirm("Excluir este comentário?") && await ntPost(NT.excluir(exc.dataset.id), {})) ntCarregar();
+    });
     const urlAvCriar = "{% url 'agenda:item_avulso_criar' %}";
     const urlAvExcluir = id => "{% url 'agenda:item_avulso_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/");
     async function postJson(url, corpo) {
