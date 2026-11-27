@@ -23,6 +23,8 @@
   .ee-lista { max-height: 50vh; overflow: auto; }
   .ee-barra { position: sticky; top: var(--ee-topo, 60px); z-index: 1020; margin: 0 -.75rem; padding: 0 .75rem; }
   .ee-busca { width: 22rem; max-width: 100%; }
+  @keyframes ee-autofill { from { opacity: 1; } to { opacity: 1; } }
+  #ee-busca:-webkit-autofill { animation-name: ee-autofill; animation-duration: 1ms; }
   .ee-painel { position: absolute; top: calc(100% + .35rem); left: 0; z-index: 1030; width: 22rem; max-width: 90vw; }
   .ee-qc { cursor: grab; border-left: 3px solid #0d6efd; }
   .ee-qc-vago { border-left-color: #dc3545; } .ee-qc-reserva { border-left-color: #0dcaf0; }
@@ -47,7 +49,7 @@
       </ul>
       <div class="input-group input-group-sm ee-busca">
         <span class="input-group-text"><i class="bi bi-search"></i></span>
-        <input type="search" class="form-control" id="ee-busca" name="ee-busca-q" placeholder="Buscar setor, bloco, posto ou colaborador" aria-label="Buscar" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute('readonly')">
+        <input type="search" class="form-control" id="ee-busca" name="ee-busca-q" placeholder="Buscar setor, bloco, posto ou colaborador" aria-label="Buscar" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-bwignore="true" data-form-type="other" data-protonpass-ignore="true" readonly onfocus="this.removeAttribute('readonly')">
       </div>
       <div class="position-relative">
         <button type="button" class="btn btn-sm btn-outline-secondary" id="ee-btn-filtros" title="Filtros" aria-expanded="false" aria-controls="ee-painel-filtros"><i class="bi bi-funnel"></i><span class="badge bg-primary ms-1 d-none" id="ee-filtros-n">0</span></button>
@@ -237,7 +239,7 @@
             <div class="row g-2 align-items-end">
               <div class="col-12 col-lg-4">
                 <label class="form-label small mb-1" for="ee-a-busca">Buscar</label>
-                <input type="search" class="form-control form-control-sm" id="ee-a-busca" name="ee-a-busca-q" placeholder="Nome ou matrícula" aria-label="Buscar colaborador" autocomplete="off" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute('readonly')">
+                <input type="search" class="form-control form-control-sm" id="ee-a-busca" name="ee-a-busca-q" placeholder="Nome ou matrícula" aria-label="Buscar colaborador" autocomplete="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore data-bwignore="true" data-form-type="other" data-protonpass-ignore="true" readonly onfocus="this.removeAttribute('readonly')">
               </div>
               <div class="col-6 col-lg-2"><label class="form-label small mb-1" for="ee-a-f-setor">Setor</label><select class="form-select form-select-sm ee-a-f" id="ee-a-f-setor"><option value="">Todos</option></select></div>
               <div class="col-6 col-lg-2"><label class="form-label small mb-1" for="ee-a-f-turno">Turno (cadastro)</label><select class="form-select form-select-sm ee-a-f" id="ee-a-f-turno"><option value="">Todos</option></select></div>
@@ -638,7 +640,7 @@
       }).join('') + '</div>';
       h += '</div></div>';
     });
-    if (!setoresBusca().length) h = '<div class="p-3 text-muted">Nada cadastrado.</div>';
+    if (!setoresBusca().length) h = '<div class="p-3 text-muted">' + (state.busca ? 'Nenhum resultado para a busca.' : 'Nada cadastrado.') + '</div>';
     const box = $('ee-quadro-conteudo'); box.innerHTML = h;
     box.querySelectorAll('.ee-q-add').forEach(b => b.onclick = () => abrirAloc({ postoId: +b.dataset.posto, turnoId: +b.dataset.turno }));
     box.querySelectorAll('.ee-qc').forEach(ligaCardAloc);
@@ -940,15 +942,23 @@
   document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.onclick = () => trocaAba(b.dataset.aba));
   state.setor = le('ee-setor');
   $('ee-filtro-setor').onchange = e => { state.setor = e.target.value; aplicaFiltroSetor(); };
-  // o navegador pode preencher a busca com o usuário salvo: descarta qualquer valor que não veio de digitação
-  const limpaBusca = () => { const i = $('ee-busca'); if (i && !i.dataset.digitou && i.value) { const tinha = state.busca; i.value = ''; state.busca = ''; if (tinha) { renderArvore(); renderQuadro(); } } };
-  limpaBusca(); setTimeout(limpaBusca, 300); setTimeout(limpaBusca, 1200); window.addEventListener('load', limpaBusca);
-  ['keydown', 'paste', 'compositionstart'].forEach(ev => $('ee-busca').addEventListener(ev, () => { $('ee-busca').dataset.digitou = '1'; }));
-  $('ee-busca').addEventListener('input', debounce(() => {
-    if (!$('ee-busca').dataset.digitou) return limpaBusca();
-    state.busca = norm($('ee-busca').value);
+  // Auto-preenchimento (navegador ou gerenciador de senhas) na busca: só vale o que o usuário digita, cola ou apaga.
+  // Eventos "input" sem inputType (extensões) ou do tipo insertReplacementText (autofill do Chrome) são desfeitos.
+  const inBusca = $('ee-busca'); let digitado = '';
+  const restauraBusca = () => { if (inBusca.value !== digitado) { inBusca.value = digitado; } };
+  ['load', 'pageshow'].forEach(ev => window.addEventListener(ev, restauraBusca));
+  [100, 400, 1000, 2500].forEach(ms => setTimeout(restauraBusca, ms));
+  inBusca.addEventListener('animationstart', e => { if (e.animationName === 'ee-autofill') restauraBusca(); });  // :-webkit-autofill
+  inBusca.addEventListener('change', e => { if (!e.isTrusted || inBusca.value !== digitado) restauraBusca(); });
+  const aplicaBusca = debounce(() => {
+    state.busca = norm(digitado);
     if (!$('ee-pessoas').classList.contains('d-none')) carregarPessoas(); else { renderArvore(); renderQuadro(); }
-  }));
+  });
+  inBusca.addEventListener('input', e => {
+    const legitimo = e.inputType && e.inputType !== 'insertReplacementText';
+    if (!legitimo) { restauraBusca(); return; }
+    digitado = inBusca.value; aplicaBusca();
+  });
   // painéis suspensos (filtros e ajuda), sem depender do Bootstrap
   const paineis = [['ee-btn-filtros', 'ee-painel-filtros'], ['ee-btn-ajuda', 'ee-painel-ajuda']];
   const fechaPaineis = (exceto) => paineis.forEach(([b, p]) => { if (p !== exceto) { $(p).classList.add('d-none'); $(b).setAttribute('aria-expanded', 'false'); } });
