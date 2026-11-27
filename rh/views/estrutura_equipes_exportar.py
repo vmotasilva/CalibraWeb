@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Exportação da Estrutura de Equipes e Turnos para Excel: uma aba por setor."""
+import logging
 import re
 from datetime import datetime
 from io import BytesIO
@@ -10,12 +11,14 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.http import require_GET
 from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from organization.models import AlocacaoPosto, GrupoEquipe, SetorEquipe
 from rh.views.estrutura_equipes import _erro, _negado, _pode_ver
 
+logger = logging.getLogger(__name__)
 _INVALIDOS_ABA = re.compile(r"[\[\]:*?/\\]")
 _ORDEM_TIPO = {"PESSOA": 0, "RESERVA": 1, "VAGO": 2}
 _COL_TOTAL = {"PESSOA": 0, "VAGO": 1, "RESERVA": 2}
@@ -37,6 +40,11 @@ def _nome_aba(nome, usados):
     return aba
 
 
+def _limpo(texto):
+    """Remove caracteres de controle que o Excel não aceita (IllegalCharacterError do openpyxl)."""
+    return ILLEGAL_CHARACTERS_RE.sub("", str(texto or ""))
+
+
 def _texto_aloc(a):
     if a.tipo == "PESSOA":
         rotulo = a.colaborador.nome_completo if a.colaborador_id else "(sem colaborador)"
@@ -44,7 +52,7 @@ def _texto_aloc(a):
         rotulo = "VAGO"
     else:
         rotulo = "RESERVA"
-    return f"{rotulo} ({a.observacao})" if a.observacao else rotulo
+    return _limpo(f"{rotulo} ({a.observacao})" if a.observacao else rotulo)
 
 
 def _ordem_aloc(a):
@@ -54,13 +62,13 @@ def _ordem_aloc(a):
 
 def _preenche_aba(ws, setor, grupos, alocs_por_celula):
     turnos = list(setor.turnos.all())
-    ws.cell(row=1, column=1, value=f"Setor: {setor.nome}").font = Font(bold=True, size=14)
+    ws.cell(row=1, column=1, value=_limpo(f"Setor: {setor.nome}")).font = Font(bold=True, size=14)
     ws.cell(row=2, column=1, value=f"Gerado em {timezone.localtime().strftime('%d/%m/%Y %H:%M')}").font = Font(italic=True, color="6B7280")
     if not turnos:
         ws.cell(row=4, column=1, value="Este setor ainda não tem turnos cadastrados.")
         ws.column_dimensions["A"].width = 60
         return
-    cab = ["Bloco", "Posto de trabalho"] + [t.nome for t in turnos]
+    cab = ["Bloco", "Posto de trabalho"] + [_limpo(t.nome) for t in turnos]
     for c, texto in enumerate(cab, 1):
         cel = ws.cell(row=4, column=c, value=texto)
         cel.font, cel.fill, cel.border = Font(bold=True, color="FFFFFF"), _FILL_CAB, _BORDA
@@ -71,16 +79,16 @@ def _preenche_aba(ws, setor, grupos, alocs_por_celula):
     for bloco in blocos:
         postos = sorted((g for g in grupos if g.parent_id == bloco.id), key=lambda g: g.nome.lower())
         if not postos:
-            ws.cell(row=linha, column=1, value=bloco.nome).font = Font(bold=True)
+            ws.cell(row=linha, column=1, value=_limpo(bloco.nome)).font = Font(bold=True)
             ws.cell(row=linha, column=2, value="(sem postos)").font = Font(italic=True, color="6B7280")
             for c in range(1, len(cab) + 1):
                 ws.cell(row=linha, column=c).border = _BORDA
             linha += 1
             continue
         for posto in postos:
-            ws.cell(row=linha, column=1, value=bloco.nome).font = Font(bold=True)
+            ws.cell(row=linha, column=1, value=_limpo(bloco.nome)).font = Font(bold=True)
             ws.cell(row=linha, column=1).fill = _FILL_BLOCO
-            ws.cell(row=linha, column=2, value=posto.nome + ("" if posto.ativo else " (inativo)"))
+            ws.cell(row=linha, column=2, value=_limpo(posto.nome + ("" if posto.ativo else " (inativo)")))
             maior = 1
             for i, t in enumerate(turnos, 3):
                 lista = sorted(alocs_por_celula.get((posto.id, t.id), []), key=_ordem_aloc)
@@ -136,6 +144,14 @@ def exportar_estrutura_equipes(request):
     for a in alocs:
         por_celula.setdefault((a.posto_id, a.turno_estrutura_id), []).append(a)
 
+    try:
+        return _gera_planilha(setores, grupos, por_celula, setor_param)
+    except Exception:  # não devolve página de erro do servidor para um download
+        logger.exception("Erro ao exportar a estrutura de equipes")
+        return _erro("Não foi possível gerar o Excel. Tente novamente.", 500)
+
+
+def _gera_planilha(setores, grupos, por_celula, setor_param):
     wb = Workbook()
     wb.remove(wb.active)
     usados = set()

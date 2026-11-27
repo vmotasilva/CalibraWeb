@@ -458,6 +458,15 @@ class ExportacaoExcelTests(Base):
         colq = {c.value: i for i, c in enumerate(wq[4], 1)}
         self.assertEqual(wq.cell(row=5, column=colq["Turno 01"]).value, "RESERVA")
 
+    def test_caracteres_de_controle_nao_quebram_a_exportacao(self):
+        from organization.models import AlocacaoPosto
+
+        AlocacaoPosto.objects.filter(tipo="VAGO").update(observacao="contratar\x07\x0b agora")
+        wb, _ = self._wb()
+        ws = wb["Laboratório A B"]
+        col = {c.value: i for i, c in enumerate(ws[4], 1)}
+        self.assertEqual(ws.cell(row=5, column=col["Turno 02"]).value, "VAGO (contratar agora)\nVAGO (contratar agora)")
+
     def test_filtra_por_setor(self):
         wb, r = self._wb(setor=self.sb)
         self.assertEqual(wb.sheetnames, ["Qualidade"])
