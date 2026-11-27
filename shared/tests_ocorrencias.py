@@ -282,7 +282,7 @@ class OcorrenciaKpiTests(TestCase):
         self.assertEqual(nota.pai.causa, "falta de peça")
         acao = AcaoOcorrencia.objects.get(origem="kpi", ocorrencia_id=nota.pk)
         self.assertEqual(acao.descricao, "comprar")
-        self.assertEqual(set(acao.responsaveis.values_list("pk", flat=True)), {self.ana.pk, self.admin.pk})
+        self.assertEqual(set(acao.responsaveis.values_list("pk", flat=True)), {self.c_ana.pk, self.c_admin.pk})
         itens = central.listar_ocorrencias(self.ana, "abertas", "kpi")
         self.assertEqual(len(itens), 1)  # o comentário não vira ocorrência
         self.assertTrue(itens[0].envolve_usuario)
@@ -348,7 +348,7 @@ class OcorrenciaKpiTests(TestCase):
         rel = AnaliseItem.objects.create(registro=reg, causa="c1", analise="porque sim", acao="treinar")
         oc = AnaliseItem.objects.create(registro=reg, causa="c2", acao="comprar", tipo="ocorrencia", status="RESOLVIDA", resolucao="feito")
         AcaoOcorrencia.objects.create(origem="kpi", ocorrencia_id=oc.pk, descricao="comprar")
-        importlib.import_module("kpi.migrations.0035_analise_item_notas").converter(apps, None)
+        importlib.import_module("kpi.migrations.0036_analise_item_notas_dados").converter(apps, None)
         nota_rel = AnaliseItem.objects.get(pai=rel)
         self.assertEqual((nota_rel.tipo, nota_rel.texto), ("comentario", "porque sim\nAção: treinar"))
         nota_oc = AnaliseItem.objects.get(pai=oc)
