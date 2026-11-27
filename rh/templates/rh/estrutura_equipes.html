@@ -73,6 +73,7 @@
         {% if pode_editar %}<button type="button" class="btn btn-sm btn-outline-danger" id="ee-q-remover" disabled title="Remover selecionados do posto"><i class="bi bi-person-dash"></i><span class="d-none d-xl-inline ms-1">Remover selecionados</span></button>{% else %}<button type="button" class="d-none" id="ee-q-remover" disabled></button>{% endif %}
       </div>
       <div class="d-flex gap-1 ms-auto">
+        <a href="{% url 'rh:exportar_estrutura_equipes' %}" class="btn btn-sm btn-outline-success" id="ee-btn-exportar" title="Exportar para Excel (um setor por aba)" download><i class="bi bi-download"></i><span class="d-none d-xl-inline ms-1">Exportar</span></a>
         {% if pode_editar %}
         <a href="{% url 'rh:importar_estrutura_equipes' %}" class="btn btn-sm btn-outline-primary" title="Importar planilha"><i class="bi bi-file-earmark-excel"></i><span class="d-none d-xl-inline ms-1">Importar</span></a>
         <button type="button" class="btn btn-sm btn-primary" id="ee-btn-novo-setor" title="Novo setor"><i class="bi bi-plus-circle"></i><span class="d-none d-xl-inline ms-1">Novo setor</span></button>
@@ -408,7 +409,13 @@
     renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); renderPessoasAcoes();
   }
 
+  function linkExportar() {
+    const a = $('ee-btn-exportar'); if (!a) return; const base = a.dataset.base || (a.dataset.base = a.getAttribute('href'));
+    a.href = base + (state.setor ? '?setor=' + encodeURIComponent(state.setor) : '');
+    a.title = state.setor ? 'Exportar para Excel só o setor filtrado' : 'Exportar para Excel (um setor por aba)';
+  }
   function badgeFiltros() {
+    linkExportar();
     const n = (state.setor ? 1 : 0) + (state.turno ? 1 : 0); const b = $('ee-filtros-n'); b.textContent = n; b.classList.toggle('d-none', !n);
     $('ee-btn-filtros').classList.toggle('btn-outline-secondary', !n); $('ee-btn-filtros').classList.toggle('btn-secondary', !!n);
   }
