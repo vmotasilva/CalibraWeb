@@ -538,9 +538,9 @@
       h += '<div class="card ee-qs mb-3 shadow-sm"><div class="card-header bg-dark text-white fw-bold"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</div><div class="card-body bg-light">';
       if (!cols.length) h += '<div class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : ' — edite o setor para definir os turnos') + '.</div>';
       else if (!blocos.length) h += '<div class="text-muted">Este setor ainda não tem blocos.</div>';
-      else h += '<div class="row g-3">' + blocos.map(b => {
+      else h += '<div class="d-grid gap-3">' + blocos.map(b => {
         const postos = postosDe(b.id);
-        return '<div class="col-12 col-xxl-6"><div class="card ee-qb h-100"><div class="card-header fw-semibold bg-body-secondary"><i class="bi bi-boxes me-1"></i>' + esc(b.nome) + '</div><div class="card-body d-grid gap-2">' +
+        return '<div class="col-12"><div class="card ee-qb"><div class="card-header fw-semibold bg-body-secondary"><i class="bi bi-boxes me-1"></i>' + esc(b.nome) + '</div><div class="card-body d-grid gap-2">' +
           (postos.length ? postos.map(p => {
             return '<div class="card ee-qp' + (p.ativo ? '' : ' opacity-50') + '"><div class="card-header py-1 small fw-semibold"><i class="bi bi-person-workspace me-1"></i>' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</div>' +
               '<div class="card-body p-2"><div class="row g-2">' + cols.map(c => {
