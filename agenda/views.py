@@ -28,7 +28,7 @@ from agenda.models import (
 )
 from agenda import regras
 from agenda.hierarquia import equipe_de, liderados_ids, nome_do_usuario, papel_sobre, pode_gerir
-from agenda.services import agenda_do_periodo, checklist_do_dia, checklists_diarios, ocorrencias
+from agenda.services import acompanhamento, agenda_do_periodo, checklist_do_dia, checklists_diarios, ocorrencias
 from shared.permissions import user_has_nav_perm
 
 User = get_user_model()
@@ -276,9 +276,15 @@ def api_responder_convite(request, evento_id):
 
 @login_required
 def checklist_view(request):
+    """Meu checklist: acompanhamento único de todos os checklists ativos do usuário (ou do liderado, para a chefia)."""
     alvo = _alvo(request)
     dia = _parse_data(request.GET.get("data"), timezone.localdate())
-    itens = checklist_do_dia(alvo, dia)
+    ac = acompanhamento(alvo, dia)
+    por_lista = []  # itens compartilhados agrupados pelo checklist de origem, na ordem de aparição
+    for t in ac["compartilhados"]:
+        if not por_lista or por_lista[-1]["lista_id"] != t["lista_id"]:
+            por_lista.append({"lista_id": t["lista_id"], "titulo": t["lista_titulo"], "cor": t["cor"], "itens": []})
+        por_lista[-1]["itens"].append(t)
     return render(
         request,
         "agenda/checklist.html",
@@ -289,9 +295,16 @@ def checklist_view(request):
             "anterior": dia - timedelta(days=1),
             "proximo": dia + timedelta(days=1),
             "eh_hoje": dia == timezone.localdate(),
-            "itens": itens,
-            "total": sum(len(i["itens"]) or 1 for i in itens),
-            "feitos": sum(sum(1 for x in i["itens"] if x["feito"]) if i["itens"] else int(i["feito"]) for i in itens),
+            "itens": ac["itens"],
+            "compartilhados": por_lista,
+            "pendencias": ac["pendencias"],
+            "pendencias_total": ac["pendencias_total"],
+            "total": ac["total"],
+            "feitos": ac["feitos"],
+            "total_dia": ac["total_dia"],
+            "feitos_dia": ac["feitos_dia"],
+            "total_compartilhados": ac["total_compartilhados"],
+            "feitos_compartilhados": ac["feitos_compartilhados"],
         },
     )
 
@@ -349,9 +362,8 @@ def equipe_view(request):
     dia = _parse_data(request.GET.get("data"), timezone.localdate())
     linhas = []
     for m in equipe_de(request.user):
-        itens = checklist_do_dia(m["usuario"], dia)
-        total = sum(len(i["itens"]) or 1 for i in itens)
-        feitos = sum(sum(1 for x in i["itens"] if x["feito"]) if i["itens"] else int(i["feito"]) for i in itens)
+        ac = acompanhamento(m["usuario"], dia)  # os mesmos números do "Meu checklist" do liderado
+        itens, total, feitos = ac["itens"], ac["total"], ac["feitos"]
         eventos = [o for o in agenda_do_periodo(m["usuario"], dia, dia) if o["tipo"] == "evento"]
         acoes = list(CompartilhadoTarefa.objects.filter(responsavel=m["usuario"], concluida=False, lista__arquivado=False))
         if not total:
@@ -374,6 +386,7 @@ def equipe_view(request):
                 "feitos": feitos,
                 "pct": round(100 * feitos / total) if total else 0,
                 "eventos": len(eventos),
+                "pendencias": ac["pendencias_total"],
                 "acoes_pendentes": len(acoes),
                 "acoes_atrasadas": sum(1 for a in acoes if a.prazo and a.prazo < timezone.localdate()),
                 "situacao": situacao,
@@ -843,7 +856,7 @@ def api_tarefa_toggle(request, tarefa_id):
         t.cobrancas.filter(lida=False).update(lida=True)
     for uid in {request.user.pk, t.responsavel_id} - {None}:
         _invalida_inbox(None, uid)
-    return JsonResponse({"success": True, "concluida": t.concluida})
+    return JsonResponse({"success": True, "concluida": t.concluida, "feito": t.concluida})
 
 
 @login_required

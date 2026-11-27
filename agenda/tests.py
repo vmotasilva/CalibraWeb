@@ -1284,3 +1284,189 @@ class CondicoesDeAgrupamentoTests(TestCase):
         self.assertContains(r, "Fechar balanço do mês")
         r = self.client.get(reverse("agenda:checklist"), {"data": "2026-03-06"})
         self.assertNotContains(r, "Fechar balanço do mês")
+
+
+class MeuChecklistTests(_Base):
+    """Meu checklist: acompanhamento único de todos os checklists ativos do usuário."""
+
+    def _recorrente(self, dono, titulo="Abertura", itens=2, desde=None, **extra):
+        from agenda.models import Checklist, ChecklistItem
+
+        campos = dict(titulo=titulo, criado_por=dono, diario=True, diario_desde=desde or timezone.localdate(), dias_semana="0,1,2,3,4,5,6")
+        campos.update(extra)
+        c = Checklist.objects.create(**campos)
+        for n in range(itens):
+            ChecklistItem.objects.create(checklist=c, texto=f"{titulo} item {n + 1}", ordem=n)
+        return c
+
+    def _compartilhado(self, criador, responsavel, tarefas=2, prazo=None, titulo="Auditoria"):
+        from agenda.models import ChecklistCompartilhado, CompartilhadoMembro, CompartilhadoTarefa
+
+        lista = ChecklistCompartilhado.objects.create(titulo=titulo, criado_por=criador)
+        for u in {criador, responsavel}:
+            CompartilhadoMembro.objects.create(lista=lista, usuario=u)
+        for n in range(tarefas):
+            CompartilhadoTarefa.objects.create(lista=lista, texto=f"{titulo} tarefa {n + 1}", ordem=n, responsavel=responsavel, prazo=prazo)
+        return lista
+
+    def test_reune_recorrentes_eventos_recebidos_e_compartilhados_num_progresso_so(self):
+        from agenda.models import ChecklistCompartilhamento, Evento
+        from agenda.services import acompanhamento
+
+        hoje = timezone.localdate()
+        self._recorrente(self.ana, "Própria", itens=2)
+        recebido = self._recorrente(self.lider, "Da chefia", itens=3, incluir_dono=False)
+        ChecklistCompartilhamento.objects.create(checklist=recebido, usuario=self.ana, desde=hoje)
+        modelo = self._recorrente(self.ana, "De evento", itens=1, diario=False)
+        modelo.diario = False
+        modelo.save()
+        Evento.objects.create(titulo="Rotina", criado_por=self.ana, inicio=timezone.now(), dia_inteiro=True, checklist_modelo=modelo)
+        self._compartilhado(self.lider, self.ana, tarefas=2)
+        ac = acompanhamento(self.ana, hoje)
+        self.assertEqual(ac["total_dia"], 2 + 3 + 1)
+        self.assertEqual(ac["total_compartilhados"], 2)
+        self.assertEqual((ac["total"], ac["feitos"]), (8, 0))
+        self.assertEqual(sorted(o["titulo"] for o in ac["itens"]), ["Da chefia", "Própria", "Rotina"])
+
+    def test_compartilhado_so_traz_itens_atribuidos_ao_usuario(self):
+        from agenda.services import acompanhamento
+
+        self._compartilhado(self.lider, self.ana, tarefas=2)
+        self.assertEqual(acompanhamento(self.ana, timezone.localdate())["total_compartilhados"], 2)
+        self.assertEqual(acompanhamento(self.bia, timezone.localdate())["total_compartilhados"], 0)  # não é responsável
+        self.assertEqual(acompanhamento(self.lider, timezone.localdate())["total_compartilhados"], 0)
+
+    def test_pendente_compartilhado_so_aparece_hoje_e_o_concluido_no_dia_da_conclusao(self):
+        from agenda.models import CompartilhadoTarefa
+        from agenda.services import acompanhamento
+
+        hoje = timezone.localdate()
+        self._compartilhado(self.lider, self.ana, tarefas=2)
+        self.assertEqual(acompanhamento(self.ana, hoje - timedelta(days=1))["total_compartilhados"], 0)
+        self.client.force_login(self.ana)
+        t = CompartilhadoTarefa.objects.first()
+        self.assertTrue(self.post("agenda:api_tarefa_toggle", {}, [t.id]).json()["feito"])
+        ac = acompanhamento(self.ana, hoje)
+        self.assertEqual((ac["total_compartilhados"], ac["feitos_compartilhados"]), (2, 1))
+        CompartilhadoTarefa.objects.filter(id=t.id).update(concluida_em=timezone.now() - timedelta(days=1))
+        ontem = acompanhamento(self.ana, hoje - timedelta(days=1))
+        self.assertEqual([x["feito"] for x in ontem["compartilhados"]], [True])  # aparece no dia em que foi concluído
+
+    def test_lista_arquivada_nao_entra(self):
+        from agenda.models import ChecklistCompartilhado
+        from agenda.services import acompanhamento
+
+        self._compartilhado(self.lider, self.ana)
+        ChecklistCompartilhado.objects.update(arquivado=True)
+        self.assertEqual(acompanhamento(self.ana, timezone.localdate())["total_compartilhados"], 0)
+
+    def test_pendencias_anteriores_e_regularizacao(self):
+        from agenda.models import Checklist
+        from agenda.services import acompanhamento
+
+        hoje = timezone.localdate()
+        c = self._recorrente(self.ana, "Abertura", itens=2, desde=hoje - timedelta(days=3))
+        ac = acompanhamento(self.ana, hoje)
+        self.assertEqual([p["dia"] for p in ac["pendencias"]], [hoje - timedelta(days=1), hoje - timedelta(days=2), hoje - timedelta(days=3)])
+        self.assertEqual(ac["pendencias_total"], 6)  # 3 dias x 2 itens
+        self.assertEqual((ac["total"], ac["feitos"]), (2, 0))  # as pendências não entram no progresso de hoje
+        # regulariza um item de anteontem: vale para aquele dia
+        self.client.force_login(self.ana)
+        item = c.itens.first()
+        anteontem = (hoje - timedelta(days=2)).isoformat()
+        self.assertTrue(self.post("agenda:api_diario_toggle", {"data": anteontem}, [c.id, item.id]).json()["feito"])
+        ac = acompanhamento(self.ana, hoje)
+        self.assertEqual(ac["pendencias_total"], 5)
+        self.assertEqual(Checklist.objects.get().id, c.id)
+        # fora de hoje não há pendências anteriores na tela
+        self.assertEqual(acompanhamento(self.ana, hoje - timedelta(days=1))["pendencias"], [])
+
+    def test_pendencias_so_da_janela_de_7_dias(self):
+        from agenda.services import acompanhamento
+
+        hoje = timezone.localdate()
+        self._recorrente(self.ana, "Antigo", itens=1, desde=hoje - timedelta(days=30))
+        ac = acompanhamento(self.ana, hoje)
+        self.assertEqual(len(ac["pendencias"]), 7)
+        self.assertEqual(min(p["dia"] for p in ac["pendencias"]), hoje - timedelta(days=7))
+
+    def test_pendencia_de_evento_com_checklist_simples(self):
+        from agenda.models import Evento
+        from agenda.services import acompanhamento
+
+        hoje = timezone.localdate()
+        Evento.objects.create(titulo="Backup", criado_por=self.ana, inicio=timezone.now() - timedelta(days=2), dia_inteiro=True,
+                              recorrencia="diaria", checklist=True)
+        ac = acompanhamento(self.ana, hoje)
+        self.assertTrue(ac["pendencias"])
+        self.assertTrue(all(p["faltam"][0]["id"] is None and p["tipo"] == "evento" for p in ac["pendencias"]))
+
+    def test_pagina_mostra_as_secoes_e_marcacao_de_compartilhado(self):
+        hoje = timezone.localdate()
+        self._recorrente(self.ana, "Abertura", itens=2, desde=hoje - timedelta(days=1))
+        self._compartilhado(self.lider, self.ana, tarefas=1, prazo=hoje - timedelta(days=2))
+        self.client.force_login(self.ana)
+        r = self.client.get(reverse("agenda:checklist"))
+        self.assertContains(r, "Meu checklist")
+        self.assertContains(r, "Compartilhados comigo")
+        self.assertContains(r, "Auditoria tarefa 1")
+        self.assertContains(r, "atrasado")
+        self.assertContains(r, "Pendências dos últimos 7 dias")
+        self.assertContains(r, '<span id="ckFeitos">0</span> de 3 concluídos')  # 2 recorrentes + 1 compartilhado
+        self.assertContains(r, 'id="ckResComp">0/1')
+        # outro dia: sem seção de pendências
+        ontem = (hoje - timedelta(days=1)).isoformat()
+        self.assertNotContains(self.client.get(reverse("agenda:checklist"), {"data": ontem}), "Pendências dos últimos 7 dias")
+
+    def test_pagina_vazia_orienta_a_criar(self):
+        self.client.force_login(self.ana)
+        self.assertContains(self.client.get(reverse("agenda:checklist")), "Nenhum item de checklist")
+
+    def test_chefia_vistoria_o_mesmo_acompanhamento_somente_leitura(self):
+        hoje = timezone.localdate()
+        self._recorrente(self.ana, "Abertura", itens=2, desde=hoje - timedelta(days=1))
+        self._compartilhado(self.lider, self.ana, tarefas=2)
+        self.client.force_login(self.lider)
+        r = self.client.get(reverse("agenda:checklist"), {"usuario": self.ana.id})
+        self.assertContains(r, "Compartilhados comigo")
+        self.assertContains(r, "Pendências dos últimos 7 dias")
+        self.assertContains(r, "vistoriando")
+        import re
+
+        caixas = re.findall(r"<input[^>]*ck-box[^>]*>", r.content.decode())
+        self.assertTrue(caixas)
+        self.assertTrue(all("disabled" in c for c in caixas), "a chefia vistoria: nenhuma caixa pode estar habilitada")
+        # a chefia não consegue marcar pelo liderado
+        from agenda.models import Checklist
+
+        c = Checklist.objects.get(titulo="Abertura")
+        r = self.post("agenda:api_diario_toggle", {"data": hoje.isoformat()}, [c.id, c.itens.first().id])
+        self.assertEqual(r.status_code, 404)
+
+    def test_equipe_usa_os_numeros_do_meu_checklist(self):
+        hoje = timezone.localdate()
+        self._recorrente(self.ana, "Abertura", itens=2, desde=hoje - timedelta(days=2))
+        self._compartilhado(self.lider, self.ana, tarefas=1)
+        self.client.force_login(self.lider)
+        linhas = {l["nome"]: l for l in self.client.get(reverse("agenda:equipe")).context["linhas"]}
+        ana = linhas["Pessoa ana"]
+        self.assertEqual((ana["total"], ana["feitos"]), (3, 0))  # 2 recorrentes + 1 compartilhado
+        self.assertEqual(ana["pendencias"], 4)  # 2 dias anteriores x 2 itens
+        self.assertEqual(ana["situacao"], "pendente")
+        self.assertEqual(linhas["Pessoa bia"]["total"], 0)
+
+
+class PluralDosItensTests(_Base):
+    def test_cartao_do_checklist_escreve_item_e_itens_corretamente(self):
+        from agenda.models import Checklist, ChecklistItem
+
+        um = Checklist.objects.create(titulo="Um", criado_por=self.ana)
+        ChecklistItem.objects.create(checklist=um, texto="a")
+        dois = Checklist.objects.create(titulo="Dois", criado_por=self.ana)
+        for n in range(17):
+            ChecklistItem.objects.create(checklist=dois, texto=f"i{n}")
+        self.client.force_login(self.ana)
+        html = self.client.get(reverse("agenda:checklists")).content.decode()
+        self.assertIn("1 item<", html)
+        self.assertIn("17 itens<", html)
+        self.assertNotIn("itemns", html)

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Checklist do dia - Agenda - Calibra QMS{% endblock %}
-{% block header_title %}Checklist do dia{% endblock %}
+{% block title %}Meu checklist - Agenda - Calibra QMS{% endblock %}
+{% block header_title %}Meu checklist{% endblock %}
 
 {% block content %}
-<div class="container py-3" style="max-width: 760px;">
+<div class="container py-3" style="max-width: 820px;">
     {% include "agenda/_alvo_banner.html" %}
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div class="d-flex align-items-center gap-1">
@@ -22,8 +22,14 @@
     <div class="progress mb-3" style="height: 10px;">
         <div class="progress-bar bg-success" id="ckBarra" style="width: {% if total %}{% widthratio feitos total 100 %}{% else %}0{% endif %}%"></div>
     </div>
-    <p class="text-muted small"><span id="ckFeitos">{{ feitos }}</span> de {{ total }} concluídos</p>
+    <p class="text-muted small mb-1"><span id="ckFeitos">{{ feitos }}</span> de {{ total }} concluídos</p>
+    <div class="d-flex flex-wrap gap-2 mb-3 small" id="ckResumo">
+        <span class="badge text-bg-light border"><i class="bi bi-arrow-repeat me-1"></i>Recorrentes e eventos <span id="ckResRec">{{ feitos_dia }}/{{ total_dia }}</span></span>
+        <span class="badge text-bg-light border"><i class="bi bi-people-fill me-1"></i>Compartilhados comigo <span id="ckResComp">{{ feitos_compartilhados }}/{{ total_compartilhados }}</span></span>
+        {% if eh_hoje %}<span class="badge {% if pendencias_total %}text-bg-warning{% else %}text-bg-light border{% endif %}" id="ckResPend"><i class="bi bi-clock-history me-1"></i>Pendências anteriores <span id="ckPendTotal">{{ pendencias_total }}</span></span>{% endif %}
+    </div>
 
+    {% if itens or not compartilhados %}
     <ul class="list-group shadow-sm" id="ckLista">
     {% for i in itens %}
         {% if i.itens %}
@@ -38,14 +44,14 @@
         {% if g.nome %}<li class="list-group-item py-1 ps-4 small fw-semibold text-uppercase text-muted d-flex justify-content-between ck-ghdr" style="background:#fafbfc;"><span><i class="bi bi-folder2-open me-1"></i>{{ g.nome }}{% if g.condicao %} <span class="badge text-bg-light border fw-normal text-lowercase">{{ g.condicao }}</span>{% endif %}</span><span class="ck-gcont">{{ g.feitos }}/{{ g.total }}</span></li>{% endif %}
         {% for x in g.itens %}
         <li class="list-group-item d-flex align-items-center gap-3 {% if g.nome %}ps-5{% else %}ps-4{% endif %}">
-            <input class="form-check-input mt-0 ck-box" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
+            <input class="form-check-input mt-0 ck-box ck-conta" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
             <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}</div>
         </li>
         {% endfor %}
         {% endfor %}
         {% else %}
         <li class="list-group-item d-flex align-items-center gap-3">
-            <input class="form-check-input mt-0 ck-box" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.3rem;height:1.3rem;" data-evento="{{ i.id }}" {% if i.feito %}checked{% endif %}>
+            <input class="form-check-input mt-0 ck-box ck-conta" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.3rem;height:1.3rem;" data-evento="{{ i.id }}" {% if i.feito %}checked{% endif %}>
             <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ i.cor }}"></span>
             <div class="flex-grow-1 {% if i.feito %}text-decoration-line-through text-muted{% endif %}">
                 <div class="fw-semibold">{{ i.titulo }}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}</div>
@@ -56,9 +62,54 @@
         </li>
         {% endif %}
     {% empty %}
-        <li class="list-group-item text-muted text-center py-4">Nenhum item de checklist para este dia. Crie um <a href="{% url 'agenda:checklists' %}">checklist diário</a> ou associe um checklist a um evento na <a href="{% url 'agenda:calendario' %}">Agenda</a>.</li>
+        {% if not compartilhados and not pendencias %}<li class="list-group-item text-muted text-center py-4">Nenhum item de checklist para este dia. Crie um <a href="{% url 'agenda:checklists' %}">checklist diário</a> ou associe um checklist a um evento na <a href="{% url 'agenda:calendario' %}">Agenda</a>.</li>{% endif %}
     {% endfor %}
     </ul>
+    {% endif %}
+
+    {% if compartilhados %}
+    <h6 class="mt-4 mb-2"><i class="bi bi-people-fill me-1"></i>Compartilhados comigo</h6>
+    {% for l in compartilhados %}
+    <ul class="list-group shadow-sm mb-3">
+        <li class="list-group-item bg-light d-flex align-items-center gap-2 ck-ttl">
+            <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ l.cor }}"></span>
+            <a class="fw-semibold text-decoration-none flex-grow-1" href="{% url 'agenda:compartilhado_detalhe' l.lista_id %}">{{ l.titulo }}</a>
+            <span class="badge text-bg-info fw-normal">compartilhado</span>
+        </li>
+        {% for t in l.itens %}
+        <li class="list-group-item d-flex align-items-center gap-3 ps-4">
+            <input class="form-check-input mt-0 ck-box ck-conta" type="checkbox" style="width:1.2rem;height:1.2rem;" data-tarefa="{{ t.id }}" {% if t.feito %}checked{% endif %} {% if somente_leitura %}disabled{% endif %}>
+            <div class="flex-grow-1 {% if t.feito %}text-decoration-line-through text-muted{% endif %}">
+                {{ t.texto }}{% if t.grupo %} <span class="text-muted small">· {{ t.grupo }}</span>{% endif %}
+            </div>
+            {% if t.prazo %}<span class="badge {% if t.atrasada %}text-bg-danger{% else %}text-bg-light border{% endif %}"><i class="bi bi-calendar-event me-1"></i>{{ t.prazo|date:"d/m" }}{% if t.atrasada %} · atrasado{% endif %}</span>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+    {% endfor %}
+    {% endif %}
+
+    {% if pendencias %}
+    <h6 class="mt-4 mb-1"><i class="bi bi-clock-history me-1"></i>Pendências dos últimos 7 dias</h6>
+    <p class="small text-muted mb-2">O que ficou sem marcar. Você pode regularizar aqui; vale para o dia de origem.</p>
+    <ul class="list-group shadow-sm mb-3" id="ckPend">
+    {% for p in pendencias %}
+        <li class="list-group-item py-2 bg-light d-flex align-items-center gap-2 ck-ttl">
+            <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ p.cor }}"></span>
+            <span class="fw-semibold">{{ p.titulo }}</span>
+            <span class="text-muted small">· {{ p.dia|date:"D, d/m" }}{% if p.origem %} · enviado por {{ p.origem }}{% endif %}</span>
+        </li>
+        {% for x in p.faltam %}
+        <li class="list-group-item d-flex align-items-center gap-3 ps-4">
+            <input class="form-check-input mt-0 ck-box ck-pend" type="checkbox" style="width:1.2rem;height:1.2rem;" data-dia="{{ p.dia|date:'Y-m-d' }}"
+                {% if p.tipo == 'checklist_diario' %}data-checklist="{{ p.id }}" data-item="{{ x.id }}"{% elif x.id %}data-evento="{{ p.id }}" data-item="{{ x.id }}"{% else %}data-evento="{{ p.id }}"{% endif %}
+                {% if somente_leitura %}disabled{% endif %}>
+            <div class="flex-grow-1">{{ x.texto }}{% if x.grupo %} <span class="text-muted small">· {{ x.grupo }}</span>{% endif %}</div>
+        </li>
+        {% endfor %}
+    {% endfor %}
+    </ul>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -66,6 +117,7 @@
 <script>
 (function () {
     const DIA = "{{ dia|date:'Y-m-d' }}", CSRF = "{{ csrf_token }}", TOTAL = {{ total }};
+    const urlTarefa = id => "{% url 'agenda:api_tarefa_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
     const urlEv = id => "{% url 'agenda:api_checklist_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
     const urlDiario = (ck, it) => "{% url 'agenda:api_diario_toggle' 0 0 %}".replace(/0\/item\/0\/diario\/$/, ck + "/item/" + it + "/diario/");
     const urlItem = (ev, it) => "{% url 'agenda:api_item_toggle' 0 0 %}".replace(/0\/item\/0\/toggle\/$/, ev + "/item/" + it + "/toggle/");
@@ -78,20 +130,28 @@
             if (cur && box) { cur.total++; if (box.checked) cur.feitos++; cur.el.querySelector(".ck-gcont").textContent = cur.feitos + "/" + cur.total; }
         });
     }
+    function atualizarResumo() {  // progresso único e contadores por origem
+        const conta = [...document.querySelectorAll(".ck-conta")], comp = conta.filter(b => b.dataset.tarefa), rec = conta.filter(b => !b.dataset.tarefa);
+        const f = l => l.filter(b => b.checked).length;
+        document.getElementById("ckFeitos").textContent = f(conta);
+        document.getElementById("ckBarra").style.width = (conta.length ? Math.round(100 * f(conta) / conta.length) : 0) + "%";
+        document.getElementById("ckResRec").textContent = f(rec) + "/" + rec.length;
+        document.getElementById("ckResComp").textContent = f(comp) + "/" + comp.length;
+        const pend = document.querySelectorAll(".ck-pend"), falta = [...pend].filter(b => !b.checked).length;
+        const t = document.getElementById("ckPendTotal"); if (t) { t.textContent = falta; document.getElementById("ckResPend").className = "badge " + (falta ? "text-bg-warning" : "text-bg-light border"); }
+    }
     document.querySelectorAll(".ck-box").forEach(box => box.addEventListener("change", async () => {
-        const url = box.dataset.checklist ? urlDiario(box.dataset.checklist, box.dataset.item)
+        const url = box.dataset.tarefa ? urlTarefa(box.dataset.tarefa) : box.dataset.checklist ? urlDiario(box.dataset.checklist, box.dataset.item)
             : box.dataset.item ? urlItem(box.dataset.evento, box.dataset.item) : urlEv(box.dataset.evento);
         const r = await fetch(url, {method: "POST", credentials: "same-origin",
-            headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify({data: DIA})});
+            headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify({data: box.dataset.dia || DIA})});
         const j = await r.json().catch(() => ({success: false}));
         if (!j.success) { box.checked = !box.checked; return; }
         const alvo = box.closest("li").querySelector(".flex-grow-1");
         alvo.classList.toggle("text-decoration-line-through", j.feito);
         alvo.classList.toggle("text-muted", j.feito);
-        const feitos = document.querySelectorAll(".ck-box:checked").length;
-        document.getElementById("ckFeitos").textContent = feitos;
         atualizarGrupos();
-        document.getElementById("ckBarra").style.width = (TOTAL ? Math.round(100 * feitos / TOTAL) : 0) + "%";
+        atualizarResumo();
     }));
 })();
 </script>

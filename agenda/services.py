@@ -266,7 +266,112 @@ def agenda_do_periodo(user, de: date, ate: date, editor=None):
 
 
 def checklist_do_dia(user, dia: date):
-    """Tudo o que entra no Checklist do dia: eventos com checklist + checklists diários (com ou sem agenda)."""
+    """Checklists recorrentes e de eventos de um dia: eventos com checklist + checklists recorrentes (com ou sem agenda)."""
     todos = ocorrencias(user, dia, dia, so_checklist=True) + checklists_diarios(user, dia, dia)
     todos.sort(key=lambda o: (o["hora_inicio"] or datetime.min.time(), o["titulo"]))
     return todos
+
+
+# ----------------------------------------------------------------------------------------------
+# Meu checklist: acompanhamento único de todos os checklists ativos do usuário
+# ----------------------------------------------------------------------------------------------
+JANELA_PENDENCIAS = 7  # dias para trás em que o que ficou sem marcar vira "pendência anterior"
+
+
+def _contagem(ocorrencia):
+    """(total, feitos) de uma ocorrência: itens do checklist ou, sem itens, o próprio evento como um item."""
+    if ocorrencia["itens"]:
+        return len(ocorrencia["itens"]), sum(1 for i in ocorrencia["itens"] if i["feito"])
+    return 1, int(ocorrencia["feito"])
+
+
+def itens_compartilhados_do_usuario(user, dia: date, hoje: date):
+    """Itens de checklists compartilhados cujo responsável é o usuário.
+
+    Pendentes aparecem no dia de hoje (não pertencem a um dia específico); os concluídos, no dia em que foram concluídos.
+    """
+    from agenda.models import CompartilhadoTarefa
+
+    saida = []
+    qs = CompartilhadoTarefa.objects.filter(responsavel=user, lista__arquivado=False).select_related(
+        "lista", "concluida_por"
+    )
+    for t in qs:
+        if t.concluida:
+            if not (t.concluida_em and timezone.localtime(t.concluida_em).date() == dia):
+                continue
+        elif dia != hoje:
+            continue
+        saida.append(
+            {
+                "id": t.id,
+                "texto": t.texto,
+                "grupo": t.grupo,
+                "lista_id": t.lista_id,
+                "lista_titulo": t.lista.titulo,
+                "cor": t.lista.cor,
+                "prazo": t.prazo,
+                "atrasada": t.atrasada(hoje),
+                "feito": t.concluida,
+                "concluida_por": (t.concluida_por.get_full_name() or t.concluida_por.username) if t.concluida_por_id else "",
+            }
+        )
+    saida.sort(key=lambda x: (x["feito"], x["prazo"] or date.max, x["lista_titulo"], x["texto"]))
+    return saida
+
+
+def pendencias_anteriores(user, hoje: date, janela: int = JANELA_PENDENCIAS):
+    """O que ficou sem marcar nos últimos `janela` dias (só checklists recorrentes e de eventos), do mais recente ao mais antigo.
+
+    Cada entrada é uma ocorrência com os itens que faltam: {dia, titulo, tipo, id, origem, cor, faltam: [item...], total}.
+    """
+    de, ate = hoje - timedelta(days=janela), hoje - timedelta(days=1)
+    todos = ocorrencias(user, de, ate, so_checklist=True) + checklists_diarios(user, de, ate)
+    saida = []
+    for o in todos:
+        total, feitos = _contagem(o)
+        if feitos >= total:
+            continue
+        faltam = [i for i in o["itens"] if not i["feito"]] if o["itens"] else [{"id": None, "texto": o["titulo"], "grupo": ""}]
+        saida.append(
+            {
+                "dia": o["dia"],
+                "titulo": o["titulo"],
+                "tipo": o["tipo"],
+                "id": o["id"],
+                "origem": o["origem"],
+                "cor": o["cor"],
+                "faltam": faltam,
+                "total": total,
+            }
+        )
+    saida.sort(key=lambda p: (p["dia"], p["titulo"]), reverse=True)
+    return saida
+
+
+def acompanhamento(user, dia: date):
+    """Meu checklist: tudo o que está ativo para o usuário, num acompanhamento só.
+
+    - `itens`: checklists recorrentes (próprios e recebidos) e de eventos do dia (com agrupamentos);
+    - `compartilhados`: itens de checklists compartilhados atribuídos ao usuário;
+    - `pendencias`: o que ficou sem marcar nos últimos dias (só na visão de hoje);
+    - `total`/`feitos`: progresso único (itens do dia + compartilhados), sem contar as pendências anteriores.
+    """
+    hoje = timezone.localdate()
+    itens = checklist_do_dia(user, dia)
+    compartilhados = itens_compartilhados_do_usuario(user, dia, hoje)
+    pendencias = pendencias_anteriores(user, hoje) if dia == hoje else []
+    total_dia = sum(_contagem(o)[0] for o in itens)
+    feitos_dia = sum(_contagem(o)[1] for o in itens)
+    return {
+        "itens": itens,
+        "compartilhados": compartilhados,
+        "pendencias": pendencias,
+        "total_dia": total_dia,
+        "feitos_dia": feitos_dia,
+        "total_compartilhados": len(compartilhados),
+        "feitos_compartilhados": sum(1 for t in compartilhados if t["feito"]),
+        "total": total_dia + len(compartilhados),
+        "feitos": feitos_dia + sum(1 for t in compartilhados if t["feito"]),
+        "pendencias_total": sum(len(p["faltam"]) for p in pendencias),
+    }
