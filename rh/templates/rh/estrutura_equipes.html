@@ -21,6 +21,9 @@
   .ee-aloc:last-child { border-bottom: 0; }
   .ee-aloc .ee-quem { flex: 1 1 auto; min-width: 0; }
   .ee-lista { max-height: 50vh; overflow: auto; }
+  .ee-barra { position: sticky; top: var(--ee-topo, 60px); z-index: 1020; margin: 0 -.75rem; padding: 0 .75rem; }
+  .ee-busca { width: 22rem; max-width: 100%; }
+  .ee-painel { position: absolute; top: calc(100% + .35rem); left: 0; z-index: 1030; width: 22rem; max-width: 90vw; }
   .ee-qc { cursor: grab; border-left: 3px solid #0d6efd; }
   .ee-qc-vago { border-left-color: #dc3545; } .ee-qc-reserva { border-left-color: #0dcaf0; }
   .ee-qc-sel { background: rgba(13,110,253,.1); box-shadow: 0 0 0 1px #0d6efd; }
@@ -29,46 +32,56 @@
   .ee-lane-over { background: rgba(25,135,84,.12); border-color: #198754; }
 </style>
 
-<div class="container-fluid py-4" id="ee-app" data-pode-editar="{{ pode_editar|yesno:'1,0' }}">
+<div class="container-fluid pb-4 pt-2" id="ee-app" data-pode-editar="{{ pode_editar|yesno:'1,0' }}">
   {% csrf_token %}
-  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
-    <div>
-      <h1 class="h3 mb-0"><i class="bi bi-diagram-3-fill text-primary me-2"></i>Estrutura de Equipes e Turnos</h1>
-      <p class="text-muted small mt-1 mb-0">Monte a estrutura livremente: <b>Setor</b> (com os <b>turnos</b> dele) › <b>Bloco</b> › <b>Posto de trabalho</b> e, em cada posto, aloque por turno <b>colaboradores</b>, <b>VAGO</b> (necessário contratar) ou <b>Reserva</b> (equipamento reserva instalado). Setores e turnos são cadastrados aqui, independentes de outros módulos.</p>
+  <!-- Barra superior compacta e fixa: abas, busca, filtros, ajuda e ações -->
+  <div id="ee-barra" class="ee-barra bg-body border-bottom shadow-sm">
+    <div class="d-flex flex-wrap gap-2 align-items-center py-2">
+      <ul class="nav nav-pills flex-nowrap" id="ee-abas">
+        <li class="nav-item"><button type="button" class="nav-link active py-1" data-aba="estrutura" title="Estrutura"><i class="bi bi-diagram-3 me-1"></i>Estrutura</button></li>
+        <li class="nav-item"><button type="button" class="nav-link py-1" data-aba="quadro" title="Quadro por turno"><i class="bi bi-grid-3x3-gap me-1"></i>Quadro por turno</button></li>
+        <li class="nav-item"><button type="button" class="nav-link py-1" data-aba="pessoas" title="Colaboradores"><i class="bi bi-people me-1"></i>Colaboradores</button></li>
+      </ul>
+      <div class="input-group input-group-sm ee-busca">
+        <span class="input-group-text"><i class="bi bi-search"></i></span>
+        <input type="search" class="form-control" id="ee-busca" placeholder="Buscar setor, bloco, posto ou colaborador" aria-label="Buscar">
+      </div>
+      <div class="position-relative">
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="ee-btn-filtros" title="Filtros" aria-expanded="false" aria-controls="ee-painel-filtros"><i class="bi bi-funnel"></i><span class="badge bg-primary ms-1 d-none" id="ee-filtros-n">0</span></button>
+        <div id="ee-painel-filtros" class="ee-painel card shadow d-none">
+          <div class="card-body p-3">
+            <label class="form-label small fw-semibold mb-1" for="ee-filtro-setor">Setor</label>
+            <select class="form-select form-select-sm mb-3" id="ee-filtro-setor" aria-label="Filtrar por setor"></select>
+            <div class="small fw-semibold mb-1">Turno</div>
+            <div class="d-flex flex-wrap gap-2" id="ee-turnos-filtro" aria-label="Filtro por turno"></div>
+            <div class="text-end mt-3"><button type="button" class="btn btn-sm btn-link p-0" id="ee-filtros-limpar">Limpar filtros</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="position-relative">
+        <button type="button" class="btn btn-sm btn-outline-info" id="ee-btn-ajuda" title="Ajuda" aria-expanded="false" aria-controls="ee-painel-ajuda"><i class="bi bi-info-circle"></i></button>
+        <div id="ee-painel-ajuda" class="ee-painel card shadow d-none">
+          <div class="card-body p-3 small">Monte a estrutura livremente: <b>Setor</b> (com os <b>turnos</b> dele) › <b>Bloco</b> › <b>Posto de trabalho</b> e, em cada posto, aloque por turno <b>colaboradores</b>, <b>VAGO</b> (necessário contratar) ou <b>Reserva</b> (equipamento reserva instalado). Setores e turnos são cadastrados aqui, independentes de outros módulos.<hr class="my-2"><b>Quadro por turno:</b> marque os cards e use <b>Remover selecionados</b> para tirá-los do posto; arraste um card para outro turno, posto, bloco ou setor.</div>
+        </div>
+      </div>
+      <div class="d-none align-items-center gap-2" id="ee-q-acoes">
+        <span class="small fw-semibold text-primary" id="ee-q-sel-info"></span>
+        <button type="button" class="btn btn-sm btn-link p-0 d-none" id="ee-q-limpar-sel">Limpar seleção</button>
+        {% if pode_editar %}<button type="button" class="btn btn-sm btn-outline-danger" id="ee-q-remover" disabled title="Remover selecionados do posto"><i class="bi bi-person-dash"></i><span class="d-none d-xl-inline ms-1">Remover selecionados</span></button>{% else %}<button type="button" class="d-none" id="ee-q-remover" disabled></button>{% endif %}
+      </div>
+      <div class="d-flex gap-1 ms-auto">
+        {% if pode_editar %}
+        <a href="{% url 'rh:importar_estrutura_equipes' %}" class="btn btn-sm btn-outline-primary" title="Importar planilha"><i class="bi bi-file-earmark-excel"></i><span class="d-none d-xl-inline ms-1">Importar</span></a>
+        <button type="button" class="btn btn-sm btn-primary" id="ee-btn-novo-setor" title="Novo setor"><i class="bi bi-plus-circle"></i><span class="d-none d-xl-inline ms-1">Novo setor</span></button>
+        {% endif %}
+        <a href="{% url 'modulo_rh' %}" class="btn btn-sm btn-secondary" title="Voltar"><i class="bi bi-arrow-left"></i><span class="d-none d-xl-inline ms-1">Voltar</span></a>
+      </div>
     </div>
-    <div class="d-flex gap-2">
-      {% if pode_editar %}
-      <a href="{% url 'rh:importar_estrutura_equipes' %}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-excel me-1"></i>Importar planilha</a>
-      <button type="button" class="btn btn-primary" id="ee-btn-novo-setor"><i class="bi bi-plus-circle me-1"></i>Novo setor</button>
-      {% endif %}
-      <a href="{% url 'modulo_rh' %}" class="btn btn-secondary"><i class="bi bi-arrow-left me-1"></i>Voltar</a>
-    </div>
+    <div id="ee-alert" class="alert d-none py-2 mb-2" role="alert"></div>
   </div>
-
-  <div id="ee-alert" class="alert d-none" role="alert"></div>
-
-  <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
-    <span class="text-muted small me-1">Setor:</span>
-    <select class="form-select form-select-sm w-auto" id="ee-filtro-setor" aria-label="Filtrar por setor"></select>
-  </div>
-
-  <div class="d-flex flex-wrap gap-2 mb-3 align-items-center" id="ee-turnos-filtro" aria-label="Filtro por turno">
-    <span class="text-muted small me-1">Turno:</span>
-  </div>
-
-  <ul class="nav nav-pills mb-3" id="ee-abas">
-    <li class="nav-item"><button type="button" class="nav-link active" data-aba="estrutura"><i class="bi bi-diagram-3 me-1"></i>Estrutura</button></li>
-    <li class="nav-item"><button type="button" class="nav-link" data-aba="quadro"><i class="bi bi-grid-3x3-gap me-1"></i>Quadro por turno</button></li>
-    <li class="nav-item"><button type="button" class="nav-link" data-aba="pessoas"><i class="bi bi-people me-1"></i>Colaboradores</button></li>
-  </ul>
+  <div class="pt-3"></div>
 
   <div class="card border-0 shadow-sm d-none" id="ee-quadro">
-    <div class="card-header bg-white d-flex flex-wrap gap-2 align-items-center">
-      <span class="small text-muted">Marque os cards e use <b>Remover selecionados</b> para tirá-los do posto. Arraste um card para outro turno, posto, bloco ou setor.</span>
-      <span class="small fw-semibold text-primary ms-auto" id="ee-q-sel-info"></span>
-      <button type="button" class="btn btn-sm btn-link d-none" id="ee-q-limpar-sel">Limpar seleção</button>
-      {% if pode_editar %}<button type="button" class="btn btn-sm btn-outline-danger" id="ee-q-remover" disabled><i class="bi bi-person-dash me-1"></i>Remover selecionados</button>{% else %}<button type="button" class="d-none" id="ee-q-remover" disabled></button>{% endif %}
-    </div>
     <div class="card-body p-3" id="ee-quadro-conteudo"></div>
     <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Cards: Setor › Bloco › Posto de trabalho › turnos › colaboradores.</div>
   </div>
@@ -78,7 +91,6 @@
       <span class="fw-bold">Colaboradores <span class="badge bg-secondary" id="ee-p-total">0</span></span>
       <div class="d-flex flex-wrap gap-2 align-items-center">
         <select class="form-select form-select-sm w-auto" id="ee-p-setor" aria-label="Setor no cadastro do colaborador" title="Setor no cadastro do colaborador (independente dos setores desta estrutura)"></select>
-        <input type="search" class="form-control form-control-sm" id="ee-p-busca" placeholder="Buscar nome ou matrícula" style="width:15rem" aria-label="Buscar colaborador">
         <div class="form-check mb-0"><input class="form-check-input" type="checkbox" id="ee-p-sem"><label class="form-check-label small" for="ee-p-sem">Somente sem posto</label></div>
       </div>
     </div>
@@ -279,7 +291,7 @@
   // O bootstrap.bundle.js é carregado DEPOIS deste bloco (base_desktop.html): modais só são criados no uso.
   const modal = id => bootstrap.Modal.getOrCreateInstance($(id));
 
-  const state = { setoresCadastro: [], setor: '', labels: {}, setores: [], grupos: [], alocs: [], turnoMap: {}, turno: '', sel: null, abertos: new Set(), tudoAberto: true };
+  const state = { setoresCadastro: [], setor: '', labels: {}, setores: [], grupos: [], alocs: [], turnoMap: {}, turno: '', busca: '', sel: null, abertos: new Set(), tudoAberto: true };
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   // Ordenação automática por nome: sem diferenciar maiúsculas/acentos e com números em ordem natural (DLP 2 antes de DLP 10).
   const cmp = new Intl.Collator('pt-BR', { numeric: true, sensitivity: 'base' }).compare;
@@ -294,6 +306,16 @@
   const postosDe = bid => state.grupos.filter(g => g.parent_id === bid).sort(ordena);
   const key = (t, id) => t + id;
   const setoresVisiveis = () => state.setor ? state.setores.filter(s => s.id === +state.setor) : state.setores;
+  // busca escrita: casa com setor, bloco, posto ou nome de quem está alocado
+  const buscaOk = p => {
+    if (!state.busca) return true;
+    const b = p.parent_id ? grupo(p.parent_id) : null;
+    const nomes = state.alocs.filter(a => a.posto_id === p.id).map(a => a.nome).join(' ');
+    return norm([(setorDe(p.setor_id) || {}).nome, b && b.nome, p.nome, nomes].join(' ')).includes(state.busca);
+  };
+  const postosBusca = bid => postosDe(bid).filter(buscaOk);
+  const blocosBusca = sid => blocosDe(sid).filter(b => !state.busca || postosBusca(b.id).length || norm(b.nome).includes(state.busca));
+  const setoresBusca = () => setoresVisiveis().filter(s => !state.busca || blocosBusca(s.id).length || norm(s.nome).includes(state.busca));
   const postoVisivel = p => !state.setor || p.setor_id === +state.setor;
   const alocsVisiveis = () => state.alocs.filter(a => { const p = grupo(a.posto_id); return p && postoVisivel(p); });
   const guarda = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
@@ -383,7 +405,12 @@
     renderFiltro(); renderArvore(); renderDetalhe(); renderQuadro(); renderPessoasAcoes();
   }
 
+  function badgeFiltros() {
+    const n = (state.setor ? 1 : 0) + (state.turno ? 1 : 0); const b = $('ee-filtros-n'); b.textContent = n; b.classList.toggle('d-none', !n);
+    $('ee-btn-filtros').classList.toggle('btn-outline-secondary', !n); $('ee-btn-filtros').classList.toggle('btn-secondary', !!n);
+  }
   function renderFiltro() {
+    setTimeout(badgeFiltros, 0);
     const box = $('ee-turnos-filtro'); box.querySelectorAll('.ee-turno-pill').forEach(e => e.remove());
     const nomes = turnosVisiveis();
     if (state.turno && !nomes.some(t => t.chave === state.turno)) state.turno = '';
@@ -418,15 +445,15 @@
 
   function renderArvore() {
     const ul = $('ee-tree'); ul.innerHTML = '';
-    $('ee-tree-vazio').classList.toggle('d-none', setoresVisiveis().length > 0);
-    setoresVisiveis().forEach(s => {
-      const blocos = blocosDe(s.id); const ks = key('s', s.id); const ab = state.abertos.has(ks);
+    $('ee-tree-vazio').classList.toggle('d-none', setoresBusca().length > 0);
+    setoresBusca().forEach(s => {
+      const blocos = blocosBusca(s.id); const ks = key('s', s.id); const ab = state.abertos.has(ks);
       const li = noArvore('setor', s.id, '<i class="bi bi-building text-dark"></i>', s.nome, badgesCont(cont(alocsDe(idsPostosDoNo({ t: 'setor', id: s.id })))), true,
         () => selecionar('setor', s.id), () => abrirGrupo({ tipo: 'bloco', setorId: s.id }), 'Novo bloco neste setor', blocos.length > 0, ab, () => alterna(ks), () => abrirGrupo({ tipo: 'setor', setorEditId: s.id }));
       if (blocos.length && ab) {
         const ub = document.createElement('ul'); li.appendChild(ub);
         blocos.forEach(b => {
-          const postos = postosDe(b.id); const kb = key('g', b.id); const abb = state.abertos.has(kb);
+          const postos = postosBusca(b.id); const kb = key('g', b.id); const abb = state.abertos.has(kb);
           const lb = noArvore('bloco', b.id, '<i class="bi bi-grid-3x3-gap text-primary"></i>', b.nome, badgesCont(cont(alocsDe(idsPostosDoNo({ t: 'bloco', id: b.id })))), b.ativo,
             () => selecionar('bloco', b.id), () => abrirGrupo({ tipo: 'posto', parentId: b.id }), 'Novo posto neste bloco', postos.length > 0, abb, () => alterna(kb), () => abrirGrupo({ editId: b.id }));
           if (postos.length && abb) {
@@ -533,14 +560,14 @@
   }
   function renderQuadro() {
     let h = '', vagas = 0, reservas = 0;
-    setoresVisiveis().forEach(s => {
-      const cols = colunasDoSetor(s.id); const blocos = blocosDe(s.id);
+    setoresBusca().forEach(s => {
+      const cols = colunasDoSetor(s.id); const blocos = blocosBusca(s.id);
       h += '<div class="card ee-qs mb-3 shadow-sm"><div class="card-header bg-dark text-white fw-bold"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</div><div class="card-body bg-light">';
       if (!cols.length) h += '<div class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : ' — edite o setor para definir os turnos') + '.</div>';
       else if (!blocos.length) h += '<div class="text-muted">Este setor ainda não tem blocos.</div>';
-      else h += '<div class="row g-3">' + blocos.map(b => {
-        const postos = postosDe(b.id);
-        return '<div class="col-12 col-xxl-6"><div class="card ee-qb h-100"><div class="card-header fw-semibold bg-body-secondary"><i class="bi bi-boxes me-1"></i>' + esc(b.nome) + '</div><div class="card-body d-grid gap-2">' +
+      else h += '<div class="d-grid gap-3">' + blocos.map(b => {
+        const postos = postosBusca(b.id);
+        return '<div class="col-12"><div class="card ee-qb"><div class="card-header fw-semibold bg-body-secondary"><i class="bi bi-boxes me-1"></i>' + esc(b.nome) + '</div><div class="card-body d-grid gap-2">' +
           (postos.length ? postos.map(p => {
             return '<div class="card ee-qp' + (p.ativo ? '' : ' opacity-50') + '"><div class="card-header py-1 small fw-semibold"><i class="bi bi-person-workspace me-1"></i>' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</div>' +
               '<div class="card-body p-2"><div class="row g-2">' + cols.map(c => {
@@ -554,7 +581,7 @@
       }).join('') + '</div>';
       h += '</div></div>';
     });
-    if (!setoresVisiveis().length) h = '<div class="p-3 text-muted">Nada cadastrado.</div>';
+    if (!setoresBusca().length) h = '<div class="p-3 text-muted">Nada cadastrado.</div>';
     const box = $('ee-quadro-conteudo'); box.innerHTML = h;
     box.querySelectorAll('.ee-q-add').forEach(b => b.onclick = () => abrirAloc({ postoId: +b.dataset.posto, turnoId: +b.dataset.turno }));
     box.querySelectorAll('.ee-q-edit').forEach(a => a.onclick = e => { e.preventDefault(); abrirAloc({ alocId: +a.dataset.aloc }); });
@@ -603,6 +630,7 @@
   function trocaAba(aba) {
     document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.classList.toggle('active', b.dataset.aba === aba));
     $('ee-quadro').classList.toggle('d-none', aba !== 'quadro'); $('ee-estrutura').classList.toggle('d-none', aba !== 'estrutura'); $('ee-pessoas').classList.toggle('d-none', aba !== 'pessoas');
+    $('ee-q-acoes').classList.toggle('d-none', aba !== 'quadro'); $('ee-q-acoes').classList.toggle('d-flex', aba === 'quadro');
     if (aba === 'pessoas') carregarPessoas();
   }
 
@@ -812,7 +840,7 @@
   }
   async function carregarPessoas() {
     const p = new URLSearchParams({ limite: 200 });
-    const q = $('ee-p-busca').value.trim(); if (q) p.set('q', q);
+    const q = $('ee-busca').value.trim(); if (q) p.set('q', q);
     if ($('ee-p-setor').value) p.set('setor_cadastro_id', $('ee-p-setor').value);
     if ($('ee-p-sem').checked) p.set('sem_posto', '1');
     try {
@@ -854,7 +882,19 @@
   document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.onclick = () => trocaAba(b.dataset.aba));
   state.setor = le('ee-setor');
   $('ee-filtro-setor').onchange = e => { state.setor = e.target.value; aplicaFiltroSetor(); };
-  $('ee-p-busca').addEventListener('input', debounce(carregarPessoas));
+  $('ee-busca').addEventListener('input', debounce(() => {
+    state.busca = norm($('ee-busca').value);
+    if (!$('ee-pessoas').classList.contains('d-none')) carregarPessoas(); else { renderArvore(); renderQuadro(); }
+  }));
+  // painéis suspensos (filtros e ajuda), sem depender do Bootstrap
+  const paineis = [['ee-btn-filtros', 'ee-painel-filtros'], ['ee-btn-ajuda', 'ee-painel-ajuda']];
+  const fechaPaineis = (exceto) => paineis.forEach(([b, p]) => { if (p !== exceto) { $(p).classList.add('d-none'); $(b).setAttribute('aria-expanded', 'false'); } });
+  paineis.forEach(([b, p]) => $(b).addEventListener('click', e => { e.stopPropagation(); fechaPaineis(p); const abre = $(p).classList.toggle('d-none') === false; $(b).setAttribute('aria-expanded', abre); }));
+  document.addEventListener('click', e => { if (!e.target.closest('.ee-painel')) fechaPaineis(null); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') fechaPaineis(null); });
+  $('ee-filtros-limpar').onclick = () => { state.setor = ''; state.turno = ''; $('ee-filtro-setor').value = ''; aplicaFiltroSetor(); };
+  const ajustaTopo = () => { const n = document.querySelector('.navbar.fixed-top'); const fixa = n && getComputedStyle(n).position === 'fixed'; document.documentElement.style.setProperty('--ee-topo', (fixa ? n.offsetHeight : 0) + 'px'); };
+  ajustaTopo(); window.addEventListener('resize', ajustaTopo);
   $('ee-p-sem').onchange = carregarPessoas;
   $('ee-p-setor').onchange = carregarPessoas;
   $('ee-btn-expandir').onclick = () => {

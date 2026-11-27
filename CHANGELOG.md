@@ -21,6 +21,7 @@ Alterações que ainda não foram lançadas em uma versão oficial.
 - **Periodicidade dos checklists recorrentes**: além da diária (dias da semana), agora semanal, quinzenal (a cada 2 semanas nos dias marcados), mensal, bimestral, trimestral, semestral e anual (dia do mês; meses curtos usam o último dia). A contagem parte da data em que o checklist é salvo ou tem a periodicidade alterada. Migração aditiva `agenda.0007` (checklists existentes continuam diários).
 
 ### ✨ Adicionado (Módulo de Pessoas)
+- **Estrutura de Equipes › topo compacto e fixo**: sem título; abas, busca escrita (setor, bloco, posto ou colaborador), botão de filtros (setor e turno, com contador), ícone de ajuda e ações (Importar, Novo setor, Voltar, Remover selecionados) numa única barra que fica congelada sob a barra de navegação.
 - **Estrutura de Equipes › Quadro por turno em cards** (Setor › Bloco › Posto › turnos › colaboradores): cards de colaborador/VAGO/Reserva arrastáveis entre turnos, postos, blocos e setores (arrastar um card marcado leva todos os marcados), caixa de marcação e botão **Remover selecionados** para tirar o nome do posto.
 - **Pop-up de alocação**: filtros por setor, turno, líder e cargo, opção "somente sem posto", paginação (10/25/50) e seleção mantida entre páginas; API de membros com `lider_id`, `cargo`, `pagina`, `por_pagina` e `opcoes`.
 - **Estrutura de Equipes e Turnos** (menu Pessoas › Equipe): estrutura de trabalho em Setor › Bloco › Posto de trabalho, com titular e situação por turno e associação das pessoas aos postos
