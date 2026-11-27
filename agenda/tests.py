@@ -937,3 +937,66 @@ class AgrupamentosTests(_Base):
         r = self.client.get(reverse("agenda:compartilhado_detalhe", args=[lista.id]))
         self.assertEqual([(g["nome"], g["feitas"], g["total"]) for g in r.context["grupos"]], [("Documentos", 1, 2), ("Logística", 0, 1)])
         self.assertContains(r, "Logística")
+
+
+class ChecklistPeriodicidadeTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.a = User.objects.create_superuser("adm", "a@a.com", "x")
+        self.client.force_login(self.a)
+
+    def _ck(self, **kw):
+        from agenda.models import Checklist, ChecklistItem
+
+        base = dict(titulo="P", criado_por=self.a, diario=True, diario_desde=date(2026, 1, 5))  # segunda
+        base.update(kw)
+        c = Checklist.objects.create(**base)
+        ChecklistItem.objects.create(checklist=c, texto="x")
+        return c
+
+    def _dias(self, c, de, ate):
+        from agenda.services import checklists_diarios
+
+        return [o["dia"] for o in checklists_diarios(self.a, de, ate) if o["checklist_id"] == c.id]
+
+    def test_semanal_so_no_dia_escolhido(self):
+        c = self._ck(periodicidade="semanal", dias_semana="2")
+        self.assertEqual(self._dias(c, date(2026, 1, 5), date(2026, 1, 25)), [date(2026, 1, 7), date(2026, 1, 14), date(2026, 1, 21)])
+
+    def test_quinzenal_a_cada_duas_semanas(self):
+        c = self._ck(periodicidade="quinzenal", dias_semana="0,4")
+        self.assertEqual(
+            self._dias(c, date(2026, 1, 5), date(2026, 2, 1)),
+            [date(2026, 1, 5), date(2026, 1, 9), date(2026, 1, 19), date(2026, 1, 23)],
+        )
+
+    def test_mensal_usa_ultimo_dia_em_mes_curto(self):
+        c = self._ck(periodicidade="mensal", dia_mes=31)
+        self.assertEqual(
+            self._dias(c, date(2026, 1, 5), date(2026, 4, 30)),
+            [date(2026, 1, 31), date(2026, 2, 28), date(2026, 3, 31), date(2026, 4, 30)],
+        )
+
+    def test_trimestral_e_anual(self):
+        c = self._ck(periodicidade="trimestral", dia_mes=10)
+        self.assertEqual(self._dias(c, date(2026, 1, 5), date(2026, 12, 31)), [date(2026, 1, 10), date(2026, 4, 10), date(2026, 7, 10), date(2026, 10, 10)])
+        a = self._ck(periodicidade="anual", dia_mes=5)
+        self.assertEqual(self._dias(a, date(2026, 1, 1), date(2028, 12, 31)), [date(2026, 1, 5), date(2027, 1, 5), date(2028, 1, 5)])
+
+    def test_salvar_e_detalhe(self):
+        from agenda.models import Checklist
+
+        corpo = {"titulo": "Mensal", "itens": [{"texto": "a"}], "diario": True, "periodicidade": "mensal", "dia_mes": 15}
+        r = self.client.post(reverse("agenda:checklist_salvar"), json.dumps(corpo), content_type="application/json")
+        self.assertTrue(r.json()["success"])
+        c = Checklist.objects.get()
+        self.assertEqual((c.periodicidade, c.dia_mes), ("mensal", 15))
+        d = self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).json()["checklist"]
+        self.assertEqual((d["periodicidade"], d["dia_mes"]), ("mensal", 15))
+        for ruim in ({"dia_mes": 40}, {"dia_mes": None}, {"periodicidade": "x"}):
+            r = self.client.post(reverse("agenda:checklist_salvar"), json.dumps({**corpo, **ruim}), content_type="application/json")
+            self.assertEqual(r.status_code, 400)
+        quinz = {**corpo, "periodicidade": "quinzenal", "dias_semana": []}
+        self.assertEqual(self.client.post(reverse("agenda:checklist_salvar"), json.dumps(quinz), content_type="application/json").status_code, 400)

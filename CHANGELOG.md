@@ -11,7 +11,12 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e us
 ### 🔄 Em Desenvolvimento
 Alterações que ainda não foram lançadas em uma versão oficial.
 
+### ✨ Adicionado (Agenda)
+- **Periodicidade dos checklists recorrentes**: além da diária (dias da semana), agora semanal, quinzenal (a cada 2 semanas nos dias marcados), mensal, bimestral, trimestral, semestral e anual (dia do mês; meses curtos usam o último dia). A contagem parte da data em que o checklist é salvo ou tem a periodicidade alterada. Migração aditiva `agenda.0007` (checklists existentes continuam diários).
+
 ### ✨ Adicionado (Módulo de Pessoas)
+- **Estrutura de Equipes › Quadro por turno em cards** (Setor › Bloco › Posto › turnos › colaboradores): cards de colaborador/VAGO/Reserva arrastáveis entre turnos, postos, blocos e setores (arrastar um card marcado leva todos os marcados), caixa de marcação e botão **Remover selecionados** para tirar o nome do posto.
+- **Pop-up de alocação**: filtros por setor, turno, líder e cargo, opção "somente sem posto", paginação (10/25/50) e seleção mantida entre páginas; API de membros com `lider_id`, `cargo`, `pagina`, `por_pagina` e `opcoes`.
 - **Estrutura de Equipes e Turnos** (menu Pessoas › Equipe): estrutura de trabalho em Setor › Bloco › Posto de trabalho, com titular e situação por turno e associação das pessoas aos postos
 - Posto sem pessoa associada é marcado como **VAGO** (necessário contratar) ou **RESERVA** (equipamento reserva instalado); aba "Quadro por turno" com resumo de vagas e reservas
 - Movimentação em lote de pessoas entre postos, com ajuste opcional de turno; efetivo planejado x atual por turno

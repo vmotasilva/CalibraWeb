@@ -412,7 +412,7 @@ def checklists_view(request):
     return render(
         request,
         "agenda/checklists.html",
-        {"checklists": qs, "recebidos": recebidos, "liderados": liderados, **_ctx_alvo(request, alvo)},
+        {"checklists": qs, "recebidos": recebidos, "liderados": liderados, "periodicidades": Checklist.PERIODICIDADES, **_ctx_alvo(request, alvo)},
     )
 
 
@@ -461,6 +461,9 @@ def api_checklist_detalhe(request, checklist_id):
                 "descricao": c.descricao,
                 "diario": c.diario,
                 "dias_semana": sorted(c.dias_set),
+                "periodicidade": c.periodicidade,
+                "dia_mes": c.dia_mes,
+                "desde": c.diario_desde.isoformat() if c.diario_desde else "",
                 "hora": c.hora.strftime("%H:%M") if c.hora else "",
                 "na_agenda": c.na_agenda,
                 "cor": c.cor,
@@ -496,7 +499,16 @@ def checklist_salvar(request):
         return JsonResponse({"success": False, "error": "Máximo de 100 itens de até 300 caracteres."}, status=400)
 
     dias = sorted({int(x) for x in (d.get("dias_semana") or []) if str(x).isdigit() and 0 <= int(x) <= 6})
-    if d.get("diario") and not dias:
+    periodicidade = d.get("periodicidade") or Checklist.PER_DIARIA
+    if periodicidade not in dict(Checklist.PERIODICIDADES):
+        return JsonResponse({"success": False, "error": "Periodicidade inválida."}, status=400)
+    por_mes = periodicidade in Checklist.MESES_PASSO
+    dia_mes = None
+    if d.get("diario") and por_mes:
+        if not str(d.get("dia_mes") or "").isdigit() or not 1 <= int(d["dia_mes"]) <= 31:
+            return JsonResponse({"success": False, "error": "Informe o dia do mês (1 a 31)."}, status=400)
+        dia_mes = int(d["dia_mes"])
+    elif d.get("diario") and not dias:
         return JsonResponse({"success": False, "error": "Escolha pelo menos um dia da semana."}, status=400)
     try:
         hora = datetime.strptime(d["hora"], "%H:%M").time() if d.get("hora") else None
@@ -526,10 +538,12 @@ def checklist_salvar(request):
         eram_diario = c.diario
         c.diario = bool(d.get("diario"))
         c.dias_semana = ",".join(str(x) for x in dias)
+        mudou_per = c.periodicidade != periodicidade
+        c.periodicidade, c.dia_mes = periodicidade, dia_mes
         c.hora = hora
         c.na_agenda = c.diario and bool(d.get("na_agenda"))
         c.cor = cor
-        if c.diario and (not eram_diario or not c.diario_desde):
+        if c.diario and (not eram_diario or not c.diario_desde or mudou_per):
             c.diario_desde = timezone.localdate()  # vale a partir de hoje; dias passados não viram pendência
         if c.criado_por_id == request.user.pk and compartilhar is not None:
             c.incluir_dono = bool(d.get("incluir_dono", True)) or not compartilhar  # sem destinatário, fica com o dono

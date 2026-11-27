@@ -21,6 +21,12 @@
   .ee-aloc:last-child { border-bottom: 0; }
   .ee-aloc .ee-quem { flex: 1 1 auto; min-width: 0; }
   .ee-lista { max-height: 50vh; overflow: auto; }
+  .ee-qc { cursor: grab; border-left: 3px solid #0d6efd; }
+  .ee-qc-vago { border-left-color: #dc3545; } .ee-qc-reserva { border-left-color: #0dcaf0; }
+  .ee-qc-sel { background: rgba(13,110,253,.1); box-shadow: 0 0 0 1px #0d6efd; }
+  .ee-qc-drag { opacity: .4; }
+  .ee-lane { min-height: 3.2rem; padding: .35rem; border: 1px dashed #ced4da; border-radius: .4rem; height: 100%; }
+  .ee-lane-over { background: rgba(25,135,84,.12); border-color: #198754; }
 </style>
 
 <div class="container-fluid py-4" id="ee-app" data-pode-editar="{{ pode_editar|yesno:'1,0' }}">
@@ -57,8 +63,14 @@
   </ul>
 
   <div class="card border-0 shadow-sm d-none" id="ee-quadro">
-    <div class="card-body p-0" id="ee-quadro-conteudo"></div>
-    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Uma tabela por setor: cada linha é um posto e cada coluna, um turno daquele setor.</div>
+    <div class="card-header bg-white d-flex flex-wrap gap-2 align-items-center">
+      <span class="small text-muted">Marque os cards e use <b>Remover selecionados</b> para tirá-los do posto. Arraste um card para outro turno, posto, bloco ou setor.</span>
+      <span class="small fw-semibold text-primary ms-auto" id="ee-q-sel-info"></span>
+      <button type="button" class="btn btn-sm btn-link d-none" id="ee-q-limpar-sel">Limpar seleção</button>
+      {% if pode_editar %}<button type="button" class="btn btn-sm btn-outline-danger" id="ee-q-remover" disabled><i class="bi bi-person-dash me-1"></i>Remover selecionados</button>{% else %}<button type="button" class="d-none" id="ee-q-remover" disabled></button>{% endif %}
+    </div>
+    <div class="card-body p-3" id="ee-quadro-conteudo"></div>
+    <div class="card-footer bg-white small text-muted"><span id="ee-quadro-resumo" class="me-2"></span> Cards: Setor › Bloco › Posto de trabalho › turnos › colaboradores.</div>
   </div>
 
   <div class="card border-0 shadow-sm d-none" id="ee-pessoas">
@@ -169,7 +181,7 @@
 
 <!-- Modal: alocação (colaborador / vago / reserva) -->
 <div class="modal fade" id="ee-modal-aloc" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="ee-aloc-titulo">Alocar</h5>
@@ -178,7 +190,7 @@
       <div class="modal-body">
         <div id="ee-aloc-erro" class="alert alert-danger d-none"></div>
         <div class="row g-3 mb-2">
-          <div class="col-md-4" id="ee-a-tipo-wrap">
+          <div class="col-md-3" id="ee-a-tipo-wrap">
             <label class="form-label fw-semibold" for="ee-a-tipo">Tipo</label>
             <select class="form-select" id="ee-a-tipo">
               <option value="PESSOA">Colaborador</option>
@@ -186,36 +198,55 @@
               <option value="RESERVA">Reserva (equip. reserva)</option>
             </select>
           </div>
-          <div class="col-md-5">
+          <div class="col-md-4">
             <label class="form-label fw-semibold" id="ee-a-turno-label" for="ee-a-turno">Turno *</label>
             <select class="form-select" id="ee-a-turno"></select>
             <div id="ee-a-turnos" class="d-flex flex-wrap gap-3 pt-1 d-none" role="group" aria-labelledby="ee-a-turno-label"></div>
           </div>
-          <div class="col-md-3 d-none" id="ee-a-posto-wrap">
+          <div class="col-md-5 d-none" id="ee-a-posto-wrap">
             <label class="form-label fw-semibold" for="ee-a-posto">Posto</label>
             <select class="form-select" id="ee-a-posto"></select>
           </div>
-          <div class="col-md-3 d-none" id="ee-a-qtd-wrap">
+          <div class="col-md-2 d-none" id="ee-a-qtd-wrap">
             <label class="form-label fw-semibold" for="ee-a-qtd">Quantidade</label>
             <input type="number" class="form-control" id="ee-a-qtd" min="1" max="20" value="1">
           </div>
-          <div class="col-12">
+          <div class="col-md-5">
             <label class="form-label fw-semibold" for="ee-a-obs">Observação</label>
-            <input type="text" class="form-control" id="ee-a-obs" maxlength="255" placeholder="Opcional (ex.: cobre férias, equipamento no almoxarifado…)">
+            <input type="text" class="form-control" id="ee-a-obs" maxlength="255" placeholder="Opcional (ex.: cobre férias…)">
           </div>
         </div>
-        <div id="ee-a-pessoas">
-          <div class="d-flex flex-wrap gap-2 mb-2 align-items-center">
-            <input type="search" class="form-control" id="ee-a-busca" placeholder="Buscar colaborador por nome ou matrícula" style="max-width:22rem" aria-label="Buscar colaborador">
-            <span class="small text-muted" id="ee-a-sel-info"></span>
+        <div id="ee-a-pessoas" class="border rounded">
+          <div class="p-2 bg-light border-bottom">
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-lg-4">
+                <label class="form-label small mb-1" for="ee-a-busca">Buscar</label>
+                <input type="search" class="form-control form-control-sm" id="ee-a-busca" placeholder="Nome ou matrícula" aria-label="Buscar colaborador">
+              </div>
+              <div class="col-6 col-lg-2"><label class="form-label small mb-1" for="ee-a-f-setor">Setor</label><select class="form-select form-select-sm ee-a-f" id="ee-a-f-setor"><option value="">Todos</option></select></div>
+              <div class="col-6 col-lg-2"><label class="form-label small mb-1" for="ee-a-f-turno">Turno (cadastro)</label><select class="form-select form-select-sm ee-a-f" id="ee-a-f-turno"><option value="">Todos</option></select></div>
+              <div class="col-6 col-lg-2"><label class="form-label small mb-1" for="ee-a-f-lider">Líder</label><select class="form-select form-select-sm ee-a-f" id="ee-a-f-lider"><option value="">Todos</option></select></div>
+              <div class="col-6 col-lg-2"><label class="form-label small mb-1" for="ee-a-f-cargo">Cargo</label><select class="form-select form-select-sm ee-a-f" id="ee-a-f-cargo"><option value="">Todos</option></select></div>
+            </div>
+            <div class="d-flex flex-wrap gap-3 align-items-center mt-2">
+              <div class="form-check form-switch mb-0"><input class="form-check-input ee-a-f" type="checkbox" id="ee-a-f-sem"><label class="form-check-label small" for="ee-a-f-sem">Somente quem ainda não está em nenhum posto</label></div>
+              <button type="button" class="btn btn-sm btn-link p-0" id="ee-a-limpar">Limpar filtros</button>
+              <span class="small fw-semibold text-primary ms-auto" id="ee-a-sel-info"></span>
+            </div>
           </div>
-          <div class="table-responsive ee-lista">
+          <div class="table-responsive ee-lista" style="max-height:38vh">
             <table class="table table-sm table-hover align-middle mb-0">
-              <thead class="table-light"><tr><th style="width:2rem"></th><th>Nome</th><th>Matrícula</th><th>Cargo</th><th>Turno (cadastro)</th><th>Já alocado em</th></tr></thead>
+              <thead class="table-light sticky-top"><tr><th style="width:2rem"></th><th>Nome</th><th>Matrícula</th><th>Cargo</th><th>Setor</th><th>Turno</th><th>Já alocado em</th></tr></thead>
               <tbody id="ee-a-body"></tbody>
             </table>
           </div>
-          <div class="small text-muted mt-1" id="ee-a-info"></div>
+          <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between p-2 border-top">
+            <div class="small text-muted" id="ee-a-info"></div>
+            <div class="d-flex align-items-center gap-2">
+              <select class="form-select form-select-sm" id="ee-a-pp" style="width:auto" aria-label="Itens por página"><option>10</option><option>25</option><option>50</option></select>
+              <nav aria-label="Páginas"><ul class="pagination pagination-sm mb-0" id="ee-a-pag"></ul></nav>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-footer">
@@ -488,35 +519,86 @@
     return h + '</div>';
   }
 
-  // ---------------------------------------------------------- quadro (uma tabela por setor, com os turnos dele)
+  // ---------------------------------------------------------- quadro em cards: Setor > Bloco > Posto > turnos > colaboradores
+  const qSel = new Set();  // alocações marcadas no quadro
+  function cardAloc(a) {
+    const rot = a.tipo === 'PESSOA' ? esc(a.nome) : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span>' : '<span class="badge bg-info text-dark">RESERVA</span>';
+    const marcado = qSel.has(a.id);
+    return '<div class="ee-qc card' + (marcado ? ' ee-qc-sel' : '') + (a.tipo !== 'PESSOA' ? ' ee-qc-' + a.tipo.toLowerCase() : '') + '" data-aloc="' + a.id + '"' + (PODE_EDITAR ? ' draggable="true"' : '') + '>' +
+      '<div class="card-body py-1 px-2 d-flex align-items-center gap-2">' +
+      (PODE_EDITAR ? '<input type="checkbox" class="form-check-input ee-qc-chk m-0" data-aloc="' + a.id + '"' + (marcado ? ' checked' : '') + ' aria-label="Selecionar">' : '') +
+      '<span class="flex-grow-1 small text-truncate" title="' + esc(a.nome || a.tipo) + '">' + (PODE_EDITAR ? '<a href="#" draggable="false" class="ee-q-edit text-decoration-none text-reset" data-aloc="' + a.id + '" title="Editar / mover">' + rot + '</a>' : rot) + '</span>' +
+      (PODE_EDITAR ? '<i class="bi bi-grip-vertical text-muted ee-qc-grip" title="Arraste para outro posto, turno, bloco ou setor"></i>' : '') +
+      '</div></div>';
+  }
   function renderQuadro() {
     let h = '', vagas = 0, reservas = 0;
     setoresVisiveis().forEach(s => {
       const cols = colunasDoSetor(s.id); const blocos = blocosDe(s.id);
-      h += '<div class="table-responsive mb-3"><table class="table table-bordered align-middle mb-0"><thead><tr class="table-dark"><th colspan="' + (cols.length + 1) + '"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</th></tr>';
-      if (!cols.length) { h += '</thead><tbody><tr><td class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : ' — edite o setor para definir os turnos') + '.</td></tr></tbody></table></div>'; return; }
-      h += '<tr class="table-light"><th>Posto de trabalho</th>' + cols.map(c => '<th>' + esc(c.nome) + '</th>').join('') + '</tr></thead><tbody>';
-      blocos.forEach(b => {
-        h += '<tr class="table-light"><td colspan="' + (cols.length + 1) + '" class="fw-bold">' + esc(b.nome) + '</td></tr>';
-        postosDe(b.id).forEach(p => {
-          h += '<tr' + (p.ativo ? '' : ' class="text-muted"') + '><td style="padding-left:1.6rem">' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</td>';
-          cols.forEach(c => {
-            const l = alocsNoTurno([p.id], c.id).sort((x, y) => ordemTipo[x.tipo] - ordemTipo[y.tipo] || cmp(x.nome, y.nome) || x.id - y.id);
-            vagas += l.filter(a => a.tipo === 'VAGO').length; reservas += l.filter(a => a.tipo === 'RESERVA').length;
-            const itens = l.map(a => { const rot = a.tipo === 'PESSOA' ? esc(a.nome) : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span>' : '<span class="badge bg-info text-dark">RESERVA</span>'; return '<div>' + (PODE_EDITAR ? '<a href="#" class="ee-q-edit text-decoration-none text-reset" data-aloc="' + a.id + '" title="Editar / mover">' + rot + '</a>' : rot) + '</div>'; }).join('');
-            h += '<td>' + (itens || '<span class="text-muted">—</span>') + (PODE_EDITAR ? '<button type="button" class="btn btn-sm btn-link p-0 ee-q-add" data-posto="' + p.id + '" data-turno="' + c.id + '" title="Alocar neste posto e turno">+ alocar</button>' : '') + '</td>';
-          });
-          h += '</tr>';
-        });
-      });
-      if (!blocos.length) h += '<tr><td colspan="' + (cols.length + 1) + '" class="text-muted">Este setor ainda não tem blocos.</td></tr>';
-      h += '</tbody></table></div>';
+      h += '<div class="card ee-qs mb-3 shadow-sm"><div class="card-header bg-dark text-white fw-bold"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</div><div class="card-body bg-light">';
+      if (!cols.length) h += '<div class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : ' — edite o setor para definir os turnos') + '.</div>';
+      else if (!blocos.length) h += '<div class="text-muted">Este setor ainda não tem blocos.</div>';
+      else h += '<div class="row g-3">' + blocos.map(b => {
+        const postos = postosDe(b.id);
+        return '<div class="col-12 col-xxl-6"><div class="card ee-qb h-100"><div class="card-header fw-semibold bg-body-secondary"><i class="bi bi-boxes me-1"></i>' + esc(b.nome) + '</div><div class="card-body d-grid gap-2">' +
+          (postos.length ? postos.map(p => {
+            return '<div class="card ee-qp' + (p.ativo ? '' : ' opacity-50') + '"><div class="card-header py-1 small fw-semibold"><i class="bi bi-person-workspace me-1"></i>' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</div>' +
+              '<div class="card-body p-2"><div class="row g-2">' + cols.map(c => {
+                const l = alocsNoTurno([p.id], c.id).sort((x, y) => ordemTipo[x.tipo] - ordemTipo[y.tipo] || cmp(x.nome, y.nome) || x.id - y.id);
+                vagas += l.filter(a => a.tipo === 'VAGO').length; reservas += l.filter(a => a.tipo === 'RESERVA').length;
+                return '<div class="col-12 col-md"><div class="ee-lane" data-posto="' + p.id + '" data-turno="' + c.id + '"><div class="ee-lane-t small text-muted d-flex justify-content-between"><span>' + esc(c.nome) + '</span><span>' + (l.length || '') + '</span></div>' +
+                  '<div class="ee-lane-b d-grid gap-1">' + l.map(cardAloc).join('') + '</div>' +
+                  (PODE_EDITAR ? '<button type="button" class="btn btn-sm btn-link p-0 ee-q-add" data-posto="' + p.id + '" data-turno="' + c.id + '" title="Alocar neste posto e turno">+ alocar</button>' : '') + '</div></div>';
+              }).join('') + '</div></div></div>';
+          }).join('') : '<div class="text-muted small">Sem postos neste bloco.</div>') + '</div></div></div>';
+      }).join('') + '</div>';
+      h += '</div></div>';
     });
     if (!setoresVisiveis().length) h = '<div class="p-3 text-muted">Nada cadastrado.</div>';
     const box = $('ee-quadro-conteudo'); box.innerHTML = h;
     box.querySelectorAll('.ee-q-add').forEach(b => b.onclick = () => abrirAloc({ postoId: +b.dataset.posto, turnoId: +b.dataset.turno }));
     box.querySelectorAll('.ee-q-edit').forEach(a => a.onclick = e => { e.preventDefault(); abrirAloc({ alocId: +a.dataset.aloc }); });
+    box.querySelectorAll('.ee-qc-chk').forEach(c => c.onchange = () => { const id = +c.dataset.aloc; c.checked ? qSel.add(id) : qSel.delete(id); c.closest('.ee-qc').classList.toggle('ee-qc-sel', c.checked); infoQuadroSel(); });
+    box.querySelectorAll('.ee-qc[draggable="true"]').forEach(card => {
+      card.ondragstart = e => {
+        const id = +card.dataset.aloc;
+        const ids = qSel.has(id) ? [...qSel] : [id];  // arrastar um marcado leva todos os marcados
+        e.dataTransfer.setData('text/plain', JSON.stringify(ids)); e.dataTransfer.effectAllowed = 'move';
+        ids.forEach(i => { const el = box.querySelector('.ee-qc[data-aloc="' + i + '"]'); if (el) el.classList.add('ee-qc-drag'); });
+      };
+      card.ondragend = () => box.querySelectorAll('.ee-qc-drag').forEach(x => x.classList.remove('ee-qc-drag'));
+    });
+    box.querySelectorAll('.ee-lane').forEach(lane => {
+      lane.ondragover = e => { if (!PODE_EDITAR) return; e.preventDefault(); lane.classList.add('ee-lane-over'); };
+      lane.ondragleave = e => { if (!lane.contains(e.relatedTarget)) lane.classList.remove('ee-lane-over'); };
+      lane.ondrop = async e => {
+        e.preventDefault(); lane.classList.remove('ee-lane-over');
+        let ids; try { ids = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (_) { return; }
+        await moverAlocs(ids, +lane.dataset.posto, +lane.dataset.turno);
+      };
+    });
     $('ee-quadro-resumo').innerHTML = '<span class="badge bg-danger">' + vagas + ' vaga(s) a contratar</span> <span class="badge bg-info text-dark">' + reservas + ' reserva(s)</span>';
+    infoQuadroSel();
+  }
+  function infoQuadroSel() {
+    const n = qSel.size; $('ee-q-sel-info').textContent = n ? n + ' selecionado(s)' : '';
+    $('ee-q-remover').disabled = !n; $('ee-q-limpar-sel').classList.toggle('d-none', !n);
+  }
+  async function moverAlocs(ids, postoId, turnoId) {
+    const alvo = ids.map(i => state.alocs.find(a => a.id === i)).filter(a => a && !(a.posto_id === postoId && a.turno_id === turnoId));
+    if (!alvo.length) return;
+    let ok = 0; const erros = [];
+    for (const a of alvo) {
+      try { await api(URLS.alocAtualizar, { id: a.id, posto_id: postoId, turno_id: turnoId }); ok++; }
+      catch (e) { erros.push((a.nome || a.tipo) + ': ' + e.message); }
+    }
+    qSel.clear(); await carregar();
+    aviso((ok ? ok + ' alocação(ões) movida(s). ' : '') + erros.join(' | '), erros.length ? 'danger' : 'success');
+  }
+  async function removerSelecionados() {
+    const ids = [...qSel].filter(i => state.alocs.some(a => a.id === i)); if (!ids.length) return;
+    if (!confirm('Remover ' + ids.length + ' alocação(ões) selecionada(s)? O colaborador continua cadastrado; só sai do posto.')) return;
+    try { await api(URLS.alocExcluir, { ids }); qSel.clear(); await carregar(); aviso(ids.length + ' alocação(ões) removida(s).'); } catch (e) { aviso(e.message, 'danger'); }
   }
   function trocaAba(aba) {
     document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.classList.toggle('active', b.dataset.aba === aba));
@@ -630,31 +712,55 @@
     $('ee-a-turno-label').textContent = a ? 'Turno *' : 'Turnos * (marque um ou mais)';
     if (!a) montaTurnos('ee-a-turnos', turnos, [turnoId || turnoPadrao(turnos)]);
     $('ee-a-obs').value = a ? a.observacao : '';
-    $('ee-a-qtd').value = 1; $('ee-a-busca').value = '';
+    $('ee-a-qtd').value = 1; $('ee-a-busca').value = ''; limpaFiltrosPessoas();
     $('ee-a-posto-wrap').classList.toggle('d-none', !a);
     if (a) {  // mover: só entre postos do mesmo setor (os turnos são do setor)
       const ps = $('ee-a-posto'); ps.innerHTML = ''; const sid = (grupo(a.posto_id) || {}).setor_id;
       state.grupos.filter(g => g.parent_id && g.setor_id === sid).map(p => [caminhoPosto(p.id), p.id]).sort((x, y) => cmp(x[0], y[0])).forEach(([t, id]) => ps.add(new Option(t, id))); ps.value = a.posto_id;
     }
-    ajustaTipo(); modal('ee-modal-aloc').show(); if ($('ee-a-tipo').value === 'PESSOA') buscarPessoas();
+    ajustaTipo(); modal('ee-modal-aloc').show(); if ($('ee-a-tipo').value === 'PESSOA') buscarPessoas(1);
   }
+  function limpaFiltrosPessoas() { document.querySelectorAll('select.ee-a-f').forEach(x => x.value = ''); $('ee-a-f-sem').checked = false; }
   function ajustaTipo() {
     const t = $('ee-a-tipo').value;
     $('ee-a-pessoas').classList.toggle('d-none', t !== 'PESSOA');
     $('ee-a-qtd-wrap').classList.toggle('d-none', t === 'PESSOA' || !!am.alocId);
   }
-  async function buscarPessoas() {
-    const q = $('ee-a-busca').value.trim();
+  const pg = { pagina: 1, opcoes: false };
+  const filtrosPessoas = () => ({
+    q: $('ee-a-busca').value.trim(), setor_cadastro_id: $('ee-a-f-setor').value, turno: $('ee-a-f-turno').value,
+    lider_id: $('ee-a-f-lider').value, cargo: $('ee-a-f-cargo').value, sem_posto: $('ee-a-f-sem').checked ? '1' : '',
+  });
+  function preencheOpcoes(o) {
+    const f = (id, itens) => { const s = $(id); itens.forEach(i => s.add(new Option(i.nome, i.id))); };
+    f('ee-a-f-setor', o.setores); f('ee-a-f-turno', o.turnos); f('ee-a-f-lider', o.lideres); f('ee-a-f-cargo', o.cargos.map(c => ({ id: c, nome: c })));
+  }
+  function desenhaPaginas(pagina, paginas) {
+    const ul = $('ee-a-pag'); ul.innerHTML = '';
+    const item = (rot, p, ativo, desab) => { const li = document.createElement('li'); li.className = 'page-item' + (ativo ? ' active' : '') + (desab ? ' disabled' : ''); li.innerHTML = '<button type="button" class="page-link">' + rot + '</button>'; if (!desab && !ativo) li.firstChild.onclick = () => buscarPessoas(p); ul.appendChild(li); };
+    item('&laquo;', pagina - 1, false, pagina <= 1);
+    const lim = new Set([1, paginas, pagina - 1, pagina, pagina + 1]); let ant = 0;
+    [...lim].filter(n => n >= 1 && n <= paginas).sort((x, y) => x - y).forEach(n => { if (n - ant > 1) item('…', 0, false, true); item(n, n, n === pagina, false); ant = n; });
+    item('&raquo;', pagina + 1, false, pagina >= paginas);
+  }
+  async function buscarPessoas(pagina = 1) {
     try {
-      const j = await api(URLS.membros + '?' + new URLSearchParams({ q }));
+      const p = new URLSearchParams({ pagina, por_pagina: $('ee-a-pp').value });
+      Object.entries(filtrosPessoas()).forEach(([k, v]) => { if (v) p.set(k, v); });
+      if (!pg.opcoes) p.set('opcoes', '1');
+      const j = await api(URLS.membros + '?' + p);
+      if (j.opcoes) { preencheOpcoes(j.opcoes); pg.opcoes = true; }
+      pg.pagina = j.pagina;
       const tb = $('ee-a-body'); tb.innerHTML = '';
       j.membros.forEach(m => {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td><input class="form-check-input" type="' + (am.unico ? 'radio' : 'checkbox') + '" name="ee-a-pick" data-id="' + m.id + '"' + (am.escolhidos.has(m.id) ? ' checked' : '') + ' aria-label="Selecionar ' + esc(m.nome) + '"></td><td>' + esc(m.nome) + '</td><td>' + esc(m.matricula) + '</td><td>' + esc(m.cargo) + '</td><td>' + esc(m.turno_label) + '</td><td>' + (m.postos.length ? '<span class="small">' + esc(m.postos.join(', ')) + '</span>' : '<span class="text-muted">—</span>') + '</td>';
+        tr.innerHTML = '<td><input class="form-check-input" type="' + (am.unico ? 'radio' : 'checkbox') + '" name="ee-a-pick" data-id="' + m.id + '"' + (am.escolhidos.has(m.id) ? ' checked' : '') + ' aria-label="Selecionar ' + esc(m.nome) + '"></td><td>' + esc(m.nome) + '</td><td>' + esc(m.matricula) + '</td><td>' + esc(m.cargo) + '</td><td>' + esc(m.setor) + '</td><td>' + esc(m.turno_label) + '</td><td>' + (m.postos.length ? '<span class="small" title="' + esc(m.postos.join(' | ')) + '">' + esc(m.postos[0]) + (m.postos.length > 1 ? ' <span class="badge text-bg-secondary">+' + (m.postos.length - 1) + '</span>' : '') + '</span>' : '<span class="text-muted">—</span>') + '</td>';
         tr.querySelector('input').onchange = e => { if (am.unico) am.escolhidos.clear(); e.target.checked ? am.escolhidos.add(m.id) : am.escolhidos.delete(m.id); infoSel(); };
         tb.appendChild(tr);
       });
-      $('ee-a-info').textContent = j.truncado ? 'Mostrando os primeiros ' + j.membros.length + ' de ' + j.total + ' — refine a busca.' : (j.membros.length ? '' : 'Nenhum colaborador encontrado.');
+      const ini = j.total ? (j.pagina - 1) * j.por_pagina + 1 : 0;
+      $('ee-a-info').textContent = j.total ? ini + '–' + (ini + j.membros.length - 1) + ' de ' + j.total + ' colaborador(es)' : 'Nenhum colaborador encontrado.';
+      desenhaPaginas(j.pagina, j.paginas);
       infoSel();
     } catch (e) { $('ee-a-info').textContent = e.message; }
   }
@@ -759,13 +865,18 @@
   if (PODE_EDITAR) {
     $('ee-p-posto').onchange = atualizaTurnosPessoas;
     $('ee-p-alocar').onclick = alocarPessoas;
+    $('ee-q-remover').onclick = removerSelecionados;
+    $('ee-q-limpar-sel').onclick = () => { qSel.clear(); renderQuadro(); };
     $('ee-p-todos').onchange = e => { document.querySelectorAll('.ee-p-chk').forEach(c => { c.checked = e.target.checked; e.target.checked ? pe.sel.add(+c.dataset.id) : pe.sel.delete(+c.dataset.id); }); pessoasSel(); };
     $('ee-btn-novo-setor').onclick = () => abrirGrupo({ tipo: 'setor' });
     $('ee-f-turno-add').onclick = () => { addLinhaTurno('', '', true); renderSugestoes(); };
     $('ee-btn-salvar').onclick = salvarGrupo;
     $('ee-f-nome').addEventListener('keydown', e => { if (e.key === 'Enter') salvarGrupo(); });
     $('ee-a-tipo').onchange = () => { ajustaTipo(); if ($('ee-a-tipo').value === 'PESSOA') buscarPessoas(); };
-    $('ee-a-busca').addEventListener('input', debounce(buscarPessoas));
+    $('ee-a-busca').addEventListener('input', debounce(() => buscarPessoas(1)));
+    document.querySelectorAll('.ee-a-f').forEach(x => x.addEventListener('change', () => buscarPessoas(1)));
+    $('ee-a-pp').addEventListener('change', () => buscarPessoas(1));
+    $('ee-a-limpar').addEventListener('click', () => { $('ee-a-busca').value = ''; limpaFiltrosPessoas(); buscarPessoas(1); });
     $('ee-a-salvar').onclick = salvarAloc;
   }
   carregar().catch(e => aviso(e.message, 'danger'));

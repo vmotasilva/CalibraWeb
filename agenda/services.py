@@ -131,6 +131,37 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False, editor=None):
     return saida
 
 
+def datas_do_checklist(c: Checklist, inicio: date, ate: date):
+    """Datas em [inicio, ate] em que o checklist recorrente vale, conforme a periodicidade.
+
+    A referência (semana ou mês de partida) é `diario_desde`.
+    """
+    ref = c.diario_desde or timezone.localtime(c.criado_em).date()
+    passo_meses = Checklist.MESES_PASSO.get(c.periodicidade)
+    if passo_meses:
+        dia_mes = c.dia_mes or ref.day
+        m_ref = ref.year * 12 + ref.month - 1
+        m = inicio.year * 12 + inicio.month - 1
+        saida = []
+        while m <= ate.year * 12 + ate.month - 1 and len(saida) < LIMITE_OCORRENCIAS:
+            if (m - m_ref) % passo_meses == 0:
+                ano, mes = divmod(m, 12)
+                d = date(ano, mes + 1, min(dia_mes, calendar.monthrange(ano, mes + 1)[1]))
+                if inicio <= d <= ate:
+                    saida.append(d)
+            m += 1
+        return saida
+    dias = c.dias_set
+    semana_ref = ref - timedelta(days=ref.weekday())
+    passo_semanas = 2 if c.periodicidade == Checklist.PER_QUINZENAL else 1
+    saida, d = [], inicio
+    while d <= ate and len(saida) < LIMITE_OCORRENCIAS:
+        if d.weekday() in dias and ((d - timedelta(days=d.weekday()) - semana_ref).days // 7) % passo_semanas == 0:
+            saida.append(d)
+        d += timedelta(days=1)
+    return saida
+
+
 def checklists_diarios(user, de: date, ate: date, so_agenda=False):
     """Ocorrências dos checklists diários do usuário (um por dia válido), no mesmo formato de `ocorrencias`.
 
@@ -155,41 +186,36 @@ def checklists_diarios(user, de: date, ate: date, so_agenda=False):
         marcados.setdefault((ck_id, dia), set()).add(item_id)
     saida = []
     for c in checklists:
-        dias_validos = c.dias_set
         itens_modelo = list(c.itens.all())
         inicio = max(x for x in (de, c.diario_desde, recebidos.get(c.id)) if x)  # recebido: vale da data do envio
-        dia, n = inicio, 0
         recebido = c.criado_por_id != user.pk
-        while dia <= ate and n < LIMITE_OCORRENCIAS:
-            if dia.weekday() in dias_validos:
-                feitos = marcados.get((c.id, dia), set())
-                itens = [{"id": i.id, "texto": i.texto, "grupo": i.grupo, "feito": i.id in feitos} for i in itens_modelo]
-                saida.append(
-                    {
-                        "tipo": "checklist_diario",
-                        "checklist_id": c.id,
-                        "id": c.id,
-                        "titulo": c.titulo,
-                        "origem": (c.criado_por.get_full_name() or c.criado_por.username) if recebido else "",
-                        "descricao": c.descricao,
-                        "local": "",
-                        "escopo": Evento.ESCOPO_PESSOAL,
-                        "cor": c.cor,
-                        "dia": dia,
-                        "hora_inicio": c.hora,
-                        "hora_fim": None,
-                        "dia_inteiro": c.hora is None,
-                        "checklist": True,
-                        "checklist_titulo": c.titulo,
-                        "itens": itens,
-                        "grupos": agrupar(itens),
-                        "feito": bool(itens) and all(i["feito"] for i in itens),
-                        "recorrente": True,
-                        "editavel": not recebido,
-                    }
-                )
-                n += 1
-            dia += timedelta(days=1)
+        for dia in datas_do_checklist(c, inicio, ate):
+            feitos = marcados.get((c.id, dia), set())
+            itens = [{"id": i.id, "texto": i.texto, "grupo": i.grupo, "feito": i.id in feitos} for i in itens_modelo]
+            saida.append(
+                {
+                    "tipo": "checklist_diario",
+                    "checklist_id": c.id,
+                    "id": c.id,
+                    "titulo": c.titulo,
+                    "origem": (c.criado_por.get_full_name() or c.criado_por.username) if recebido else "",
+                    "descricao": c.descricao,
+                    "local": "",
+                    "escopo": Evento.ESCOPO_PESSOAL,
+                    "cor": c.cor,
+                    "dia": dia,
+                    "hora_inicio": c.hora,
+                    "hora_fim": None,
+                    "dia_inteiro": c.hora is None,
+                    "checklist": True,
+                    "checklist_titulo": c.titulo,
+                    "itens": itens,
+                    "grupos": agrupar(itens),
+                    "feito": bool(itens) and all(i["feito"] for i in itens),
+                    "recorrente": True,
+                    "editavel": not recebido,
+                }
+            )
     saida.sort(key=lambda o: (o["dia"], o["hora_inicio"] or datetime.min.time(), o["titulo"]))
     return saida
 

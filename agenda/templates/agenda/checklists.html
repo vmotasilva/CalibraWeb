@@ -24,7 +24,7 @@
                         <h6 class="card-title mb-1">{{ c.titulo }}</h6>
                         <span class="badge text-bg-secondary">{{ c.itens.all|length }} item{{ c.itens.all|length|pluralize:"ns" }}</span>
                     </div>
-                    {% if c.diario %}<div class="mb-2"><span class="badge text-bg-success"><i class="bi bi-arrow-repeat me-1"></i>Diário</span>
+                    {% if c.diario %}<div class="mb-2"><span class="badge text-bg-success"><i class="bi bi-arrow-repeat me-1"></i>{{ c.periodicidade_label }}{% if c.dia_mes %} · dia {{ c.dia_mes }}{% endif %}</span>
                         {% if c.hora %}<span class="badge text-bg-light border">{{ c.hora|time:"H:i" }}</span>{% endif %}
                         {% if c.na_agenda %}<span class="badge text-bg-light border"><i class="bi bi-calendar3 me-1"></i>Na agenda</span>{% endif %}
                         {% if c.compartilhamentos.all %}<span class="badge text-bg-info"><i class="bi bi-send me-1"></i>Enviado a {{ c.compartilhamentos.all|length }} liderado{{ c.compartilhamentos.all|length|pluralize }}</span>{% endif %}</div>
@@ -70,10 +70,19 @@
         <div class="mb-3"><label class="form-label">Descrição (opcional)</label><textarea class="form-control" id="ckDescricao" rows="2"></textarea></div>
         <div class="border rounded p-3 mb-3 bg-light">
             <div class="form-check form-switch mb-2">
-                <input class="form-check-input" type="checkbox" id="ckDiario"><label class="form-check-label fw-semibold" for="ckDiario">Checklist diário (aparece todo dia no Checklist do dia)</label>
+                <input class="form-check-input" type="checkbox" id="ckDiario"><label class="form-check-label fw-semibold" for="ckDiario">Checklist recorrente (aparece no Checklist do dia nas datas da periodicidade)</label>
             </div>
             <div id="ckDiarioOpc" class="d-none">
+                <div class="row g-2 mb-2">
+                    <div class="col-sm-6"><label class="form-label small mb-1">Periodicidade</label>
+                        <select class="form-select form-select-sm" id="ckPeriodicidade">
+                            {% for v, l in periodicidades %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
+                        </select></div>
+                    <div class="col-sm-6 d-none" id="ckDiaMesBox"><label class="form-label small mb-1">Dia do mês (meses curtos usam o último dia)</label>
+                        <input type="number" min="1" max="31" class="form-control form-control-sm" id="ckDiaMes"></div>
+                </div>
                 <div class="mb-2" id="ckDias"></div>
+                <div class="form-text mb-2" id="ckPerAjuda"></div>
                 <div class="row g-2 align-items-end">
                     <div class="col-sm-5"><label class="form-label small mb-1">Horário (opcional)</label><input type="time" class="form-control form-control-sm" id="ckHora"></div>
                     <div class="col-sm-3"><label class="form-label small mb-1">Cor</label><input type="color" class="form-control form-control-color form-control-sm" id="ckCor" value="#20c997"></div>
@@ -164,8 +173,18 @@
         $("ckLiderados").addEventListener("change", e => { const id = Number(e.target.value); e.target.checked ? compartilhar.add(id) : compartilhar.delete(id); });
         $("ckBuscaLid").addEventListener("input", desenharLiderados);
     }
-    function atualizarDiario() { $("ckDiarioOpc").classList.toggle("d-none", !$("ckDiario").checked); }
+    const POR_MES = ["mensal", "bimestral", "trimestral", "semestral", "anual"];
+    const AJUDA = {quinzenal: "Nos dias marcados, a cada 2 semanas, contando a partir da semana em que for salvo.",
+        bimestral: "A cada 2 meses, a partir do mês em que for salvo.", trimestral: "A cada 3 meses, a partir do mês em que for salvo.",
+        semestral: "A cada 6 meses, a partir do mês em que for salvo.", anual: "Uma vez por ano, no mês em que for salvo."};
+    function atualizarPeriodicidade() {
+        const per = $("ckPeriodicidade").value, mes = POR_MES.includes(per);
+        $("ckDias").classList.toggle("d-none", mes); $("ckDiaMesBox").classList.toggle("d-none", !mes);
+        $("ckPerAjuda").textContent = AJUDA[per] || "";
+    }
+    function atualizarDiario() { $("ckDiarioOpc").classList.toggle("d-none", !$("ckDiario").checked); atualizarPeriodicidade(); }
     $("ckDiario").addEventListener("change", atualizarDiario);
+    $("ckPeriodicidade").addEventListener("change", () => { if (POR_MES.includes($("ckPeriodicidade").value) && !$("ckDiaMes").value) $("ckDiaMes").value = new Date().getDate(); atualizarPeriodicidade(); });
 
     function abrir(c) {
         $("ckErro").classList.add("d-none");
@@ -181,6 +200,7 @@
         if (!grupos.length) grupos = [{nome: "", itens: []}];
         $("ckDiario").checked = c ? c.diario : false;
         desenharDias(c ? c.dias_semana : [0,1,2,3,4,5,6]);
+        $("ckPeriodicidade").value = c ? c.periodicidade : "diaria"; $("ckDiaMes").value = c && c.dia_mes ? c.dia_mes : "";
         $("ckHora").value = c ? c.hora : ""; $("ckCor").value = c ? c.cor : "#20c997"; $("ckNaAgenda").checked = c ? c.na_agenda : false;
         compartilhar = new Set(c ? c.compartilhar_com : []);
         if ($("ckIncluirDono")) $("ckIncluirDono").checked = c ? c.incluir_dono : true;
@@ -242,6 +262,7 @@
         const itens = grupos.flatMap(g => g.itens.map(it => ({id: it.id, texto: it.texto, grupo: g.nome})));
         const j = await post(U.salvar, {id: $("ckId").value || null, usuario: ALVO || null, titulo: $("ckTitulo").value, descricao: $("ckDescricao").value, itens,
             diario: $("ckDiario").checked, dias_semana: [...document.querySelectorAll(".ck-dia:checked")].map(x => Number(x.value)),
+            periodicidade: $("ckPeriodicidade").value, dia_mes: $("ckDiaMes").value || null,
             hora: $("ckHora").value, cor: $("ckCor").value, na_agenda: $("ckNaAgenda").checked,
             compartilhar_com: LIDERADOS.length && !ALVO ? [...compartilhar] : undefined,
             incluir_dono: $("ckIncluirDono") ? $("ckIncluirDono").checked : true});

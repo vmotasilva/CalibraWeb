@@ -152,6 +152,9 @@ def api_estrutura_equipes_membros(request):
 
     ?q= (nome/matrícula)  &setor_cadastro_id= (setor no cadastro do colaborador)  &turno= (turno do cadastro)
     &sem_posto=1 (só quem não está alocado em nenhum posto)  &limite= (padrão 30, máx. 200)
+    &lider_id= (líder direto)  &cargo= (cargo exato)
+    &pagina= &por_pagina= (paginação, máx. 100; sem `pagina` vale o modo `limite`)
+    &opcoes=1 (devolve também as opções dos filtros: setores, turnos, líderes e cargos)
     """
     if not _pode_ver(request.user):
         return _negado()
@@ -169,13 +172,32 @@ def api_estrutura_equipes_membros(request):
         qs = qs.filter(turno=turno)
     if setor_id:
         qs = qs.filter(setor_id=setor_id)
+    try:
+        lider_id = _int_ou_none(request.GET.get("lider_id"))
+        pagina = _int_ou_none(request.GET.get("pagina"))
+        por_pagina = min(max(_int_ou_none(request.GET.get("por_pagina")) or 10, 1), 100)
+    except ValueError:
+        return _erro("Parâmetros inválidos.")
+    if lider_id:
+        qs = qs.filter(lider_id=lider_id)
+    cargo = (request.GET.get("cargo") or "").strip()
+    if cargo:
+        qs = qs.filter(cargo=cargo)
     if request.GET.get("sem_posto") == "1":
         qs = qs.filter(alocacoes_posto__isnull=True)
     if q:
         qs = qs.filter(Q(nome_completo__icontains=q) | Q(matricula__icontains=q))
     total = qs.count()
+    ordenado = qs.order_by("nome_completo")
+    paginas = None
+    if pagina:
+        paginas = max(1, -(-total // por_pagina))
+        pagina = min(pagina, paginas)
+        recorte = ordenado[(pagina - 1) * por_pagina : pagina * por_pagina]
+    else:
+        recorte = ordenado[:limite]
     membros = []
-    for c in qs.order_by("nome_completo")[:limite]:
+    for c in recorte:
         postos = sorted(
             {f"{a.posto.parent.nome} › {a.posto.nome}" if a.posto.parent_id else a.posto.nome for a in c.alocacoes_posto.all()}
         )
@@ -193,7 +215,21 @@ def api_estrutura_equipes_membros(request):
                 "postos": postos,
             }
         )
-    return JsonResponse({"success": True, "total": total, "truncado": total > len(membros), "membros": membros})
+    resposta = {"success": True, "total": total, "truncado": paginas is None and total > len(membros), "membros": membros}
+    if paginas is not None:
+        resposta.update(pagina=pagina, paginas=paginas, por_pagina=por_pagina)
+    if request.GET.get("opcoes") == "1":
+        ativos = Colaborador.objects.filter(is_active=True)
+        resposta["opcoes"] = {
+            "setores": [{"id": x.id, "nome": x.nome} for x in Setor.objects.order_by("nome")],
+            "turnos": [{"id": k, "nome": v} for k, v in TURNO_LABEL.items() if k in TURNOS_CADASTRO_VALIDOS],
+            "lideres": [
+                {"id": x.id, "nome": x.nome_completo}
+                for x in Colaborador.objects.filter(liderados__is_active=True).distinct().order_by("nome_completo")
+            ],
+            "cargos": sorted(c for c in ativos.exclude(cargo__isnull=True).exclude(cargo="").values_list("cargo", flat=True).distinct()),
+        }
+    return JsonResponse(resposta)
 
 
 # ------------------------------------------------------------------ setor / bloco / posto

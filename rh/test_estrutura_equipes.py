@@ -283,6 +283,22 @@ class ColaboradoresNaTelaTests(Base):
         self.assertEqual(self.client.get(url, {"setor_cadastro_id": "abc"}).status_code, 400)
         self.assertEqual(self.client.get(url, {"limite": "9999"}).status_code, 200)
 
+    def test_paginacao_filtros_lider_cargo_e_opcoes(self):
+        lider = _colab("90", "Zeca Líder", setor=self.s1, cargo="SUPERVISOR")
+        for i in range(7):
+            _colab(f"1{i}", f"Pessoa {i}", setor=self.s1, cargo="AUXILIAR", lider=lider)
+        url = reverse("rh:api_estrutura_equipes_membros")
+        j = self.client.get(url, {"pagina": 2, "por_pagina": 3, "lider_id": lider.id, "opcoes": 1}).json()
+        self.assertEqual((j["total"], j["paginas"], j["pagina"], j["truncado"]), (7, 3, 2, False))
+        self.assertEqual([m["nome"] for m in j["membros"]], ["Pessoa 3", "Pessoa 4", "Pessoa 5"])
+        self.assertIn(lider.id, [x["id"] for x in j["opcoes"]["lideres"]])
+        self.assertIn("AUXILIAR", j["opcoes"]["cargos"])
+        self.assertTrue(j["opcoes"]["setores"] and j["opcoes"]["turnos"])
+        j = self.client.get(url, {"pagina": 99, "por_pagina": 3, "lider_id": lider.id}).json()
+        self.assertEqual((j["pagina"], len(j["membros"])), (3, 1))  # página além do fim vai para a última
+        self.assertEqual(self.client.get(url, {"cargo": "SUPERVISOR"}).json()["total"], 1)
+        self.assertEqual(self.client.get(url, {"pagina": "x"}).status_code, 400)
+
     def test_alocar_varios_de_uma_vez(self):
         cs = [_colab(str(i), f"Pessoa {i}", setor=self.s1) for i in range(5)]
         sid = self.setor("E")
