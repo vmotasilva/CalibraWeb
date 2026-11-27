@@ -648,13 +648,86 @@ class OrigemKpi(_Origem):
         return ResultadoAcao(False, "Ação inválida.")
 
 
+class OrigemAgenda(_Origem):
+    """Ocorrências abertas a partir dos itens do Meu checklist (Agenda)."""
+    key, nome, icon = "agenda", "Checklist", "bi-check2-square"
+    FILTROS = (("checklist", "Checklist"), ("data", "Dia"))
+
+    def base_qs(self, user):
+        from agenda.hierarquia import liderados_ids
+        from agenda.models import OcorrenciaChecklist
+
+        if not _can(user, "agenda", "agenda:calendario"):
+            return OcorrenciaChecklist.objects.none()
+        qs = OcorrenciaChecklist.objects.select_related("criado_por", "encerrada_por")
+        if _eh_admin(user):
+            return qs
+        return qs.filter(Q(criado_por=user) | Q(criado_por_id__in=liderados_ids(user)))  # a chefia vê as dos liderados
+
+    def aberta_q(self):
+        return Q(status="aberta")
+
+    def mine_q(self, user):
+        return Q(criado_por=user)
+
+    def _pode_tratar(self, user, oc) -> bool:
+        from agenda.hierarquia import pode_gerir
+
+        return pode_gerir(user, oc.criado_por)  # o autor, a chefia dele ou o administrador
+
+    def to_item(self, oc, user, mine_ids):
+        aberta = oc.status == "aberta"
+        papel = "Autor" if oc.criado_por_id == user.pk else ""
+        contexto = " — ".join(x for x in (oc.checklist_titulo, oc.item_texto) if x)
+        historico = []
+        if oc.resolucao:
+            historico.append((_fmt_dt(oc.encerrada_em), _nome_user(oc.encerrada_por), oc.resolucao))
+        acoes = []
+        if self._pode_tratar(user, oc):
+            if aberta:
+                acoes.append(Acao("encerrar", "Encerrar", "bi-check2-circle", "success", "texto",
+                                  "Descreva como foi resolvida", obrigatorio=False))
+            else:
+                acoes.append(Acao("reabrir", "Reabrir", "bi-arrow-counterclockwise", "outline-secondary"))
+        nome_ck = oc.checklist_titulo or "Checklist"
+        return OcorrenciaItem(
+            uid=f"{self.key}:{oc.pk}", origem=self.key, origem_nome=self.nome, icon=self.icon,
+            titulo=oc.titulo, descricao=(oc.descricao or "").strip(),
+            status=STATUS_ABERTA if aberta else STATUS_ENCERRADA,
+            data=oc.criado_em, envolve_usuario=papel != "", papel=papel,
+            responsaveis=[_nome_user(oc.criado_por)],
+            detalhes=[(rot, txt) for rot, txt in (("Origem", contexto), ("Dia do checklist", oc.data.strftime("%d/%m/%Y"))) if txt],
+            historico=historico,
+            url_origem=reverse("agenda:checklist") + f"?data={oc.data.isoformat()}"
+            + ("" if oc.criado_por_id == user.pk else f"&usuario={oc.criado_por_id}"),
+            acoes=acoes,
+            facetas=_facetas({"checklist": nome_ck, "data": oc.data.strftime("%d/%m/%Y")}),
+        )
+
+    def executar(self, user, oc, acao, dados):
+        if not self._pode_tratar(user, oc):
+            return ResultadoAcao(False, "Você não tem permissão para tratar esta ocorrência.")
+        if acao == "encerrar":
+            if oc.status != "aberta":
+                return ResultadoAcao(False, "A ocorrência já está encerrada.")
+            oc.status, oc.resolucao = "encerrada", (dados.get("texto") or "").strip()
+            oc.encerrada_por, oc.encerrada_em = user, timezone.now()
+            oc.save(update_fields=["status", "resolucao", "encerrada_por", "encerrada_em"])
+            return ResultadoAcao(True, "Ocorrência encerrada.")
+        if acao == "reabrir":
+            oc.status, oc.encerrada_por, oc.encerrada_em = "aberta", None, None
+            oc.save(update_fields=["status", "encerrada_por", "encerrada_em"])
+            return ResultadoAcao(True, "Ocorrência reaberta.")
+        return ResultadoAcao(False, "Ação inválida.")
+
+
 def _facetas(valores: dict) -> dict:
     """{chave: valor} -> {chave: (valor, ordem alfabética)}."""
     return {k: (v, (v or "").casefold()) for k, v in valores.items()}
 
 
 ORIGENS: dict[str, _Origem] = {o.key: o for o in (
-    OrigemAuditoria(), OrigemLaboratorio(), OrigemPcp(), OrigemMetrologia(), OrigemKpi(),
+    OrigemAuditoria(), OrigemLaboratorio(), OrigemPcp(), OrigemMetrologia(), OrigemKpi(), OrigemAgenda(),
 )}
 
 

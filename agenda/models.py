@@ -19,6 +19,9 @@ class Checklist(models.Model):
     PER_DIARIA, PER_SEMANAL, PER_QUINZENAL = "diaria", "semanal", "quinzenal"
     PER_MENSAL, PER_BIMESTRAL, PER_TRIMESTRAL = "mensal", "bimestral", "trimestral"
     PER_SEMESTRAL, PER_ANUAL = "semestral", "anual"
+    # intervalo livre: "a cada N" dias/semanas/meses/anos (N em `intervalo`)
+    PER_CADA_DIAS, PER_CADA_SEMANAS = "cada_dias", "cada_semanas"
+    PER_CADA_MESES, PER_CADA_ANOS = "cada_meses", "cada_anos"
     PERIODICIDADES = [
         (PER_DIARIA, "Diária (dias da semana)"),
         (PER_SEMANAL, "Semanal"),
@@ -28,10 +31,19 @@ class Checklist(models.Model):
         (PER_TRIMESTRAL, "Trimestral"),
         (PER_SEMESTRAL, "Semestral"),
         (PER_ANUAL, "Anual"),
+        (PER_CADA_DIAS, "A cada N dias"),
+        (PER_CADA_SEMANAS, "A cada N semanas (nos dias marcados)"),
+        (PER_CADA_MESES, "A cada N meses (no dia do mês)"),
+        (PER_CADA_ANOS, "A cada N anos (no dia do mês)"),
     ]
+    # N máximo de cada periodicidade de intervalo livre
+    LIMITE_INTERVALO = {PER_CADA_DIAS: 365, PER_CADA_SEMANAS: 52, PER_CADA_MESES: 60, PER_CADA_ANOS: 20}
     # meses entre ocorrências nas periodicidades por dia do mês
     MESES_PASSO = {PER_MENSAL: 1, PER_BIMESTRAL: 2, PER_TRIMESTRAL: 3, PER_SEMESTRAL: 6, PER_ANUAL: 12}
-    periodicidade = models.CharField(max_length=10, choices=PERIODICIDADES, default=PER_DIARIA)
+    periodicidade = models.CharField(max_length=20, choices=PERIODICIDADES, default=PER_DIARIA)
+    intervalo = models.PositiveSmallIntegerField(
+        default=1, help_text="N das periodicidades 'a cada N dias/semanas/meses/anos'."
+    )
     dia_mes = models.PositiveSmallIntegerField(
         null=True, blank=True, help_text="Dia do mês (1-31) das periodicidades mensal ou maior; meses curtos usam o último dia."
     )
@@ -68,8 +80,50 @@ class Checklist(models.Model):
         return pode_gerir(user, self.criado_por)
 
     @property
+    def itens_vigentes(self):
+        """Itens do cadastro padrão que valem hoje (sem os avulsos e sem os já removidos)."""
+        from django.utils import timezone
+
+        hoje = timezone.localdate()
+        return [i for i in self.itens.all() if not i.avulso and i.vale_em(hoje)]
+
+    @property
     def periodicidade_label(self):
         return dict(self.PERIODICIDADES).get(self.periodicidade, "Diária").split(" (")[0]
+
+    @classmethod
+    def por_mes(cls, periodicidade):
+        """Periodicidades que valem num dia do mês (mensal ou maior e 'a cada N meses/anos')."""
+        return periodicidade in cls.MESES_PASSO or periodicidade in (cls.PER_CADA_MESES, cls.PER_CADA_ANOS)
+
+    @classmethod
+    def usa_dias_semana(cls, periodicidade):
+        return periodicidade in (cls.PER_DIARIA, cls.PER_SEMANAL, cls.PER_QUINZENAL, cls.PER_CADA_SEMANAS)
+
+    @property
+    def passo_meses(self):
+        """Meses entre ocorrências nas periodicidades por dia do mês (None nas demais)."""
+        if self.periodicidade == self.PER_CADA_MESES:
+            return self.intervalo
+        if self.periodicidade == self.PER_CADA_ANOS:
+            return 12 * self.intervalo
+        return self.MESES_PASSO.get(self.periodicidade)
+
+    @property
+    def frequencia_texto(self):
+        """Texto da periodicidade para as telas: "Mensal · dia 5", "A cada 15 dias", "A cada 3 meses · dia 10"."""
+        n, per = self.intervalo, self.periodicidade
+        if per == self.PER_CADA_DIAS:
+            return f"A cada {n} dias" if n > 1 else "Diária"
+        if per == self.PER_CADA_SEMANAS:
+            return f"A cada {n} semanas" if n > 1 else "Semanal"
+        if per == self.PER_CADA_MESES:
+            base = f"A cada {n} meses" if n > 1 else "Mensal"
+        elif per == self.PER_CADA_ANOS:
+            base = f"A cada {n} anos" if n > 1 else "Anual"
+        else:
+            base = self.periodicidade_label
+        return f"{base} · dia {self.dia_mes}" if self.dia_mes else base
 
     @property
     def dias_set(self):
@@ -81,12 +135,25 @@ class ChecklistItem(models.Model):
     texto = models.CharField(max_length=300)
     grupo = models.CharField(max_length=120, blank=True, default="", help_text="Agrupamento do item (vazio = sem agrupamento).")
     ordem = models.PositiveIntegerField(default=0)
+    valido_desde = models.DateField(
+        null=True, blank=True, help_text="Primeiro dia em que o item vale (vazio = desde sempre). Itens inseridos valem da data da mudança."
+    )
+    valido_ate = models.DateField(
+        null=True, blank=True, help_text="Último dia em que o item vale (vazio = sem fim). Itens removidos valem até o dia anterior à mudança."
+    )
+    avulso = models.BooleanField(
+        default=False, help_text="Item não fixo, adicionado para um dia (ou período) no Meu checklist; fora do cadastro padrão."
+    )
 
     class Meta:
         ordering = ["ordem", "id"]
 
     def __str__(self):
         return self.texto
+
+    def vale_em(self, dia):
+        """True se o item vale em `dia` (inserções e remoções contam a partir da data da mudança)."""
+        return (self.valido_desde is None or dia >= self.valido_desde) and (self.valido_ate is None or dia <= self.valido_ate)
 
 
 class Evento(models.Model):
@@ -320,3 +387,72 @@ class CompartilhadoCobranca(models.Model):
 
     class Meta:
         ordering = ["-criado_em"]
+
+
+class ChecklistGrupo(models.Model):
+    """Condição especial de um agrupamento (itens com o mesmo `grupo`): só aparece nos dias em que a regra vale.
+
+    Existe só para agrupamentos com condição; agrupamentos sem registro aparecem em todas as ocorrências.
+    """
+
+    checklist = models.ForeignKey(Checklist, on_delete=models.CASCADE, related_name="grupos")
+    nome = models.CharField(max_length=120)
+    regra = models.JSONField(default=dict, help_text="Veja agenda.regras.")
+
+    class Meta:
+        unique_together = [("checklist", "nome")]
+
+
+# ----------------------------------------------------------------------------------------------
+# Comentários e ocorrências no preenchimento do checklist
+# ----------------------------------------------------------------------------------------------
+class OcorrenciaChecklist(models.Model):
+    """Ocorrência aberta a partir de um item do checklist (aparece na Central de Ocorrências, origem "Agenda")."""
+
+    ABERTA = "aberta"
+    ENCERRADA = "encerrada"
+    STATUS = [(ABERTA, "Aberta"), (ENCERRADA, "Encerrada")]
+
+    titulo = models.CharField(max_length=200)
+    descricao = models.TextField(blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default=ABERTA)
+    criado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_ocorrencias")
+    criado_em = models.DateTimeField(auto_now_add=True)
+    data = models.DateField(help_text="Dia do checklist em que a ocorrência aconteceu.")
+    # origem (a ligação some se o item for apagado; os textos abaixo guardam o contexto)
+    checklist_titulo = models.CharField(max_length=200, blank=True)
+    item_texto = models.CharField(max_length=300, blank=True)
+    item = models.ForeignKey(ChecklistItem, null=True, blank=True, on_delete=models.SET_NULL, related_name="ocorrencias")
+    tarefa = models.ForeignKey(CompartilhadoTarefa, null=True, blank=True, on_delete=models.SET_NULL, related_name="ocorrencias")
+    evento = models.ForeignKey(Evento, null=True, blank=True, on_delete=models.SET_NULL, related_name="ocorrencias_checklist")
+    resolucao = models.TextField(blank=True)
+    encerrada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    encerrada_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        indexes = [models.Index(fields=["criado_por", "data"])]
+
+    def __str__(self):
+        return self.titulo
+
+
+class ComentarioChecklist(models.Model):
+    """Comentário de quem preenche sobre um item numa data (da folha dele). Pode ser convertido em ocorrência."""
+
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="agenda_comentarios")
+    data = models.DateField(help_text="Dia do checklist a que o comentário se refere.")
+    # a que o comentário se refere: um dos três
+    item = models.ForeignKey(ChecklistItem, null=True, blank=True, on_delete=models.CASCADE, related_name="comentarios")
+    tarefa = models.ForeignKey(CompartilhadoTarefa, null=True, blank=True, on_delete=models.CASCADE, related_name="comentarios")
+    evento = models.ForeignKey(Evento, null=True, blank=True, on_delete=models.CASCADE, related_name="comentarios_checklist")
+    texto = models.TextField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+    ocorrencia = models.ForeignKey(
+        OcorrenciaChecklist, null=True, blank=True, on_delete=models.SET_NULL, related_name="comentarios",
+        help_text="Preenchido quando o comentário foi convertido em ocorrência.",
+    )
+
+    class Meta:
+        ordering = ["criado_em"]
+        indexes = [models.Index(fields=["usuario", "data"])]

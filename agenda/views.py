@@ -5,9 +5,10 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
@@ -15,8 +16,10 @@ from agenda.models import (
     Checklist,
     ChecklistCompartilhamento,
     ChecklistDiarioConclusao,
+    ChecklistGrupo,
     ChecklistCompartilhado,
     ChecklistItem,
+    ComentarioChecklist,
     CompartilhadoCobranca,
     CompartilhadoMembro,
     CompartilhadoTarefa,
@@ -24,9 +27,12 @@ from agenda.models import (
     EventoConclusao,
     EventoParticipante,
     ItemConclusao,
+    OcorrenciaChecklist,
 )
+from agenda import regras
 from agenda.hierarquia import equipe_de, liderados_ids, nome_do_usuario, papel_sobre, pode_gerir
-from agenda.services import agenda_do_periodo, checklist_do_dia, checklists_diarios, ocorrencias
+from agenda.notas import resolver_ref
+from agenda.services import acompanhamento, agenda_do_periodo, checklist_do_dia, checklists_diarios, ocorrencias
 from shared.permissions import user_has_nav_perm
 
 User = get_user_model()
@@ -274,9 +280,15 @@ def api_responder_convite(request, evento_id):
 
 @login_required
 def checklist_view(request):
+    """Meu checklist: acompanhamento único de todos os checklists ativos do usuário (ou do liderado, para a chefia)."""
     alvo = _alvo(request)
     dia = _parse_data(request.GET.get("data"), timezone.localdate())
-    itens = checklist_do_dia(alvo, dia)
+    ac = acompanhamento(alvo, dia)
+    por_lista = []  # itens compartilhados agrupados pelo checklist de origem, na ordem de aparição
+    for t in ac["compartilhados"]:
+        if not por_lista or por_lista[-1]["lista_id"] != t["lista_id"]:
+            por_lista.append({"lista_id": t["lista_id"], "titulo": t["lista_titulo"], "cor": t["cor"], "itens": []})
+        por_lista[-1]["itens"].append(t)
     return render(
         request,
         "agenda/checklist.html",
@@ -287,9 +299,22 @@ def checklist_view(request):
             "anterior": dia - timedelta(days=1),
             "proximo": dia + timedelta(days=1),
             "eh_hoje": dia == timezone.localdate(),
-            "itens": itens,
-            "total": sum(len(i["itens"]) or 1 for i in itens),
-            "feitos": sum(sum(1 for x in i["itens"] if x["feito"]) if i["itens"] else int(i["feito"]) for i in itens),
+            "itens": ac["itens"],
+            "compartilhados": por_lista,
+            "pendencias": ac["pendencias"],
+            "pendencias_total": ac["pendencias_total"],
+            "total": ac["total"],
+            "feitos": ac["feitos"],
+            "total_dia": ac["total_dia"],
+            "feitos_dia": ac["feitos_dia"],
+            "total_compartilhados": ac["total_compartilhados"],
+            "feitos_compartilhados": ac["feitos_compartilhados"],
+            # onde um item avulso pode entrar neste dia: nos próprios checklists que ocorrem nele
+            "destinos_avulso": [
+                {"id": o["id"], "titulo": o["titulo"], "grupos": sorted({g["nome"] for g in o["grupos"] if g["nome"]})}
+                for o in ac["itens"]
+                if o["tipo"] == "checklist_diario" and not o["origem"]
+            ],
         },
     )
 
@@ -326,8 +351,11 @@ def api_item_toggle(request, evento_id, item_id):
         dia = None
     if not dia:
         return JsonResponse({"success": False, "error": "Data inválida."}, status=400)
-    if not any(o["id"] == ev.id for o in ocorrencias(request.user, dia, dia, so_checklist=True)):
+    ocorr = next((o for o in ocorrencias(request.user, dia, dia, so_checklist=True) if o["id"] == ev.id), None)
+    if not ocorr:
         return JsonResponse({"success": False, "error": "O item não ocorre nesta data."}, status=400)
+    if item.id not in {i["id"] for i in ocorr["itens"]}:  # agrupamento com condição especial que não vale neste dia
+        return JsonResponse({"success": False, "error": "Este item não vale nesta data (condição do agrupamento)."}, status=400)
     obj, criado = ItemConclusao.objects.get_or_create(evento=ev, item=item, usuario=request.user, data=dia)
     if not criado:
         obj.delete()
@@ -344,9 +372,8 @@ def equipe_view(request):
     dia = _parse_data(request.GET.get("data"), timezone.localdate())
     linhas = []
     for m in equipe_de(request.user):
-        itens = checklist_do_dia(m["usuario"], dia)
-        total = sum(len(i["itens"]) or 1 for i in itens)
-        feitos = sum(sum(1 for x in i["itens"] if x["feito"]) if i["itens"] else int(i["feito"]) for i in itens)
+        ac = acompanhamento(m["usuario"], dia)  # os mesmos números do "Meu checklist" do liderado
+        itens, total, feitos = ac["itens"], ac["total"], ac["feitos"]
         eventos = [o for o in agenda_do_periodo(m["usuario"], dia, dia) if o["tipo"] == "evento"]
         acoes = list(CompartilhadoTarefa.objects.filter(responsavel=m["usuario"], concluida=False, lista__arquivado=False))
         if not total:
@@ -369,6 +396,7 @@ def equipe_view(request):
                 "feitos": feitos,
                 "pct": round(100 * feitos / total) if total else 0,
                 "eventos": len(eventos),
+                "pendencias": ac["pendencias_total"],
                 "acoes_pendentes": len(acoes),
                 "acoes_atrasadas": sum(1 for a in acoes if a.prazo and a.prazo < timezone.localdate()),
                 "situacao": situacao,
@@ -431,13 +459,204 @@ def api_diario_toggle(request, checklist_id, item_id):
         dia = None
     if not dia:
         return JsonResponse({"success": False, "error": "Data inválida."}, status=400)
-    if not any(o["checklist_id"] == c.id for o in checklists_diarios(request.user, dia, dia)):
+    ocorr = next((o for o in checklists_diarios(request.user, dia, dia) if o["checklist_id"] == c.id), None)
+    if not ocorr:
         return JsonResponse({"success": False, "error": "O checklist não vale nesta data."}, status=400)
+    if item.id not in {i["id"] for i in ocorr["itens"]}:  # agrupamento com condição especial que não vale neste dia
+        return JsonResponse({"success": False, "error": "Este item não vale nesta data (condição do agrupamento)."}, status=400)
     obj, criado = ChecklistDiarioConclusao.objects.get_or_create(item=item, usuario=request.user, data=dia)
     if not criado:
         obj.delete()
     _invalida_inbox(None, request.user)
     return JsonResponse({"success": True, "feito": criado})
+
+
+def _dados_ref(request, d):
+    """(tipo, id, dia) lidos do pedido; dia inválido ou ausente = None."""
+    return d.get("tipo"), d.get("ref"), _parse_data(d.get("data"))
+
+
+@login_required
+@require_GET
+def api_notas(request):
+    """Comentários e ocorrências de um item numa data (da folha do usuário; a chefia lê a do liderado)."""
+    alvo = _alvo(request)
+    tipo, ref, dia = _dados_ref(request, request.GET)
+    info = resolver_ref(alvo, tipo, ref, dia) if dia else None
+    if not info:
+        return JsonResponse({"success": False, "error": "Item não encontrado nesta data."}, status=404)
+    filtro = {info["campo"]: info["obj"], "data": dia}
+    comentarios = ComentarioChecklist.objects.filter(usuario=alvo, **filtro).select_related("ocorrencia")
+    ocorrs = OcorrenciaChecklist.objects.filter(criado_por=alvo, **filtro)
+    return JsonResponse(
+        {
+            "success": True,
+            "somente_leitura": alvo.pk != request.user.pk,
+            "contexto": {"checklist": info["checklist_titulo"], "item": info["item_texto"], "data": dia.strftime("%d/%m/%Y")},
+            "comentarios": [
+                {
+                    "id": c.id,
+                    "texto": c.texto,
+                    "quando": timezone.localtime(c.criado_em).strftime("%d/%m %H:%M"),
+                    "ocorrencia_id": c.ocorrencia_id,
+                    "ocorrencia_status": c.ocorrencia.get_status_display() if c.ocorrencia_id else "",
+                }
+                for c in comentarios
+            ],
+            "ocorrencias": [
+                {
+                    "id": o.id,
+                    "titulo": o.titulo,
+                    "descricao": o.descricao,
+                    "status": o.status,
+                    "status_texto": o.get_status_display(),
+                    "quando": timezone.localtime(o.criado_em).strftime("%d/%m %H:%M"),
+                }
+                for o in ocorrs
+            ],
+            "url_central": reverse("ocorrencias_central"),
+        }
+    )
+
+
+@login_required
+@require_POST
+def comentario_salvar(request):
+    """Comenta um item da própria folha (só o dono da folha comenta)."""
+    try:
+        d = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "JSON inválido."}, status=400)
+    texto = (d.get("texto") or "").strip()
+    if not texto or len(texto) > 2000:
+        return JsonResponse({"success": False, "error": "Escreva o comentário (até 2000 caracteres)."}, status=400)
+    tipo, ref, dia = _dados_ref(request, d)
+    info = resolver_ref(request.user, tipo, ref, dia) if dia else None
+    if not info:
+        return JsonResponse({"success": False, "error": "Item não encontrado nesta data."}, status=404)
+    c = ComentarioChecklist.objects.create(usuario=request.user, data=dia, texto=texto, **{info["campo"]: info["obj"]})
+    return JsonResponse({"success": True, "id": c.id})
+
+
+@login_required
+@require_POST
+def comentario_excluir(request, comentario_id):
+    c = get_object_or_404(ComentarioChecklist, pk=comentario_id, usuario=request.user)
+    if c.ocorrencia_id:
+        return JsonResponse({"success": False, "error": "Este comentário já virou ocorrência e não pode ser excluído."}, status=400)
+    c.delete()
+    return JsonResponse({"success": True})
+
+
+@login_required
+@require_POST
+def ocorrencia_criar(request):
+    """Abre uma ocorrência a partir de um item da própria folha; com `comentario_id`, converte o comentário em ocorrência."""
+    try:
+        d = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "JSON inválido."}, status=400)
+    tipo, ref, dia = _dados_ref(request, d)
+    info = resolver_ref(request.user, tipo, ref, dia) if dia else None
+    if not info:
+        return JsonResponse({"success": False, "error": "Item não encontrado nesta data."}, status=404)
+    comentario = None
+    if d.get("comentario_id"):
+        comentario = ComentarioChecklist.objects.filter(
+            pk=d["comentario_id"], usuario=request.user, data=dia, **{info["campo"]: info["obj"]}
+        ).first()
+        if not comentario:
+            return JsonResponse({"success": False, "error": "Comentário não encontrado."}, status=404)
+        if comentario.ocorrencia_id:
+            return JsonResponse({"success": False, "error": "Este comentário já foi convertido em ocorrência."}, status=400)
+    descricao = (d.get("descricao") or "").strip() or (comentario.texto if comentario else "")
+    titulo = (d.get("titulo") or "").strip()[:200]
+    if not titulo:  # convertida de um comentário: o começo do comentário diz mais que o nome do item
+        titulo = (comentario.texto.strip().splitlines()[0][:80] if comentario else info["item_texto"])[:200]
+    if not descricao:
+        return JsonResponse({"success": False, "error": "Descreva a ocorrência."}, status=400)
+    with transaction.atomic():
+        oc = OcorrenciaChecklist.objects.create(
+            titulo=titulo, descricao=descricao, criado_por=request.user, data=dia,
+            checklist_titulo=info["checklist_titulo"][:200], item_texto=info["item_texto"][:300], **{info["campo"]: info["obj"]},
+        )
+        if comentario:
+            comentario.ocorrencia = oc
+            comentario.save(update_fields=["ocorrencia"])
+    try:
+        from shared.ocorrencias import invalidar_counts
+
+        invalidar_counts()
+    except Exception:
+        pass
+    return JsonResponse({"success": True, "id": oc.id})
+
+
+AVULSOS_TITULO = "Itens avulsos"
+MAX_DIAS_AVULSO = 366
+
+
+def _lista_de_avulsos(user, desde):
+    """Checklist pessoal que reúne os itens avulsos sem checklist de destino (criado na primeira vez que se usa)."""
+    c = Checklist.objects.filter(criado_por=user, titulo=AVULSOS_TITULO, diario=True, incluir_dono=True).first()
+    if not c:
+        return Checklist.objects.create(
+            titulo=AVULSOS_TITULO, criado_por=user, diario=True, diario_desde=desde, cor="#6c757d",
+            descricao="Itens não fixos adicionados no Meu checklist.",
+        )
+    if c.diario_desde is None or desde < c.diario_desde:
+        c.diario_desde = desde  # o item avulso pode ser de um dia anterior ao primeiro uso
+        c.save(update_fields=["diario_desde"])
+    return c
+
+
+@login_required
+@require_POST
+def item_avulso_criar(request):
+    """Adiciona um item não fixo ao Meu checklist: vale no dia escolhido (ou até uma data) e depois volta ao padrão."""
+    try:
+        d = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "JSON inválido."}, status=400)
+    texto = (d.get("texto") or "").strip()
+    if not texto or len(texto) > 300:
+        return JsonResponse({"success": False, "error": "Informe o item (até 300 caracteres)."}, status=400)
+    dia = _parse_data(d.get("data"))
+    if not dia:
+        return JsonResponse({"success": False, "error": "Data inválida."}, status=400)
+    ate = _parse_data(d.get("ate")) if d.get("ate") else dia
+    if not ate or ate < dia:
+        return JsonResponse({"success": False, "error": "'Repetir até' deve ser a mesma data ou posterior."}, status=400)
+    if (ate - dia).days > MAX_DIAS_AVULSO:
+        return JsonResponse({"success": False, "error": f"O período do item avulso é de no máximo {MAX_DIAS_AVULSO} dias."}, status=400)
+    grupo = (d.get("grupo") or "").strip()[:120]
+    if d.get("checklist_id"):
+        # só nos próprios checklists recorrentes (não nos recebidos da chefia)
+        c = get_object_or_404(Checklist, pk=d["checklist_id"], criado_por=request.user, diario=True)
+    else:
+        c = _lista_de_avulsos(request.user, dia)
+    ordem = (c.itens.aggregate(m=Max("ordem"))["m"] or 0) + 1
+    item = ChecklistItem.objects.create(
+        checklist=c, texto=texto, grupo=grupo, ordem=ordem, avulso=True, valido_desde=dia, valido_ate=ate
+    )
+    _invalida_inbox(None, request.user)
+    return JsonResponse({"success": True, "id": item.id, "checklist_id": c.id})
+
+
+@login_required
+@require_POST
+def item_avulso_excluir(request, item_id):
+    """Remove um item avulso. Com marcações feitas, ele só deixa de valer a partir de hoje (o histórico fica)."""
+    item = get_object_or_404(ChecklistItem, pk=item_id, avulso=True, checklist__criado_por=request.user)
+    hoje = timezone.localdate()
+    if item.conclusoes_diarias.exists() or item.conclusoes.exists():
+        if item.valido_ate is None or item.valido_ate >= hoje:
+            item.valido_ate = hoje - timedelta(days=1)
+            item.save(update_fields=["valido_ate"])
+    else:
+        item.delete()
+    _invalida_inbox(None, request.user)
+    return JsonResponse({"success": True})
 
 
 def _checklist_do_usuario(request, checklist_id):
@@ -462,7 +681,9 @@ def api_checklist_detalhe(request, checklist_id):
                 "diario": c.diario,
                 "dias_semana": sorted(c.dias_set),
                 "periodicidade": c.periodicidade,
+                "intervalo": c.intervalo,
                 "dia_mes": c.dia_mes,
+                "condicoes": {g.nome: g.regra for g in c.grupos.all()},
                 "desde": c.diario_desde.isoformat() if c.diario_desde else "",
                 "hora": c.hora.strftime("%H:%M") if c.hora else "",
                 "na_agenda": c.na_agenda,
@@ -470,7 +691,7 @@ def api_checklist_detalhe(request, checklist_id):
                 "incluir_dono": c.incluir_dono,
                 "compartilhar_com": list(c.compartilhamentos.values_list("usuario_id", flat=True)),
                 "ajustado_por": _nome(c.ajustado_por) if c.ajustado_por_id else "",
-                "itens": [{"id": i.id, "texto": i.texto, "grupo": i.grupo} for i in c.itens.all()],
+                "itens": [{"id": i.id, "texto": i.texto, "grupo": i.grupo} for i in c.itens_vigentes],
                 "eventos": [{"id": e.id, "titulo": e.titulo} for e in c.eventos.all()],
             },
         }
@@ -502,14 +723,38 @@ def checklist_salvar(request):
     periodicidade = d.get("periodicidade") or Checklist.PER_DIARIA
     if periodicidade not in dict(Checklist.PERIODICIDADES):
         return JsonResponse({"success": False, "error": "Periodicidade inválida."}, status=400)
-    por_mes = periodicidade in Checklist.MESES_PASSO
+    por_mes = Checklist.por_mes(periodicidade)
+    intervalo = 1
+    if periodicidade in Checklist.LIMITE_INTERVALO:
+        limite = Checklist.LIMITE_INTERVALO[periodicidade]
+        if not str(d.get("intervalo") or "").isdigit() or not 1 <= int(d["intervalo"]) <= limite:
+            return JsonResponse({"success": False, "error": f"Informe o intervalo (1 a {limite})."}, status=400)
+        intervalo = int(d["intervalo"])
+    desde = None
+    if d.get("desde"):
+        desde = _parse_data(d["desde"])
+        if not desde:
+            return JsonResponse({"success": False, "error": "Data de início inválida."}, status=400)
     dia_mes = None
     if d.get("diario") and por_mes:
         if not str(d.get("dia_mes") or "").isdigit() or not 1 <= int(d["dia_mes"]) <= 31:
             return JsonResponse({"success": False, "error": "Informe o dia do mês (1 a 31)."}, status=400)
         dia_mes = int(d["dia_mes"])
-    elif d.get("diario") and not dias:
+    elif d.get("diario") and Checklist.usa_dias_semana(periodicidade) and not dias:
         return JsonResponse({"success": False, "error": "Escolha pelo menos um dia da semana."}, status=400)
+    # condições especiais dos agrupamentos: {nome: regra}; só ficam as que têm condição
+    condicoes = {}
+    nomes_itens = {i["grupo"] for i in itens}
+    for g in d.get("grupos") or []:
+        if not isinstance(g, dict) or not (g.get("nome") or "").strip():
+            continue
+        nome = g["nome"].strip()[:120]
+        try:
+            regra = regras.normaliza(g.get("regra"))
+        except ValueError as e:
+            return JsonResponse({"success": False, "error": f"Agrupamento “{nome}”: {e}"}, status=400)
+        if regra["tipo"] != "sempre" and nome in nomes_itens:
+            condicoes[nome] = regra
     try:
         hora = datetime.strptime(d["hora"], "%H:%M").time() if d.get("hora") else None
     except ValueError:
@@ -538,12 +783,14 @@ def checklist_salvar(request):
         eram_diario = c.diario
         c.diario = bool(d.get("diario"))
         c.dias_semana = ",".join(str(x) for x in dias)
-        mudou_per = c.periodicidade != periodicidade
-        c.periodicidade, c.dia_mes = periodicidade, dia_mes
+        mudou_per = (c.periodicidade, c.intervalo) != (periodicidade, intervalo)
+        c.periodicidade, c.intervalo, c.dia_mes = periodicidade, intervalo, dia_mes
         c.hora = hora
         c.na_agenda = c.diario and bool(d.get("na_agenda"))
         c.cor = cor
-        if c.diario and (not eram_diario or not c.diario_desde or mudou_per):
+        if c.diario and desde:
+            c.diario_desde = desde  # "começa em": referência de intervalos e meses
+        elif c.diario and (not eram_diario or not c.diario_desde or mudou_per):
             c.diario_desde = timezone.localdate()  # vale a partir de hoje; dias passados não viram pendência
         if c.criado_por_id == request.user.pk and compartilhar is not None:
             c.incluir_dono = bool(d.get("incluir_dono", True)) or not compartilhar  # sem destinatário, fica com o dono
@@ -554,7 +801,13 @@ def checklist_salvar(request):
             c.compartilhamentos.exclude(usuario_id__in=compartilhar).delete()
             for uid in compartilhar - atuais:
                 ChecklistCompartilhamento.objects.create(checklist=c, usuario_id=uid, desde=timezone.localdate())
-        existentes = {i.id: i for i in c.itens.all()}
+        c.grupos.exclude(nome__in=condicoes.keys()).delete()
+        for nome, regra in condicoes.items():
+            ChecklistGrupo.objects.update_or_create(checklist=c, nome=nome, defaults={"regra": regra})
+        # Itens têm validade por data: o que entra vale da data da mudança; o que sai deixa de valer a partir dela,
+        # e os dias anteriores ficam como eram (as marcações antigas são preservadas).
+        hoje = timezone.localdate()
+        existentes = {i.id: i for i in c.itens_vigentes}  # só o cadastro padrão vigente (sem avulsos nem removidos)
         mantidos = set()
         for ordem, i in enumerate(itens):
             item = existentes.get(int(i["id"])) if str(i["id"] or "").isdigit() else None
@@ -563,8 +816,20 @@ def checklist_salvar(request):
                 item.save(update_fields=["texto", "grupo", "ordem"])
                 mantidos.add(item.id)
             else:
-                ChecklistItem.objects.create(checklist=c, texto=i["texto"], grupo=i["grupo"], ordem=ordem)
-        c.itens.exclude(id__in=mantidos).filter(id__in=existentes.keys()).delete()
+                ChecklistItem.objects.create(
+                    checklist=c, texto=i["texto"], grupo=i["grupo"], ordem=ordem,
+                    valido_desde=hoje if d.get("id") else None,  # checklist novo: vale desde o início
+                )
+        for item in existentes.values():
+            if item.id in mantidos:
+                continue
+            if (item.valido_desde and item.valido_desde >= hoje) and not (
+                item.conclusoes_diarias.exists() or item.conclusoes.exists()
+            ):
+                item.delete()  # criado hoje e retirado hoje, sem nenhuma marcação: não há histórico a preservar
+            else:
+                item.valido_ate = hoje - timedelta(days=1)
+                item.save(update_fields=["valido_ate"])
     return JsonResponse({"success": True, "id": c.id})
 
 
@@ -804,7 +1069,7 @@ def api_tarefa_toggle(request, tarefa_id):
         t.cobrancas.filter(lida=False).update(lida=True)
     for uid in {request.user.pk, t.responsavel_id} - {None}:
         _invalida_inbox(None, uid)
-    return JsonResponse({"success": True, "concluida": t.concluida})
+    return JsonResponse({"success": True, "concluida": t.concluida, "feito": t.concluida})
 
 
 @login_required

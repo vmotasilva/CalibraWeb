@@ -226,6 +226,98 @@
             </div>
         </div>
     </div>
+
+    {% if livre %}
+    <div class="mt-5" id="secao-livre">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h5 class="fw-bold mb-0"><i class="bi bi-journal-check text-primary me-2"></i>Auditoria Livre — Evolução</h5>
+            <a href="{% url 'auditoria:livre_list' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-list-ul me-1"></i> Ver auditorias livres</a>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-lg-3"><div class="card shadow-sm h-100"><div class="card-body">
+                <h6 class="text-muted">Auditorias / execuções</h6>
+                <h3>{{ livre.kpis.auditorias }} <small class="text-muted fs-6">/ {{ livre.kpis.execucoes }}</small></h3>
+                <div class="small text-muted">{{ livre.kpis.com_evolucao }} com mais de uma execução</div>
+            </div></div></div>
+            <div class="col-6 col-lg-3"><div class="card shadow-sm h-100"><div class="card-body">
+                <h6 class="text-muted">Índice de conformidade (última execução)</h6>
+                <h3>{% if livre.kpis.indice_medio is not None %}{{ livre.kpis.indice_medio }}%{% else %}—{% endif %}</h3>
+                <div class="small text-muted">média entre as auditorias</div>
+            </div></div></div>
+            <div class="col-6 col-lg-3"><div class="card shadow-sm h-100"><div class="card-body">
+                <h6 class="text-muted">Evolução média do índice</h6>
+                <h3 class="{% if livre.kpis.variacao_media is None %}text-muted{% elif livre.kpis.variacao_media > 0 %}text-success{% elif livre.kpis.variacao_media < 0 %}text-danger{% endif %}">
+                    {% if livre.kpis.variacao_media is None %}—{% elif livre.kpis.variacao_media > 0 %}▲ +{{ livre.kpis.variacao_media }} p.p.{% elif livre.kpis.variacao_media < 0 %}▼ {{ livre.kpis.variacao_media }} p.p.{% else %}= 0 p.p.{% endif %}
+                </h3>
+                <div class="small text-muted">da 1ª à última execução</div>
+            </div></div></div>
+            <div class="col-6 col-lg-3"><div class="card shadow-sm h-100"><div class="card-body">
+                <h6 class="text-muted">NC nas últimas execuções</h6>
+                <h3 class="{% if livre.kpis.nc_abertas %}text-danger{% endif %}">{{ livre.kpis.nc_abertas }}</h3>
+                <div class="small text-muted">não conformidades em aberto</div>
+            </div></div></div>
+        </div>
+
+        {% if livre.series %}
+        <div class="row g-3 mb-3">
+            <div class="col-lg-7">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header">Índice de conformidade por execução</div>
+                    <div class="card-body">
+                        <div style="position:relative;height:320px;"><canvas id="chartLivreIndice"></canvas></div>
+                        {% if not livre.kpis.com_evolucao %}<div class="small text-muted mt-2"><i class="bi bi-info-circle me-1"></i>Para ver a evolução, conclua uma auditoria livre e abra uma nova execução.</div>{% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="card shadow-sm h-100">
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <span>Composição por execução</span>
+                        <select id="livreSerieSelect" class="form-select form-select-sm" style="max-width:230px;">
+                            {% for s in livre.series %}<option value="{{ forloop.counter0 }}">{{ s.titulo }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="card-body">
+                        <div style="position:relative;height:320px;"><canvas id="chartLivreComposicao"></canvas></div>
+                        <div class="text-end mt-2"><a id="livreSerieLink" href="#" class="btn btn-sm btn-outline-dark"><i class="bi bi-graph-up-arrow me-1"></i> Abrir</a></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header">Evolução por auditoria</div>
+            <div class="card-body p-0"><div class="table-responsive">
+                <table class="table table-striped align-middle mb-0">
+                    <thead><tr><th>Auditoria</th><th class="text-center">Execuções</th><th class="text-center">Índice (1ª → última)</th><th class="text-center">NC (1ª → última)</th><th class="text-center">Variação</th><th></th></tr></thead>
+                    <tbody>
+                    {% for s in livre.series %}
+                    {% with p=s.execucoes.0 %}
+                    <tr>
+                        <td class="fw-semibold">{{ s.titulo }}</td>
+                        <td class="text-center">{{ s.execucoes|length }}</td>
+                        <td class="text-center">{% for e in s.execucoes %}{% if forloop.first or forloop.last %}{% if e.indice is not None %}{{ e.indice }}%{% else %}—{% endif %}{% if forloop.first and s.execucoes|length > 1 %} → {% endif %}{% endif %}{% endfor %}</td>
+                        <td class="text-center">{% for e in s.execucoes %}{% if forloop.first or forloop.last %}{{ e.NC }}{% if forloop.first and s.execucoes|length > 1 %} → {% endif %}{% endif %}{% endfor %}</td>
+                        <td class="text-center">{% if s.variacao is None %}<span class="text-muted">—</span>{% elif s.variacao > 0 %}<span class="badge text-bg-success">▲ +{{ s.variacao }} p.p.</span>{% elif s.variacao < 0 %}<span class="badge text-bg-danger">▼ {{ s.variacao }} p.p.</span>{% else %}<span class="badge text-bg-secondary">= 0</span>{% endif %}</td>
+                        <td class="text-end">
+                            {% if s.execucoes|length > 1 %}<a href="{% url 'auditoria:livre_comparar' s.ultima_id %}" class="btn btn-sm btn-outline-dark"><i class="bi bi-graph-up-arrow"></i> Evolução</a>
+                            {% else %}<a href="{% url 'auditoria:livre_execucao' s.ultima_id %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-box-arrow-up-right"></i> Abrir</a>{% endif %}
+                        </td>
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div></div>
+        </div>
+        {% else %}
+        <div class="card shadow-sm"><div class="card-body text-center text-muted py-4">
+            <i class="bi bi-journal-check display-6 d-block mb-2"></i>Nenhuma auditoria livre no período.
+        </div></div>
+        {% endif %}
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -446,4 +538,71 @@
         }
     })();
 </script>
+{% if livre and livre.series %}
+{{ livre.series|json_script:"livre-series" }}
+<script>
+    (function () {
+        if (typeof Chart === 'undefined') return;
+        const series = JSON.parse(document.getElementById('livre-series').textContent || '[]');
+        if (!series.length) return;
+        const cores = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#475569'];
+        const maxExec = Math.max(...series.map(s => s.execucoes[s.execucoes.length - 1].execucao));
+        const labels = Array.from({ length: maxExec }, (_, i) => 'Execução ' + (i + 1));
+
+        // 1) Índice de conformidade por execução: uma linha por auditoria
+        new Chart(document.getElementById('chartLivreIndice'), {
+            type: 'line',
+            data: {
+                labels,
+                datasets: series.map((s, n) => ({
+                    label: s.titulo,
+                    data: labels.map((_, i) => { const e = s.execucoes.find(x => x.execucao === i + 1); return e && e.indice !== null ? e.indice : null; }),
+                    borderColor: cores[n % cores.length], backgroundColor: cores[n % cores.length],
+                    tension: 0.25, spanGaps: true, pointRadius: 5, pointHoverRadius: 7, borderWidth: 2,
+                })),
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'nearest', intersect: true },
+                scales: {
+                    y: { min: 0, max: 100, ticks: { callback: v => v + '%' }, title: { display: true, text: 'Conformes ÷ classificados' } },
+                    x: { grid: { display: false } },
+                },
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12 } },
+                    tooltip: { callbacks: { label: ctx => {
+                        const e = series[ctx.datasetIndex].execucoes.find(x => x.execucao === ctx.dataIndex + 1);
+                        return `${ctx.dataset.label}: ${ctx.parsed.y}%` + (e ? ` · NC ${e.NC} · ${e.data}` : '');
+                    } } },
+                },
+            },
+        });
+
+        // 2) Composição (conformes / OM / NC / N/A / pendentes) por execução da auditoria escolhida
+        const select = document.getElementById('livreSerieSelect'), link = document.getElementById('livreSerieLink');
+        const defs = [['C', 'Conformes', '#16a34a'], ['OM', 'Oport. de melhoria', '#f59e0b'], ['NC', 'Não conformidades', '#dc2626'],
+                      ['NA', 'N/A', '#9ca3af'], ['P', 'Pendentes', '#e5e7eb']];
+        const composicao = new Chart(document.getElementById('chartLivreComposicao'), {
+            type: 'bar',
+            data: { labels: [], datasets: defs.map(([k, nome, cor]) => ({ label: nome, data: [], backgroundColor: cor, stack: 'itens' })) },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } },
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+            },
+        });
+        function mostrar() {
+            const s = series[Number(select.value)] || series[0];
+            composicao.data.labels = s.execucoes.map(e => ['Exec. ' + e.execucao, e.data]);
+            defs.forEach(([k], i) => { composicao.data.datasets[i].data = s.execucoes.map(e => e[k]); });
+            composicao.update();
+            link.href = s.execucoes.length > 1 ? "{% url 'auditoria:livre_comparar' 0 %}".replace('/0/', '/' + s.ultima_id + '/')
+                                                : "{% url 'auditoria:livre_execucao' 0 %}".replace('/0/', '/' + s.ultima_id + '/');
+            link.innerHTML = '<i class="bi bi-graph-up-arrow me-1"></i> ' + (s.execucoes.length > 1 ? 'Ver evolução' : 'Abrir auditoria');
+        }
+        select.addEventListener('change', mostrar);
+        mostrar();
+    })();
+</script>
+{% endif %}
 {% endblock %}

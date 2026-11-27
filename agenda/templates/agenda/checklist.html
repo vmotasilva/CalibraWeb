@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Checklist do dia - Agenda - Calibra QMS{% endblock %}
-{% block header_title %}Checklist do dia{% endblock %}
+{% block title %}Meu checklist - Agenda - Calibra QMS{% endblock %}
+{% block header_title %}Meu checklist{% endblock %}
 
 {% block content %}
-<div class="container py-3" style="max-width: 760px;">
+<div class="container py-3" style="max-width: 820px;">
     {% include "agenda/_alvo_banner.html" %}
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
         <div class="d-flex align-items-center gap-1">
@@ -22,8 +22,14 @@
     <div class="progress mb-3" style="height: 10px;">
         <div class="progress-bar bg-success" id="ckBarra" style="width: {% if total %}{% widthratio feitos total 100 %}{% else %}0{% endif %}%"></div>
     </div>
-    <p class="text-muted small"><span id="ckFeitos">{{ feitos }}</span> de {{ total }} concluídos</p>
+    <p class="text-muted small mb-1"><span id="ckFeitos">{{ feitos }}</span> de {{ total }} concluídos</p>
+    <div class="d-flex flex-wrap gap-2 mb-3 small" id="ckResumo">
+        <span class="badge text-bg-light border"><i class="bi bi-arrow-repeat me-1"></i>Recorrentes e eventos <span id="ckResRec">{{ feitos_dia }}/{{ total_dia }}</span></span>
+        <span class="badge text-bg-light border"><i class="bi bi-people-fill me-1"></i>Compartilhados comigo <span id="ckResComp">{{ feitos_compartilhados }}/{{ total_compartilhados }}</span></span>
+        {% if eh_hoje %}<span class="badge {% if pendencias_total %}text-bg-warning{% else %}text-bg-light border{% endif %}" id="ckResPend"><i class="bi bi-clock-history me-1"></i>Pendências anteriores <span id="ckPendTotal">{{ pendencias_total }}</span></span>{% endif %}
+    </div>
 
+    {% if itens or not compartilhados %}
     <ul class="list-group shadow-sm" id="ckLista">
     {% for i in itens %}
         {% if i.itens %}
@@ -35,17 +41,20 @@
             </div>
         </li>
         {% for g in i.grupos %}
-        {% if g.nome %}<li class="list-group-item py-1 ps-4 small fw-semibold text-uppercase text-muted d-flex justify-content-between ck-ghdr" style="background:#fafbfc;"><span><i class="bi bi-folder2-open me-1"></i>{{ g.nome }}</span><span class="ck-gcont">{{ g.feitos }}/{{ g.total }}</span></li>{% endif %}
+        {% if g.nome %}<li class="list-group-item py-1 ps-4 small fw-semibold text-uppercase text-muted d-flex justify-content-between ck-ghdr" style="background:#fafbfc;"><span><i class="bi bi-folder2-open me-1"></i>{{ g.nome }}{% if g.condicao %} <span class="badge text-bg-light border fw-normal text-lowercase">{{ g.condicao }}</span>{% endif %}</span><span class="ck-gcont">{{ g.feitos }}/{{ g.total }}</span></li>{% endif %}
         {% for x in g.itens %}
         <li class="list-group-item d-flex align-items-center gap-3 {% if g.nome %}ps-5{% else %}ps-4{% endif %}">
-            <input class="form-check-input mt-0 ck-box" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
-            <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}</div>
+            <input class="form-check-input mt-0 ck-box ck-conta" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
+            <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}
+                {% if x.avulso %}<span class="badge text-bg-info fw-normal ms-1">avulso{% if x.ate %} · até {{ x.ate|date:"d/m" }}{% endif %}</span>{% endif %}</div>
+<button class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota" type="button" data-tipo="item" data-ref="{{ x.id }}" data-dia="{{ dia|date:'Y-m-d' }}" data-titulo="{{ x.texto|escape }}" title="Comentários e ocorrências"><i class="bi bi-chat-left-text {% if x.n_coment %}text-primary{% else %}text-muted{% endif %}"></i>{% if x.n_coment %} <span class="small">{{ x.n_coment }}</span>{% endif %}{% if x.n_ocorr %} <span class="badge text-bg-danger fw-normal"><i class="bi bi-exclamation-triangle"></i> {{ x.n_ocorr }}</span>{% endif %}</button>
+            {% if x.avulso and not somente_leitura %}<button class="btn btn-sm btn-link text-danger p-0 ck-avulso-del" data-item="{{ x.id }}" title="Remover item avulso"><i class="bi bi-x-lg"></i></button>{% endif %}
         </li>
         {% endfor %}
         {% endfor %}
         {% else %}
         <li class="list-group-item d-flex align-items-center gap-3">
-            <input class="form-check-input mt-0 ck-box" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.3rem;height:1.3rem;" data-evento="{{ i.id }}" {% if i.feito %}checked{% endif %}>
+            <input class="form-check-input mt-0 ck-box ck-conta" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.3rem;height:1.3rem;" data-evento="{{ i.id }}" {% if i.feito %}checked{% endif %}>
             <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ i.cor }}"></span>
             <div class="flex-grow-1 {% if i.feito %}text-decoration-line-through text-muted{% endif %}">
                 <div class="fw-semibold">{{ i.titulo }}{% if i.escopo == 'comum' %} <span class="badge text-bg-secondary">Comum</span>{% endif %}</div>
@@ -53,12 +62,108 @@
                     {% if i.hora_inicio %}{{ i.hora_inicio|time:"H:i" }}{% else %}Dia inteiro{% endif %}{% if i.local %} · {{ i.local }}{% endif %}{% if i.recorrente %} · <i class="bi bi-arrow-repeat"></i>{% endif %}
                 </div>
             </div>
+            <button class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota" type="button" data-tipo="evento" data-ref="{{ i.id }}" data-dia="{{ dia|date:'Y-m-d' }}" data-titulo="{{ i.titulo|escape }}" title="Comentários e ocorrências"><i class="bi bi-chat-left-text {% if i.n_coment %}text-primary{% else %}text-muted{% endif %}"></i>{% if i.n_coment %} <span class="small">{{ i.n_coment }}</span>{% endif %}{% if i.n_ocorr %} <span class="badge text-bg-danger fw-normal"><i class="bi bi-exclamation-triangle"></i> {{ i.n_ocorr }}</span>{% endif %}</button>
         </li>
         {% endif %}
     {% empty %}
-        <li class="list-group-item text-muted text-center py-4">Nenhum item de checklist para este dia. Crie um <a href="{% url 'agenda:checklists' %}">checklist diário</a> ou associe um checklist a um evento na <a href="{% url 'agenda:calendario' %}">Agenda</a>.</li>
+        {% if not compartilhados and not pendencias %}<li class="list-group-item text-muted text-center py-4">Nenhum item de checklist para este dia. Crie um <a href="{% url 'agenda:checklists' %}">checklist diário</a> ou associe um checklist a um evento na <a href="{% url 'agenda:calendario' %}">Agenda</a>.</li>{% endif %}
     {% endfor %}
     </ul>
+    {% endif %}
+
+    {% if compartilhados %}
+    <h6 class="mt-4 mb-2"><i class="bi bi-people-fill me-1"></i>Compartilhados comigo</h6>
+    {% for l in compartilhados %}
+    <ul class="list-group shadow-sm mb-3">
+        <li class="list-group-item bg-light d-flex align-items-center gap-2 ck-ttl">
+            <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ l.cor }}"></span>
+            <a class="fw-semibold text-decoration-none flex-grow-1" href="{% url 'agenda:compartilhado_detalhe' l.lista_id %}">{{ l.titulo }}</a>
+            <span class="badge text-bg-info fw-normal">compartilhado</span>
+        </li>
+        {% for t in l.itens %}
+        <li class="list-group-item d-flex align-items-center gap-3 ps-4">
+            <input class="form-check-input mt-0 ck-box ck-conta" type="checkbox" style="width:1.2rem;height:1.2rem;" data-tarefa="{{ t.id }}" {% if t.feito %}checked{% endif %} {% if somente_leitura %}disabled{% endif %}>
+            <div class="flex-grow-1 {% if t.feito %}text-decoration-line-through text-muted{% endif %}">
+                {{ t.texto }}{% if t.grupo %} <span class="text-muted small">· {{ t.grupo }}</span>{% endif %}
+            </div>
+            {% if t.prazo %}<span class="badge {% if t.atrasada %}text-bg-danger{% else %}text-bg-light border{% endif %}"><i class="bi bi-calendar-event me-1"></i>{{ t.prazo|date:"d/m" }}{% if t.atrasada %} · atrasado{% endif %}</span>{% endif %}
+            <button class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota" type="button" data-tipo="tarefa" data-ref="{{ t.id }}" data-dia="{{ dia|date:'Y-m-d' }}" data-titulo="{{ t.texto|escape }}" title="Comentários e ocorrências"><i class="bi bi-chat-left-text {% if t.n_coment %}text-primary{% else %}text-muted{% endif %}"></i>{% if t.n_coment %} <span class="small">{{ t.n_coment }}</span>{% endif %}{% if t.n_ocorr %} <span class="badge text-bg-danger fw-normal"><i class="bi bi-exclamation-triangle"></i> {{ t.n_ocorr }}</span>{% endif %}</button>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endfor %}
+    {% endif %}
+
+    {% if not somente_leitura %}
+    <div class="card shadow-sm mt-4"><div class="card-body">
+        <h6 class="mb-2"><i class="bi bi-plus-circle me-1"></i>Adicionar item avulso <span class="text-muted small fw-normal">(não fixo: vale para {{ dia|date:"d/m" }} ou até uma data)</span></h6>
+        <div class="row g-2">
+            <div class="col-md-5"><input id="avTexto" class="form-control form-control-sm" maxlength="300" placeholder="Ex.: Entregar relatório ao cliente"></div>
+            <div class="col-md-3"><select id="avChecklist" class="form-select form-select-sm" title="Em qual checklist o item aparece">
+                <option value="">Itens avulsos (lista própria)</option>
+                {% for d in destinos_avulso %}<option value="{{ d.id }}" data-grupos="{{ d.grupos|join:'|' }}">{{ d.titulo }}</option>{% endfor %}
+            </select></div>
+            <div class="col-md-2"><input id="avGrupo" list="avGrupos" class="form-control form-control-sm" maxlength="120" placeholder="Agrupamento"><datalist id="avGrupos"></datalist></div>
+            <div class="col-md-2"><input type="date" id="avAte" class="form-control form-control-sm" min="{{ dia|date:'Y-m-d' }}" title="Repetir até (opcional)"></div>
+        </div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+            <span class="form-text mb-0">Com <strong>repetir até</strong>, o item aparece todos os dias do período e depois some, voltando ao padrão do checklist.</span>
+            <button class="btn btn-sm btn-primary" id="avAdd"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>
+        </div>
+        <div class="text-danger small mt-1 d-none" id="avErro"></div>
+    </div></div>
+    {% endif %}
+
+    {% if pendencias %}
+    <h6 class="mt-4 mb-1"><i class="bi bi-clock-history me-1"></i>Pendências dos últimos 7 dias</h6>
+    <p class="small text-muted mb-2">O que ficou sem marcar. Você pode regularizar aqui; vale para o dia de origem.</p>
+    <ul class="list-group shadow-sm mb-3" id="ckPend">
+    {% for p in pendencias %}
+        <li class="list-group-item py-2 bg-light d-flex align-items-center gap-2 ck-ttl">
+            <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:{{ p.cor }}"></span>
+            <span class="fw-semibold">{{ p.titulo }}</span>
+            <span class="text-muted small">· {{ p.dia|date:"D, d/m" }}{% if p.origem %} · enviado por {{ p.origem }}{% endif %}</span>
+        </li>
+        {% for x in p.faltam %}
+        <li class="list-group-item d-flex align-items-center gap-3 ps-4">
+            <input class="form-check-input mt-0 ck-box ck-pend" type="checkbox" style="width:1.2rem;height:1.2rem;" data-dia="{{ p.dia|date:'Y-m-d' }}"
+                {% if p.tipo == 'checklist_diario' %}data-checklist="{{ p.id }}" data-item="{{ x.id }}"{% elif x.id %}data-evento="{{ p.id }}" data-item="{{ x.id }}"{% else %}data-evento="{{ p.id }}"{% endif %}
+                {% if somente_leitura %}disabled{% endif %}>
+            <div class="flex-grow-1">{{ x.texto }}{% if x.grupo %} <span class="text-muted small">· {{ x.grupo }}</span>{% endif %}</div>
+            <button class="btn btn-sm btn-link p-0 text-decoration-none text-nowrap ck-nota" type="button" data-tipo="{% if x.id %}item{% else %}evento{% endif %}" data-ref="{% if x.id %}{{ x.id }}{% else %}{{ p.id }}{% endif %}" data-dia="{{ p.dia|date:'Y-m-d' }}" data-titulo="{{ x.texto|escape }}" title="Comentários e ocorrências"><i class="bi bi-chat-left-text {% if x.n_coment %}text-primary{% else %}text-muted{% endif %}"></i>{% if x.n_coment %} <span class="small">{{ x.n_coment }}</span>{% endif %}{% if x.n_ocorr %} <span class="badge text-bg-danger fw-normal"><i class="bi bi-exclamation-triangle"></i> {{ x.n_ocorr }}</span>{% endif %}</button>
+        </li>
+        {% endfor %}
+    {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+
+<div class="modal fade" id="ntModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div><h5 class="modal-title mb-0">Comentários e ocorrências</h5><div class="small text-muted" id="ntContexto"></div></div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div id="ntErro" class="alert alert-danger d-none"></div>
+        <h6 class="mb-2"><i class="bi bi-chat-left-text me-1"></i>Comentários</h6>
+        <div id="ntComentarios" class="mb-2"></div>
+        <div id="ntFormComentario" class="mb-4">
+            <textarea class="form-control form-control-sm mb-1" id="ntTexto" rows="2" maxlength="2000" placeholder="Escreva um comentário sobre este item..."></textarea>
+            <button class="btn btn-sm btn-outline-primary" id="ntComentar" type="button"><i class="bi bi-plus-lg me-1"></i>Comentar</button>
+        </div>
+        <h6 class="mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Ocorrências deste item <a class="small fw-normal ms-2" id="ntCentral" href="#" target="_blank">Abrir a Central de Ocorrências</a></h6>
+        <div id="ntOcorrencias" class="mb-2"></div>
+        <div id="ntFormOcorrencia" class="border rounded p-2 bg-light">
+            <div class="fw-semibold small mb-1">Nova ocorrência</div>
+            <input class="form-control form-control-sm mb-1" id="ntOcTitulo" maxlength="200" placeholder="Título (padrão: o texto do item)">
+            <textarea class="form-control form-control-sm mb-1" id="ntOcDescricao" rows="2" placeholder="Descreva o que aconteceu"></textarea>
+            <button class="btn btn-sm btn-danger" id="ntOcAbrir" type="button"><i class="bi bi-exclamation-triangle me-1"></i>Abrir ocorrência</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
@@ -66,6 +171,82 @@
 <script>
 (function () {
     const DIA = "{{ dia|date:'Y-m-d' }}", CSRF = "{{ csrf_token }}", TOTAL = {{ total }};
+    // ---- comentários e ocorrências do item
+    const NT = {notas: "{% url 'agenda:api_notas' %}", comentar: "{% url 'agenda:comentario_salvar' %}", ocorrencia: "{% url 'agenda:ocorrencia_criar' %}",
+        excluir: id => "{% url 'agenda:comentario_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/")};
+    const ALVO = "{{ alvo_id }}", RO = {{ somente_leitura|yesno:"true,false" }};
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    let _nt = null, ntRef = null, ntMudou = false;
+    const ntModal = { show() { (_nt = _nt || new bootstrap.Modal(document.getElementById("ntModal"))).show(); } };
+    document.getElementById("ntModal").addEventListener("hidden.bs.modal", () => { if (ntMudou) location.reload(); });
+    async function ntCarregar() {
+        const q = new URLSearchParams({tipo: ntRef.tipo, ref: ntRef.ref, data: ntRef.data}); if (ALVO) q.set("usuario", ALVO);
+        const r = await fetch(NT.notas + "?" + q, {credentials: "same-origin"}); const j = await r.json().catch(() => ({success: false}));
+        if (!j.success) { document.getElementById("ntErro").textContent = j.error || "Não foi possível carregar."; document.getElementById("ntErro").classList.remove("d-none"); return; }
+        document.getElementById("ntErro").classList.add("d-none");
+        document.getElementById("ntContexto").textContent = j.contexto.checklist + " — " + j.contexto.item + " · " + j.contexto.data;
+        document.getElementById("ntCentral").href = j.url_central;
+        document.getElementById("ntComentarios").innerHTML = j.comentarios.map(c => `<div class="border rounded p-2 mb-1">
+            <div class="small text-muted d-flex justify-content-between"><span>${esc(c.quando)}${c.ocorrencia_id ? ` · <span class="badge text-bg-warning">virou ocorrência (${esc(c.ocorrencia_status)})</span>` : ""}</span>
+            <span>${!RO && !c.ocorrencia_id ? `<button class="btn btn-sm btn-link p-0 me-2 nt-converter" data-id="${c.id}"><i class="bi bi-arrow-up-right-square me-1"></i>Converter em ocorrência</button><button class="btn btn-sm btn-link text-danger p-0 nt-excluir" data-id="${c.id}"><i class="bi bi-trash"></i></button>` : ""}</span></div>
+            <div style="white-space:pre-wrap">${esc(c.texto)}</div></div>`).join("") || '<div class="text-muted small">Nenhum comentário.</div>';
+        document.getElementById("ntOcorrencias").innerHTML = j.ocorrencias.map(o => `<div class="border rounded p-2 mb-1">
+            <div class="d-flex justify-content-between"><span class="fw-semibold">${esc(o.titulo)}</span><span class="badge ${o.status === "aberta" ? "text-bg-danger" : "text-bg-success"}">${esc(o.status_texto)}</span></div>
+            <div class="small text-muted">${esc(o.quando)}</div><div style="white-space:pre-wrap">${esc(o.descricao)}</div></div>`).join("") || '<div class="text-muted small">Nenhuma ocorrência.</div>';
+        document.getElementById("ntFormComentario").classList.toggle("d-none", RO);
+        document.getElementById("ntFormOcorrencia").classList.toggle("d-none", RO);
+    }
+    document.querySelectorAll(".ck-nota").forEach(b => b.addEventListener("click", () => {
+        ntRef = {tipo: b.dataset.tipo, ref: b.dataset.ref, data: b.dataset.dia}; ntMudou = false;
+        document.getElementById("ntTexto").value = ""; document.getElementById("ntOcDescricao").value = "";
+        document.getElementById("ntOcTitulo").value = ""; document.getElementById("ntOcTitulo").placeholder = b.dataset.titulo || "Título";
+        ntModal.show(); ntCarregar();
+    }));
+    async function ntPost(url, corpo) {
+        const r = await fetch(url, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify(corpo)});
+        const j = await r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+        if (!j.success) { document.getElementById("ntErro").textContent = j.error || "Não foi possível concluir."; document.getElementById("ntErro").classList.remove("d-none"); return false; }
+        ntMudou = true; return true;
+    }
+    document.getElementById("ntComentar").addEventListener("click", async () => {
+        if (await ntPost(NT.comentar, {...ntRef, texto: document.getElementById("ntTexto").value})) { document.getElementById("ntTexto").value = ""; ntCarregar(); }
+    });
+    document.getElementById("ntOcAbrir").addEventListener("click", async () => {
+        if (await ntPost(NT.ocorrencia, {...ntRef, titulo: document.getElementById("ntOcTitulo").value, descricao: document.getElementById("ntOcDescricao").value})) {
+            document.getElementById("ntOcTitulo").value = ""; document.getElementById("ntOcDescricao").value = ""; ntCarregar();
+        }
+    });
+    document.getElementById("ntComentarios").addEventListener("click", async e => {
+        const conv = e.target.closest(".nt-converter"), exc = e.target.closest(".nt-excluir");
+        if (conv && await ntPost(NT.ocorrencia, {...ntRef, comentario_id: Number(conv.dataset.id)})) ntCarregar();
+        else if (exc && confirm("Excluir este comentário?") && await ntPost(NT.excluir(exc.dataset.id), {})) ntCarregar();
+    });
+    const urlAvCriar = "{% url 'agenda:item_avulso_criar' %}";
+    const urlAvExcluir = id => "{% url 'agenda:item_avulso_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/");
+    async function postJson(url, corpo) {
+        const r = await fetch(url, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify(corpo || {})});
+        return r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+    }
+    const avSel = document.getElementById("avChecklist");
+    if (avSel) {
+        const atualizarGrupos = () => {  // sugere os agrupamentos do checklist escolhido
+            const g = (avSel.selectedOptions[0].dataset.grupos || "").split("|").filter(Boolean);
+            document.getElementById("avGrupos").innerHTML = g.map(n => `<option value="${n.replace(/"/g, "&quot;")}">`).join("");
+        };
+        avSel.addEventListener("change", atualizarGrupos); atualizarGrupos();
+        document.getElementById("avAdd").addEventListener("click", async () => {
+            const j = await postJson(urlAvCriar, {texto: document.getElementById("avTexto").value, data: DIA, ate: document.getElementById("avAte").value || null,
+                checklist_id: avSel.value || null, grupo: document.getElementById("avGrupo").value});
+            if (!j.success) { const e = document.getElementById("avErro"); e.textContent = j.error || "Não foi possível adicionar."; e.classList.remove("d-none"); return; }
+            location.reload();
+        });
+        document.getElementById("avTexto").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("avAdd").click(); } });
+    }
+    document.querySelectorAll(".ck-avulso-del").forEach(b => b.addEventListener("click", async () => {
+        if (!confirm("Remover este item avulso?")) return;
+        const j = await postJson(urlAvExcluir(b.dataset.item)); if (j.success) location.reload();
+    }));
+    const urlTarefa = id => "{% url 'agenda:api_tarefa_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
     const urlEv = id => "{% url 'agenda:api_checklist_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
     const urlDiario = (ck, it) => "{% url 'agenda:api_diario_toggle' 0 0 %}".replace(/0\/item\/0\/diario\/$/, ck + "/item/" + it + "/diario/");
     const urlItem = (ev, it) => "{% url 'agenda:api_item_toggle' 0 0 %}".replace(/0\/item\/0\/toggle\/$/, ev + "/item/" + it + "/toggle/");
@@ -78,20 +259,28 @@
             if (cur && box) { cur.total++; if (box.checked) cur.feitos++; cur.el.querySelector(".ck-gcont").textContent = cur.feitos + "/" + cur.total; }
         });
     }
+    function atualizarResumo() {  // progresso único e contadores por origem
+        const conta = [...document.querySelectorAll(".ck-conta")], comp = conta.filter(b => b.dataset.tarefa), rec = conta.filter(b => !b.dataset.tarefa);
+        const f = l => l.filter(b => b.checked).length;
+        document.getElementById("ckFeitos").textContent = f(conta);
+        document.getElementById("ckBarra").style.width = (conta.length ? Math.round(100 * f(conta) / conta.length) : 0) + "%";
+        document.getElementById("ckResRec").textContent = f(rec) + "/" + rec.length;
+        document.getElementById("ckResComp").textContent = f(comp) + "/" + comp.length;
+        const pend = document.querySelectorAll(".ck-pend"), falta = [...pend].filter(b => !b.checked).length;
+        const t = document.getElementById("ckPendTotal"); if (t) { t.textContent = falta; document.getElementById("ckResPend").className = "badge " + (falta ? "text-bg-warning" : "text-bg-light border"); }
+    }
     document.querySelectorAll(".ck-box").forEach(box => box.addEventListener("change", async () => {
-        const url = box.dataset.checklist ? urlDiario(box.dataset.checklist, box.dataset.item)
+        const url = box.dataset.tarefa ? urlTarefa(box.dataset.tarefa) : box.dataset.checklist ? urlDiario(box.dataset.checklist, box.dataset.item)
             : box.dataset.item ? urlItem(box.dataset.evento, box.dataset.item) : urlEv(box.dataset.evento);
         const r = await fetch(url, {method: "POST", credentials: "same-origin",
-            headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify({data: DIA})});
+            headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify({data: box.dataset.dia || DIA})});
         const j = await r.json().catch(() => ({success: false}));
         if (!j.success) { box.checked = !box.checked; return; }
         const alvo = box.closest("li").querySelector(".flex-grow-1");
         alvo.classList.toggle("text-decoration-line-through", j.feito);
         alvo.classList.toggle("text-muted", j.feito);
-        const feitos = document.querySelectorAll(".ck-box:checked").length;
-        document.getElementById("ckFeitos").textContent = feitos;
         atualizarGrupos();
-        document.getElementById("ckBarra").style.width = (TOTAL ? Math.round(100 * feitos / TOTAL) : 0) + "%";
+        atualizarResumo();
     }));
 })();
 </script>

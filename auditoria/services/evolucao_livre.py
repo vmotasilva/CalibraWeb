@@ -201,3 +201,82 @@ def comparar(atual, base):
         "itens": itens, "contagem": contagem, "topicos": topicos, "serie": serie(atual),
         "categorias": [(c, *CATEGORIAS[c], contagem[c]) for c in ORDEM_CATEGORIAS],
     }
+
+
+# ------------------------------------------------------------------ dashboard
+
+def _parse_data(valor):
+    try:
+        return date.fromisoformat(str(valor or "").strip())
+    except ValueError:
+        return None
+
+
+def dados_dashboard(inicio=None, fim=None):
+    """Evolução das Auditorias Livres para o dashboard: uma série por auditoria (primeira execução → última).
+
+    `inicio` e `fim` (AAAA-MM-DD) filtram as execuções pela data de início; datas inválidas são ignoradas.
+    Auditorias arquivadas ficam de fora.
+    """
+    from django.db.models import Count
+
+    inicio, fim = _parse_data(inicio), _parse_data(fim)
+    todas = {
+        a.pk: a for a in AuditoriaLivre.objects.filter(arquivada=False).only(
+            "id", "titulo", "anterior_id", "execucao", "data_inicio", "status")
+    }
+
+    def raiz_de(a):
+        vistos = set()
+        while a.anterior_id in todas and a.pk not in vistos:  # se a anterior foi arquivada/excluída, esta vira a primeira
+            vistos.add(a.pk)
+            a = todas[a.anterior_id]
+        return a.pk
+
+    por_serie = {}
+    for a in todas.values():
+        if (inicio and a.data_inicio < inicio) or (fim and a.data_inicio > fim):
+            continue
+        por_serie.setdefault(raiz_de(a), []).append(a)
+
+    ids = [a.pk for execs in por_serie.values() for a in execs]
+    contagens = {}
+    for linha in (SolicitacaoLivre.objects.filter(auditoria_id__in=ids)
+                  .values("auditoria_id", "conclusao").annotate(n=Count("id"))):
+        contagens.setdefault(linha["auditoria_id"], {})[linha["conclusao"]] = linha["n"]
+
+    series = []
+    for execs in por_serie.values():
+        execs.sort(key=lambda a: (a.execucao, a.pk))
+        itens = []
+        for a in execs:
+            res = {c: contagens.get(a.pk, {}).get(c, 0) for c in CLASSES}
+            res["total"] = sum(res.values())
+            res["indice"] = indice_conformidade(res)
+            itens.append({"id": a.pk, "execucao": a.execucao, "data": f"{a.data_inicio:%d/%m/%Y}",
+                          "status": a.get_status_display(), **res})
+        series.append({"id": execs[0].pk, "titulo": execs[-1].titulo, "ultima_id": execs[-1].pk, "execucoes": itens})
+    series.sort(key=lambda s: s["titulo"].casefold())
+
+    ultimas = [s["execucoes"][-1] for s in series]
+    indices_ultimos = [u["indice"] for u in ultimas if u["indice"] is not None]
+    variacoes = [
+        round(s["execucoes"][-1]["indice"] - s["execucoes"][0]["indice"], 1)
+        for s in series
+        if len(s["execucoes"]) > 1 and s["execucoes"][-1]["indice"] is not None and s["execucoes"][0]["indice"] is not None
+    ]
+    for s in series:
+        primeira, ultima = s["execucoes"][0], s["execucoes"][-1]
+        s["variacao"] = (round(ultima["indice"] - primeira["indice"], 1)
+                         if len(s["execucoes"]) > 1 and ultima["indice"] is not None and primeira["indice"] is not None else None)
+    return {
+        "series": series,
+        "kpis": {
+            "auditorias": len(series),
+            "execucoes": len(ids),
+            "com_evolucao": sum(1 for s in series if len(s["execucoes"]) > 1),
+            "indice_medio": round(sum(indices_ultimos) / len(indices_ultimos), 1) if indices_ultimos else None,
+            "variacao_media": round(sum(variacoes) / len(variacoes), 1) if variacoes else None,
+            "nc_abertas": sum(u["NC"] for u in ultimas),
+        },
+    }

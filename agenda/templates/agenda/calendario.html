@@ -49,7 +49,7 @@
                 <button class="btn btn-outline-secondary" data-f="pessoal">Pessoal</button>
                 <button class="btn btn-outline-secondary" data-f="comum">Comum</button>
             </div>
-            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}{{ alvo_qs }}"><i class="bi bi-check2-square me-1"></i>Checklist do dia</a>
+            <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}{{ alvo_qs }}"><i class="bi bi-check2-square me-1"></i>Meu checklist</a>
             <a class="btn btn-sm btn-outline-secondary" href="{% url 'agenda:checklists' %}{{ alvo_qs }}"><i class="bi bi-list-check me-1"></i>{% if gerindo %}Checklists dele(a){% else %}Meus checklists{% endif %}</a>
             <button class="btn btn-sm btn-primary" id="agNovo"><i class="bi bi-plus-lg me-1"></i>Novo evento</button>
         </div>
@@ -95,7 +95,7 @@
             </div>
             <div class="col-md-6"><label class="form-label">Repetir até</label><input type="date" class="form-control" id="fRecAte"></div>
             <div class="col-12">
-                <label class="form-label">Checklist associado <span class="text-muted small">(os itens aparecem no Checklist do dia em cada ocorrência)</span></label>
+                <label class="form-label">Checklist associado <span class="text-muted small">(os itens aparecem no Meu checklist em cada ocorrência)</span></label>
                 <select class="form-select" id="fModelo">
                     <option value="">Nenhum</option>
                     {% for c in checklists %}<option value="{{ c.id }}">{{ c.titulo }}</option>{% endfor %}
