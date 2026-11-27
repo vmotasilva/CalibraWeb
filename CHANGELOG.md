@@ -12,6 +12,8 @@ O formato segue [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/) e us
 Alterações que ainda não foram lançadas em uma versão oficial.
 
 ### ✨ Adicionado (Agenda)
+- **Intervalo livre na periodicidade dos checklists**: além das periodicidades fixas, agora **a cada N dias** (1–365), **a cada N semanas** (nos dias marcados), **a cada N meses** (no dia do mês) e **a cada N anos**, com campo **Começa em** (referência dos intervalos; vazio = hoje). Migração aditiva `agenda.0008` (`Checklist.intervalo`).
+- **Condições especiais por agrupamento**: cada agrupamento de itens pode ter uma condição própria — *no dia X do mês* (a cada N meses), *no último dia do mês*, *numa semana do mês* (ex.: 1ª segunda, última sexta), *em dias da semana* ou *a cada N dias* — e só aparece nos dias em que a condição vale (combinada com a periodicidade do checklist). Itens fora da condição não entram no progresso nem podem ser marcados; um dia em que nenhum agrupamento vale não gera ocorrência. Vale também para checklists associados a eventos. Novo modelo `ChecklistGrupo` (migração `agenda.0008`).
 - **Periodicidade dos checklists recorrentes**: além da diária (dias da semana), agora semanal, quinzenal (a cada 2 semanas nos dias marcados), mensal, bimestral, trimestral, semestral e anual (dia do mês; meses curtos usam o último dia). A contagem parte da data em que o checklist é salvo ou tem a periodicidade alterada. Migração aditiva `agenda.0007` (checklists existentes continuam diários).
 
 ### ✨ Adicionado (Módulo de Pessoas)

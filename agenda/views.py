@@ -15,6 +15,7 @@ from agenda.models import (
     Checklist,
     ChecklistCompartilhamento,
     ChecklistDiarioConclusao,
+    ChecklistGrupo,
     ChecklistCompartilhado,
     ChecklistItem,
     CompartilhadoCobranca,
@@ -25,6 +26,7 @@ from agenda.models import (
     EventoParticipante,
     ItemConclusao,
 )
+from agenda import regras
 from agenda.hierarquia import equipe_de, liderados_ids, nome_do_usuario, papel_sobre, pode_gerir
 from agenda.services import agenda_do_periodo, checklist_do_dia, checklists_diarios, ocorrencias
 from shared.permissions import user_has_nav_perm
@@ -326,8 +328,11 @@ def api_item_toggle(request, evento_id, item_id):
         dia = None
     if not dia:
         return JsonResponse({"success": False, "error": "Data inválida."}, status=400)
-    if not any(o["id"] == ev.id for o in ocorrencias(request.user, dia, dia, so_checklist=True)):
+    ocorr = next((o for o in ocorrencias(request.user, dia, dia, so_checklist=True) if o["id"] == ev.id), None)
+    if not ocorr:
         return JsonResponse({"success": False, "error": "O item não ocorre nesta data."}, status=400)
+    if item.id not in {i["id"] for i in ocorr["itens"]}:  # agrupamento com condição especial que não vale neste dia
+        return JsonResponse({"success": False, "error": "Este item não vale nesta data (condição do agrupamento)."}, status=400)
     obj, criado = ItemConclusao.objects.get_or_create(evento=ev, item=item, usuario=request.user, data=dia)
     if not criado:
         obj.delete()
@@ -431,8 +436,11 @@ def api_diario_toggle(request, checklist_id, item_id):
         dia = None
     if not dia:
         return JsonResponse({"success": False, "error": "Data inválida."}, status=400)
-    if not any(o["checklist_id"] == c.id for o in checklists_diarios(request.user, dia, dia)):
+    ocorr = next((o for o in checklists_diarios(request.user, dia, dia) if o["checklist_id"] == c.id), None)
+    if not ocorr:
         return JsonResponse({"success": False, "error": "O checklist não vale nesta data."}, status=400)
+    if item.id not in {i["id"] for i in ocorr["itens"]}:  # agrupamento com condição especial que não vale neste dia
+        return JsonResponse({"success": False, "error": "Este item não vale nesta data (condição do agrupamento)."}, status=400)
     obj, criado = ChecklistDiarioConclusao.objects.get_or_create(item=item, usuario=request.user, data=dia)
     if not criado:
         obj.delete()
@@ -462,7 +470,9 @@ def api_checklist_detalhe(request, checklist_id):
                 "diario": c.diario,
                 "dias_semana": sorted(c.dias_set),
                 "periodicidade": c.periodicidade,
+                "intervalo": c.intervalo,
                 "dia_mes": c.dia_mes,
+                "condicoes": {g.nome: g.regra for g in c.grupos.all()},
                 "desde": c.diario_desde.isoformat() if c.diario_desde else "",
                 "hora": c.hora.strftime("%H:%M") if c.hora else "",
                 "na_agenda": c.na_agenda,
@@ -502,14 +512,38 @@ def checklist_salvar(request):
     periodicidade = d.get("periodicidade") or Checklist.PER_DIARIA
     if periodicidade not in dict(Checklist.PERIODICIDADES):
         return JsonResponse({"success": False, "error": "Periodicidade inválida."}, status=400)
-    por_mes = periodicidade in Checklist.MESES_PASSO
+    por_mes = Checklist.por_mes(periodicidade)
+    intervalo = 1
+    if periodicidade in Checklist.LIMITE_INTERVALO:
+        limite = Checklist.LIMITE_INTERVALO[periodicidade]
+        if not str(d.get("intervalo") or "").isdigit() or not 1 <= int(d["intervalo"]) <= limite:
+            return JsonResponse({"success": False, "error": f"Informe o intervalo (1 a {limite})."}, status=400)
+        intervalo = int(d["intervalo"])
+    desde = None
+    if d.get("desde"):
+        desde = _parse_data(d["desde"])
+        if not desde:
+            return JsonResponse({"success": False, "error": "Data de início inválida."}, status=400)
     dia_mes = None
     if d.get("diario") and por_mes:
         if not str(d.get("dia_mes") or "").isdigit() or not 1 <= int(d["dia_mes"]) <= 31:
             return JsonResponse({"success": False, "error": "Informe o dia do mês (1 a 31)."}, status=400)
         dia_mes = int(d["dia_mes"])
-    elif d.get("diario") and not dias:
+    elif d.get("diario") and Checklist.usa_dias_semana(periodicidade) and not dias:
         return JsonResponse({"success": False, "error": "Escolha pelo menos um dia da semana."}, status=400)
+    # condições especiais dos agrupamentos: {nome: regra}; só ficam as que têm condição
+    condicoes = {}
+    nomes_itens = {i["grupo"] for i in itens}
+    for g in d.get("grupos") or []:
+        if not isinstance(g, dict) or not (g.get("nome") or "").strip():
+            continue
+        nome = g["nome"].strip()[:120]
+        try:
+            regra = regras.normaliza(g.get("regra"))
+        except ValueError as e:
+            return JsonResponse({"success": False, "error": f"Agrupamento “{nome}”: {e}"}, status=400)
+        if regra["tipo"] != "sempre" and nome in nomes_itens:
+            condicoes[nome] = regra
     try:
         hora = datetime.strptime(d["hora"], "%H:%M").time() if d.get("hora") else None
     except ValueError:
@@ -538,12 +572,14 @@ def checklist_salvar(request):
         eram_diario = c.diario
         c.diario = bool(d.get("diario"))
         c.dias_semana = ",".join(str(x) for x in dias)
-        mudou_per = c.periodicidade != periodicidade
-        c.periodicidade, c.dia_mes = periodicidade, dia_mes
+        mudou_per = (c.periodicidade, c.intervalo) != (periodicidade, intervalo)
+        c.periodicidade, c.intervalo, c.dia_mes = periodicidade, intervalo, dia_mes
         c.hora = hora
         c.na_agenda = c.diario and bool(d.get("na_agenda"))
         c.cor = cor
-        if c.diario and (not eram_diario or not c.diario_desde or mudou_per):
+        if c.diario and desde:
+            c.diario_desde = desde  # "começa em": referência de intervalos e meses
+        elif c.diario and (not eram_diario or not c.diario_desde or mudou_per):
             c.diario_desde = timezone.localdate()  # vale a partir de hoje; dias passados não viram pendência
         if c.criado_por_id == request.user.pk and compartilhar is not None:
             c.incluir_dono = bool(d.get("incluir_dono", True)) or not compartilhar  # sem destinatário, fica com o dono
@@ -554,6 +590,9 @@ def checklist_salvar(request):
             c.compartilhamentos.exclude(usuario_id__in=compartilhar).delete()
             for uid in compartilhar - atuais:
                 ChecklistCompartilhamento.objects.create(checklist=c, usuario_id=uid, desde=timezone.localdate())
+        c.grupos.exclude(nome__in=condicoes.keys()).delete()
+        for nome, regra in condicoes.items():
+            ChecklistGrupo.objects.update_or_create(checklist=c, nome=nome, defaults={"regra": regra})
         existentes = {i.id: i for i in c.itens.all()}
         mantidos = set()
         for ordem, i in enumerate(itens):

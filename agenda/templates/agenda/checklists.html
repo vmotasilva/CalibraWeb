@@ -24,7 +24,7 @@
                         <h6 class="card-title mb-1">{{ c.titulo }}</h6>
                         <span class="badge text-bg-secondary">{{ c.itens.all|length }} item{{ c.itens.all|length|pluralize:"ns" }}</span>
                     </div>
-                    {% if c.diario %}<div class="mb-2"><span class="badge text-bg-success"><i class="bi bi-arrow-repeat me-1"></i>{{ c.periodicidade_label }}{% if c.dia_mes %} · dia {{ c.dia_mes }}{% endif %}</span>
+                    {% if c.diario %}<div class="mb-2"><span class="badge text-bg-success"><i class="bi bi-arrow-repeat me-1"></i>{{ c.frequencia_texto }}</span>
                         {% if c.hora %}<span class="badge text-bg-light border">{{ c.hora|time:"H:i" }}</span>{% endif %}
                         {% if c.na_agenda %}<span class="badge text-bg-light border"><i class="bi bi-calendar3 me-1"></i>Na agenda</span>{% endif %}
                         {% if c.compartilhamentos.all %}<span class="badge text-bg-info"><i class="bi bi-send me-1"></i>Enviado a {{ c.compartilhamentos.all|length }} liderado{{ c.compartilhamentos.all|length|pluralize }}</span>{% endif %}</div>
@@ -78,8 +78,14 @@
                         <select class="form-select form-select-sm" id="ckPeriodicidade">
                             {% for v, l in periodicidades %}<option value="{{ v }}">{{ l }}</option>{% endfor %}
                         </select></div>
-                    <div class="col-sm-6 d-none" id="ckDiaMesBox"><label class="form-label small mb-1">Dia do mês (meses curtos usam o último dia)</label>
-                        <input type="number" min="1" max="31" class="form-control form-control-sm" id="ckDiaMes"></div>
+                    <div class="col-sm-3 d-none" id="ckIntervaloBox"><label class="form-label small mb-1">Intervalo (<span id="ckIntervaloUn">N</span>)</label>
+                        <input type="number" min="1" max="365" class="form-control form-control-sm" id="ckIntervalo" value="1"></div>
+                    <div class="col-sm-3 d-none" id="ckDiaMesBox"><label class="form-label small mb-1">Dia do mês</label>
+                        <input type="number" min="1" max="31" class="form-control form-control-sm" id="ckDiaMes" title="Meses curtos usam o último dia"></div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-sm-6"><label class="form-label small mb-1">Começa em <span class="text-muted">(referência dos intervalos; vazio = hoje)</span></label>
+                        <input type="date" class="form-control form-control-sm" id="ckDesde"></div>
                 </div>
                 <div class="mb-2" id="ckDias"></div>
                 <div class="form-text mb-2" id="ckPerAjuda"></div>
@@ -126,12 +132,42 @@
     const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
     const DIAS = [[0,'Seg'],[1,'Ter'],[2,'Qua'],[3,'Qui'],[4,'Sex'],[5,'Sáb'],[6,'Dom']];
     const LIDERADOS = JSON.parse(document.getElementById("ckLideradosJson").textContent);
-    let _modal = null, grupos = [{nome: "", itens: []}], compartilhar = new Set();
+    let _modal = null, grupos = [{nome: "", itens: [], regra: {tipo: "sempre"}}], compartilhar = new Set();
     const modal = { show() { (_modal = _modal || new bootstrap.Modal($("ckModal"))).show(); }, hide() { if (_modal) _modal.hide(); } };
 
     async function post(url, corpo) {
         const r = await fetch(url, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify(corpo || {})});
         return r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+    }
+
+    // ---- condição especial do agrupamento ("aparece no 5º dia do mês", ...)
+    const RG = [["sempre", "em todas as ocorrências"], ["dia_mes", "no dia do mês"], ["ultimo_dia_mes", "no último dia do mês"],
+        ["semana_mes", "numa semana do mês (ex.: 1ª segunda)"], ["dias_semana", "em dias da semana"], ["cada_dias", "a cada N dias"]];
+    const RG_PADRAO = {sempre: {tipo: "sempre"}, dia_mes: {tipo: "dia_mes", dia: 5, n: 1}, ultimo_dia_mes: {tipo: "ultimo_dia_mes", n: 1},
+        semana_mes: {tipo: "semana_mes", nth: 1, dia: 0, n: 1}, dias_semana: {tipo: "dias_semana", dias: [0]}, cada_dias: {tipo: "cada_dias", n: 7}};
+    const num = (cls, v, min, max) => `<input type="number" min="${min}" max="${max}" class="form-control form-control-sm ${cls}" style="width:4.6rem" value="${v ?? ""}">`;
+    function condHtml(r, bloqueado) {
+        r = r || {tipo: "sempre"}; const t = r.tipo || "sempre";
+        const sel = `<select class="form-select form-select-sm ck-rg-tipo" style="width:auto" ${bloqueado ? "disabled" : ""}>${RG.map(([v, l]) => `<option value="${v}" ${v === t ? "selected" : ""}>${l}</option>`).join("")}</select>`;
+        const meses = ` a cada ${num("ck-rg-n", r.n || 1, 1, 60)} mês(es)`;
+        let extra = "";
+        if (t === "dia_mes") extra = ` dia ${num("ck-rg-dia", r.dia, 1, 31)}${meses}`;
+        else if (t === "ultimo_dia_mes") extra = meses;
+        else if (t === "semana_mes") extra = ` na <select class="form-select form-select-sm ck-rg-nth" style="width:auto">${[[1,"1ª"],[2,"2ª"],[3,"3ª"],[4,"4ª"],[-1,"última"]].map(([v, l]) => `<option value="${v}" ${Number(r.nth) === v ? "selected" : ""}>${l}</option>`).join("")}</select>`
+            + ` <select class="form-select form-select-sm ck-rg-dsem" style="width:auto">${DIAS.map(([v, l]) => `<option value="${v}" ${Number(r.dia) === v ? "selected" : ""}>${l}</option>`).join("")}</select> do mês${meses}`;
+        else if (t === "dias_semana") extra = " " + DIAS.map(([v, l]) => `<label class="form-check form-check-inline m-0"><input class="form-check-input ck-rg-dias" type="checkbox" value="${v}" ${(r.dias || []).includes(v) ? "checked" : ""}> ${l}</label>`).join("");
+        else if (t === "cada_dias") extra = ` a cada ${num("ck-rg-n", r.n || 7, 1, 365)} dias`;
+        return `<div class="ps-3 mb-2 d-flex flex-wrap gap-1 align-items-center small" title="${bloqueado ? "Dê um nome ao agrupamento para definir uma condição" : ""}">
+            <i class="bi bi-calendar-event text-muted"></i><span class="text-muted">Aparece</span>${sel}${extra}</div>`;
+    }
+    function lerRegra(bloco) {
+        const sel = bloco.querySelector(".ck-rg-tipo"); if (!sel || sel.disabled) return {tipo: "sempre"};
+        const t = sel.value, v = c => { const e = bloco.querySelector(c); return e ? Number(e.value) : undefined; }, r = {tipo: t};
+        if (t === "dia_mes") { r.dia = v(".ck-rg-dia"); r.n = v(".ck-rg-n"); }
+        else if (t === "ultimo_dia_mes" || t === "cada_dias") r.n = v(".ck-rg-n");
+        else if (t === "semana_mes") { r.nth = v(".ck-rg-nth"); r.dia = v(".ck-rg-dsem"); r.n = v(".ck-rg-n"); }
+        else if (t === "dias_semana") r.dias = [...bloco.querySelectorAll(".ck-rg-dias:checked")].map(x => Number(x.value));
+        return r;
     }
 
     function desenhar() {
@@ -144,6 +180,7 @@
                     <button class="btn btn-outline-secondary ck-gdown" type="button" ${gi === grupos.length - 1 ? "disabled" : ""} title="Descer agrupamento"><i class="bi bi-arrow-down"></i></button>
                     <button class="btn btn-outline-danger ck-gdel" type="button" title="Remover agrupamento"><i class="bi bi-trash"></i></button>
                 </div>
+                ${condHtml(g.regra, !(g.nome || "").trim())}
                 ${g.itens.map((it, i) =>
                 `<div class="input-group input-group-sm mb-1 ps-3" data-i="${i}">
                     <span class="input-group-text">${i + 1}</span>
@@ -173,13 +210,19 @@
         $("ckLiderados").addEventListener("change", e => { const id = Number(e.target.value); e.target.checked ? compartilhar.add(id) : compartilhar.delete(id); });
         $("ckBuscaLid").addEventListener("input", desenharLiderados);
     }
-    const POR_MES = ["mensal", "bimestral", "trimestral", "semestral", "anual"];
+    const POR_MES = ["mensal", "bimestral", "trimestral", "semestral", "anual", "cada_meses", "cada_anos"];
+    const USA_DIAS = ["diaria", "semanal", "quinzenal", "cada_semanas"];
+    const INTERVALO = {cada_dias: ["dias", 365], cada_semanas: ["semanas", 52], cada_meses: ["meses", 60], cada_anos: ["anos", 20]};
     const AJUDA = {quinzenal: "Nos dias marcados, a cada 2 semanas, contando a partir da semana em que for salvo.",
         bimestral: "A cada 2 meses, a partir do mês em que for salvo.", trimestral: "A cada 3 meses, a partir do mês em que for salvo.",
-        semestral: "A cada 6 meses, a partir do mês em que for salvo.", anual: "Uma vez por ano, no mês em que for salvo."};
+        semestral: "A cada 6 meses, a partir do mês em que for salvo.", anual: "Uma vez por ano, no mês em que for salvo.",
+        cada_dias: "De N em N dias, contando a partir da data de início.", cada_semanas: "De N em N semanas, nos dias marcados, a partir da semana de início.",
+        cada_meses: "De N em N meses, no dia do mês escolhido, a partir do mês de início.", cada_anos: "De N em N anos, no dia do mês escolhido, no mês de início."};
     function atualizarPeriodicidade() {
-        const per = $("ckPeriodicidade").value, mes = POR_MES.includes(per);
-        $("ckDias").classList.toggle("d-none", mes); $("ckDiaMesBox").classList.toggle("d-none", !mes);
+        const per = $("ckPeriodicidade").value, mes = POR_MES.includes(per), inter = INTERVALO[per];
+        $("ckDias").classList.toggle("d-none", !USA_DIAS.includes(per)); $("ckDiaMesBox").classList.toggle("d-none", !mes);
+        $("ckIntervaloBox").classList.toggle("d-none", !inter);
+        if (inter) { $("ckIntervaloUn").textContent = inter[0]; $("ckIntervalo").max = inter[1]; }
         $("ckPerAjuda").textContent = AJUDA[per] || "";
     }
     function atualizarDiario() { $("ckDiarioOpc").classList.toggle("d-none", !$("ckDiario").checked); atualizarPeriodicidade(); }
@@ -194,13 +237,14 @@
         $("ckDescricao").value = c ? c.descricao : "";
         grupos = [];
         (c ? c.itens : []).forEach(i => {  // agrupamentos na ordem em que aparecem
-            if (!grupos.length || grupos[grupos.length - 1].nome !== i.grupo) grupos.push({nome: i.grupo, itens: []});
+            if (!grupos.length || grupos[grupos.length - 1].nome !== i.grupo) grupos.push({nome: i.grupo, itens: [], regra: (c.condicoes || {})[i.grupo] || {tipo: "sempre"}});
             grupos[grupos.length - 1].itens.push({id: i.id, texto: i.texto});
         });
-        if (!grupos.length) grupos = [{nome: "", itens: []}];
+        if (!grupos.length) grupos = [{nome: "", itens: [], regra: {tipo: "sempre"}}];
         $("ckDiario").checked = c ? c.diario : false;
         desenharDias(c ? c.dias_semana : [0,1,2,3,4,5,6]);
         $("ckPeriodicidade").value = c ? c.periodicidade : "diaria"; $("ckDiaMes").value = c && c.dia_mes ? c.dia_mes : "";
+        $("ckIntervalo").value = c ? c.intervalo : 1; $("ckDesde").value = c && c.desde ? c.desde : "";
         $("ckHora").value = c ? c.hora : ""; $("ckCor").value = c ? c.cor : "#20c997"; $("ckNaAgenda").checked = c ? c.na_agenda : false;
         compartilhar = new Set(c ? c.compartilhar_com : []);
         if ($("ckIncluirDono")) $("ckIncluirDono").checked = c ? c.incluir_dono : true;
@@ -215,7 +259,7 @@
     function sincronizar() {
         document.querySelectorAll("#ckGrupos [data-g]").forEach(bloco => {
             const g = grupos[Number(bloco.dataset.g)]; if (!g) return;
-            g.nome = bloco.querySelector(".ck-gnome").value;
+            g.nome = bloco.querySelector(".ck-gnome").value; g.regra = lerRegra(bloco);
             bloco.querySelectorAll("[data-i]").forEach(row => { const it = g.itens[Number(row.dataset.i)]; if (it) it.texto = row.querySelector(".ck-texto").value; });
         });
     }
@@ -245,13 +289,20 @@
             else return;
         } else if (btn.classList.contains("ck-gdel")) {
             if (grupos[gi].itens.length && !confirm("Remover este agrupamento e os itens dele?")) return;
-            grupos.splice(gi, 1); if (!grupos.length) grupos = [{nome: "", itens: []}];
+            grupos.splice(gi, 1); if (!grupos.length) grupos = [{nome: "", itens: [], regra: {tipo: "sempre"}}];
         } else if (btn.classList.contains("ck-gup") && gi > 0) [grupos[gi-1], grupos[gi]] = [grupos[gi], grupos[gi-1]];
         else if (btn.classList.contains("ck-gdown") && gi < grupos.length - 1) [grupos[gi+1], grupos[gi]] = [grupos[gi], grupos[gi+1]];
         else return;
         desenhar();
     });
-    $("ckAddGrupo").onclick = () => { sincronizar(); grupos.push({nome: "", itens: []}); desenhar(); const b = document.querySelectorAll("#ckGrupos [data-g]"); b[b.length - 1].querySelector(".ck-gnome").focus(); };
+    $("ckGrupos").addEventListener("change", e => {
+        const bloco = e.target.closest("[data-g]"); if (!bloco) return;
+        const gi = Number(bloco.dataset.g);
+        if (e.target.classList.contains("ck-rg-tipo")) { sincronizar(); grupos[gi].regra = JSON.parse(JSON.stringify(RG_PADRAO[e.target.value])); desenhar(); }
+        else if (e.target.classList.contains("ck-gnome")) { sincronizar(); desenhar(); }  // nome define se a condição fica habilitada
+        else if (e.target.classList.contains("ck-rg-dias")) { sincronizar(); }
+    });
+    $("ckAddGrupo").onclick = () => { sincronizar(); grupos.push({nome: "", itens: [], regra: {tipo: "sempre"}}); desenhar(); const b = document.querySelectorAll("#ckGrupos [data-g]"); b[b.length - 1].querySelector(".ck-gnome").focus(); };
     $("ckNovo").onclick = () => abrir(null);
     document.querySelectorAll(".ck-editar").forEach(b => b.addEventListener("click", async () => {
         const r = await fetch(U.detalhe(b.dataset.id), {credentials: "same-origin"}); const j = await r.json();
@@ -263,6 +314,8 @@
         const j = await post(U.salvar, {id: $("ckId").value || null, usuario: ALVO || null, titulo: $("ckTitulo").value, descricao: $("ckDescricao").value, itens,
             diario: $("ckDiario").checked, dias_semana: [...document.querySelectorAll(".ck-dia:checked")].map(x => Number(x.value)),
             periodicidade: $("ckPeriodicidade").value, dia_mes: $("ckDiaMes").value || null,
+            intervalo: $("ckIntervalo").value || null, desde: $("ckDesde").value || null,
+            grupos: grupos.filter(g => (g.nome || "").trim()).map(g => ({nome: g.nome.trim(), regra: g.regra})),
             hora: $("ckHora").value, cor: $("ckCor").value, na_agenda: $("ckNaAgenda").checked,
             compartilhar_com: LIDERADOS.length && !ALVO ? [...compartilhar] : undefined,
             incluir_dono: $("ckIncluirDono") ? $("ckIncluirDono").checked : true});

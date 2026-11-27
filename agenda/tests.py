@@ -1000,3 +1000,287 @@ class ChecklistPeriodicidadeTests(TestCase):
             self.assertEqual(r.status_code, 400)
         quinz = {**corpo, "periodicidade": "quinzenal", "dias_semana": []}
         self.assertEqual(self.client.post(reverse("agenda:checklist_salvar"), json.dumps(quinz), content_type="application/json").status_code, 400)
+
+
+class RegrasTests(TestCase):
+    """Regras de condição especial dos agrupamentos (agenda.regras)."""
+
+    def test_dia_do_mes_com_clamp_e_intervalo_de_meses(self):
+        from agenda.regras import aplica
+
+        r = {"tipo": "dia_mes", "dia": 5, "n": 1}
+        self.assertTrue(aplica(r, date(2026, 3, 5), date(2026, 1, 1)))
+        self.assertFalse(aplica(r, date(2026, 3, 6), date(2026, 1, 1)))
+        # dia 31 em mês curto cai no último dia
+        r31 = {"tipo": "dia_mes", "dia": 31, "n": 1}
+        self.assertTrue(aplica(r31, date(2026, 2, 28), date(2026, 1, 1)))
+        self.assertFalse(aplica(r31, date(2026, 2, 27), date(2026, 1, 1)))
+        # a cada 2 meses a partir de janeiro: jan, mar, mai...
+        r2 = {"tipo": "dia_mes", "dia": 10, "n": 2}
+        self.assertEqual([aplica(r2, date(2026, m, 10), date(2026, 1, 15)) for m in (1, 2, 3, 4, 5)], [True, False, True, False, True])
+
+    def test_ultimo_dia_do_mes(self):
+        from agenda.regras import aplica
+
+        r = {"tipo": "ultimo_dia_mes", "n": 1}
+        self.assertTrue(aplica(r, date(2026, 2, 28), date(2026, 1, 1)))
+        self.assertTrue(aplica(r, date(2024, 2, 29), date(2024, 1, 1)))  # bissexto
+        self.assertFalse(aplica(r, date(2026, 2, 27), date(2026, 1, 1)))
+
+    def test_dias_da_semana_e_cada_n_dias(self):
+        from agenda.regras import aplica
+
+        seg_qua = {"tipo": "dias_semana", "dias": [0, 2]}
+        self.assertEqual([aplica(seg_qua, date(2026, 1, d), None) for d in (5, 6, 7)], [True, False, True])  # seg, ter, qua
+        c3 = {"tipo": "cada_dias", "n": 3}
+        ref = date(2026, 1, 1)
+        self.assertEqual([aplica(c3, date(2026, 1, d), ref) for d in (1, 2, 3, 4, 7)], [True, False, False, True, True])
+        self.assertFalse(aplica(c3, date(2025, 12, 29), ref))  # antes da referência
+
+    def test_enesima_semana_do_mes(self):
+        from agenda.regras import aplica
+
+        seg1 = {"tipo": "semana_mes", "nth": 1, "dia": 0, "n": 1}  # 1ª segunda
+        self.assertTrue(aplica(seg1, date(2026, 1, 5), date(2026, 1, 1)))
+        self.assertFalse(aplica(seg1, date(2026, 1, 12), date(2026, 1, 1)))
+        ult_sex = {"tipo": "semana_mes", "nth": -1, "dia": 4, "n": 1}  # última sexta
+        self.assertTrue(aplica(ult_sex, date(2026, 1, 30), date(2026, 1, 1)))
+        self.assertFalse(aplica(ult_sex, date(2026, 1, 23), date(2026, 1, 1)))
+
+    def test_sempre_e_vazio(self):
+        from agenda.regras import aplica
+
+        self.assertTrue(aplica(None, date(2026, 1, 1), None))
+        self.assertTrue(aplica({"tipo": "sempre"}, date(2026, 1, 1), None))
+
+    def test_normaliza_valida(self):
+        from agenda.regras import normaliza
+
+        self.assertEqual(normaliza(None), {"tipo": "sempre"})
+        self.assertEqual(normaliza({"tipo": "dia_mes", "dia": "5", "n": "2", "lixo": 1}), {"tipo": "dia_mes", "n": 2, "dia": 5})
+        for ruim in ({"tipo": "x"}, {"tipo": "dia_mes", "dia": 40}, {"tipo": "dia_mes"}, {"tipo": "dias_semana", "dias": []},
+                     {"tipo": "cada_dias", "n": 0}, {"tipo": "semana_mes", "dia": 1, "nth": 0}, {"tipo": "semana_mes", "dia": 9, "nth": 1}, "texto"):
+            with self.assertRaises(ValueError):
+                normaliza(ruim)
+
+    def test_descrever(self):
+        from agenda.regras import descrever
+
+        self.assertEqual(descrever({"tipo": "dia_mes", "dia": 5, "n": 1}), "no dia 5 do mês")
+        self.assertEqual(descrever({"tipo": "dia_mes", "dia": 5, "n": 3}), "no dia 5 do mês (a cada 3 meses)")
+        self.assertEqual(descrever({"tipo": "ultimo_dia_mes", "n": 1}), "no último dia do mês")
+        self.assertEqual(descrever({"tipo": "semana_mes", "nth": -1, "dia": 4, "n": 1}), "na última sexta do mês")
+        self.assertEqual(descrever({"tipo": "dias_semana", "dias": [0, 4]}), "em seg, sex")
+        self.assertEqual(descrever({"tipo": "cada_dias", "n": 15}), "a cada 15 dias")
+        self.assertEqual(descrever(None), "")
+
+
+class FrequenciaIntervaloLivreTests(TestCase):
+    """Periodicidades 'a cada N dias/semanas/meses/anos'."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.a = User.objects.create_superuser("adm", "a@a.com", "x")
+        self.client.force_login(self.a)
+
+    def _ck(self, **kw):
+        from agenda.models import Checklist, ChecklistItem
+
+        base = dict(titulo="P", criado_por=self.a, diario=True, diario_desde=date(2026, 1, 5))  # segunda
+        base.update(kw)
+        c = Checklist.objects.create(**base)
+        ChecklistItem.objects.create(checklist=c, texto="x")
+        return c
+
+    def _dias(self, c, de, ate):
+        from agenda.services import checklists_diarios
+
+        return [o["dia"] for o in checklists_diarios(self.a, de, ate) if o["checklist_id"] == c.id]
+
+    def test_a_cada_15_dias(self):
+        c = self._ck(periodicidade="cada_dias", intervalo=15)
+        self.assertEqual(self._dias(c, date(2026, 1, 1), date(2026, 3, 10)),
+                         [date(2026, 1, 5), date(2026, 1, 20), date(2026, 2, 4), date(2026, 2, 19), date(2026, 3, 6)])
+        # janela que começa no meio do ciclo continua alinhada com a referência
+        self.assertEqual(self._dias(c, date(2026, 2, 1), date(2026, 2, 28)), [date(2026, 2, 4), date(2026, 2, 19)])
+
+    def test_a_cada_3_semanas_nos_dias_marcados(self):
+        c = self._ck(periodicidade="cada_semanas", intervalo=3, dias_semana="0,4")
+        self.assertEqual(self._dias(c, date(2026, 1, 5), date(2026, 2, 28)),
+                         [date(2026, 1, 5), date(2026, 1, 9), date(2026, 1, 26), date(2026, 1, 30), date(2026, 2, 16), date(2026, 2, 20)])
+
+    def test_a_cada_2_meses_no_dia_10(self):
+        c = self._ck(periodicidade="cada_meses", intervalo=2, dia_mes=10)
+        self.assertEqual(self._dias(c, date(2026, 1, 5), date(2026, 7, 31)),
+                         [date(2026, 1, 10), date(2026, 3, 10), date(2026, 5, 10), date(2026, 7, 10)])
+
+    def test_a_cada_2_anos(self):
+        c = self._ck(periodicidade="cada_anos", intervalo=2, dia_mes=5)
+        self.assertEqual(self._dias(c, date(2026, 1, 1), date(2030, 12, 31)), [date(2026, 1, 5), date(2028, 1, 5), date(2030, 1, 5)])
+
+    def test_intervalo_1_equivale_ao_comum(self):
+        c = self._ck(periodicidade="cada_dias", intervalo=1)
+        self.assertEqual(len(self._dias(c, date(2026, 1, 5), date(2026, 1, 11))), 7)
+
+    def test_frequencia_texto(self):
+        from agenda.models import Checklist
+
+        t = lambda **k: Checklist(**k).frequencia_texto  # noqa: E731
+        self.assertEqual(t(periodicidade="cada_dias", intervalo=15), "A cada 15 dias")
+        self.assertEqual(t(periodicidade="cada_meses", intervalo=3, dia_mes=10), "A cada 3 meses · dia 10")
+        self.assertEqual(t(periodicidade="cada_semanas", intervalo=2), "A cada 2 semanas")
+        self.assertEqual(t(periodicidade="mensal", dia_mes=5), "Mensal · dia 5")
+        self.assertEqual(t(periodicidade="cada_anos", intervalo=1), "Anual")
+
+    def test_salvar_com_intervalo_e_data_de_inicio(self):
+        from agenda.models import Checklist
+
+        corpo = {"titulo": "Quinzena", "itens": [{"texto": "a"}], "diario": True, "periodicidade": "cada_dias", "intervalo": 15, "desde": "2026-03-01"}
+        r = self.client.post(reverse("agenda:checklist_salvar"), json.dumps(corpo), content_type="application/json")
+        self.assertTrue(r.json()["success"])
+        c = Checklist.objects.get()
+        self.assertEqual((c.periodicidade, c.intervalo, c.diario_desde), ("cada_dias", 15, date(2026, 3, 1)))
+        d = self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).json()["checklist"]
+        self.assertEqual((d["intervalo"], d["desde"]), (15, "2026-03-01"))
+        for ruim in ({"intervalo": None}, {"intervalo": 0}, {"intervalo": 999}, {"desde": "lixo"}):
+            r = self.client.post(reverse("agenda:checklist_salvar"), json.dumps({**corpo, **ruim}), content_type="application/json")
+            self.assertEqual(r.status_code, 400, ruim)
+        meses = {**corpo, "periodicidade": "cada_meses", "intervalo": 2, "dia_mes": None}
+        self.assertEqual(self.client.post(reverse("agenda:checklist_salvar"), json.dumps(meses), content_type="application/json").status_code, 400)
+
+
+class CondicoesDeAgrupamentoTests(TestCase):
+    """Agrupamento com condição especial (ex.: só no 5º dia do mês)."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.a = User.objects.create_superuser("adm", "a@a.com", "x")
+        self.client.force_login(self.a)
+
+    def _salvar(self, **extra):
+        corpo = {
+            "titulo": "Rotina do laboratório", "diario": True, "periodicidade": "diaria", "dias_semana": [0, 1, 2, 3, 4, 5, 6],
+            "desde": "2026-01-01",
+            "itens": [
+                {"texto": "Ligar equipamentos", "grupo": "Diário"},
+                {"texto": "Conferir EPIs", "grupo": "Diário"},
+                {"texto": "Fechar balanço do mês", "grupo": "Mensal"},
+                {"texto": "Arquivar relatórios", "grupo": "Mensal"},
+            ],
+            "grupos": [{"nome": "Mensal", "regra": {"tipo": "dia_mes", "dia": 5, "n": 1}}, {"nome": "Diário", "regra": {"tipo": "sempre"}}],
+        }
+        corpo.update(extra)
+        return self.client.post(reverse("agenda:checklist_salvar"), json.dumps(corpo), content_type="application/json")
+
+    def _occ(self, dia):
+        from agenda.services import checklists_diarios
+
+        return checklists_diarios(self.a, dia, dia)
+
+    def test_agrupamento_so_aparece_no_dia_da_condicao(self):
+        self.assertTrue(self._salvar().json()["success"])
+        dia5, dia6 = date(2026, 3, 5), date(2026, 3, 6)
+        occ5, occ6 = self._occ(dia5)[0], self._occ(dia6)[0]
+        self.assertEqual([g["nome"] for g in occ5["grupos"]], ["Diário", "Mensal"])
+        self.assertEqual([g["nome"] for g in occ6["grupos"]], ["Diário"])
+        self.assertEqual((len(occ5["itens"]), len(occ6["itens"])), (4, 2))
+        self.assertEqual([g["condicao"] for g in occ5["grupos"]], ["", "no dia 5 do mês"])
+
+    def test_progresso_conta_so_os_itens_do_dia(self):
+        self.assertTrue(self._salvar().json()["success"])
+        from agenda.models import Checklist
+
+        c = Checklist.objects.get()
+        for it in c.itens.filter(grupo="Diário"):
+            self.client.post(reverse("agenda:api_diario_toggle", args=[c.id, it.id]), json.dumps({"data": "2026-03-06"}), content_type="application/json")
+        occ = self._occ(date(2026, 3, 6))[0]
+        self.assertTrue(occ["feito"])  # no dia 6 só há os 2 itens "Diário", ambos marcados
+        self.assertFalse(self._occ(date(2026, 3, 5))[0]["feito"])  # no dia 5 faltam os do agrupamento mensal
+
+    def test_nao_marca_item_de_agrupamento_que_nao_vale_no_dia(self):
+        from agenda.models import Checklist
+
+        self._salvar()
+        c = Checklist.objects.get()
+        mensal = c.itens.filter(grupo="Mensal").first()
+        url = reverse("agenda:api_diario_toggle", args=[c.id, mensal.id])
+        r = self.client.post(url, json.dumps({"data": "2026-03-06"}), content_type="application/json")
+        self.assertEqual(r.status_code, 400)
+        r = self.client.post(url, json.dumps({"data": "2026-03-05"}), content_type="application/json")
+        self.assertTrue(r.json()["feito"])
+
+    def test_dia_sem_nenhum_agrupamento_valido_nao_gera_ocorrencia(self):
+        itens = [{"texto": "Só no 5º dia", "grupo": "Mensal"}]
+        self._salvar(itens=itens, grupos=[{"nome": "Mensal", "regra": {"tipo": "dia_mes", "dia": 5, "n": 1}}])
+        self.assertEqual(self._occ(date(2026, 3, 6)), [])
+        self.assertEqual(len(self._occ(date(2026, 3, 5))), 1)
+
+    def test_item_sem_agrupamento_aparece_sempre(self):
+        itens = [{"texto": "Solto", "grupo": ""}, {"texto": "Mensal", "grupo": "M"}]
+        self._salvar(itens=itens, grupos=[{"nome": "M", "regra": {"tipo": "ultimo_dia_mes", "n": 1}}])
+        self.assertEqual([i["texto"] for i in self._occ(date(2026, 3, 10))[0]["itens"]], ["Solto"])
+        self.assertEqual([i["texto"] for i in self._occ(date(2026, 3, 31))[0]["itens"]], ["Solto", "Mensal"])
+
+    def test_combina_com_a_periodicidade_do_checklist(self):
+        # checklist semanal (segundas) + agrupamento "1ª segunda do mês"
+        itens = [{"texto": "Semanal", "grupo": ""}, {"texto": "Mensal", "grupo": "M"}]
+        self._salvar(itens=itens, periodicidade="semanal", dias_semana=[0], desde="2026-03-02",
+                     grupos=[{"nome": "M", "regra": {"tipo": "semana_mes", "nth": 1, "dia": 0, "n": 1}}])
+        seg1, seg2 = self._occ(date(2026, 3, 2))[0], self._occ(date(2026, 3, 9))[0]
+        self.assertEqual((len(seg1["itens"]), len(seg2["itens"])), (2, 1))
+        self.assertEqual(self._occ(date(2026, 3, 3)), [])  # terça: nem o checklist vale
+
+    def test_detalhe_devolve_condicoes_e_renomear_remove_a_regra_antiga(self):
+        from agenda.models import Checklist, ChecklistGrupo
+
+        self._salvar()
+        c = Checklist.objects.get()
+        det = self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).json()["checklist"]
+        self.assertEqual(det["condicoes"], {"Mensal": {"tipo": "dia_mes", "dia": 5, "n": 1}})
+        itens = [{"id": i.id, "texto": i.texto, "grupo": "Fechamento" if i.grupo == "Mensal" else i.grupo} for i in c.itens.all()]
+        self._salvar(id=c.id, itens=itens, grupos=[{"nome": "Fechamento", "regra": {"tipo": "dia_mes", "dia": 7, "n": 1}}])
+        self.assertEqual(list(ChecklistGrupo.objects.values_list("nome", flat=True)), ["Fechamento"])
+        self._salvar(id=c.id, itens=itens, grupos=[{"nome": "Fechamento", "regra": {"tipo": "sempre"}}])
+        self.assertEqual(ChecklistGrupo.objects.count(), 0)  # sem condição não guarda regra
+
+    def test_validacoes_da_condicao(self):
+        for regra in ({"tipo": "x"}, {"tipo": "dia_mes", "dia": 99}, {"tipo": "dias_semana", "dias": []}):
+            r = self._salvar(grupos=[{"nome": "Mensal", "regra": regra}])
+            self.assertEqual(r.status_code, 400, regra)
+            self.assertIn("Mensal", r.json()["error"])
+
+    def test_condicao_de_agrupamento_sem_nome_e_ignorada(self):
+        from agenda.models import ChecklistGrupo
+
+        self._salvar(itens=[{"texto": "a", "grupo": ""}], grupos=[{"nome": "", "regra": {"tipo": "dia_mes", "dia": 5, "n": 1}}])
+        self.assertEqual(ChecklistGrupo.objects.count(), 0)
+
+    def test_checklist_associado_a_evento_tambem_respeita_a_condicao(self):
+        from agenda.models import Checklist
+        from agenda.services import ocorrencias
+
+        self._salvar()
+        c = Checklist.objects.get()
+        corpo = {"titulo": "Rotina", "inicio": "2026-03-01T08:00", "dia_inteiro": True, "recorrencia": "diaria", "checklist_modelo": c.id}
+        self.client.post(reverse("agenda:evento_salvar"), json.dumps(corpo), content_type="application/json")
+        dia5 = [o for o in ocorrencias(self.a, date(2026, 3, 5), date(2026, 3, 5), so_checklist=True)]
+        dia6 = [o for o in ocorrencias(self.a, date(2026, 3, 6), date(2026, 3, 6), so_checklist=True)]
+        self.assertEqual((len(dia5[0]["itens"]), len(dia6[0]["itens"])), (4, 2))
+        from agenda.models import Evento
+
+        ev = Evento.objects.get()
+        mensal = c.itens.filter(grupo="Mensal").first()
+        r = self.client.post(reverse("agenda:api_item_toggle", args=[ev.id, mensal.id]), json.dumps({"data": "2026-03-06"}), content_type="application/json")
+        self.assertEqual(r.status_code, 400)
+
+    def test_pagina_do_dia_mostra_a_condicao(self):
+        self._salvar(desde="2026-03-05")
+        r = self.client.get(reverse("agenda:checklist"), {"data": "2026-03-05"})
+        self.assertContains(r, "no dia 5 do mês")
+        self.assertContains(r, "Fechar balanço do mês")
+        r = self.client.get(reverse("agenda:checklist"), {"data": "2026-03-06"})
+        self.assertNotContains(r, "Fechar balanço do mês")
