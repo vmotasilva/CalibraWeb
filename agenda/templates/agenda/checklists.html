@@ -22,7 +22,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-start">
                         <h6 class="card-title mb-1">{{ c.titulo }}</h6>
-                        <span class="badge text-bg-secondary">{{ c.itens.all|length }} {{ c.itens.all|length|pluralize:"item,itens" }}</span>
+                        <span class="badge text-bg-secondary">{{ c.itens_vigentes|length }} {{ c.itens_vigentes|length|pluralize:"item,itens" }}</span>
                     </div>
                     {% if c.diario %}<div class="mb-2"><span class="badge text-bg-success"><i class="bi bi-arrow-repeat me-1"></i>{{ c.frequencia_texto }}</span>
                         {% if c.hora %}<span class="badge text-bg-light border">{{ c.hora|time:"H:i" }}</span>{% endif %}
@@ -32,8 +32,8 @@
                     {% if c.ajustado_por_id %}<div class="small text-muted mb-1"><i class="bi bi-person-badge me-1"></i>Ajustado por {{ c.ajustado_por.get_full_name|default:c.ajustado_por.username }}{% if c.ajustado_em %} em {{ c.ajustado_em|date:"d/m/Y H:i" }}{% endif %}</div>{% endif %}
                     {% if c.descricao %}<p class="small text-muted mb-2">{{ c.descricao|truncatechars:120 }}</p>{% endif %}
                     <ul class="small mb-3 ps-3">
-                        {% for i in c.itens.all|slice:":4" %}<li>{% if i.grupo %}<span class="text-muted">{{ i.grupo }} ›</span> {% endif %}{{ i.texto }}</li>{% endfor %}
-                        {% if c.itens.all|length > 4 %}<li class="text-muted">+{{ c.itens.all|length|add:"-4" }} mais</li>{% endif %}
+                        {% for i in c.itens_vigentes|slice:":4" %}<li>{% if i.grupo %}<span class="text-muted">{{ i.grupo }} ›</span> {% endif %}{{ i.texto }}</li>{% endfor %}
+                        {% if c.itens_vigentes|length > 4 %}<li class="text-muted">+{{ c.itens_vigentes|length|add:"-4" }} mais</li>{% endif %}
                     </ul>
                     <button class="btn btn-sm btn-outline-primary ck-editar" data-id="{{ c.id }}"><i class="bi bi-pencil me-1"></i>Editar</button>
                 </div>
@@ -49,9 +49,9 @@
     <div class="row g-3">
     {% for c in recebidos %}
         <div class="col-md-6"><div class="card border-info shadow-sm h-100"><div class="card-body">
-            <div class="d-flex justify-content-between"><h6 class="card-title mb-1">{{ c.titulo }}</h6><span class="badge text-bg-secondary">{{ c.itens.all|length }} {{ c.itens.all|length|pluralize:"item,itens" }}</span></div>
+            <div class="d-flex justify-content-between"><h6 class="card-title mb-1">{{ c.titulo }}</h6><span class="badge text-bg-secondary">{{ c.itens_vigentes|length }} {{ c.itens_vigentes|length|pluralize:"item,itens" }}</span></div>
             <div class="small text-muted mb-2">Enviado por {{ c.criado_por.get_full_name|default:c.criado_por.username }}{% if c.hora %} · {{ c.hora|time:"H:i" }}{% endif %}</div>
-            <ul class="small mb-2 ps-3">{% for i in c.itens.all|slice:":4" %}<li>{{ i.texto }}</li>{% endfor %}{% if c.itens.all|length > 4 %}<li class="text-muted">+{{ c.itens.all|length|add:"-4" }} mais</li>{% endif %}</ul>
+            <ul class="small mb-2 ps-3">{% for i in c.itens_vigentes|slice:":4" %}<li>{{ i.texto }}</li>{% endfor %}{% if c.itens_vigentes|length > 4 %}<li class="text-muted">+{{ c.itens_vigentes|length|add:"-4" }} mais</li>{% endif %}</ul>
             <a class="btn btn-sm btn-outline-success" href="{% url 'agenda:checklist' %}"><i class="bi bi-check2-square me-1"></i>Preencher hoje</a>
         </div></div></div>
     {% endfor %}

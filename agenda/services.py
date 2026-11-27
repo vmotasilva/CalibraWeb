@@ -54,16 +54,19 @@ def datas_do_evento(evento: Evento, de: date, ate: date):
 
 
 def agrupar(itens, condicoes=None):
-    """Itens (dicts com "grupo" e "feito") agrupados na ordem em que aparecem: [{nome, itens, feitos, total, condicao}].
+    """Itens (dicts com "grupo" e "feito") agrupados pelo nome, na ordem da primeira aparição de cada agrupamento:
+    [{nome, itens, feitos, total, condicao}]. Itens avulsos entram no agrupamento de mesmo nome.
 
     `condicoes` {nome do agrupamento: texto da condição especial} (opcional).
     """
     condicoes = condicoes or {}
-    grupos = []
+    grupos, por_nome = [], {}
     for it in itens:
-        if not grupos or grupos[-1]["nome"] != it["grupo"]:
-            grupos.append({"nome": it["grupo"], "itens": [], "condicao": condicoes.get(it["grupo"], "")})
-        grupos[-1]["itens"].append(it)
+        g = por_nome.get(it["grupo"])
+        if g is None:
+            g = por_nome[it["grupo"]] = {"nome": it["grupo"], "itens": [], "condicao": condicoes.get(it["grupo"], "")}
+            grupos.append(g)
+        g["itens"].append(it)
     for g in grupos:
         g["total"] = len(g["itens"])
         g["feitos"] = sum(1 for i in g["itens"] if i["feito"])
@@ -80,9 +83,10 @@ def itens_do_dia(c, itens, dia):
 
     Devolve (itens, {nome do agrupamento: texto da condição}).
     """
+    itens = [i for i in itens if i.vale_em(dia)]  # inserções e remoções valem a partir da data da mudança
     grupos = list(c.grupos.all())
     if not grupos:
-        return list(itens), {}
+        return itens, {}
     ref = referencia_do_checklist(c)
     por_nome = {g.nome: g.regra for g in grupos}
     visiveis = [i for i in itens if regras.aplica(por_nome.get(i.grupo), dia, ref)]
@@ -113,6 +117,7 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False, editor=None):
     ).values_list("evento_id", "item_id", "data"):
         itens_feitos.setdefault((ev_id, dia), set()).add(item_id)
     saida = []
+    hoje_local = timezone.localdate()
     for ev in eventos:
         modelo = ev.checklist_modelo
         itens_modelo = list(modelo.itens.all()) if modelo else []
@@ -123,7 +128,10 @@ def ocorrencias(user, de: date, ate: date, so_checklist=False, editor=None):
             visiveis, condicoes = itens_do_dia(modelo, itens_modelo, dia) if modelo else ([], {})
             if so_checklist and modelo and itens_modelo and not visiveis:
                 continue  # nenhum agrupamento do checklist vale neste dia
-            itens = [{"id": i.id, "texto": i.texto, "grupo": i.grupo, "feito": i.id in marcados} for i in visiveis]
+            itens = [
+                {"id": i.id, "texto": i.texto, "grupo": i.grupo, "feito": i.id in marcados, "avulso": i.avulso, "ate": i.valido_ate if i.avulso else None, "vigente": i.avulso or i.vale_em(hoje_local)}
+                for i in visiveis
+            ]
             # com modelo associado, a ocorrência só está "feita" quando todos os itens estão marcados
             feito = (bool(itens) and all(i["feito"] for i in itens)) if modelo else (ev.id, dia) in feitos
             saida.append(
@@ -220,6 +228,7 @@ def checklists_diarios(user, de: date, ate: date, so_agenda=False):
     ).values_list("item_id", "data", "item__checklist_id"):
         marcados.setdefault((ck_id, dia), set()).add(item_id)
     saida = []
+    hoje_local = timezone.localdate()
     for c in checklists:
         itens_modelo = list(c.itens.all())
         inicio = max(x for x in (de, c.diario_desde, recebidos.get(c.id)) if x)  # recebido: vale da data do envio
@@ -229,7 +238,10 @@ def checklists_diarios(user, de: date, ate: date, so_agenda=False):
             visiveis, condicoes = itens_do_dia(c, itens_modelo, dia)
             if itens_modelo and not visiveis:
                 continue  # todos os agrupamentos têm condição e nenhuma vale neste dia
-            itens = [{"id": i.id, "texto": i.texto, "grupo": i.grupo, "feito": i.id in feitos} for i in visiveis]
+            itens = [
+                {"id": i.id, "texto": i.texto, "grupo": i.grupo, "feito": i.id in feitos, "avulso": i.avulso, "ate": i.valido_ate if i.avulso else None, "vigente": i.avulso or i.vale_em(hoje_local)}
+                for i in visiveis
+            ]
             saida.append(
                 {
                     "tipo": "checklist_diario",
@@ -332,7 +344,13 @@ def pendencias_anteriores(user, hoje: date, janela: int = JANELA_PENDENCIAS):
         total, feitos = _contagem(o)
         if feitos >= total:
             continue
-        faltam = [i for i in o["itens"] if not i["feito"]] if o["itens"] else [{"id": None, "texto": o["titulo"], "grupo": ""}]
+        faltam = (
+            [i for i in o["itens"] if not i["feito"] and i.get("vigente", True)]  # item removido depois não cobra mais
+            if o["itens"]
+            else [{"id": None, "texto": o["titulo"], "grupo": ""}]
+        )
+        if not faltam:
+            continue
         saida.append(
             {
                 "dia": o["dia"],

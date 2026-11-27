@@ -45,7 +45,9 @@
         {% for x in g.itens %}
         <li class="list-group-item d-flex align-items-center gap-3 {% if g.nome %}ps-5{% else %}ps-4{% endif %}">
             <input class="form-check-input mt-0 ck-box ck-conta" type="checkbox" {% if somente_leitura %}disabled{% endif %} style="width:1.2rem;height:1.2rem;" {% if i.tipo == 'checklist_diario' %}data-checklist="{{ i.id }}"{% else %}data-evento="{{ i.id }}"{% endif %} data-item="{{ x.id }}" {% if x.feito %}checked{% endif %}>
-            <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}</div>
+            <div class="flex-grow-1 {% if x.feito %}text-decoration-line-through text-muted{% endif %}">{{ x.texto }}
+                {% if x.avulso %}<span class="badge text-bg-info fw-normal ms-1">avulso{% if x.ate %} · até {{ x.ate|date:"d/m" }}{% endif %}</span>{% endif %}</div>
+            {% if x.avulso and not somente_leitura %}<button class="btn btn-sm btn-link text-danger p-0 ck-avulso-del" data-item="{{ x.id }}" title="Remover item avulso"><i class="bi bi-x-lg"></i></button>{% endif %}
         </li>
         {% endfor %}
         {% endfor %}
@@ -89,6 +91,26 @@
     {% endfor %}
     {% endif %}
 
+    {% if not somente_leitura %}
+    <div class="card shadow-sm mt-4"><div class="card-body">
+        <h6 class="mb-2"><i class="bi bi-plus-circle me-1"></i>Adicionar item avulso <span class="text-muted small fw-normal">(não fixo: vale para {{ dia|date:"d/m" }} ou até uma data)</span></h6>
+        <div class="row g-2">
+            <div class="col-md-5"><input id="avTexto" class="form-control form-control-sm" maxlength="300" placeholder="Ex.: Entregar relatório ao cliente"></div>
+            <div class="col-md-3"><select id="avChecklist" class="form-select form-select-sm" title="Em qual checklist o item aparece">
+                <option value="">Itens avulsos (lista própria)</option>
+                {% for d in destinos_avulso %}<option value="{{ d.id }}" data-grupos="{{ d.grupos|join:'|' }}">{{ d.titulo }}</option>{% endfor %}
+            </select></div>
+            <div class="col-md-2"><input id="avGrupo" list="avGrupos" class="form-control form-control-sm" maxlength="120" placeholder="Agrupamento"><datalist id="avGrupos"></datalist></div>
+            <div class="col-md-2"><input type="date" id="avAte" class="form-control form-control-sm" min="{{ dia|date:'Y-m-d' }}" title="Repetir até (opcional)"></div>
+        </div>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+            <span class="form-text mb-0">Com <strong>repetir até</strong>, o item aparece todos os dias do período e depois some, voltando ao padrão do checklist.</span>
+            <button class="btn btn-sm btn-primary" id="avAdd"><i class="bi bi-plus-lg me-1"></i>Adicionar</button>
+        </div>
+        <div class="text-danger small mt-1 d-none" id="avErro"></div>
+    </div></div>
+    {% endif %}
+
     {% if pendencias %}
     <h6 class="mt-4 mb-1"><i class="bi bi-clock-history me-1"></i>Pendências dos últimos 7 dias</h6>
     <p class="small text-muted mb-2">O que ficou sem marcar. Você pode regularizar aqui; vale para o dia de origem.</p>
@@ -117,6 +139,31 @@
 <script>
 (function () {
     const DIA = "{{ dia|date:'Y-m-d' }}", CSRF = "{{ csrf_token }}", TOTAL = {{ total }};
+    const urlAvCriar = "{% url 'agenda:item_avulso_criar' %}";
+    const urlAvExcluir = id => "{% url 'agenda:item_avulso_excluir' 0 %}".replace(/0\/excluir\/$/, id + "/excluir/");
+    async function postJson(url, corpo) {
+        const r = await fetch(url, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": CSRF}, body: JSON.stringify(corpo || {})});
+        return r.json().catch(() => ({success: false, error: "Erro inesperado."}));
+    }
+    const avSel = document.getElementById("avChecklist");
+    if (avSel) {
+        const atualizarGrupos = () => {  // sugere os agrupamentos do checklist escolhido
+            const g = (avSel.selectedOptions[0].dataset.grupos || "").split("|").filter(Boolean);
+            document.getElementById("avGrupos").innerHTML = g.map(n => `<option value="${n.replace(/"/g, "&quot;")}">`).join("");
+        };
+        avSel.addEventListener("change", atualizarGrupos); atualizarGrupos();
+        document.getElementById("avAdd").addEventListener("click", async () => {
+            const j = await postJson(urlAvCriar, {texto: document.getElementById("avTexto").value, data: DIA, ate: document.getElementById("avAte").value || null,
+                checklist_id: avSel.value || null, grupo: document.getElementById("avGrupo").value});
+            if (!j.success) { const e = document.getElementById("avErro"); e.textContent = j.error || "Não foi possível adicionar."; e.classList.remove("d-none"); return; }
+            location.reload();
+        });
+        document.getElementById("avTexto").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("avAdd").click(); } });
+    }
+    document.querySelectorAll(".ck-avulso-del").forEach(b => b.addEventListener("click", async () => {
+        if (!confirm("Remover este item avulso?")) return;
+        const j = await postJson(urlAvExcluir(b.dataset.item)); if (j.success) location.reload();
+    }));
     const urlTarefa = id => "{% url 'agenda:api_tarefa_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
     const urlEv = id => "{% url 'agenda:api_checklist_toggle' 0 %}".replace(/0\/toggle\/$/, id + "/toggle/");
     const urlDiario = (ck, it) => "{% url 'agenda:api_diario_toggle' 0 0 %}".replace(/0\/item\/0\/diario\/$/, ck + "/item/" + it + "/diario/");

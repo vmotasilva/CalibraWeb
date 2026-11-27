@@ -203,10 +203,12 @@ class ChecklistModeloTests(TestCase):
         a, b = list(c.itens.all())
         self._criar(id=c.id, itens=[{"id": b.id, "texto": "EPIs conferidos"}, {"texto": "Novo"}])
         c.refresh_from_db()
-        textos = [i.texto for i in c.itens.all()]
+        textos = [i.texto for i in c.itens_vigentes]
         self.assertEqual(textos, ["EPIs conferidos", "Novo"])
         self.assertTrue(c.itens.filter(id=b.id).exists())
-        self.assertFalse(c.itens.filter(id=a.id).exists())
+        # o item retirado deixa de valer a partir de hoje, mas continua guardado (histórico)
+        a.refresh_from_db()
+        self.assertEqual(a.valido_ate, timezone.localdate() - timedelta(days=1))
 
     def test_so_o_dono_ve_e_edita_o_checklist(self):
         from agenda.models import Checklist
@@ -1470,3 +1472,288 @@ class PluralDosItensTests(_Base):
         self.assertIn("1 item<", html)
         self.assertIn("17 itens<", html)
         self.assertNotIn("itemns", html)
+
+
+class ItensComValidadeTests(_Base):
+    """Inserir ou remover um item vale a partir da data da mudança; o passado fica como era."""
+
+    def _salvar(self, itens, **extra):
+        corpo = {"titulo": "Rotina", "diario": True, "dias_semana": [0, 1, 2, 3, 4, 5, 6], "itens": itens}
+        corpo.update(extra)
+        return self.post("agenda:checklist_salvar", corpo)
+
+    def _checklist_antigo(self, itens=("A", "B"), dias=5):
+        """Checklist que já existe há `dias` dias, com os itens dados (sem validade: valem desde sempre)."""
+        from agenda.models import Checklist, ChecklistItem
+
+        hoje = timezone.localdate()
+        c = Checklist.objects.create(titulo="Rotina", criado_por=self.ana, diario=True, diario_desde=hoje - timedelta(days=dias), dias_semana="0,1,2,3,4,5,6")
+        for n, t in enumerate(itens):
+            ChecklistItem.objects.create(checklist=c, texto=t, ordem=n)
+        return c
+
+    def _textos(self, dia):
+        from agenda.services import checklists_diarios
+
+        occ = checklists_diarios(self.ana, dia, dia)
+        return [i["texto"] for o in occ for i in o["itens"]]
+
+    def test_item_inserido_vale_a_partir_de_hoje(self):
+        hoje = timezone.localdate()
+        c = self._checklist_antigo()
+        self.client.force_login(self.ana)
+        itens = [{"id": i.id, "texto": i.texto} for i in c.itens.all()] + [{"texto": "NOVO"}]
+        self.assertTrue(self._salvar(itens, id=c.id).json()["success"])
+        self.assertEqual(self._textos(hoje), ["A", "B", "NOVO"])
+        self.assertEqual(self._textos(hoje + timedelta(days=3)), ["A", "B", "NOVO"])
+        for atras in (1, 2, 4):  # os dias anteriores não ganham o item novo
+            self.assertEqual(self._textos(hoje - timedelta(days=atras)), ["A", "B"], atras)
+
+    def test_item_removido_deixa_de_valer_a_partir_de_hoje_e_preserva_o_historico(self):
+        from agenda.models import ChecklistDiarioConclusao
+
+        hoje = timezone.localdate()
+        c = self._checklist_antigo()
+        a, b = list(c.itens.all())
+        self.client.force_login(self.ana)
+        # marcou o item A há 3 dias
+        r = self.post("agenda:api_diario_toggle", {"data": (hoje - timedelta(days=3)).isoformat()}, [c.id, a.id])
+        self.assertTrue(r.json()["feito"])
+        # remove o item A
+        self.assertTrue(self._salvar([{"id": b.id, "texto": "B"}], id=c.id).json()["success"])
+        self.assertEqual(self._textos(hoje), ["B"])
+        self.assertEqual(self._textos(hoje + timedelta(days=2)), ["B"])
+        self.assertEqual(self._textos(hoje - timedelta(days=1)), ["A", "B"])  # ontem ainda valia
+        self.assertEqual(self._textos(hoje - timedelta(days=3)), ["A", "B"])
+        # a marcação antiga continua lá
+        self.assertEqual(ChecklistDiarioConclusao.objects.filter(item=a).count(), 1)
+        from agenda.services import checklists_diarios
+
+        d3 = checklists_diarios(self.ana, hoje - timedelta(days=3), hoje - timedelta(days=3))[0]
+        self.assertEqual([(i["texto"], i["feito"]) for i in d3["itens"]], [("A", True), ("B", False)])
+
+    def test_item_criado_e_removido_no_mesmo_dia_sem_marcacao_some_de_vez(self):
+        from agenda.models import ChecklistItem
+
+        c = self._checklist_antigo(itens=("A",))
+        self.client.force_login(self.ana)
+        a = c.itens.get()
+        self._salvar([{"id": a.id, "texto": "A"}, {"texto": "Efêmero"}], id=c.id)
+        self.assertTrue(ChecklistItem.objects.filter(texto="Efêmero").exists())
+        self._salvar([{"id": a.id, "texto": "A"}], id=c.id)
+        self.assertFalse(ChecklistItem.objects.filter(texto="Efêmero").exists())  # nunca teve histórico
+
+    def test_checklist_novo_tem_itens_validos_desde_o_inicio(self):
+        from agenda.models import ChecklistItem
+
+        self.client.force_login(self.ana)
+        self._salvar([{"texto": "A"}], desde=(timezone.localdate() - timedelta(days=4)).isoformat())
+        self.assertIsNone(ChecklistItem.objects.get().valido_desde)
+        self.assertEqual(self._textos(timezone.localdate() - timedelta(days=2)), ["A"])
+
+    def test_pendencias_anteriores_nao_cobram_item_removido(self):
+        from agenda.services import acompanhamento
+
+        hoje = timezone.localdate()
+        c = self._checklist_antigo(dias=2)
+        a, b = list(c.itens.all())
+        self.client.force_login(self.ana)
+        self.assertEqual(acompanhamento(self.ana, hoje)["pendencias_total"], 4)  # 2 dias x 2 itens
+        self._salvar([{"id": b.id, "texto": "B"}], id=c.id)
+        ac = acompanhamento(self.ana, hoje)
+        self.assertEqual(ac["pendencias_total"], 2)  # só o B continua cobrando
+        self.assertTrue(all(i["texto"] == "B" for p in ac["pendencias"] for i in p["faltam"]))
+
+    def test_editor_e_cartao_mostram_so_os_itens_vigentes(self):
+        c = self._checklist_antigo(itens=("A", "B", "C"))
+        a = c.itens.first()
+        self.client.force_login(self.ana)
+        self._salvar([{"id": i.id, "texto": i.texto} for i in c.itens.all() if i.id != a.id], id=c.id)
+        det = self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).json()["checklist"]
+        self.assertEqual([i["texto"] for i in det["itens"]], ["B", "C"])
+        self.assertIn("2 itens<", self.client.get(reverse("agenda:checklists")).content.decode())
+
+    def test_nao_marca_item_em_dia_em_que_ele_nao_valia(self):
+        hoje = timezone.localdate()
+        c = self._checklist_antigo(itens=("A",))
+        a = c.itens.get()
+        self.client.force_login(self.ana)
+        self._salvar([{"id": a.id, "texto": "A"}, {"texto": "NOVO"}], id=c.id)
+        novo = c.itens.get(texto="NOVO")
+        url = reverse("agenda:api_diario_toggle", args=[c.id, novo.id])
+        ontem = self.client.post(url, json.dumps({"data": (hoje - timedelta(days=1)).isoformat()}), content_type="application/json")
+        self.assertEqual(ontem.status_code, 400)  # ainda não existia
+        self.assertTrue(self.client.post(url, json.dumps({"data": hoje.isoformat()}), content_type="application/json").json()["feito"])
+
+    def test_remover_e_reinserir_um_item_nao_ressuscita_o_passado(self):
+        hoje = timezone.localdate()
+        c = self._checklist_antigo(itens=("A",))
+        a = c.itens.get()
+        self.client.force_login(self.ana)
+        self._salvar([{"texto": "OUTRO"}], id=c.id)  # remove A, insere OUTRO
+        self.assertEqual(self._textos(hoje), ["OUTRO"])
+        self.assertEqual(self._textos(hoje - timedelta(days=1)), ["A"])
+
+
+class ItensAvulsosTests(_Base):
+    """Itens não fixos no Meu checklist: valem para um dia (ou até uma data) e depois voltam ao padrão."""
+
+    def setUp(self):
+        super().setUp()
+        self.hoje = timezone.localdate()
+        self.client.force_login(self.ana)
+
+    def _fixo(self, titulo="Rotina", itens=("A", "B")):
+        from agenda.models import Checklist, ChecklistItem
+
+        c = Checklist.objects.create(titulo=titulo, criado_por=self.ana, diario=True, diario_desde=self.hoje - timedelta(days=10), dias_semana="0,1,2,3,4,5,6")
+        for n, t in enumerate(itens):
+            ChecklistItem.objects.create(checklist=c, texto=t, ordem=n)
+        return c
+
+    def _criar(self, **corpo):
+        base = {"texto": "Entregar relatório", "data": self.hoje.isoformat()}
+        base.update(corpo)
+        return self.post("agenda:item_avulso_criar", base)
+
+    def _itens(self, dia):
+        from agenda.services import checklists_diarios
+
+        return [(o["titulo"], i["texto"], i["avulso"]) for o in checklists_diarios(self.ana, dia, dia) for i in o["itens"]]
+
+    def test_item_avulso_de_um_dia_so_aparece_nele(self):
+        c = self._fixo()
+        r = self._criar(checklist_id=c.id)
+        self.assertTrue(r.json()["success"])
+        self.assertEqual(self._itens(self.hoje), [("Rotina", "A", False), ("Rotina", "B", False), ("Rotina", "Entregar relatório", True)])
+        for outro in (self.hoje - timedelta(days=1), self.hoje + timedelta(days=1)):
+            self.assertEqual(self._itens(outro), [("Rotina", "A", False), ("Rotina", "B", False)])  # volta ao padrão
+
+    def test_repetir_ate_uma_data_e_depois_volta_ao_padrao(self):
+        c = self._fixo()
+        ate = self.hoje + timedelta(days=2)
+        self.assertTrue(self._criar(checklist_id=c.id, ate=ate.isoformat()).json()["success"])
+        for n in (0, 1, 2):
+            self.assertIn(("Rotina", "Entregar relatório", True), self._itens(self.hoje + timedelta(days=n)))
+        self.assertNotIn(("Rotina", "Entregar relatório", True), self._itens(self.hoje + timedelta(days=3)))
+        self.assertEqual(len(self._itens(self.hoje + timedelta(days=3))), 2)
+
+    def test_sem_checklist_de_destino_usa_a_lista_propria_de_avulsos(self):
+        from agenda.models import Checklist
+
+        self.assertTrue(self._criar().json()["success"])
+        lista = Checklist.objects.get(titulo="Itens avulsos")
+        self.assertEqual((lista.criado_por, lista.diario), (self.ana, True))
+        self.assertEqual(self._itens(self.hoje), [("Itens avulsos", "Entregar relatório", True)])
+        self.assertEqual(self._itens(self.hoje + timedelta(days=1)), [])  # a lista só aparece nos dias em que tem item
+        self._criar(texto="Outro")  # reaproveita a mesma lista
+        self.assertEqual(Checklist.objects.filter(titulo="Itens avulsos").count(), 1)
+
+    def test_avulso_de_dia_passado_ou_futuro(self):
+        amanha = self.hoje + timedelta(days=1)
+        self._criar(data=amanha.isoformat())
+        self.assertEqual(self._itens(self.hoje), [])
+        self.assertEqual(self._itens(amanha), [("Itens avulsos", "Entregar relatório", True)])
+        ontem = self.hoje - timedelta(days=1)
+        self._criar(texto="De ontem", data=ontem.isoformat())
+        self.assertEqual(self._itens(ontem), [("Itens avulsos", "De ontem", True)])
+
+    def test_agrupamento_do_avulso(self):
+        c = self._fixo()
+        self._criar(checklist_id=c.id, grupo="Extras")
+        from agenda.services import checklists_diarios
+
+        grupos = [(g["nome"], [i["texto"] for i in g["itens"]]) for g in checklists_diarios(self.ana, self.hoje, self.hoje)[0]["grupos"]]
+        self.assertEqual(grupos, [("", ["A", "B"]), ("Extras", ["Entregar relatório"])])
+
+    def test_avulso_entra_no_progresso_e_pode_ser_marcado(self):
+        from agenda.services import acompanhamento
+
+        c = self._fixo()
+        self._criar(checklist_id=c.id)
+        ac = acompanhamento(self.ana, self.hoje)
+        self.assertEqual((ac["total"], ac["feitos"]), (3, 0))
+        from agenda.models import ChecklistItem
+
+        item = ChecklistItem.objects.get(avulso=True)
+        r = self.post("agenda:api_diario_toggle", {"data": self.hoje.isoformat()}, [c.id, item.id])
+        self.assertTrue(r.json()["feito"])
+        self.assertEqual(acompanhamento(self.ana, self.hoje)["feitos"], 1)
+        # fora do período, não dá para marcar
+        r = self.post("agenda:api_diario_toggle", {"data": (self.hoje + timedelta(days=1)).isoformat()}, [c.id, item.id])
+        self.assertEqual(r.status_code, 400)
+
+    def test_avulso_nao_marcado_continua_cobrando_nas_pendencias(self):
+        from agenda.services import acompanhamento
+
+        ontem = self.hoje - timedelta(days=1)
+        self._criar(texto="Esqueci", data=ontem.isoformat())
+        ac = acompanhamento(self.ana, self.hoje)
+        self.assertEqual([i["texto"] for p in ac["pendencias"] for i in p["faltam"]], ["Esqueci"])
+
+    def test_nao_aparece_no_editor_do_checklist_padrao_nem_e_apagado_ao_salvar(self):
+        from agenda.models import Checklist, ChecklistItem
+
+        c = self._fixo()
+        self._criar(checklist_id=c.id)
+        det = self.client.get(reverse("agenda:api_checklist_detalhe", args=[c.id])).json()["checklist"]
+        self.assertEqual([i["texto"] for i in det["itens"]], ["A", "B"])  # sem o avulso
+        itens = [{"id": i["id"], "texto": i["texto"]} for i in det["itens"]]
+        self.post("agenda:checklist_salvar", {"id": c.id, "titulo": "Rotina", "itens": itens, "diario": True, "dias_semana": [0, 1, 2, 3, 4, 5, 6]})
+        self.assertTrue(ChecklistItem.objects.filter(avulso=True, checklist=c).exists())
+        self.assertEqual(Checklist.objects.get(id=c.id).itens_vigentes.__len__(), 2)
+
+    def test_remover_avulso_sem_marcacao_apaga_e_com_marcacao_preserva_o_historico(self):
+        from agenda.models import ChecklistItem
+
+        c = self._fixo()
+        self._criar(checklist_id=c.id, texto="Sem marcar")
+        self._criar(checklist_id=c.id, texto="Marcado")
+        sem, marcado = ChecklistItem.objects.get(texto="Sem marcar"), ChecklistItem.objects.get(texto="Marcado")
+        self.post("agenda:api_diario_toggle", {"data": self.hoje.isoformat()}, [c.id, marcado.id])
+        self.assertTrue(self.post("agenda:item_avulso_excluir", {}, [sem.id]).json()["success"])
+        self.assertTrue(self.post("agenda:item_avulso_excluir", {}, [marcado.id]).json()["success"])
+        self.assertFalse(ChecklistItem.objects.filter(texto="Sem marcar").exists())
+        marcado.refresh_from_db()
+        self.assertEqual(marcado.valido_ate, self.hoje - timedelta(days=1))  # preserva o histórico
+
+    def test_validacoes(self):
+        for ruim in ({"texto": " "}, {"texto": "x" * 301}, {"data": "lixo"}, {"ate": (self.hoje - timedelta(days=1)).isoformat()},
+                     {"ate": (self.hoje + timedelta(days=400)).isoformat()}, {"ate": "lixo"}):
+            self.assertEqual(self._criar(**ruim).status_code, 400, ruim)
+
+    def test_so_no_proprio_checklist_recorrente(self):
+        from agenda.models import Checklist, ChecklistItem
+
+        alheio = Checklist.objects.create(titulo="Da Bia", criado_por=self.bia, diario=True, diario_desde=self.hoje)
+        self.assertEqual(self._criar(checklist_id=alheio.id).status_code, 404)
+        # item avulso de outra pessoa não pode ser removido
+        item = ChecklistItem.objects.create(checklist=alheio, texto="x", avulso=True, valido_desde=self.hoje, valido_ate=self.hoje)
+        self.assertEqual(self.post("agenda:item_avulso_excluir", {}, [item.id]).status_code, 404)
+        # item fixo (não avulso) não é removido por este endpoint
+        fixo = ChecklistItem.objects.create(checklist=self._fixo("Meu"), texto="fixo")
+        self.assertEqual(self.post("agenda:item_avulso_excluir", {}, [fixo.id]).status_code, 404)
+
+    def test_tela_mostra_formulario_marca_de_avulso_e_destinos(self):
+        c = self._fixo("Abertura")
+        self._criar(checklist_id=c.id, ate=(self.hoje + timedelta(days=3)).isoformat())
+        r = self.client.get(reverse("agenda:checklist"))
+        self.assertContains(r, "Adicionar item avulso")
+        self.assertContains(r, "avulso · até")
+        self.assertContains(r, 'id="avChecklist"')
+        self.assertContains(r, ">Abertura</option>")
+        # a chefia vistoria sem poder adicionar
+        self.client.force_login(self.lider)
+        r = self.client.get(reverse("agenda:checklist"), {"usuario": self.ana.id})
+        self.assertNotContains(r, "Adicionar item avulso")
+        self.assertNotContains(r, 'title="Remover item avulso"')  # o botão (a classe aparece só no script)
+
+
+class AgruparItensTests(TestCase):
+    def test_itens_do_mesmo_agrupamento_ficam_juntos_mesmo_fora_de_ordem(self):
+        from agenda.services import agrupar
+
+        it = lambda t, g, f=False: {"texto": t, "grupo": g, "feito": f}  # noqa: E731
+        grupos = agrupar([it("a", "Gerais", True), it("b", "KPI"), it("c", "Gerais"), it("d", "")], {"KPI": "no dia 5 do mês"})
+        self.assertEqual([(g["nome"], [i["texto"] for i in g["itens"]], g["feitos"], g["total"], g["condicao"]) for g in grupos],
+                         [("Gerais", ["a", "c"], 1, 2, ""), ("KPI", ["b"], 0, 1, "no dia 5 do mês"), ("", ["d"], 0, 1, "")])

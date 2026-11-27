@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
@@ -305,6 +305,12 @@ def checklist_view(request):
             "feitos_dia": ac["feitos_dia"],
             "total_compartilhados": ac["total_compartilhados"],
             "feitos_compartilhados": ac["feitos_compartilhados"],
+            # onde um item avulso pode entrar neste dia: nos próprios checklists que ocorrem nele
+            "destinos_avulso": [
+                {"id": o["id"], "titulo": o["titulo"], "grupos": sorted({g["nome"] for g in o["grupos"] if g["nome"]})}
+                for o in ac["itens"]
+                if o["tipo"] == "checklist_diario" and not o["origem"]
+            ],
         },
     )
 
@@ -461,6 +467,73 @@ def api_diario_toggle(request, checklist_id, item_id):
     return JsonResponse({"success": True, "feito": criado})
 
 
+AVULSOS_TITULO = "Itens avulsos"
+MAX_DIAS_AVULSO = 366
+
+
+def _lista_de_avulsos(user, desde):
+    """Checklist pessoal que reúne os itens avulsos sem checklist de destino (criado na primeira vez que se usa)."""
+    c = Checklist.objects.filter(criado_por=user, titulo=AVULSOS_TITULO, diario=True, incluir_dono=True).first()
+    if not c:
+        return Checklist.objects.create(
+            titulo=AVULSOS_TITULO, criado_por=user, diario=True, diario_desde=desde, cor="#6c757d",
+            descricao="Itens não fixos adicionados no Meu checklist.",
+        )
+    if c.diario_desde is None or desde < c.diario_desde:
+        c.diario_desde = desde  # o item avulso pode ser de um dia anterior ao primeiro uso
+        c.save(update_fields=["diario_desde"])
+    return c
+
+
+@login_required
+@require_POST
+def item_avulso_criar(request):
+    """Adiciona um item não fixo ao Meu checklist: vale no dia escolhido (ou até uma data) e depois volta ao padrão."""
+    try:
+        d = json.loads(request.body or "{}")
+    except ValueError:
+        return JsonResponse({"success": False, "error": "JSON inválido."}, status=400)
+    texto = (d.get("texto") or "").strip()
+    if not texto or len(texto) > 300:
+        return JsonResponse({"success": False, "error": "Informe o item (até 300 caracteres)."}, status=400)
+    dia = _parse_data(d.get("data"))
+    if not dia:
+        return JsonResponse({"success": False, "error": "Data inválida."}, status=400)
+    ate = _parse_data(d.get("ate")) if d.get("ate") else dia
+    if not ate or ate < dia:
+        return JsonResponse({"success": False, "error": "'Repetir até' deve ser a mesma data ou posterior."}, status=400)
+    if (ate - dia).days > MAX_DIAS_AVULSO:
+        return JsonResponse({"success": False, "error": f"O período do item avulso é de no máximo {MAX_DIAS_AVULSO} dias."}, status=400)
+    grupo = (d.get("grupo") or "").strip()[:120]
+    if d.get("checklist_id"):
+        # só nos próprios checklists recorrentes (não nos recebidos da chefia)
+        c = get_object_or_404(Checklist, pk=d["checklist_id"], criado_por=request.user, diario=True)
+    else:
+        c = _lista_de_avulsos(request.user, dia)
+    ordem = (c.itens.aggregate(m=Max("ordem"))["m"] or 0) + 1
+    item = ChecklistItem.objects.create(
+        checklist=c, texto=texto, grupo=grupo, ordem=ordem, avulso=True, valido_desde=dia, valido_ate=ate
+    )
+    _invalida_inbox(None, request.user)
+    return JsonResponse({"success": True, "id": item.id, "checklist_id": c.id})
+
+
+@login_required
+@require_POST
+def item_avulso_excluir(request, item_id):
+    """Remove um item avulso. Com marcações feitas, ele só deixa de valer a partir de hoje (o histórico fica)."""
+    item = get_object_or_404(ChecklistItem, pk=item_id, avulso=True, checklist__criado_por=request.user)
+    hoje = timezone.localdate()
+    if item.conclusoes_diarias.exists() or item.conclusoes.exists():
+        if item.valido_ate is None or item.valido_ate >= hoje:
+            item.valido_ate = hoje - timedelta(days=1)
+            item.save(update_fields=["valido_ate"])
+    else:
+        item.delete()
+    _invalida_inbox(None, request.user)
+    return JsonResponse({"success": True})
+
+
 def _checklist_do_usuario(request, checklist_id):
     """Checklist que o usuário pode ajustar: o próprio, de liderado (chefia) ou qualquer um (superusuário)."""
     c = get_object_or_404(Checklist, pk=checklist_id)
@@ -493,7 +566,7 @@ def api_checklist_detalhe(request, checklist_id):
                 "incluir_dono": c.incluir_dono,
                 "compartilhar_com": list(c.compartilhamentos.values_list("usuario_id", flat=True)),
                 "ajustado_por": _nome(c.ajustado_por) if c.ajustado_por_id else "",
-                "itens": [{"id": i.id, "texto": i.texto, "grupo": i.grupo} for i in c.itens.all()],
+                "itens": [{"id": i.id, "texto": i.texto, "grupo": i.grupo} for i in c.itens_vigentes],
                 "eventos": [{"id": e.id, "titulo": e.titulo} for e in c.eventos.all()],
             },
         }
@@ -606,7 +679,10 @@ def checklist_salvar(request):
         c.grupos.exclude(nome__in=condicoes.keys()).delete()
         for nome, regra in condicoes.items():
             ChecklistGrupo.objects.update_or_create(checklist=c, nome=nome, defaults={"regra": regra})
-        existentes = {i.id: i for i in c.itens.all()}
+        # Itens têm validade por data: o que entra vale da data da mudança; o que sai deixa de valer a partir dela,
+        # e os dias anteriores ficam como eram (as marcações antigas são preservadas).
+        hoje = timezone.localdate()
+        existentes = {i.id: i for i in c.itens_vigentes}  # só o cadastro padrão vigente (sem avulsos nem removidos)
         mantidos = set()
         for ordem, i in enumerate(itens):
             item = existentes.get(int(i["id"])) if str(i["id"] or "").isdigit() else None
@@ -615,8 +691,20 @@ def checklist_salvar(request):
                 item.save(update_fields=["texto", "grupo", "ordem"])
                 mantidos.add(item.id)
             else:
-                ChecklistItem.objects.create(checklist=c, texto=i["texto"], grupo=i["grupo"], ordem=ordem)
-        c.itens.exclude(id__in=mantidos).filter(id__in=existentes.keys()).delete()
+                ChecklistItem.objects.create(
+                    checklist=c, texto=i["texto"], grupo=i["grupo"], ordem=ordem,
+                    valido_desde=hoje if d.get("id") else None,  # checklist novo: vale desde o início
+                )
+        for item in existentes.values():
+            if item.id in mantidos:
+                continue
+            if (item.valido_desde and item.valido_desde >= hoje) and not (
+                item.conclusoes_diarias.exists() or item.conclusoes.exists()
+            ):
+                item.delete()  # criado hoje e retirado hoje, sem nenhuma marcação: não há histórico a preservar
+            else:
+                item.valido_ate = hoje - timedelta(days=1)
+                item.save(update_fields=["valido_ate"])
     return JsonResponse({"success": True, "id": c.id})
 
 

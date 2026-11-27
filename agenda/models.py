@@ -80,6 +80,14 @@ class Checklist(models.Model):
         return pode_gerir(user, self.criado_por)
 
     @property
+    def itens_vigentes(self):
+        """Itens do cadastro padrão que valem hoje (sem os avulsos e sem os já removidos)."""
+        from django.utils import timezone
+
+        hoje = timezone.localdate()
+        return [i for i in self.itens.all() if not i.avulso and i.vale_em(hoje)]
+
+    @property
     def periodicidade_label(self):
         return dict(self.PERIODICIDADES).get(self.periodicidade, "Diária").split(" (")[0]
 
@@ -127,12 +135,25 @@ class ChecklistItem(models.Model):
     texto = models.CharField(max_length=300)
     grupo = models.CharField(max_length=120, blank=True, default="", help_text="Agrupamento do item (vazio = sem agrupamento).")
     ordem = models.PositiveIntegerField(default=0)
+    valido_desde = models.DateField(
+        null=True, blank=True, help_text="Primeiro dia em que o item vale (vazio = desde sempre). Itens inseridos valem da data da mudança."
+    )
+    valido_ate = models.DateField(
+        null=True, blank=True, help_text="Último dia em que o item vale (vazio = sem fim). Itens removidos valem até o dia anterior à mudança."
+    )
+    avulso = models.BooleanField(
+        default=False, help_text="Item não fixo, adicionado para um dia (ou período) no Meu checklist; fora do cadastro padrão."
+    )
 
     class Meta:
         ordering = ["ordem", "id"]
 
     def __str__(self):
         return self.texto
+
+    def vale_em(self, dia):
+        """True se o item vale em `dia` (inserções e remoções contam a partir da data da mudança)."""
+        return (self.valido_desde is None or dia >= self.valido_desde) and (self.valido_ate is None or dia <= self.valido_ate)
 
 
 class Evento(models.Model):
