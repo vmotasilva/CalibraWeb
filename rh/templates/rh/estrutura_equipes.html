@@ -28,6 +28,9 @@
   .ee-qc-vago { border-left-color: #dc3545; } .ee-qc-reserva { border-left-color: #0dcaf0; }
   .ee-qc-sel { background: rgba(13,110,253,.1); box-shadow: 0 0 0 1px #0d6efd; }
   .ee-qc-drag { opacity: .4; }
+  .ee-ttl-ed, .ee-qc-ed { color: #6c757d; opacity: .55; line-height: 1; } .ee-ttl-ed:hover, .ee-qc-ed:hover { opacity: 1; color: #0d6efd; }
+  .card-header.bg-dark .ee-ttl-ed { color: #fff; }
+  .ee-ttl { cursor: text; }
   .ee-lane { min-height: 3.2rem; padding: .35rem; border: 1px dashed #ced4da; border-radius: .4rem; height: 100%; }
   .ee-lane-over { background: rgba(25,135,84,.12); border-color: #198754; }
 </style>
@@ -44,7 +47,7 @@
       </ul>
       <div class="input-group input-group-sm ee-busca">
         <span class="input-group-text"><i class="bi bi-search"></i></span>
-        <input type="search" class="form-control" id="ee-busca" placeholder="Buscar setor, bloco, posto ou colaborador" aria-label="Buscar">
+        <input type="search" class="form-control" id="ee-busca" name="ee-busca-q" placeholder="Buscar setor, bloco, posto ou colaborador" aria-label="Buscar" autocomplete="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute('readonly')">
       </div>
       <div class="position-relative">
         <button type="button" class="btn btn-sm btn-outline-secondary" id="ee-btn-filtros" title="Filtros" aria-expanded="false" aria-controls="ee-painel-filtros"><i class="bi bi-funnel"></i><span class="badge bg-primary ms-1 d-none" id="ee-filtros-n">0</span></button>
@@ -152,7 +155,7 @@
         <div class="row g-3">
           <div class="col-12">
             <label class="form-label fw-semibold" for="ee-f-nome">Nome *</label>
-            <input type="text" class="form-control" id="ee-f-nome" maxlength="100">
+            <input type="text" class="form-control" id="ee-f-nome" maxlength="100" autocomplete="off">
           </div>
           <div class="col-md-6" id="ee-f-setor-wrap">
             <label class="form-label fw-semibold" for="ee-f-setor">Setor *</label>
@@ -164,7 +167,7 @@
           </div>
           <div class="col-12" id="ee-f-desc-wrap">
             <label class="form-label fw-semibold" for="ee-f-desc">Descrição</label>
-            <input type="text" class="form-control" id="ee-f-desc" maxlength="255">
+            <input type="text" class="form-control" id="ee-f-desc" maxlength="255" autocomplete="off">
           </div>
           <div class="col-12" id="ee-f-ativo-wrap">
             <div class="form-check form-switch">
@@ -225,7 +228,7 @@
           </div>
           <div class="col-md-5">
             <label class="form-label fw-semibold" for="ee-a-obs">Observação</label>
-            <input type="text" class="form-control" id="ee-a-obs" maxlength="255" placeholder="Opcional (ex.: cobre férias…)">
+            <input type="text" class="form-control" id="ee-a-obs" maxlength="255" placeholder="Opcional (ex.: cobre férias…)" autocomplete="off">
           </div>
         </div>
         <div id="ee-a-pessoas" class="border rounded">
@@ -233,7 +236,7 @@
             <div class="row g-2 align-items-end">
               <div class="col-12 col-lg-4">
                 <label class="form-label small mb-1" for="ee-a-busca">Buscar</label>
-                <input type="search" class="form-control form-control-sm" id="ee-a-busca" placeholder="Nome ou matrícula" aria-label="Buscar colaborador">
+                <input type="search" class="form-control form-control-sm" id="ee-a-busca" name="ee-a-busca-q" placeholder="Nome ou matrícula" aria-label="Buscar colaborador" autocomplete="off" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute('readonly')">
               </div>
               <div class="col-6 col-lg-2"><label class="form-label small mb-1" for="ee-a-f-setor">Setor</label><select class="form-select form-select-sm ee-a-f" id="ee-a-f-setor"><option value="">Todos</option></select></div>
               <div class="col-6 col-lg-2"><label class="form-label small mb-1" for="ee-a-f-turno">Turno (cadastro)</label><select class="form-select form-select-sm ee-a-f" id="ee-a-f-turno"><option value="">Todos</option></select></div>
@@ -548,6 +551,53 @@
 
   // ---------------------------------------------------------- quadro em cards: Setor > Bloco > Posto > turnos > colaboradores
   const qSel = new Set();  // alocações marcadas no quadro
+  // título editável (setor, bloco, posto): lápis ou duplo clique troca o nome por um campo, direto no card
+  const tituloEd = (tipo, id, icone, nome, extra = '') => '<span class="ee-hd d-flex align-items-center gap-1"><span class="ee-ttl" data-t="' + tipo + '" data-id="' + id + '"' + (PODE_EDITAR ? ' title="Duplo clique para renomear"' : '') + '>' + icone + esc(nome) + '</span>' + extra +
+    (PODE_EDITAR ? '<button type="button" class="btn btn-sm p-0 px-1 ee-ttl-ed" data-t="' + tipo + '" data-id="' + id + '" title="Renomear" aria-label="Renomear ' + esc(nome) + '"><i class="bi bi-pencil"></i></button>' : '') + '</span>';
+  function editaTitulo(tipo, id) {
+    const hd = document.querySelector('.ee-ttl[data-t="' + tipo + '"][data-id="' + id + '"]'); if (!hd || hd.dataset.editando) return;
+    const atual = tipo === 'setor' ? (setorDe(id) || {}).nome : (grupo(id) || {}).nome; if (atual == null) return;
+    hd.dataset.editando = '1'; const raiz = hd.closest('.ee-hd');
+    const form = document.createElement('span'); form.className = 'd-inline-flex align-items-center gap-1';
+    form.innerHTML = '<input type="text" class="form-control form-control-sm" maxlength="100" style="width:18rem;max-width:60vw" aria-label="Novo nome" autocomplete="off"><button type="button" class="btn btn-sm btn-success py-0" title="Salvar"><i class="bi bi-check-lg"></i></button><button type="button" class="btn btn-sm btn-light py-0" title="Cancelar"><i class="bi bi-x-lg"></i></button>';
+    const inp = form.querySelector('input'); inp.value = atual;
+    raiz.classList.add('d-none'); raiz.insertAdjacentElement('afterend', form); inp.focus(); inp.select();
+    const fecha = () => { form.remove(); raiz.classList.remove('d-none'); delete hd.dataset.editando; };
+    const salva = async () => {
+      const nome = inp.value.trim(); if (!nome || nome === atual) return fecha();
+      try {
+        if (tipo === 'setor') await api(URLS.setor, { id, nome });
+        else { const g = grupo(id); const body = { id, nome, descricao: g.descricao, ativo: g.ativo }; if (g.parent_id) body.parent_id = g.parent_id; else body.setor_id = g.setor_id; await api(URLS.salvar, body); }
+        await carregar(); aviso('Nome atualizado.');
+      } catch (e) { aviso(e.message, 'danger'); inp.focus(); }
+    };
+    form.querySelectorAll('button')[0].onclick = salva; form.querySelectorAll('button')[1].onclick = fecha;
+    inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); salva(); } else if (e.key === 'Escape') fecha(); };
+  }
+  // card de colaborador / vago / reserva: observação (e VAGO ⇄ RESERVA) direto no card
+  function editaAloc(id) {
+    const a = state.alocs.find(x => x.id === id); const card = document.querySelector('.ee-qc[data-aloc="' + id + '"]'); if (!a || !card || card.dataset.editando) return;
+    card.dataset.editando = '1'; card.draggable = false;
+    const corpo = card.querySelector('.card-body'); const html = corpo.innerHTML;
+    corpo.className = 'card-body p-2 d-grid gap-1';
+    corpo.innerHTML = '<div class="small fw-semibold text-truncate">' + (a.tipo === 'PESSOA' ? esc(a.nome) : 'Vaga / reserva') + '</div>' +
+      (a.tipo === 'PESSOA' ? '' : '<select class="form-select form-select-sm" aria-label="Tipo"><option value="VAGO"' + (a.tipo === 'VAGO' ? ' selected' : '') + '>VAGO (contratar)</option><option value="RESERVA"' + (a.tipo === 'RESERVA' ? ' selected' : '') + '>Reserva</option></select>') +
+      '<input type="text" class="form-control form-control-sm" maxlength="255" placeholder="Observação (opcional)" aria-label="Observação" autocomplete="off">' +
+      '<div class="d-flex gap-1 justify-content-end"><button type="button" class="btn btn-sm btn-success py-0" title="Salvar"><i class="bi bi-check-lg"></i></button><button type="button" class="btn btn-sm btn-light py-0" title="Cancelar"><i class="bi bi-x-lg"></i></button></div>';
+    const inp = corpo.querySelector('input'); inp.value = a.observacao || ''; const sel = corpo.querySelector('select'); inp.focus();
+    const fecha = () => { corpo.className = 'card-body py-1 px-2 d-flex align-items-center gap-2'; corpo.innerHTML = html; card.draggable = true; delete card.dataset.editando; ligaCardAloc(card); };
+    const salva = async () => {
+      try { const body = { id, observacao: inp.value }; if (sel) body.tipo = sel.value; await api(URLS.alocAtualizar, body); await carregar(); aviso('Card atualizado.'); }
+      catch (e) { aviso(e.message, 'danger'); inp.focus(); }
+    };
+    const bs = corpo.querySelectorAll('button'); bs[0].onclick = salva; bs[1].onclick = fecha;
+    corpo.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); salva(); } else if (e.key === 'Escape') fecha(); };
+  }
+  function ligaCardAloc(card) {
+    const ed = card.querySelector('.ee-qc-ed'); if (ed) ed.onclick = e => { e.stopPropagation(); editaAloc(+card.dataset.aloc); };
+    const lk = card.querySelector('.ee-q-edit'); if (lk) lk.onclick = e => { e.preventDefault(); abrirAloc({ alocId: +card.dataset.aloc }); };
+    const chk = card.querySelector('.ee-qc-chk'); if (chk) chk.onchange = () => { const id = +chk.dataset.aloc; chk.checked ? qSel.add(id) : qSel.delete(id); card.classList.toggle('ee-qc-sel', chk.checked); infoQuadroSel(); };
+  }
   function cardAloc(a) {
     const rot = a.tipo === 'PESSOA' ? esc(a.nome) : a.tipo === 'VAGO' ? '<span class="badge bg-danger">VAGO</span>' : '<span class="badge bg-info text-dark">RESERVA</span>';
     const marcado = qSel.has(a.id);
@@ -555,21 +605,21 @@
       '<div class="card-body py-1 px-2 d-flex align-items-center gap-2">' +
       (PODE_EDITAR ? '<input type="checkbox" class="form-check-input ee-qc-chk m-0" data-aloc="' + a.id + '"' + (marcado ? ' checked' : '') + ' aria-label="Selecionar">' : '') +
       '<span class="flex-grow-1 small text-truncate" title="' + esc(a.nome || a.tipo) + '">' + (PODE_EDITAR ? '<a href="#" draggable="false" class="ee-q-edit text-decoration-none text-reset" data-aloc="' + a.id + '" title="Editar / mover">' + rot + '</a>' : rot) + '</span>' +
-      (PODE_EDITAR ? '<i class="bi bi-grip-vertical text-muted ee-qc-grip" title="Arraste para outro posto, turno, bloco ou setor"></i>' : '') +
-      '</div></div>';
+      (PODE_EDITAR ? '<button type="button" class="btn btn-sm p-0 px-1 ee-qc-ed" title="Editar observação aqui no card" aria-label="Editar no card"><i class="bi bi-pencil"></i></button><i class="bi bi-grip-vertical text-muted ee-qc-grip" title="Arraste para outro posto, turno, bloco ou setor"></i>' : '') +
+      '</div>' + (a.observacao ? '<div class="px-2 pb-1 small text-muted text-truncate" title="' + esc(a.observacao) + '"><i class="bi bi-chat-left-text me-1"></i>' + esc(a.observacao) + '</div>' : '') + '</div>';
   }
   function renderQuadro() {
     let h = '', vagas = 0, reservas = 0;
     setoresBusca().forEach(s => {
       const cols = colunasDoSetor(s.id); const blocos = blocosBusca(s.id);
-      h += '<div class="card ee-qs mb-3 shadow-sm"><div class="card-header bg-dark text-white fw-bold"><i class="bi bi-building me-1"></i>' + esc(s.nome) + '</div><div class="card-body bg-light">';
+      h += '<div class="card ee-qs mb-3 shadow-sm"><div class="card-header bg-dark text-white fw-bold">' + tituloEd('setor', s.id, '<i class="bi bi-building me-1"></i>', s.nome) + '</div><div class="card-body bg-light">';
       if (!cols.length) h += '<div class="text-muted">Este setor não tem turnos' + (state.turno ? ' com esse nome' : ' — edite o setor para definir os turnos') + '.</div>';
       else if (!blocos.length) h += '<div class="text-muted">Este setor ainda não tem blocos.</div>';
       else h += '<div class="d-grid gap-3">' + blocos.map(b => {
         const postos = postosBusca(b.id);
-        return '<div class="col-12"><div class="card ee-qb"><div class="card-header fw-semibold bg-body-secondary"><i class="bi bi-boxes me-1"></i>' + esc(b.nome) + '</div><div class="card-body d-grid gap-2">' +
+        return '<div class="col-12"><div class="card ee-qb"><div class="card-header fw-semibold bg-body-secondary">' + tituloEd('bloco', b.id, '<i class="bi bi-boxes me-1"></i>', b.nome) + '</div><div class="card-body d-grid gap-2">' +
           (postos.length ? postos.map(p => {
-            return '<div class="card ee-qp' + (p.ativo ? '' : ' opacity-50') + '"><div class="card-header py-1 small fw-semibold"><i class="bi bi-person-workspace me-1"></i>' + esc(p.nome) + (p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</div>' +
+            return '<div class="card ee-qp' + (p.ativo ? '' : ' opacity-50') + '"><div class="card-header py-1 small fw-semibold">' + tituloEd('posto', p.id, '<i class="bi bi-person-workspace me-1"></i>', p.nome, p.ativo ? '' : ' <span class="badge bg-secondary">inativo</span>') + '</div>' +
               '<div class="card-body p-2"><div class="row g-2">' + cols.map(c => {
                 const l = alocsNoTurno([p.id], c.id).sort((x, y) => ordemTipo[x.tipo] - ordemTipo[y.tipo] || cmp(x.nome, y.nome) || x.id - y.id);
                 vagas += l.filter(a => a.tipo === 'VAGO').length; reservas += l.filter(a => a.tipo === 'RESERVA').length;
@@ -584,8 +634,9 @@
     if (!setoresBusca().length) h = '<div class="p-3 text-muted">Nada cadastrado.</div>';
     const box = $('ee-quadro-conteudo'); box.innerHTML = h;
     box.querySelectorAll('.ee-q-add').forEach(b => b.onclick = () => abrirAloc({ postoId: +b.dataset.posto, turnoId: +b.dataset.turno }));
-    box.querySelectorAll('.ee-q-edit').forEach(a => a.onclick = e => { e.preventDefault(); abrirAloc({ alocId: +a.dataset.aloc }); });
-    box.querySelectorAll('.ee-qc-chk').forEach(c => c.onchange = () => { const id = +c.dataset.aloc; c.checked ? qSel.add(id) : qSel.delete(id); c.closest('.ee-qc').classList.toggle('ee-qc-sel', c.checked); infoQuadroSel(); });
+    box.querySelectorAll('.ee-qc').forEach(ligaCardAloc);
+    box.querySelectorAll('.ee-ttl-ed').forEach(b => b.onclick = () => editaTitulo(b.dataset.t, +b.dataset.id));
+    if (PODE_EDITAR) box.querySelectorAll('.ee-ttl').forEach(t => t.ondblclick = () => editaTitulo(t.dataset.t, +t.dataset.id));
     box.querySelectorAll('.ee-qc[draggable="true"]').forEach(card => {
       card.ondragstart = e => {
         const id = +card.dataset.aloc;
@@ -639,7 +690,7 @@
   // Editor de turnos do setor: uma linha por turno (nome editável; linhas existentes guardam o id)
   function addLinhaTurno(nome = '', id = '', foco = false) {
     const row = document.createElement('div'); row.className = 'input-group input-group-sm ee-turno-row'; row.dataset.id = id;
-    row.innerHTML = '<input type="text" class="form-control ee-turno-nome" maxlength="50" placeholder="Nome do turno" aria-label="Nome do turno" value="' + esc(nome) + '"><button type="button" class="btn btn-outline-danger ee-turno-del" title="Remover turno" aria-label="Remover turno">×</button>';
+    row.innerHTML = '<input type="text" class="form-control ee-turno-nome" maxlength="50" placeholder="Nome do turno" aria-label="Nome do turno" autocomplete="off" value="' + esc(nome) + '"><button type="button" class="btn btn-outline-danger ee-turno-del" title="Remover turno" aria-label="Remover turno">×</button>';
     row.querySelector('.ee-turno-del').onclick = () => { row.remove(); renderSugestoes(); };
     const inp = row.querySelector('.ee-turno-nome');
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addLinhaTurno('', '', true); } });
@@ -882,7 +933,12 @@
   document.querySelectorAll('#ee-abas .nav-link').forEach(b => b.onclick = () => trocaAba(b.dataset.aba));
   state.setor = le('ee-setor');
   $('ee-filtro-setor').onchange = e => { state.setor = e.target.value; aplicaFiltroSetor(); };
+  // o navegador pode preencher a busca com o usuário salvo: descarta qualquer valor que não veio de digitação
+  const limpaBusca = () => { const i = $('ee-busca'); if (i && !i.dataset.digitou && i.value) { const tinha = state.busca; i.value = ''; state.busca = ''; if (tinha) { renderArvore(); renderQuadro(); } } };
+  limpaBusca(); setTimeout(limpaBusca, 300); setTimeout(limpaBusca, 1200); window.addEventListener('load', limpaBusca);
+  ['keydown', 'paste', 'compositionstart'].forEach(ev => $('ee-busca').addEventListener(ev, () => { $('ee-busca').dataset.digitou = '1'; }));
   $('ee-busca').addEventListener('input', debounce(() => {
+    if (!$('ee-busca').dataset.digitou) return limpaBusca();
     state.busca = norm($('ee-busca').value);
     if (!$('ee-pessoas').classList.contains('d-none')) carregarPessoas(); else { renderArvore(); renderQuadro(); }
   }));
