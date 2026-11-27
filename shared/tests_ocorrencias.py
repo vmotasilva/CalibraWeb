@@ -269,51 +269,93 @@ class OcorrenciaKpiTests(TestCase):
         return self.client.post(reverse("kpi:analise_salvar", args=[self.ind.pk]),
                                 {"gran": "mensal", "data": "2026-10-01", "setor": "", "itens": json.dumps(itens)})
 
-    def test_card_ocorrencia_cria_acao_e_entra_na_central_sem_perder_estado(self):
+    def test_nota_ocorrencia_cria_acao_e_entra_na_central_sem_perder_estado(self):
         from kpi.models import AnaliseItem
         from shared.models import AcaoOcorrencia
 
-        r = self._salvar([{"tipo": "comentario", "causa": "só um relato"},
-                          {"tipo": "ocorrencia", "causa": "falta de peça", "acao": "comprar", "responsaveis": [self.c_ana.pk, self.c_admin.pk]}])
+        r = self._salvar([{"causa": "falta de peça", "notas": [
+            {"tipo": "comentario", "texto": "só um comentário"},
+            {"tipo": "ocorrencia", "texto": "comprar", "responsaveis": [self.c_ana.pk, self.c_admin.pk]}]}])
         self.assertEqual(r.status_code, 200, r.content)
         self.assertEqual(r.json()["o"], 1)
-        card = AnaliseItem.objects.get(tipo="ocorrencia")
-        acao = AcaoOcorrencia.objects.get(origem="kpi", ocorrencia_id=card.pk)
+        nota = AnaliseItem.objects.get(tipo="ocorrencia")
+        self.assertEqual(nota.pai.causa, "falta de peça")
+        acao = AcaoOcorrencia.objects.get(origem="kpi", ocorrencia_id=nota.pk)
         self.assertEqual(acao.descricao, "comprar")
         self.assertEqual(set(acao.responsaveis.values_list("pk", flat=True)), {self.ana.pk, self.admin.pk})
         itens = central.listar_ocorrencias(self.ana, "abertas", "kpi")
-        self.assertEqual(len(itens), 1)  # o relato não vira ocorrência
+        self.assertEqual(len(itens), 1)  # o comentário não vira ocorrência
         self.assertTrue(itens[0].envolve_usuario)
         self.assertIn("Late Orders", itens[0].titulo)
+        self.assertEqual(itens[0].descricao, "comprar")
+        self.assertIn(("Causa", "falta de peça"), itens[0].detalhes)
 
         # resolver na central (após concluir a ação) e re-salvar o card no painel não perde a resolução
         self.assertFalse(central.executar_acao(self.admin, itens[0].uid, "resolver", {"texto": "ok"}).ok)
         a = itens[0].plano[0]
         self.assertTrue(central.executar_acao(self.ana, itens[0].uid, "concluir_acao", {"acao_id": a.id}).ok)
         self.assertTrue(central.executar_acao(self.admin, itens[0].uid, "resolver", {"texto": "ok"}).ok)
-        r = self._salvar([{"tipo": "ocorrencia", "id": card.pk, "causa": "falta de peça (editado)", "acao": "comprar"}])
+        card = nota.pai
+        r = self._salvar([{"id": card.pk, "causa": "falta de peça (editado)",
+                           "notas": [{"tipo": "ocorrencia", "id": nota.pk, "texto": "comprar"}]}])
         self.assertEqual(r.status_code, 200, r.content)
+        nota.refresh_from_db()
         card.refresh_from_db()
-        self.assertEqual((card.status, card.resolucao, card.causa), ("RESOLVIDA", "ok", "falta de peça (editado)"))
-        self.assertEqual(AcaoOcorrencia.objects.filter(origem="kpi", ocorrencia_id=card.pk).count(), 1)
+        self.assertEqual((nota.status, nota.resolucao, card.causa), ("RESOLVIDA", "ok", "falta de peça (editado)"))
+        self.assertEqual(AcaoOcorrencia.objects.filter(origem="kpi", ocorrencia_id=nota.pk).count(), 1)
 
-    def test_relato_vira_ocorrencia_sem_acao_e_remocao_limpa_plano(self):
+    def test_remover_nota_ou_card_limpa_plano(self):
         from kpi.models import AnaliseItem
         from shared.models import AcaoOcorrencia
 
-        # relato primeiro; a conversão em ocorrência não exige ação: ela é atribuída depois, no pop-up
-        self._salvar([{"tipo": "comentario", "causa": "x"}])
-        card = AnaliseItem.objects.get()
-        self._salvar([{"tipo": "ocorrencia", "id": card.pk, "causa": "x"}])
-        card.refresh_from_db()
-        self.assertEqual(card.tipo, AnaliseItem.TIPO_OCORRENCIA)
-        self.assertFalse(AcaoOcorrencia.objects.exists())
-        self._salvar([{"tipo": "ocorrencia", "id": card.pk, "causa": "x", "responsaveis": [self.c_ana.pk]}])
+        self._salvar([{"causa": "x", "notas": [{"tipo": "ocorrencia", "texto": "y", "responsaveis": [self.c_ana.pk]}]}])
+        nota = AnaliseItem.objects.get(tipo="ocorrencia")
         self.assertEqual(AcaoOcorrencia.objects.count(), 1)
-        self._salvar([{"tipo": "comentario", "id": card.pk, "causa": "x"}])  # volta a ser relato
+        card = nota.pai
+        self._salvar([{"id": card.pk, "causa": "x", "notas": []}])  # nota removida
         self.assertFalse(AcaoOcorrencia.objects.exists())
-        self._salvar([])
+        self.assertEqual(AnaliseItem.objects.count(), 1)
+        self._salvar([{"id": card.pk, "causa": "x", "notas": [{"tipo": "ocorrencia", "texto": "z", "responsaveis": [self.c_ana.pk]}]}])
+        self.assertEqual(AcaoOcorrencia.objects.count(), 1)
+        self._salvar([])  # sem cards: tudo some
+        self.assertFalse(AcaoOcorrencia.objects.exists())
         self.assertFalse(AnaliseItem.objects.exists())
+
+    def test_ocorrencia_exige_descricao_e_nota_pode_mudar_de_card(self):
+        from kpi.models import AnaliseItem
+        from shared.models import AcaoOcorrencia
+
+        self.assertEqual(self._salvar([{"causa": "x", "notas": [{"tipo": "ocorrencia", "texto": " "}]}]).status_code, 400)
+        self._salvar([{"causa": "A", "notas": [{"tipo": "ocorrencia", "texto": "o1", "responsaveis": [self.c_ana.pk]}]}, {"causa": "B"}])
+        nota = AnaliseItem.objects.get(tipo="ocorrencia")
+        a, b = AnaliseItem.objects.filter(pai__isnull=True).order_by("ordem")
+        # agrupar A e B: a nota (e seu plano) vai para o card que fica
+        self._salvar([{"id": a.pk, "causa": "A\nB", "notas": [{"tipo": "ocorrencia", "id": nota.pk, "texto": "o1"}]}])
+        nota.refresh_from_db()
+        self.assertEqual(nota.pai_id, a.pk)
+        self.assertEqual(AcaoOcorrencia.objects.filter(origem="kpi", ocorrencia_id=nota.pk).count(), 1)
+        self.assertEqual(AnaliseItem.objects.filter(pai__isnull=True).count(), 1)
+
+    def test_migracao_converte_analise_e_acao_antigas_em_notas(self):
+        import importlib
+
+        from django.apps import apps
+
+        from kpi.models import AnaliseCausa, AnaliseItem
+        from shared.models import AcaoOcorrencia
+
+        reg = AnaliseCausa.objects.create(indicador=self.ind, granularidade="mensal", periodo=__import__("datetime").date(2026, 10, 1))
+        rel = AnaliseItem.objects.create(registro=reg, causa="c1", analise="porque sim", acao="treinar")
+        oc = AnaliseItem.objects.create(registro=reg, causa="c2", acao="comprar", tipo="ocorrencia", status="RESOLVIDA", resolucao="feito")
+        AcaoOcorrencia.objects.create(origem="kpi", ocorrencia_id=oc.pk, descricao="comprar")
+        importlib.import_module("kpi.migrations.0035_analise_item_notas").converter(apps, None)
+        nota_rel = AnaliseItem.objects.get(pai=rel)
+        self.assertEqual((nota_rel.tipo, nota_rel.texto), ("comentario", "porque sim\nAção: treinar"))
+        nota_oc = AnaliseItem.objects.get(pai=oc)
+        self.assertEqual((nota_oc.tipo, nota_oc.texto, nota_oc.status, nota_oc.resolucao), ("ocorrencia", "comprar", "RESOLVIDA", "feito"))
+        oc.refresh_from_db()
+        self.assertEqual((oc.tipo, oc.status), ("comentario", "ABERTA"))
+        self.assertTrue(AcaoOcorrencia.objects.filter(origem="kpi", ocorrencia_id=nota_oc.pk).exists())
 
 
 @override_settings(PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"])

@@ -214,6 +214,10 @@ class AnaliseCausa(models.Model):
 class AnaliseItem(models.Model):
     """Um card de causa, análise e ação de um período fora da meta. Um período pode ter vários."""
     registro = models.ForeignKey(AnaliseCausa, on_delete=models.CASCADE, related_name='itens')
+    # Card (pai vazio): guarda só a causa. Dentro dele, cada nota (comentário ou ocorrência) é um item com `pai`
+    # e o texto em `texto`; as ocorrências mantêm plano de ação e resolução. Análise/Ação são campos legados.
+    pai = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='filhos')
+    texto = models.TextField('Texto da nota', blank=True)
     ordem = models.PositiveSmallIntegerField(default=0)
     causa = models.TextField('Causa', blank=True)
     analise = models.TextField('Análise', blank=True)

@@ -653,9 +653,12 @@ def _cards_sugeridos(ind, setor_id, gran, periodo):
     cards = []
 
     def de_registro(a, origem):
-        for it in a.itens.all():  # sempre como relato: uma ocorrência não é duplicada nos períodos acima
-            if it.causa.strip() or it.analise.strip() or it.acao.strip():
-                cards.append({'causa': it.causa, 'analise': it.analise, 'acao': it.acao,
+        todos = list(a.itens.all())
+        for it in (i for i in todos if i.pai_id is None):  # só os comentários vêm: uma ocorrência não é duplicada nos períodos acima
+            notas = [{'tipo': 'comentario', 'texto': n.texto} for n in todos
+                     if n.pai_id == it.pk and n.tipo == n.TIPO_COMENTARIO and n.texto.strip()]
+            if it.causa.strip() or notas:
+                cards.append({'causa': it.causa, 'notas': notas,
                               'ocorrencias': list(it.ocorrencias.values_list('pk', flat=True)), 'origem': origem})
 
     if gran == 'semanal':
@@ -668,7 +671,7 @@ def _cards_sugeridos(ind, setor_id, gran, periodo):
                        .prefetch_related('itens__ocorrencias').order_by('periodo'))
         cobertas = set()
         for a in semanas:
-            if any(i.causa.strip() or i.analise.strip() or i.acao.strip() for i in a.itens.all()):
+            if any(i.pai_id is None and i.causa.strip() for i in a.itens.all()):
                 cobertas.add(a.periodo)
             de_registro(a, f'Semana de {a.periodo:%d/%m}')
         for a in AnaliseCausa.objects.filter(indicador=ind, setor_id=setor_id, granularidade='diaria', dispensada=False,
@@ -679,7 +682,7 @@ def _cards_sugeridos(ind, setor_id, gran, periodo):
     for desc, q in Motivo.objects.filter(indicador=ind, setor_id=setor_id, data__range=(ini, fim),
                                          consolidado=False).values_list('descricao', 'quantidade'):
         soma[desc.strip()] = soma.get(desc.strip(), Decimal(0)) + q
-    motivos = [{'causa': f'{d} ({_num(q)})', 'analise': '', 'acao': '', 'ocorrencias': [], 'origem': 'Motivo registrado'}
+    motivos = [{'causa': f'{d} ({_num(q)})', 'notas': [], 'ocorrencias': [], 'origem': 'Motivo registrado'}
                for d, q in sorted(soma.items(), key=lambda x: x[1], reverse=True)[:5]]
     return motivos + cards
 
@@ -707,22 +710,37 @@ def _ocorrencias_periodo(gran, periodo):
 
 
 def _itens_json(registro):
-    return [{'id': i.pk, 'causa': i.causa, 'analise': i.analise, 'acao': i.acao,
-             'ocorrencias': list(i.ocorrencias.values_list('pk', flat=True)),
-             'tipo': i.tipo,
-             'status': i.status, 'resolucao': i.resolucao,
-             'resolvido_em': timezone.localtime(i.resolvido_em).strftime('%d/%m/%Y %H:%M') if i.resolvido_em else '',
-             'resolvido_por': _nome_usuario(i.resolvido_por)} for i in registro.itens.all()]
+    """Cards do período (só causa) com as notas de cada um: comentários e ocorrências."""
+    todos = list(registro.itens.all())
+    filhos = {}
+    for n in todos:
+        if n.pai_id:
+            filhos.setdefault(n.pai_id, []).append(n)
+    saida = []
+    for i in todos:
+        if i.pai_id:
+            continue
+        notas = [{'id': n.pk, 'tipo': n.tipo, 'texto': n.texto or n.acao or n.analise,
+                  'status': n.status, 'resolucao': n.resolucao,
+                  'resolvido_em': timezone.localtime(n.resolvido_em).strftime('%d/%m/%Y %H:%M') if n.resolvido_em else '',
+                  'resolvido_por': _nome_usuario(n.resolvido_por),
+                  'criado_em': timezone.localtime(n.criado_em).strftime('%d/%m/%Y %H:%M') if n.criado_em else ''}
+                 for n in filhos.get(i.pk, [])]
+        saida.append({'id': i.pk, 'causa': i.causa, 'ocorrencias': list(i.ocorrencias.values_list('pk', flat=True)),
+                      'notas': notas})
+    return saida
 
 
 def _resumo_registro(registro):
     """Resumo para a lista: primeira causa e quantidade de cards."""
     itens = list(registro.itens.all())
-    primeira = next((i.causa for i in itens if i.causa.strip()), '')
-    return {'c': (primeira or registro.causa)[:140], 'a': any(i.analise.strip() or i.acao.strip() for i in itens) or bool(registro.analise.strip()),
-            'n': len(itens), 'd': registro.dispensada, 'm': registro.motivo_dispensa,
-            'o': sum(1 for i in itens if i.tipo == i.TIPO_OCORRENCIA),
-            'oa': sum(1 for i in itens if i.tipo == i.TIPO_OCORRENCIA and i.status == i.STATUS_ABERTA)}
+    cards = [i for i in itens if i.pai_id is None]
+    notas = [i for i in itens if i.pai_id is not None]
+    primeira = next((i.causa for i in cards if i.causa.strip()), '')
+    return {'c': (primeira or registro.causa)[:140], 'a': bool(notas) or bool(registro.analise.strip()),
+            'n': len(cards), 'd': registro.dispensada, 'm': registro.motivo_dispensa,
+            'o': sum(1 for i in notas if i.tipo == i.TIPO_OCORRENCIA),
+            'oa': sum(1 for i in notas if i.tipo == i.TIPO_OCORRENCIA and i.status == i.STATUS_ABERTA)}
 
 
 def _parametros_analise(request, ind, origem):
@@ -768,7 +786,8 @@ def analise_dados_view(request, pk):
 
 
 def _itens_do_post(post):
-    """Cards enviados: JSON em `itens` ou, por compatibilidade, os campos únicos causa/analise/acao."""
+    """Cards enviados: JSON em `itens` (cada um com causa, ocorrências do laboratório e `notas`) ou, por
+    compatibilidade, os campos únicos causa/analise (a análise vira um comentário do card)."""
     import json
     bruto = post.get('itens')
     if bruto is not None:
@@ -779,7 +798,7 @@ def _itens_do_post(post):
         if not isinstance(lista, list):
             raise ValueError('Cards inválidos.')
     else:
-        lista = [{'causa': post.get('causa', ''), 'analise': post.get('analise', ''), 'acao': post.get('acao', '')}]
+        lista = [{'causa': post.get('causa', ''), 'notas': _nota_legada(post.get('analise', ''), post.get('acao', ''))}]
     from kpi.models import AnaliseItem
     from rh.models import Colaborador
     from shared.ocorrencias import tem_acoes
@@ -787,61 +806,90 @@ def _itens_do_post(post):
     for i in lista[:50]:
         if not isinstance(i, dict):
             continue
-        causa, analise, acao = (str(i.get(k, '')).strip() for k in ('causa', 'analise', 'acao'))
+        causa = str(i.get('causa', '')).strip()
         ocs = [int(x) for x in (i.get('ocorrencias') or []) if str(x).isdigit()]
-        tipo = i.get('tipo') if i.get('tipo') in (AnaliseItem.TIPO_COMENTARIO, AnaliseItem.TIPO_OCORRENCIA) else AnaliseItem.TIPO_COMENTARIO
-        item = {'id': int(i['id']) if str(i.get('id', '')).isdigit() else None, 'tipo': tipo,
-                'causa': causa, 'analise': analise, 'acao': acao, 'ocorrencias': ocs, 'responsaveis': [], 'prazo': None}
-        ja_tem_plano = bool(item['id']) and tem_acoes('kpi', item['id'])
-        if tipo == AnaliseItem.TIPO_OCORRENCIA:
-            if not (causa or analise or acao):
-                raise ValueError('Descreva a ocorrência (causa, análise ou ação).')
-            if not ja_tem_plano:  # a ocorrência pode nascer já com a 1ª ação (responsáveis e prazo); senão as ações são atribuídas depois, no pop-up
-                ids = [int(x) for x in (i.get('responsaveis') or []) if str(x).isdigit()]
-                item['responsaveis'] = list(Colaborador.objects.filter(pk__in=ids, is_active=True))
-                try:
-                    item['prazo'] = datetime.date.fromisoformat(str(i.get('prazo') or '')) if i.get('prazo') else None
-                except ValueError:
-                    raise ValueError('Prazo da ocorrência inválido.')
-                if item['prazo'] and item['prazo'] < timezone.localdate():
-                    raise ValueError('O prazo da ocorrência não pode ser anterior a hoje.')
-        if causa or analise or acao or ocs:
-            itens.append(item)
+        brutas = i.get('notas')
+        if brutas is None:  # formato antigo: análise/ação do card viram um comentário
+            brutas = _nota_legada(i.get('analise', ''), i.get('acao', ''))
+        notas = []
+        for n in (brutas if isinstance(brutas, list) else [])[:50]:
+            if not isinstance(n, dict):
+                continue
+            texto = str(n.get('texto', '')).strip()
+            tipo = n.get('tipo') if n.get('tipo') in (AnaliseItem.TIPO_COMENTARIO, AnaliseItem.TIPO_OCORRENCIA) else AnaliseItem.TIPO_COMENTARIO
+            nota = {'id': int(n['id']) if str(n.get('id', '')).isdigit() else None, 'tipo': tipo, 'texto': texto,
+                    'responsaveis': [], 'prazo': None}
+            if tipo == AnaliseItem.TIPO_OCORRENCIA:
+                if not texto:
+                    raise ValueError('Descreva a ocorrência.')
+                if not (nota['id'] and tem_acoes('kpi', nota['id'])):  # nasce já com a 1ª ação; senão as ações são atribuídas depois, no pop-up
+                    ids = [int(x) for x in (n.get('responsaveis') or []) if str(x).isdigit()]
+                    nota['responsaveis'] = list(Colaborador.objects.filter(pk__in=ids, is_active=True))
+                    try:
+                        nota['prazo'] = datetime.date.fromisoformat(str(n.get('prazo') or '')) if n.get('prazo') else None
+                    except ValueError:
+                        raise ValueError('Prazo da ocorrência inválido.')
+                    if nota['prazo'] and nota['prazo'] < timezone.localdate():
+                        raise ValueError('O prazo da ocorrência não pode ser anterior a hoje.')
+            if texto:
+                notas.append(nota)
+        if causa or ocs or notas:
+            itens.append({'id': int(i['id']) if str(i.get('id', '')).isdigit() else None,
+                          'causa': causa, 'ocorrencias': ocs, 'notas': notas})
     return itens
 
 
+def _nota_legada(analise, acao):
+    partes = [str(analise or '').strip(), ('Ação: ' + str(acao).strip()) if str(acao or '').strip() else '']
+    texto = '\n'.join(p for p in partes if p)
+    return [{'tipo': 'comentario', 'texto': texto}] if texto else []
+
+
 def _gravar_itens(registro, itens):
-    """Sincroniza os cards do registro. Cards com `id` são atualizados no lugar (preserva a situação e a
-    resolução de uma ocorrência); os sem `id` são criados e os que saíram da lista são removidos."""
+    """Sincroniza os cards do registro e as notas de cada um. Itens com `id` são atualizados no lugar (preserva a
+    situação e a resolução de uma ocorrência); os sem `id` são criados e os que saíram da lista são removidos."""
     from kpi.models import AnaliseItem
     from laboratorio.models import OcorrenciaLaboratorio
     from shared.ocorrencias import criar_acao_inicial, limpar_acoes, tem_acoes
-    existentes = {i.pk: i for i in registro.itens.all()}
-    manter, afetados = set(), set()
+    todos = list(registro.itens.all())
+    cards_atuais = {i.pk: i for i in todos if i.pai_id is None}
+    notas_atuais = {i.pk: i for i in todos if i.pai_id is not None}
+    manter_cards, manter_notas, afetados = set(), set(), set()
     for n, i in enumerate(itens):
-        card = existentes.get(i.get('id'))
-        if card is None or card.pk in manter:
+        card = cards_atuais.get(i.get('id'))
+        if card is None or card.pk in manter_cards:
             card = AnaliseItem(registro=registro, criado_em=timezone.now())
-        card.ordem, card.causa, card.analise, card.acao = n, i['causa'], i['analise'], i['acao']
-        card.tipo = i.get('tipo') or AnaliseItem.TIPO_COMENTARIO
-        if card.tipo == AnaliseItem.TIPO_COMENTARIO:
-            card.status, card.resolucao, card.resolvido_em, card.resolvido_por = AnaliseItem.STATUS_ABERTA, '', None, None
+        card.ordem, card.causa, card.pai = n, i['causa'], None
+        card.tipo, card.status, card.resolucao, card.resolvido_em, card.resolvido_por = AnaliseItem.TIPO_COMENTARIO, AnaliseItem.STATUS_ABERTA, '', None, None
         card.save()
-        manter.add(card.pk)
-        if card.tipo == AnaliseItem.TIPO_OCORRENCIA:
-            if i.get('responsaveis') and not tem_acoes('kpi', card.pk):
-                criar_acao_inicial('kpi', card.pk, card.acao or card.causa or card.analise, i['responsaveis'],
-                                   i.get('prazo'), registro.registrado_por)
-                afetados.update(c.user_django_id for c in i['responsaveis'] if c.user_django_id)
-        else:
-            limpar_acoes('kpi', [card.pk])  # voltou a ser relato: não há plano de ação
+        manter_cards.add(card.pk)
         card.ocorrencias.set(OcorrenciaLaboratorio.objects.filter(pk__in=i['ocorrencias']))
-    for pk, card in existentes.items():
-        if pk not in manter:
+        for k, nt in enumerate(i['notas']):
+            nota = notas_atuais.get(nt.get('id'))
+            if nota is None or nota.pk in manter_notas:  # a nota pode mudar de card (cards agrupados)
+                nota = AnaliseItem(registro=registro, criado_em=timezone.now())
+            nota.pai, nota.ordem, nota.texto, nota.tipo = card, k, nt['texto'], nt['tipo']
+            if nota.tipo == AnaliseItem.TIPO_COMENTARIO:
+                nota.status, nota.resolucao, nota.resolvido_em, nota.resolvido_por = AnaliseItem.STATUS_ABERTA, '', None, None
+            nota.save()
+            manter_notas.add(nota.pk)
+            if nota.tipo == AnaliseItem.TIPO_OCORRENCIA:
+                if nt.get('responsaveis') and not tem_acoes('kpi', nota.pk):
+                    criar_acao_inicial('kpi', nota.pk, nota.texto, nt['responsaveis'], nt.get('prazo'), registro.registrado_por)
+                    afetados.update(c.user_django_id for c in nt['responsaveis'] if c.user_django_id)
+            else:
+                limpar_acoes('kpi', [nota.pk])  # comentário: não há plano de ação
+    for pk, nota in notas_atuais.items():
+        if pk not in manter_notas:
             limpar_acoes('kpi', [pk])
+    for pk, card in cards_atuais.items():
+        if pk not in manter_cards:
+            limpar_acoes('kpi', list(AnaliseItem.objects.filter(pai_id=pk).exclude(pk__in=manter_notas).values_list('pk', flat=True)) + [pk])
             card.delete()
-    primeiro = itens[0] if itens else {'causa': '', 'analise': ''}
-    registro.causa, registro.analise = primeiro['causa'], primeiro['analise']  # resumo do primeiro card
+    AnaliseItem.objects.filter(registro=registro, pai__isnull=False).exclude(pk__in=manter_notas).delete()
+    primeiro = itens[0] if itens else {'causa': '', 'notas': []}
+    registro.causa = primeiro['causa']  # resumo do primeiro card
+    registro.analise = primeiro['notas'][0]['texto'] if primeiro['notas'] else ''
     registro.save(update_fields=['causa', 'analise', 'atualizado_em'])
     _invalidar_contagem_ocorrencias(afetados | {registro.registrado_por_id})
 
@@ -934,7 +982,7 @@ def _parametros_lote(request, ind):
 @login_required
 @require_POST
 def analise_salvar_massa_view(request, pk):
-    """Aplica a mesma causa/análise a vários períodos. Períodos dispensados ou que já têm análise são preservados."""
+    """Aplica a mesma causa (e comentário opcional) a vários períodos. Períodos dispensados ou que já têm análise são preservados."""
     from django.http import JsonResponse
     from kpi.models import AnaliseCausa
     ind = get_object_or_404(Indicador, pk=pk)
@@ -951,7 +999,7 @@ def analise_salvar_massa_view(request, pk):
             ignorados += 1
             continue
         registro = AnaliseCausa.objects.create(indicador=ind, setor=setor, granularidade=gran, periodo=p, registrado_por=request.user)
-        _gravar_itens(registro, [{'causa': causa, 'analise': analise, 'acao': request.POST.get('acao', '').strip(), 'ocorrencias': [], 'tipo': 'comentario'}])
+        _gravar_itens(registro, [{'causa': causa, 'ocorrencias': [], 'notas': [{'tipo': 'comentario', 'texto': analise}] if analise else []}])
         aplicados[p.isoformat()] = {'c': causa[:140], 'a': bool(analise), 'n': 1, 'd': False, 'm': ''}
     return JsonResponse({'ok': True, 'aplicados': aplicados, 'ignorados': ignorados})
 
