@@ -305,6 +305,24 @@
 <div class="modal fade" id="kpiAnaliseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
+            <div id="anMotivosPop" class="position-absolute top-0 start-0 w-100 h-100 align-items-center justify-content-center" style="display:none; z-index: 20; background: rgba(0,0,0,.45); border-radius: inherit;">
+                <div class="card shadow" style="width: min(760px, 94%); max-height: 90%; display: flex; flex-direction: column;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <strong id="anMotivosTitulo">Principais motivos</strong>
+                        <button type="button" class="btn-close" id="anMotivosFechar" aria-label="Fechar"></button>
+                    </div>
+                    <div class="card-body" style="overflow: auto;">
+                        <div class="form-text mb-2">Marque os motivos que quer tratar e, se quiser, escreva um comentário para cada um. Eles entram como cards, separados ou agrupados, e você segue editando e vinculando ocorrências.</div>
+                        <div class="form-check mb-2"><input class="form-check-input" type="checkbox" id="anMotivosTodos"><label class="form-check-label small" for="anMotivosTodos">Selecionar todos</label></div>
+                        <div id="anMotivosLista"></div>
+                    </div>
+                    <div class="card-footer d-flex flex-wrap justify-content-end gap-2">
+                        <span class="me-auto small text-muted align-self-center" id="anMotivosN"></span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="anMotivosSep" disabled><i class="bi bi-layout-three-columns me-1"></i>Um card por motivo</button>
+                        <button type="button" class="btn btn-primary btn-sm" id="anMotivosJun" disabled><i class="bi bi-intersect me-1"></i>Agrupar em um card</button>
+                    </div>
+                </div>
+            </div>
             <div class="modal-header">
                 <h5 class="modal-title"><i class="bi bi-clipboard2-pulse me-2"></i>Causas e análises — <span id="anNome"></span><span class="text-muted fs-6 ms-2" id="anSetor"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -355,6 +373,7 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                         <div class="fw-semibold">Causas, análises e ações <small class="text-muted fw-normal">— um card para cada conjunto</small></div>
                         <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-sm btn-outline-warning d-none" id="anMotivosBtn"><i class="bi bi-list-stars me-1"></i><span id="anMotivosBtnTxt">Motivos do período</span></button>
                             <button type="button" class="btn btn-sm btn-outline-primary" id="anRascunho"><i class="bi bi-magic me-1"></i>Trazer registros do período</button>
                             <button type="button" class="btn btn-sm btn-primary" id="anAddCard"><i class="bi bi-plus-lg me-1"></i>Adicionar card</button>
                         </div>
@@ -1192,7 +1211,7 @@
                 .then(function (j) {
                     if (j.erro) { el('anErro').textContent = j.erro; return; }
                     if (j.dispensada) { el('anErro').textContent = 'Período dispensado de análise: ' + j.motivo_dispensa; }
-                    atual = {iso: j.data, sugeridos: j.cards_sugeridos || [], ocorrencias: j.ocorrencias || [], itens: j.itens || []};
+                    atual = {iso: j.data, sugeridos: j.cards_sugeridos || [], motivos: j.motivos || [], ocorrencias: j.ocorrencias || [], itens: j.itens || []};
                     informarDiasFora(j.dias_fora || []);
                     var un = j.unidade ? ' ' + j.unidade : '';
                     el('anResumo').innerHTML = (j.valor === null ? 'Sem valor registrado' : 'Valor <span class="' + (j.atingiu ? 'text-success' : 'text-danger') + '">' + fmt(j.valor) + un + '</span>') + ' · meta ' + fmt(j.meta) + un;
@@ -1201,15 +1220,19 @@
                         el('anAjudaRascunho').textContent = atual.sugeridos.length ? 'Há ' + atual.sugeridos.length + ' sugestão(ões) dos registros do período: use "Trazer registros do período".' : '';
                     } else if (atual.sugeridos.length) {
                         atual.sugeridos.forEach(novoCard);
-                        el('anAjudaRascunho').textContent = atual.sugeridos.length + ' card(s) sugerido(s) a partir dos principais motivos e dos registros dos dias do período. Ajuste, apague o que não se aplica e salve.';
+                        el('anAjudaRascunho').textContent = atual.sugeridos.length + ' card(s) sugerido(s) a partir dos registros dos dias do período. Ajuste, apague o que não se aplica e salve.';
                     } else {
                         novoCard();
-                        el('anAjudaRascunho').textContent = 'Não há registros anteriores neste período.';
+                        el('anAjudaRascunho').textContent = atual.motivos.length ? 'Use "Motivos do período" para trazer os principais motivos para tratativa.' : 'Não há registros anteriores neste período.';
                     }
                     el('anSalvar').classList.toggle('d-none', !PODE_ANALISAR);
                     el('anRemover').classList.toggle('d-none', !PODE_ANALISAR || !atual.itens.length);
                     el('anAddCard').classList.toggle('d-none', !PODE_ANALISAR);
                     el('anRascunho').classList.toggle('d-none', !PODE_ANALISAR);
+                    var tm = tipoMotivo();
+                    el('anMotivosBtnTxt').textContent = tm ? 'Motivos de ' + tm + ' do período' : 'Motivos do período';
+                    el('anMotivosBtn').classList.toggle('d-none', !PODE_ANALISAR || !atual.motivos.length);
+                    fecharMotivos();
                 })
                 .catch(function () { el('anErro').textContent = 'Não foi possível carregar os dados.'; });
         }
@@ -1246,13 +1269,82 @@
             function chave(c) { return (c.causa + '|' + (c.notas || []).map(function (n) { return n.texto; }).join('|')).trim(); }
             var existentes = coletarCards().map(chave);
             var novos = atual.sugeridos.filter(function (c) { return existentes.indexOf(chave(c)) === -1; });
-            // remove o card em branco que sobrou antes de acrescentar as sugestões
-            Array.prototype.slice.call(el('anCards').children).forEach(function (card) {
-                if (!card.querySelector('.an-c').value.trim() && !card.querySelector('.an-n-texto') && !card.querySelectorAll('.an-oc:checked').length) card.remove();
-            });
+            removerCardsEmBranco();   // remove o card em branco que sobrou antes de acrescentar as sugestões
             novos.forEach(novoCard);
             renumerarCards();
             el('anAjudaRascunho').textContent = novos.length ? novos.length + ' card(s) trazido(s) dos registros do período. Ajuste antes de salvar.' : 'Todos os registros do período já estão nos cards.';
+        });
+
+        function removerCardsEmBranco() {
+            Array.prototype.slice.call(el('anCards').children).forEach(function (card) {
+                if (!card.querySelector('.an-c').value.trim() && !card.querySelector('.an-n-texto') && !card.querySelectorAll('.an-oc:checked').length) card.remove();
+            });
+        }
+
+        // Pop-up com os principais motivos do período (quebras, retornos…): o usuário escolhe o que tratar.
+        function tipoMotivo() {
+            var nome = el('anNome').textContent;
+            return /retorno/i.test(nome) ? 'retorno' : (/quebra/i.test(nome) ? 'quebra' : '');
+        }
+        function motivosSelecionados() {
+            return Array.prototype.map.call(document.querySelectorAll('#anMotivosLista .an-mot-sel:checked'), function (cb) {
+                var linha = cb.closest('.an-mot');
+                return {descricao: linha.dataset.desc, quantidade: linha.dataset.qtd, comentario: linha.querySelector('.an-mot-com').value.trim()};
+            });
+        }
+        function atualizarMotivosN() {
+            var n = motivosSelecionados().length;
+            el('anMotivosN').textContent = n ? n + ' selecionado' + (n > 1 ? 's' : '') : '';
+            el('anMotivosSep').disabled = !n;
+            el('anMotivosJun').disabled = n < 2;
+        }
+        function abrirMotivos() {
+            var tipo = tipoMotivo();
+            el('anMotivosTitulo').textContent = 'Principais motivos' + (tipo ? ' de ' + tipo : '') + ' — ' + el('anTitulo').textContent;
+            var causas = coletarCards().map(function (c) { return c.causa.toLowerCase(); }).join('\n');
+            el('anMotivosLista').innerHTML = (atual.motivos || []).map(function (m) {
+                var ja = causas.indexOf(m.descricao.toLowerCase()) !== -1;
+                return '<div class="border rounded p-2 mb-2 an-mot" data-desc="' + esc(m.descricao) + '" data-qtd="' + esc(m.quantidade) + '">' +
+                    '<div class="d-flex align-items-center gap-2"><input type="checkbox" class="form-check-input an-mot-sel">' +
+                    '<span class="flex-grow-1">' + esc(m.descricao) + (ja ? ' <span class="badge text-bg-light border text-muted fw-normal">já tem card</span>' : '') + '</span>' +
+                    '<span class="badge text-bg-secondary">' + esc(m.quantidade) + '</span></div>' +
+                    '<input type="text" class="form-control form-control-sm mt-2 an-mot-com" placeholder="Comentário (opcional)"></div>';
+            }).join('') || '<div class="text-muted small">Nenhum motivo registrado neste período.</div>';
+            el('anMotivosTodos').checked = false;
+            atualizarMotivosN();
+            el('anMotivosPop').style.display = 'flex';
+        }
+        function fecharMotivos() { el('anMotivosPop').style.display = 'none'; }
+        function rotuloMotivo(m) { return m.descricao + ' (' + m.quantidade + ')'; }
+        function levarMotivos(agrupar) {
+            var sel = motivosSelecionados();
+            if (!sel.length) return;
+            removerCardsEmBranco();
+            var criados = [];
+            if (agrupar) {
+                var notas = sel.filter(function (m) { return m.comentario; }).map(function (m) {
+                    return {tipo: 'comentario', texto: (sel.length > 1 ? m.descricao + ': ' : '') + m.comentario};
+                });
+                criados.push(novoCard({causa: sel.map(rotuloMotivo).join('\n'), notas: notas, origem: 'Motivos do período'}));
+            } else {
+                sel.forEach(function (m) {
+                    criados.push(novoCard({causa: rotuloMotivo(m), notas: m.comentario ? [{tipo: 'comentario', texto: m.comentario}] : [], origem: 'Motivo do período'}));
+                });
+            }
+            renumerarCards();
+            fecharMotivos();
+            el('anAjudaRascunho').textContent = (agrupar ? sel.length + ' motivos agrupados em um card.' : sel.length + ' card(s) criado(s) a partir dos motivos.') + ' Ajuste, adicione comentários ou ocorrências e salve.';
+            criados[0].scrollIntoView({block: 'center'});
+        }
+        el('anMotivosBtn').addEventListener('click', abrirMotivos);
+        el('anMotivosFechar').addEventListener('click', fecharMotivos);
+        el('anMotivosSep').addEventListener('click', function () { levarMotivos(false); });
+        el('anMotivosJun').addEventListener('click', function () { levarMotivos(true); });
+        el('anMotivosLista').addEventListener('change', atualizarMotivosN);
+        el('anMotivosTodos').addEventListener('change', function () {
+            var marcar = el('anMotivosTodos').checked;
+            document.querySelectorAll('#anMotivosLista .an-mot-sel').forEach(function (cb) { cb.checked = marcar; });
+            atualizarMotivosN();
         });
 
         function informarDiasFora(dias) {

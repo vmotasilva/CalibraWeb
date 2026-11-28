@@ -644,10 +644,9 @@ def _dias_fora_da_meta(ind, setor_id, gran, periodo, meta):
 
 
 def _cards_sugeridos(ind, setor_id, gran, periodo):
-    """Cards-base para a análise do período:
-    - um card por principal motivo registrado no período (até 5);
-    - os cards já registrados nos dias da semana (ou nas semanas do mês; dias só quando a semana dele não tem análise).
-    Cada card traz `origem` (de onde veio a sugestão) para o usuário conferir."""
+    """Cards-base para a análise do período: os cards já registrados nos dias da semana (ou nas semanas do mês;
+    dias só quando a semana dele não tem análise). Cada card traz `origem` para o usuário conferir.
+    Os principais motivos do período não entram aqui: o usuário os traz pelo botão "Motivos" (`_motivos_periodo`)."""
     from kpi.models import AnaliseCausa
     ini, fim = _janela(gran, periodo)
     cards = []
@@ -678,13 +677,18 @@ def _cards_sugeridos(ind, setor_id, gran, periodo):
                                              periodo__range=(ini, fim)).prefetch_related('itens__ocorrencias').order_by('periodo'):
             if a.periodo - datetime.timedelta(days=a.periodo.weekday()) not in cobertas:
                 de_registro(a, f'Dia {a.periodo:%d/%m}')
+    return cards
+
+
+def _motivos_periodo(ind, setor_id, gran, periodo):
+    """Principais motivos registrados no período (somados), do maior para o menor, para o usuário escolher
+    quais levar para a tratativa."""
+    ini, fim = _janela(gran, periodo)
     soma = {}
     for desc, q in Motivo.objects.filter(indicador=ind, setor_id=setor_id, data__range=(ini, fim),
                                          consolidado=False).values_list('descricao', 'quantidade'):
         soma[desc.strip()] = soma.get(desc.strip(), Decimal(0)) + q
-    motivos = [{'causa': f'{d} ({_num(q)})', 'notas': [], 'ocorrencias': [], 'origem': 'Motivo registrado'}
-               for d, q in sorted(soma.items(), key=lambda x: x[1], reverse=True)[:5]]
-    return motivos + cards
+    return [{'descricao': d, 'quantidade': _num(q)} for d, q in sorted(soma.items(), key=lambda x: x[1], reverse=True)[:20]]
 
 
 def _ocorrencias_periodo(gran, periodo):
@@ -780,6 +784,7 @@ def analise_dados_view(request, pk):
         'itens': _itens_json(atual) if atual and not atual.dispensada else [],
         'dispensada': bool(atual and atual.dispensada), 'motivo_dispensa': atual.motivo_dispensa if atual else '',
         'cards_sugeridos': _cards_sugeridos(ind, setor_id, gran, periodo),
+        'motivos': _motivos_periodo(ind, setor_id, gran, periodo),
         'dias_fora': _dias_fora_da_meta(ind, setor_id, gran, periodo, meta),
         'ocorrencias': _ocorrencias_periodo(gran, periodo),
     })

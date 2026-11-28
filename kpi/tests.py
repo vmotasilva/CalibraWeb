@@ -330,15 +330,15 @@ class KpiTests(TestCase):
         self.assertEqual(j['itens'], [])
         self.assertEqual(j['dias_fora'], [{'dia': '13/10', 'valor': '3'}, {'dia': '15/10', 'valor': '4'}])  # 14/10 (1) está na meta
         sug = j['cards_sugeridos']
-        self.assertEqual([c['origem'] for c in sug], ['Motivo registrado', 'Dia 13/10'])
-        self.assertEqual(sug[0]['causa'], 'Risco de garra (5)')  # soma dos dias, sem o consolidado duplicado
-        self.assertEqual((sug[1]['causa'], [n['texto'] for n in sug[1]['notas']]), ('Troca de turno', ['Treinar']))
-        self.assertNotIn('Duplicado', ''.join(c['causa'] for c in sug))
+        self.assertEqual([c['origem'] for c in sug], ['Dia 13/10'])  # os motivos não viram card sozinhos
+        self.assertEqual((sug[0]['causa'], [n['texto'] for n in sug[0]['notas']]), ('Troca de turno', ['Treinar']))
+        # eles vêm à parte, somados e do maior para o menor, para o usuário escolher o que tratar
+        self.assertEqual(j['motivos'], [{'descricao': 'Risco de garra', 'quantidade': '5'}])  # sem o consolidado duplicado
         # o mês sugere os cards das semanas e só os dias cuja semana não tem análise
         self.client.post(salvar, {'gran': 'semanal', 'data': '2026-10-12', 'causa': 'Semana ruim'})
         self.client.post(salvar, {'gran': 'diaria', 'data': '2026-10-22', 'causa': 'Dia solto'})
         m = self.client.get(dados, {'gran': 'mensal', 'data': '2026-10-20'}).json()['cards_sugeridos']
-        self.assertEqual([(c['origem'], c['causa']) for c in m if c['origem'] != 'Motivo registrado'],
+        self.assertEqual([(c['origem'], c['causa']) for c in m],
                          [('Semana de 12/10', 'Semana ruim'), ('Dia 22/10', 'Dia solto')])  # o dia 13/10 já está coberto pela semana
         # existente volta preenchido; vazio remove; painel entrega o mapa das análises
         self.assertEqual(self.client.get(dados, {'gran': 'diaria', 'data': '2026-10-13'}).json()['itens'][0]['causa'], 'Troca de turno')
